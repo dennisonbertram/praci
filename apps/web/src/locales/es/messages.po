@@ -2591,7 +2591,6 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Computadora"
@@ -2619,14 +2618,6 @@ msgstr "La computadora está en reposo"
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
 msgstr "La computadora está en reposo. Ábrela para despertarla."
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Computer is starting"
@@ -5209,10 +5200,6 @@ msgstr "Cuelga y luego ingresa el código en pantalla."
 msgid "Has attachment"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "Encabezado"
@@ -7236,6 +7223,10 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
+msgstr ""
+
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -7872,10 +7863,6 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "Privado"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -9300,13 +9287,13 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9989,10 +9976,6 @@ msgstr "Enseñar una tarea"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "Enseñanza en curso: detén la enseñanza antes de enviar un nuevo mensaje."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "Equipo"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -11351,6 +11334,10 @@ msgstr "Trabajando…"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
