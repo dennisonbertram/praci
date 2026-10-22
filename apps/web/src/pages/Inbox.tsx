@@ -316,8 +316,6 @@ function InboxListPage({
   const [stalled, setStalled] = useState(false);
   // A sync has returned a last-sync time, so the loading line never says "First sync" on an old mailbox.
   const [everSynced, setEverSynced] = useState(false);
-  // Messages found so far by the first sync, so the loading line changes while it runs.
-  const [found, setFound] = useState(0);
   const appliedKey = useRef<string | null>(null);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
@@ -548,7 +546,6 @@ function InboxListPage({
     // The server queues the sync and answers at once; ask again until it is done, then list.
     const sync = async () => {
       let result = await rpc.inbox.refresh({});
-      if (result?.messageCount && live) setFound(result.messageCount);
       if (result?.syncedAt && live) setEverSynced(true);
       for (let i = 0; i < SYNC_POLL_MAX && live && result?.syncing; i++) {
         await new Promise<void>((resolve) => {
@@ -556,7 +553,6 @@ function InboxListPage({
           timer = setTimeout(resolve, Math.min(SYNC_POLL_MS * 2 ** i, SYNC_POLL_MAX_MS));
         });
         if (live) result = await rpc.inbox.refresh({});
-        if (result?.messageCount && live) setFound(result.messageCount);
         if (result?.syncedAt && live) setEverSynced(true);
       }
     };
@@ -1668,12 +1664,7 @@ function InboxListPage({
             {synced || sortingRows || consentPrompt ? null : (
               <p role="status" className="text-sm text-muted-foreground">
                 {slowSync && !everSynced && !data?.syncedAt ? (
-                  <>
-                    <Trans>First sync can take a minute</Trans>
-                    {found > 0
-                      ? ` · ${plural(found, { one: "# message so far", other: "# messages so far" })}`
-                      : null}
-                  </>
+                  <Trans>First sync can take a minute</Trans>
                 ) : (
                   <Trans>Reading your mail…</Trans>
                 )}

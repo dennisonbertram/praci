@@ -500,10 +500,6 @@ msgstr ""
 msgid "{folders, plural, one {# folder} other {# folders}}"
 msgstr ""
 
-#: src/pages/Inbox.tsx
-msgid "{found, plural, one {# message so far} other {# messages so far}}"
-msgstr ""
-
 #: src/pages/shell/transcript.tsx
 msgid "{from} handed off to {to}"
 msgstr ""

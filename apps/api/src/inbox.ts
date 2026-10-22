@@ -601,12 +601,8 @@ export async function inboxRefresh(
   const statuses = await mailSyncStatus(deps.prisma, scope, ids);
   const synced = statuses.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   const failedAccounts = statuses.filter((s) => s.failed).map((s) => s.connectionId);
-  const messageCount = await deps.prisma.cachedMailMessage.count({
-    where: { ...scope, connectionId: { in: ids }, inInbox: true },
-  });
   return {
     ok: true,
-    messageCount,
     syncing: statuses.some((s) => s.syncing),
     syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
     ...(failedAccounts.length ? { failedAccounts } : {}),

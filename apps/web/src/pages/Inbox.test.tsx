@@ -1038,27 +1038,6 @@ it("says it is reading the mail during the first sync and asks the server a few 
   }
 });
 
-it("shows how many messages the first sync has found so far", async () => {
-  vi.useFakeTimers();
-  try {
-    rpcMock.list.mockResolvedValue(list([], { syncedAt: null }));
-    let found = 12;
-    rpcMock.refresh.mockImplementation(async () => ({ syncing: true, messageCount: found }));
-    const c = await render();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(6_000);
-    });
-    expect(c.textContent).toContain("First sync can take a minute · 12 messages so far");
-    found = 40;
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-    expect(c.textContent).toContain("40 messages so far");
-  } finally {
-    vi.useRealTimers();
-  }
-});
-
 it("shows the consent prompt without loading text while the first sync runs", async () => {
   vi.useFakeTimers();
   try {
