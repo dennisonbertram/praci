@@ -67,6 +67,7 @@ export const Composer = memo(function Composer({
   sendError,
   runError,
   onRetryRun,
+  onRetrySend,
   runErrorId,
   onRunErrorPresented,
   onDismissError,
@@ -107,6 +108,8 @@ export const Composer = memo(function Composer({
   sendError: string | null;
   runError: string | null;
   onRetryRun?: () => void;
+  /** Sends the message that failed to leave again; offered with a send error. */
+  onRetrySend?: () => void;
   runErrorId: string | null;
   onRunErrorPresented: (runId: string) => void;
   onDismissError: () => void;
@@ -637,6 +640,7 @@ export const Composer = memo(function Composer({
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
           onRetry={!sendError ? onRetryRun : undefined}
+          onRetrySend={sendError ? onRetrySend : undefined}
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
           onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {

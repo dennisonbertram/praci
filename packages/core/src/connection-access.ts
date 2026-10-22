@@ -1,12 +1,15 @@
 import {
+  inboxAgentSpawnKey,
   integrationAgentSpawnKey,
   isCartaAgentSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
+  isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
   isVoiceAgentSpawnKey,
 } from "@rakazo/contracts";
 
@@ -55,6 +58,32 @@ export function botMayUseConnection(row: {
   botAccess: { botId: string }[];
 }): boolean {
   return row.allAgents || row.botAccess.length > 0;
+}
+
+/**
+ * The access rows a run reads for its bot. An email's own agent has exactly the Inbox agent's
+ * permissions, so it also reads the Inbox agent's rows; a new thread agent has none of its own.
+ */
+export function connectionAccessFilter(bot: {
+  id: string;
+  userId: string;
+  spawnKey: string | null;
+}) {
+  return isMailThreadAgentSpawnKey(bot.spawnKey)
+    ? { OR: [{ botId: bot.id }, { bot: { spawnKey: inboxAgentSpawnKey(bot.userId) } }] }
+    : { botId: bot.id };
+}
+
+/**
+ * For an email's own agent, a connection whose agent is the Inbox agent is linked to it too, so it
+ * may make the changes the Inbox agent may (the write rule compares `agentBotId` with the bot).
+ */
+export function withInboxAgentStandIn<
+  T extends { agentBotId: string | null; agentBot?: { spawnKey: string | null } | null },
+>(row: T, bot: { id: string; spawnKey: string | null }): T {
+  return isMailThreadAgentSpawnKey(bot.spawnKey) && isInboxAgentSpawnKey(row.agentBot?.spawnKey)
+    ? { ...row, agentBotId: bot.id }
+    : row;
 }
 
 /** Whether the bot works with Composio, Pipedream and other connector tools at all. */

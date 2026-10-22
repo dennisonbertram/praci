@@ -303,3 +303,40 @@ describe("appStatus", () => {
     expect(appStatus([conn("connected", true), conn("connected")])).toBe("connected");
   });
 });
+
+describe("an email's own agent shares the Inbox agent's Gmail access", () => {
+  const thread = { id: "bot-thread", userId: "u1", spawnKey: "mail-thread:c1:t1" };
+  const inboxKey = "inbox-agent:u1";
+  // The demo's Gmail: limited to the Inbox agent, which is also its linked agent.
+  const gmail = {
+    id: "c1",
+    connectorId: "composio",
+    provider: "GMAIL",
+    status: "connected",
+    allAgents: false,
+    agentBotId: "bot-inbox",
+    agentBot: { spawnKey: inboxKey },
+  };
+
+  it("reads the Inbox agent's access rows too, so Gmail is not denied to it", async () => {
+    const { connectionAccessFilter, deniedConnectionIds, withInboxAgentStandIn } = await import(
+      "./connection-access.js"
+    );
+    expect(connectionAccessFilter(thread)).toEqual({
+      OR: [{ botId: "bot-thread" }, { bot: { spawnKey: inboxKey } }],
+    });
+    expect(connectionAccessFilter({ id: "b", userId: "u1", spawnKey: null })).toEqual({
+      botId: "b",
+    });
+    const row = { ...gmail, botAccess: [{ botId: "bot-inbox" }] };
+    expect(deniedConnectionIds([row]).size).toBe(0);
+    expect(withInboxAgentStandIn(row, thread).agentBotId).toBe("bot-thread");
+  });
+
+  it("does not stand in for another bot, or for another agent's connection", async () => {
+    const { withInboxAgentStandIn } = await import("./connection-access.js");
+    expect(withInboxAgentStandIn(gmail, { id: "x", spawnKey: null }).agentBotId).toBe("bot-inbox");
+    const other = { ...gmail, agentBot: { spawnKey: "integration-agent:c1" } };
+    expect(withInboxAgentStandIn(other, thread).agentBotId).toBe("bot-inbox");
+  });
+});

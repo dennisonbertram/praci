@@ -89,6 +89,7 @@ import {
   botUsesConnectorTools,
   CALL_CLIENT_NONCE_PREFIX,
   callIdFromClientNonce,
+  connectionAccessFilter,
   connectionRowsForAudience,
   connectorKindFromToolName,
   containsSecret,
@@ -131,6 +132,7 @@ import {
   unattendedTriggerToolRequiresApproval,
   userTurnMessageForRun,
   VOICE_AGENT_INSTRUCTIONS,
+  withInboxAgentStandIn,
 } from "@rakazo/core";
 import {
   approvalEffectKey,
@@ -1482,22 +1484,25 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : Promise.resolve(undefined),
           deps.prisma.task.findUniqueOrThrow({ where: { id: run.taskId } }),
           // Elio gets no connector tools, but Data Room reads still need the denied ids.
-          deps.prisma.connection.findMany({
-            where: { userId: run.userId, spaceId: run.spaceId },
-            select: {
-              id: true,
-              connectorId: true,
-              provider: true,
-              providerRef: true,
-              displayName: true,
-              status: true,
-              allAgents: true,
-              writesEnabled: true,
-              agentBotId: true,
-              privateByDefault: true,
-              botAccess: { where: { botId: run.botId }, select: { botId: true } },
-            },
-          }),
+          deps.prisma.connection
+            .findMany({
+              where: { userId: run.userId, spaceId: run.spaceId },
+              select: {
+                id: true,
+                connectorId: true,
+                provider: true,
+                providerRef: true,
+                displayName: true,
+                status: true,
+                allAgents: true,
+                writesEnabled: true,
+                agentBotId: true,
+                privateByDefault: true,
+                botAccess: { where: connectionAccessFilter(bot), select: { botId: true } },
+                agentBot: { select: { spawnKey: true } },
+              },
+            })
+            .then((rows) => rows.map((row) => withInboxAgentStandIn(row, bot))),
           findDefaultModelCredential(deps.prisma, run),
           deps.prisma.deploymentSettings.findUnique({
             where: { id: "default" },
@@ -2526,10 +2531,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 writesEnabled: true,
                 agentBotId: true,
                 privateByDefault: true,
-                botAccess: { where: { botId: bot.id }, select: { botId: true } },
+                botAccess: { where: connectionAccessFilter(bot), select: { botId: true } },
+                agentBot: { select: { spawnKey: true } },
               },
             })
-            .then((rows) => connectionRowsForAudience(rows, bot.audience));
+            .then((rows) =>
+              connectionRowsForAudience(
+                rows.map((row) => withInboxAgentStandIn(row, bot)),
+                bot.audience,
+              ),
+            );
         // The account must exist in this space and user, be connected, be open to this bot, and for
         // a write follow the agent rule.
         const accountAllowedIn = (

@@ -80,3 +80,21 @@ export const DraftAnswered: Story = {
       },
     }),
 };
+
+/** A refusal after a draft request is shown as an answer only: no Reply with draft. */
+export const DraftRefused: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "threads.get": {
+        threadId: "thread_email_agent",
+        cursor: 2,
+        messages: [
+          message(1, "user", "Draft a reply"),
+          message(2, "bot", "I can't create the reply because mail_send is not available to me."),
+        ],
+        olderCursor: null,
+        botId: bot.id,
+        run: null,
+      },
+    }),
+};

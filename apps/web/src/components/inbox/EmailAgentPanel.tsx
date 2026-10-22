@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
 import { latestAnswerableAskMessageId, newClientId } from "@rakazo/core";
 import { BotAvatar, Button } from "@rakazo/ui-web";
-import { PanelRightClose } from "lucide-react";
+import { ArrowLeft, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { rpc } from "../../lib/rpc";
@@ -37,6 +37,16 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
 const DRAFT_REQUEST = "Draft a reply";
 // A leading "Draft reply:" label, with optional markdown emphasis around it, such as **Draft reply:**.
 const DRAFT_LABEL = /^[*_]*draft( reply)?[*_]*:[*_]*\s*/i;
+// A refusal or an error, not a reply: the model could not do what was asked.
+const NOT_A_DRAFT =
+  /^(i (can'?t|cannot|can not|am unable|'?m unable|'?m not able|am not able)|unable to|sorry|could not|couldn'?t|failed|error|something went wrong)\b|\(\/app\/|\/app\/integrations/i;
+/** Plain text for the Reply composer: no markdown links, emphasis, code marks or headings. */
+const plainText = (text: string) =>
+  text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__|\*|`)/g, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .trim();
 const asksForDraft = (text: string) =>
   /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
@@ -62,7 +72,11 @@ export function latestTextDraft(messages: readonly ThreadMessage[]): string | un
   for (const message of messages.slice(at + 1)) {
     const answer = message.role === "bot" ? textOf(message) : "";
     // A question is the agent asking for more, not a draft.
-    if (answer && !answer.endsWith("?")) return answer.replace(DRAFT_LABEL, "");
+    if (answer && !answer.endsWith("?")) {
+      const body = plainText(answer).replace(DRAFT_LABEL, "").trim();
+      // The first answer decides: a refusal is not skipped in favour of a later message.
+      return body && !NOT_A_DRAFT.test(answer.trim()) ? body : undefined;
+    }
   }
   return undefined;
 }
@@ -152,16 +166,26 @@ export function EmailAgentPanel({
 
   const draft =
     latestPendingDraft(snapshot?.messages ?? []) ?? latestTextDraft(snapshot?.messages ?? []);
+  const lastSend = useRef<{ text: string; nonce: string } | null>(null);
   const send = async (text: string, clientNonce?: string) => {
+    const attempt = { text, nonce: clientNonce || newClientId() };
+    lastSend.current = attempt;
+    setSendError(null);
     setStale(true);
     setSending(true);
     try {
       sentHere.current = true;
-      await rpc.threads.send({ botId: bot.id, clientNonce: clientNonce || newClientId(), text });
+      await rpc.threads.send({ botId: bot.id, clientNonce: attempt.nonce, text });
       await load();
       return true;
     } catch (cause) {
-      setSendError(cause instanceof Error ? cause.message : String(cause));
+      setStale(false);
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setSendError(
+        cause instanceof TypeError || /failed to fetch|load failed|network/i.test(message)
+          ? t`Could not reach Praci. Try again.`
+          : message,
+      );
       return false;
     } finally {
       setSending(false);
@@ -174,7 +198,16 @@ export function EmailAgentPanel({
       aria-label={t`Email agent`}
       className="flex h-full min-h-0 w-full flex-col border-s border-sidebar-border bg-background"
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 max-md:justify-start">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t`Back to email`}
+          className="-ms-2 md:hidden"
+          onClick={onClose}
+        >
+          <ArrowLeft aria-hidden="true" className="rtl:rotate-180" />
+        </Button>
         <button
           type="button"
           aria-label={t`Open email agent full screen`}
@@ -187,7 +220,13 @@ export function EmailAgentPanel({
             <Trans>Email agent</Trans>
           </span>
         </button>
-        <Button variant="ghost" size="icon-sm" aria-label={t`Close agent`} onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t`Close agent`}
+          className="max-md:hidden"
+          onClick={onClose}
+        >
           <PanelRightClose aria-hidden="true" />
         </Button>
       </div>
@@ -269,6 +308,10 @@ export function EmailAgentPanel({
         runErrorId={null}
         onRunErrorPresented={noop}
         onDismissError={() => setSendError(null)}
+        onRetrySend={() => {
+          const last = lastSend.current;
+          if (last) void send(last.text, last.nonce);
+        }}
         sending={false}
         fileInputRef={fileInputRef}
         onAttachmentPick={() => false}

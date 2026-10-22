@@ -20,10 +20,24 @@ vi.mock("../../pages/shell/transcript", () => ({
 vi.mock("../../pages/shell/composer", () => ({
   Composer: ({
     onSend,
+    sendError,
+    onRetrySend,
   }: {
     onSend: (text: string, mentions: unknown[], nonce: string) => void;
+    sendError: string | null;
+    onRetrySend: () => void;
   }) => (
-    <button type="button" data-testid="composer" onClick={() => onSend("follow up", [], "n")} />
+    <>
+      <button type="button" data-testid="composer" onClick={() => onSend("follow up", [], "n")} />
+      {sendError ? (
+        <>
+          <p>{sendError}</p>
+          <button type="button" onClick={onRetrySend}>
+            Retry
+          </button>
+        </>
+      ) : null}
+    </>
   ),
 }));
 const get = vi.fn();
@@ -313,4 +327,55 @@ it("strips a Draft reply label, also with markdown emphasis", () => {
     expect(
       latestTextDraft([turn(1, "user", "Draft a reply"), turn(2, "bot", `${label}\n\nHi Sam`)]),
     ).toBe("Hi Sam");
+});
+
+it("never offers a refusal, an error or an answer with app links as the draft", () => {
+  const asked = turn(1, "user", "Draft a reply");
+  for (const answer of [
+    "I can't create the reply approval card because email reply isn't available in this chat. [Open Integrations](/app/integrations)",
+    "Unable to read mock-demo-29: mail access is not permitted.",
+    "Something went wrong. Open /app/integrations to connect Gmail.",
+    "Sorry, I could not do that.",
+  ])
+    expect(latestTextDraft([asked, turn(2, "bot", answer)])).toBeUndefined();
+});
+
+it("strips markdown from the draft it inserts", () => {
+  expect(
+    latestTextDraft([
+      turn(1, "user", "Draft a reply"),
+      turn(
+        2,
+        "bot",
+        "**Draft reply:**\n\nHi **Sam**, see [the deck](https://x.test/d) `now`.\n\n- one\n- two",
+      ),
+    ]),
+  ).toBe("Hi Sam, see the deck now.\n\n- one\n- two");
+});
+
+it("shows a plain message and Retry when the agent cannot be reached", async () => {
+  get.mockResolvedValue(snapshot([]));
+  send.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue({});
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  act(() => button("Draft a reply")?.click());
+  await flush();
+  expect(document.body.textContent).toContain("Could not reach Praci. Try again.");
+  expect(document.body.textContent).not.toContain("Failed to fetch");
+  act(() => button("Retry")?.click());
+  await flush();
+  expect(send).toHaveBeenCalledTimes(2);
+});
+
+it("has a labelled Back control that closes the panel", async () => {
+  get.mockResolvedValue(snapshot([]));
+  const onClose = vi.fn();
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={onClose} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  act(() => (document.querySelector('[aria-label="Back to email"]') as HTMLElement).click());
+  expect(onClose).toHaveBeenCalled();
 });
