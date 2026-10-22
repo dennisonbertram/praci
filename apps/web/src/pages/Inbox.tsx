@@ -1844,6 +1844,7 @@ function InboxListPage({
                     title={<Trans>Needs reply</Trans>}
                     hideAttention
                     rows={replyRows}
+                    unreadTotal={groups.needsReply.filter((row) => row.unread).length}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
                     onArchive={archive}

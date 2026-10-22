@@ -335,7 +335,9 @@ export function GeneralSettingsPanels({
             <p className="text-[14px] text-foreground/75">
               {name}
               {email ? (
-                <span className="ms-2 text-[13px] text-muted-foreground/70">{email}</span>
+                <span title={email} className="block truncate text-[13px] text-muted-foreground/70">
+                  {email}
+                </span>
               ) : null}
             </p>
           </div>
