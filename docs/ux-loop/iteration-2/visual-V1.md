@@ -6,7 +6,7 @@ Method: layout-audit.js and geometry-audit.js on every page and state, my own co
 
 Caveats:
 - The demo database is shared with other inspectors. During the walk a "New Bot" appeared, Cap table was hidden in Page options, runway changed from 24 to 26 mo, and avatars switched type. Findings do not depend on those changes.
-- The demo stack runs from `/Users/dennison/develop/rakazo`, which may be older than the worktree. Findings I read in the worktree code are marked with file:line.
+- The demo stack runs from `the main checkout`, which may be older than the worktree. Findings I read in the worktree code are marked with file:line.
 - The audit's contrast check reports ratios of about 1.3 on sidebar text. That is a false positive (transparent backgrounds). My own pass using the composited background found no text under 4.5:1 on the screens I saw.
 - Fresh users were signed up as walker-v1-N@northwind.example.test with generated passwords. The demo password was never printed.
 
