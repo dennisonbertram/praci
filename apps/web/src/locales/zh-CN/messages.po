@@ -1037,7 +1037,6 @@ msgid "Address or ENS"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -5964,10 +5963,6 @@ msgstr "正在加载模型目录…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "正在加载预览…"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "正在加载规则…"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"

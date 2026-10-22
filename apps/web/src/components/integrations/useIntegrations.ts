@@ -47,27 +47,40 @@ export type IntegrationsData = {
   refresh: () => Promise<void>;
 };
 
+type LoadedData = Omit<IntegrationsData, "refresh">;
+
+/** The last successful load, so a revisit paints the list at once while it refreshes. */
+let lastLoaded: LoadedData | null = null;
+
+/** Forget the last load when the person logs out. */
+export function clearIntegrationsCache() {
+  lastLoaded = null;
+}
+
 /** Everything the Integrations pages show, loaded together and refreshed after any change. */
 export function useIntegrations(): IntegrationsData {
   const { t } = useLingui();
   // useLingui returns a fresh t each render; keep refresh stable so its effect runs once.
   const loadFailed = useRef(t`Could not load integrations`);
   loadFailed.current = t`Could not load integrations`;
-  const [data, setData] = useState<Omit<IntegrationsData, "refresh">>({
-    loaded: false,
-    error: null,
-    catalog: [],
-    connections: [],
-    servers: [],
-    bots: [],
-    mcpAssignments: [],
-    access: {},
-    sources: [],
-    financeSources: [],
-    setup: null,
-    feedEnabled: false,
-    catalogFailed: false,
-  });
+  const [data, setData] = useState<LoadedData>(
+    () =>
+      lastLoaded ?? {
+        loaded: false,
+        error: null,
+        catalog: [],
+        connections: [],
+        servers: [],
+        bots: [],
+        mcpAssignments: [],
+        access: {},
+        sources: [],
+        financeSources: [],
+        setup: null,
+        feedEnabled: false,
+        catalogFailed: false,
+      },
+  );
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -128,7 +141,7 @@ export function useIntegrations(): IntegrationsData {
       );
       window.dispatchEvent(new Event(INTEGRATIONS_CHANGED_EVENT));
       if (!mounted.current) return;
-      setData({
+      const next: LoadedData = {
         loaded: true,
         error: null,
         catalogFailed: catalog === null,
@@ -148,7 +161,9 @@ export function useIntegrations(): IntegrationsData {
         setup,
         meetings,
         feedEnabled: feed.enabled,
-      });
+      };
+      lastLoaded = next;
+      setData(next);
     } catch (err) {
       if (mounted.current)
         setData((prev) => ({

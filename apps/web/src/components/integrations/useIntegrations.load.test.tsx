@@ -25,7 +25,7 @@ const rpcMock = vi.hoisted(() => ({
 vi.mock("../../lib/rpc", () => ({ rpc: rpcMock }));
 
 import type { IntegrationsData } from "./useIntegrations";
-import { useIntegrations } from "./useIntegrations";
+import { clearIntegrationsCache, useIntegrations } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -94,4 +94,25 @@ it("polls meetings.status every 5 seconds while Syncing and stops once Synced", 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("shows the last list in the first frame on a revisit, then refreshes it", async () => {
+  clearIntegrationsCache();
+  rpcMock.connections.list.mockResolvedValue([conn("a")]);
+  rpcMock.connections.effectiveAccess.mockResolvedValue({});
+  const frames: boolean[] = [];
+  function Probe() {
+    frames.push(useIntegrations().loaded);
+    return null;
+  }
+  const first = createRoot(document.createElement("div"));
+  await act(async () => first.render(<Probe />));
+  await act(async () => {});
+  await act(async () => first.unmount());
+  frames.length = 0;
+  const second = createRoot(document.createElement("div"));
+  await act(async () => second.render(<Probe />));
+  expect(frames[0]).toBe(true);
+  await act(async () => second.unmount());
+  clearIntegrationsCache();
 });
