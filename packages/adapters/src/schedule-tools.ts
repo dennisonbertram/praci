@@ -2,6 +2,7 @@ import type { JobPublisher } from "@rakazo/adapter-kit";
 import { routineJobKey, routineWakeupJob } from "@rakazo/adapter-kit";
 import {
   cronFromPreset,
+  extractForcedSkillName,
   formatCron,
   isOneShotRoutineCron,
   isOneShotRoutineCrons,
@@ -611,18 +612,25 @@ export async function scheduleApproval(
   if (!newlyRepeats && !(promptChanges && existingRepeats)) return undefined;
 
   const name = create ? String(args.name ?? "").trim() : (existing?.name ?? "");
-  const lines: string[] = [];
-  if (resolved?.ok) {
-    lines.push(
-      `repeats: ${describeSchedule([resolved.cron], timezone)}`,
-      `next run: ${formatLocal(resolved.nextRunAt, timezone)}`,
-    );
-  } else if (existing) {
-    lines.push(`repeats: ${describeSchedule(existing.crons, existing.timezone)}`);
-  }
+  const crons = resolved?.ok ? [resolved.cron] : (existing?.crons ?? []);
+  const when = crons.map(formatCron).join("; ");
+  const lines: string[] = [`time zone: ${timezone}`];
+  if (resolved?.ok) lines.push(`next run: ${formatLocal(resolved.nextRunAt, timezone)}`);
   if (isScheduleValueProvided(args.prompt)) lines.push(`prompt: ${String(args.prompt).trim()}`);
+  // The card leads with when it runs and where it posts; the prompt sits under Details.
   return {
-    summary: `${create ? "creating" : "changing"} the repeating schedule “${name}”`,
+    summary: create ? `${when}, posts here` : `Changing “${name}”: ${when}, posts here`,
     detail: lines.join("\n"),
   };
+}
+
+/**
+ * A skill the owner forced in the message that asked for this routine (`/Name`) is kept as an
+ * `@Name` mention, which the routine editor lists and the run expands. The model's prompt alone
+ * would drop it.
+ */
+export function keepForcedSkill(prompt: string, requestPrompt: string): string {
+  const forced = extractForcedSkillName(requestPrompt);
+  if (!forced || prompt.toLowerCase().includes(`@${forced.name.toLowerCase()}`)) return prompt;
+  return `@${forced.name} ${prompt}`;
 }

@@ -75,7 +75,11 @@ it("shows one empty message, not an empty row beside real memories", async () =>
     document.body.append(container);
     const root = createRoot(container);
     await act(async () => root.render(<KnowledgeSection botId="bot-fixture" />));
-    return { text: container.textContent ?? "", done: () => root.unmount() };
+    return {
+      text: container.textContent ?? "",
+      hidden: container.querySelector("section")?.classList.contains("hidden"),
+      done: () => root.unmount(),
+    };
   };
   const mixed = await render([
     { id: "m1", path: "MEMORY.md", scope: "bot", content: "" },
@@ -84,6 +88,9 @@ it("shows one empty message, not an empty row beside real memories", async () =>
   expect(mixed.text).toContain("Prefers short replies");
   expect(mixed.text).not.toContain("Nothing remembered yet");
   const empty = await render([{ id: "m1", path: "MEMORY.md", scope: "bot", content: "" }]);
-  expect(empty.text.match(/Nothing remembered yet/g)).toHaveLength(1);
+  // A bot with nothing remembered shows no Memory heading or empty line in its settings.
+  expect(empty.text).not.toContain("Nothing remembered yet");
+  expect(empty.hidden).toBe(true);
+  expect(mixed.hidden).toBe(false);
   vi.unstubAllGlobals();
 });

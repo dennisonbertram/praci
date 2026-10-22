@@ -17,8 +17,10 @@ function rowClass(open: boolean): string {
  * User-scoped memory shared across bots lives in the Memory settings overlay.
  */
 export function KnowledgeSection({ botId }: { botId: string }) {
+  // Nothing remembered yet is not worth a heading here; Settings → Memory says so.
+  const [hasDocs, setHasDocs] = useState(false);
   return (
-    <section className="mt-6" data-testid="bot-knowledge">
+    <section className={hasDocs ? "mt-6" : "hidden"} data-testid="bot-knowledge">
       <h3 className="pb-1 text-[13.5px] font-medium text-foreground">
         <Trans>Memory</Trans>
       </h3>
@@ -27,6 +29,8 @@ export function KnowledgeSection({ botId }: { botId: string }) {
         load={() => rpc.memory.list({ botId, scope: "bot" })}
         exportFilename="memory.md"
         testId="bot-knowledge-memory"
+        onHasDocs={setHasDocs}
+        emptyMessage={false}
       />
     </section>
   );
@@ -107,6 +111,7 @@ function MemoryDocumentList({
   filter = "",
   groupLabel,
   onHasDocs,
+  emptyMessage = true,
 }: {
   load: () => Promise<MemoryDocument[]>;
   exportFilename: string;
@@ -117,6 +122,8 @@ function MemoryDocumentList({
   /** When set, documents render in groups headed by this label; shared first, then by label. */
   groupLabel?: (doc: MemoryDocument) => string;
   onHasDocs?: (hasDocs: boolean) => void;
+  /** Say so when nothing is remembered; false renders nothing. */
+  emptyMessage?: boolean;
 }) {
   const { t } = useLingui();
   useHideAmounts();
@@ -220,7 +227,7 @@ function MemoryDocumentList({
     <div data-testid={testId}>
       {error ? <div className="px-2.5 pb-2 text-[13px] text-destructive">{error}</div> : null}
       {loading ? <Skeleton className="h-7 w-full" /> : null}
-      {!loading && remembered.length === 0 && !error ? (
+      {emptyMessage && !loading && remembered.length === 0 && !error ? (
         <div className="py-1 text-[13.5px] text-muted-foreground">
           <Trans>Nothing remembered yet</Trans>
         </div>

@@ -493,6 +493,7 @@ import {
   cancelScheduleFromTool,
   compactScheduleInput,
   createScheduleFromTool,
+  keepForcedSkill,
   filterBuiltinToolsForRun,
   filterBuiltinToolsForThread,
   listSchedulesFromTool,
@@ -3643,6 +3644,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             userId: run.userId,
             ...(thread.groupId ? { threadId: thread.id } : {}),
           };
+          if (name === "schedule_create" && typeof args.prompt === "string") {
+            args = { ...args, prompt: keepForcedSkill(args.prompt, task.prompt) };
+          }
           const scheduleCard = await scheduleApproval(
             deps,
             scheduleScope,

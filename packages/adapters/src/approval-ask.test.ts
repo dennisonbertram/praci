@@ -129,14 +129,14 @@ describe("buildApprovalAskBlock schedule card", () => {
       [],
       {
         schedule: {
-          summary: "creating the repeating schedule “Digest”",
-          detail: `repeats: Every day at 8:00 AM (America/New_York)\nprompt: ${prompt}`,
+          summary: "Every day at 8:00 AM, posts here",
+          detail: `time zone: America/New_York\nprompt: ${prompt}`,
         },
       },
     );
     if (block.kind !== "ask") throw new Error("expected an ask block");
-    expect(block.text).toBe("Review before creating the repeating schedule “Digest”");
-    expect(block.detail).toContain("repeats: Every day at 8:00 AM (America/New_York)");
+    expect(block.text).toBe("Every day at 8:00 AM, posts here");
+    expect(block.detailFolded).toBe(true);
     expect(block.detail).toContain(prompt);
     expect(block.actions?.map((action) => action.id)).toEqual(["allow", "always", "deny"]);
   });
