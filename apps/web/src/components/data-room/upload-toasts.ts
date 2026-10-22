@@ -18,6 +18,7 @@ export type UploadFailure =
   | "zip-encrypted"
   | "zip-unsafe"
   | "zip-invalid"
+  | "network"
   | "failed";
 const UPLOAD_FAILURES = [
   "invalid",
@@ -27,6 +28,7 @@ const UPLOAD_FAILURES = [
   "zip-encrypted",
   "zip-unsafe",
   "zip-invalid",
+  "network",
 ];
 export type UploadToast = {
   id: number;
@@ -52,10 +54,13 @@ export type UploadToast = {
     | { kind: "sorted"; count: number; undo: () => void };
 };
 
-const DONE_TOAST_MS = 10_000;
-const FAILED_TOAST_MS = 15_000;
+// Finished and failed toasts both clear after 8 s, so none lingers over the page.
+const DONE_TOAST_MS = 8_000;
+const FAILED_TOAST_MS = 8_000;
 /** Short: it only confirms, and it sits over the lower right of the page. */
 const DELETED_TOAST_MS = 5_000;
+/** The Auto-sort toast carries Undo, so it stays longer. */
+const UNDO_TOAST_MS = 10_000;
 const HELD_RECHECK_MS = 2_000;
 const FOLLOW_MS = 1_000;
 let nextId = 1;
@@ -260,7 +265,7 @@ export function showSortedToast(count: number, batchId: string) {
   };
   toasts = [...toasts, { id, name: "", state: { kind: "sorted", count, undo } }];
   notify();
-  dismissLater(id, DONE_TOAST_MS);
+  dismissLater(id, UNDO_TOAST_MS);
 }
 
 /** Shows a toast in any state and keeps it; for Storybook, which has no upload to run. */

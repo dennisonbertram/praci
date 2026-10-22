@@ -1616,14 +1616,6 @@ msgstr "Autorisieren"
 msgid "Authorize this server so bots can use its tools. A popup opens."
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Auto-group"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-grouped"
-msgstr ""
-
 #: src/pages/legal/LegalContracts.tsx
 msgid "Auto-renews"
 msgstr ""
@@ -2204,6 +2196,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Chats"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Chats grouped into folders"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -5166,6 +5162,10 @@ msgstr ""
 msgid "Group"
 msgstr "Gruppe"
 
+#: src/pages/Shell.tsx
+msgid "Group chats into folders"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/GroupPanel.tsx
 msgid "Group settings"
@@ -5641,10 +5641,6 @@ msgstr ""
 msgid "just now"
 msgstr "gerade eben"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Investors."
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
 msgstr ""
@@ -5657,6 +5653,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "Erinnerungen behalten"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Keep your contracts here and see which are due soon."
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
@@ -5799,11 +5799,8 @@ msgstr ""
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let Praci read your contracts"
-msgstr ""
-
 #: src/components/data-room/ConsentPrompt.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -7787,6 +7784,10 @@ msgid "Posting readiness unavailable."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci can now read your documents."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
@@ -9220,6 +9221,10 @@ msgstr ""
 msgid "Set up app catalog"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Setting up the agent..."
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -10144,10 +10149,6 @@ msgstr ""
 msgid "The text is sent to the AI model that runs your bots."
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The text of your Data room documents is sent to the AI model that runs your bots."
-msgstr ""
-
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
 msgstr ""
@@ -10833,7 +10834,11 @@ msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
-msgid "Upload failed"
+msgid "Upload failed. Check your connection and try again."
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed. The server could not save this file."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -10841,7 +10846,7 @@ msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for bots to use. Artifacts holds what bots make."
+msgid "Upload files for bots to use."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
