@@ -212,13 +212,19 @@ export function RoutineSchedule({
               {russianIntervalControlLead()} {intervalAmountSelect} {intervalUnitSelect}
             </>
           ) : (
-            <Trans>
-              every {intervalAmountSelect} {intervalUnitSelect}
-            </Trans>
+            <span className="inline-flex items-center gap-2 whitespace-nowrap">
+              <Trans>
+                every {intervalAmountSelect} {intervalUnitSelect}
+              </Trans>
+            </span>
           )
         ) : null}
         {value.freq === "Every week" ? weekdaySelect : null}
-        {TIMED.includes(value.freq) ? <Trans>at {timeSelect}</Trans> : null}
+        {TIMED.includes(value.freq) ? (
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <Trans>at {timeSelect}</Trans>
+          </span>
+        ) : null}
         {value.freq === "Advanced" ? (
           <Input
             value={value.cron}

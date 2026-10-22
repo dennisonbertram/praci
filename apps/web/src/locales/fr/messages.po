@@ -1287,6 +1287,10 @@ msgstr ""
 msgid "Any model, with your own key"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Any time"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
 msgstr ""
@@ -1694,6 +1698,7 @@ msgstr ""
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -5603,6 +5608,10 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Investors, equity and cap table"
 msgstr ""
@@ -7475,6 +7484,10 @@ msgstr "Optionnel"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Optional faster balance reads"
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx

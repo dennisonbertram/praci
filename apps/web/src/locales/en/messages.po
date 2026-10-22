@@ -1287,6 +1287,10 @@ msgstr "Answers questions about what Devin is working on."
 msgid "Any model, with your own key"
 msgstr "Any model, with your own key"
 
+#: src/pages/Artifacts.tsx
+msgid "Any time"
+msgstr "Any time"
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
 msgstr "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
@@ -1694,6 +1698,7 @@ msgstr "Awaiting deposit · {0}"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -5603,6 +5608,10 @@ msgstr "Investor email"
 msgid "Investors"
 msgstr "Investors"
 
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
+msgstr "Investors, advisors and customers you add or your bots find appear here."
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Investors, equity and cap table"
 msgstr "Investors, equity and cap table"
@@ -7476,6 +7485,10 @@ msgstr "Optional"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Optional faster balance reads"
 msgstr "Optional faster balance reads"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
+msgstr "Optional: add details for this skill"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"

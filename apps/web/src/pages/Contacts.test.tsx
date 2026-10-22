@@ -130,10 +130,14 @@ it("names the workspace when there is more than one", async () => {
   expect(container.querySelector("h1")?.parentElement?.textContent).toContain("Example Co");
 });
 
-it("shows a single line when there are no contacts", async () => {
+it("shows an icon, title, one sentence and Add contact when there are no contacts", async () => {
   rpcMock.list.mockResolvedValueOnce([]);
   await show();
-  expect(container.textContent).toContain("No contacts yet");
+  expect(container.querySelector("h2")?.textContent).toBe("No contacts yet");
+  expect(container.querySelector("h2 + p")?.textContent).toContain("Investors, advisors");
+  expect(
+    [...container.querySelectorAll("button")].filter((b) => b.textContent?.includes("Add contact")),
+  ).toHaveLength(2);
   expect(container.querySelector("table")).toBeNull();
 });
 
@@ -309,7 +313,7 @@ it("marks the Email invalid and focuses it when another contact has it", async (
   expect(document.activeElement).toBe(email);
 });
 
-it("shows the email, else the organization, under the name", async () => {
+it("shows the organization, else the email, under the name", async () => {
   rpcMock.list.mockResolvedValue([
     contact("c1", "Ada", "customer"),
     { ...contact("c3", "Cy", "vendor"), organization: null },
@@ -319,7 +323,7 @@ it("shows the email, else the organization, under the name", async () => {
   const under = [...container.querySelectorAll("tbody td:first-child div")].map(
     (div) => div.textContent,
   );
-  expect(under).toEqual(["ada@example.test", "cy@example.test", "Acme Corp"]);
+  expect(under).toEqual(["Acme Corp", "cy@example.test", "Acme Corp"]);
 });
 
 it("lets the table fill the page and titles a long email", async () => {

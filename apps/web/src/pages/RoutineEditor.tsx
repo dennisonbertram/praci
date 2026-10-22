@@ -448,7 +448,11 @@ export function RoutineEditor({
         <Textarea
           id={`${fieldId}-prompt`}
           value={instruction}
-          placeholder={t`What should this routine do each time it runs?`}
+          placeholder={
+            skill
+              ? t`Optional: add details for this skill`
+              : t`What should this routine do each time it runs?`
+          }
           onChange={(e) => onChange({ ...draft, prompt: withSkillMention(e.target.value, skill) })}
           rows={4}
           className="mt-2"
