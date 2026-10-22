@@ -936,6 +936,12 @@ it("leaves the company out of Parties even with a (Mock) note or a suffix, so th
   // Only the company itself: kept, so the cell is not empty.
   const only = { ...contracts[0]!, counterparties: ["Northwind Robotics (Mock)"] };
   expect(withoutSelf(only, "Northwind Robotics").counterparties).toEqual(only.counterparties);
+  // A different entity that shares the name stays.
+  const sibling = { ...contracts[0]!, counterparties: ["Northwind Robotics (UK)", "Acme"] };
+  expect(withoutSelf(sibling, "Northwind Robotics").counterparties).toEqual([
+    "Northwind Robotics (UK)",
+    "Acme",
+  ]);
 });
 
 it("opens the contract from a click anywhere on its row, and shows the Renewal notice in full", async () => {
@@ -989,6 +995,19 @@ it("ends a scan that outlasts the wait with a one-line result", async () => {
     expect(container.querySelector("[role=status]")?.textContent).toContain(
       "Scan is still running",
     );
+    // The run ends later; a refresh on focus drops the stale note.
+    rpcMock.overview.mockResolvedValue({
+      ...overview,
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "succeeded" as const, error: null },
+      },
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(container.querySelector("[role=status]")).toBeNull();
   } finally {
     vi.useRealTimers();
   }

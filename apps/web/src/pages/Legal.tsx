@@ -187,6 +187,14 @@ function Legal({
     }
     settingsWasOpen.current = settingsOpen;
   }, [settingsOpen]);
+  // The run that outlived the wait has ended: drop the "still running" note.
+  const timedOut = useRef(false);
+  useEffect(() => {
+    if (timedOut.current && lastRun && lastRun.status !== "running") {
+      timedOut.current = false;
+      setScanResult("");
+    }
+  }, [lastRun]);
   // While a scan runs, re-read the overview until it ends; give up after a few minutes.
   useEffect(() => {
     if (!running) return;
@@ -196,6 +204,7 @@ function Legal({
       setWaitingFor(null);
       beforeScan.current = null;
       setScanResult(t`Scan is still running. Check back shortly.`);
+      timedOut.current = true;
     }, SCAN_WAIT_MS);
     return () => {
       clearInterval(poll);
@@ -206,6 +215,7 @@ function Legal({
   const scan = async () => {
     setScanError("");
     setScanResult("");
+    timedOut.current = false;
     beforeScan.current = data && {
       contracts: new Map(data.contracts.map((c) => [c.id, c.analyzedAt])),
       deadlines: new Map(data.deadlines.map((d) => [d.id, deadlineKey(d)])),

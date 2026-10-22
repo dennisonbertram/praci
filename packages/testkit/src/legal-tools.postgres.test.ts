@@ -26,7 +26,11 @@ import {
   legalScanNow,
   legalUpdateDeadline,
 } from "../../../apps/api/src/legal.ts";
-import { ensureLegalAgent, ensureLegalRoutine } from "../../../apps/api/src/legal-agent.ts";
+import {
+  ensureLegalAgent,
+  ensureLegalRoutine,
+  LEGAL_SCAN_PROMPT,
+} from "../../../apps/api/src/legal-agent.ts";
 
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 
@@ -458,6 +462,17 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     ]);
     expect(r1.id).toBe(r2.id);
     expect(await prisma.routine.count({ where: { botId: bot.id } })).toBe(1);
+
+    // A routine still on an older default prompt gets the current one; an edited prompt is kept.
+    const stored = await prisma.routine.findFirstOrThrow({ where: { botId: bot.id } });
+    expect(stored.prompt).toBe(LEGAL_SCAN_PROMPT);
+    await prisma.routine.update({
+      where: { id: stored.id },
+      data: { prompt: LEGAL_SCAN_PROMPT.replace(/ Write every date like.*?Keep/, " Keep") },
+    });
+    expect((await ensureLegalRoutine(api, c, bot.id)).prompt).toBe(LEGAL_SCAN_PROMPT);
+    await prisma.routine.update({ where: { id: stored.id }, data: { prompt: "my own prompt" } });
+    expect((await ensureLegalRoutine(api, c, bot.id)).prompt).toBe("my own prompt");
   });
 
   it("creates the Legal agent when the overview is read first, so the model is known", async () => {

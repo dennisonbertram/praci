@@ -99,15 +99,15 @@ function Field({
   );
 }
 
-/** A company name without case, punctuation, a "(Mock)" note or a legal suffix such as "Inc.". */
+/** A company name without case, punctuation, a trailing "(Mock)" note or a trailing legal suffix such as "Inc.". */
 const companyKey = (name: string) =>
   name
     .toLowerCase()
-    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s*\(mock\)\s*$/, "")
     .replace(/[.,]/g, " ")
-    .replace(/\s+(inc|llc|ltd|corp|corporation|co|company|gmbh)\b/g, "")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/ (inc|llc|ltd|corp|corporation|co|company|gmbh)$/, "");
 
 export function withoutSelf(contract: LegalContract, selfName?: string): LegalContract {
   const self = selfName ? companyKey(selfName) : "";
