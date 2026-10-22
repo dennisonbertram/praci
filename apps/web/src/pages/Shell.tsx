@@ -148,7 +148,6 @@ import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen } from "../components/tour/connect-cards";
-import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { useAgentApp } from "../lib/agent-app";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -328,6 +327,24 @@ export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
 
 /** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
+/**
+ * Stops a slow run, then resends only if the stop succeeded and the person is still in the
+ * chat they clicked in (the resend reads the current chat, so it must not follow a navigation).
+ */
+export async function retryAfterStop({
+  stop,
+  destination,
+  resend,
+}: {
+  stop: () => Promise<boolean>;
+  destination: () => string | null;
+  resend: () => void;
+}) {
+  const origin = destination();
+  if (!(await stop()) || destination() !== origin) return;
+  resend();
+}
+
 export const BOTS_POLL_MS = 90_000;
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
@@ -828,16 +845,11 @@ export function ShellPage() {
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
   // Phones open the drawer on the chat list; Activity there is one tap away.
-  const [activityMode, setActivityMode] = useState(
-    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
-  );
-  const toggleActivityMode = useCallback(() => {
-    setActivityMode((on) => {
-      const next = !on;
-      writeActivityMode(next);
-      return next;
-    });
-  }, []);
+  // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
+  const [activityMode, setActivityMode] = useState(false);
+  const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
+  useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
     kind: "bot" | "group";
     id: string;
@@ -2972,8 +2984,8 @@ export function ShellPage() {
       t,
     ],
   );
-  const stopRun = useCallback(async () => {
-    if (sending) return;
+  const stopRun = useCallback(async (): Promise<boolean> => {
+    if (sending) return false;
     sendingRef.current = true;
     setSending(true);
     try {
@@ -2987,7 +2999,7 @@ export function ShellPage() {
           if (activeGroupId.current === groupTarget) {
             setSendError(errorText(error, t`Failed to stop`));
           }
-          return;
+          return false;
         }
         // Clear run UI ahead of the run.cancelled event so refresh races with in-flight gets.
         if (activeGroupId.current === groupTarget) {
@@ -2996,9 +3008,9 @@ export function ShellPage() {
           );
         }
         await refreshGroupThreadRef.current(groupTarget).catch(() => undefined);
-        return;
+        return true;
       }
-      if (!botTarget) return;
+      if (!botTarget) return false;
       setSendError(null);
       try {
         await rpc.threads.stop({ botId: botTarget });
@@ -3006,7 +3018,7 @@ export function ShellPage() {
         if (activeBotId.current === botTarget) {
           setSendError(errorText(error, t`Failed to stop`));
         }
-        return;
+        return false;
       }
       // Clear local run/busy immediately rather than waiting for run.cancelled so a
       // superseded in-flight refresh (older cursor) cannot leave Stop enabled / Take control
@@ -3021,6 +3033,7 @@ export function ShellPage() {
         }
       }
       await refreshThreadRef.current(botTarget).catch(() => undefined);
+      return true;
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -3893,6 +3906,18 @@ export function ShellPage() {
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
+                onStopRun={() => void stopRun()}
+                onRetryRun={
+                  // A routine has no message to resend; Stop is the only slow-run action.
+                  activeSnapshot?.run?.trigger === "routine"
+                    ? undefined
+                    : () =>
+                        void retryAfterStop({
+                          stop: stopRun,
+                          destination: () => activeGroupId.current ?? activeBotId.current ?? null,
+                          resend: retryFailedRun,
+                        })
+                }
                 failedNote={dismissedRunError}
                 failedScheduled={activeSnapshot?.run?.trigger === "routine"}
                 onLoadOlder={loadOlder}
@@ -4025,7 +4050,9 @@ export function ShellPage() {
                     }
                   : undefined
               }
-              onStop={stopRun}
+              onStop={async () => {
+                await stopRun();
+              }}
               onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
               replyTarget={activeReplyTarget}
@@ -4682,7 +4709,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen ? null : (
+                    noComputerScreen || computerScreenError ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (

@@ -278,7 +278,7 @@ export function GeneralSettingsPanels({
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
               <span className="block text-[15px] text-foreground">
-                <Trans>Advanced</Trans>
+                <Trans>Chat display</Trans>
               </span>
               <span aria-hidden="true" className="transition-transform group-open:rotate-90">
                 ›

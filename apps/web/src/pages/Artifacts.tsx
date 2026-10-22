@@ -879,8 +879,8 @@ function ArtifactCard({
             </div>
           ) : null}
         </div>
-        {/* pe-8 keeps the time clear of the Delete button, so hovering never covers it. */}
-        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground max-md:mt-0">
+        {/* The time ends at the type label's edge. Delete takes its place on hover; where it is always shown (touch, narrow) pe-8 keeps them apart. */}
+        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground max-md:mt-0 max-md:pe-8 pointer-coarse:pe-8">
           {bot ? (
             <span className="contents max-md:hidden">
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />
@@ -889,7 +889,9 @@ function ArtifactCard({
           ) : (
             <span className="flex-1 max-md:hidden" />
           )}
-          <span className="shrink-0">{formatRelativeTime(artifact.createdAt)}</span>
+          <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
+            {formatRelativeTime(artifact.createdAt)}
+          </span>
         </div>
       </Link>
       <button
@@ -1113,13 +1115,13 @@ function PreviewPane({
           <>
             {state.artifact.mimeType === "text/html" ? (
               <Tip label={t`Isolated preview — no access to your account`}>
-                <span
-                  role="img"
+                <button
+                  type="button"
                   aria-label={t`Isolated preview — no access to your account`}
-                  className="grid h-8 w-8 shrink-0 place-items-center text-muted-foreground"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                  <Lock size={15} strokeWidth={1.9} />
-                </span>
+                  <Lock size={15} strokeWidth={1.9} aria-hidden="true" />
+                </button>
               </Tip>
             ) : null}
             <Button

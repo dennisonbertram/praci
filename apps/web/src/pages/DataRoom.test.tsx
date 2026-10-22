@@ -1053,6 +1053,38 @@ it("opens a file of a finished import, and lets the row be dismissed", async () 
   expect(activity()).toBe("");
 });
 
+it("clears the finished-import row when the open folder changes", async () => {
+  rpcMock.imports.mockResolvedValue([
+    { ...running, done: 5, inProgress: 0, finished: true, latest: [{ id: "B", name: "b.txt" }] },
+  ]);
+  rpcMock.folders.mockResolvedValue(
+    ["A", "B"].map((name) => ({
+      id: `f${name}`,
+      name,
+      parentId: null,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    })),
+  );
+  let go: ReturnType<typeof useNavigate> = () => undefined;
+  function Nav() {
+    go = useNavigate();
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=fA"]}>
+        <DataRoomPage />
+        <Nav />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(activity()).toContain("Imported 5 files");
+  await act(async () => go("/?folder=fB"));
+  await settle();
+  expect(activity()).toBe("");
+});
+
 it("shows no activity row when no import is running or recent", async () => {
   await renderPage();
   await settle();

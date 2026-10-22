@@ -22,7 +22,7 @@ msgid " (failed)"
 msgstr ""
 
 #: src/components/sidebar-glance.tsx
-msgid " (needs input)"
+msgid " (needs your answer)"
 msgstr ""
 
 #: src/components/sidebar-glance.tsx
@@ -1000,7 +1000,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "고급 설정"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -1682,6 +1677,10 @@ msgstr "뒤로"
 msgid "Back to artifacts"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Back to email"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Back to Inbox"
 msgstr ""
@@ -2181,6 +2180,10 @@ msgstr "채팅 앱"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat apps, group channels, and agent connections."
 msgstr "채팅 앱, 그룹 채널 및 Agent 연결을 관리합니다."
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -3386,6 +3389,10 @@ msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Could not reach Granola"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Could not reach Praci. Try again."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -6565,9 +6572,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
-#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "입력 필요"
 
@@ -6583,6 +6588,7 @@ msgstr ""
 msgid "Needs sign-in"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "인수 필요"
@@ -6596,9 +6602,12 @@ msgstr "인수 필요"
 msgid "Needs you"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
+#: src/components/sidebar-glance.tsx
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
-msgstr ""
+msgstr "입력 필요"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -7493,6 +7502,10 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
+msgstr ""
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -8933,13 +8946,6 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "앱 검색"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr ""
@@ -8962,6 +8968,13 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -9783,6 +9796,7 @@ msgstr ""
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9914,6 +9928,7 @@ msgstr "제어권 가져오기"
 msgid "Take the tour"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""
@@ -10499,6 +10514,7 @@ msgstr ""
 msgid "Try {name} again"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -10833,6 +10849,10 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr ""
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr ""
@@ -10847,10 +10867,6 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use."
-msgstr ""
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -11094,10 +11110,6 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
-msgstr ""
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx

@@ -22,8 +22,8 @@ msgid " (failed)"
 msgstr " (failed)"
 
 #: src/components/sidebar-glance.tsx
-msgid " (needs input)"
-msgstr " (needs input)"
+msgid " (needs your answer)"
+msgstr " (needs your answer)"
 
 #: src/components/sidebar-glance.tsx
 msgid " (new)"
@@ -1000,7 +1000,6 @@ msgstr "Address or ENS"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr "Address or ENS"
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Advanced"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr "Advanced: connect an outside memory service"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -1682,6 +1677,10 @@ msgstr "Back"
 msgid "Back to artifacts"
 msgstr "Back to artifacts"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Back to email"
+msgstr "Back to email"
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Back to Inbox"
 msgstr "Back to Inbox"
@@ -2181,6 +2180,10 @@ msgstr "Chat apps"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Chat apps, group channels, and agent connections."
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr "Chat display"
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -3387,6 +3390,10 @@ msgstr "Could not reach {0}. Check the address and try again."
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Could not reach Granola"
 msgstr "Could not reach Granola"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Could not reach Praci. Try again."
+msgstr "Could not reach Praci. Try again."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."
@@ -6565,9 +6572,7 @@ msgstr "Needs approval"
 msgid "Needs attention"
 msgstr "Needs attention"
 
-#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Needs input"
 
@@ -6583,6 +6588,7 @@ msgstr "Needs reply"
 msgid "Needs sign-in"
 msgstr "Needs sign-in"
 
+#: src/components/PageAgentsRow.tsx
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Needs takeover"
@@ -6596,7 +6602,10 @@ msgstr "Needs takeover"
 msgid "Needs you"
 msgstr "Needs you"
 
+#: src/components/PageAgentsRow.tsx
+#: src/components/sidebar-glance.tsx
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
 msgstr "Needs your answer"
 
@@ -7494,6 +7503,10 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr "Outside memory service"
 
 #: src/pages/Board.tsx
 msgid "Owner"
@@ -8933,13 +8946,6 @@ msgstr "Search and follow Devin sessions. Read-only."
 msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "Search apps"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr "Search artifacts…"
@@ -8963,6 +8969,13 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
+msgstr "Search integrations"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
@@ -9783,6 +9796,7 @@ msgstr "Still opening…"
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9914,6 +9928,7 @@ msgstr "Take control"
 msgid "Take the tour"
 msgstr "Take the tour"
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr "Taking longer than usual"
@@ -10499,6 +10514,7 @@ msgstr "Trial ends {day}"
 msgid "Try {name} again"
 msgstr "Try {name} again"
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -10833,6 +10849,10 @@ msgstr "Upload {statement} for {0}"
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr "Upload a skill file"
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr "Upload failed. Check your connection and try again."
@@ -10848,10 +10868,6 @@ msgstr "Upload files"
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use."
 msgstr "Upload files for bots to use."
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
-msgstr "Upload SKILL.md"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
@@ -11095,10 +11111,6 @@ msgstr "Wallet balances and allocation."
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
 msgstr "Wallet balances and history"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
-msgstr "Wallet balances and history · no key needed"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

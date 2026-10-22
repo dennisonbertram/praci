@@ -18,7 +18,7 @@ test("a failed Integrations chunk keeps the shell, and a reload loads it", async
 
   await page.unroute(integrationsChunk);
   await page.reload();
-  await expect(page.getByPlaceholder("Search apps")).toBeVisible();
+  await expect(page.getByPlaceholder("Search integrations")).toBeVisible();
 });
 
 test("a failed page chunk shows Refresh instead of a blank app", async ({ page }, testInfo) => {

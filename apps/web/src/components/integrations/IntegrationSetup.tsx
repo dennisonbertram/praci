@@ -353,8 +353,8 @@ export function IntegrationSetup({
             }}
           >
             <Input
-              aria-label={t`Search apps`}
-              placeholder={t`Search apps`}
+              aria-label={t`Search integrations`}
+              placeholder={t`Search integrations`}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
