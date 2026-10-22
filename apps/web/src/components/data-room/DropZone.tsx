@@ -136,8 +136,10 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           aria-live="polite"
           data-testid="data-room-toasts"
           // Phones: the full width less a 16px gutter each side, so the toast is centred.
-          // Notification toasts sit at the bottom right too: lift this stack above them so the two never overlap.
-          className="fixed inset-x-4 bottom-20 z-100 flex flex-col gap-2 sm:left-auto sm:w-72 [body:has([data-slot=notification-toast])_&]:bottom-56"
+          // Top right under the header, never the bottom: an open Ask panel's composer lives there.
+          // A batch scrolls inside this height, so newer toasts and the composer stay reachable.
+          // Notification toasts start at the same spot: drop this stack below them so the two never overlap.
+          className="fixed inset-x-4 top-16 z-100 flex max-h-[calc(100dvh-14rem)] flex-col gap-2 overflow-y-auto sm:left-auto sm:w-72 [body:has([data-slot=notification-toast])_&]:top-44"
           onPointerEnter={() => holdUploadToasts(true)}
           onPointerLeave={() => holdUploadToasts(false)}
         >

@@ -25,7 +25,7 @@ import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
-import { IntegrationTile, OPEN_LINK, PHONE_ROW, StatusBadge } from "./parts";
+import { IntegrationTile, MenuSlot, OPEN_LINK, PHONE_ROW, StatusBadge } from "./parts";
 
 /** False once the tile has unmounted, so a slow request does not set state afterwards. */
 function useMounted() {
@@ -100,7 +100,7 @@ function CryptoTile({
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
           <TileName name="Blockscout" to={manageTo} />
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="line-clamp-2 text-xs text-muted-foreground">
             {hasKey ? (
               <Trans>Wallet balances and history</Trans>
             ) : (
@@ -161,7 +161,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
         <div className="min-w-0">
           <div className="truncate font-semibold">Alchemy</div>
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="line-clamp-2 text-xs text-muted-foreground">
             <Trans>Optional faster balance reads</Trans>
           </div>
         </div>
@@ -236,7 +236,7 @@ function ExchangeTile({
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
           <div className="truncate font-semibold">{exchange.name}</div>
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="line-clamp-2 text-xs text-muted-foreground">
             <Trans>Read exchange balances</Trans>
           </div>
         </div>
@@ -433,7 +433,7 @@ export function FinanceSection({
                     name={name}
                     to={connected && serverId ? `/app/integrations/mcp/${serverId}` : undefined}
                   />
-                  <div className="truncate text-xs text-muted-foreground">
+                  <div className="line-clamp-2 text-xs text-muted-foreground">
                     {description[provider]}
                   </div>
                 </div>
@@ -454,6 +454,7 @@ export function FinanceSection({
                     <Link to="/app/finance" className={OPEN_LINK}>
                       <Trans>Open Finance</Trans>
                     </Link>
+                    <MenuSlot />
                   </>
                 ) : (
                   <Button

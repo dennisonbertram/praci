@@ -53,7 +53,7 @@ describe("describeApprovalAction money and generic tools", () => {
         { amount: 1200, accountId: "chk-1" },
         "Mercury",
       ),
-    ).toBe("Send $1,200.00 to a recipient from an account");
+    ).toBe("Send $1,200.00 to a recipient from chk-1");
     expect(describeApprovalAction("pay", { amount: "50", currency: "EUR" })).toContain("€50.00");
   });
 
@@ -382,14 +382,20 @@ describe("resolveMoneyNames", () => {
     expect(read).toHaveBeenCalledWith("getAccount", { accountId: "chk-1" });
   });
 
-  it("leaves a name out when its lookup fails, so the title never shows the id", async () => {
+  it("shows the id in the title when a lookup fails, never a vague 'a recipient'", async () => {
     const names = await resolveMoneyNames(send, args, async (tool) => {
       if (tool === "getRecipient") throw new Error("not found");
       return { nickname: "Operating" };
     });
     expect(names).toEqual({ recipient: undefined, account: "Operating" });
     expect(describeApprovalAction(send, args, "Mercury", names)).toBe(
-      "Send $5.00 to a recipient from Operating",
+      "Send $5.00 to rcp-9 from Operating",
+    );
+    const none = await resolveMoneyNames(send, args, async () => {
+      throw new Error("down");
+    });
+    expect(describeApprovalAction(send, args, "Mercury", none)).toBe(
+      "Send $5.00 to rcp-9 from chk-1",
     );
   });
 
@@ -401,13 +407,13 @@ describe("resolveMoneyNames", () => {
 });
 
 describe("buildConsentAskBlock", () => {
-  it("names the model and router in words, never the raw model id", () => {
+  it("names the model in words, never the raw model id", () => {
     const block = buildConsentAskBlock("e1", {
       name: "OpenRouter",
       detail: "openai/gpt-6-luna, forwarded to its provider",
     });
     expect(block).toMatchObject({
-      text: "Allow your mail to be sent to GPT-6 Luna (via OpenRouter)?",
+      text: "Allow your mail to be sent to GPT-6 Luna?",
     });
     expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });

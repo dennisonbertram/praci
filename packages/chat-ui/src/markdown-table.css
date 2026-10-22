@@ -306,3 +306,45 @@ button.rk-table-sort {
   white-space: nowrap;
   border: 0;
 }
+
+/* In a narrow container (the docked Ask panel is about 260px) the inline card drops the row-number
+   column and lets cells wrap, so every column, Amount included, is visible without scrolling. The
+   expanded dialog is outside this container and keeps the full table. Only the docked panel is a
+   container: size containment would collapse a content-sized bubble in the main transcript. */
+.rk-docked-chat .rk-chat-markdown .rk-table-card {
+  container-type: inline-size;
+}
+
+@container (max-width: 24rem) {
+  .rk-table-box .rk-table .rk-table-gutter {
+    display: none;
+  }
+
+  .rk-table-box .rk-table {
+    width: 100%;
+    table-layout: auto;
+  }
+
+  .rk-table-box .rk-table th,
+  .rk-table-box .rk-table td,
+  .rk-table-box .rk-table .rk-table-cell-text {
+    min-width: 0 !important;
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
+    text-overflow: clip;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+  }
+
+  /* Amounts stay whole; the text columns give way. */
+  .rk-table-box .rk-table .rk-align-right,
+  .rk-table-box .rk-table .rk-align-right .rk-table-cell-text {
+    white-space: nowrap;
+  }
+
+  .rk-table-box .rk-table {
+    font-size: 0.8em;
+  }
+}

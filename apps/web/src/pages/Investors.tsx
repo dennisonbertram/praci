@@ -11,6 +11,7 @@ import type {
   InvestorReminderCadence,
   InvestorUpdate,
   PortalLink,
+  Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
 import { capTableMath, isSafeSecurity } from "@rakazo/core";
@@ -54,6 +55,7 @@ import { CapTableEditor } from "../components/cap-table/CapTableEditor";
 import type { HoldingRow } from "../components/cap-table/HoldingsTable";
 import { HoldingsTable } from "../components/cap-table/HoldingsTable";
 import { OwnershipBar } from "../components/cap-table/OwnershipBar";
+import { SafeRows } from "../components/cap-table/SafeRows";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { DrivePicker } from "../components/data-room/ImportFromDrive";
 import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
@@ -655,9 +657,15 @@ export function InvestorsPage({
   };
 
   const [capFailed, setCapFailed] = useState(false);
+  const [safes, setSafes] = useState<Safe[]>([]);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
+    // The SAFE rows under the table are secondary: if they cannot load, the table still shows.
+    void rpc.fundraising.safes
+      .list()
+      .then((rows) => request === latestCap.current && setSafes(rows ?? []))
+      .catch(() => {});
     return rpc.investors
       .capTable()
       .then((state) => {
@@ -1151,6 +1159,7 @@ export function InvestorsPage({
                       />
                     </div>
                   )}
+                  <SafeRows safes={safes} />
                 </Card>
               </div>
             ) : reading ? (

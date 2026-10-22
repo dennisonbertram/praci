@@ -133,14 +133,14 @@ export function buildConsentAskBlock(
   effectId: string,
   recipient: { name: string; detail?: string },
 ): MessageBlock {
-  // "GPT-6 Luna (via OpenRouter)", not the router's raw "openai/gpt-6-luna, forwarded to its provider".
+  // "GPT-6 Luna", as Settings names it, not the router's raw "openai/gpt-6-luna, forwarded to its provider".
   const model = modelLabel(recipient.detail ?? "");
   return {
     kind: "ask",
     approvalEffectId: effectId,
-    text: `Allow your mail to be sent to ${model ? `${model} (via ${recipient.name})` : recipient.name}?`,
+    text: `Allow your mail to be sent to ${model || recipient.name}?`,
     // The clause says the permission is standing, not for this one read.
-    detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Account settings.`,
+    detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Settings under Privacy and approvals.`,
     consent: { version: AI_DISCLOSURE_VERSION },
     status: "pending",
     actions: [
@@ -277,7 +277,7 @@ export type MoneyNames = { recipient?: string; account?: string };
 
 /**
  * The names behind a send-money request's recipientId and accountId, read with the provider's own
- * read tools through `read`. A failed or empty lookup leaves that name out, so the card says "a recipient" or "an account"; Details still shows the ids. The caller caches lookups for the same id.
+ * read tools through `read`. A failed or empty lookup leaves that name out, so the headline shows that id instead. The caller caches lookups for the same id.
  */
 export async function resolveMoneyNames(
   toolName: string,
@@ -312,7 +312,9 @@ export function describeApprovalAction(
 ): string {
   if (isSendMoney(toolName)) {
     const amount = args.amount == null ? "money" : formatAmount(args.amount, args.currency);
-    return `Send ${amount} to ${moneyNames?.recipient ?? "a recipient"} from ${moneyNames?.account ?? "an account"}`;
+    // A failed lookup shows the id, never a vague "a recipient".
+    const idOf = (id: unknown, fallback: string) => (typeof id === "string" && id ? id : fallback);
+    return `Send ${amount} to ${moneyNames?.recipient ?? idOf(args.recipientId, "a recipient")} from ${moneyNames?.account ?? idOf(args.accountId, "an account")}`;
   }
   if (toolName === "mail_send" || toolName === "mail_draft") {
     const [first, ...rest] = strings(args.to);

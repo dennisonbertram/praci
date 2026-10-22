@@ -652,7 +652,9 @@ export function BotSettings({
               event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
             }}
           >
-            <summary className={`${FOOTER_ROW} cursor-pointer list-none text-muted-foreground`}>
+            <summary
+              className={`${FOOTER_ROW} cursor-pointer list-none rounded-lg text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            >
               <Trans>Advanced</Trans>
               <ChevronRight
                 aria-hidden="true"

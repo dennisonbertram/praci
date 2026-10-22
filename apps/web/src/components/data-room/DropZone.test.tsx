@@ -168,3 +168,17 @@ it("narrates a zip after the upload reaches 100 percent, then offers View", () =
   expect(done).toContain("Added 12 files");
   expect(done).toContain("View");
 });
+
+it("bounds the toast stack so a batch scrolls instead of leaving the viewport", () => {
+  toasts.push({ id: 1, name: "a.txt", state: { kind: "deleted" } });
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <DataRoomDropZone userId="u1" />
+      </MemoryRouter>,
+    ),
+  );
+  const stack = document.querySelector('[data-testid="data-room-toasts"]');
+  expect(stack?.className).toContain("max-h-[calc(100dvh-14rem)]");
+  expect(stack?.className).toContain("overflow-y-auto");
+});

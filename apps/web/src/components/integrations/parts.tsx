@@ -13,7 +13,12 @@ export const PHONE_ROW =
 
 /** The tile's one main link, like "Open Inbox" on Gmail. It never wraps; all share one width. */
 export const OPEN_LINK =
-  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 min-w-28 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
+  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 min-w-28 max-sm:min-w-0 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
+
+/** Where a tile's overflow menu sits; tiles with no menu keep the room, so every tile's main link lines up. */
+export function MenuSlot() {
+  return <span aria-hidden="true" className="size-6 shrink-0 pointer-coarse:size-11" />;
+}
 
 export function IntegrationTile({ className, ...props }: ComponentProps<"div">) {
   return (

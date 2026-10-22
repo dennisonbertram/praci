@@ -35,6 +35,7 @@ export * from "./notifications.js";
 export * from "./prisma-errors.js";
 export * from "./push-endpoints.js";
 export * from "./repos.js";
+export * from "./safes.js";
 export * from "./scope.js";
 export * from "./sessions.js";
 export * from "./sidebar-folders.js";

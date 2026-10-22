@@ -150,3 +150,21 @@ it("opens a CSV as a plain table: header row on top, readable names, grouped num
   ]);
   expect(cell("1,234,567")?.className).toContain("text-end");
 });
+
+it("right-aligns the header of a numeric column, in a CSV and in a spreadsheet", async () => {
+  preview.mockResolvedValue(
+    page({
+      header: ["Region", "Amount"] as Cell[],
+      rows: [{ row: 2, cells: ["North", 5] as Cell[] }],
+    }),
+  );
+  await act(async () => {
+    root.render(<SheetPreview source={{ artifactId: "a1" }} name="burn.csv" />);
+  });
+  const heads = [...container.querySelectorAll("th")];
+  expect(heads[1]?.className).toContain("text-end");
+  expect(heads[0]?.className).not.toContain("text-end");
+  await show();
+  expect(cell("Amount")?.className).toContain("text-end");
+  expect(cell("Region")?.className).not.toContain("text-end");
+});

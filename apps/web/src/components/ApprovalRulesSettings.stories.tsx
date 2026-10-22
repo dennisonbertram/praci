@@ -55,7 +55,6 @@ export const WithRules: Story = {
   beforeEach: () =>
     mockRpc({
       "approvalRules.list": rules,
-      "autoReview.get": { enabled: true, checkerAvailable: true },
       "approvalRules.set": (input: unknown) => ({
         id: "rule_new",
         createdAt: "2026-01-01T00:00:00.000Z",
@@ -69,21 +68,11 @@ export const NoRules: Story = {
   beforeEach: () =>
     mockRpc({
       "approvalRules.list": [],
-      "autoReview.get": { enabled: false, checkerAvailable: true },
-    }),
-};
-
-export const AutoReviewWithoutModel: Story = {
-  beforeEach: () =>
-    mockRpc({
-      "approvalRules.list": [],
-      "autoReview.get": { enabled: true, checkerAvailable: false },
     }),
 };
 
 export const Loading: Story = {
-  beforeEach: () =>
-    mockRpc({ "approvalRules.list": () => new Promise(() => undefined), "autoReview.get": null }),
+  beforeEach: () => mockRpc({ "approvalRules.list": () => new Promise(() => undefined) }),
 };
 
 export const LoadError: Story = {

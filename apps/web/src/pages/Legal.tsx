@@ -258,7 +258,14 @@ function Legal({
         </p>
       ) : null}
       {status && !status.allowed && status.recipients.length > 0 ? (
-        <LegalConsentPrompt consent={status} onChange={setGranted} />
+        <LegalConsentPrompt
+          consent={status}
+          onChange={(next) => {
+            setGranted(next);
+            // Allow was the click for the first scan too.
+            if (next.allowed) void scan();
+          }}
+        />
       ) : null}
       {lastRun?.status === "failed" && !running && lastRun.id !== dismissedRun ? (
         <div
@@ -296,7 +303,7 @@ function Legal({
         <p className="-mt-2 mb-4 text-sm text-muted-foreground">
           <Link
             to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap text-sm underline underline-offset-2 hover:text-foreground"
+            className="rk-tap inline-flex min-h-6 items-center text-sm hover:text-foreground hover:underline underline-offset-2"
           >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
@@ -307,21 +314,23 @@ function Legal({
       ) : null}
       {data.contracts.length === 0 && data.deadlines.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {needsConsent ? (
-              <Trans>
-                Allow access above to start. The Legal agent then reads your Data room for contracts
-                and deadlines.
-              </Trans>
-            ) : data.agent.dailyScanActive ? (
-              <Trans>
-                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
-                every day.
-              </Trans>
-            ) : (
-              <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
-            )}
-          </p>
+          {/* While consent is missing the card above is the only instruction. */}
+          {needsConsent ? null : (
+            <p className="max-w-sm text-sm text-muted-foreground">
+              {running ? (
+                <Trans>Reading your Data room…</Trans>
+              ) : data.agent.lastScanAt ? (
+                <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
+              ) : data.agent.dailyScanActive ? (
+                <Trans>
+                  Press Scan now to read your Data room for contracts and deadlines. Legal also
+                  scans every day.
+                </Trans>
+              ) : (
+                <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
+              )}
+            </p>
+          )}
         </div>
       ) : (
         <>
