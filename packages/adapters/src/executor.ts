@@ -399,6 +399,7 @@ import {
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
+import type { McpOAuthBroker } from "./mcp-oauth.js";
 import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
@@ -700,6 +701,8 @@ export interface ExecutorDeps {
   connectors?: { managed(id: string): ManagedConnectorProvider | undefined };
   /** Lists a server's tools so pins_write can check a pin source's annotations. */
   mcp?: Pick<McpConnector, "listServerTools">;
+  /** Sign-in state of an MCP server; without it the prompt carries no bank connection line. */
+  mcpOAuth?: Pick<McpOAuthBroker, "statusFor">;
   secrets: string[];
   secretStore: SecretStore;
   deploymentModelKey?: string;
@@ -6506,14 +6509,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 bot.audience === "external" ? bot.externalMessageTargets : undefined,
               );
 
-        const financeConnectionLine = voiceAgent
-          ? undefined
-          : financeConnectionLineFor(
-              await deps.prisma.mcpServer.findMany({
-                where: { spaceId: run.spaceId, userId: run.userId, enabled: true },
-                select: { endpoint: true, agentBotId: true },
-              }),
-            );
+        // Bank facts come from the owner's private connections: never for external bots or chains.
+        const financeConnectionLine =
+          voiceAgent || restrictedContext
+            ? undefined
+            : await loadFinanceConnectionLine(deps.prisma, deps.mcpOAuth, run);
 
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
@@ -8223,18 +8223,24 @@ export const NOT_CONNECTED_GUIDANCE =
 
 /**
  * The user's connected banks as plain facts, so the model does not guess which branch of
- * NOT_CONNECTED_GUIDANCE applies. A bank counts as connected while its MCP server is enabled.
+ * NOT_CONNECTED_GUIDANCE applies. A bank counts as connected only while its sign-in is valid.
  */
 export function financeConnectionLineFor(
-  servers: readonly { endpoint: string | null; agentBotId: string | null }[],
+  servers: readonly {
+    endpoint: string | null;
+    agentBotId: string | null;
+    login: "none" | "connected" | "reconnect";
+  }[],
 ): string {
+  // Same rule as Finance: only a signed-in server is connected; "reconnect" is a separate state.
   const banks = servers.flatMap((server) => {
     const provider = financeProviderForEndpoint(server.endpoint);
-    return provider
+    return provider && server.login !== "none"
       ? [
           {
             name: provider === "mercury" ? "Mercury" : "Brex",
             hasAgent: Boolean(server.agentBotId),
+            reconnect: server.login === "reconnect",
           },
         ]
       : [];
@@ -8245,10 +8251,31 @@ export function financeConnectionLineFor(
   const list = banks
     .map(
       (bank) =>
-        `${bank.name} (${bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"})`,
+        `${bank.name} (${bank.reconnect ? "sign-in expired: tell the user to reconnect it under Integrations" : bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"})`,
     )
     .join(", ");
   return `Facts: connected banks: ${list}. Never tell the user to connect a bank listed here, and never say no bank is connected.`;
+}
+
+export async function loadFinanceConnectionLine(
+  prisma: Pick<PrismaClient, "mcpServer">,
+  mcpOAuth: Pick<McpOAuthBroker, "statusFor"> | undefined,
+  actor: { spaceId: string; userId: string },
+): Promise<string | undefined> {
+  if (!mcpOAuth) return undefined;
+  const servers = await prisma.mcpServer.findMany({
+    where: { spaceId: actor.spaceId, userId: actor.userId, enabled: true },
+    select: { id: true, endpoint: true, secretId: true, agentBotId: true },
+  });
+  return financeConnectionLineFor(
+    await Promise.all(
+      servers.map(async (server) => ({
+        endpoint: server.endpoint,
+        agentBotId: server.agentBotId,
+        login: await mcpOAuth.statusFor(server, actor),
+      })),
+    ),
+  );
 }
 
 export function userTurnInstructions(parts: {
