@@ -1604,6 +1604,27 @@ it("shows Drafting at once, opens the panel on a repeat click, and says when the
   expect(button("Draft reply")).toBeDefined();
 });
 
+it("keeps polling after the draft starts when the list reads fail, so Draft reply is not stuck", async () => {
+  vi.useFakeTimers();
+  let started = false;
+  let recovered = false;
+  rpcMock.auditsList.mockImplementation(async () => {
+    if (started && !recovered) throw new Error("offline");
+    return [audit()];
+  });
+  rpcMock.auditsDraft.mockImplementation(async () => {
+    started = true;
+    return audit({ drafting: true });
+  });
+  await show("/app/investors", { onShowAgent: vi.fn() });
+  await click(button("Draft reply"));
+  recovered = true;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(7000);
+  });
+  expect(items()?.textContent).toContain("No draft made, see Ask");
+});
+
 it("shows a spinner and Drafting… instead of Draft reply while a drafting run is going", async () => {
   rpcMock.auditsList.mockResolvedValue([audit({ drafting: true })]);
   await show();

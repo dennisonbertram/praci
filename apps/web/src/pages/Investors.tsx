@@ -682,6 +682,8 @@ export function InvestorsPage({
     rpc.investors.audits
       .draft({ id: audit.id })
       .then((started) => {
+        // Keep the started row so polling runs even if the list reads that follow fail.
+        setAudits((list) => list.map((a) => (a.id === started.id ? started : a)));
         setDraftPhase((p) => {
           const { [audit.id]: _, ...rest } = p;
           return started.drafting ? { ...rest, [audit.id]: "running" } : rest;
