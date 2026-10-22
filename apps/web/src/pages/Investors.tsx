@@ -6,8 +6,10 @@ import type {
   CapTableState,
   Contact,
   ContactKind,
+  ContactLinked,
   InvestorReminderCadence,
   InvestorUpdate,
+  PortalLink,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
 import { capTableMath, isSafeSecurity } from "@rakazo/core";
@@ -42,8 +44,10 @@ import { ChevronDown, MoreHorizontal, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import { ContactDeleteConfirm, hasLinks } from "../components/ContactDeleteConfirm";
 import type { ContactPrefill as Prefill } from "../components/ContactDialog";
 import { ContactDialog, contactAddLabels } from "../components/ContactDialog";
+import { CopyLinkDialog } from "../components/CopyLinkDialog";
 import type { SaveResult } from "../components/cap-table/CapTableEditor";
 import { CapTableEditor } from "../components/cap-table/CapTableEditor";
 import type { HoldingRow } from "../components/cap-table/HoldingsTable";
@@ -172,6 +176,7 @@ const updateStatusNames = () => ({
   sending: t`Sending`,
   sent: t`Sent`,
   partly_sent: t`Partly sent`,
+  posted: t`Posted`,
 });
 
 /** Why a Partly sent update is partly sent: failed recipients first, then deliveries nobody confirmed. */
@@ -210,9 +215,11 @@ function UpdateRow({
     ? problemText(update)
     : update.status === "draft"
       ? t`Drafted ${day(update.createdAt)}`
-      : update.sentAt
-        ? t`Sent ${day(update.sentAt)}`
-        : update.period;
+      : update.status === "posted" && update.sentAt
+        ? t`Posted ${day(update.sentAt)}`
+        : update.sentAt
+          ? t`Sent ${day(update.sentAt)}`
+          : update.period;
   return (
     <li className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0">
       <button
@@ -368,18 +375,42 @@ function UpdatesSection({
   );
 }
 
+/** The Portal column: when the latest link went out, when it was opened, or that access was revoked. */
+function portalLabel(contact: Contact): string {
+  const day = (iso: string) => shortDay(iso.slice(0, 10), new Date(), i18n.locale || "en");
+  const { portalLinkSentAt: sent, portalLastSeenAt: seen, portalBlockedAt: blocked } = contact;
+  if (blocked) return t`Revoked`;
+  if (seen && !sent) return t`Unblocked · send a link`;
+  if (seen && sent && seen >= sent) return t`Opened ${day(seen)}`;
+  if (sent) return t`Invited ${day(sent)}`;
+  return DASH;
+}
+
 /** One contact in the Contacts section: name, organization and email, with Edit and Delete. */
 function ContactRow({
   contact,
   saved,
+  portal,
   onEdit,
   onDelete,
+  onResend,
+  onCopyLink,
+  onRevoke,
+  onUnblock,
 }: {
   contact: Contact;
   saved: boolean;
+  /** The Investors tab only: board and auditor contacts have no portal access. */
+  portal: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onResend: () => void;
+  onCopyLink: () => void;
+  onRevoke: () => void;
+  onUnblock: () => void;
 }) {
+  const blocked = Boolean(contact.portalBlockedAt);
+  const hasAccess = Boolean(contact.portalLinkSentAt || contact.portalLastSeenAt) && !blocked;
   return (
     <li
       data-contact-id={contact.id}
@@ -398,6 +429,14 @@ function ContactRow({
           {[contact.organization, contact.email].filter(Boolean).join(" · ")}
         </span>
       </button>
+      {portal ? (
+        <span
+          data-portal-state
+          className={`shrink-0 text-xs ${blocked ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {portalLabel(contact)}
+        </span>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -407,6 +446,28 @@ function ContactRow({
           <MoreHorizontal aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {portal && !blocked ? (
+            <>
+              {contact.email ? (
+                <DropdownMenuItem onClick={onResend}>
+                  <Trans>Resend link</Trans>
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onClick={onCopyLink}>
+                <Trans>Copy link</Trans>
+              </DropdownMenuItem>
+              {hasAccess ? (
+                <DropdownMenuItem onClick={onRevoke}>
+                  <Trans>Revoke</Trans>
+                </DropdownMenuItem>
+              ) : null}
+            </>
+          ) : null}
+          {portal && blocked ? (
+            <DropdownMenuItem onClick={onUnblock}>
+              <Trans>Unblock</Trans>
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={onEdit}>
             <Trans>Edit</Trans>
           </DropdownMenuItem>
@@ -462,6 +523,11 @@ export function InvestorsPage({
     );
   const query = params.get("q") ?? "";
   const [editing, setEditing] = useState<Contact | Prefill | "new" | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    contact: Contact;
+    linked: ContactLinked;
+  } | null>(null);
+  const [links, setLinks] = useState<PortalLink[] | null>(null);
   const [connecting, setConnecting] = useState(false);
   // Use a Google Sheet: the picker is open, or Google Drive is not connected and must be first.
   const [pickingSheet, setPickingSheet] = useState(false);
@@ -803,11 +869,40 @@ export function InvestorsPage({
   };
   const addHolderAsContact = (name: string, email: string | null = null) =>
     setEditing({ name, email, organization: null, kind: "investor" });
-  const deleteContact = (contact: Contact) =>
-    rpc.contacts
-      .delete({ id: contact.id })
-      .then(() => deleted(contact))
-      .catch((cause) => notify(errorText(cause, t`Could not delete ${contact.name}`)));
+  /** Delete: a contact with linked data asks first (and has no Undo); any other keeps main's Undo. */
+  const deleteContact = async (contact: Contact) => {
+    try {
+      const linked = await rpc.contacts.linked({ id: contact.id });
+      if (hasLinks(linked)) return setConfirmDelete({ contact, linked });
+      await rpc.contacts.delete({ id: contact.id });
+      deleted(contact);
+    } catch (cause) {
+      notify(errorText(cause, t`Could not delete ${contact.name}`));
+    }
+  };
+  /** Resend link emails a fresh link; with Copy link, or no email provider, the link is shown instead. */
+  const sendLink = async (contact: Contact, copy: boolean) => {
+    try {
+      const { link } = await rpc.investors.portalResend({ contactId: contact.id, copy });
+      load();
+      setSavedId(contact.id);
+      if (link) setLinks([{ contactId: contact.id, name: contact.name, link }]);
+      else notify(t`Link sent to ${contact.name}`);
+    } catch (cause) {
+      notify(errorText(cause, t`Could not send a link to ${contact.name}`));
+    }
+  };
+  const changePortal = async (contact: Contact, change: "revoke" | "unblock") => {
+    try {
+      await (change === "revoke"
+        ? rpc.investors.portalRevoke({ contactId: contact.id })
+        : rpc.investors.portalUnblock({ contactId: contact.id }));
+      load();
+      setSavedId(contact.id);
+    } catch (cause) {
+      notify(errorText(cause, t`Could not change access for ${contact.name}`));
+    }
+  };
 
   const source = snapshot?.source;
   const names = sourceNames();
@@ -1160,8 +1255,13 @@ export function InvestorsPage({
                       key={contact.id}
                       contact={contact}
                       saved={contact.id === savedId}
+                      portal={tab === "investor"}
                       onEdit={() => setEditing(contact)}
                       onDelete={() => void deleteContact(contact)}
+                      onResend={() => void sendLink(contact, false)}
+                      onCopyLink={() => void sendLink(contact, true)}
+                      onRevoke={() => void changePortal(contact, "revoke")}
+                      onUnblock={() => void changePortal(contact, "unblock")}
                     />
                   ))}
                 </ul>
@@ -1277,6 +1377,22 @@ export function InvestorsPage({
             onPickSheet={(picked) => void switchToSheet(picked)}
           />
         ) : null}
+        {confirmDelete ? (
+          <ContactDeleteConfirm
+            contact={confirmDelete.contact}
+            linked={confirmDelete.linked}
+            onCancel={() => setConfirmDelete(null)}
+            onConfirm={() => {
+              const { contact } = confirmDelete;
+              setConfirmDelete(null);
+              rpc.contacts
+                .delete({ id: contact.id })
+                .then(() => deleted(contact, false))
+                .catch((cause) => notify(errorText(cause, t`Could not delete ${contact.name}`)));
+            }}
+          />
+        ) : null}
+        {links ? <CopyLinkDialog links={links} onClose={() => setLinks(null)} /> : null}
         {editing ? (
           <ContactDialog
             key={editing === "new" ? "new" : "id" in editing ? editing.id : "prefill"}

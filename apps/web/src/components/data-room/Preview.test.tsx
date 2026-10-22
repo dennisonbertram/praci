@@ -314,7 +314,7 @@ it("offers Send to agent in the preview's More actions menu when there are agent
   const names = Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
     e.textContent?.trim(),
   );
-  expect(names).toEqual(["Send to agent", "Move", "Rename", "Delete"]);
+  expect(names).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
 });
 
 it("downloads from the header icon", async () => {
