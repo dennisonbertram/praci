@@ -198,7 +198,84 @@ it("adds the chosen skill to the instruction as an @mention", async () => {
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
   expect(onChange).toHaveBeenCalledWith(
-    expect.objectContaining({ prompt: "Every Monday. @Weekly cash check" }),
+    expect.objectContaining({ prompt: "@Weekly cash check Every Monday." }),
+  );
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});
+
+it("shows a forced skill in the picker and keeps the instruction plain", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  const noop = () => undefined;
+  const skills = [
+    { id: "b1", name: "daily-brief", description: "", source: "builtin", readOnly: true },
+    { id: "s1", name: "investor-update", description: "", source: "user", readOnly: false },
+  ] as AgentSkillCatalogEntry[];
+  await act(async () =>
+    root.render(
+      <RoutineEditor
+        draft={{ ...emptyRoutineDraft(), prompt: "@investor-update Draft the note." }}
+        onChange={noop}
+        editing={null}
+        timezone="America/New_York"
+        webhook={{ path: "/hook", secret: null, configured: false }}
+        githubPath="/gh"
+        messageProviders={[]}
+        skills={skills}
+        saving={false}
+        running={false}
+        error={null}
+        onBack={noop}
+        onClose={noop}
+        onSave={noop}
+        onTestRun={noop}
+        onDelete={noop}
+        onEnsureWebhook={async () => undefined}
+      />,
+    ),
+  );
+  const select = el.querySelector('select[aria-label="Add a skill"]') as HTMLSelectElement;
+  expect(select.value).toBe("investor-update");
+  expect((el.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Draft the note.");
+  expect(Array.from(select.options)[1]?.value).toBe("investor-update");
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});
+
+it("keeps @mentions in the instruction when there are no skills to pick", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  const noop = () => undefined;
+  await act(async () =>
+    root.render(
+      <RoutineEditor
+        draft={{ ...emptyRoutineDraft(), prompt: "Send the update to @alice every Monday." }}
+        onChange={noop}
+        editing={null}
+        timezone="America/New_York"
+        webhook={{ path: "/hook", secret: null, configured: false }}
+        githubPath="/gh"
+        messageProviders={[]}
+        skills={[]}
+        saving={false}
+        running={false}
+        error={null}
+        onBack={noop}
+        onClose={noop}
+        onSave={noop}
+        onTestRun={noop}
+        onDelete={noop}
+        onEnsureWebhook={async () => undefined}
+      />,
+    ),
+  );
+  expect((el.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
+    "Send the update to @alice every Monday.",
   );
   await act(async () => root.unmount());
   el.remove();

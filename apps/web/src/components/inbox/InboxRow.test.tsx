@@ -106,7 +106,7 @@ it("marks the searched words and shows the snippet around the match", async () =
 
 it("gives the More trigger a larger touch target on coarse pointers", async () => {
   await show();
-  expect(document.querySelector('button[aria-label="More"]')?.className).toContain(
+  expect(document.querySelector('button[aria-label^="More actions for"]')?.className).toContain(
     "pointer-coarse:size-10",
   );
 });
@@ -115,7 +115,7 @@ it("shows the More menu trigger below md as well as on touch, since the inline a
   await show();
   const inline = document.querySelector('button[aria-label="Archive"]')?.parentElement;
   expect(inline?.className).toContain("@max-md:hidden");
-  const more = document.querySelector('button[aria-label="More"]');
+  const more = document.querySelector('button[aria-label^="More actions for"]');
   expect(more?.className).toContain("@max-md:inline-flex");
   expect(more?.className).toContain("pointer-coarse:inline-flex");
 });
@@ -143,7 +143,9 @@ it("masks currency in the subject and preview while amounts are hidden", async (
 
 it("says in the More menu that a mark covers all mail from the sender", async () => {
   await show();
-  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  await act(async () =>
+    document.querySelector<HTMLElement>('button[aria-label^="More actions for"]')?.click(),
+  );
   const items = [...document.querySelectorAll('[role="menuitemcheckbox"]')].map(
     (el) => el.textContent,
   );
@@ -251,7 +253,9 @@ it("hides the Newsletter label inside the Newsletters pile only", async () => {
 });
 
 const menuItems = async () => {
-  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  await act(async () =>
+    document.querySelector<HTMLElement>('button[aria-label^="More actions for"]')?.click(),
+  );
   return [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
 };
 

@@ -63,7 +63,6 @@ export function AppLogo({
         <img
           src={src ?? undefined}
           alt=""
-          loading="lazy"
           decoding="async"
           className={`size-[55%] object-contain ${mono ? "dark:invert" : ""}`}
           onError={() => setFailed(true)}

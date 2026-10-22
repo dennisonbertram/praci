@@ -444,7 +444,7 @@ export function InboxRow({
                     className={`absolute end-3 top-1/2 hidden -translate-y-1/2 bg-muted pointer-coarse:inline-flex pointer-coarse:size-10 @max-md:inline-flex aria-expanded:opacity-100 pointer-coarse:opacity-100 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
                   />
                 }
-                aria-label={t`More`}
+                aria-label={t`More actions for ${row.from}`}
               >
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>

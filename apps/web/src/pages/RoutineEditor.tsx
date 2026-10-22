@@ -10,6 +10,7 @@ import type { CronFreq, CronPreset } from "@rakazo/core";
 import {
   cronFromPreset,
   defaultCronPreset,
+  extractRoutineSkillMentions,
   formatCron,
   isOneShotRoutineCrons,
   presetFromCron,
@@ -211,6 +212,18 @@ export function RoutineListRow({
   );
 }
 
+function withoutSkillMention(prompt: string, skill: string) {
+  const mention = new RegExp(
+    `(^|[\\s(,])@${skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[\\s,.)]|$)`,
+    "gi",
+  );
+  return prompt.replace(mention, "$1").replace(/^\s+/, "");
+}
+
+function withSkillMention(instruction: string, skill: string | undefined) {
+  return skill ? `@${skill} ${instruction}` : instruction;
+}
+
 export function RoutineEditor({
   draft,
   onChange,
@@ -278,7 +291,20 @@ export function RoutineEditor({
     []
   ).filter((level) => level !== "off");
   const defaultThinkingLevel = selectedCredential?.thinkingLevel ?? "medium";
-  const pickableSkills = skills.filter((skill) => !isHiddenBuiltinSkill(skill));
+  // The user's own skills come first.
+  const pickableSkills = skills
+    .filter((skill) => !isHiddenBuiltinSkill(skill))
+    .sort((a, b) => Number(b.source === "user") - Number(a.source === "user"));
+  // A skill is stored as an @mention in the instruction; the editor shows it in the picker instead.
+  // With no pickable skills the picker is hidden, so leave the text alone (an empty list would
+  // make the extractor guess and hide ordinary @mentions).
+  const skill = pickableSkills.length
+    ? extractRoutineSkillMentions(
+        draft.prompt,
+        pickableSkills.map((entry) => entry.name),
+      )[0]
+    : undefined;
+  const instruction = skill ? withoutSkillMention(draft.prompt, skill) : draft.prompt;
   const zone = draft.timezone || timezone;
   const zones = Intl.supportedValuesOf("timeZone");
   const slackAvailable = messageProviders.includes("slack");
@@ -421,9 +447,9 @@ export function RoutineEditor({
         <Trans>Instruction</Trans>
         <Textarea
           id={`${fieldId}-prompt`}
-          value={draft.prompt}
+          value={instruction}
           placeholder={t`What should this routine do each time it runs?`}
-          onChange={(e) => onChange({ ...draft, prompt: e.target.value })}
+          onChange={(e) => onChange({ ...draft, prompt: withSkillMention(e.target.value, skill) })}
           rows={4}
           className="mt-2"
         />
@@ -433,18 +459,15 @@ export function RoutineEditor({
         <NativeSelect
           aria-label={t`Add a skill`}
           className="mt-2 w-full"
-          value=""
-          onChange={(event) => {
-            const name = event.target.value;
-            if (!name) return;
-            const prompt = draft.prompt.trimEnd();
-            onChange({ ...draft, prompt: prompt ? `${prompt} @${name}` : `@${name}` });
-          }}
+          value={skill ?? ""}
+          onChange={(event) =>
+            onChange({ ...draft, prompt: withSkillMention(instruction, event.target.value) })
+          }
         >
           <NativeSelectOption value="">{t`Add a skill`}</NativeSelectOption>
-          {pickableSkills.map((skill) => (
-            <NativeSelectOption key={skill.id} value={skill.name}>
-              {slashSkillLabel(skill).title}
+          {pickableSkills.map((entry) => (
+            <NativeSelectOption key={entry.id} value={entry.name}>
+              {slashSkillLabel(entry).title}
             </NativeSelectOption>
           ))}
         </NativeSelect>

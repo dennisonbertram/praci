@@ -167,17 +167,17 @@ export function ContactsPage({
                 </Button>
               </div>
             ) : (
-              <div className="max-w-4xl">
+              <div>
                 <Table compact className="table-fixed">
                   <TableHeader>
                     <TableHeadRow>
                       <TableHead className="ps-2">
                         <Trans>Name</Trans>
                       </TableHead>
-                      <TableHead className="hidden w-[30%] @md:table-cell">
+                      <TableHead className="hidden w-[34%] @md:table-cell">
                         <Trans>Email</Trans>
                       </TableHead>
-                      <TableHead className="hidden w-[24%] @lg:table-cell">
+                      <TableHead className="hidden w-[26%] @lg:table-cell">
                         <Trans>Organization</Trans>
                       </TableHead>
                       <TableHead className="w-28">

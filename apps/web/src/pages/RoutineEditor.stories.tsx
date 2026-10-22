@@ -181,6 +181,17 @@ export const WithSkills: Story = {
   render: () => <Editor editing={null} initial={emptyRoutineDraft()} skills={skillOptions} />,
 };
 
+/** A forced skill shows in the picker and the instruction stays plain. */
+export const WithForcedSkill: Story = {
+  render: () => (
+    <Editor
+      editing={null}
+      initial={{ ...emptyRoutineDraft(), prompt: "@Weekly cash check Post the note." }}
+      skills={skillOptions}
+    />
+  ),
+};
+
 export const NewRoutine: Story = {
   render: () => <Editor editing={null} initial={emptyRoutineDraft()} />,
 };

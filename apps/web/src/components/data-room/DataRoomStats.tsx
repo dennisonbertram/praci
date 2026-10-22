@@ -56,12 +56,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Card({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-3">
+function Card({ label, value, onPick }: { label: string; value: string; onPick?: () => void }) {
+  const body = (
+    <>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-0.5 text-xl font-semibold tabular-nums">{value}</p>
-    </div>
+    </>
+  );
+  const box = "rounded-lg border border-border bg-card p-3";
+  return onPick ? (
+    <button type="button" onClick={onPick} className={`${box} text-start hover:bg-muted`}>
+      {body}
+    </button>
+  ) : (
+    <div className={box}>{body}</div>
   );
 }
 
@@ -245,7 +253,11 @@ export function DataRoomStats({
         />
         <Card label={t`Size`} value={sizeText(stats.bytes)} />
         <Card label={t`Read and searchable`} value={`${searchable}%`} />
-        <Card label={t`Failed`} value={String(stats.status.failed)} />
+        <Card
+          label={t`Failed`}
+          value={String(stats.status.failed)}
+          onPick={stats.status.failed > 0 ? () => onPick({ status: "failed" }) : undefined}
+        />
       </div>
       {stats.dates.buckets.length > 0 ? (
         <Section title={t`Documents by document date`}>

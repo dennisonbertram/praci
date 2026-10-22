@@ -111,7 +111,7 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            className="max-w-56 shrink-0 text-muted-foreground sm:max-w-64"
+            className="min-w-0 max-w-56 shrink text-muted-foreground sm:max-w-64"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }
@@ -382,8 +382,11 @@ export function DetailHead({
           </nav>
         )}
         {back ? heading : null}
-        {/* On a phone the company takes what the row has left, so Ask stays beside the title. */}
-        <CompanyMenu className="max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16" />
+        {/* On a phone the company takes what the row has left (and truncates). Beside a Back button it
+            keeps room for its name and wraps to the next line, with Ask, rather than being cut to a few letters. */}
+        <CompanyMenu
+          className={back ? undefined : "max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16"}
+        />
         {back ? end : null}
       </div>
       {heading && !back ? (

@@ -6,18 +6,7 @@ import type {
   BotAgentSkill,
 } from "@rakazo/contracts";
 import { buildSkillMd } from "@rakazo/core";
-import {
-  Badge,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Input,
-  Skeleton,
-  Switch,
-  Textarea,
-} from "@rakazo/ui-web";
+import { Badge, Button, Input, Skeleton, Switch, Textarea } from "@rakazo/ui-web";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
@@ -312,46 +301,22 @@ export function BotSkillsSection({
           <Trans>Skills</Trans>
         </h3>
         {!editorOpen ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={busy}
-              render={
-                <Button
-                  variant="ghost"
-                  type="button"
-                  className="-me-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
-                />
-              }
-            >
-              <Trans>Add skill</Trans>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-auto min-w-44">
-              <DropdownMenuItem
-                onClick={() => {
-                  closeEditor();
-                  setCreating(true);
-                  setDraft("");
-                  setSkillName("");
-                  setSkillDescription("");
-                  setError(null);
-                }}
-              >
-                <Trans>New skill</Trans>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => fileInput.current?.click()}>
-                <Trans>Upload a skill file</Trans>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  closeEditor();
-                  setUrlOpen(true);
-                  setError(null);
-                }}
-              >
-                <Trans>From URL</Trans>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={busy}
+            className="-me-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              closeEditor();
+              setCreating(true);
+              setDraft("");
+              setSkillName("");
+              setSkillDescription("");
+              setError(null);
+            }}
+          >
+            <Trans>Add skill</Trans>
+          </Button>
         ) : null}
       </div>
       <input
@@ -568,6 +533,32 @@ export function BotSkillsSection({
             >
               {open?.readOnly ? <Trans>Close</Trans> : <Trans>Cancel</Trans>}
             </Button>
+            {creating ? (
+              <div className="ms-auto flex items-center">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => fileInput.current?.click()}
+                  className="px-2 text-[13px] text-muted-foreground"
+                >
+                  <Trans>Upload file</Trans>
+                </Button>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    closeEditor();
+                    setUrlOpen(true);
+                    setError(null);
+                  }}
+                  className="px-2 text-[13px] text-muted-foreground"
+                >
+                  <Trans>From URL</Trans>
+                </Button>
+              </div>
+            ) : null}
             {open && !open.readOnly ? (
               <Button
                 variant="ghost"

@@ -7,6 +7,7 @@ import { commandVariableName } from "@rakazo/contracts";
 import {
   formatMessageTime,
   isApprovalAskBlock,
+  isClosedApprovalAnswer,
   isSecretAskBlock,
   resolveAskChoice,
 } from "@rakazo/core";
@@ -38,6 +39,8 @@ function formatAnsweredState(
     const choice = resolveAskChoice(answer, actions);
     return choice ? t`Answered: ${choice.label}` : t`Answered`;
   }
+  if (answer === "superseded") return t`No longer active`;
+  if (answer === "expired") return t`Expired`;
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
   if (answer === "allow") return waitsFor ? t`Approved here. Waiting for ${waitsFor}` : t`Approved`;
@@ -54,7 +57,8 @@ function answeredTone(
   outcome?: "created" | "cancelled",
 ): { className: string; Icon?: typeof Check } {
   if (secret || outcome === "created") return { className: "text-success" };
-  if (!approval || outcome === "cancelled") return { className: "text-muted-foreground" };
+  if (!approval || outcome === "cancelled" || isClosedApprovalAnswer(answer))
+    return { className: "text-muted-foreground" };
   if (answer === "deny") return { className: "text-destructive", Icon: X };
   if (answer === "allow" || answer === "always")
     return { className: "text-foreground", Icon: Check };
