@@ -109,6 +109,7 @@ import {
   findSkillByName,
   formatSkillRunPrompt,
   formatSkillsCatalogInstruction,
+  GTM_PAGE_INSTRUCTIONS,
   humanizeToolName,
   inferAttachmentMimeType,
   isBackgroundRunTrigger,
@@ -4706,7 +4707,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               await pageToolFromTool(
                 name,
                 { prisma: deps.prisma, events: deps.events },
-                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
+                {
+                  spaceId: run.spaceId,
+                  botId: bot.id,
+                  userId: bot.userId,
+                  runId,
+                  gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
+                },
                 args,
               ),
             );
@@ -8675,7 +8682,7 @@ export function directoryDescription(peer: {
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself, speaking to them as "you" (say "your mail", never the user's name). Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request or the reason is a payee with no matching recipient: then give no link; never reply only that the request could not be completed.${peer.id ? ` If its answer says the user must approve a payment or other change, tell the user in one line to approve it in the ${peer.name ?? "agent"} chat; an Open ${peer.name ?? "the agent"} button shows under your reply, so add no link and never an Integrations link.` : ""}${CONSENT_LINK_GUIDANCE}`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself, speaking to them as "you" (say "your mail", never the user's name). Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request or the reason is a payee with no matching recipient: then give no link; never reply only that the request could not be completed.${peer.id ? ` If its answer says the user must approve a payment or other change, tell the user in one line to approve it in the ${peer.name ?? "agent"} chat and end with [Open ${peer.name ?? "the agent"}](/app/${peer.id}), never with an Integrations link.` : ""}${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
@@ -8920,6 +8927,9 @@ function identityInstruction(
   const guide = isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
   const inbox = isInboxAgentSpawnKey(spawnKey);
   const withGuide = (text: string) => {
+    if (isGtmAgentSpawnKey(spawnKey) && !text.includes(GTM_PAGE_INSTRUCTIONS)) {
+      text = `${text}\n\n${GTM_PAGE_INSTRUCTIONS}`.trim();
+    }
     if (guide && !text.includes(ONE_APPROVAL_GUIDANCE)) {
       text = `${text} ${ONE_APPROVAL_GUIDANCE}`.trim();
     }

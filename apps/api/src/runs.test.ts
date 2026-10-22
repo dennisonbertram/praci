@@ -118,7 +118,8 @@ describe("listPendingApprovalNotifications", () => {
     const where = (
       notificationFind.mock.calls[0] as unknown as [{ where: Record<string, unknown> }]
     )[0].where;
-    expect(where).toMatchObject({ runId: { in: ["r1"] }, seenAt: null });
+    expect(where).toMatchObject({ runId: { in: ["r1"] } });
+    expect(where).not.toHaveProperty("seenAt");
     expect(where).not.toHaveProperty("createdAt");
   });
 
