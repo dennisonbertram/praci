@@ -66,7 +66,7 @@ export function NotificationSettingsSection() {
         <li className="flex items-center gap-3 pointer-coarse:min-h-11">
           <Switch
             id={`${id}-browser`}
-            aria-label={t`Browser`}
+            aria-label={t`Browser notifications`}
             checked={permission === "granted" && prefs.channels.browser !== false}
             disabled={pending || browserBlocked}
             onCheckedChange={(on) => void setBrowser(on)}
@@ -75,7 +75,7 @@ export function NotificationSettingsSection() {
             htmlFor={`${id}-browser`}
             className="text-[14px] font-normal text-foreground/75 pointer-coarse:self-stretch pointer-coarse:flex-1"
           >
-            <Trans>Browser</Trans>
+            <Trans>Browser notifications</Trans>
           </Label>
           {browserBlocked ? (
             <span className="text-[13px] text-muted-foreground">

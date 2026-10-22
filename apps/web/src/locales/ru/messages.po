@@ -814,10 +814,6 @@ msgstr ""
 msgid "Add a model"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Add a model in Settings to use this."
-msgstr "Чтобы использовать это, добавьте модель в настройках."
-
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
@@ -979,6 +975,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
+#: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Расширенные"
@@ -1092,10 +1089,6 @@ msgstr "Разрешить подключение {0} без запроса"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} without asking"
 msgstr "Разрешить {0} без запроса"
-
-#: src/pages/Legal.tsx
-msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
@@ -1865,8 +1858,11 @@ msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
-#: src/components/NotificationSettings.tsx
 msgid "Browser"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Browser notifications"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -3400,10 +3396,6 @@ msgstr "Не удалось запустить задачу"
 msgid "Could not save"
 msgstr "Не удалось сохранить"
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Could not save Auto Review"
-msgstr "Не удалось сохранить автообзор."
-
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Could not save backup models"
 msgstr "Не удалось сохранить резервные модели."
@@ -3886,8 +3878,8 @@ msgstr "Удалить"
 msgid "Delete \"{0}\"?"
 msgstr ""
 
-#. placeholder {0}: artifact.name
 #. placeholder {0}: bot.name
+#. placeholder {0}: displayName(artifact.name)
 #. placeholder {0}: group.name
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
@@ -4779,10 +4771,6 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
 msgstr ""
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Flag unexpected actions"
-msgstr "Пометить неожиданные действия"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/Preview.tsx
@@ -6610,6 +6598,11 @@ msgstr ""
 msgid "No contacts yet"
 msgstr ""
 
+#. placeholder {0}: fullDay(data.agent.lastScanAt)
+#: src/pages/Legal.tsx
+msgid "No contracts or deadlines found on {0}."
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -7841,6 +7834,10 @@ msgstr ""
 msgid "Reading your contacts"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Reading your Data room…"
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
@@ -9024,10 +9021,6 @@ msgstr "Оболочка"
 
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Show amounts"
 msgstr ""
 
 #: src/pages/Investors.tsx

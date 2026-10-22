@@ -78,7 +78,7 @@ it("hides Phone until a phone is registered", async () => {
   setPermission("granted");
   api.preferences.mockResolvedValue(prefs());
   await render();
-  expect(row("Browser")).not.toBeNull();
+  expect(row("Browser notifications")).not.toBeNull();
   expect(row("Phone")).toBeNull();
 });
 
@@ -118,7 +118,7 @@ it("asks for browser permission when Browser is turned on, and stores it once gr
   api.preferences.mockResolvedValue(prefs());
   api.updatePreferences.mockResolvedValue(prefs({ channels: { browser: true } }));
   await render();
-  await click(row("Browser"));
+  await click(row("Browser notifications"));
   expect(browser.request).toHaveBeenCalledTimes(1);
   expect(api.updatePreferences).toHaveBeenCalledExactlyOnceWith({ channels: { browser: true } });
 });
@@ -128,7 +128,7 @@ it("does not store Browser when permission is refused", async () => {
   browser.request.mockResolvedValue("denied");
   api.preferences.mockResolvedValue(prefs());
   await render();
-  await click(row("Browser"));
+  await click(row("Browser notifications"));
   expect(api.updatePreferences).not.toHaveBeenCalled();
 });
 
@@ -139,7 +139,7 @@ it("says where it is blocked and disables Browser when the browser denied notifi
   expect(container.textContent).toContain(
     "Allow notifications for this site in your browser settings",
   );
-  expect((row("Browser") as HTMLButtonElement).disabled).toBe(true);
+  expect((row("Browser notifications") as HTMLButtonElement).disabled).toBe(true);
 });
 
 it("says Not supported here when the Notification API is missing", async () => {
@@ -148,5 +148,5 @@ it("says Not supported here when the Notification API is missing", async () => {
   await render();
   expect(container.textContent).toContain("Not supported here");
   expect(container.textContent).not.toContain("Blocked");
-  expect((row("Browser") as HTMLButtonElement).disabled).toBe(true);
+  expect((row("Browser notifications") as HTMLButtonElement).disabled).toBe(true);
 });

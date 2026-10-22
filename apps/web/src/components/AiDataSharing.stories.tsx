@@ -78,6 +78,18 @@ export const SectionAllowed: Story = {
     }),
 };
 
+/** Only one model allowed, as after a Legal Allow: the one switch reads off and Advanced is open. */
+export const SectionPartlyAllowed: Story = {
+  ...Section,
+  beforeEach: () =>
+    mockRpc({
+      "aiConsent.status": {
+        ...status(false),
+        recipients: status(false).recipients.map((r, index) => ({ ...r, allowed: index === 0 })),
+      },
+    }),
+};
+
 export const SectionLoading: Story = {
   ...Section,
   beforeEach: () => mockRpc({ "aiConsent.status": () => new Promise(() => undefined) }),
