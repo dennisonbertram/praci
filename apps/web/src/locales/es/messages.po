@@ -89,7 +89,10 @@ msgstr ""
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# modelo} other {# modelos}}"
 
+#. placeholder {0}: data.counts.needs_you
 #. placeholder {0}: glance.devinNeedsYou
+#. placeholder {0}: glance.gtmNeedsYou
+#: src/pages/Gtm.tsx
 #: src/pages/Shell.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
 msgstr ""
@@ -309,6 +312,14 @@ msgstr ""
 #. placeholder {1}: wallet.safeOwners.length
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{0} of {1}"
+msgstr ""
+
+#. placeholder {0}: policy.founderApprovals
+#. placeholder {1}: policy.approvalsBeforeAuto
+#. placeholder {2}: policy.autoOpenings
+#. placeholder {3}: policy.dailyCap
+#: src/pages/gtm/GtmChannels.tsx
+msgid "{0} of {1} approvals before auto · {2} of {3} today"
 msgstr ""
 
 #. placeholder {0}: sender.name
@@ -1361,11 +1372,20 @@ msgstr ""
 msgid "Approval boundaries"
 msgstr "Límites de aprobación"
 
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Approve"
 msgstr "Aprobar"
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Approve every email"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Approve every post"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
@@ -1377,6 +1397,10 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Approved here. Waiting for {waitsFor}"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Approved, opens next wakeup"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1529,6 +1553,10 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything."
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Ask GTM agent"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1938,6 +1966,7 @@ msgid "Brex bill, not paid yet"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Browser"
 msgstr ""
 
@@ -1986,6 +2015,14 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Cadence"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Calendar"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Calendar view is coming next. Scheduled items remain in Plan."
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -2037,6 +2074,8 @@ msgstr "No se puede alcanzar el servidor."
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Fundraising.tsx
+#: src/pages/Gtm.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2170,8 +2209,16 @@ msgstr ""
 msgid "Change source"
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Changed"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 msgid "Changed elsewhere"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Changed, review again"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -2182,6 +2229,11 @@ msgstr ""
 msgid "Changing…"
 msgstr "Cambiando…"
 
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Channel"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Channels"
 msgstr "Canales"
@@ -2252,6 +2304,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Buscar actualizaciones"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Check queue"
+msgstr ""
 
 #: src/components/ContactDialog.tsx
 msgid "Check size"
@@ -2552,6 +2608,10 @@ msgid "Collapse Finance agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Collapse GTM agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Collapse Inbox agent"
 msgstr ""
 
@@ -2818,6 +2878,14 @@ msgstr "Conectar Treg"
 msgid "Connect your apps"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Connect Zernio"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Connect Zernio first"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Zernio to enable reads."
 msgstr ""
@@ -2830,6 +2898,7 @@ msgstr ""
 #: src/components/integrations/parts.tsx
 #: src/pages/ConnectedCallback.tsx
 #: src/pages/GoogleOAuthCallback.tsx
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2957,6 +3026,7 @@ msgstr ""
 #: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/transcript.tsx
@@ -3122,6 +3192,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the GTM agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3851,6 +3925,10 @@ msgid "Create group"
 msgstr "Crear grupo"
 
 #: src/pages/Shell.tsx
+msgid "Create GTM agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Create Inbox agent"
 msgstr ""
 
@@ -4162,6 +4240,11 @@ msgstr ""
 msgid "Desktop update"
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Destination"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Details"
@@ -4216,6 +4299,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr ""
@@ -4350,6 +4434,7 @@ msgstr ""
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Gtm.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -4422,6 +4507,10 @@ msgstr ""
 msgid "Draft not saved"
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Draft only"
+msgstr ""
+
 #: src/components/investors/ActionItems.tsx
 msgid "Draft ready"
 msgstr ""
@@ -4465,6 +4554,10 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Drafts for you"
 msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -4525,6 +4618,8 @@ msgstr ""
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/Gtm.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/Investors.tsx
 msgid "Edit"
 msgstr ""
@@ -4562,6 +4657,10 @@ msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Email approval requires a compliance preview."
 msgstr ""
 
 #: src/components/integrations/parts.tsx
@@ -4737,6 +4836,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "Cada semana"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Exact text"
+msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -5107,6 +5210,10 @@ msgstr ""
 msgid "Git event"
 msgstr "Evento de Git"
 
+#: src/pages/Gtm.tsx
+msgid "Give the GTM agent a goal"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Gmail"
 msgstr ""
@@ -5162,6 +5269,10 @@ msgstr ""
 
 #: src/pages/NotFound.tsx
 msgid "Go to Praci"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Goal"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -5221,6 +5332,11 @@ msgstr ""
 msgid "Groups"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+#: src/pages/Shell.tsx
+msgid "GTM"
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
 msgstr "Colgar"
@@ -5258,6 +5374,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
 msgstr "Escuchar una muestra"
+
+#: src/pages/Shell.tsx
+msgid "Help me find our first 50 design partners"
+msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Help me with \"{title}\" on {contractTitle}, due {due}."
@@ -5371,6 +5491,10 @@ msgstr ""
 
 #: src/components/PageAgentIntro.tsx
 msgid "I answer questions about your cap table, investors and finances, using your Data room and contacts."
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "I checked: this post is not in the queue"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
@@ -5491,6 +5615,7 @@ msgid "In Data room"
 msgstr ""
 
 #: src/lib/ticket-status.ts
+#: src/pages/Gtm.tsx
 msgid "In progress"
 msgstr ""
 
@@ -5514,6 +5639,10 @@ msgstr ""
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Inbox"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Inbox (Gmail)"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -6142,6 +6271,10 @@ msgstr ""
 msgid "Mark noise: all mail from {0}"
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Mark posted"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark read"
@@ -6617,6 +6750,10 @@ msgstr "Nombra este grupo"
 msgid "Name this routine"
 msgstr "Nombra esta rutina"
 
+#: src/pages/Gtm.tsx
+msgid "Needed to post approved text"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Needs a monthly burn"
 msgstr ""
@@ -6657,6 +6794,7 @@ msgstr "Necesita toma de control"
 #: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
+#: src/pages/Gtm.tsx
 msgid "Needs you"
 msgstr ""
 
@@ -6794,6 +6932,10 @@ msgstr ""
 msgid "Next step"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Next wakeup in {minutes} min"
+msgstr ""
+
 #: src/components/fundraising/SafeDialog.tsx
 msgid "No"
 msgstr ""
@@ -6886,6 +7028,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "No documents here name a party"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "No drafts"
 msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
@@ -6995,6 +7141,10 @@ msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "No open deadlines."
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "No provider posts in this window"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7129,6 +7279,7 @@ msgstr ""
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "No conectado"
@@ -7242,6 +7393,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "Aún no hay recuerdos"
+
+#: src/pages/Gtm.tsx
+msgid "Nothing running"
+msgstr ""
 
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
@@ -7804,6 +7959,10 @@ msgstr "Fijar"
 msgid "Pipeline"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Plan"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "Reproduciendo…"
@@ -7877,6 +8036,14 @@ msgstr ""
 #. placeholder {0}: day(update.sentAt)
 #: src/pages/Investors.tsx
 msgid "Posted {0}"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Posting may have failed"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Posting needs an API key"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -8029,10 +8196,18 @@ msgstr ""
 msgid "Provider"
 msgstr "Proveedor"
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Provider queue around this scheduled time"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Providers"
 msgstr "Proveedores"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Public URL"
+msgstr ""
 
 #: src/components/CloudAgentCard.tsx
 #: src/pages/devin/DevinSessions.tsx
@@ -8051,9 +8226,17 @@ msgstr ""
 msgid "Quarterly"
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Queue check incomplete. Check Zernio before trying again."
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "En cola"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Queued in Zernio"
+msgstr ""
 
 #: src/pages/shell/GroupIntro.tsx
 msgid "Quick status check from everyone, please"
@@ -8065,6 +8248,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Rarely read, and you never wrote to them"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Re-approve"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -8207,6 +8394,7 @@ msgid "Reads document text"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Ready"
 msgstr ""
 
@@ -8804,6 +8992,10 @@ msgstr "Rutinas"
 msgid "Routines that run while you're away"
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Rule"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Run at"
 msgstr "Ejecutar a las"
@@ -8907,6 +9099,8 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
+#: src/pages/Gtm.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -8938,6 +9132,10 @@ msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Save output limit"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Save proof"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -9033,6 +9231,10 @@ msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed."
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Scheduled time (ISO)"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -9943,6 +10145,7 @@ msgstr ""
 #: src/pages/devin/DevinSessions.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
@@ -10477,6 +10680,10 @@ msgstr "Esto elimina permanentemente tu cuenta y tus datos."
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr "Esto elimina de forma permanente todos los mensajes y detiene el trabajo actual. El chat sigue disponible."
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "This post has no valid scheduled time."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
 msgstr "Este proveedor no se puede probar sin guardar."
@@ -10556,6 +10763,7 @@ msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
+#: src/pages/gtm/GtmPlan.tsx
 msgid "Title"
 msgstr "Título"
 
@@ -10723,6 +10931,7 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Fundraising.tsx
+#: src/pages/Gtm.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -10805,6 +11014,7 @@ msgid "Unassign"
 msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Unavailable"
 msgstr "No disponible"
 
@@ -10938,6 +11148,7 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/Gtm.tsx
 msgid "Up to date"
 msgstr "Actualizado"
 
@@ -10987,7 +11198,9 @@ msgid "Updated"
 msgstr "Actualizado"
 
 #. placeholder {0}: formatRelativeTime(data.fetchedAt)
+#. placeholder {0}: formatRelativeTime(page.updatedAt)
 #: src/pages/Devin.tsx
+#: src/pages/Gtm.tsx
 msgid "Updated {0}"
 msgstr ""
 
@@ -11526,6 +11739,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Written by GTM agent"
 msgstr ""
 
 #: src/lib/slash-skills.ts
