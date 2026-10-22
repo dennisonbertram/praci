@@ -260,6 +260,7 @@ export function AppConnectCard({
             variant="outline"
             className="ms-auto rounded-full"
             disabled={busy}
+            aria-label={busy ? undefined : t`Connect ${block.name}`}
             onClick={() => void authorize()}
           >
             {busy ? t`Waiting…` : t`Connect`}

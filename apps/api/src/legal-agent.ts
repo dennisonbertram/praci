@@ -18,7 +18,12 @@ export const LEGAL_AGENT_INSTRUCTIONS =
 
 /** The prompt of the daily routine and of "scan now". */
 export const LEGAL_SCAN_PROMPT =
-  "Run the legal scan. 1) Call legal_unreviewed_documents and analyze every document it lists (repeat until remaining is 0), recording contracts, deadlines, and graph nodes and edges as your instructions say. 2) Search the mail and Drive for contracts or other legal documents that are not in the Data Room yet, and list them in your reply. 3) Call legal_query with view deadlines, status done and dueInLastDays 90: for each closed deadline that recurs (annual, quarterly, monthly) and has no later open occurrence, record the next one with legal_upsert_deadline and say so in the notes. 4) Call legal_query for deadlines due in the next 60 days and for overdue ones, and state them first in your reply, soonest first. Keep the reply short.";
+  'Run the legal scan. 1) Call legal_unreviewed_documents and analyze every document it lists (repeat until remaining is 0), recording contracts, deadlines, and graph nodes and edges as your instructions say. 2) Search the mail and Drive for contracts or other legal documents that are not in the Data Room yet, and list them in your reply. 3) Call legal_query with view deadlines, status done and dueInLastDays 90: for each closed deadline that recurs (annual, quarterly, monthly) and has no later open occurrence, record the next one with legal_upsert_deadline and say so in the notes. 4) Call legal_query for deadlines due in the next 60 days and for overdue ones, and state them first in your reply, soonest first. Write every date like "Oct 17, 2026", never as 2026-10-17. Keep the reply short.';
+
+/** Earlier defaults; a routine still holding one is moved to the current prompt. */
+const OLDER_SCAN_PROMPTS = [
+  "Run the legal scan. 1) Call legal_unreviewed_documents and analyze every document it lists (repeat until remaining is 0), recording contracts, deadlines, and graph nodes and edges as your instructions say. 2) Search the mail and Drive for contracts or other legal documents that are not in the Data Room yet, and list them in your reply. 3) Call legal_query with view deadlines, status done and dueInLastDays 90: for each closed deadline that recurs (annual, quarterly, monthly) and has no later open occurrence, record the next one with legal_upsert_deadline and say so in the notes. 4) Call legal_query for deadlines due in the next 60 days and for overdue ones, and state them first in your reply, soonest first. Keep the reply short.",
+];
 
 /** Every morning at 06:00 UTC. */
 const SCAN_CRONS = ["0 6 * * *"];
@@ -39,7 +44,15 @@ export async function ensureLegalRoutine(
     const existing = await tx.routine.findFirst({
       where: { spaceId: actor.spaceId, userId: actor.userId, botId, name: LEGAL_SCAN_ROUTINE_NAME },
     });
-    if (existing) return { routine: existing, created: false };
+    if (existing) {
+      if (!OLDER_SCAN_PROMPTS.includes(existing.prompt))
+        return { routine: existing, created: false };
+      const updated = await tx.routine.update({
+        where: { id: existing.id },
+        data: { prompt: LEGAL_SCAN_PROMPT },
+      });
+      return { routine: updated, created: false };
+    }
     const row = await tx.routine.create({
       data: {
         spaceId: actor.spaceId,

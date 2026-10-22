@@ -17,6 +17,16 @@ const UNDO_MS = 30_000;
 /** Deadlines closer than this get a "due in N days" line. */
 const SOON_DAYS = 30;
 
+/** The sentence the Legal agent adds to every derived notice deadline; the list says it once. */
+const DERIVED_NOTE = "Derived from the expiration date and the notice period.";
+
+/** A row's own note: without the shared sentence, and with any ISO date written as the page writes dates. */
+const rowNote = (notes: string | null) =>
+  (notes ?? "")
+    .replace(DERIVED_NOTE, "")
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, (iso) => fullDay(iso))
+    .trim();
+
 const rowHeight = (event: React.MouseEvent<HTMLElement>) =>
   event.currentTarget.closest("li")?.getBoundingClientRect().height ?? 0;
 
@@ -222,9 +232,9 @@ export function LegalDeadlines({
                     {maskCurrencyWhenHidden(deadline.sourceQuote)}
                   </blockquote>
                 ) : null}
-                {deadline.notes ? (
+                {rowNote(deadline.notes) ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {maskCurrencyWhenHidden(deadline.notes)}
+                    {maskCurrencyWhenHidden(rowNote(deadline.notes))}
                   </p>
                 ) : null}
               </div>
@@ -269,6 +279,13 @@ export function LegalDeadlines({
           );
         })}
       </ul>
+      {open.some((deadline) => deadline.notes?.includes(DERIVED_NOTE)) ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          <Trans>
+            Notice deadlines are derived from the expiration date and the notice period.
+          </Trans>
+        </p>
+      ) : null}
     </div>
   );
 }

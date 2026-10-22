@@ -104,6 +104,11 @@ msgstr ""
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr ""
 
+#. placeholder {0}: counted.length
+#: src/pages/Investors.tsx
+msgid "{0, plural, one {# SAFE} other {# SAFEs}}"
+msgstr ""
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -600,19 +605,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} spend"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr ""
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{sourceNames}, {0} non-USD not counted"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1712,6 +1704,10 @@ msgstr ""
 msgid "Back to Investors"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "로그인으로 돌아가기"
@@ -2672,12 +2668,13 @@ msgstr "이 브라우저 세션에서 URL에 연결할 수 있는지 확인한 �
 msgid "Connect"
 msgstr "연결"
 
+#. placeholder {0}: block.name
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
-#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
@@ -4413,6 +4410,7 @@ msgstr ""
 msgid "Drafted {0}"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr ""
@@ -6427,7 +6425,6 @@ msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
-#: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
@@ -6441,7 +6438,9 @@ msgstr ""
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
+#. placeholder {0}: row.from
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr ""
@@ -6565,6 +6564,7 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
@@ -7175,6 +7175,10 @@ msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -8910,6 +8914,10 @@ msgid "Scan finished: nothing changed."
 msgstr ""
 
 #: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -9934,9 +9942,17 @@ msgstr ""
 msgid "Sync failed."
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx

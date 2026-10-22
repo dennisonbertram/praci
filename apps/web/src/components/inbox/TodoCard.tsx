@@ -103,7 +103,8 @@ export function TodoCard({
                   aria-label={todo.text}
                   checked={done}
                   onCheckedChange={(checked) => setDone(todo, checked)}
-                  className="mt-0.5 border-muted-foreground pointer-coarse:size-5"
+                  // On touch the control itself is 44 px (drawn as a 16 px box inside it); negative margins keep the row height.
+                  className="mt-0.5 border-muted-foreground pointer-coarse:-mx-3 pointer-coarse:-my-3 pointer-coarse:mt-[-0.625rem] pointer-coarse:size-11 pointer-coarse:border-transparent pointer-coarse:bg-transparent pointer-coarse:data-checked:bg-transparent pointer-coarse:dark:bg-transparent pointer-coarse:after:hidden pointer-coarse:before:absolute pointer-coarse:before:size-4 pointer-coarse:before:rounded-[4px] pointer-coarse:before:border pointer-coarse:before:border-muted-foreground pointer-coarse:data-checked:before:border-primary pointer-coarse:data-checked:before:bg-primary pointer-coarse:[&>[data-slot=checkbox-indicator]]:relative"
                 />
                 <div
                   dir="auto"

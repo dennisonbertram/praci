@@ -607,7 +607,6 @@ export function SpaceSidebar({
               </InputGroupAddon>
               <InputGroupInput
                 readOnly
-                data-drawer-focus
                 value=""
                 onClick={() => {
                   onOpenSearch();
@@ -621,7 +620,7 @@ export function SpaceSidebar({
                 placeholder={t`Search`}
                 autoComplete="off"
                 name="sidebar-search"
-                className="cursor-pointer"
+                className="cursor-pointer placeholder:text-foreground/70"
               />
             </InputGroup>
           )
@@ -707,6 +706,7 @@ export function SpaceSidebar({
                 aria-label={t`Close menu`}
                 title={t`Close menu`}
                 data-testid="close-mobile-sidebar"
+                data-drawer-focus
                 onClick={() => setMobileSidebarOpen(false)}
               >
                 <X size={16} strokeWidth={1.8} aria-hidden="true" />
