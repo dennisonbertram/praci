@@ -233,6 +233,7 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     if (i < order.length - 1) await click("Next");
   }
   expect(document.body.textContent).toContain("9/9");
+  expect(seen[0]).toMatch(/^Search: Type here/);
   expect(seen[0]).toContain("find any page, chat");
   expect(seen[6]).toContain("Ask Chief");
   expect(seen[1]).toContain("create a bot");

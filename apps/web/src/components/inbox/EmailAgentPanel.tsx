@@ -3,13 +3,14 @@ import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
 import { latestAnswerableAskMessageId, newClientId } from "@rakazo/core";
 import { BotAvatar, Button } from "@rakazo/ui-web";
 import { ArrowLeft, PanelRightClose } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dismissApprovalToasts, markApprovalChatOpen } from "../../lib/approval-toasts";
 import { rpc } from "../../lib/rpc";
 import { useAttended } from "../../lib/use-sidebar-glance";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
+import { BotToolControlsContext, useBotToolControls } from "../BotToolControls";
 
 const noop = () => undefined;
 const asyncNoop = async () => {};
@@ -102,6 +103,17 @@ export function EmailAgentPanel({
     if (cardOnScreen && attended)
       void rpc.notifications.markSeen({ botId: bot.id }).catch(() => undefined);
   }, [cardOnScreen, attended, bot.id]);
+  // A failed send reopens as a reply to this email, so the account is the email's own.
+  const outer = useBotToolControls();
+  const controls = useMemo(
+    () => ({
+      editableBotName: (id: string | undefined) => outer?.editableBotName(id),
+      disableTool: async (id: string, tool: string) => outer?.disableTool(id, tool),
+      openComposer: (failed: { body: string }) => onReplyWithDraft(failed.body),
+      accountFromThread: true,
+    }),
+    [outer, onReplyWithDraft],
+  );
   const running = Boolean(
     snapshot?.run && ["running", "queued", "leased"].includes(snapshot.run.status),
   );
@@ -206,53 +218,55 @@ export function EmailAgentPanel({
       </div>
       {snapshot ? (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <Transcript
-            scrollRef={scrollRef}
-            sentHere={sentHere}
-            scrollRequest={null}
-            onScrollRequestHandled={noop}
-            artifactTarget={artifactTarget}
-            // A run held on an approval is not working; its progress line would say it is.
-            messages={
-              running
-                ? snapshot.messages
-                : snapshot.messages.filter((message) => !message.id.startsWith("progress:"))
-            }
-            // The lookups are the point of this panel, so they show whatever the chat setting says.
-            showToolActivity
-            olderCursor={snapshot.olderCursor}
-            loadingOlder={false}
-            answerableAskMessageId={latestAnswerableAskMessageId(snapshot)}
-            running={running}
-            workingBots={[]}
-            onLoadOlder={asyncNoop}
-            onOpenBot={noop}
-            onAnswer={async (message, text, username, mail) => {
-              await rpc.threads.answer({
-                botId: bot.id,
-                runId: message.runId ?? "",
-                messageId: message.id,
-                answer: text,
-                ...(username ? { username } : {}),
-                ...(mail ? { mail } : {}),
-              });
-              dismissApprovalToasts({ href: `/app/${bot.id}`, botId: bot.id });
-              await load();
-            }}
-            onReply={noop}
-            onQuote={noop}
-            onReact={asyncNoop}
-            onJumpToMessage={noop}
-            onOpenPeerMessages={noop}
-            peerBot={() => undefined}
-            onRefresh={async () => void (await load())}
-            onBotChanged={asyncNoop}
-            onAddRoutine={noop}
-            voiceReady={false}
-            speakingMessageId={null}
-            onSpeak={noop}
-            onOpenComputer={noop}
-          />
+          <BotToolControlsContext.Provider value={controls}>
+            <Transcript
+              scrollRef={scrollRef}
+              sentHere={sentHere}
+              scrollRequest={null}
+              onScrollRequestHandled={noop}
+              artifactTarget={artifactTarget}
+              // A run held on an approval is not working; its progress line would say it is.
+              messages={
+                running
+                  ? snapshot.messages
+                  : snapshot.messages.filter((message) => !message.id.startsWith("progress:"))
+              }
+              // The lookups are the point of this panel, so they show whatever the chat setting says.
+              showToolActivity
+              olderCursor={snapshot.olderCursor}
+              loadingOlder={false}
+              answerableAskMessageId={latestAnswerableAskMessageId(snapshot)}
+              running={running}
+              workingBots={[]}
+              onLoadOlder={asyncNoop}
+              onOpenBot={noop}
+              onAnswer={async (message, text, username, mail) => {
+                await rpc.threads.answer({
+                  botId: bot.id,
+                  runId: message.runId ?? "",
+                  messageId: message.id,
+                  answer: text,
+                  ...(username ? { username } : {}),
+                  ...(mail ? { mail } : {}),
+                });
+                dismissApprovalToasts({ href: `/app/${bot.id}`, botId: bot.id });
+                await load();
+              }}
+              onReply={noop}
+              onQuote={noop}
+              onReact={asyncNoop}
+              onJumpToMessage={noop}
+              onOpenPeerMessages={noop}
+              peerBot={() => undefined}
+              onRefresh={async () => void (await load())}
+              onBotChanged={asyncNoop}
+              onAddRoutine={noop}
+              voiceReady={false}
+              speakingMessageId={null}
+              onSpeak={noop}
+              onOpenComputer={noop}
+            />
+          </BotToolControlsContext.Provider>
         </div>
       ) : (
         <div className="min-h-0 flex-1" />

@@ -748,6 +748,7 @@ msgstr ""
 msgid "Access token"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Inbox.tsx
 msgid "Account"
@@ -2262,6 +2263,10 @@ msgstr ""
 msgid "Checkout has local changes. Clean it before updating."
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Chief"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose a bot shape, color, or upload an image"
 msgstr "Wähle eine Bot-Form und Farbe oder lade ein Bild hoch"
@@ -3762,6 +3767,7 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3918,6 +3924,7 @@ msgstr ""
 msgid "Dark"
 msgstr "Dunkel"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Data room"
@@ -4835,6 +4842,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5468,6 +5476,7 @@ msgstr ""
 msgid "Inactive"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Inbox"
@@ -5532,6 +5541,7 @@ msgstr ""
 #: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr ""
@@ -5778,6 +5788,7 @@ msgstr ""
 
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -8947,6 +8958,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx

@@ -478,7 +478,7 @@ export function MailApprovalCard({
               {mail.error}
             </p>
           ) : null}
-          {mail.outcome === "failed" && onOpenComposer && mail.connectionId ? (
+          {mail.outcome === "failed" && onOpenComposer ? (
             <div className="pt-3">
               <Button variant="outline" size="sm" onClick={() => onOpenComposer(mail)}>
                 <Trans>Open in composer</Trans>

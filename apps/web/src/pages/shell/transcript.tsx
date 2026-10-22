@@ -1774,17 +1774,18 @@ const MessageView = memo(function MessageView({
                   canAnswer={canAnswer}
                   botName={botToolControls?.editableBotName(message.botId)}
                   onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
-                  onOpenComposer={(failed) =>
-                    failed.connectionId
-                      ? botToolControls?.openComposer({
-                          connectionId: failed.connectionId,
-                          account: failed.account ?? "",
-                          to: failed.to,
-                          cc: failed.cc,
-                          bcc: failed.bcc,
-                          subject: failed.subject,
-                          body: failed.body,
-                        })
+                  onOpenComposer={
+                    block.mail.connectionId || botToolControls?.accountFromThread
+                      ? (failed) =>
+                          botToolControls?.openComposer({
+                            connectionId: failed.connectionId ?? "",
+                            account: failed.account ?? "",
+                            to: failed.to,
+                            cc: failed.cc,
+                            bcc: failed.bcc,
+                            subject: failed.subject,
+                            body: failed.body,
+                          })
                       : undefined
                   }
                   onDisableTool={
