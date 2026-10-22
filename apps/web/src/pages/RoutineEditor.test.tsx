@@ -245,3 +245,39 @@ it("shows a forced skill in the picker and keeps the instruction plain", async (
   el.remove();
   vi.unstubAllGlobals();
 });
+
+it("keeps @mentions in the instruction when there are no skills to pick", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  const noop = () => undefined;
+  await act(async () =>
+    root.render(
+      <RoutineEditor
+        draft={{ ...emptyRoutineDraft(), prompt: "Send the update to @alice every Monday." }}
+        onChange={noop}
+        editing={null}
+        timezone="America/New_York"
+        webhook={{ path: "/hook", secret: null, configured: false }}
+        githubPath="/gh"
+        messageProviders={[]}
+        skills={[]}
+        saving={false}
+        running={false}
+        error={null}
+        onBack={noop}
+        onClose={noop}
+        onSave={noop}
+        onTestRun={noop}
+        onDelete={noop}
+        onEnsureWebhook={async () => undefined}
+      />,
+    ),
+  );
+  expect((el.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
+    "Send the update to @alice every Monday.",
+  );
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});

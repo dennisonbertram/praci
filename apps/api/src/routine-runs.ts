@@ -86,7 +86,15 @@ export async function listRoutineRuns(
 }
 
 function firstLine(blocks: Prisma.JsonValue | undefined): string | null {
-  const line = historyMessageText(blocks ?? null)
+  // A subagent block contributes its result, not the task it was given.
+  const shown = Array.isArray(blocks)
+    ? blocks.map((block) =>
+        block && typeof block === "object" && !Array.isArray(block) && block.kind === "subagent"
+          ? { kind: "text", text: String(block.result ?? "") }
+          : block,
+      )
+    : null;
+  const line = historyMessageText(shown)
     .split("\n")
     .map((text) => text.trim())
     .find(Boolean);

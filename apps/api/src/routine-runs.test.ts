@@ -182,4 +182,29 @@ describe("routine history", () => {
     const history = await listRoutineRuns(prisma, actor, "routine-1");
     expect(RoutineHistorySchema.parse(history).runs[0]?.preview).toBe("Cash is steady.");
   });
+  it("previews a subagent result, not its task", async () => {
+    const { prisma, runs, messages } = fixture();
+    runs.mockResolvedValue([
+      {
+        id: "run-0",
+        botId: "bot-1",
+        threadId: "thread-1",
+        thread: { groupId: null },
+        status: "completed",
+        createdAt: at,
+        startedAt: at,
+        completedAt: at,
+      },
+    ]);
+    messages.mockResolvedValue([
+      {
+        id: "reply",
+        runId: "run-0",
+        threadId: "thread-1",
+        blocks: [{ kind: "subagent", task: "Research runway", result: "Cash is steady." }],
+      },
+    ]);
+    const history = await listRoutineRuns(prisma, actor, "routine-1");
+    expect(history.runs[0]?.preview).toBe("Cash is steady.");
+  });
 });

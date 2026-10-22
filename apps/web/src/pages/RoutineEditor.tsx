@@ -296,10 +296,14 @@ export function RoutineEditor({
     .filter((skill) => !isHiddenBuiltinSkill(skill))
     .sort((a, b) => Number(b.source === "user") - Number(a.source === "user"));
   // A skill is stored as an @mention in the instruction; the editor shows it in the picker instead.
-  const skill = extractRoutineSkillMentions(
-    draft.prompt,
-    pickableSkills.map((entry) => entry.name),
-  )[0];
+  // With no pickable skills the picker is hidden, so leave the text alone (an empty list would
+  // make the extractor guess and hide ordinary @mentions).
+  const skill = pickableSkills.length
+    ? extractRoutineSkillMentions(
+        draft.prompt,
+        pickableSkills.map((entry) => entry.name),
+      )[0]
+    : undefined;
   const instruction = skill ? withoutSkillMention(draft.prompt, skill) : draft.prompt;
   const zone = draft.timezone || timezone;
   const zones = Intl.supportedValuesOf("timeZone");
