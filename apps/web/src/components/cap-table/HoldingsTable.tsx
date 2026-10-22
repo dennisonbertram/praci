@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -38,8 +39,11 @@ export function HoldingsTable({
   rows,
   onAddContact,
   onOpenContact,
+  placeholderRows = 0,
 }: {
   rows: HoldingRow[];
+  /** With no rows, this many static skeleton rows keep the table's layout. */
+  placeholderRows?: number;
   onAddContact: (row: HoldingRow) => void;
   onOpenContact: (contactId: string) => void;
 }) {
@@ -71,6 +75,29 @@ export function HoldingsTable({
         </TableHeadRow>
       </TableHeader>
       <TableBody>
+        {rows.length === 0
+          ? Array.from({ length: placeholderRows }, (_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholder rows
+              <TableRow key={i} aria-hidden="true" className="group-data-[compact]/table:h-11">
+                <TableCell className="ps-2">
+                  <Skeleton static className="h-2.5 w-2/5" />
+                </TableCell>
+                <TableCell className="hidden @lg:table-cell">
+                  <Skeleton static className="h-2.5 w-14" />
+                </TableCell>
+                <TableCell className="hidden @lg:table-cell">
+                  <Skeleton static className="ms-auto h-2.5 w-3/4" />
+                </TableCell>
+                <TableCell className="hidden @lg:table-cell">
+                  <Skeleton static className="ms-auto h-2.5 w-3/5" />
+                </TableCell>
+                <TableCell className="pe-0">
+                  <Skeleton static className="ms-auto h-2.5 w-11" />
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            ))
+          : null}
         {rows.map((row) => {
           const shares = shareCount(row.shares, locale);
           const invested = usdFigure(row.amountUsd, 0, locale);
