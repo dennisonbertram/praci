@@ -50,7 +50,11 @@ function setup() {
   };
   prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => unknown) => fn(prisma));
   const events = { append: vi.fn(async () => ({})) };
-  const deps = { prisma: prisma as unknown as PrismaClient, events } as unknown as RouterDeps;
+  const deps = {
+    prisma: prisma as unknown as PrismaClient,
+    events,
+    env: { mailWritesDisabled: false },
+  } as unknown as RouterDeps;
   const handler = new RPCHandler(createRouter(deps));
   async function call(path: "get" | "save", input: unknown) {
     const { response } = await handler.handle(
