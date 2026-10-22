@@ -1017,9 +1017,10 @@ it("opens the contract from a click anywhere on its row, and shows the Renewal n
   const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
     td.textContent?.startsWith("Auto-renews"),
   );
-  // A narrow column clips the notice (the title holds it all) rather than running into Value.
-  expect(renewalCell?.className).toContain("truncate");
+  // The notice wraps in its column instead of being clipped.
+  expect(renewalCell?.className).not.toContain("truncate");
   expect(renewalCell?.className).not.toContain("whitespace-nowrap");
+  expect(renewalCell?.textContent).toBe(renewalCell?.getAttribute("title"));
   await click(row?.querySelectorAll("td")[3]);
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
     `/app/data-room?item=${contracts[0]!.dataRoomItemId}`,

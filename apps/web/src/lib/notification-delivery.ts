@@ -37,16 +37,22 @@ export function syncApprovalToasts(
   options: {
     complete: boolean;
     onSeen: (n: NotificationDto) => () => void;
+    /** Runs when the person closes that approval's toast with X; the server then stops listing it. */
+    onDismiss?: (n: NotificationDto) => () => void;
     skip?: (n: NotificationDto) => boolean;
   },
 ) {
+  // Seen is not answered: the server lists an approval until it is answered or dismissed with X.
   const unanswered = notifications.filter(
-    (n) => n.importance === "attention" && !n.seenAt && isApprovalRequest(n),
+    (n) => n.importance === "attention" && isApprovalRequest(n),
   );
   for (const n of unanswered) {
     if (hasApprovalToast(n.id) || options.skip?.(n)) continue;
     const { approval: _approval, botId, ...toast } = attentionFromDto(n);
-    enqueueApprovalToast({ ...toast, onSeen: options.onSeen(n) }, { botId });
+    enqueueApprovalToast(
+      { ...toast, onSeen: options.onSeen(n) },
+      { botId, onDismiss: options.onDismiss?.(n) },
+    );
   }
   if (options.complete) retainApprovalToasts(new Set(unanswered.map((n) => n.id)));
 }
@@ -65,6 +71,15 @@ export function resultShownInOpenChat(
   const inOpenChat = Boolean(openBotId) && n.botId === openBotId;
   if (n.kind === "failed") return inOpenChat;
   return inOpenChat && n.kind === "needs_input" && tabInFront;
+}
+
+/** An approval whose card is on screen: its bot's chat is open, or its group chat is the current page. */
+export function approvalInOpenChat(
+  n: Pick<NotificationDto, "botId" | "link">,
+  openBotId: string | undefined,
+  path: string,
+): boolean {
+  return (Boolean(n.botId) && n.botId === openBotId) || (n.link !== null && n.link === path);
 }
 
 /**
@@ -87,6 +102,8 @@ export type AttentionNotification = NotificationToastInput & {
   approval?: boolean;
   /** The agent whose chat holds the approval card; its toast goes when that chat opens or the card is answered. */
   botId?: string | null;
+  /** Runs when the person closes the approval toast with X. */
+  onDismiss?: () => void;
 };
 
 /** Present (visible tab with focus) -> in-app toast; otherwise -> OS notification. */
@@ -119,8 +136,8 @@ export type DeliveryDeps = {
 export const AWAY_DELAY_MS = 1500;
 
 const defaultDeps = (): DeliveryDeps => ({
-  toast: ({ approval, botId, ...toast }) =>
-    approval ? enqueueApprovalToast(toast, { botId }) : enqueueNotificationToast(toast),
+  toast: ({ approval, botId, onDismiss, ...toast }) =>
+    approval ? enqueueApprovalToast(toast, { botId, onDismiss }) : enqueueNotificationToast(toast),
   requestPermission: () => requestBrowserNotificationPermission(),
   show: (title, options, onClick) => {
     const shown = new Notification(title, options);

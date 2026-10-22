@@ -5741,8 +5741,10 @@ export function ShellPage() {
         <CommandPalette
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
-          // An email's chat is found once, under Chats.
-          bots={bots.filter((bot) => !isMailThreadAgentSpawnKey(bot.spawnKey))}
+          // An email's chat is found once, under Chats; the GTM page already opens the GTM agent.
+          bots={bots.filter(
+            (bot) => !isMailThreadAgentSpawnKey(bot.spawnKey) && !isGtmAgentSpawnKey(bot.spawnKey),
+          )}
           onSelectBot={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);

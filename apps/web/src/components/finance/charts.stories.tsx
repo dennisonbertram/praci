@@ -1,6 +1,6 @@
 import type { CashPoint } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { BurnLines, Chart, LineChart, MonthBars, StackBar } from "./charts";
+import { BurnLines, Chart, LineChart, MonthBars } from "./charts";
 
 const meta = {
   title: "Finance/Charts",
@@ -254,23 +254,4 @@ export const Months: Story = {
       items={months.map((m, i) => ({ label: m.slice(5), cents: 120_000 + i * 45_000 }))}
     />
   ),
-};
-
-export const Stack: Story = {
-  render: () => (
-    <StackBar
-      label="Spend by category"
-      onOpen={() => undefined}
-      segments={[
-        { key: "a", label: "Software", cents: 500_000 },
-        { key: "b", label: "Travel", cents: 300_000 },
-        { key: "c", label: "Meals", cents: 150_000 },
-        { key: "d", label: "Other", cents: 50_000 },
-      ]}
-    />
-  ),
-};
-
-export const StackEmpty: Story = {
-  render: () => <StackBar label="Spend by category" onOpen={() => undefined} segments={[]} />,
 };

@@ -232,3 +232,35 @@ export const WorkingLog: Story = {
     </div>
   ),
 };
+
+/** A mail approval card is wide, so its hover actions sit under it instead of beside it. */
+export const MailApproval: Story = {
+  render: () => (
+    <div className="h-[420px] w-[760px]">
+      <Transcript
+        {...baseProps}
+        messages={[
+          message(1, "user", "Send Sam the sample update."),
+          {
+            ...message(2, "bot", ""),
+            blocks: [
+              {
+                kind: "ask",
+                text: "Send this email?",
+                mail: {
+                  tool: "mail_send",
+                  to: ["sam@example.test"],
+                  cc: [],
+                  bcc: [],
+                  subject: "Sample update",
+                  body: "Hi Sam, here is the sample update.",
+                },
+              },
+            ],
+          },
+        ]}
+        lastReadSeq={2}
+      />
+    </div>
+  ),
+};

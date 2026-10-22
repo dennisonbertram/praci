@@ -460,6 +460,7 @@ function mailApproval(
 
 /** Edits as stored on the call: recipients parsed to address lists. */
 export type NormalizedMailEdits = {
+  account?: string;
   to?: string[];
   cc?: string[];
   bcc?: string[];
@@ -493,6 +494,7 @@ export function normalizeMailEdits(
       ok: true,
       edits: {
         ...lists,
+        ...(edits.account?.trim() ? { account: edits.account.trim() } : {}),
         ...(edits.subject === undefined ? {} : { subject: edits.subject }),
         ...(edits.body === undefined ? {} : { body: edits.body }),
       },

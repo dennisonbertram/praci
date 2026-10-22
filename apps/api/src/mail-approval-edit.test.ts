@@ -122,6 +122,48 @@ describe("answerEditedMailApproval", () => {
     expect(t.sent[0]).toMatchObject({ connectionId: "conn-2", replyToMessageId: "cached-1" });
   });
 
+  it("sends from the account the person picked on the card when the agent named none", async () => {
+    const { account: _named, ...unnamed } = stored;
+    const t = setup({ request: unnamed });
+    Object.assign(t.deps, {
+      mail: {
+        listAccounts: async () => [
+          { id: "conn-1", address: "me@example.test" },
+          { id: "conn-2", address: "sales@example.test" },
+        ],
+      },
+    });
+    await t.edit({ account: "conn-2" });
+    expect(t.sent[0]).toMatchObject({ connectionId: "conn-2" });
+    // The picked id selects the connection; it is not published on the card.
+    expect(
+      (t.answers[0] as unknown as { mailDenial: { mail: Record<string, unknown> } }).mailDenial
+        .mail,
+    ).not.toHaveProperty("account");
+  });
+
+  it("resolves a picked connection by id even when two labels share a prefix", async () => {
+    const { account: _named, ...unnamed } = stored;
+    const t = setup({ request: unnamed });
+    Object.assign(t.deps, {
+      mail: {
+        listAccounts: async () => [
+          { id: "conn-1", label: "Sales Archive" },
+          { id: "conn-2", label: "Sales" },
+        ],
+      },
+    });
+    await t.edit({ account: "conn-2" });
+    expect(t.sent[0]).toMatchObject({ connectionId: "conn-2" });
+  });
+
+  it("rejects a picked connection id that is not one of the caller's accounts", async () => {
+    const t = setup();
+    expect(await code(t.edit({ account: "someone-elses-conn" }))).toBe("BAD_REQUEST");
+    expect(t.effect.status).toBe("intended");
+    expect(t.compose.send).not.toHaveBeenCalled();
+  });
+
   it("publishes only what the person typed, never the stored call's unredacted fields", async () => {
     const t = setup({ request: { ...stored, body: "Key is sk-live-123. Old text." } });
     await t.edit({ subject: "Monday" });

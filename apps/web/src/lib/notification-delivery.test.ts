@@ -9,6 +9,7 @@ vi.mock("./approval-toasts", () => ({
 const toasts = vi.mocked(approvalToasts);
 
 import {
+  approvalInOpenChat,
   attentionFromDto,
   deliverNotification,
   openNotificationLink,
@@ -25,6 +26,17 @@ describe("shouldToast", () => {
     [false, false, false],
   ])("visible=%s focused=%s -> %s", (visible, focused, expected) => {
     expect(shouldToast({ visible, focused })).toBe(expected);
+  });
+});
+
+describe("approvalInOpenChat", () => {
+  it("recognises an open bot chat and the open group page, and nothing else", () => {
+    const group = { botId: null, link: "/app/g/g1" };
+    expect(approvalInOpenChat(group, undefined, "/app/g/g1")).toBe(true);
+    expect(approvalInOpenChat(group, undefined, "/app/g/g2")).toBe(false);
+    expect(approvalInOpenChat({ botId: "b1", link: "/app/b1" }, "b1", "/app/b1")).toBe(true);
+    expect(approvalInOpenChat({ botId: "b1", link: null }, "b2", "/app")).toBe(false);
+    expect(approvalInOpenChat({ botId: null, link: null }, undefined, "/app")).toBe(false);
   });
 });
 
@@ -265,9 +277,13 @@ describe("syncApprovalToasts", () => {
     expect(toasts.enqueueApprovalToast.mock.calls[0]?.[0]).toMatchObject({ href: "/app/mercury" });
     expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set(["n9"]));
   });
-  it("shows nothing for a seen approval and drops toasts the server no longer lists", () => {
+  it("restores a pending approval whose card was already seen (viewing it is not answering it)", () => {
     syncApprovalToasts([{ ...approval, seenAt: "2030-01-01T00:01:00.000Z" }], options);
-    expect(toasts.enqueueApprovalToast).not.toHaveBeenCalled();
+    expect(toasts.enqueueApprovalToast).toHaveBeenCalledTimes(1);
+    expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set(["n9"]));
+  });
+  it("drops toasts the server no longer lists", () => {
+    syncApprovalToasts([], options);
     expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set());
   });
   it("leaves toasts alone when the list was cut short or the toast already shows", () => {

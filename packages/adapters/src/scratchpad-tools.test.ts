@@ -1062,6 +1062,7 @@ describe("scratchpad tools store", () => {
     expect(unknownOverride.$transaction).not.toHaveBeenCalled();
 
     const findMany = vi.fn(async () => [
+      row({ id: "goal", category: "goal", status: "open", proof: null }),
       row({
         id: "later",
         status: "open",
@@ -1087,6 +1088,13 @@ describe("scratchpad tools store", () => {
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       }),
     );
+  });
+
+  it("does not schedule an open goal when no task is workable", async () => {
+    const prisma = prismaWith({
+      findMany: vi.fn(async () => [row({ category: "goal", status: "open", proof: null })]),
+    });
+    await expect(findWorkableOpenItem({ prisma: prisma as never }, scope)).resolves.toBeNull();
   });
 
   it("keeps remove and list wrapper scoped", async () => {
