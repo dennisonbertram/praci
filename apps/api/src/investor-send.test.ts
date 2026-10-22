@@ -111,7 +111,11 @@ function setup(results: Record = {}) {
     prisma: prisma as never,
     compose,
     gmailConnectionIds: async () => ["conn-1"],
-    portalLink: async (_actor, contactId) => `https://app.test/portal/open#tok-${contactId}`,
+    portalLink: async (_actor, contactId) => ({
+      link: `https://app.test/portal/open#tok-${contactId}`,
+      email: ((tables.contact.find((c) => c.id === contactId) as Record | undefined)?.email ??
+        null) as string | null,
+    }),
     email: { send: vi.fn(async () => undefined) },
   };
   return { deps, tables, calls, compose, scope, prisma };
@@ -248,7 +252,10 @@ describe("portal links in investor updates", () => {
     const { deps, calls } = setup();
     deps.portalLink = async (_actor, contactId) => {
       if (contactId === "ann") throw new Error("no link");
-      return `https://app.test/portal/open#tok-${contactId}`;
+      return {
+        link: `https://app.test/portal/open#tok-${contactId}`,
+        email: `${contactId}@example.test`,
+      };
     };
     await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
     expect(calls.map((c) => c.to)).toEqual(["bob@example.test"]);
@@ -263,9 +270,27 @@ describe("portal links in investor updates", () => {
     expect(calls.map((c) => c.to)).toEqual(["bob@example.test"]);
   });
 
+  it("sends to the address the link was minted for, even if the contact's address changed meanwhile", async () => {
+    const { deps, calls } = setup();
+    deps.portalLink = async (_actor, contactId) => ({
+      link: `https://app.test/portal/open#tok-${contactId}`,
+      email: `${contactId}-new@example.test`,
+    });
+    await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
+    expect(calls.map((c) => c.to)).toEqual(["ann-new@example.test", "bob-new@example.test"]);
+  });
+
+  it("still emails a board contact whose investor access was revoked", async () => {
+    const { deps, calls, tables } = setup();
+    tables.investorUpdate[0] = { ...tables.investorUpdate[0], audience: "board" };
+    Object.assign(tables.contact[0] as Record, { portalBlockedAt: new Date() });
+    await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
+    expect(calls.map((c) => c.to)).toEqual(["ann@example.test", "bob@example.test"]);
+  });
+
   it("gives a board update no link", async () => {
     const { deps, calls, tables } = setup();
-    const portalLink = vi.fn(async () => "x");
+    const portalLink = vi.fn(async () => ({ link: "x", email: "x@example.test" }));
     deps.portalLink = portalLink;
     tables.investorUpdate[0] = { ...tables.investorUpdate[0], audience: "board" };
     await (await startInvestorUpdateSend(deps, actor, "upd1")).done;

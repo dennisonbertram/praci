@@ -36,12 +36,12 @@ export class PortalBlockedError extends Error {
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const randomToken = () => randomBytes(32).toString("base64url");
 
-type Locked = { kind: string; portalBlockedAt: Date | null };
+type Locked = { kind: string; portalBlockedAt: Date | null; email: string | null };
 
 /** Locks the contact row, so mint, exchange, revoke, unblock and an email change run one at a time. */
 async function lockContact(tx: Tx, scope: Scope, contactId: string): Promise<Locked | null> {
   const rows = await tx.$queryRaw<Locked[]>`
-    SELECT "kind", "portalBlockedAt" FROM "contacts"
+    SELECT "kind", "portalBlockedAt", "email" FROM "contacts"
     WHERE "id" = ${contactId} AND "spaceId" = ${scope.spaceId} AND "userId" = ${scope.userId}
     FOR UPDATE`;
   return rows[0] ?? null;
@@ -54,15 +54,16 @@ export async function endPortalAccess(tx: Tx, contactId: string): Promise<void> 
 }
 
 /**
- * Mints a link token for an investor contact and returns it; only its hash is stored. A contact can
- * hold several live tokens. Expired ones are deleted here.
+ * Mints a link token for an investor contact; only its hash is stored. `email` is the address the
+ * contact has at that moment, read under the same lock, so a link is only ever sent to the address
+ * that was current when it was minted. A contact can hold several live tokens; expired ones go here.
  */
-export async function mintPortalToken(
+export async function mintPortalTokenFor(
   prisma: Db,
   actor: Scope,
   contactId: string,
   now = new Date(),
-): Promise<string> {
+): Promise<{ token: string; email: string | null }> {
   const scope = ownerOf(actor);
   return prisma.$transaction(async (tx) => {
     const contact = await lockContact(tx, scope, contactId);
@@ -79,8 +80,17 @@ export async function mintPortalToken(
       },
     });
     await tx.contact.update({ where: { id: contactId }, data: { portalLinkSentAt: now } });
-    return token;
+    return { token, email: contact.email };
   });
+}
+
+export async function mintPortalToken(
+  prisma: Db,
+  actor: Scope,
+  contactId: string,
+  now = new Date(),
+): Promise<string> {
+  return (await mintPortalTokenFor(prisma, actor, contactId, now)).token;
 }
 
 /**
@@ -247,13 +257,6 @@ export async function getSharedDocument(prisma: Db, principal: PortalPrincipal, 
   };
 }
 
-/** The investor contacts with these ids that belong to the owner. */
-const ownInvestors = (prisma: Db, scope: Scope, ids: readonly string[]) =>
-  prisma.contact.findMany({
-    where: { ...scope, id: { in: [...ids] }, kind: "investor" },
-    select: { id: true },
-  });
-
 /** Shares a Data room document with investor contacts and returns the ones newly given it. */
 export async function shareDocument(
   prisma: Db,
@@ -267,18 +270,27 @@ export async function shareDocument(
     select: { id: true },
   });
   if (!item) throw new IsolationError("Document not found");
-  const wanted = (await ownInvestors(prisma, scope, contactIds)).map((c) => c.id);
-  const existing = await prisma.investorShare.findMany({
-    where: { dataRoomItemId: itemId, ...scope, contactId: { in: wanted } },
-    select: { contactId: true },
+  // The contacts are locked while the shares are written, so a kind change that removes shares
+  // cannot be undone by a share that was checked just before it.
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "contacts"
+      WHERE "id" = ANY(${[...contactIds]}) AND "spaceId" = ${scope.spaceId}
+        AND "userId" = ${scope.userId} AND "kind" = 'investor'
+      ORDER BY "id" FOR UPDATE`;
+    const wanted = locked.map((c) => c.id);
+    const existing = await tx.investorShare.findMany({
+      where: { dataRoomItemId: itemId, ...scope, contactId: { in: wanted } },
+      select: { contactId: true },
+    });
+    const had = new Set(existing.map((s) => s.contactId));
+    const added = wanted.filter((id) => !had.has(id));
+    await tx.investorShare.createMany({
+      data: added.map((contactId) => ({ ...scope, contactId, dataRoomItemId: itemId })),
+      skipDuplicates: true,
+    });
+    return added;
   });
-  const had = new Set(existing.map((s) => s.contactId));
-  const added = wanted.filter((id) => !had.has(id));
-  await prisma.investorShare.createMany({
-    data: added.map((contactId) => ({ ...scope, contactId, dataRoomItemId: itemId })),
-    skipDuplicates: true,
-  });
-  return added;
 }
 
 export async function unshareDocument(

@@ -32,7 +32,7 @@ export interface InvestorSendDeps {
   gmailConnectionIds: (actor: Actor) => Promise<string[]>;
   mailWritesDisabled?: boolean;
   /** Mints a new portal link for an investor contact. Throws when the contact has no portal access. */
-  portalLink?: (actor: Actor, contactId: string) => Promise<string>;
+  portalLink?: (actor: Actor, contactId: string) => Promise<{ link: string; email: string | null }>;
   /** The instance's transactional email, for portal notices; absent when none is configured. */
   email?: { send(message: TransactionalEmail): Promise<void> };
 }
@@ -136,17 +136,19 @@ async function sendLoop(
       const n = await recordInvestorAttempt(deps.prisma, actor, update.id, contactId);
       const clientId = attemptKey(update.id, contactId, n);
       try {
-        if (!contact?.email) throw new Error("no email");
-        // Every message carries its own freshly minted link; board mail carries none.
-        const link =
+        // Every message carries its own freshly minted link; board mail carries none. The address
+        // comes with the link, read under the contact lock, so the link goes to the address it was made for.
+        const minted =
           update.audience === "investors" && deps.portalLink
             ? await deps.portalLink(actor, contactId)
             : null;
-        const content = withLink(update.body, link);
+        const to = minted ? minted.email : (contact?.email ?? null);
+        if (!to) throw new Error("no email");
+        const content = withLink(update.body, minted?.link ?? null);
         const result = await deps.compose(actor, {
           clientId,
           connectionId,
-          to: contact.email,
+          to,
           cc: "",
           bcc: "",
           subject: update.subject,
@@ -195,7 +197,8 @@ export async function startInvestorUpdateSend(
       ...scope,
       id: { in: current.recipientContactIds },
       email: { not: null },
-      portalBlockedAt: null,
+      // A revoked investor is never emailed an investor update; the block means nothing for the board.
+      ...(current.audience === "investors" ? { portalBlockedAt: null } : {}),
     },
     select: { id: true },
   });
@@ -213,7 +216,7 @@ export async function startInvestorUpdateSend(
       ...scope,
       id: { in: claimed.recipientContactIds },
       email: { not: null },
-      portalBlockedAt: null,
+      ...(claimed.audience === "investors" ? { portalBlockedAt: null } : {}),
     },
     select: { id: true },
   });
@@ -262,11 +265,12 @@ export async function postInvestorUpdate(
   let notified = 0;
   for (const contact of await portalNoticeRecipients(deps.prisma, scope)) {
     try {
-      const url = await link(actor, contact.id);
+      const minted = await link(actor, contact.id);
+      if (!minted.email) continue;
       await email.send({
-        to: contact.email,
+        to: minted.email,
         subject: update.subject,
-        text: `${company} posted an update.\n\n${LINK_LABEL}: ${url}`,
+        text: `${company} posted an update.\n\n${LINK_LABEL}: ${minted.link}`,
       });
       notified += 1;
     } catch (error) {
@@ -309,21 +313,21 @@ export async function deliverPortalLinks(
       select: { name: true, email: true },
     });
     if (!contact) continue;
-    let url: string;
+    let minted: { link: string; email: string | null };
     try {
-      url = await mint(actor, contactId);
+      minted = await mint(actor, contactId);
     } catch (error) {
       if (options.strict || !(error instanceof PortalBlockedError)) throw error;
       continue;
     }
-    if (options.copy || !deps.email || !contact.email) {
-      links.push({ contactId, name: contact.name, link: url });
+    if (options.copy || !deps.email || !minted.email) {
+      links.push({ contactId, name: contact.name, link: minted.link });
       continue;
     }
     await deps.email.send({
-      to: contact.email,
+      to: minted.email,
       subject: `${company} · your link`,
-      text: `Your link to ${company}'s investor portal:\n\n${url}`,
+      text: `Your link to ${company}'s investor portal:\n\n${minted.link}`,
     });
   }
   return { links };

@@ -288,7 +288,7 @@ import {
   markInvestorUpdateDelivered,
   markSeen,
   markShown,
-  mintPortalToken,
+  mintPortalTokenFor,
   moveSidebarFolder,
   moveSidebarItem,
   NotificationValidationError,
@@ -1437,8 +1437,10 @@ export function createRouter(deps: RouterDeps) {
         )
       ).map((account) => account.id),
     email: deps.email,
-    portalLink: async (actor: Actor, contactId: string) =>
-      `${deps.env.webOrigin}/portal/open#${await mintPortalToken(deps.prisma, actor, contactId)}`,
+    portalLink: async (actor: Actor, contactId: string) => {
+      const { token, email } = await mintPortalTokenFor(deps.prisma, actor, contactId);
+      return { link: `${deps.env.webOrigin}/portal/open#${token}`, email };
+    },
   };
   const legalDeps = {
     prisma: deps.prisma,

@@ -108,9 +108,14 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
 
   // A revoked contact is never emailed: it is left out of the recipients whatever was saved.
   const recipients = useMemo(() => {
-    const revoked = new Set(contacts.filter((c) => c.portalBlockedAt).map((c) => c.id));
+    // The portal block means nothing for the board.
+    const revoked = new Set(
+      contacts
+        .filter((c) => c.portalBlockedAt && update?.audience === "investors")
+        .map((c) => c.id),
+    );
     return ticked.filter((id) => !revoked.has(id));
-  }, [contacts, ticked]);
+  }, [contacts, ticked, update?.audience]);
 
   const draft = update?.status === "draft";
   const gmail = (accounts?.length ?? 0) > 0;
@@ -417,7 +422,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
               ) : null}
               {contacts.map((contact) => {
                 const noEmail = !contact.email;
-                const revoked = Boolean(contact.portalBlockedAt);
+                const revoked = Boolean(contact.portalBlockedAt) && update.audience === "investors";
                 const checked = !noEmail && !revoked && ticked.includes(contact.id);
                 return (
                   <div
