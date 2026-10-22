@@ -21,6 +21,7 @@ export const INVESTORS_AGENT_BUILTIN_TOOLS = [
   "contacts_add",
   "contacts_save",
   "investor_update_draft",
+  "audit_request_upsert",
   "skill_read",
   "finance_overview",
   "finance_breakdown",
@@ -46,8 +47,14 @@ export const INVESTORS_AGENT_BUILTIN_TOOLS = [
 export const InvestorAudienceSchema = z.enum(["investors", "board"]);
 export type InvestorAudience = z.infer<typeof InvestorAudienceSchema>;
 
-/** Partly sent is derived: sent, or sending with no movement for 10 minutes, with a failed or unknown delivery. */
-export const InvestorUpdateStatusSchema = z.enum(["draft", "sending", "sent", "partly_sent"]);
+/** Posted: on the portal with no email sent (no Gmail). Partly sent is derived: sent, or sending with no movement for 10 minutes, with a failed or unknown delivery. */
+export const InvestorUpdateStatusSchema = z.enum([
+  "draft",
+  "sending",
+  "sent",
+  "partly_sent",
+  "posted",
+]);
 export type InvestorUpdateStatus = z.infer<typeof InvestorUpdateStatusSchema>;
 
 /** `unknown`: an attempt with no recorded result. It is never resent unless the founder confirms. */
@@ -100,3 +107,81 @@ export const InvestorUpdateRetryInputSchema = z.object({
 
 export const InvestorReminderCadenceSchema = z.enum(["monthly", "quarterly", "off"]);
 export type InvestorReminderCadence = z.infer<typeof InvestorReminderCadenceSchema>;
+
+/** Post to portal: the update, and how many investor contacts the portal notice reached. */
+export const InvestorPostResultSchema = z.object({
+  update: InvestorUpdateSchema,
+  notified: z.number().int().min(0),
+});
+
+/** One portal link, shown once because only its hash is stored. */
+export const PortalLinkSchema = z.object({ contactId: Id, name: z.string(), link: z.string() });
+export type PortalLink = z.infer<typeof PortalLinkSchema>;
+
+/** Gives investor contacts a Data room document. `emailLink` sends each new one a fresh link. */
+export const InvestorShareInputSchema = z.object({
+  itemId: Id,
+  contactIds: z.array(Id).min(1).max(1000),
+  emailLink: z.boolean(),
+});
+/** Links that could not be emailed (no email provider, or no address), for the founder to paste. */
+export const InvestorShareResultSchema = z.object({ links: z.array(PortalLinkSchema) });
+export const InvestorUnshareInputSchema = z.object({ itemId: Id, contactId: Id });
+
+/** Resend: emails a fresh link. `copy`, or no email provider, returns the link instead. */
+export const PortalResendInputSchema = z.object({ contactId: Id, copy: z.boolean().optional() });
+export const PortalResendResultSchema = z.object({ link: z.string().nullable() });
+
+/** What an investor sees at `/api/portal/*`; nothing else is ever returned to them. */
+export const PortalMeSchema = z.object({ company: z.string(), name: z.string() });
+export const PortalUpdateSchema = z.object({
+  id: Id,
+  subject: z.string(),
+  body: z.string(),
+  sentAt: IsoDate.nullable(),
+});
+export const PortalDocumentSchema = z.object({
+  id: Id,
+  name: z.string(),
+  size: z.number().int().min(0),
+});
+export type PortalMe = z.infer<typeof PortalMeSchema>;
+export type PortalUpdate = z.infer<typeof PortalUpdateSchema>;
+export type PortalDocument = z.infer<typeof PortalDocumentSchema>;
+export const AuditRequestStatusSchema = z.enum(["open", "drafted", "done", "dismissed"]);
+export type AuditRequestStatus = z.infer<typeof AuditRequestStatusSchema>;
+
+const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** An auditor, 409A or DocuSign request. Only the founder closes one (done or dismissed). */
+export const AuditRequestSchema = z.object({
+  id: Id,
+  fund: z.string(),
+  asOf: Day.nullable(),
+  /** False when the statement had to use current holdings. */
+  asOfMatched: z.boolean(),
+  dueDate: Day.nullable(),
+  status: AuditRequestStatusSchema,
+  mailThreadId: z.string().nullable(),
+  connectionId: Id.nullable(),
+  /** Gmail draft id. */
+  draftRef: z.string().nullable(),
+  /** The sender is an Auditor contact. */
+  senderKnown: z.boolean(),
+  notes: z.string(),
+  dataRoomItemId: Id.nullable(),
+  /** A drafting run started in the last few minutes, so Draft reply is hidden. */
+  drafting: z.boolean(),
+  /** Mail arrived in the thread after the draft was made. */
+  newMail: z.boolean(),
+  createdAt: IsoDate,
+});
+export type AuditRequest = z.infer<typeof AuditRequestSchema>;
+
+export const AuditRequestListInputSchema = z.object({ includeDone: z.boolean().optional() });
+
+/** Closing is the only change the founder makes. */
+export const AuditRequestUpdateInputSchema = z.object({
+  id: Id,
+  status: z.enum(["done", "dismissed"]),
+});

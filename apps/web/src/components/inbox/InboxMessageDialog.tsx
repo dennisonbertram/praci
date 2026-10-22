@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Skeleton,
+  Spinner,
 } from "@rakazo/ui-web";
 import {
   Archive,
@@ -419,7 +420,7 @@ function InboxMessage({
                   );
                 }}
               >
-                <Bot aria-hidden="true" />
+                {asking ? <Spinner aria-hidden="true" /> : <Bot aria-hidden="true" />}
                 <Trans>Ask agent</Trans>
               </Button>
             ) : null}

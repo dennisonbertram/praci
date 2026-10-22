@@ -130,7 +130,7 @@ describe("greeting without a name", () => {
 });
 
 describe("company focus", () => {
-  it("points to the Finance, Cap Table and Data room pages after the email cards", async () => {
+  it("points to the Finance, Investors and Data room pages after the email cards", async () => {
     const { deps, actor } = fixture([
       { connectorId: "composio", slug: "gmail", name: "Gmail", connected: false, logo: null },
       {

@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { Contact, ContactKind, ContactStage } from "@rakazo/contracts";
+import type { Contact, ContactKind, ContactLinked, ContactStage } from "@rakazo/contracts";
 import { ContactEmailSchema, ContactStageSchema } from "@rakazo/contracts";
 import {
   Button,
@@ -21,6 +21,7 @@ import { useRef, useState } from "react";
 import { centsFromText } from "../lib/dollars-input";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
+import { ContactDeleteConfirm, hasLinks } from "./ContactDeleteConfirm";
 
 export type ContactPrefill = {
   name: string;
@@ -81,7 +82,8 @@ export function ContactDialog({
   contacts?: readonly Contact[];
   onClose: () => void;
   onSaved: (saved: Contact) => void;
-  onDeleted?: (contact: Contact) => void;
+  /** `undoable` is false when the contact had linked data, which Undo cannot restore. */
+  onDeleted?: (contact: Contact, undoable?: boolean) => void;
   onOpenContact?: (contact: Contact) => void;
   /** Opened from the Cap table, where a hint says contacts do not change Carta. */
   fromCapTable?: boolean;
@@ -103,6 +105,7 @@ export function ContactDialog({
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
   const emailInput = useRef<HTMLInputElement>(null);
+  const [confirming, setConfirming] = useState<ContactLinked | null>(null);
   const names = contactKindNames();
   const stageNames = contactStageNames();
   // Stage, check size and next step belong to a prospect; the dialog is shared with the Contacts page.
@@ -115,18 +118,41 @@ export function ContactDialog({
       )
     : undefined;
 
-  async function run<T>(action: () => Promise<T>, done: (result: T) => void) {
+  async function run<T>(
+    action: () => Promise<T>,
+    done: (result: T) => void,
+    closes: (result: T) => boolean = () => true,
+  ) {
     setBusy(true);
     setError("");
     try {
-      done(await action());
-      onClose();
+      const result = await action();
+      done(result);
+      if (closes(result)) onClose();
+      else setBusy(false);
     } catch (cause) {
       setError(errorText(cause));
       setBusy(false);
       // The duplicate-email error belongs to the Email field.
       if (sameEmail) emailInput.current?.focus();
     }
+  }
+
+  /** Delete: a contact with linked data asks first and has no Undo; any other keeps Undo. */
+  function remove(target: Contact) {
+    void run(
+      async () => {
+        const linked = await rpc.contacts.linked({ id: target.id });
+        if (hasLinks(linked)) return linked;
+        await rpc.contacts.delete({ id: target.id });
+        return null;
+      },
+      (linked) => {
+        if (linked) setConfirming(linked);
+        else onDeleted?.(target);
+      },
+      (linked) => linked === null,
+    );
   }
 
   function submit(event: FormEvent) {
@@ -350,12 +376,7 @@ export function ContactDialog({
                 variant="destructive"
                 className="me-auto"
                 disabled={busy}
-                onClick={() =>
-                  void run(
-                    () => rpc.contacts.delete({ id: contact.id }),
-                    () => onDeleted?.(contact),
-                  )
-                }
+                onClick={() => remove(contact)}
               >
                 <Trans>Delete</Trans>
               </Button>
@@ -369,6 +390,20 @@ export function ContactDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      {contact && confirming ? (
+        <ContactDeleteConfirm
+          contact={contact}
+          linked={confirming}
+          busy={busy}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() =>
+            void run(
+              () => rpc.contacts.delete({ id: contact.id }),
+              () => onDeleted?.(contact, false),
+            )
+          }
+        />
+      ) : null}
     </Dialog>
   );
 }

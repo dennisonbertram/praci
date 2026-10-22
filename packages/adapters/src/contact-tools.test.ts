@@ -278,12 +278,21 @@ describe("contact tools", () => {
       updatedAt: new Date(0),
     };
     const findFirst = vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ id: "c1" });
-    const updateMany = vi.fn(async () => ({ count: 1 }));
     const create = vi.fn();
     const upsert = vi.fn();
+    const update = vi.fn(async () => row);
     const findUniqueOrThrow = vi.fn(async () => ({ ...row, name: "Ada Capital" }));
+    // The write runs in a transaction that locks the row, whose email and kind are read first.
+    const tx = {
+      $queryRaw: vi.fn(async () => [{ email: row.email, kind: row.kind }]),
+      contact: { update, findUniqueOrThrow },
+      investorPortalToken: { deleteMany: vi.fn() },
+      portalSession: { deleteMany: vi.fn() },
+      investorShare: { deleteMany: vi.fn() },
+    };
     const prisma = {
-      contact: { findFirst, updateMany, create, upsert, findUniqueOrThrow },
+      contact: { findFirst, create, upsert },
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
     } as never;
     const args = { name: "Ada Capital", email: "ada@example.test" };
     const missing = await contactToolFromTool("contacts_save", { prisma, scope }, args);

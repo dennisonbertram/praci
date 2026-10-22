@@ -314,6 +314,15 @@ describe("messaging another bot", () => {
     expect(sent.ok && sent.note).toContain("Continue independent work");
   });
 
+  it("gives the sender the delegate's chat link for approvals", async () => {
+    const harness = deps();
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "email Priya",
+    });
+    expect(sent.ok && sent.note).toContain("[Open Analyst](/app/bot-target)");
+  });
+
   it("refuses a bot messaging itself", async () => {
     const harness = deps({
       bots: [{ id: "bot-sender", name: "Researcher", title: "", thread: { id: "thread-sender" } }],

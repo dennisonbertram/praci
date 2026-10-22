@@ -62,3 +62,21 @@ export const Empty: Story = {
       },
     }),
 };
+
+/** A plain-text answer to a draft request offers Reply with draft. */
+export const DraftAnswered: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "threads.get": {
+        threadId: "thread_email_agent",
+        cursor: 2,
+        messages: [
+          message(1, "user", "Draft a reply"),
+          message(2, "bot", "Hi Sam, thanks for sending this over. I will sign it today."),
+        ],
+        olderCursor: null,
+        botId: bot.id,
+        run: null,
+      },
+    }),
+};

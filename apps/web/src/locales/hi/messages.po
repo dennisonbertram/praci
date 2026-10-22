@@ -379,6 +379,10 @@ msgstr ""
 msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr ""
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "{count, plural, one {access to # shared document} other {access to # shared documents}}"
+msgstr ""
+
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr ""
@@ -760,12 +764,13 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
+#. placeholder {0}: audit.fund
 #. placeholder {0}: bot.name
 #. placeholder {0}: contact.name
-#. placeholder {0}: group.spaceName
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/components/fundraising/Pipeline.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
@@ -1223,6 +1228,10 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "इस प्रोवाइडर के लिए API कुंजी संग्रहीत है, सब्सक्रिप्शन साइन-इन नहीं।"
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "and"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "उत्तर"
@@ -1552,6 +1561,11 @@ msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Audience"
+msgstr ""
+
+#. placeholder {0}: audit.fund
+#: src/components/investors/ActionItems.tsx
+msgid "Audit request · {0}"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
@@ -1949,6 +1963,7 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -2014,10 +2029,6 @@ msgstr "रद्द किया गया"
 
 #: src/pages/Investors.tsx
 msgid "Cap table"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Cap table, equity and investors"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2721,6 +2732,10 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Executor कनेक्ट करें"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Connect Gmail"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
@@ -2881,6 +2896,7 @@ msgid "contracts, NDA, deadlines"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2888,6 +2904,7 @@ msgstr ""
 msgid "Copied"
 msgstr ""
 
+#: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2898,6 +2915,10 @@ msgstr "कॉपी करें"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Copy .env example"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Copy link"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -2922,6 +2943,11 @@ msgstr "इस ऐप को ऑथराइज़ नहीं किया ज
 
 #: src/pages/Fundraising.tsx
 msgid "Could not cancel"
+msgstr ""
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not change access for {0}"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -3213,6 +3239,10 @@ msgstr ""
 msgid "Could not load integrations"
 msgstr "इंटीग्रेशन लोड नहीं हो सके"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not load investors"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not load model settings"
 msgstr "मॉडल सेटिंग्स लोड नहीं हो सकीं"
@@ -3258,6 +3288,10 @@ msgstr "यह चैट लोड नहीं हो सकी."
 #: src/components/SheetPreview.tsx
 msgid "Could not load this file."
 msgstr "यह फ़ाइल लोड नहीं हो सकी।"
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Could not load this page"
+msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Could not load this update"
@@ -3502,6 +3536,11 @@ msgstr ""
 msgid "Could not search"
 msgstr ""
 
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not send a link to {0}"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Could not send reset email"
 msgstr "रीसेट ईमेल नहीं भेजा जा सका"
@@ -3509,6 +3548,10 @@ msgstr "रीसेट ईमेल नहीं भेजा जा सका"
 #: src/lib/call-session.ts
 msgid "Could not send that"
 msgstr "वह भेजा नहीं जा सका"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not share"
+msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Could not start an update"
@@ -3526,6 +3569,10 @@ msgstr ""
 msgid "Could not start the call"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Could not start the draft"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Could not submit this answer"
@@ -3538,6 +3585,10 @@ msgstr "नियंत्रण नहीं लिया जा सका"
 #: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Could not undo"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not unshare"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -3570,6 +3621,10 @@ msgstr ""
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "डिफ़ॉल्ट मेमोरी स्कोप अपडेट नहीं हो सका"
+
+#: src/pages/Investors.tsx
+msgid "Could not update the request"
+msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not upload file"
@@ -3873,6 +3928,7 @@ msgstr "डिफ़ॉल्ट ({0})"
 msgid "Default ({0})"
 msgstr "डिफ़ॉल्ट ({0})"
 
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
@@ -3908,7 +3964,9 @@ msgid "Delete {0}"
 msgstr "{0} डिलीट करें"
 
 #. placeholder {0}: bot.name
+#. placeholder {0}: contact.name
 #. placeholder {0}: item.name
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
@@ -3961,6 +4019,11 @@ msgstr "डिलीट किया गया"
 
 #: src/components/data-room/DropZone.tsx
 msgid "Deleted"
+msgstr ""
+
+#. placeholder {0}: gone.name
+#: src/lib/use-contact-notices.ts
+msgid "Deleted {0}"
 msgstr ""
 
 #: src/lib/use-contact-notices.ts
@@ -4114,6 +4177,7 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -4172,6 +4236,7 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/portal/PortalHome.tsx
 #: src/pages/Shell.tsx
 msgid "Documents"
 msgstr ""
@@ -4188,10 +4253,12 @@ msgstr "खाता नहीं है?"
 msgid "Don't share"
 msgstr ""
 
+#: src/components/CopyLinkDialog.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/sidebar-glance.tsx
 #: src/components/tour/TourPopover.tsx
@@ -4209,6 +4276,7 @@ msgstr "पूर्ण"
 #: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/portal/PortalHome.tsx
 msgid "Download"
 msgstr ""
 
@@ -4248,6 +4316,10 @@ msgstr ""
 msgid "Draft"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Draft a reply"
+msgstr ""
+
 #: src/components/MailOutbox.tsx
 msgid "Draft discarded"
 msgstr ""
@@ -4258,6 +4330,14 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Draft not saved"
+msgstr ""
+
+#: src/components/investors/ActionItems.tsx
+msgid "Draft ready"
+msgstr ""
+
+#: src/components/investors/ActionItems.tsx
+msgid "Draft reply"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -4273,8 +4353,8 @@ msgstr "ड्राफ़्ट स्किल"
 msgid "Draft with agent"
 msgstr ""
 
+#. placeholder {0}: day(draft.createdAt)
 #. placeholder {0}: day(update.createdAt)
-#. placeholder {0}: shortDay(draft.createdAt.slice(0, 10), new Date(), i18n.locale || "en")
 #: src/components/investors/ActionItems.tsx
 #: src/pages/Investors.tsx
 msgid "Drafted {0}"
@@ -4286,6 +4366,10 @@ msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Drafts"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Drafts a reply from your cap table."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -4316,6 +4400,11 @@ msgstr ""
 msgid "Due"
 msgstr ""
 
+#. placeholder {0}: day(audit.dueDate)
+#: src/components/investors/ActionItems.tsx
+msgid "due {0}"
+msgstr ""
+
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Due today"
 msgstr ""
@@ -4336,6 +4425,10 @@ msgstr ""
 #: src/pages/devin/DevinSessions.tsx
 #: src/pages/Inbox.tsx
 msgid "Earlier"
+msgstr ""
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Earlier updates"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -4394,6 +4487,10 @@ msgstr "इस ईमेल को पंजीकरण की अनुमत�
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Email them a link"
 msgstr ""
 
 #: src/components/MailThreadCard.tsx
@@ -5094,6 +5191,10 @@ msgstr ""
 msgid "Hide amounts"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Hide done"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Hide password"
 msgstr ""
@@ -5131,6 +5232,16 @@ msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
+msgstr ""
+
+#. placeholder {0}: day(audit.asOf)
+#: src/components/investors/ActionItems.tsx
+msgid "Holdings as of {0}"
+msgstr ""
+
+#. placeholder {0}: day(audit.asOf)
+#: src/components/investors/ActionItems.tsx
+msgid "Holdings as of today, not {0}"
 msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
@@ -5415,6 +5526,15 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Investors, equity and cap table"
+msgstr ""
+
+#. placeholder {0}: day(sent)
+#: src/pages/Investors.tsx
+msgid "Invited {0}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
 msgstr "पृथक"
@@ -5464,7 +5584,7 @@ msgid "just now"
 msgstr "अभी-अभी"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Cap table."
+msgid "Keep contracts here, and see who owns what in Investors."
 msgstr ""
 
 #: src/pages/DataRoom.tsx
@@ -5582,6 +5702,10 @@ msgstr ""
 msgid "Latest {0} of {1}"
 msgstr ""
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Latest update"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr ""
@@ -5648,6 +5772,16 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Link address"
+msgstr ""
+
+#. placeholder {0}: link.name
+#: src/components/CopyLinkDialog.tsx
+msgid "Link for {0}"
+msgstr ""
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Link sent to {0}"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -5858,6 +5992,10 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Mark delivered"
+msgstr ""
+
+#: src/components/investors/ActionItems.tsx
+msgid "Mark done"
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -6417,6 +6555,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
@@ -6456,6 +6595,10 @@ msgstr ""
 #: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "नया समूह"
+
+#: src/components/investors/ActionItems.tsx
+msgid "New mail"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "New message"
@@ -6638,6 +6781,7 @@ msgstr ""
 msgid "No group chats yet."
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
@@ -6964,6 +7108,10 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "अभी तक कुछ याद नहीं किया गया"
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Nothing shared yet."
+msgstr ""
+
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr ""
@@ -7033,6 +7181,7 @@ msgstr ""
 #: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/portal/PortalOpen.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7184,6 +7333,11 @@ msgstr "खुला कार्य"
 #: src/pages/Onboarding.tsx
 msgid "OpenAI-compatible server URL"
 msgstr "OpenAI-संगत सर्वर URL"
+
+#. placeholder {0}: day(seen)
+#: src/pages/Investors.tsx
+msgid "Opened {0}"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Opened {path}"
@@ -7515,12 +7669,20 @@ msgstr ""
 msgid "Popular apps through Pipedream"
 msgstr ""
 
+#: src/components/CopyLinkDialog.tsx
+msgid "Portal link"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Post and schedule to social accounts"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Post to portal"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
@@ -7538,7 +7700,19 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Posted"
+msgstr ""
+
+#. placeholder {0}: result.notified
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Posted · {0} notified"
+msgstr ""
+
+#. placeholder {0}: day(update.sentAt)
+#: src/pages/Investors.tsx
+msgid "Posted {0}"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -8244,6 +8418,10 @@ msgstr ""
 msgid "Research & writing"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Resend link"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Reset"
@@ -8344,10 +8522,6 @@ msgstr ""
 msgid "Retrying"
 msgstr ""
 
-#: src/lib/run-phase.ts
-msgid "Retrying: {name}"
-msgstr ""
-
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Praci"
@@ -8362,8 +8536,17 @@ msgstr ""
 msgid "Review provider settings and test again."
 msgstr "प्रोवाइडर सेटिंग्स की समीक्षा करें और फिर से परीक्षण करें।"
 
+#: src/pages/Investors.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Revoke"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "revoked"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Revoked"
 msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
@@ -8848,6 +9031,10 @@ msgstr ""
 msgid "Send to agent"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+msgid "Sender not in Auditors"
+msgstr ""
+
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Sending"
@@ -8953,7 +9140,17 @@ msgid "Shape"
 msgstr "आकार"
 
 #: src/components/AskCard.tsx
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Share"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Share {0}"
+msgstr ""
+
+#: src/components/data-room/ItemMenu.tsx
+msgid "Share with investors"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -8997,6 +9194,10 @@ msgstr ""
 
 #: src/components/HideAmountsToggle.tsx
 msgid "Show amounts"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Show done"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -9105,6 +9306,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "सब्सक्रिप्शन से साइन इन करें, या इसके बजाय API कुंजी का परीक्षण करें।"
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Sign out"
+msgstr ""
 
 #: src/pages/Auth.tsx
 #: src/pages/Welcome.tsx
@@ -9263,6 +9468,7 @@ msgstr ""
 
 #: src/App.tsx
 #: src/lib/user-error.ts
+#: src/pages/portal/PortalOpen.tsx
 msgid "Something went wrong. Try again."
 msgstr "कुछ गलत हो गया। फिर से कोशिश करें।"
 
@@ -9837,6 +10043,10 @@ msgstr ""
 msgid "The web, notes and docs"
 msgstr ""
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "their portal access"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
@@ -9851,6 +10061,11 @@ msgstr "सोच रहा है"
 
 #: src/components/AgentPanelIntro.tsx
 msgid "This agent needs a model before it can answer. Add one in Settings, Models."
+msgstr ""
+
+#. placeholder {0}: removes(linked)
+#: src/components/ContactDeleteConfirm.tsx
+msgid "This also removes {0}."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -9909,6 +10124,10 @@ msgstr ""
 
 #: src/pages/NotFound.tsx
 msgid "This link is wrong or the page is no longer available."
+msgstr ""
+
+#: src/pages/portal/PortalDead.tsx
+msgid "This link no longer works."
 msgstr ""
 
 #: src/components/RunsOnPicker.tsx
@@ -10179,6 +10398,7 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/portal/PortalHome.tsx
 #: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "फिर से कोशिश करें"
@@ -10252,6 +10472,14 @@ msgstr "असाइन नहीं किया गया"
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Unblock"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Unblocked · send a link"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -10328,6 +10556,10 @@ msgstr "पिन हटाएं"
 msgid "Unread"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Unshare"
+msgstr ""
+
 #. placeholder {0}: counts.unsubscribe
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Unsubscribe {0}"
@@ -10349,6 +10581,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Unsupported file type: {0}"
 msgstr "असमर्थित फ़ाइल प्रकार: {0}"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Unticked investors still see this on the portal."
+msgstr ""
 
 #. placeholder {0}: shortDay(card.to)
 #: src/components/FinanceCards.tsx
@@ -10569,10 +10805,6 @@ msgstr ""
 #: src/components/SecretRequestDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
-msgstr ""
-
-#: src/lib/slash-skills.ts
-msgid "Uses Carta figures and asks before sending."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx

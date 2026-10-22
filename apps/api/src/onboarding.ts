@@ -119,7 +119,7 @@ export async function seedBlankBotGreeting(
   const hi = firstName ? `Hi ${firstName}` : "Hi";
   // A blank bot is usually renamed right after it is created, so its greeting does not name it.
   const text = options.first
-    ? `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and the cap table, find investor documents in the Data room, and draft updates and research for you.`
+    ? `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and your investors, find investor documents in the Data room, and draft updates and research for you.`
     : `${hi}. I'm a blank slate right now, so you get to decide what I become. What's the main thing you'd want me handling for you?`;
   await post(deps, { spaceId: actor.spaceId, botId: bot.id, threadId: bot.threadId }, [
     { kind: "text", text },

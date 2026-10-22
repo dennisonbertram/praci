@@ -118,6 +118,96 @@ export const Default: Story = {
     mockRpc({ "contacts.list": contacts, "mcp.servers.list": [cartaServer], ...noUpdates }),
 };
 
+/** Audit requests in Action items: a new one, one with a draft ready and new mail, and a closed one behind Show done. */
+export const WithAuditRequests: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      ...noUpdates,
+      "investors.audits.list": [
+        {
+          id: "a1",
+          fund: "Example Audit LLP",
+          asOf: null,
+          asOfMatched: true,
+          dueDate: "2026-11-30",
+          status: "open",
+          mailThreadId: "t1",
+          connectionId: "k1",
+          draftRef: null,
+          senderKnown: false,
+          notes: "",
+          dataRoomItemId: null,
+          drafting: false,
+          newMail: false,
+          createdAt: "2026-10-20T10:00:00.000Z",
+        },
+        {
+          id: "a2",
+          fund: "Sample Ventures Fund II",
+          asOf: "2026-09-30",
+          asOfMatched: false,
+          dueDate: "2026-11-15",
+          status: "drafted",
+          mailThreadId: "t2",
+          connectionId: "k1",
+          draftRef: "d1",
+          senderKnown: true,
+          notes: "",
+          dataRoomItemId: null,
+          drafting: false,
+          newMail: true,
+          createdAt: "2026-10-18T10:00:00.000Z",
+        },
+      ],
+    }),
+};
+
+/** The Portal column: never invited, invited, opened, revoked, and unblocked with no new link yet. */
+export const PortalStates: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [
+        contact("c1", "Ada Example", "investor", "Example Ventures"),
+        {
+          ...contact("c2", "Bo Sample", "investor", null),
+          portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+        },
+        {
+          ...contact("c3", "Cy Placeholder", "investor", null),
+          portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+          portalLastSeenAt: "2026-10-13T10:00:00.000Z",
+        },
+        {
+          ...contact("c4", "Di Fund", "investor", "Fund IV"),
+          portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+          portalBlockedAt: "2026-10-14T10:00:00.000Z",
+        },
+        {
+          ...contact("c5", "Ed Sample", "investor", null),
+          portalLastSeenAt: "2026-10-13T10:00:00.000Z",
+        },
+      ],
+      "mcp.servers.list": [cartaServer],
+      ...noUpdates,
+    }),
+};
+
+/** A Posted update in the list, alongside a sent one. */
+export const WithPostedUpdate: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "investors.reminder": { cadence: "monthly" },
+      "investors.updates.list": [
+        update({ id: "u5", status: "posted", sentAt: "2026-10-03T09:00:00.000Z" }),
+        update({ id: "u4", status: "sent", sentAt: "2026-09-02T09:00:00.000Z" }),
+      ],
+    }),
+};
+
 /** A draft waiting in Action items, a Sending row, a Partly sent row with Retry, and a sent update. */
 export const WithUpdates: Story = {
   beforeEach: () =>

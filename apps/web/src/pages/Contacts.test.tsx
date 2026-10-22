@@ -19,9 +19,21 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-const rpcMock = vi.hoisted(() => ({ list: vi.fn(), save: vi.fn(), remove: vi.fn() }));
+const rpcMock = vi.hoisted(() => ({
+  list: vi.fn(),
+  save: vi.fn(),
+  remove: vi.fn(),
+  linked: vi.fn(async () => ({ portal: false, documents: [] })),
+}));
 vi.mock("../lib/rpc", () => ({
-  rpc: { contacts: { list: rpcMock.list, save: rpcMock.save, delete: rpcMock.remove } },
+  rpc: {
+    contacts: {
+      list: rpcMock.list,
+      save: rpcMock.save,
+      delete: rpcMock.remove,
+      linked: rpcMock.linked,
+    },
+  },
 }));
 
 import { ContactsPage } from "./Contacts";

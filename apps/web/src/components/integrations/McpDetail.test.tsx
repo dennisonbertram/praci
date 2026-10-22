@@ -135,7 +135,7 @@ it("has no switch on other servers", async () => {
   expect(writesSwitch()).toBeNull();
 });
 
-it("Carta links back to Cap table, hides the MCP host and names who loses access", async () => {
+it("Carta links back to Investors, hides the MCP host and names who loses access", async () => {
   await show(false);
   const link = container.querySelector<HTMLAnchorElement>('a[href="/app/investors"]');
   expect(link?.textContent).toBe("Open Investors");

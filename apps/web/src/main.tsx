@@ -61,7 +61,8 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter useTransitions={false}>
         <DesktopUpdatesProvider>
           <App />
-          <AppToaster />
+          {/* An investor holds a link, not an account: nothing here may call the app's RPC. */}
+          {window.location.pathname.startsWith("/portal") ? null : <AppToaster />}
         </DesktopUpdatesProvider>
       </BrowserRouter>
     </I18nBootstrap>
