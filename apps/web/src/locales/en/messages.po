@@ -749,6 +749,7 @@ msgstr "Actions"
 #. placeholder {0}: group.spaceName
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
+#: src/components/fundraising/Pipeline.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
@@ -908,6 +909,11 @@ msgstr "Add new email attachments automatically"
 #: src/components/AddSidebarPage.tsx
 msgid "Add page"
 msgstr "Add page"
+
+#: src/components/ContactDialog.tsx
+#: src/pages/Fundraising.tsx
+msgid "Add prospect"
+msgstr "Add prospect"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
@@ -1920,6 +1926,7 @@ msgstr "Can't reach the server."
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/fundraising/RoundCard.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -2154,6 +2161,10 @@ msgstr "Check for receipt"
 msgid "Check for updates"
 msgstr "Check for updates"
 
+#: src/components/ContactDialog.tsx
+msgid "Check size"
+msgstr "Check size"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Check the API key or sign-in, then test again."
 msgstr "Check the API key or sign-in, then test again."
@@ -2372,6 +2383,10 @@ msgstr "Close panel"
 msgid "Close preview"
 msgstr "Close preview"
 
+#: src/components/fundraising/RoundCard.tsx
+msgid "Close round"
+msgstr "Close round"
+
 #: src/pages/SettingsOverlay.tsx
 msgid "Close user settings"
 msgstr "Close user settings"
@@ -2380,6 +2395,12 @@ msgstr "Close user settings"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Close voice settings"
 msgstr "Close voice settings"
+
+#. placeholder {0}: shortDay(round.closedAt.slice(0, 10), new Date(), locale)
+#. placeholder {1}: usd(fundedCents)
+#: src/components/fundraising/RoundCard.tsx
+msgid "Closed {0} · funded {1}"
+msgstr "Closed {0} · funded {1}"
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Cloud"
@@ -2459,6 +2480,10 @@ msgstr "Command variable"
 #: src/pages/Board.tsx
 msgid "Comment"
 msgstr "Comment"
+
+#: src/components/ContactDialog.tsx
+msgid "Committed"
+msgstr "Committed"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
@@ -2885,6 +2910,10 @@ msgstr "Could not check whether Carta is connected."
 msgid "Could not clear conversation"
 msgstr "Could not clear conversation"
 
+#: src/pages/Fundraising.tsx
+msgid "Could not close the round"
+msgstr "Could not close the round"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Could not complete action"
 msgstr "Could not complete action"
@@ -3121,6 +3150,10 @@ msgstr "Could not load credentials."
 msgid "Could not load Devin sessions."
 msgstr "Could not load Devin sessions."
 
+#: src/pages/Fundraising.tsx
+msgid "Could not load fundraising"
+msgstr "Could not load fundraising"
+
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/useIntegrations.ts
 msgid "Could not load integrations"
@@ -3195,6 +3228,11 @@ msgstr "Could not load voice settings"
 #: src/pages/Investors.tsx
 msgid "Could not mark delivered"
 msgstr "Could not mark delivered"
+
+#. placeholder {0}: prospect.name
+#: src/pages/Fundraising.tsx
+msgid "Could not move {0}"
+msgstr "Could not move {0}"
 
 #: src/pages/BillingSettingsPanel.tsx
 #: src/pages/Paywall.tsx
@@ -3305,6 +3343,10 @@ msgstr "Could not rename the account"
 msgid "Could not render chart"
 msgstr "Could not render chart"
 
+#: src/pages/Fundraising.tsx
+msgid "Could not reopen the round"
+msgstr "Could not reopen the round"
+
 #: src/pages/Auth.tsx
 msgid "Could not reset password"
 msgstr "Could not reset password"
@@ -3380,6 +3422,10 @@ msgstr "Could not save the embedding model"
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr "Could not save the page."
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Could not save the round"
+msgstr "Could not save the round"
 
 #: src/components/AutoFileEmailSetting.tsx
 msgid "Could not save the setting"
@@ -3927,6 +3973,10 @@ msgstr "Didn't open?"
 msgid "Digest"
 msgstr "Digest"
 
+#: src/components/ContactDialog.tsx
+msgid "Diligence"
+msgstr "Diligence"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr "Disable drafts for {botName}"
@@ -4226,6 +4276,14 @@ msgstr "Edit contact"
 msgid "Edit first"
 msgstr "Edit first"
 
+#: src/components/fundraising/Pipeline.tsx
+msgid "Edit prospect"
+msgstr "Edit prospect"
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Edit round"
+msgstr "Edit round"
+
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
 msgstr "Edit wallet"
@@ -4328,6 +4386,11 @@ msgstr "Enter a whole number from 1 to {MAX_MODEL_MAX_TOKENS} for maximum output
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to 1000 for the image limit."
 msgstr "Enter a whole number from 1 to 1000 for the image limit."
+
+#: src/components/ContactDialog.tsx
+#: src/components/fundraising/RoundCard.tsx
+msgid "Enter an amount"
+msgstr "Enter an amount"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
@@ -4719,6 +4782,15 @@ msgstr "Fullscreen"
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr "Fully diluted"
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Funded"
+msgstr "Funded"
+
+#: src/pages/Fundraising.tsx
+#: src/pages/Shell.tsx
+msgid "Fundraising"
+msgstr "Fundraising"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5223,6 +5295,10 @@ msgstr "Interval amount"
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval unit"
 msgstr "Interval unit"
+
+#: src/components/ContactDialog.tsx
+msgid "Intro"
+msgstr "Intro"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
@@ -5798,6 +5874,10 @@ msgstr "Medium"
 msgid "Medium"
 msgstr "Medium"
 
+#: src/components/ContactDialog.tsx
+msgid "Meeting"
+msgstr "Meeting"
+
 #: src/lib/slash-skills.ts
 msgid "Meeting notes"
 msgstr "Meeting notes"
@@ -6086,6 +6166,7 @@ msgstr "Move or delete what is in this folder first."
 msgid "Move them to your shared memory."
 msgstr "Move them to your shared memory."
 
+#: src/components/fundraising/Pipeline.tsx
 #: src/pages/BotContextMenu.tsx
 msgid "Move to"
 msgstr "Move to"
@@ -6121,6 +6202,7 @@ msgstr "Mute"
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemRows.tsx
+#: src/components/fundraising/RoundCard.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Artifacts.tsx
@@ -6318,6 +6400,10 @@ msgstr "Next message"
 msgid "Next run {nextRun}"
 msgstr "Next run {nextRun}"
 
+#: src/components/ContactDialog.tsx
+msgid "Next step"
+msgstr "Next step"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "No {sourceName} cash accounts."
 msgstr "No {sourceName} cash accounts."
@@ -6501,6 +6587,10 @@ msgstr "No net spend in the last 3 full months"
 msgid "No open deadlines."
 msgstr "No open deadlines."
 
+#: src/pages/Fundraising.tsx
+msgid "No prospects yet"
+msgstr "No prospects yet"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "No providers found."
@@ -6547,6 +6637,10 @@ msgstr "No runs yet"
 #: src/components/EmailCards.tsx
 msgid "No rush"
 msgstr "No rush"
+
+#: src/pages/Fundraising.tsx
+msgid "No SAFEs yet"
+msgstr "No SAFEs yet"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -7127,6 +7221,10 @@ msgstr "Partner"
 msgid "Party"
 msgstr "Party"
 
+#: src/components/ContactDialog.tsx
+msgid "Passed"
+msgstr "Passed"
+
 #: src/components/AskCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -7205,6 +7303,7 @@ msgid "pending"
 msgstr "pending"
 
 #: src/components/finance/ui.tsx
+#: src/components/fundraising/RoundCard.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
@@ -7259,6 +7358,10 @@ msgstr "Picked up {item}."
 msgid "Pin"
 msgstr "Pin"
 
+#: src/pages/Fundraising.tsx
+msgid "Pipeline"
+msgstr "Pipeline"
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "Playing…"
@@ -7294,6 +7397,15 @@ msgstr "Post and schedule to social accounts"
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
 msgstr "POST to"
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Post-money cap"
+msgstr "Post-money cap"
+
+#. placeholder {0}: usd(round.capCents)
+#: src/components/fundraising/RoundCard.tsx
+msgid "Post-money cap {0}"
+msgstr "Post-money cap {0}"
 
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
@@ -7401,6 +7513,10 @@ msgstr "Projected cash"
 #: src/pages/Inbox.tsx
 msgid "Promotions"
 msgstr "Promotions"
+
+#: src/components/ContactDialog.tsx
+msgid "Prospect"
+msgstr "Prospect"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
@@ -7924,6 +8040,7 @@ msgstr "Renewal"
 msgid "Renews {day}"
 msgstr "Renews {day}"
 
+#: src/components/fundraising/RoundCard.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Reopen"
@@ -8128,6 +8245,10 @@ msgstr "Room guidance"
 msgid "Rotate key"
 msgstr "Rotate key"
 
+#: src/components/fundraising/RoundCard.tsx
+msgid "Round actions"
+msgstr "Round actions"
+
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Routine"
@@ -8208,6 +8329,14 @@ msgstr "Runway scenarios"
 msgid "Safe"
 msgstr "Safe"
 
+#: src/pages/Shell.tsx
+msgid "safe, round, raise"
+msgstr "safe, round, raise"
+
+#: src/pages/Fundraising.tsx
+msgid "SAFEs"
+msgstr "SAFEs"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
 msgstr "Sales & CRM"
@@ -8220,6 +8349,7 @@ msgstr "Sandbox"
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/fundraising/RoundCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -8276,6 +8406,7 @@ msgid "Saved"
 msgstr "Saved"
 
 #. placeholder {0}: saved.name
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Saved {0}"
 msgstr "Saved {0}"
@@ -8854,6 +8985,10 @@ msgstr "Sign-in was cancelled or did not finish. Try again."
 msgid "Sign-in was denied or failed."
 msgstr "Sign-in was denied or failed."
 
+#: src/components/fundraising/RoundCard.tsx
+msgid "Signed"
+msgstr "Signed"
+
 #: src/pages/Onboarding.tsx
 msgid "Signed in with {signedInLabel}"
 msgstr "Signed in with {signedInLabel}"
@@ -9096,6 +9231,10 @@ msgstr "Stablecoins count as cash in this runway; other crypto does not."
 msgid "Stablecoins only"
 msgstr "Stablecoins only"
 
+#: src/components/ContactDialog.tsx
+msgid "Stage"
+msgstr "Stage"
+
 #: src/pages/Inbox.tsx
 msgid "Starred"
 msgstr "Starred"
@@ -9103,6 +9242,10 @@ msgstr "Starred"
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
 msgstr "Start {trialDays}-day free trial"
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Start a round"
+msgstr "Start a round"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
@@ -9296,6 +9439,11 @@ msgstr "Take the tour"
 #: src/pages/shell/bot-panel.tsx
 msgid "Talks to people outside your company. Private tools are turned off."
 msgstr "Talks to people outside your company. Private tools are turned off."
+
+#: src/components/ContactDialog.tsx
+#: src/components/fundraising/RoundCard.tsx
+msgid "Target"
+msgstr "Target"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
@@ -9872,6 +10020,7 @@ msgstr "Try {name} again"
 #: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Fundraising.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx

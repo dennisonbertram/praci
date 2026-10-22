@@ -16,6 +16,7 @@ export const isInvestorsAgentSpawnKey = (spawnKey: string | null | undefined) =>
 export const INVESTORS_AGENT_BUILTIN_TOOLS = [
   "cap_table_read",
   "cap_table_update",
+  "fundraising_read",
   "contacts_list",
   "contacts_add",
   "contacts_save",

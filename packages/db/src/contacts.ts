@@ -1,4 +1,4 @@
-import type { Contact, ContactKind, ContactSaveInput } from "@rakazo/contracts";
+import type { Contact, ContactKind, ContactSaveInput, ContactStage } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "./client.js";
 import { isUniqueViolation } from "./prisma-errors.js";
 import { IsolationError } from "./scope.js";
@@ -13,7 +13,7 @@ export class ContactEmailTakenError extends Error {
 type Scope = { spaceId: string; userId: string };
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
-type Db = Pick<PrismaClient, "contact">;
+type Db = Pick<PrismaClient, "contact" | "fundraiseRound">;
 
 const withBot = { bot: { select: { id: true, name: true } } } as const;
 
@@ -24,6 +24,10 @@ export const toContact = (row: Prisma.ContactGetPayload<{ include: typeof withBo
   organization: row.organization,
   kind: row.kind as ContactKind,
   notes: row.notes,
+  stage: row.stage as ContactStage | null,
+  checkSizeCents: row.checkSizeCents == null ? null : Number(row.checkSizeCents),
+  nextStep: row.nextStep,
+  roundId: row.roundId,
   addedBy: row.bot,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
@@ -55,17 +59,45 @@ export async function listContacts(
 }
 
 /**
+ * The round a stage save puts a prospect in: the open round for Committed (none when no round is
+ * open), none for any other stage, and undefined (keep it) when the stage is not part of the save.
+ */
+export async function roundIdForStage(
+  prisma: Pick<PrismaClient, "fundraiseRound">,
+  actor: Scope,
+  stage: ContactStage | null | undefined,
+): Promise<string | null | undefined> {
+  if (stage === undefined) return undefined;
+  if (stage !== "committed") return null;
+  const open = await prisma.fundraiseRound.findFirst({
+    where: { ...ownerOf(actor), closedAt: null },
+    select: { id: true },
+  });
+  return open?.id ?? null;
+}
+
+/**
  * Updates the contact with `id`, keeping omitted fields; without `id`, creates one.
  * Throws IsolationError for an `id` that is not the user's.
  */
 async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): Promise<Contact> {
   const scope = ownerOf(actor);
-  const { id, ...fields } = input;
+  const { id, roundId: keepRound, ...fields } = input;
+  let roundId = await roundIdForStage(prisma, scope, fields.stage);
+  if (keepRound && fields.stage === "committed") {
+    const own = await prisma.fundraiseRound.findFirst({
+      where: { id: keepRound, ...scope },
+      select: { id: true },
+    });
+    if (!own) throw new IsolationError("Round not found");
+    roundId = own.id;
+  }
+  const data = { ...fields, roundId };
   if (!id)
     return toContact(
-      await prisma.contact.create({ data: { ...scope, ...fields }, include: withBot }),
+      await prisma.contact.create({ data: { ...scope, ...data }, include: withBot }),
     );
-  const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data: fields });
+  const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data });
   if (count === 0) throw new IsolationError("Contact not found");
   return toContact(await prisma.contact.findUniqueOrThrow({ where: { id }, include: withBot }));
 }
