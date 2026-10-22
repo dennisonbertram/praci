@@ -23,7 +23,7 @@ test("GTM opens its plan and docked agent on desktop and phone", async ({ page }
   await expect(page.getByRole("heading", { name: "GTM", exact: true })).toBeVisible();
   await expect(page.getByTestId("gtm-agent-panel")).toBeVisible();
   await expect(page.getByRole("heading", { name: /Needs you/ })).toBeVisible();
-  await expect(page.getByText("Find our first 50 design partners")).toBeVisible();
+  await expect(page.getByText("Find our first 50 design partners", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "gtm-plan-desktop");
   await page.setViewportSize({ width: 375, height: 900 });
   await expect(page.getByRole("button", { name: "Ask GTM agent" })).toBeVisible();
