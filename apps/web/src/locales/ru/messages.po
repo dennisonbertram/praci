@@ -4152,7 +4152,6 @@ msgstr "По умолчанию ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
@@ -11265,10 +11264,6 @@ msgstr "Открепить"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
-msgstr ""
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Unreadable"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx

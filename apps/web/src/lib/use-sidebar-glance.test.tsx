@@ -9,6 +9,7 @@ const rpc = vi.hoisted(() => ({
 }));
 vi.mock("./rpc", () => ({ rpc }));
 
+import { DATA_ROOM_CHANGED } from "./data-room";
 import { followNotifications } from "./notification-stream";
 import { NOTIFICATIONS_CHANGED_EVENT, surfaceOfPath, useSidebarGlance } from "./use-sidebar-glance";
 
@@ -52,6 +53,17 @@ it("maps app paths to notification surfaces", () => {
   expect(surfaceOfPath("/app/devin")).toBe("devin");
   expect(surfaceOfPath("/app/inboxes")).toBeNull();
   expect(surfaceOfPath("/app")).toBeNull();
+});
+
+it("reloads when the Data room changes, so the failed count follows an upload or delete", async () => {
+  act(() => root.render(<Probe pathname="/app/data-room" />));
+  await flush();
+  const before = rpc.notifications.glance.mock.calls.length;
+  act(() => {
+    window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+  });
+  await flush();
+  expect(rpc.notifications.glance.mock.calls.length).toBe(before + 1);
 });
 
 it("loads on mount, again on a notifications-changed event, and on page change", async () => {

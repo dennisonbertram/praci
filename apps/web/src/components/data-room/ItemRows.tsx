@@ -27,7 +27,6 @@ import {
   dateText,
   isSettled,
   isStuck,
-  isUnreadable,
   readingAge,
   stageLabel,
   statusLabel,
@@ -171,11 +170,10 @@ export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
         : FileText;
 
 const DASH = "—";
-/** The document type, or for a finished file without one the reason; empty while it is still being read. */
+/** The document type; "Not tagged" for a finished file without one; empty while it is still being read or failed (the red reason says why). */
 const typeText = (item: DataRoomApiItem) =>
   typeLabel(item.facets.docType) ||
-  (item.status === "failed" && isUnreadable(item.error) ? t`Unreadable` : "") ||
-  (isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
+  (item.status !== "failed" && isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
 const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** A failed file has nothing to show in a data column; its reason is under the name. */
 const blank = (item: DataRoomApiItem) => (item.status === "failed" ? null : empty);
@@ -200,15 +198,15 @@ const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
   return date && field !== "date" ? `${t`Added`} ${date}` : date;
 };
 
-/** Fixed widths so columns never shift; in a wide pane Parties takes 30% and the Name the rest. */
-function Columns() {
+/** Fixed widths so columns never shift (Type fits "Investor document"); in a wide pane Parties takes 30% and the Name the rest. */
+function Columns({ status }: { status: boolean }) {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-28")} />
+      <col className={cn(MID_COLUMN, "w-40")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-44 @min-[900px]/list:w-[30%]")} />
-      <col className={cn(MID_COLUMN, "w-20")} />
+      <col className={cn(PARTIES_COLUMN, "w-56 @min-[900px]/list:w-[30%]")} />
+      {status ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
       <col className="w-7" />
     </colgroup>
   );
@@ -218,10 +216,12 @@ function ListHead({
   sortField,
   rows,
   o,
+  status,
 }: {
   sortField: SortField | undefined;
   rows: Row[];
   o: RowInteraction;
+  status: boolean;
 }) {
   const allChecked = rows.length > 0 && rows.every(({ item }) => o.checked?.has(item.id));
   return (
@@ -256,33 +256,30 @@ function ListHead({
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        <TableHead className={MID_COL}>
-          <Trans>Status</Trans>
-        </TableHead>
+        {status ? (
+          <TableHead className={MID_COL}>
+            <Trans>Status</Trans>
+          </TableHead>
+        ) : null}
         <TableHead />
       </TableHeadRow>
     </TableHeader>
   );
 }
 
-/**
- * The one action under a failed file. Retrying a file that cannot be read fails the same way, so
- * that file offers Delete (then upload a new copy); a transient failure offers Try again. It never
- * opens the preview.
- */
+/** The one visible action under a failed file or a stuck read; Delete is in its menu. It never opens the preview. */
 function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
-  const unreadable = item.status === "failed" && isUnreadable(item.error);
   return (
     <Button
       variant="outline"
       size="xs"
       onClick={(event) => {
         event.stopPropagation();
-        o.onAction(unreadable ? "delete" : "retry", item);
+        o.onAction("retry", item);
       }}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      {unreadable ? <Trans>Delete</Trans> : <Trans>Try again</Trans>}
+      <Trans>Try again</Trans>
     </Button>
   );
 }
@@ -293,6 +290,7 @@ function ItemRow({
   o,
   sortField,
   first,
+  status,
 }: {
   item: DataRoomApiItem;
   /** Search only: the text that matched, under the name. */
@@ -300,6 +298,8 @@ function ItemRow({
   o: RowInteraction;
   sortField: SortField | undefined;
   first: boolean;
+  /** The Status column is shown; without it a row's wait is said in the sub-line. */
+  status: boolean;
 }) {
   const label = statusLabel(item.status, !!item.previewText);
   const stuck = isStuck(item);
@@ -385,7 +385,7 @@ function ItemRow({
             >
               {age || label || <TypeAndDate item={item} sortField={sortField} />}
             </span>
-            {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. An unreadable file's one Delete is in the row menu. */}
+            {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
             {item.status === "failed" ? (
               <span className="flex min-w-0 flex-wrap items-center gap-x-2">
                 <span
@@ -396,7 +396,7 @@ function ItemRow({
                     <Trans>Could not read this file. Delete it and upload it again.</Trans>
                   )}
                 </span>
-                {isUnreadable(item.error) ? null : <RetryButton item={item} o={o} />}
+                <RetryButton item={item} o={o} />
               </span>
             ) : null}
             {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
@@ -422,18 +422,16 @@ function ItemRow({
       >
         {parties || empty}
       </TableCell>
-      <TableCell
-        data-testid="data-room-status"
-        className={MID_COL}
-        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-      >
-        {/* A read that timed out looks like any other failure; Try again is on the row. */}
-        {label ? (
-          <Badge variant={item.status === "failed" || stuck ? "destructive" : "secondary"}>
-            {stuck ? statusLabel("failed") : label}
-          </Badge>
-        ) : null}
-      </TableCell>
+      {status ? (
+        <TableCell data-testid="data-room-status" className={MID_COL}>
+          {/* A read that timed out shows as Failed here, with Try again on the row. A failed file says so in its red reason instead. */}
+          {label && item.status !== "failed" ? (
+            <Badge variant={stuck ? "destructive" : "secondary"}>
+              {stuck ? statusLabel("failed") : label}
+            </Badge>
+          ) : null}
+        </TableCell>
+      ) : null}
       <TableCell className="pe-0">
         <ItemMenu
           item={item}
@@ -467,6 +465,7 @@ export function SubfolderList({
   onAction,
   contents,
   tiles = false,
+  status = true,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
@@ -474,6 +473,8 @@ export function SubfolderList({
   /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
   contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
+  /** The list below shows a Status column. */
+  status?: boolean;
 }) {
   if (!folders.length) return null;
   if (tiles) {
@@ -520,7 +521,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={3} className={MID_COL} />
+          <TableCell colSpan={status ? 3 : 2} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -543,16 +544,20 @@ export function ListView({
 }: {
   rows: Row[];
   o: RowInteraction;
-  lead?: () => ReactNode;
+  lead?: (status: boolean) => ReactNode;
   /** The field the list is sorted by; the Date column shows it. Without one: when added. */
   sortField?: SortField;
 }) {
+  // Only a row that is being read (or timed out) has anything to say there; a failed row says it in red.
+  const status = rows.some(
+    ({ item }) => item.status !== "failed" && !!statusLabel(item.status, !!item.previewText),
+  );
   return (
     <div className={LIST_PAD}>
       <Table>
-        <Columns />
-        <ListHead sortField={sortField} rows={rows} o={o} />
-        {lead?.()}
+        <Columns status={status} />
+        <ListHead sortField={sortField} rows={rows} o={o} status={status} />
+        {lead?.(status)}
         <TableBody aria-label={t`Items`} data-rows>
           {rows.map(({ item, snippets }, index) => (
             <ItemRow
@@ -562,6 +567,7 @@ export function ListView({
               o={o}
               sortField={sortField}
               first={index === 0}
+              status={status}
             />
           ))}
         </TableBody>
@@ -720,7 +726,6 @@ export function GridView({
           >
             {item.status === "failed" ? (
               <>
-                <span>{statusLabel(item.status, !!item.previewText)}</span>
                 {/* Why, as on the list row; the reason may run to two lines. */}
                 <span
                   data-testid="data-room-failed-reason"
