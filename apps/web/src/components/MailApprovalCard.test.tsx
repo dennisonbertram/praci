@@ -139,6 +139,30 @@ it("offers Save draft for a draft", async () => {
   expect(button("Send")).toBeUndefined();
 });
 
+it("supports a gated founder editor without copy recipients", async () => {
+  const onFieldsChange = vi.fn();
+  const { onAnswer } = await render({
+    initialEditing: true,
+    allowLabel: "Approve",
+    allowDisabled: true,
+    toOnly: true,
+    onFieldsChange,
+  });
+  expect(host.querySelector('[aria-label="Cc"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Bcc"]')).toBeNull();
+  expect(button("Approve")?.disabled).toBe(true);
+  await click(button("Approve"));
+  expect(onAnswer).not.toHaveBeenCalled();
+  await type(host.querySelector('[aria-label="Message"]')!, "Changed body");
+  expect(onFieldsChange).toHaveBeenLastCalledWith({
+    to: "Jana <jana@example.test>",
+    cc: "",
+    bcc: "",
+    subject: "Friday",
+    body: "Changed body",
+  });
+});
+
 it("collapses a long body and toggles it with aria-expanded", async () => {
   vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(400);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(144);

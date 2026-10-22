@@ -64,6 +64,11 @@ export function MailApprovalCard({
   onAnswer,
   onDisableTool,
   onOpenComposer,
+  initialEditing = false,
+  allowLabel,
+  allowDisabled = false,
+  onFieldsChange,
+  toOnly = false,
 }: {
   mail: MailApproval;
   status: "pending" | "answered";
@@ -75,10 +80,15 @@ export function MailApprovalCard({
   onDisableTool?: (tool: MailApproval["tool"]) => Promise<void>;
   /** Offered when the person's own edited send did not go out. */
   onOpenComposer?: (mail: MailApproval) => void;
+  initialEditing?: boolean;
+  allowLabel?: string;
+  allowDisabled?: boolean;
+  onFieldsChange?: (fields: Required<MailEdits>) => void;
+  toOnly?: boolean;
 }) {
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const outcomeNeedsAttention = mail.outcome === "failed" || mail.outcome === "unknown";
   const [open, setOpen] = useState(status !== "answered" || outcomeNeedsAttention);
   const [expanded, setExpanded] = useState(false);
@@ -135,10 +145,14 @@ export function MailApprovalCard({
     if (body && !expanded) setOverflows(body.scrollHeight > body.clientHeight + 1);
   }, [expanded, shown.body, editing]);
 
-  const set = (key: keyof Fields) => (value: string) => setFields((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof Fields) => (value: string) => {
+    const next = { ...fields, [key]: value };
+    setFields(next);
+    onFieldsChange?.(next);
+  };
 
   async function submit(action: "allow" | "deny" | "disable") {
-    if (busy) return;
+    if (busy || (action === "allow" && allowDisabled)) return;
     let edits: MailEdits | undefined;
     if (action === "allow") {
       const changed = (Object.keys(fields) as (keyof Fields)[]).filter(
@@ -183,8 +197,9 @@ export function MailApprovalCard({
       ["Bcc", t`Bcc`, shown.bcc, false],
     ] as const
   ).filter(
-    ([, , value, always]) =>
-      (always && !savedDraftSend) || value.trim() || (editing && interactive),
+    ([key, , value, always]) =>
+      (!toOnly || key === "To") &&
+      ((always && !savedDraftSend) || value.trim() || (editing && interactive)),
   );
 
   const firstRecipient = mail.to[0] ? parseRecipient(mail.to[0]).address : "";
@@ -411,10 +426,12 @@ export function MailApprovalCard({
               <div className="flex gap-2">
                 <Button
                   className="rounded-full"
-                  disabled={busy}
+                  disabled={busy || allowDisabled}
                   onClick={() => void submit("allow")}
                 >
-                  {pendingAction === "allow" ? (
+                  {allowLabel ? (
+                    allowLabel
+                  ) : pendingAction === "allow" ? (
                     draft ? (
                       <Trans>Saving…</Trans>
                     ) : (
