@@ -104,6 +104,11 @@ msgstr "{0, plural, one {# needs you} other {# need you}}"
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr "{0, plural, one {# result} other {# results}}"
 
+#. placeholder {0}: counted.length
+#: src/pages/Investors.tsx
+msgid "{0, plural, one {# SAFE} other {# SAFEs}}"
+msgstr "{0, plural, one {# SAFE} other {# SAFEs}}"
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -4409,6 +4414,7 @@ msgstr "Draft with agent"
 msgid "Drafted {0}"
 msgstr "Drafted {0}"
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr "Drafting…"
