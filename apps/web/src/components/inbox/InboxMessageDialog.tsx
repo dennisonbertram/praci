@@ -51,6 +51,20 @@ import { EmailAgentPanel } from "./EmailAgentPanel";
 import { MailAttachments } from "./MailAttachments";
 
 /** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
+/** A recipient line where each `<address>` stays on one line: it may wrap between recipients, not inside an address. */
+function Addresses({ text }: { text: string }) {
+  return text.split(/(<[^>]*>)/).map((part, i) =>
+    part.startsWith("<") ? (
+      // biome-ignore lint/suspicious/noArrayIndexKey: the parts are static text in a fixed order
+      <span key={i} className="whitespace-nowrap">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
 export function InboxMessageDialog({
   messageId,
   subject,
@@ -64,6 +78,7 @@ export function InboxMessageDialog({
   onMoveToInbox,
   onRead,
   onReplyDone,
+  replyDoneText,
   onAskAgent,
   onAskAgentPanel,
   notice,
@@ -91,6 +106,8 @@ export function InboxMessageDialog({
   onRead?: (read: boolean) => void;
   /** Adds Mark reply done, for a reply to-do the list page hides because this mail is under Needs reply. */
   onReplyDone?: () => void;
+  /** The to-do `onReplyDone` completes; the menu item names it. */
+  replyDoneText?: string;
   /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
   onAskAgent?: () => Promise<unknown>;
   /** Instead of `onAskAgent`: Ask agent opens this email's agent in a panel inside the dialog. */
@@ -122,12 +139,12 @@ export function InboxMessageDialog({
         showCloseButton={false}
         className={cn(
           "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:transition-[left,width,transform] md:duration-200",
-          // The email column never changes width. From 1280px (`xl`, which Tailwind emits after `md`, so
-          // it overrides the width and position above) the panel sits beside the email in a 1152px
-          // dialog centred on the page. Below that it overlays the email's right side.
-          // It slides to the right-most spot that fits, so the email moves as little as the screen allows.
+          // The email column never changes width or position. From 1568px, where a 1152px dialog fits
+          // with its left edge where the 768px one has it, the panel sits beside the email. Below that
+          // it overlays the email's right side. The `!` is needed because Tailwind emits an arbitrary
+          // min-width variant before `md`, which would otherwise win.
           agentBot &&
-            "md:h-[85vh] xl:w-[1152px] xl:left-[max(0px,min(calc(50%-384px),calc(100vw-1168px)))] xl:translate-x-0 xl:flex-row xl:gap-0",
+            "md:h-[85vh] min-[1568px]:w-[1152px]! min-[1568px]:left-[calc(50%-384px)]! min-[1568px]:translate-x-0! min-[1568px]:flex-row min-[1568px]:gap-0",
           composing && "invisible",
         )}
       >
@@ -146,6 +163,7 @@ export function InboxMessageDialog({
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
             onReplyDone={onReplyDone}
+            replyDoneText={replyDoneText}
             onAskAgent={onAskAgent}
             onAskAgentPanel={onAskAgentPanel}
             agentBot={agentBot}
@@ -175,6 +193,7 @@ function InboxMessage({
   onMoveToInbox,
   onRead,
   onReplyDone,
+  replyDoneText,
   onAskAgent,
   onAskAgentPanel,
   agentBot,
@@ -195,6 +214,7 @@ function InboxMessage({
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
   onReplyDone?: () => void;
+  replyDoneText?: string;
   onAskAgent?: () => Promise<unknown>;
   onAskAgentPanel?: () => Promise<AgentBot>;
   agentBot: AgentBot | null;
@@ -316,7 +336,12 @@ function InboxMessage({
     : parsed;
   return (
     <>
-      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-2", agentBot && "xl:pe-4")}>
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
+          agentBot && "min-[1568px]:pe-4",
+        )}
+      >
         <div className="flex items-start gap-2">
           <DialogTitle
             dir="auto"
@@ -379,11 +404,11 @@ function InboxMessage({
             </div>
             <div className="flex flex-wrap gap-x-3 text-xs sm:flex-nowrap">
               <span dir="auto" title={message.to} className="min-w-0 break-words sm:truncate">
-                {t`to ${message.to}`}
+                {t`to`} <Addresses text={message.to} />
               </span>
               {message.cc ? (
                 <span dir="auto" title={message.cc} className="min-w-0 break-words sm:truncate">
-                  {t`cc ${message.cc}`}
+                  {t`cc`} <Addresses text={message.cc} />
                 </span>
               ) : null}
             </div>
@@ -487,7 +512,11 @@ function InboxMessage({
                 {onReplyDone ? (
                   <DropdownMenuItem onClick={onReplyDone}>
                     <Check aria-hidden="true" />
-                    <Trans>Mark reply done</Trans>
+                    {replyDoneText ? (
+                      <Trans>Mark done: {replyDoneText}</Trans>
+                    ) : (
+                      <Trans>Mark reply done</Trans>
+                    )}
                   </DropdownMenuItem>
                 ) : null}
               </DropdownMenuContent>
@@ -577,7 +606,7 @@ function InboxMessage({
               <SandboxedHtmlViewer html={message.html} title={message.subject} email />
             </div>
           ) : (
-            <p dir="auto" className="whitespace-pre-wrap p-4 wrap-anywhere text-sm">
+            <p dir="auto" className="whitespace-pre-wrap py-4 wrap-anywhere text-sm">
               {maskCurrencyWhenHidden(message.text ?? "")}
             </p>
           )}
@@ -592,7 +621,7 @@ function InboxMessage({
         </div>
       </div>
       {agentBot ? (
-        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl xl:relative xl:-my-4 xl:-me-4 xl:w-96 xl:max-w-none xl:shrink-0 xl:shadow-none">
+        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl min-[1568px]:relative min-[1568px]:-my-4 min-[1568px]:-me-4 min-[1568px]:w-96 min-[1568px]:max-w-none min-[1568px]:shrink-0 min-[1568px]:shadow-none">
           <EmailAgentPanel
             bot={agentBot}
             onClose={() => setAgentBot(null)}

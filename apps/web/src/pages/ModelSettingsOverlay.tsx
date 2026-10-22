@@ -885,7 +885,7 @@ export function ModelSettingsOverlay({
             </NativeSelect>
           </label>
         ) : null}
-        {selected.billing && !usingServerCredentials ? (
+        {selected.billing && credential && !usingServerCredentials ? (
           <p className="mt-2 text-[13px] leading-[1.5] text-muted-foreground">{selected.billing}</p>
         ) : null}
       </>

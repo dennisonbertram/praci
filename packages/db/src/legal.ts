@@ -306,6 +306,8 @@ export function createLegalRepos(prisma: PrismaClient) {
         from?: Date;
         to?: Date;
         limit?: number;
+        /** Latest due date first, so `limit` keeps the newest rows. */
+        newestFirst?: boolean;
         excludeConnectionIds?: readonly string[];
       } = {},
     ) {
@@ -329,7 +331,9 @@ export function createLegalRepos(prisma: PrismaClient) {
               }
             : {}),
         },
-        orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+        orderBy: options.newestFirst
+          ? [{ dueDate: "desc" }, { id: "asc" }]
+          : [{ dueDate: "asc" }, { id: "asc" }],
         take: clamp(options.limit, 200, MAX_LIST),
       });
     },
@@ -475,11 +479,12 @@ export function createLegalRepos(prisma: PrismaClient) {
 
     async deadlineCounts(actor: Actor, today: Date) {
       const open = { ...scope(actor), status: "open" };
-      const [openDeadlines, overdueDeadlines] = await Promise.all([
+      const [openDeadlines, overdueDeadlines, doneDeadlines] = await Promise.all([
         prisma.legalDeadline.count({ where: open }),
         prisma.legalDeadline.count({ where: { ...open, dueDate: { lt: today } } }),
+        prisma.legalDeadline.count({ where: { ...scope(actor), status: "done" } }),
       ]);
-      return { openDeadlines, overdueDeadlines };
+      return { openDeadlines, overdueDeadlines, doneDeadlines };
     },
   };
 }

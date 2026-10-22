@@ -1,0 +1,56 @@
+# Visual inspection V3 (iteration 14, session uxl14-V3)
+
+Target: demo stack web :5381 (mock data), signed in as the mock founder. Pages: Data room (list, grid, stats, folder tree, path bar, preview, upload, filters, search, Ask panel), Investors (cap table), Contacts, Artifacts, Activity, command palette (Cmd+K). Viewports 1440x900 and 375x812; 1920x1080 for the Data room shell. Screenshots are in `/tmp/uxloop14/V3/`. `layout-audit.js` and `geometry-audit.js` were run on every page and state.
+
+Method notes
+- Every page at 1440x900 and 375x812 has `pageScrollY = 0` and `pageScrollX = 0`: all app surfaces fit one screen and scroll inside their panels (L1, L6 pass).
+- Touch-target checks were NOT done. agent-browser's `set device` did not emulate `pointer: coarse` (`matchMedia('(pointer: coarse)')` stayed false), so any small-target numbers would be invalid per the owner rule. The code already carries `pointer-coarse:` size classes (for example the Data room row icon).
+- The audit's low-contrast list reports ratio 1.2 to 1.3 for sidebar labels, "Create" and the skip link. The screenshots show readable text, so this is a false positive (transparent-background walk), not a finding.
+- Not exercised: Contacts Delete (would remove demo data), Box and email import (need connections), real processing strip (the demo parses files in under 4 s, so only "100%" then "Uploaded" was seen).
+- Other walkers share this account, so some data (Imported strip, New Bot threads, approval toasts) comes from them and is not counted as a bug.
+
+## Verdicts
+
+| Page | 1440x900 | 375x812 | Verdict |
+|---|---|---|---|
+| Data room list | Fits; tree, path bar, inner scroll, preview panel, Ask docking all behave. | Folder dropdown, Filters row, rows as stacked lines. | Excellent, minor polish (V3-04, V3-05, V3-06) |
+| Data room grid | Cards are tall (297 px) so only two rows show. | Two columns, clean. | Good (V3-07) |
+| Data room stats | Dense and legible; bar chart has no value labels. | Clean reflow to two tiles per row. | Good (V3-08) |
+| Data room at 1920x1080 | Table is capped at 896 px, leaving a 450 px empty band on the right, and names wrap. | n/a | Below excellent (V3-03) |
+| Investors | Fits; inner scroll; Action items card is the only outlined card. | Header and tables reflow; action item title truncates to "Audit request . [M...". | Good (V3-09). Page owned by another session, so only P0/P1 count; none found. |
+| Contacts | Fits; edit dialog is excellent; focus returns to the row. | Two-column table with truncated emails. | Good (V3-10) |
+| Artifacts | List/grid, date filter chip, split viewer all work. | List and full-screen viewer with back arrow. | Excellent (V3-11 is polish) |
+| Activity (sidebar section) | Inline section pushes the bot list down by about 330 px. | not checked separately | Below excellent (V3-02) |
+| Command palette | Beautiful grouping and highlighting; result ordering problem (V3-01). | Anchored to top, usable. | Good with one P2 |
+
+## Findings
+
+| id | page / story | sev | cat | what happened vs expected | evidence | suspected location | proposed fix |
+|---|---|---|---|---|---|---|---|
+| V3-01 | Cmd+K; STORY-APP search | P2 | flow | Observed. Typing "Hiring Plan" lists five "MOCK Monthly Investor Update NN.pdf" documents (match only in body text, identical snippets) first, then chats; the artifact literally titled "MOCK Hiring Plan - Q4" is the 8th row. Maya who types an exact title expects it first. Groups are in a fixed order (Documents, Chats, Artifacts), so the within-group title-prefix ranking never helps across groups. | `/tmp/uxloop14/V3/pal-Hiring-1440.png`; option order read from the DOM: Update 01..05, Chief, Investor Relations, Hiring Plan - Q4, Search mail | `apps/web/src/pages/shell/command-palette.tsx:72-76` (ranking is per group), `:201` | Move a group to the top when its best item is a title or name match, or cap body-only document matches at 2 to 3 rows so exact-title hits from other groups stay visible. |
+| V3-02 | Activity (sidebar) | P2 | visual | Observed. Opening Activity renders an inline section (two "Needs your answer" rows, "Working", "Show 20 finished runs") between Pages and the bot list. The bot list moves down about 330 px; at 1440x900 only half of "Chief" is visible below the section, and the sidebar scroll height rises from 711 to 1245 px. Chat access and Activity cannot be seen together (L3 accumulation). The "Filter" link is a bare word with no icon or menu hint. | `/tmp/uxloop14/V3/act-1440.png`, `act-more2-1440.png`; scroller clientH 418 / scrollH 1245 | `apps/web/src/pages/ActivityList.tsx` and its mount in `Shell.tsx` | Cap the Activity section height (about 220 px, own scroll) or open it as a popover from the clock button instead of pushing the bot list. |
+| V3-03 | Data room list at wide screens; Contacts | P2 | visual | Observed. At 1920x1080 the Data room table is limited by `max-w-4xl` (896 px) while the toolbar spans the full width: a 450 px empty band sits right of the table and Sort sits far from its table. Because the Name column gets only 292 px of the 896, names like "MOCK Term Sheet Draft - Quill Capital.pdf" wrap to two lines at 1920 though they fit on one line at 1440. Contacts has the same cap (table ends at x=1240 while "Add contact" ends at 1412 on a 1440 screen). Breaks the one-grid rule (L4) and D2. | `/tmp/uxloop14/V3/dr-1920.png`; table width 896, th widths 292/144/96/256/80; `/tmp/uxloop14/V3/con-1440.png` | `apps/web/src/components/data-room/ItemRows.tsx:543`, `apps/web/src/pages/Contacts.tsx:171` | Drop `max-w-4xl` on the Data room table (let Name flex) and use `w-full` with a larger cap (for example `max-w-6xl`) on Contacts so the right edge matches the header actions. |
+| V3-04 | Data room upload toast | P3 | visual | Observed. The upload toast ("V3-A-very-long-file-name...  100%", then "Uploaded / View") sits bottom-left, straddling the folder-tree edge and covering the "Largest files" rows; it floats in a different corner than approval toasts (bottom right). | `/tmp/uxloop14/V3/dr-upload1-1440.png`, `dr-upload2-1440.png` | upload toast mount in the Data room page | Dock upload progress inside the page (a strip under the toolbar) or anchor it in the same corner as other toasts. |
+| V3-05 | Data room "Imported N files" strip | P3 | copy | Observed. The strip says "Imported 4 files" but lists only three names with no "+1", and it stays after reload (stale for hours, and it belongs to an earlier import by another session). | `/tmp/uxloop14/V3/dr-list-1440.png` | Data room import strip component (grep "Imported" in `components/data-room`) | List all names or show "+N more", and auto-expire the strip after the next visit. |
+| V3-06 | Data room no-results | P3 | flow | Observed. With search and a type filter active, "No results" offers two separate buttons, "Clear search" and "Clear filters", stacked. One "Clear all" would do the usual job in one tap. | `/tmp/uxloop14/V3/dr-filtered-1440.png` | Data room empty state in `ItemRows.tsx` / `DataRoom.tsx` | Show one "Clear all" when both are active. |
+| V3-07 | Data room grid | P3 | visual | Observed. Cards are 297 px tall with 180 px thumbnails, so two rows fill the screen; short names leave a dead gap between title and meta; the "..." menu has a dark disc on thumbnails but none on the no-thumbnail cards (walkthrough.mp4, failed NDA). | `/tmp/uxloop14/V3/dr-grid-1440.png` | grid card in `ItemRows.tsx` or `ItemGrid` | Reduce thumbnail height to about 130 px and give the "..." button the same disc on every card. |
+| V3-08 | Data room stats | P3 | visual | Observed. The "Documents by document date" chart shows one y-axis label ("10") and two x labels, with no bar values or hover tooltip text found in the DOM (no `role=img` or labels on the bars). Meaning is only readable by eye. | `/tmp/uxloop14/V3/dr-stats-1440.png` | stats chart in the Data room page | Add a tooltip or `aria-label` per bar ("Mar 2026: 4 documents"). |
+| V3-09 | Investors (P3 only; another session owns this page) | P3 | visual | Observed. At 375 the Action items row reads "Audit request . [M..." because "New" and "Draft reply" take the space; the subject cannot be read. The Action items card is the only card with a bright white outline at 1440 and 375, which competes with the primary content. The Contacts list ends each row in a bare "-" with no column header. | `/tmp/uxloop14/V3/inv-top-375.png`, `inv-1440.png`, `inv-bottom-1440.png` | Investors action items card | Wrap the row to two lines on phones and use the normal card border unless the item is overdue. |
+| V3-10 | Contacts at 375 | P3 | visual | Observed. Emails truncate ("jamie@placeholder-ventures.exampl...") and the organization is dropped; no way to see it except opening the row. | `/tmp/uxloop14/V3/con-375.png` | `Contacts.tsx` responsive columns | Show organization as the second line instead of the email, or wrap the email. |
+| V3-11 | Artifacts filter | P3 | copy | Observed. The date filter is labelled just "Added" (Data room says "Sort: Added" for a different thing), and its menu has only Today / This week / This month with no check mark or "Any time". Clearing works through the "Added: Today (x)" chip. | `/tmp/uxloop14/V3/art-filter-1440.png`, `art-filtered-1440.png` | Artifacts page filter | Label it "Added: Any time" by default and add an "Any time" item. |
+| V3-12 | Cmd+K mail row | P3 | copy | Observed. The "Search mail for ..." row shows the query lower-cased ("msaquill") although the user typed "MSAQuill". No Esc hint in the footer and no close control on phones (backdrop tap only). | `/tmp/uxloop14/V3/pal-none-1440.png`, `pal-375.png` | `Shell.tsx:2338` (query is lower-cased before display) | Display the raw text and add "Esc Close" to the footer. |
+
+No P0 or P1 findings on these pages.
+
+## Excellent as is
+
+- Data room folder tree, breadcrumb path bar ("All items > Legal > Contracts"), and selection state: always shows where you are, and the tree collapses to a folder dropdown with a check mark on phones and when the Ask panel is docked.
+- Data room preview: opens in place, rows collapse to a compact line, Escape closes it and returns focus to the row, and every icon button has an accessible name. On phones it becomes a centered card.
+- Failed file row: states the reason ("This file isn't a readable PDF."), has an inline Delete, and a red "Failed" status in words and color, in list, grid and phone.
+- Data room search no-results state is compact; Sort switches to "Relevance" when searching.
+- Add files menu (Upload files / From email / From Box) is short and clear.
+- Stats view reflows from four tiles to two on phones with no loss.
+- Command palette: grouped results, highlighted match, snippets with the hit in context, "No matches in pages, documents, contacts" while still offering mail search; the empty palette shows pages only.
+- Contacts edit dialog: five labelled fields, Delete apart from Save/Cancel, focus returns to the row on Escape.
+- Artifacts: uniform cards with a type chip, list/grid toggle, filter chip with a clear button, split viewer with an "Isolated preview" lock, and a clean full-screen viewer on phones with a back arrow.
+- All pages: no page scroll or horizontal overflow at 1440x900, 375x812 and 1920x1080.

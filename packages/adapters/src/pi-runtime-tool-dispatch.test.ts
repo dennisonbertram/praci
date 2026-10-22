@@ -962,6 +962,37 @@ describe("Pi connector tool dispatch", () => {
     expect(events.some((event) => (event as { type?: string }).type === "done")).toBe(false);
   });
 
+  it("ends quietly, without an error, when the turn handed its request to another agent", async () => {
+    fakeAgentState.mode = "silent-continuation";
+    fakeAgentState.emitFinalAfterFollowUp = false;
+    const runtime = new PiAgentRuntime();
+    const events: unknown[] = [];
+    for await (const event of runtime.run(
+      {
+        botId: "b",
+        threadId: "t",
+        runId: "delegated-quiet",
+        prompt: "ask the payments agent to send $300",
+        instructions: "Use the destination tool.",
+        history: [],
+        tools: [destinationTool],
+        model: { provider: "test", id: "dispatch-test-model" },
+        executeTool: vi.fn(async () => ({ ok: true })),
+        delegated: () => true,
+      },
+      {
+        operationId: "delegated-quiet",
+        traceId: "delegated-quiet",
+        spaceId: "w",
+        userId: "u",
+        signal: new AbortController().signal,
+      },
+    )) {
+      events.push(event);
+    }
+    expect(events.some((event) => (event as { type?: string }).type === "done")).toBe(true);
+  });
+
   it("does not replay a continue prompt into another ask-to-continue reply", async () => {
     fakeAgentState.mode = "silent-continuation";
     fakeAgentState.emitFinalAfterFollowUp = false;

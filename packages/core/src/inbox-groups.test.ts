@@ -61,7 +61,7 @@ describe("groupInbox", () => {
 });
 
 describe("groupInbox Needs reply order", () => {
-  it("sorts by priority first, then newest, whatever the input order", () => {
+  it("sorts newest first whatever the priority or input order", () => {
     const groups = groupInbox(
       [
         row("normal-new", new Date(2026, 9, 12, 9, 0), true, "normal"),
@@ -73,11 +73,11 @@ describe("groupInbox Needs reply order", () => {
       now,
     );
     expect(groups.needsReply.map((r) => r.id)).toEqual([
-      "critical-old",
+      "unranked",
+      "normal-new",
       "important-new",
       "important-old",
-      "normal-new",
-      "unranked",
+      "critical-old",
     ]);
   });
 });

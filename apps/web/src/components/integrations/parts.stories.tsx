@@ -2,14 +2,7 @@ import { mailThreadAgentSpawnKey } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { mockBots } from "../../stories/fixtures";
-import {
-  AgentStack,
-  AgentToggleList,
-  IntegrationTile,
-  OPEN_LINK,
-  PHONE_ROW,
-  StatusBadge,
-} from "./parts";
+import { AgentStack, AgentToggleList, IntegrationTile, OPEN_LINK, StatusBadge } from "./parts";
 
 const meta = {
   title: "Integrations/Parts",
@@ -116,7 +109,7 @@ export const OpenLinks: StoryObj = {
   render: () => (
     <div className="flex w-[343px] flex-col gap-2.5">
       {["Open Inbox", "Open Investors", "Open Finance"].map((label) => (
-        <IntegrationTile key={label} className={PHONE_ROW}>
+        <IntegrationTile key={label}>
           <div className="min-w-0 truncate font-semibold">Sample app</div>
           <div className="flex items-center gap-2">
             <a href="#open" className={OPEN_LINK}>

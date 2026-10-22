@@ -108,4 +108,32 @@ describe("isThreadSnapshotEvent", () => {
     expect(isThreadSnapshotEvent(event({ type: "run.completed" }))).toBe(true);
     expect(isThreadSnapshotEvent(event({ type: "bot.updated" }))).toBe(false);
   });
+
+  it("takes the waiting delegate requests from a thread.delegate_pending event", () => {
+    const next = reduceThreadSnapshot(
+      snapshot(),
+      event({ type: "thread.delegate_pending", payload: { pending: ["m1", "m2"] } }),
+    );
+    expect(next).toMatchObject({ cursor: 5, delegatePending: ["m1", "m2"] });
+  });
+
+  it("ends only the waiting request that a delegate's reply answers", () => {
+    const reply = (replyToMessageId: string | undefined) =>
+      event({
+        type: "thread.message.created",
+        payload: {
+          messageId: "reply-1",
+          role: "user",
+          blocks: [
+            { kind: "bot_message_received", fromBotId: "b", fromBotName: "B", text: "done" },
+          ],
+          ...(replyToMessageId ? { replyToMessageId } : {}),
+        },
+      });
+    const waiting = snapshot({ delegatePending: ["m1", "m2"] });
+    expect(reduceThreadSnapshot(waiting, reply("m1"))?.delegatePending).toEqual(["m2"]);
+    // A message that answers no waiting request (a status update, another agent) changes nothing.
+    expect(reduceThreadSnapshot(waiting, reply(undefined))?.delegatePending).toEqual(["m1", "m2"]);
+    expect(reduceThreadSnapshot(waiting, reply("other"))?.delegatePending).toEqual(["m1", "m2"]);
+  });
 });

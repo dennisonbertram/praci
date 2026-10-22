@@ -175,7 +175,7 @@ it("shows one switch for every model, on only when all are allowed, with the mod
     ["Model", "true"],
     ["TypeSafe", "false"],
   ]);
-  expect(container.querySelector("details")?.textContent).toContain("Advanced");
+  expect(container.querySelector("details")?.textContent).toContain("Per model and documents");
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
   expect(container.textContent).not.toContain("ElevenLabs");
 });

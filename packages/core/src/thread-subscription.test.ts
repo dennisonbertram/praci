@@ -80,6 +80,22 @@ describe("thread subscription recovery", () => {
     await running;
   });
 
+  it("does not trust a cached snapshot when the server snapshot failed to load", async () => {
+    vi.useFakeTimers();
+    const { abort, channel, callbacks } = setup({ ...head, cursor: 5 });
+    callbacks.loadInitial.mockResolvedValue(null);
+    callbacks.refresh.mockRejectedValue(new Error("down"));
+    const running = runThreadSubscription(callbacks);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(callbacks.subscribe).toHaveBeenCalledWith(5);
+    expect(callbacks.refresh).toHaveBeenCalled();
+    channel.send(event(6));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(callbacks.applyEvent).not.toHaveBeenCalled();
+    abort.abort();
+    channel.end();
+    await running;
+  });
   it("reconnects from the highest event cursor and resets backoff after delivery", async () => {
     vi.useFakeTimers();
     const { abort, channel, callbacks } = setup();
