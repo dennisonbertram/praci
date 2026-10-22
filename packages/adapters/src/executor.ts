@@ -271,6 +271,7 @@ import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
 import { cloudflareGatewayProviderEnv } from "./cloudflare-ai-gateway.js";
 import type { CompanyImportEngine } from "./company-import-engine.js";
 import {
+  COMPANY_READ_TOOL_NAMES,
   COMPANY_TOOL_NAMES,
   companyToolFromTool,
   companyToolsForRun,
@@ -630,6 +631,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "drive_read",
   "search_data_room",
   "read_data_room_item",
+  ...COMPANY_READ_TOOL_NAMES,
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -4285,7 +4287,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { approvedByCard, effectKey },
             );
             if (
-              (COMPANY_READ_TOOLS as readonly string[]).includes(name) &&
+              COMPANY_READ_TOOL_NAMES.has(name) &&
               !("error" in result) &&
               !("consentRequired" in result)
             ) {
@@ -6247,6 +6249,27 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (name === "notify_user") {
+            if (companyImporter) {
+              const latestImport = await deps.prisma.companyImportRun.findFirst({
+                where: { spaceId: run.spaceId, ownerUserId: bot.userId },
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+                select: { status: true },
+              });
+              const attentionAllowed =
+                latestImport !== null &&
+                ["budget_reached", "awaiting_consent"].includes(latestImport.status);
+              if (args.importance === "attention" && !attentionAllowed) {
+                return finish({
+                  error:
+                    "Importer attention notifications are reserved for budget or consent issues.",
+                });
+              }
+              args = {
+                ...args,
+                surface: "company",
+                importance: attentionAllowed ? args.importance : "info",
+              };
+            }
             return finish(
               await runNotifyUser(deps.prisma, deps.notificationEvents, run, bot, args),
             );
@@ -6801,7 +6824,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               ...(companyImporter
                 ? {
                     subagentToolNames: new Set([
-                      ...COMPANY_READ_TOOLS,
+                      ...COMPANY_READ_TOOL_NAMES,
                       "company_import_plan",
                       "company_import_status",
                     ]),
@@ -6809,7 +6832,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   }
                 : companyAgent
                   ? {
-                      subagentToolNames: new Set([...COMPANY_READ_TOOLS, "company_review_next"]),
+                      subagentToolNames: new Set([
+                        ...COMPANY_READ_TOOL_NAMES,
+                        "company_review_next",
+                      ]),
                       subagentModelSelectionAllowed: false,
                     }
                   : {
