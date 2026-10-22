@@ -262,3 +262,38 @@ export const BesidePanel: Story = {
     },
   ]),
 };
+
+/** A page's own fixed notice (Inbox "Archived · Undo", `data-toast-avoid`) stays fully visible: a pending approval rises above it. On a phone the approval body shows up to four lines. */
+export const PageNoticeUnderApproval: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <Demo
+        items={[
+          {
+            id: "approval",
+            title: "Legal agent needs an answer",
+            body: "Priya Example asked to move the signing date to Friday. I can accept the new date, keep the old one, or ask her for a different time, and I need your choice before I reply to her.",
+            withBot: true,
+          },
+        ]}
+      />
+      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex justify-center px-4">
+        <div
+          data-toast-avoid
+          className="pointer-events-auto flex items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg"
+        >
+          <span>Archived "Quarterly update"</span>
+          <button
+            type="button"
+            className="rounded-md bg-secondary px-3 py-1 text-secondary-foreground"
+          >
+            Undo
+          </button>
+        </div>
+      </div>
+    </>
+  ),
+};
