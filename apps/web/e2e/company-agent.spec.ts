@@ -6,6 +6,7 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   await page.setViewportSize({ width: 1500, height: 1000 });
   await signup(page, `company-agent-${Date.now()}@rakazo.test`, "password12", "Company Owner");
   await completeOnboarding(page);
+  await rpc(page, "preferences/update", { tourSeen: true });
   await page.goto("/app/company");
   await page.getByRole("button", { name: "Ask Company agent", exact: true }).click();
   const historian = page.getByTestId("company-agent-panel");
@@ -44,6 +45,7 @@ test("Company route changes can create the other agent while creation is pending
 }) => {
   await signup(page, `company-race-${Date.now()}@rakazo.test`, "password12", "Company Owner");
   await completeOnboarding(page);
+  await rpc(page, "preferences/update", { tourSeen: true });
   let releaseCreation!: () => void;
   const held = new Promise<void>((resolve) => {
     releaseCreation = resolve;
