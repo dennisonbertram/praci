@@ -99,7 +99,7 @@ export const ListByDocumentDate: Story = {
   render: () => <ListView rows={rows} o={o} sortField="date" />,
 };
 /**
- * A file read for over two minutes (it shows its age), an unreadable file (offers Delete) and a
+ * A file read for over two minutes (it shows its age), an unreadable file (its one Delete is in the row menu) and a
  * file that failed for another reason (offers Try again). Status is its own column.
  */
 export const ListWithStatus: Story = {

@@ -539,6 +539,10 @@ msgstr "{items, plural, one {# item} other {# items}}"
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr "{legalSafes} SAFEs found in Legal"
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "{minutes}m ago"
@@ -708,6 +712,10 @@ msgstr "0x… or name.eth"
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
 msgstr "1 SAFE could not be read"
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
+msgstr "1 SAFE found in Legal"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -1048,6 +1056,10 @@ msgstr "Added"
 #: src/components/ContactDialog.tsx
 msgid "Added by {0}"
 msgstr "Added by {0}"
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Added to Data room"
+msgstr "Added to Data room"
 
 #. placeholder {0}: currentName ?? ""
 #: src/components/data-room/DropZone.tsx
@@ -1998,6 +2010,10 @@ msgstr "Browser"
 msgid "Browser notifications"
 msgstr "Browser notifications"
 
+#: src/pages/Legal.tsx
+msgid "Building graph…"
+msgstr "Building graph…"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
@@ -2405,6 +2421,10 @@ msgstr "Choose the account to connect, then come back here."
 #: src/pages/RoutineEditor.tsx
 msgid "Choose when it runs"
 msgstr "Choose when it runs"
+
+#: src/components/ComposeEmail.tsx
+msgid "Choose which account to send from."
+msgstr "Choose which account to send from."
 
 #: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
@@ -7539,6 +7559,7 @@ msgstr "Only if the server does not use sign-in"
 msgid "Only this bot"
 msgstr "Only this bot"
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -7553,9 +7574,9 @@ msgstr "Only this bot"
 msgid "Open"
 msgstr "Open"
 
+#. placeholder {0}: agent.name
 #. placeholder {0}: group.title
 #. placeholder {0}: ref.name
-#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx
@@ -9225,6 +9246,10 @@ msgstr "Save output limit"
 msgid "Save proof"
 msgstr "Save proof"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Save the routine first"
+msgstr "Save the routine first"
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
 msgstr "Save the workspace and install current software."
@@ -9339,7 +9364,6 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9389,6 +9413,10 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
+msgstr "Search finds any page, chat or email."
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -9450,6 +9478,10 @@ msgstr "Searching in {openFolderPath}"
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr "Searching your mail"
+
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
+msgstr "Searching…"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
@@ -10239,7 +10271,6 @@ msgstr "Stats"
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/gtm/GtmChannels.tsx
-#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr "Status"
 
@@ -11073,10 +11104,6 @@ msgstr "Turn on a model and allow AI access to sort files."
 msgid "Type"
 msgstr "Type"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
-msgstr "Type here to find any page, chat or email."
-
 #: src/pages/Investors.tsx
 msgid "Type it in"
 msgstr "Type it in"
@@ -11188,6 +11215,10 @@ msgstr "Unpin"
 #: src/pages/Inbox.tsx
 msgid "Unread"
 msgstr "Unread"
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
+msgstr "Unreadable"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
@@ -11383,6 +11414,11 @@ msgstr "Upload to All items"
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
 msgstr "Uploaded"
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
+msgstr "Uploaded to {0}"
 
 #: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx
@@ -11606,6 +11642,11 @@ msgstr "Waiting for you to finish signing in."
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
 msgstr "Waiting in line…"
+
+#. placeholder {0}: run.waitingOn
+#: src/pages/RoutineRunHistory.tsx
+msgid "Waiting on {0}"
+msgstr "Waiting on {0}"
 
 #: src/pages/shell/transcript.tsx
 msgid "Waiting on {delegate}"

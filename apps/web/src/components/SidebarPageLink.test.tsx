@@ -128,3 +128,24 @@ it("renders a real link that opens in the app on a plain click and is left to th
   );
   expect(onOpen).toHaveBeenCalledTimes(1);
 });
+
+it("keeps a 44px row and a 24px badge target on touch", () => {
+  act(() => {
+    createRoot(container).render(
+      <SidebarPageLink
+        testId="a"
+        current={false}
+        icon={<Mail aria-hidden="true" />}
+        label="Inbox"
+        badge={<span>3</span>}
+        badgeLabel="3 failed"
+        onBadgeClick={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+  });
+  expect(container.querySelector("[data-testid=a]")?.className).toContain(
+    "pointer-coarse:min-h-11",
+  );
+  expect(container.querySelector("button:not([data-testid])")?.className).toContain("min-h-6");
+});

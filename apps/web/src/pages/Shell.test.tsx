@@ -1237,7 +1237,10 @@ describe("isRoutinesOnlyPanel", () => {
     const base = { hasScreen: false, hasError: false, open: false, showRecoveryHint: false };
     expect(isRoutinesOnlyPanel({ ...base, kind: undefined })).toBe(true);
     expect(isRoutinesOnlyPanel({ ...base, kind: "desktop" })).toBe(false);
-    expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasScreen: true })).toBe(false);
+    const withScreen = { ...base, kind: undefined, hasScreen: true };
+    expect(isRoutinesOnlyPanel({ ...withScreen, state: "running" })).toBe(false);
+    expect(isRoutinesOnlyPanel({ ...withScreen, state: "stopped" })).toBe(true);
+    expect(isRoutinesOnlyPanel({ ...withScreen, state: "suspended" })).toBe(false);
     expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasError: true })).toBe(false);
   });
 });

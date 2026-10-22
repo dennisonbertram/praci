@@ -450,6 +450,8 @@ export const InboxMessageSchema = z.object({
   to: z.string(),
   /** Empty when the message has no Cc. */
   cc: z.string(),
+  /** False when Reply all would address the same people as Reply; optional for older servers. */
+  replyAllDiffers: z.boolean().optional(),
   date: z.string(),
   subject: z.string(),
   html: z.string().nullable(),

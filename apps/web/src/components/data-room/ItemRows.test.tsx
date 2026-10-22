@@ -611,22 +611,21 @@ it("ticks a row from its checkbox or the x key without opening the preview", () 
 const asRows = (...items: unknown[]) =>
   items.map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
 
-it("offers Delete, not Try again, on a file that cannot be read", () => {
-  const onAction = vi.fn();
+it("gives a file that cannot be read its reason, an Unreadable type and no inline button", () => {
   const rows = asRows({
     ...item("scan", null),
     status: "failed",
     error: "This file isn't a readable PDF.",
   });
-  act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  // The row menu holds its one Delete; the row shows only the reason, at every width.
   const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
   expect(buttons).not.toContain("Try again");
-  act(() =>
-    Array.from(container.querySelectorAll("button"))
-      .find((b) => b.textContent === "Delete")
-      ?.click(),
-  );
-  expect(onAction).toHaveBeenCalledWith("delete", expect.objectContaining({ id: "scan" }));
+  expect(buttons).not.toContain("Delete");
+  const reason = container.querySelector('[data-testid="data-room-error"]');
+  expect(reason?.textContent).toBe("This file isn't a readable PDF.");
+  expect(reason?.className).not.toContain("hidden");
+  expect(container.querySelector("[data-row]")?.children[1]?.textContent).toBe("Unreadable");
 });
 
 it("keeps Try again for a failure that is not about the file's bytes", () => {

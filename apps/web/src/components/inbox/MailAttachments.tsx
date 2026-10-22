@@ -93,7 +93,11 @@ async function saveAttachment(messageId: string, attachment: MailAttachmentItem)
 type Filed = "idle" | "adding" | "added";
 
 /** Files one attachment through the Data room's own email import, which skips a repeat. */
-function useAddToDataRoom(messageId: string, attachments: MailAttachmentItem[]) {
+function useAddToDataRoom(
+  messageId: string,
+  attachments: MailAttachmentItem[],
+  onAdded: () => void,
+) {
   const [filed, setFiled] = useState<Record<string, Filed>>({});
   const [error, setError] = useState("");
   // Set synchronously, so a second click before the first renders cannot file twice.
@@ -129,6 +133,7 @@ function useAddToDataRoom(messageId: string, attachments: MailAttachmentItem[]) 
         if (imported + duplicates === 0) throw new Error("not filed");
         setFiled((prev) => ({ ...prev, [attachment.id]: "added" }));
         dataRoomImportStarted();
+        onAdded();
       })
       .catch((cause) => {
         started.current.delete(attachment.id);
@@ -367,9 +372,13 @@ export function MailAttachments({
   messageId: string;
   attachments: MailAttachmentItem[];
 }) {
-  const [result, setResult] = useState<{ ok: boolean; filename: string } | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; filename: string; added?: true } | null>(
+    null,
+  );
   const [open, setOpen] = useState<number | null>(null);
-  const { filed, add, error } = useAddToDataRoom(messageId, attachments);
+  const { filed, add, error } = useAddToDataRoom(messageId, attachments, () =>
+    setResult({ ok: true, filename: "", added: true }),
+  );
   const download = (attachment: MailAttachmentItem) => {
     setResult(null);
     saveAttachment(messageId, attachment).then(
@@ -453,9 +462,11 @@ export function MailAttachments({
       >
         {error ||
           (result
-            ? result.ok
-              ? t`Downloaded ${result.filename}`
-              : t`Couldn't download ${result.filename}`
+            ? result.added
+              ? t`Added to Data room`
+              : result.ok
+                ? t`Downloaded ${result.filename}`
+                : t`Couldn't download ${result.filename}`
             : null)}
       </p>
       {open !== null ? (
