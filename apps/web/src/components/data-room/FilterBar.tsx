@@ -318,8 +318,7 @@ export function FilterBar({
       <Button
         variant="outline"
         size="sm"
-        // Stats has no search box, and Filters alone would take a row of its own on a phone.
-        className={`order-1 h-8 rounded-full @min-[640px]/bd:hidden ${statsView ? "hidden" : ""}`}
+        className="order-1 h-8 rounded-full @min-[640px]/bd:hidden"
         aria-expanded={pillsOpen}
         aria-controls="data-room-filters"
         onClick={() => setPillsOpen(!pillsOpen)}

@@ -196,14 +196,14 @@ export function useDataRoomList(q: ListQuery) {
     }
   }, [state.loadingMore, state.loading]);
 
-  /** Reads every remaining page and returns all the rows. */
+  /** Reads every remaining page and returns all the rows, or null if the list changed meanwhile. */
   const loadAll = useCallback(async () => {
     let rows = stateRows.current;
     let cursor = cursorRef.current;
     const id = generation.current;
     while (cursor) {
       const page = await fetchPage(latest.current, cursor);
-      if (id !== generation.current) return rows;
+      if (id !== generation.current) return null;
       rows = mergeRows(rows, page.rows);
       cursor = page.nextCursor;
       cursorRef.current = cursor;

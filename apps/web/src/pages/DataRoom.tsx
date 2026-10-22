@@ -891,16 +891,18 @@ export function DataRoomPage({
                   onSelectAll={() =>
                     void list
                       .loadAll()
-                      .then((all) =>
-                        setChecked(
-                          (current) =>
-                            new Map([
-                              ...current,
-                              ...all.map(({ item }) => [item.id, item] as const),
-                            ]),
-                        ),
+                      .then(
+                        (all) =>
+                          all &&
+                          setChecked(
+                            (current) =>
+                              new Map([
+                                ...current,
+                                ...all.map(({ item }) => [item.id, item] as const),
+                              ]),
+                          ),
                       )
-                      .catch(() => undefined)
+                      .catch((cause) => showNoticeToast(errorText(cause)))
                   }
                   busy={bulkBusy}
                   onDownload={() => void downloadChecked()}
