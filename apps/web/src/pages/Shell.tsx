@@ -213,6 +213,7 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
+import { recoverComposerDraft } from "../lib/composer-accounts";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -2892,27 +2893,36 @@ export function ShellPage() {
   const [composerAccounts, setComposerAccounts] = useState<
     Awaited<ReturnType<typeof rpc.inbox.list>>["accounts"] | null
   >(null);
+  const composerScopeRef = useRef({ userId, spaceId: bootstrapMe?.spaceId });
+  composerScopeRef.current = { userId, spaceId: bootstrapMe?.spaceId };
   const botToolControls = useMemo<BotToolControls>(
     () => ({
       openComposer: (draft) => {
         setComposerAccounts(null);
         if (draft.connectionId) return setComposerDraft(draft);
-        const wanted = draft.account.trim().toLowerCase();
-        rpc.inbox
-          .list({})
-          .then(({ accounts }) => {
-            const from =
-              accounts.find(
-                (a) => a.address?.toLowerCase() === wanted || a.label.toLowerCase() === wanted,
-              ) ?? accounts[0];
-            setComposerAccounts(accounts);
-            setComposerDraft({
-              ...draft,
-              connectionId: from?.connectionId ?? "",
-              account: from?.label ?? "",
-            });
-          })
-          .catch(() => setComposerDraft(draft));
+        // The lookup is pinned to the Space of the thread the failed send is in, not the shared selection.
+        const botId = activeBotId.current;
+        const groupId = activeGroupId.current;
+        const threadSpace = groupId
+          ? groupsRef.current.find((group) => group.id === groupId)?.spaceId
+          : botsRef.current.find((bot) => bot.id === botId)?.spaceId;
+        const origin = {
+          userId: composerScopeRef.current.userId,
+          spaceId: composerScopeRef.current.spaceId,
+        };
+        const spaceId = threadSpace ?? origin.spaceId ?? null;
+        void recoverComposerDraft(
+          draft,
+          spaceId,
+          (space) => rpc.inbox.list({}, { context: { spaceId: space } }),
+          () =>
+            composerScopeRef.current.userId === origin.userId &&
+            composerScopeRef.current.spaceId === origin.spaceId,
+        ).then((recovered) => {
+          if (!recovered) return;
+          setComposerAccounts(recovered.accounts);
+          setComposerDraft(recovered.draft);
+        });
       },
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
       disableTool: async (botId, tool) => {

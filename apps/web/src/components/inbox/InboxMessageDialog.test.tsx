@@ -448,8 +448,11 @@ it("keeps Reply as the one filled button, with Reply all and Forward in More", a
   expect(document.querySelector('[role="menuitem"]:nth-child(2)')?.textContent).toBe("Forward");
 });
 
-it("offers no Reply all when the mail has one recipient", async () => {
-  get.mockImplementation(async ({ messageId }) => message(messageId));
+it("offers no Reply all when the server says it would address the same people", async () => {
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    replyAllDiffers: false,
+  }));
   act(() =>
     root.render(<InboxMessageDialog messageId="m2" onArchive={() => {}} onClose={() => {}} />),
   );

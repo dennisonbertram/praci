@@ -307,9 +307,8 @@ function InboxMessage({
   // The caller's row is newer than the loaded copy after an archive or a move.
   const inInbox = inInboxProp ?? message?.inInbox !== false;
   const canArchive = onArchive && inInbox ? onArchive : undefined;
-  // Reply all differs from Reply only when someone else is on the message.
-  const canReplyAll =
-    (`${message?.to ?? ""},${message?.cc ?? ""}`.match(/[^\s,<>"]+@[^\s,<>"]+/g) ?? []).length > 1;
+  // The server compares the recipients of Reply and Reply all; an older server says nothing.
+  const canReplyAll = message?.replyAllDiffers !== false;
   useEffect(() => {
     if (!onNavigate || composing) return;
     const onKeyDown = (event: KeyboardEvent) => {

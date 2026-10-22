@@ -55889,6 +55889,9 @@
                         "cc": {
                           "type": "string"
                         },
+                        "replyAllDiffers": {
+                          "type": "boolean"
+                        },
                         "date": {
                           "type": "string"
                         },
