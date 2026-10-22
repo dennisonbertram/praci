@@ -27,7 +27,11 @@ vi.mock("./lib/remote-images-preference", () => ({
   subscribeRemoteImages: () => () => {},
 }));
 vi.mock("./lib/performance", () => ({ markOnce: () => {}, markAfterPaint: () => {} }));
-vi.mock("./lib/rpc", () => ({ rpc: {}, selectedSpaceId: () => "space-1" }));
+vi.mock("./lib/rpc", () => ({
+  rpc: {},
+  selectedSpaceId: () => "space-1",
+  resetCoalescedRequests: () => {},
+}));
 vi.mock("./components/SubscriptionGate", () => ({
   SubscriptionGate: ({ children }: { children: ReactNode }) => children,
 }));

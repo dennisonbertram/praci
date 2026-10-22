@@ -57,6 +57,18 @@ export function withSpaceHeaders(
  */
 const COALESCED_PATHS = ["/bots/list", "/routines/list"];
 const inFlight = new Map<string, Promise<Response>>();
+let sessionScope = "";
+
+/**
+ * Called when the signed-in user changes (sign-in, sign-out, account switch). Drops every shared
+ * request so one account never receives another account's response.
+ */
+export function resetCoalescedRequests(userId: string | null = null): void {
+  const scope = userId ?? "";
+  if (scope === sessionScope) return;
+  sessionScope = scope;
+  inFlight.clear();
+}
 
 export function coalescedFetch(
   request: Request,
@@ -65,14 +77,21 @@ export function coalescedFetch(
   spaceId: string | null,
 ): Promise<Response> {
   const path = new URL(request.url).pathname;
-  if (!COALESCED_PATHS.some((suffix) => path.endsWith(suffix))) return send(request);
-  const key = `${spaceId ?? ""}|${path}|${body}`;
+  if (!COALESCED_PATHS.some((suffix) => path.endsWith(suffix))) {
+    // Any other call may be a mutation: reads that started before it completes must not be joined.
+    inFlight.clear();
+    return send(request).finally(() => inFlight.clear());
+  }
+  const key = `${sessionScope}|${spaceId ?? ""}|${path}|${body}`;
   let pending = inFlight.get(key);
   if (!pending) {
     // Shared requests ignore per-caller abort signals so one caller cannot cancel the others.
-    pending = send(
+    const shared: Promise<Response> = send(
       new Request(request.url, { method: request.method, headers: request.headers, body }),
-    ).finally(() => inFlight.delete(key));
+    ).finally(() => {
+      if (inFlight.get(key) === shared) inFlight.delete(key);
+    });
+    pending = shared;
     inFlight.set(key, pending);
   }
   return pending.then((response) => response.clone());

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearSpaceSelection, coalescedFetch, selectedSpaceId, selectSpace } from "./rpc.js";
+import {
+  clearSpaceSelection,
+  coalescedFetch,
+  resetCoalescedRequests,
+  selectedSpaceId,
+  selectSpace,
+} from "./rpc.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -72,5 +78,34 @@ describe("coalescedFetch", () => {
     await Promise.all([call("/bots/list", send, "a"), call("/bots/list", send, "b")]);
     await Promise.all([call("/bots/create", send), call("/bots/create", send)]);
     expect(send).toHaveBeenCalledTimes(4);
+  });
+
+  it("never hands one account's pending response to another account", async () => {
+    resetCoalescedRequests("user-a");
+    let release: (r: Response) => void = () => {};
+    const sendA = vi.fn(() => new Promise<Response>((resolve) => (release = resolve)));
+    const pendingA = call("/bots/list", sendA);
+    resetCoalescedRequests("user-b");
+    const sendB = vi.fn(async () => new Response("b"));
+    expect(await (await call("/bots/list", sendB)).text()).toBe("b");
+    expect(sendB).toHaveBeenCalledTimes(1);
+    release(new Response("a"));
+    expect(await (await pendingA).text()).toBe("a");
+    resetCoalescedRequests(null);
+  });
+
+  it("does not let a refresh after a mutation join an older read", async () => {
+    let release: (r: Response) => void = () => {};
+    const slowRead = vi.fn(() => new Promise<Response>((resolve) => (release = resolve)));
+    const olderRead = call("/routines/list", slowRead);
+    await call(
+      "/routines/update",
+      vi.fn(async () => new Response("{}")),
+    );
+    const freshRead = vi.fn(async () => new Response("fresh"));
+    expect(await (await call("/routines/list", freshRead)).text()).toBe("fresh");
+    expect(freshRead).toHaveBeenCalledTimes(1);
+    release(new Response("stale"));
+    await olderRead;
   });
 });
