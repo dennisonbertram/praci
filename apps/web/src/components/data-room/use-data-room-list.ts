@@ -131,6 +131,8 @@ export function useDataRoomList(q: ListQuery) {
   /** The cursor of the next page of the rows on screen. */
   const cursorRef = useRef<string | null>(null);
   const loadedKey = useRef(key);
+  const stateRows = useRef<Row[]>([]);
+  stateRows.current = state.rows;
   const latest = useRef(q);
   latest.current = q;
 
@@ -194,6 +196,22 @@ export function useDataRoomList(q: ListQuery) {
     }
   }, [state.loadingMore, state.loading]);
 
+  /** Reads every remaining page and returns all the rows. */
+  const loadAll = useCallback(async () => {
+    let rows = stateRows.current;
+    let cursor = cursorRef.current;
+    const id = generation.current;
+    while (cursor) {
+      const page = await fetchPage(latest.current, cursor);
+      if (id !== generation.current) return rows;
+      rows = mergeRows(rows, page.rows);
+      cursor = page.nextCursor;
+      cursorRef.current = cursor;
+      setState((s) => ({ ...s, rows, nextCursor: cursor }));
+    }
+    return rows;
+  }, []);
+
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
   /** Shows a changed item at once, before the next read confirms it. */
   const patchItem = useCallback(
@@ -241,5 +259,5 @@ export function useDataRoomList(q: ListQuery) {
     return () => clearTimeout(timer);
   }, [waiting, state.rows, state.loading, q.query]);
 
-  return { ...state, loadMore, reload, patchItem };
+  return { ...state, loadMore, loadAll, reload, patchItem };
 }

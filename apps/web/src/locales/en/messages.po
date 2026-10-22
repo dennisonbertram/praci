@@ -414,6 +414,10 @@ msgstr "{count} days"
 msgid "{count} months"
 msgstr "{count} months"
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} of {total} selected"
+msgstr "{count} of {total} selected"
+
 #: src/pages/Fundraising.tsx
 msgid "{count} SAFEs are signed and unpaid."
 msgstr "{count} SAFEs are signed and unpaid."
@@ -7133,6 +7137,10 @@ msgstr "Not spam"
 msgid "Not supported here"
 msgstr "Not supported here"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
+msgstr "Not tagged"
+
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr "Not tagged yet."
@@ -9094,6 +9102,10 @@ msgstr "Select a connected model"
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
 msgstr "Select all"
+
+#: src/components/data-room/SelectionBar.tsx
+msgid "Select all {total}"
+msgstr "Select all {total}"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."

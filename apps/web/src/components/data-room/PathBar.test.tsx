@@ -47,6 +47,14 @@ it("shows only All items at the top level, so entering a folder adds no row", ()
   expect(container.querySelector("nav")?.textContent).toBe("All items");
 });
 
+it("hides the root row on a phone and keeps one height in a folder", () => {
+  render(undefined);
+  expect(container.querySelector("nav")?.className).toContain("@max-[639px]/bd:hidden");
+  render("c");
+  expect(container.querySelector("nav")?.className).not.toContain("hidden");
+  expect(container.querySelector("nav")?.className).toContain("h-9");
+});
+
 it("shows the path, links to every folder above and marks the open one", () => {
   const onSelect = render("c");
   expect(container.textContent).toBe("All itemsFolder aFolder bFolder c");

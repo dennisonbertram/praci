@@ -1013,7 +1013,7 @@ it("shows an import's progress, reloads the list while it runs, and stops when i
       failed: 1,
       inProgress: 0,
       finished: true,
-      latest: [{ id: "id-a.txt", name: "a.txt" }],
+      latest: ["a.txt", "x.txt", "y.txt"].map((name) => ({ id: `id-${name}`, name })),
     },
   ]);
   await act(async () => {
@@ -1038,7 +1038,7 @@ it("opens a file of a finished import, and lets the row be dismissed", async () 
       done: 5,
       inProgress: 0,
       finished: true,
-      latest: [{ id: "B", name: "b.txt" }],
+      latest: ["b.txt", "c.txt", "d.txt"].map((name, n) => ({ id: n ? name : "B", name })),
     },
   ]);
   rpcMock.item.mockResolvedValue({ ...item("b.txt"), id: "B" });
