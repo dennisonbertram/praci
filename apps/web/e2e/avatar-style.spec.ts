@@ -9,7 +9,8 @@ test("account settings avatar style previews differ for robot and organic", asyn
   await completeOnboarding(page);
 
   const settings = await openUserSettings(page);
-  await expect(settings.getByRole("heading", { name: "Avatars", exact: true })).toBeVisible();
+  await settings.getByText("Chat display", { exact: true }).click();
+  await expect(settings.getByText("Avatars", { exact: true })).toBeVisible();
 
   const robot = settings.getByTestId("avatar-style-robot");
   const organic = settings.getByTestId("avatar-style-organic");

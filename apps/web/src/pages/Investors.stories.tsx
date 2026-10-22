@@ -569,6 +569,28 @@ export const FullTableWithSafes: Story = {
     }),
 };
 
+/** The SAFE list has not answered yet: Equity raised shows a loading bar, not a dash. */
+export const SafesLoading: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "fundraising.safes.list": () => new Promise(() => {}),
+      "contacts.list": [contact("c9", "Casey Advisor", "other", "Independent advisor")],
+      "mcp.servers.list": [cartaServer],
+      "investors.capTable": { snapshot: fullSnapshot, syncing: false },
+    }),
+};
+
+/** The SAFE list failed: a dash with Try again under it. */
+export const SafesFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "fundraising.safes.list": () => Promise.reject(new Error("down")),
+      "contacts.list": [contact("c9", "Casey Advisor", "other", "Independent advisor")],
+      "mcp.servers.list": [cartaServer],
+      "investors.capTable": { snapshot: fullSnapshot, syncing: false },
+    }),
+};
+
 /** Two share classes: a donut would repeat the cards, so the summary is one row and the table starts higher. */
 export const TwoShareClasses: Story = {
   beforeEach: () =>

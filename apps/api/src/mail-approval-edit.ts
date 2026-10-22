@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server";
+import type { NormalizedMailEdits } from "@rakazo/adapters";
 import {
   findAccount,
   inferMailAccount,
@@ -30,6 +31,8 @@ const defaultCompose: MailComposePath = {
   send: inboxComposeSend,
   draftSave: inboxComposeDraftSave,
 };
+
+const withoutAccount = ({ account: _picked, ...rest }: NormalizedMailEdits) => rest;
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -78,14 +81,18 @@ export async function answerEditedMailApproval(
     mailContext(actor, "mail.approval.edit"),
   );
   const wanted = typeof merged.account === "string" ? merged.account.trim() : "";
-  const account = wanted
-    ? findAccount(accounts, wanted)
-    : await inferMailAccount(
-        deps.prisma,
-        { spaceId: actor.spaceId, userId: actor.userId },
-        accounts,
-        merged,
-      );
+  // The card submits the picked connection's id; it must be one of the caller's own accounts.
+  const picked = checked.edits.account;
+  const account = picked
+    ? accounts.find((candidate) => candidate.id === picked)
+    : wanted
+      ? findAccount(accounts, wanted)
+      : await inferMailAccount(
+          deps.prisma,
+          { spaceId: actor.spaceId, userId: actor.userId },
+          accounts,
+          merged,
+        );
   if (!account) throw new ORPCError("BAD_REQUEST", { message: "No connected mail account" });
 
   const send = pending.kind === "mail_send";
@@ -100,7 +107,7 @@ export async function answerEditedMailApproval(
       note: mailApprovalAgentNote(send),
       // Only what the person typed replaces the card's fields. The rest of the card was redacted
       // when it was made, and the stored call is not, so it is never copied onto the card.
-      mail: { ...checked.edits, connectionId: account.id },
+      mail: { ...withoutAccount(checked.edits), connectionId: account.id },
     },
   });
   if (!claimed) {

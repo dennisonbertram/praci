@@ -71,6 +71,27 @@ describe("approval toasts", () => {
     expect(titles()).toEqual([]);
   });
 
+  it("tells the server when X closes a toast, but not when opening it closes the toast", () => {
+    const onDismiss = vi.fn();
+    toasts.enqueueApprovalToast({ id: "n1", title: "one", href: "/app/a" }, { onDismiss });
+    open.get("n1")?.onClose?.();
+    open.delete("n1");
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    const onDismissOpened = vi.fn();
+    toasts.enqueueApprovalToast(
+      { id: "n2", title: "two", href: "/app/b" },
+      { onDismiss: onDismissOpened },
+    );
+    open.get("n2")?.onSeen?.();
+    open.get("n2")?.onClose?.();
+    open.delete("n2");
+    expect(onDismissOpened).not.toHaveBeenCalled();
+    // Leaving the chat unanswered brings it back.
+    toasts.enqueueApprovalToast({ id: "n2", title: "two", href: "/app/b" });
+    expect(titles()).toEqual(["two"]);
+  });
+
   it("forgets an approval the person dismisses", () => {
     toasts.enqueueApprovalToast({ id: "n1", title: "one", href: "/app/a" });
     open.get("n1")?.onClose?.();

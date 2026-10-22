@@ -153,6 +153,24 @@ export const NeedsConsent: Story = {
     }),
 };
 
+/** Consent is asked before the first sync finishes: the card shows alone, with no blank bars beside it. */
+export const NeedsConsentSyncing: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        rows: [],
+        syncedAt: null,
+        enabled: false,
+        triageBlocked: {
+          reason: "needs_consent",
+          recipient: { key: "demo-model", name: "Demo model provider" },
+        },
+      },
+      "inbox.refresh": { syncing: true },
+    }),
+};
+
 /** The first sort after Allow: no rows until it lands, so nothing moves afterwards. */
 export const SortingFirstTime: Story = {
   beforeEach: () =>

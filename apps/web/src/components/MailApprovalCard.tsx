@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { MailApproval, MailEdits } from "@rakazo/contracts";
+import type { MailAccountSummary, MailApproval, MailEdits } from "@rakazo/contracts";
 import { isClosedApprovalAnswer } from "@rakazo/core";
 import {
   Button,
@@ -10,6 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  NativeSelect,
+  NativeSelectOption,
   Textarea,
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
@@ -69,6 +71,9 @@ export function MailApprovalCard({
   allowDisabled = false,
   onFieldsChange,
   toOnly = false,
+  accounts = [],
+  accountsStatus = "ready",
+  onRetryAccounts,
 }: {
   mail: MailApproval;
   status: "pending" | "answered";
@@ -83,11 +88,17 @@ export function MailApprovalCard({
   initialEditing?: boolean;
   allowLabel?: string;
   allowDisabled?: boolean;
-  onFieldsChange?: (fields: Required<MailEdits>) => void;
+  onFieldsChange?: (fields: Required<Omit<MailEdits, "account">>) => void;
   toOnly?: boolean;
+  /** The person's connected mail accounts; with more than one, the card lets them pick the sender. */
+  accounts?: readonly MailAccountSummary[];
+  /** Until the accounts are known, a send that names no sender cannot go out. */
+  accountsStatus?: "loading" | "error" | "ready";
+  onRetryAccounts?: () => void;
 }) {
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
+  const [account, setAccount] = useState("");
   const [editing, setEditing] = useState(initialEditing);
   const outcomeNeedsAttention = mail.outcome === "failed" || mail.outcome === "unknown";
   const [open, setOpen] = useState(status !== "answered" || outcomeNeedsAttention);
@@ -112,6 +123,11 @@ export function MailApprovalCard({
   // A send of a saved draft: the agent named only the draft, so there is nothing to edit or show.
   const savedDraftSend = !draft && Boolean(mail.locked);
   const shown = answered ? initial : fields;
+  // With no sender named, the send waits for the accounts, and for a pick when there are several.
+  const senderOpen = interactive && !mail.account && !mail.locked;
+  const chooseAccount = senderOpen && accountsStatus === "ready" && accounts.length > 1;
+  const needsAccount =
+    senderOpen && (accountsStatus !== "ready" || (accounts.length > 1 && !account));
 
   // A finished card folds up to its header, unless the person still has something to do with it.
   useEffect(() => {
@@ -152,13 +168,14 @@ export function MailApprovalCard({
   };
 
   async function submit(action: "allow" | "deny" | "disable") {
-    if (busy || (action === "allow" && allowDisabled)) return;
+    if (busy || (action === "allow" && (allowDisabled || needsAccount))) return;
     let edits: MailEdits | undefined;
     if (action === "allow") {
       const changed = (Object.keys(fields) as (keyof Fields)[]).filter(
         (key) => fields[key] !== initial[key],
       );
       if (changed.length) edits = Object.fromEntries(changed.map((key) => [key, fields[key]]));
+      if (chooseAccount) edits = { ...edits, account };
       const recipients = [fields.to, fields.cc, fields.bcc].flatMap((text) =>
         splitEntries(text)
           .map((entry) => entry.trim())
@@ -326,7 +343,34 @@ export function MailApprovalCard({
             )}
           </div>
           <div>
-            {mail.account ? (
+            {chooseAccount ? (
+              <Row label={t`From`} hideLabel>
+                <NativeSelect
+                  aria-label={t`From`}
+                  className="h-7 w-full"
+                  disabled={busy}
+                  value={account}
+                  onChange={(event) => setAccount(event.target.value)}
+                >
+                  {account ? null : (
+                    <NativeSelectOption value="">
+                      <Trans>Choose an account</Trans>
+                    </NativeSelectOption>
+                  )}
+                  {accounts.map((value) => (
+                    <NativeSelectOption key={value.connectionId} value={value.connectionId}>
+                      {value.address ?? value.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </Row>
+            ) : senderOpen && accountsStatus === "error" ? (
+              <Row label={t`From`}>
+                <Button variant="link" className="h-auto p-0" onClick={onRetryAccounts}>
+                  <Trans>Retry</Trans>
+                </Button>
+              </Row>
+            ) : mail.account ? (
               <Row label={t`From`}>
                 <span>{mail.account}</span>
               </Row>
@@ -426,7 +470,7 @@ export function MailApprovalCard({
               <div className="flex gap-2">
                 <Button
                   className="rounded-full"
-                  disabled={busy || allowDisabled}
+                  disabled={busy || allowDisabled || needsAccount}
                   onClick={() => void submit("allow")}
                 >
                   {allowLabel ? (

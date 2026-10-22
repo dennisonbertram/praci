@@ -66,7 +66,7 @@ function Title({ contract }: { contract: LegalContract }) {
     <Link
       to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
       state={{ from: "legal" }}
-      className="rk-tap min-w-0 truncate font-medium hover:underline"
+      className="rk-tap min-w-0 font-medium hover:underline"
     >
       {contract.title}
     </Link>
@@ -155,18 +155,11 @@ export function LegalContracts({
           );
         })}
       </ul>
-      <Table compact className="hidden table-fixed @4xl:table">
+      <Table compact className="hidden @4xl:table">
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>
-        <colgroup>
-          <col className="w-[28%]" />
-          <col className="w-[19%]" />
-          <col className="w-[16%]" />
-          <col className="w-[17%]" />
-          <col className="w-[8%]" />
-          <col className="w-[12%]" />
-        </colgroup>
+
         <TableHeader>
           <TableHeadRow>
             <TableHead>
@@ -181,10 +174,10 @@ export function LegalContracts({
             <TableHead>
               <Trans>Renewal</Trans>
             </TableHead>
-            <TableHead className="text-end pe-3">
+            <TableHead className="whitespace-nowrap text-end pe-3">
               <Trans>Value</Trans>
             </TableHead>
-            <TableHead className="ps-4">
+            <TableHead className="whitespace-nowrap ps-4">
               <Trans>Next deadline</Trans>
             </TableHead>
           </TableHeadRow>
@@ -202,17 +195,17 @@ export function LegalContracts({
                   <Status status={contract.status} />
                 </div>
               </TableCell>
-              <TableCell className="truncate" title={contract.counterparties.join(", ")}>
+              <TableCell title={contract.counterparties.join(", ")}>
                 {contract.counterparties.join(", ") || dash}
               </TableCell>
-              <TableCell className="truncate tabular-nums" title={term(contract)}>
+              <TableCell className="tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="truncate" title={renewal(contract)}>
-                {renewal(contract)}
+              <TableCell title={renewal(contract)}>{renewal(contract)}</TableCell>
+              <TableCell className="whitespace-nowrap text-end tabular-nums">
+                {value(contract)}
               </TableCell>
-              <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
-              <TableCell className="ps-4 truncate tabular-nums">
+              <TableCell className="whitespace-nowrap ps-4 tabular-nums">
                 <NextDeadline contract={contract} />
               </TableCell>
             </TableRow>

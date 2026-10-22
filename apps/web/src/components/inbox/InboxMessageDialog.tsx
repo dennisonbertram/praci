@@ -40,6 +40,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 import { allowStep } from "../../lib/inbox-keyboard";
 import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
 import {
+  forgetInboxMessage,
   loadInboxMessage,
   peekInboxMessage,
   prefetchInboxMessage,
@@ -233,6 +234,8 @@ function InboxMessage({
   // A stale link: the email was deleted or moved, so trying again cannot help.
   const [gone, setGone] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // A body that has not arrived after a few seconds gets a plain retry instead of a silent wait.
+  const [slow, setSlow] = useState(false);
   const [asking, setAsking] = useState(false);
   // InboxMessage is keyed by message, so it unmounts when the user moves to another email.
   const mounted = useRef(true);
@@ -280,6 +283,7 @@ function InboxMessage({
     let live = true;
     setError("");
     setGone(false);
+    if (attempt > 0) forgetInboxMessage(messageId);
     loadInboxMessage(messageId)
       .then((next) => {
         if (live) setMessage(next);
@@ -293,6 +297,13 @@ function InboxMessage({
       live = false;
     };
   }, [messageId, attempt]);
+
+  useEffect(() => {
+    setSlow(false);
+    if (message || error || gone) return;
+    const timer = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, [message, error, gone, attempt, messageId]);
 
   // A reply sent from here joins the conversation; the cache is already cleared, so reload it.
   useEffect(() => {
@@ -441,14 +452,8 @@ function InboxMessage({
         ) : (
           <Skeleton className="h-8 w-full" />
         )}
-        {!message && !gone && !error ? (
-          <div aria-hidden="true" className="flex gap-1.5">
-            <Skeleton className="h-7 w-20" />
-            <Skeleton className="h-7 w-24" />
-            <Skeleton className="h-7 w-24" />
-          </div>
-        ) : null}
-        {message ? (
+        {/* The actions need only the id, so they show while the body loads. */}
+        {message || (!gone && !error) ? (
           <div className="flex flex-wrap gap-1.5">
             <Button size="sm" onClick={() => setComposing("reply")}>
               <Reply aria-hidden="true" />
@@ -606,6 +611,14 @@ function InboxMessage({
               <Skeleton className="h-3 w-full" />
               <Skeleton className="h-3 w-5/6" />
               <Skeleton className="h-3 w-2/3" />
+              {slow ? (
+                <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <Trans>Still loading…</Trans>
+                  <Button variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+                    <Trans>Try again</Trans>
+                  </Button>
+                </p>
+              ) : null}
             </div>
           ) : message.html &&
             hasVisibleContent(message.html) &&

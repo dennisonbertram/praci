@@ -75,6 +75,7 @@ export function ContactDialog({
   onDeleted,
   onOpenContact,
   fromCapTable = false,
+  finalFocus,
 }: {
   contact: Contact | null;
   prefill?: ContactPrefill;
@@ -87,6 +88,8 @@ export function ContactDialog({
   onOpenContact?: (contact: Contact) => void;
   /** Opened from the Cap table, where a hint says contacts do not change Carta. */
   fromCapTable?: boolean;
+  /** Where focus goes on close; a mouse click on a row leaves nothing focused to return to. */
+  finalFocus?: () => HTMLElement | null | undefined;
 }) {
   const [name, setName] = useState(contact?.name ?? prefill?.name ?? "");
   const [email, setEmail] = useState(contact?.email ?? prefill?.email ?? "");
@@ -206,7 +209,7 @@ export function ContactDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>
             {contact ? (

@@ -230,14 +230,14 @@ it("lists direct matches before the mail search, marks rows with the group icon,
   expect(onSelectPage).toHaveBeenCalledWith("finance");
 });
 
-it("says nothing matched in pages, documents and contacts, and keeps the mail search", async () => {
+it("shows only the mail search, with no contradicting no-match line, when nothing else matched", async () => {
   const onOpenPath = vi.fn();
   await mount(undefined, async () => [
     { heading: "Mail", fallback: true, entries: [{ id: "/m", label: "Search mail for “zzzqq”" }] },
   ]);
   await search("zzzqq");
   await wait(300);
-  expect(listText()).toContain("No matches");
+  expect(listText()).not.toContain("No matches");
   expect(listText()).toContain("Search mail for “zzzqq”");
   expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toContain(
     "Search mail for",

@@ -1444,6 +1444,8 @@ model Notification {
   createdAt  DateTime               @default(now())
   seenAt     DateTime?
   shownAt    DateTime?
+  /// The person closed this approval's toast with X; it is no longer restored.
+  dismissedAt DateTime?
   deliveries NotificationDelivery[]
 
   @@index([spaceId, userId, botId, dedupeKey, createdAt])

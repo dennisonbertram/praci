@@ -369,6 +369,10 @@ describe("normalizeMailEdits", () => {
       edits: { to: ["Jana <jana@example.test>", "lee@example.test"], subject: "Hi" },
     });
     expect(normalizeMailEdits({ cc: "" })).toEqual({ ok: true, edits: { cc: [] } });
+    expect(normalizeMailEdits({ account: " me@example.test " })).toEqual({
+      ok: true,
+      edits: { account: "me@example.test" },
+    });
   });
 
   it.each([

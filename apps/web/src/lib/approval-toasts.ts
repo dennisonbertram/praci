@@ -8,7 +8,12 @@ import { enqueueNotificationToast, notificationToastManager } from "@rakazo/ui-w
  */
 const GROUP_ID = "approvals:group";
 /** Where an approval waits: the chat link, and the bot whose chat holds its card (a page agent or one email's agent). */
-export type ApprovalChat = { href?: string; botId?: string | null };
+export type ApprovalChat = {
+  href?: string;
+  botId?: string | null;
+  /** Runs when the person closes the toast with X, so the server can stop restoring it. */
+  onDismiss?: () => void;
+};
 const pending = new Map<string, { toast: NotificationToastInput; chat: ApprovalChat }>();
 /** Approvals the person dismissed: a later rebuild from the server must not show them again. */
 const dismissed = new Set<string>();
@@ -52,14 +57,25 @@ function sync() {
   }
   for (const toast of next) {
     const { id, title, body, timeout: _timeout, onClose: _onClose, ...data } = toast;
+    const onSeen = data.onSeen;
+    if (id !== GROUP_ID)
+      data.onSeen = () => {
+        openedId = id;
+        onSeen?.();
+      };
     const onClose = () => {
       if (syncing) return;
       shown.delete(id);
+      const opened = openedId !== undefined && (id === GROUP_ID || openedId === id);
       const gone = id !== GROUP_ID ? [id] : openedId ? [openedId] : [...pending.keys()];
-      // Dismissing the group dismisses every approval in it.
+      // Dismissing the group dismisses every approval in it. Opening one only clears its toast:
+      // it comes back if the person leaves the chat without answering.
       for (const goneId of gone) {
+        const entry = pending.get(goneId);
         pending.delete(goneId);
+        if (opened) continue;
         dismissed.add(goneId);
+        entry?.chat.onDismiss?.();
       }
       openedId = undefined;
       sync();
@@ -69,7 +85,7 @@ function sync() {
       continue;
     }
     shown.add(id);
-    enqueueNotificationToast({ ...toast, onClose });
+    enqueueNotificationToast({ ...toast, ...data, onClose });
   }
 }
 

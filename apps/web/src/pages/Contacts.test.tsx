@@ -255,6 +255,21 @@ it("opens a contact from any cell of its row", async () => {
   expect(document.getElementById("contact-name")).not.toBeNull();
 });
 
+it("returns focus to Add contact when the new-contact dialog closes", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
+  await show();
+  const add = button("Add contact") as HTMLElement;
+  add.focus();
+  await click(add);
+  await act(async () => {
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+  await flush();
+  expect(document.activeElement).toBe(add);
+});
+
 it("focuses Search after Clear filters", async () => {
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
   await show("/app/contacts?q=zzz");

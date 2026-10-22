@@ -5,14 +5,7 @@ import type {
   FinanceProvider,
   FinanceSource,
 } from "@rakazo/contracts";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@rakazo/ui-web";
-import { MoreHorizontal } from "lucide-react";
+import { Button, DropdownMenuItem } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -25,7 +18,7 @@ import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
-import { IntegrationTile, OPEN_LINK, StatusBadge } from "./parts";
+import { IntegrationTile, OPEN_LINK, StatusBadge, TileMenu } from "./parts";
 
 /** False once the tile has unmounted, so a slow request does not set state afterwards. */
 function useMounted() {
@@ -42,33 +35,12 @@ function useMounted() {
 /** Same hover as the other integration tiles; `relative` anchors the stretched name link. */
 const TILE = "relative transition-colors hover:bg-muted/40";
 
-/** The tile's one overflow menu, in its top corner so the bottom row lines up with the other tiles. */
-function TileMenu({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="absolute end-2 top-2 z-10"
-            aria-label={label}
-          />
-        }
-      >
-        <MoreHorizontal aria-hidden="true" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 /** A tile's name; when the connection has an MCP server it links to that page, covering the tile. */
 function TileName({ name, to }: { name: string; to?: string }) {
   return to ? (
     <Link
       to={to}
-      className="block truncate font-semibold outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
+      className="block truncate font-semibold outline-none pointer-coarse:-my-2.5 pointer-coarse:py-2.5 after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
     >
       {name}
     </Link>
@@ -114,7 +86,7 @@ function CryptoTile({
         {hasKey === null ? null : (
           <>
             {/* Nothing to connect without a key: the first wallet added starts it. Not "Not connected". */}
-            {hasKey || hasServer ? <StatusBadge status="connected" /> : null}
+            {hasKey || hasServer ? <StatusBadge status="connected" quiet /> : null}
             {/* One main action like the other tiles; the optional key and agents sit in the menu. */}
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               {hasKey || hasServer ? <Trans>Open Finance</Trans> : <Trans>Add wallet</Trans>}
@@ -160,7 +132,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
       <div className={`${state?.connected ? "" : "mt-auto "}flex items-center gap-2`}>
         {state?.connected ? (
           <>
-            <StatusBadge status="connected" />
+            <StatusBadge status="connected" quiet />
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               <Trans>Open</Trans>
             </Link>
@@ -235,7 +207,7 @@ function ExchangeTile({
       <div className={`${connected ? "" : "mt-auto "}flex items-center gap-2`}>
         {connected ? (
           <>
-            <StatusBadge status="connected" />
+            <StatusBadge status="connected" quiet />
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               <Trans>Open Finance</Trans>
             </Link>
@@ -417,7 +389,7 @@ export function FinanceSection({
               data-testid={`finance-tile-${provider}`}
               className={TILE}
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3 pe-6">
                 <AppLogo name={name} logo={logo} />
                 <div className="min-w-0">
                   <TileName
@@ -434,7 +406,7 @@ export function FinanceSection({
                 {busy === provider ? (
                   <StatusBadge status="connecting" />
                 ) : connected ? (
-                  <StatusBadge status="connected" />
+                  <StatusBadge status="connected" quiet />
                 ) : status === "needs_reconnect" ? (
                   <StatusBadge status="reconnect" />
                 ) : status === "error" ? (
@@ -445,6 +417,10 @@ export function FinanceSection({
                     <Link to="/app/finance" className={OPEN_LINK}>
                       <Trans>Open Finance</Trans>
                     </Link>
+                    <TileMenu
+                      label={t`More ${name} actions`}
+                      manageTo={serverId ? `/app/integrations/mcp/${serverId}` : undefined}
+                    />
                   </>
                 ) : (
                   <Button
