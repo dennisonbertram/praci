@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 264 of 264
-- Web and shared components: 699
+- Web and shared component files with stories: 267 of 267
+- Web and shared components: 706
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -143,6 +143,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | CapTableEditor | [apps/web/src/components/cap-table/CapTableEditor.tsx](../../apps/web/src/components/cap-table/CapTableEditor.tsx) | [CapTableEditor.stories.tsx](../../apps/web/src/components/cap-table/CapTableEditor.stories.tsx) | web |
 | HoldingsTable | [apps/web/src/components/cap-table/HoldingsTable.tsx](../../apps/web/src/components/cap-table/HoldingsTable.tsx) | [HoldingsTable.stories.tsx](../../apps/web/src/components/cap-table/HoldingsTable.stories.tsx) | web |
 | OwnershipBar | [apps/web/src/components/cap-table/OwnershipBar.tsx](../../apps/web/src/components/cap-table/OwnershipBar.tsx) | [OwnershipBar.stories.tsx](../../apps/web/src/components/cap-table/OwnershipBar.stories.tsx) | web |
+| SafeRows | [apps/web/src/components/cap-table/SafeRows.tsx](../../apps/web/src/components/cap-table/SafeRows.tsx) | [SafeRows.stories.tsx](../../apps/web/src/components/cap-table/SafeRows.stories.tsx) | web |
 
 ## Web components/compose
 
@@ -208,6 +209,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | --- | --- | --- | --- |
 | ProspectRow, Pipeline | [apps/web/src/components/fundraising/Pipeline.tsx](../../apps/web/src/components/fundraising/Pipeline.tsx) | [Pipeline.stories.tsx](../../apps/web/src/components/fundraising/Pipeline.stories.tsx) | web |
 | RoundDialog, Segment, Figure, RoundCard | [apps/web/src/components/fundraising/RoundCard.tsx](../../apps/web/src/components/fundraising/RoundCard.tsx) | [RoundCard.stories.tsx](../../apps/web/src/components/fundraising/RoundCard.stories.tsx) | web |
+| SafeDialog, SafeCoverSummary | [apps/web/src/components/fundraising/SafeDialog.tsx](../../apps/web/src/components/fundraising/SafeDialog.tsx) | [SafeDialog.stories.tsx](../../apps/web/src/components/fundraising/SafeDialog.stories.tsx) | web |
+| MarkDateDialog, AttentionStrip, SafeRow, SafeList | [apps/web/src/components/fundraising/SafeList.tsx](../../apps/web/src/components/fundraising/SafeList.tsx) | [SafeList.stories.tsx](../../apps/web/src/components/fundraising/SafeList.stories.tsx) | web |
 
 ## Web components/inbox
 

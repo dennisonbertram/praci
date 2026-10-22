@@ -5,6 +5,7 @@ import {
   isCartaAgentSpawnKey,
   isInvestorsAgentSpawnKey,
 } from "@rakazo/contracts";
+import { atCapPercent } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   addContactIfNew,
@@ -12,6 +13,7 @@ import {
   ContactEmailTakenError,
   getCapTableSnapshot,
   listContacts,
+  listSafes,
   saveCapTableSnapshot,
   saveContact,
 } from "@rakazo/db";
@@ -39,7 +41,10 @@ export function capTableToolsAllowed(
 }
 
 type ContactToolDeps = {
-  prisma: Pick<PrismaClient, "$transaction" | "contact" | "capTableSnapshot" | "fundraiseRound">;
+  prisma: Pick<
+    PrismaClient,
+    "$transaction" | "contact" | "capTableSnapshot" | "fundraiseRound" | "safe"
+  >;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
   /** The agent running the tool, from the run, never from model input. */
@@ -83,8 +88,18 @@ export async function contactToolFromTool(
           };
     }
     if (name === "cap_table_read") {
-      // What the Investors page shows, so the agent can answer from it without Carta.
-      return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope) };
+      // What the Cap Table page shows, so the agent can answer from it without Carta.
+      // SAFEs are never inside the table's 100%; Drafts are not on the Cap Table page at all.
+      const safes = (await listSafes(deps.prisma, deps.scope))
+        .filter((s) => s.status !== "draft")
+        .map((s) => ({
+          investor: s.investorName,
+          status: s.status,
+          amountUsd: s.amountCents / 100,
+          postMoneyCapUsd: s.capCents == null ? null : s.capCents / 100,
+          atCapPercent: atCapPercent(s),
+        }));
+      return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope), safes };
     }
     if (name === "cap_table_update") {
       // The writer comes from the agent, never from the model, so it cannot name another source.

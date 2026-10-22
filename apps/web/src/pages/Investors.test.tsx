@@ -60,6 +60,7 @@ const rpcMock = vi.hoisted(() => ({
   catalog: vi.fn(),
   driveList: vi.fn(),
   importDrive: vi.fn(),
+  safesList: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -95,6 +96,7 @@ vi.mock("../lib/rpc", () => ({
         draft: rpcMock.auditsDraft,
       },
     },
+    fundraising: { safes: { list: rpcMock.safesList } },
     connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     dataRoom: {
       folders: rpcMock.folders,
@@ -210,6 +212,7 @@ beforeEach(() => {
     contact("c1", "Ada", "investor"),
     contact("c2", "Bo", "auditor"),
   ]);
+  rpcMock.safesList.mockResolvedValue([]);
   rpcMock.updatesList.mockResolvedValue([]);
   rpcMock.auditsList.mockResolvedValue([]);
   rpcMock.reminder.mockResolvedValue({ cadence: "monthly" });
@@ -1310,6 +1313,70 @@ it("changes the Reminder from the Updates menu, with the current one ticked", as
   ).toBe("true");
   await click(quarterly);
   expect(rpcMock.reminder).toHaveBeenCalledWith({ cadence: "quarterly" });
+});
+
+const safeRow = (
+  id: string,
+  name: string,
+  status: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  id,
+  source: "native",
+  contactId: null,
+  roundId: null,
+  investorName: name,
+  investorEmail: null,
+  amountCents: 5_000_000,
+  valuationType: "post_money_cap",
+  capCents: 100_000_000,
+  discountPercent: null,
+  mfn: false,
+  proRata: false,
+  governingState: null,
+  investmentDate: null,
+  expiresAt: null,
+  canceledAt: null,
+  sentAt: null,
+  signedByOwnerAt: null,
+  signedByInvestorAt: null,
+  paidAt: null,
+  documentUrl: null,
+  status,
+  createdAt: "2026-10-01T00:00:00.000Z",
+  ...extra,
+});
+
+it("lists sent SAFEs under one group row at cap, outside the table, and hides Drafts", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s1", "Sent Fund", "sent"),
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+    safeRow("s3", "Draft Fund", "draft"),
+    safeRow("s4", "Discount Fund", "sent", { source: "mercury", capCents: null }),
+    safeRow("s5", "Canceled Fund", "canceled"),
+  ]);
+  await show();
+  const group = container.querySelector("[aria-label='SAFEs, if converted at cap']");
+  expect(group).not.toBeNull();
+  // 5.0% + 2.5% at cap; the discount-only SAFE shows a dash and adds nothing.
+  expect(group?.querySelector("[data-testid=safe-sum]")?.textContent).toBe("7.5%");
+  const names = [...group!.querySelectorAll("li")].map((li) => li.textContent);
+  expect(names).toEqual([
+    expect.stringContaining("Sent Fund"),
+    expect.stringContaining("Funded Fund"),
+    expect.stringMatching(/Discount Fund.*—/),
+  ]);
+  expect(group?.textContent).not.toContain("Draft Fund");
+  expect(group?.textContent).not.toContain("Canceled Fund");
+  expect(group?.querySelector("a")?.getAttribute("href")).toBe("/app/fundraising");
+});
+
+it("shows no SAFE group when there are none to convert", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList.mockResolvedValue([safeRow("s3", "Draft Fund", "draft")]);
+  await show();
+  expect(container.querySelector("[aria-label='SAFEs, if converted at cap']")).toBeNull();
 });
 
 const audit = (over: Partial<AuditRequest> = {}): AuditRequest => ({

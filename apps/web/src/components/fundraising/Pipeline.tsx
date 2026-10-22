@@ -23,13 +23,17 @@ import { contactStageNames } from "../ContactDialog";
 function ProspectRow({
   prospect,
   saved,
+  filledSend,
   onEdit,
   onMove,
+  onSendSafe,
 }: {
   prospect: Contact;
   saved: boolean;
+  filledSend: boolean;
   onEdit: () => void;
   onMove: (stage: ContactStage) => void;
+  onSendSafe?: () => void;
 }) {
   const stageNames = contactStageNames();
   return (
@@ -58,6 +62,21 @@ function ProspectRow({
           i18n.locale || "en",
         )}
       </span>
+      {onSendSafe ? (
+        // The button has its own slot after the amount, so amounts and menus line up in every row.
+        <span className="flex w-24 shrink-0 justify-end">
+          {prospect.stage === "committed" ? (
+            <Button
+              variant={filledSend ? "default" : "outline"}
+              size="sm"
+              className="pointer-coarse:h-11"
+              onClick={onSendSafe}
+            >
+              <Trans>Send SAFE</Trans>
+            </Button>
+          ) : null}
+        </span>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -94,14 +113,20 @@ function ProspectRow({
 export function Pipeline({
   prospects,
   savedId = null,
+  filledSend = false,
   onEdit,
   onMove,
+  onSendSafe,
 }: {
   prospects: readonly Contact[];
   /** The prospect just saved, whose row stands out. */
   savedId?: string | null;
+  /** Whether Send SAFE is the page's one filled button (an open round); outline otherwise. */
+  filledSend?: boolean;
   onEdit: (prospect: Contact) => void;
   onMove: (prospect: Contact, stage: ContactStage) => void;
+  /** Shows Send SAFE on Committed rows. */
+  onSendSafe?: (prospect: Contact) => void;
 }) {
   useHideAmounts();
   const [showPassed, setShowPassed] = useState(false);
@@ -113,8 +138,10 @@ export function Pipeline({
       key={prospect.id}
       prospect={prospect}
       saved={prospect.id === savedId}
+      filledSend={filledSend}
       onEdit={() => onEdit(prospect)}
       onMove={(stage) => onMove(prospect, stage)}
+      onSendSafe={onSendSafe && (() => onSendSafe(prospect))}
     />
   );
   return (

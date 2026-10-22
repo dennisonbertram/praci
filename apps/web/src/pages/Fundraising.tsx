@@ -1,7 +1,27 @@
+import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { Contact, ContactStage, FundraisingOverview } from "@rakazo/contracts";
-import { Button, Card, Skeleton } from "@rakazo/ui-web";
+import type {
+  Contact,
+  ContactStage,
+  FundraisingOverview,
+  Safe,
+  SafeMarkInput,
+} from "@rakazo/contracts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  enqueueNotificationToast,
+  Skeleton,
+} from "@rakazo/ui-web";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AskBotButton } from "../components/AskBotButton";
@@ -9,10 +29,17 @@ import type { ContactPrefill as Prefill } from "../components/ContactDialog";
 import { ContactDialog } from "../components/ContactDialog";
 import { Pipeline } from "../components/fundraising/Pipeline";
 import { RoundCard, RoundDialog } from "../components/fundraising/RoundCard";
+import { SafeCoverSummary, SafeDialog } from "../components/fundraising/SafeDialog";
+import type { SafeStep } from "../components/fundraising/SafeList";
+import { AttentionStrip, MarkDateDialog, SafeList } from "../components/fundraising/SafeList";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { isoFromDay, todayDay } from "../lib/day-input";
+import { usdFigure } from "../lib/finance-format";
 import { rpc } from "../lib/rpc";
 import { useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
+
+const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
 
 const NEW_PROSPECT: Prefill = { name: "", email: null, organization: null, kind: "prospect" };
 
@@ -30,6 +57,13 @@ export function FundraisingPage({
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Contact | Prefill | null>(null);
   const [roundDialog, setRoundDialog] = useState<"start" | "edit" | null>(null);
+  // Send SAFE for this prospect; then the saved SAFE's cover summary.
+  const [sending, setSending] = useState<Contact | null>(null);
+  const [cover, setCover] = useState<Safe | null>(null);
+  const [marking, setMarking] = useState<{ safe: Safe; step: SafeStep } | null>(null);
+  const [confirm, setConfirm] = useState<
+    { kind: "close"; unpaid: Safe[] } | { kind: "delete"; safe: Safe } | null
+  >(null);
 
   const latestLoad = useRef(0);
   const load = useCallback(() => {
@@ -70,6 +104,53 @@ export function FundraisingPage({
       t`Could not move ${prospect.name}`,
     );
 
+  const markDone = (): Record<SafeMarkInput["action"], string> => ({
+    sent: t`Marked sent`,
+    signed: t`Marked signed`,
+    funded: t`Marked funded`,
+    cancel: t`Canceled`,
+  });
+  // Records a step with its date, then offers Undo, which clears the date again.
+  async function mark(safe: Safe, action: SafeMarkInput["action"], at: string) {
+    await rpc.fundraising.safes.mark({ id: safe.id, action, at });
+    load();
+    // Undo clears the date again. It fades after the usual few seconds so it cannot cover the header.
+    enqueueNotificationToast({
+      id: `safe-${safe.id}-${action}-${Date.now()}`,
+      title: markDone()[action],
+      action: {
+        label: t`Undo`,
+        onClick: () =>
+          void run(
+            () => rpc.fundraising.safes.mark({ id: safe.id, action, at: null }),
+            t`Could not undo`,
+          ),
+      },
+    });
+  }
+  const closeRound = () => {
+    if (!round) return;
+    const unpaid = overview?.safes.filter((s) => s.status === "signed" && s.roundId === round.id);
+    if (unpaid?.length) return setConfirm({ kind: "close", unpaid });
+    void run(() => rpc.fundraising.round.close({ id: round.id }), t`Could not close the round`);
+  };
+
+  // "Harbor Angels' $50,000 SAFE", "Ada Fund's $50,000 SAFE".
+  const owner = (name: string) => (name.endsWith("s") ? `${name}'` : `${name}'s`);
+  const confirmText = (() => {
+    if (confirm?.kind === "delete") {
+      const { investorName, amountCents } = confirm.safe;
+      return t`${owner(investorName)} ${usd(amountCents)} SAFE will be removed.`;
+    }
+    const first = confirm?.unpaid[0];
+    if (confirm?.unpaid.length === 1 && first) {
+      const { investorName, amountCents } = first;
+      return t`${owner(investorName)} ${usd(amountCents)} SAFE is signed and unpaid.`;
+    }
+    const count = confirm?.unpaid.length ?? 0;
+    return t`${count} SAFEs are signed and unpaid.`;
+  })();
+
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
@@ -109,18 +190,19 @@ export function FundraisingPage({
           )
         ) : (
           <div className="flex flex-col gap-5">
+            <AttentionStrip
+              safes={overview.safes}
+              onMark={(safe, step) => setMarking({ safe, step })}
+            />
+
             <RoundCard
               round={round}
               pendingCents={overview.pendingCents}
+              signedCents={overview.signedCents}
+              fundedCents={overview.fundedCents}
               onStart={() => setRoundDialog("start")}
               onEdit={() => setRoundDialog("edit")}
-              onClose={() =>
-                round &&
-                void run(
-                  () => rpc.fundraising.round.close({ id: round.id }),
-                  t`Could not close the round`,
-                )
-              }
+              onClose={closeRound}
               onReopen={() =>
                 round &&
                 void run(
@@ -148,6 +230,8 @@ export function FundraisingPage({
                 <Pipeline
                   prospects={overview.prospects}
                   savedId={savedId}
+                  filledSend={Boolean(open)}
+                  onSendSafe={setSending}
                   onEdit={setEditing}
                   onMove={(prospect, stage) => void move(prospect, stage)}
                 />
@@ -158,9 +242,25 @@ export function FundraisingPage({
               <h2 className="text-sm font-semibold">
                 <Trans>SAFEs</Trans>
               </h2>
-              <p className="text-sm text-muted-foreground">
-                <Trans>No SAFEs yet</Trans>
-              </p>
+              {overview.safes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  <Trans>No SAFEs yet</Trans>
+                </p>
+              ) : (
+                <SafeList
+                  safes={overview.safes}
+                  round={round}
+                  onOpen={setCover}
+                  onMark={(safe, step) => setMarking({ safe, step })}
+                  onCancel={(safe) =>
+                    void run(
+                      () => mark(safe, "cancel", isoFromDay(todayDay())),
+                      t`Could not cancel`,
+                    )
+                  }
+                  onDelete={(safe) => setConfirm({ kind: "delete", safe })}
+                />
+              )}
             </Card>
           </div>
         )}
@@ -178,6 +278,76 @@ export function FundraisingPage({
             }}
           />
         ) : null}
+        {sending ? (
+          <SafeDialog
+            prospect={sending}
+            round={open}
+            onClose={() => setSending(null)}
+            onSave={async (input) => {
+              const saved = await rpc.fundraising.safes.save(input);
+              setSending(null);
+              setCover(saved);
+              load();
+            }}
+          />
+        ) : null}
+        {cover ? (
+          <SafeCoverSummary
+            safe={overview?.safes.find((s) => s.id === cover.id) ?? cover}
+            onClose={() => setCover(null)}
+            onMarkSent={async () => {
+              await mark(cover, "sent", isoFromDay(todayDay()));
+              setCover(null);
+            }}
+          />
+        ) : null}
+        {marking ? (
+          <MarkDateDialog
+            step={marking.step}
+            onClose={() => setMarking(null)}
+            onSave={async (day) => {
+              await mark(marking.safe, marking.step, isoFromDay(day));
+              setMarking(null);
+            }}
+          />
+        ) : null}
+        <AlertDialog open={confirm !== null} onOpenChange={(next) => !next && setConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirm?.kind === "delete" ? (
+                  <Trans>Delete SAFE?</Trans>
+                ) : (
+                  <Trans>Close round?</Trans>
+                )}
+              </AlertDialogTitle>
+              <AlertDialogDescription>{confirmText}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                <Trans>Cancel</Trans>
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const target = confirm;
+                  setConfirm(null);
+                  if (target?.kind === "delete")
+                    void run(
+                      () => rpc.fundraising.safes.delete({ id: target.safe.id }),
+                      t`Could not delete the SAFE`,
+                    );
+                  else if (round)
+                    void run(
+                      () => rpc.fundraising.round.close({ id: round.id }),
+                      t`Could not close the round`,
+                    );
+                }}
+              >
+                {confirm?.kind === "delete" ? <Trans>Delete</Trans> : <Trans>Close round</Trans>}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {editing ? (
           <ContactDialog
             key={"id" in editing ? editing.id : "new"}
