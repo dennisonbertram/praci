@@ -748,12 +748,13 @@ msgstr "Action items"
 msgid "Actions"
 msgstr "Actions"
 
+#. placeholder {0}: audit.fund
 #. placeholder {0}: bot.name
 #. placeholder {0}: contact.name
-#. placeholder {0}: group.spaceName
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/components/fundraising/Pipeline.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
@@ -1535,6 +1536,11 @@ msgstr "Attachments: {0}"
 #: src/pages/shell/bot-panel.tsx
 msgid "Audience"
 msgstr "Audience"
+
+#. placeholder {0}: audit.fund
+#: src/components/investors/ActionItems.tsx
+msgid "Audit request · {0}"
+msgstr "Audit request · {0}"
 
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
@@ -3504,6 +3510,10 @@ msgstr "Could not start teaching"
 msgid "Could not start the call"
 msgstr "Could not start the call"
 
+#: src/pages/Investors.tsx
+msgid "Could not start the draft"
+msgstr "Could not start the draft"
+
 #: src/components/AskCard.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Could not submit this answer"
@@ -3551,6 +3561,10 @@ msgstr "Could not update reaction"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "Could not update the default memory scope"
+
+#: src/pages/Investors.tsx
+msgid "Could not update the request"
+msgstr "Could not update the request"
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not upload file"
@@ -4087,6 +4101,7 @@ msgstr "Disconnecting…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -4167,6 +4182,7 @@ msgstr "Don't share"
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/sidebar-glance.tsx
 #: src/components/tour/TourPopover.tsx
@@ -4239,6 +4255,14 @@ msgstr "Draft investor update"
 msgid "Draft not saved"
 msgstr "Draft not saved"
 
+#: src/components/investors/ActionItems.tsx
+msgid "Draft ready"
+msgstr "Draft ready"
+
+#: src/components/investors/ActionItems.tsx
+msgid "Draft reply"
+msgstr "Draft reply"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
@@ -4252,8 +4276,8 @@ msgstr "Draft skill"
 msgid "Draft with agent"
 msgstr "Draft with agent"
 
+#. placeholder {0}: day(draft.createdAt)
 #. placeholder {0}: day(update.createdAt)
-#. placeholder {0}: shortDay(draft.createdAt.slice(0, 10), new Date(), i18n.locale || "en")
 #: src/components/investors/ActionItems.tsx
 #: src/pages/Investors.tsx
 msgid "Drafted {0}"
@@ -4266,6 +4290,10 @@ msgstr "Drafting…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Drafts"
 msgstr "Drafts"
+
+#: src/lib/slash-skills.ts
+msgid "Drafts a reply from your cap table."
+msgstr "Drafts a reply from your cap table."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
@@ -4294,6 +4322,11 @@ msgstr "Drop to add to Data room"
 #: src/pages/Finance.tsx
 msgid "Due"
 msgstr "Due"
+
+#. placeholder {0}: day(audit.dueDate)
+#: src/components/investors/ActionItems.tsx
+msgid "due {0}"
+msgstr "due {0}"
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Due today"
@@ -5062,6 +5095,10 @@ msgstr "Hidden while amounts are hidden"
 msgid "Hide amounts"
 msgstr "Hide amounts"
 
+#: src/pages/Investors.tsx
+msgid "Hide done"
+msgstr "Hide done"
+
 #: src/pages/Auth.tsx
 msgid "Hide password"
 msgstr "Hide password"
@@ -5100,6 +5137,16 @@ msgstr "Holder"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr "Holdings"
+
+#. placeholder {0}: day(audit.asOf)
+#: src/components/investors/ActionItems.tsx
+msgid "Holdings as of {0}"
+msgstr "Holdings as of {0}"
+
+#. placeholder {0}: day(audit.asOf)
+#: src/components/investors/ActionItems.tsx
+msgid "Holdings as of today, not {0}"
+msgstr "Holdings as of today, not {0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "hour"
@@ -5857,6 +5904,10 @@ msgstr "Mark as unread"
 msgid "Mark delivered"
 msgstr "Mark delivered"
 
+#: src/components/investors/ActionItems.tsx
+msgid "Mark done"
+msgstr "Mark done"
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr "Mark important"
@@ -6381,6 +6432,7 @@ msgstr "Never changes your account"
 msgid "new"
 msgstr "new"
 
+#: src/components/investors/ActionItems.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
@@ -6420,6 +6472,10 @@ msgstr "New folder…"
 #: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "New group"
+
+#: src/components/investors/ActionItems.tsx
+msgid "New mail"
+msgstr "New mail"
 
 #: src/components/ComposeEmail.tsx
 msgid "New message"
@@ -8828,6 +8884,10 @@ msgstr "Send saved draft"
 msgid "Send to agent"
 msgstr "Send to agent"
 
+#: src/components/investors/ActionItems.tsx
+msgid "Sender not in Auditors"
+msgstr "Sender not in Auditors"
+
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Sending"
@@ -8982,6 +9042,10 @@ msgstr "Show all {total}"
 #: src/components/HideAmountsToggle.tsx
 msgid "Show amounts"
 msgstr "Show amounts"
+
+#: src/pages/Investors.tsx
+msgid "Show done"
+msgstr "Show done"
 
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
@@ -10587,10 +10651,6 @@ msgstr "Used by"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
 msgstr "Username"
-
-#: src/lib/slash-skills.ts
-msgid "Uses Carta figures and asks before sending."
-msgstr "Uses Carta figures and asks before sending."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."

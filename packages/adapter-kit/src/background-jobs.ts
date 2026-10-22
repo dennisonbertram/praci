@@ -46,6 +46,12 @@ const payloadSchemas = {
     connectionId: z.string().min(1),
     messageId: z.string().min(1),
   }),
+  "audit.intake": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+    messageId: z.string().min(1),
+  }),
   "mail.watch.renew": z.object({}),
   "devin.refresh": z.object({ serverId: z.string().min(1).optional() }),
   "meetings.sync": z
@@ -345,6 +351,19 @@ export function mailAttachmentsJob(
     name: "mail.attachments",
     payload: { ...scope, messageId },
     replaceKey: `mail.attachments:${scope.connectionId}:${messageId}`,
+    maxAttempts: 5,
+  };
+}
+
+/** One queued job per message: a re-sync that stores the message again replaces it. */
+export function auditIntakeJob(
+  scope: { spaceId: string; userId: string; connectionId: string },
+  messageId: string,
+): BackgroundJob {
+  return {
+    name: "audit.intake",
+    payload: { ...scope, messageId },
+    replaceKey: `audit.intake:${scope.connectionId}:${messageId}`,
     maxAttempts: 5,
   };
 }

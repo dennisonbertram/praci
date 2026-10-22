@@ -241,6 +241,9 @@ import {
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
 import {
+  AuditRequestListInputSchema,
+  AuditRequestSchema,
+  AuditRequestUpdateInputSchema,
   InvestorPostResultSchema,
   InvestorReminderCadenceSchema,
   InvestorShareInputSchema,
@@ -1593,6 +1596,14 @@ export const appContract = {
     portalResend: oc.input(PortalResendInputSchema).output(PortalResendResultSchema),
     portalRevoke: oc.input(z.object({ contactId: Id })).output(ContactSchema),
     portalUnblock: oc.input(z.object({ contactId: Id })).output(ContactSchema),
+    audits: {
+      /** Open and drafted requests; with `includeDone`, closed ones too (history). */
+      list: oc.input(AuditRequestListInputSchema).output(z.array(AuditRequestSchema)),
+      /** Mark done or Dismiss; a closed request is never reopened. */
+      update: oc.input(AuditRequestUpdateInputSchema).output(AuditRequestSchema),
+      /** Starts the Investors agent's drafting run for a request still waiting for one. */
+      draft: oc.input(z.object({ id: Id })).output(AuditRequestSchema),
+    },
     /** Reads the update reminder; with `cadence` it changes the monthly routine first. */
     reminder: oc
       .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
