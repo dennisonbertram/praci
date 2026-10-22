@@ -23,6 +23,7 @@ vi.mock("@lingui/react/macro", () => ({
 const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
   graph: vi.fn(),
+  doneDeadlines: vi.fn(),
   updateDeadline: vi.fn(),
   scanNow: vi.fn(),
   consent: vi.fn(),
@@ -750,8 +751,9 @@ it("links the unchecked documents line to the Data room and opens Deadlines on t
     ],
   });
   await render(<LegalPage />);
+  expect(container.textContent).toContain("3 Data room documents not yet checked by Legal");
   expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')?.textContent).toBe(
-    "3 Data room documents not yet checked by Legal",
+    "Review",
   );
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
   await act(async () => root.unmount());
@@ -1065,4 +1067,56 @@ it("ends a scan that outlasts the wait with a one-line result", async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("says Active in the Status column instead of leaving the cell blank", async () => {
+  const [first, second] = contracts;
+  if (!first || !second) throw new Error("fixtures");
+  await render(
+    <LegalContracts
+      contracts={[
+        { ...first, status: "active" as const },
+        { ...second, id: id(90), status: "expired" as const },
+        { ...second, id: id(91), status: "draft" as const },
+      ]}
+    />,
+  );
+  const cells = [...container.querySelectorAll("tbody tr")].map((row) => row.textContent);
+  expect(cells.filter((text) => text?.includes("Active"))).toHaveLength(1);
+});
+
+it("shows Reading n of N while a scan runs, from the falling unchecked count", async () => {
+  vi.useFakeTimers();
+  try {
+    const running = (left: number) => ({
+      ...overview,
+      counts: { ...overview.counts, unreviewedDocuments: left },
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "running" as const, error: null },
+      },
+    });
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(running(3));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    expect(container.textContent).toContain("Reading 0 of 3");
+    rpcMock.overview.mockResolvedValue(running(1));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Reading 2 of 3");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("lists the deadlines marked done", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show done"));
+  expect(container.querySelector('ul[aria-label="Done deadlines"]')?.textContent).toContain(
+    deadlines[0]!.title,
+  );
+  expect(button("Show open")).toBeDefined();
 });

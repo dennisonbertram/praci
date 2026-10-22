@@ -4336,6 +4336,10 @@ msgstr ""
 msgid "Done"
 msgstr "完成"
 
+#: src/pages/Legal.tsx
+msgid "Done deadlines"
+msgstr ""
+
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
 #: src/components/data-room/SelectionBar.tsx
@@ -6840,6 +6844,10 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No deadlines marked done."
+msgstr ""
+
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
 msgstr ""
@@ -8090,6 +8098,10 @@ msgstr ""
 msgid "Reading {done} of {total}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Reading {readCount} of {scanTotal}"
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
@@ -8687,6 +8699,10 @@ msgstr "返回 Praci"
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Review"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -9408,6 +9424,7 @@ msgid "Show all {total}"
 msgstr ""
 
 #: src/pages/Investors.tsx
+#: src/pages/Legal.tsx
 msgid "Show done"
 msgstr ""
 
@@ -9434,6 +9451,10 @@ msgstr ""
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "显示更多"
+
+#: src/pages/Legal.tsx
+msgid "Show open"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Show original message"

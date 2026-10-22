@@ -513,6 +513,7 @@ import {
   legalAgent,
   legalConsent,
   legalConsentGrant,
+  legalDoneDeadlines,
   legalDueSoonCount,
   legalGraph,
   legalItemLinks,
@@ -7625,6 +7626,9 @@ export function createRouter(deps: RouterDeps) {
         legalOverview(legalDeps, context.actor),
       ),
       graph: authed.legal.graph.handler(({ context }) => legalGraph(legalDeps, context.actor)),
+      doneDeadlines: authed.legal.doneDeadlines.handler(({ context }) =>
+        legalDoneDeadlines(legalDeps, context.actor),
+      ),
       updateDeadline: authed.legal.updateDeadline.handler(({ context, input }) =>
         legalUpdateDeadline(legalDeps, context.actor, input),
       ),
