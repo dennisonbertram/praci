@@ -3891,7 +3891,7 @@ msgstr "{0}을 삭제할까요?"
 
 #: src/pages/Artifacts.tsx
 msgid "Delete {title}"
-msgstr ""
+msgstr "{title} 삭제"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"

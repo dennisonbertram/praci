@@ -3891,7 +3891,7 @@ msgstr "Excluir {0}?"
 
 #: src/pages/Artifacts.tsx
 msgid "Delete {title}"
-msgstr ""
+msgstr "Excluir {title}"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"

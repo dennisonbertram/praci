@@ -3891,7 +3891,7 @@ msgstr "删除 {0}？"
 
 #: src/pages/Artifacts.tsx
 msgid "Delete {title}"
-msgstr ""
+msgstr "删除 {title}"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
