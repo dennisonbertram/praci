@@ -19,7 +19,7 @@ test("opens Artifacts from the sidebar and lists created files", async ({ page }
   await expect(artifactsItem).toBeVisible();
   await page.getByTestId("user-menu-trigger").click();
   await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Artifacts", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Artifacts", exact: true })).toHaveCount(1);
   await page.keyboard.press("Escape");
 
   await artifactsItem.click();

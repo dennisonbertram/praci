@@ -4586,6 +4586,7 @@ export function ShellPage() {
                 {hiddenPages.includes("inbox") ? null : (
                   <SidebarPageLink
                     testId="sidebar-inbox"
+                    href="/app/inbox"
                     current={inboxMode}
                     icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Inbox`}
@@ -4605,6 +4606,7 @@ export function ShellPage() {
                 {hiddenPages.includes("finance") ? null : (
                   <SidebarPageLink
                     testId="sidebar-finance"
+                    href="/app/finance"
                     current={financeMode}
                     icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Finance`}
@@ -4619,6 +4621,7 @@ export function ShellPage() {
                 {hiddenPages.includes("legal") ? null : (
                   <SidebarPageLink
                     testId="sidebar-legal"
+                    href="/app/legal"
                     current={legalMode}
                     icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Legal`}
@@ -4663,6 +4666,7 @@ export function ShellPage() {
                 {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                   <SidebarPageLink
                     testId="sidebar-devin"
+                    href="/app/devin"
                     current={devinMode}
                     icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Devin`}
@@ -4686,6 +4690,7 @@ export function ShellPage() {
                 {hiddenPages.includes("investors") ? null : (
                   <SidebarPageLink
                     testId="sidebar-investors"
+                    href="/app/investors"
                     current={investorsMode}
                     icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Investors`}
@@ -4700,6 +4705,7 @@ export function ShellPage() {
                 {hiddenPages.includes("fundraising") ? null : (
                   <SidebarPageLink
                     testId="sidebar-fundraising"
+                    href="/app/fundraising"
                     current={fundraisingMode}
                     icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Fundraising`}
@@ -4713,6 +4719,7 @@ export function ShellPage() {
                 {hiddenPages.includes("contacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-contacts"
+                    href="/app/contacts"
                     current={contactsMode}
                     icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Contacts`}
@@ -4726,6 +4733,7 @@ export function ShellPage() {
                 {hiddenPages.includes("data-room") ? null : (
                   <SidebarPageLink
                     testId="sidebar-data-room"
+                    href="/app/data-room"
                     current={dataRoomMode}
                     icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Data room`}
@@ -4756,6 +4764,7 @@ export function ShellPage() {
                 {hiddenPages.includes("artifacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-artifacts"
+                    href="/app/artifacts"
                     current={artifactsMode}
                     // Not the Data room's folder icon: these are files bots made.
                     icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}

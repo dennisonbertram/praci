@@ -1038,10 +1038,11 @@ export function InvestorsPage({
             snapshot && sourceLabel ? (
               <>
                 {/* The source line never truncates; a long company name gives way first. */}
-                <span className="truncate" title={snapshot.companyName}>
+                {/* The company name is in the sidebar; on a phone only the source stays. */}
+                <span className="truncate max-sm:hidden" title={snapshot.companyName}>
                   {snapshot.companyName}
                 </span>
-                <span className="whitespace-nowrap">·</span>
+                <span className="whitespace-nowrap max-sm:hidden">·</span>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
