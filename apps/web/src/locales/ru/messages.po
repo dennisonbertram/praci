@@ -9568,6 +9568,10 @@ msgstr ""
 msgid "Software update"
 msgstr "Обновление программного обеспечения"
 
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr ""
+
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
 msgstr ""

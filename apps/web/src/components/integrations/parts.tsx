@@ -93,6 +93,9 @@ export function AgentToggleList({
   // Each email's own chat is one agent; they share a single row, as in the sidebar.
   const emailChats = bots.filter((bot) => isMailThreadAgentSpawnKey(bot.spawnKey));
   const rows = bots.filter((bot) => !isMailThreadAgentSpawnKey(bot.spawnKey));
+  // Mixed access reads as on (some chats still have it), so one click revokes all and never grants first.
+  const someEmailOn = emailChats.some((bot) => isOn(bot.id));
+  const allEmailOn = emailChats.every((bot) => isOn(bot.id));
   return (
     <div className="divide-y divide-border rounded-xl border border-border bg-card">
       {rows.map((bot) => (
@@ -114,10 +117,15 @@ export function AgentToggleList({
             <span className="ms-2 text-xs tabular-nums text-muted-foreground">
               {emailChats.length}
             </span>
+            {someEmailOn && !allEmailOn ? (
+              <span className="ms-2 text-xs text-muted-foreground">
+                <Trans>Some</Trans>
+              </span>
+            ) : null}
           </span>
           <Switch
             aria-label={t`Email chats can use ${appName}`}
-            checked={emailChats.every((bot) => isOn(bot.id))}
+            checked={someEmailOn}
             disabled={disabled}
             onCheckedChange={(next) => {
               for (const bot of emailChats) onToggle(bot.id, next);

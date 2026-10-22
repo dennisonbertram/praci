@@ -9568,6 +9568,10 @@ msgstr "Social"
 msgid "Software update"
 msgstr "Software update"
 
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr "Some"
+
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
 msgstr "Some sessions could not be read."
