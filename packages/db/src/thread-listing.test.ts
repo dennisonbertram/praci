@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { previewFromBlocks } from "./thread-listing.js";
+import { activeRunSelection, previewFromBlocks } from "./thread-listing.js";
 
 describe("previewFromBlocks", () => {
   it("shows a Data room file by its name, without the raw id line", () => {
@@ -116,5 +116,14 @@ describe("previewFromBlocks with tool progress", () => {
       expect(preview).not.toContain("12,400");
       expect(preview).not.toContain("billing");
     }
+  });
+});
+
+describe("activeRunSelection", () => {
+  it("ranks a run waiting on the owner above a newer working run", () => {
+    // Text order: waiting_takeover > waiting_input > running > queued > leased.
+    const order = ["waiting_takeover", "waiting_input", "running", "queued", "leased"];
+    expect([...order].sort().reverse()).toEqual(order);
+    expect(activeRunSelection.orderBy[0]).toEqual({ status: "desc" });
   });
 });

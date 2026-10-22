@@ -184,7 +184,7 @@ it("shows a connected Carta by what it does, with a way to its page", async () =
     endpoint: "https://mcp.app.carta.com/mcp",
   } as unknown as IntegrationsData["servers"][number];
   await show({ ...data(true, true), servers: [carta] });
-  expect(container.textContent).toContain("Cap table, equity and investors");
+  expect(container.textContent).toContain("Investors, equity and cap table");
   expect(container.textContent).not.toContain("mcp.app.carta.com");
   expect(container.querySelector('a[href="/app/investors"]')?.textContent).toBe("Open Investors");
 });

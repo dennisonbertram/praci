@@ -131,6 +131,12 @@ import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
 import { mountInboxAttachment } from "./inbox-attachment.js";
+import {
+  mountInvestorPortal,
+  PORTAL_PATH,
+  portalNoStore,
+  prismaPortalStore,
+} from "./investor-portal.js";
 import { mountLocalSettings } from "./local-settings.js";
 import { mountMailPushRoute } from "./mail-push.js";
 import {
@@ -623,6 +629,7 @@ export async function createApp(
   reconciler?.start();
 
   const router = createRouter({
+    email,
     unsubscriber: createMailUnsubscriber(),
     proposeSort: (model, input, context) =>
       new LlmDataRoomClassifier({
@@ -762,6 +769,7 @@ export async function createApp(
       c.header("cache-control", "no-store");
     });
   }
+  app.use(PORTAL_PATH, portalNoStore);
   app.get("/api/auth/capabilities", (c) => {
     return c.json({
       sso: env.oidc
@@ -835,6 +843,11 @@ export async function createApp(
   mountEmailImageProxy(app, { secret: env.authSecret }, async (request) => sessionActor(request));
   mountInboxAttachment(app, { prisma, mail }, loggedActor);
   mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
+  mountInvestorPortal(app, {
+    store: prismaPortalStore(prisma),
+    artifacts,
+    isTrustedOrigin: (origin) => isTrustedOrigin(origin, env),
+  });
   mountAccountExportDownload(app, { prisma, artifacts }, loggedActor);
   mountVoiceHttpRoutes(app, { prisma, secrets, ticketBoardEnabled }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });

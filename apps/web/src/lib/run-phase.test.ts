@@ -13,6 +13,11 @@ describe("run phase copy", () => {
     expect(runPhaseWaitingOn(phase)).toBe("the model");
   });
 
+  it("never shows why a run is retrying", () => {
+    const phase = { kind: "retrying", name: "the database connection dropped", at: AT } as const;
+    expect(runPhaseLine(phase)).toBe("Retrying");
+  });
+
   it("names the service being connected", () => {
     expect(runPhaseLine({ kind: "connecting", name: "Notion", at: AT })).toBe(
       "Connecting to Notion",

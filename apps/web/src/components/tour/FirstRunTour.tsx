@@ -47,7 +47,7 @@ export function FirstRunTour({
       {
         id: "legal",
         anchor: '[data-tour="sidebar-legal"]',
-        text: t`Keep contracts here, and see who owns what in Cap table.`,
+        text: t`Keep contracts here, and see who owns what in Investors.`,
       },
       {
         id: "files",

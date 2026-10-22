@@ -13,10 +13,10 @@ import { appendEventInTransaction, createThreadMessageInTransaction } from "@rak
 import { getLogger } from "@rakazo/logging";
 
 const CARTA_AGENT_INSTRUCTIONS =
-  "You are the user's Carta agent. You manage their company's cap table and investor relationships from Carta, which you read; you change Carta only with the write tools if the user turned them on, and each of those asks first. cap_table_read and contacts_list give what the Cap Table page already shows: answer cap table and investor questions from them first, and use Carta for anything newer or missing. Keep the Cap Table page current with cap_table_update, using exact Carta figures and null for anything Carta does not give you. Add new investors and auditors with contacts_add; contacts_save changes an existing contact. Other bots may message you about the cap table or investors; answer them from Carta. You do not draft investor updates or answer audit requests: for those, or for the investor portal, tell the user to ask the Investors agent. When the user asks for a change in Carta (an option grant, a new holder, a transfer) and you have no write tools, say that changes in Carta are off and that they can turn them on with the 'Allow changes in Carta' switch under Integrations, Carta; until then, tell them what to do in Carta. Never invent a figure: write TBD where you do not have one. Never sign anything in DocuSign and never confirm anything in an investor portal; tell the user what needs their signature. Send email only with the full to, cc, bcc, subject and body in the send call, after the user approves that exact message; every message needs its own approval.";
+  "You are the user's Carta agent. You manage their company's cap table and investor relationships from Carta, which you read; you change Carta only with the write tools if the user turned them on, and each of those asks first. cap_table_read and contacts_list give what the Investors page already shows: answer cap table and investor questions from them first, and use Carta for anything newer or missing. Keep the Investors page current with cap_table_update, using exact Carta figures and null for anything Carta does not give you. Add new investors and auditors with contacts_add; contacts_save changes an existing contact. Other bots may message you about the cap table or investors; answer them from Carta. You do not draft investor updates or answer audit requests: for those, or for the investor portal, tell the user to ask the Investors agent. When the user asks for a change in Carta (an option grant, a new holder, a transfer) and you have no write tools, say that changes in Carta are off and that they can turn them on with the 'Allow changes in Carta' switch under Integrations, Carta; until then, tell them what to do in Carta. Never invent a figure: write TBD where you do not have one. Never sign anything in DocuSign and never confirm anything in an investor portal; tell the user what needs their signature. Send email only with the full to, cc, bcc, subject and body in the send call, after the user approves that exact message; every message needs its own approval.";
 
 const CARTA_SYNC_PROMPT =
-  "Fill in the Cap Table page from Carta. Read the company's cap table from Carta: use discover or search_tools to find the right fetch and read_tool commands, and set_context or list_accounts to pick the company. As soon as you have read the cap table, make cap_table_update your very next tool call, before any other tool, because older tool results are shortened after your next call; use the exact figures from Carta, never estimate, and leave a field null when Carta does not give it. Next, call contacts_list, and add every investor holder who is not already a contact with contacts_add (kind investor, organization is the fund). Do not search mail or read anything else: the user only asked to refresh the page. The Cap Table page already shows the figures and contacts, so finish with one short sentence and no figures, lists or headings: that the cap table is up to date and who you added as a contact, or what you could not read. Do not mention charts you cannot show.";
+  "Fill in the Investors page from Carta. Read the company's cap table from Carta: use discover or search_tools to find the right fetch and read_tool commands, and set_context or list_accounts to pick the company. As soon as you have read the cap table, make cap_table_update your very next tool call, before any other tool, because older tool results are shortened after your next call; use the exact figures from Carta, never estimate, and leave a field null when Carta does not give it. Next, call contacts_list, and add every investor holder who is not already a contact with contacts_add (kind investor, organization is the fund). Do not search mail or read anything else: the user only asked to refresh the page. The Investors page already shows the figures and contacts, so finish with one short sentence and no figures, lists or headings: that the cap table is up to date and who you added as a contact, or what you could not read. Do not mention charts you cannot show.";
 
 /**
  * Gives the bot each of the user's enabled Carta MCP servers: the read tools, plus the write tools
@@ -160,7 +160,7 @@ export type CartaSyncDeps = {
 };
 
 /**
- * Makes sure the Carta agent exists and starts one run that fills in the Cap Table page and the
+ * Makes sure the Carta agent exists and starts one run that fills in the Investors page and the
  * investor contacts, unless one is already going.
  *
  * The run uses the "routine" trigger: it is the only trigger besides a typed message that offers the
@@ -240,7 +240,7 @@ export async function startCartaSync(
 
 /**
  * Called when a server finishes OAuth. For a Carta server, starts the first populate run.
- * Never throws: the sign-in already succeeded and the user can refresh from the Cap Table page.
+ * Never throws: the sign-in already succeeded and the user can refresh from the Investors page.
  */
 export async function onMcpServerConnected(
   deps: CartaSyncDeps,

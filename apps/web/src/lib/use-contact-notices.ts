@@ -56,8 +56,13 @@ export function useContactNotices(
     return () => clearTimeout(timer);
   }, [focusId, contacts]);
 
-  const deleted = (gone: Contact) => {
+  /** `undoable` is false for a contact with linked data: it was confirmed first and cannot come back. */
+  const deleted = (gone: Contact, undoable = true) => {
     reload();
+    if (!undoable) {
+      toast(t`Deleted ${gone.name}`);
+      return;
+    }
     const { name, email, organization, kind, notes, stage, checkSizeCents, nextStep, roundId } =
       gone;
     let restoring = false;

@@ -39,6 +39,10 @@ export const ContactSchema = z.object({
   nextStep: z.string().nullish(),
   /** The round open when the stage was last saved as committed. */
   roundId: Id.nullish(),
+  /** Investor portal dates (read-only): last link issued, last opened, and when access was revoked. */
+  portalLinkSentAt: IsoDate.nullish(),
+  portalLastSeenAt: IsoDate.nullish(),
+  portalBlockedAt: IsoDate.nullish(),
   /** The agent that added the contact; null for a contact added by hand. */
   addedBy: z.object({ id: Id, name: z.string() }).nullable(),
   createdAt: IsoDate,
@@ -67,3 +71,12 @@ export type ContactSaveInput = z.infer<typeof ContactSaveInputSchema>;
 
 export const ContactListInputSchema = z.object({ kind: ContactKindSchema.optional() });
 export type ContactListInput = z.infer<typeof ContactListInputSchema>;
+
+/** What deleting a contact removes with it (beyond its name, email, organization, kind and notes). */
+export const ContactLinkedSchema = z.object({
+  /** The contact has a live portal link or session. */
+  portal: z.boolean(),
+  /** Names of the Data room documents shared with the contact. */
+  documents: z.array(z.string()),
+});
+export type ContactLinked = z.infer<typeof ContactLinkedSchema>;

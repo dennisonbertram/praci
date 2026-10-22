@@ -13,18 +13,21 @@ import {
 export const activeRunStatuses = [...ACTIVE_RUN_STATUSES];
 const backgroundRunTriggers = [...BACKGROUND_RUN_TRIGGERS];
 const userVisibleBotRunTriggers = ["bot_message", ...BACKGROUND_RUN_TRIGGERS];
+const activeRunOrderBy = [{ status: "desc" as const }, { createdAt: "desc" as const }];
 const latestBotRunOrderBy = [{ createdAt: "desc" as const }, { id: "desc" as const }];
 
 /**
  * The newest conversational/foreground run for a bot's sidebar status. Background
- * ticket runs keep working silently, so they must not make the avatar spin.
+ * ticket runs keep working silently, so they must not make the avatar spin. A run waiting on
+ * the owner (an approval or question card) outranks a newer one that is working: statuses sort
+ * waiting_takeover, waiting_input, running, queued, leased in descending text order.
  */
 export const activeRunSelection = {
   where: {
     status: { in: activeRunStatuses },
     trigger: { notIn: backgroundRunTriggers },
   },
-  orderBy: { createdAt: "desc" as const },
+  orderBy: activeRunOrderBy,
   take: 1,
   select: { status: true, phase: true },
 } as const;
