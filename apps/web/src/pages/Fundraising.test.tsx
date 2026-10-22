@@ -202,18 +202,18 @@ it("groups prospects under their stage with a check size column and no row chips
     ]),
   );
   await show();
-  // Empty stages are not drawn.
-  expect(stageHeadings()).toEqual(["Intro", "Committed"]);
+  // The furthest stage first, with its count; empty stages are not drawn.
+  expect(stageHeadings()).toEqual(["Committed1", "Intro2"]);
   const rows = [...container.querySelectorAll("[data-contact-id]")];
   expect(rows.map((row) => row.querySelector("[data-row-open]")?.textContent)).toEqual([
+    "Bo Capital",
     "Ada FundCall",
     "Cy Partners",
-    "Bo Capital",
   ]);
   const amounts = [...container.querySelectorAll("[data-testid=check-size]")].map(
     (el) => el.textContent,
   );
-  expect(amounts).toEqual(["$25,000", "—", "—"]);
+  expect(amounts).toEqual(["—", "$25,000", "—"]);
   expect(container.textContent).not.toMatch(/Stage:/);
 });
 
@@ -231,7 +231,6 @@ it("shows Pipeline and SAFEs with no round, where the card only offers Start a r
   rpcMock.overview.mockResolvedValue(overview(null, []));
   await show();
   expect(button("Start a round")).toBeDefined();
-  expect(container.textContent).toContain("No prospects yet");
   expect(container.textContent).toContain("Pipeline");
   expect(container.textContent).toContain("SAFEs");
   expect(button("Round actions")).toBeUndefined();
@@ -372,7 +371,25 @@ it("shows an error with Try again when the page cannot load", async () => {
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
   rpcMock.overview.mockResolvedValue(overview(null, []));
   await click(button("Try again"));
-  expect(container.textContent).toContain("No prospects yet");
+  expect(container.querySelector('section[aria-label="Pipeline"]')).not.toBeNull();
+});
+
+const staticSkeletons = (label: string) =>
+  container.querySelectorAll(`section[aria-label="${label}"] [data-slot=skeleton][data-static]`);
+
+it("shows the Round, Pipeline and SAFEs cards as static skeletons when empty, with no 'No ... yet' line", async () => {
+  rpcMock.overview.mockResolvedValue(overview(null, []));
+  await show();
+  for (const label of ["Round", "Pipeline", "SAFEs"]) {
+    expect(staticSkeletons(label).length).toBeGreaterThan(0);
+  }
+  expect(container.querySelector("[data-slot=skeleton]:not([data-static])")).toBeNull();
+  expect(container.textContent).not.toMatch(/No (prospects|SAFEs) yet/);
+  // Add prospect lives in the header only.
+  expect(
+    [...container.querySelectorAll("button")].filter((b) => b.textContent === "Add prospect"),
+  ).toHaveLength(1);
+  expect(button("Start a round")).toBeDefined();
 });
 
 const committed = prospect("p1", "Harbor Angels", {

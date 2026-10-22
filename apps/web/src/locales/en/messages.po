@@ -4643,6 +4643,7 @@ msgstr "Enter the URL, starting with https://."
 msgid "Equity"
 msgstr "Equity"
 
+#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr "Equity raised"
@@ -5015,6 +5016,7 @@ msgstr "Fullscreen"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
+#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr "Fully diluted"
@@ -6778,7 +6780,6 @@ msgstr "No bank accounts yet"
 msgid "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 msgstr "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 
-#: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No board members yet"
 msgstr "No board members yet"
@@ -6847,7 +6848,6 @@ msgid "No group chats yet."
 msgstr "No group chats yet."
 
 #: src/components/data-room/ItemDialogs.tsx
-#: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
 msgstr "No investors yet"
@@ -6923,10 +6923,6 @@ msgstr "No newsletters in the last 7 days"
 msgid "No open deadlines."
 msgstr "No open deadlines."
 
-#: src/pages/Fundraising.tsx
-msgid "No prospects yet"
-msgstr "No prospects yet"
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "No providers found."
@@ -6974,10 +6970,6 @@ msgstr "No runs yet"
 msgid "No rush"
 msgstr "No rush"
 
-#: src/pages/Fundraising.tsx
-msgid "No SAFEs yet"
-msgstr "No SAFEs yet"
-
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
 msgstr "No spend in this period"
@@ -7009,10 +7001,6 @@ msgstr "No transactions on this account yet"
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "No trigger"
-
-#: src/pages/Investors.tsx
-msgid "No updates yet"
-msgstr "No updates yet"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
@@ -7723,6 +7711,7 @@ msgstr "Playing…"
 msgid "Plugin"
 msgstr "Plugin"
 
+#: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
 msgid "Pool"
 msgstr "Pool"
@@ -8666,6 +8655,10 @@ msgstr "Room guidance"
 #: src/pages/RoutineEditor.tsx
 msgid "Rotate key"
 msgstr "Rotate key"
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Round"
+msgstr "Round"
 
 #: src/components/fundraising/RoundCard.tsx
 msgid "Round actions"

@@ -432,7 +432,7 @@ function Overview({
                       {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
                     </span>
                   ) : null}
-                  <span className="truncate @max-sm/ph:sr-only">
+                  <span className="truncate">
                     {syncing
                       ? t`${sourceNames} · syncing…`
                       : updated
@@ -939,6 +939,8 @@ function SubscriptionsTable({
 }) {
   useHideAmounts();
   const rowProps = useRowNavigate();
+  // A column that is empty on most rows reads as broken; the change then shows under the name.
+  const showTrend = rows.filter((r) => trendText(r.trendCents)).length * 2 >= rows.length;
   return (
     <Table compact>
       <TableHeader>
@@ -952,9 +954,11 @@ function SubscriptionsTable({
           >
             <Trans>Per month</Trans>
           </TableHead>
-          <TableHead className="text-end hidden @md:table-cell">
-            <Trans>3-mo change</Trans>
-          </TableHead>
+          {showTrend ? (
+            <TableHead className="text-end hidden @md:table-cell">
+              <Trans>3-mo change</Trans>
+            </TableHead>
+          ) : null}
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>Last charge</Trans>
           </TableHead>
@@ -981,7 +985,9 @@ function SubscriptionsTable({
                   {sub.name}
                 </HereLink>
                 {trendText(sub.trendCents) ? (
-                  <div className="text-[11px] font-normal tabular-nums text-muted-foreground @md:hidden">
+                  <div
+                    className={`text-[11px] font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
+                  >
                     {trendText(sub.trendCents)}
                   </div>
                 ) : null}
@@ -1003,9 +1009,11 @@ function SubscriptionsTable({
                 ) : null}
               </TableCell>
               <TableCell className="text-end tabular-nums">{money(sub.monthlyCents)}</TableCell>
-              <TableCell className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
-                {trendText(sub.trendCents)}
-              </TableCell>
+              {showTrend ? (
+                <TableCell className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
+                  {trendText(sub.trendCents)}
+                </TableCell>
+              ) : null}
               <TableCell className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
                 {shortDay(sub.lastChargeAt)}
               </TableCell>
