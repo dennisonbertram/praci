@@ -1,9 +1,15 @@
+import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import type { ThreadMessage } from "@rakazo/contracts";
 import { commandVariableName } from "@rakazo/contracts";
-import { isApprovalAskBlock, isSecretAskBlock, resolveAskChoice } from "@rakazo/core";
+import {
+  formatMessageTime,
+  isApprovalAskBlock,
+  isSecretAskBlock,
+  resolveAskChoice,
+} from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check, KeyRound, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -21,6 +27,7 @@ function formatAnsweredState(
   actions?: AskBlock["actions"],
   consent?: boolean,
   share?: boolean,
+  waitsFor?: string,
 ): string {
   if (secret) return t`Saved`;
   if (!answer) return t`Answered`;
@@ -33,7 +40,7 @@ function formatAnsweredState(
   }
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
-  if (answer === "allow") return t`Approved`;
+  if (answer === "allow") return waitsFor ? t`Approved here. Waiting for ${waitsFor}` : t`Approved`;
   if (answer === "always") return t`Always allowed`;
   if (answer === "deny") return t`Denied`;
   return t`Answered: ${answer}`;
@@ -89,10 +96,13 @@ const SETTLE_MS = 1000;
 export function AskCard({
   block,
   canAnswer,
+  requestedAt,
   onAnswer,
 }: {
   block: AskBlock;
   canAnswer: boolean;
+  /** When the card was posted, shown beside its result so similar cards can be told apart. */
+  requestedAt?: string;
   onAnswer: (text: string, username?: string) => Promise<void>;
 }) {
   const { t } = useLingui();
@@ -197,7 +207,7 @@ export function AskCard({
       {block.detail && block.consent ? (
         <p className="mt-2 text-[13px] text-muted-foreground">{block.detail}</p>
       ) : block.detail && !secretInput && block.detailFolded ? (
-        <details className="mt-3 text-[13px] text-muted-foreground">
+        <details key={block.status} className="mt-3 text-[13px] text-muted-foreground">
           <summary className="w-fit cursor-pointer">
             <Trans>Details</Trans>
           </summary>
@@ -206,7 +216,7 @@ export function AskCard({
           </pre>
         </details>
       ) : block.detail && !secretInput ? (
-        <p className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
+        <p className="mt-3 whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
           {block.detail.trim()}
         </p>
       ) : null}
@@ -232,7 +242,16 @@ export function AskCard({
                 askActions,
                 Boolean(block.consent),
                 Boolean(block.share),
+                block.waitsFor,
               )}
+              {requestedAt && approvalActions ? (
+                <time
+                  dateTime={requestedAt}
+                  className="ms-auto shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+                >
+                  {formatMessageTime(requestedAt, i18n.locale || "en")}
+                </time>
+              ) : null}
             </div>
           );
         })()

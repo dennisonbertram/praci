@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 272 of 272
-- Web and shared components: 723
+- Web and shared components: 725
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -66,7 +66,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | AccountAccess | [apps/web/src/components/AccountAccess.tsx](../../apps/web/src/components/AccountAccess.tsx) | [AccountAccess.stories.tsx](../../apps/web/src/components/AccountAccess.stories.tsx) | web |
 | AddSidebarPage | [apps/web/src/components/AddSidebarPage.tsx](../../apps/web/src/components/AddSidebarPage.tsx) | [AddSidebarPage.stories.tsx](../../apps/web/src/components/AddSidebarPage.stories.tsx) | web |
 | AgentPanelIntro | [apps/web/src/components/AgentPanelIntro.tsx](../../apps/web/src/components/AgentPanelIntro.tsx) | [AgentPanelIntro.stories.tsx](../../apps/web/src/components/AgentPanelIntro.stories.tsx) | web |
-| ConsentCard, InboxConsentPrompt, AiDataSharingSection | [apps/web/src/components/AiDataSharing.tsx](../../apps/web/src/components/AiDataSharing.tsx) | [AiDataSharing.stories.tsx](../../apps/web/src/components/AiDataSharing.stories.tsx) | web |
+| ConsentCard, DocumentsConsentCard, InboxConsentPrompt, AiDataSharingSection | [apps/web/src/components/AiDataSharing.tsx](../../apps/web/src/components/AiDataSharing.tsx) | [AiDataSharing.stories.tsx](../../apps/web/src/components/AiDataSharing.stories.tsx) | web |
 | ApprovalRulesSettings | [apps/web/src/components/ApprovalRulesSettings.tsx](../../apps/web/src/components/ApprovalRulesSettings.tsx) | [ApprovalRulesSettings.stories.tsx](../../apps/web/src/components/ApprovalRulesSettings.stories.tsx) | web |
 | AppToaster | [apps/web/src/components/AppToaster.tsx](../../apps/web/src/components/AppToaster.tsx) | [AppToaster.stories.tsx](../../apps/web/src/components/AppToaster.stories.tsx) | web |
 | ArtifactFileCard, FilePreview, DownloadError | [apps/web/src/components/ArtifactFileCard.tsx](../../apps/web/src/components/ArtifactFileCard.tsx) | [ArtifactFileCard.stories.tsx](../../apps/web/src/components/ArtifactFileCard.stories.tsx) | web |
@@ -258,7 +258,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | IntegrationSetup | [apps/web/src/components/integrations/IntegrationSetup.tsx](../../apps/web/src/components/integrations/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/components/integrations/IntegrationSetup.stories.tsx) | web |
 | Card, OpenPageLink, UsedBy, McpCard, GranolaKeyCard, AppCard, SourceCard, AppTile, IntegrationsHome | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |
 | McpDetail | [apps/web/src/components/integrations/McpDetail.tsx](../../apps/web/src/components/integrations/McpDetail.tsx) | [McpDetail.stories.tsx](../../apps/web/src/components/integrations/McpDetail.stories.tsx) | web |
-| IntegrationTile, StatusBadge, AgentStack, AgentToggleList, CardHead, SectionTitle, SourceBadge | [apps/web/src/components/integrations/parts.tsx](../../apps/web/src/components/integrations/parts.tsx) | [parts.stories.tsx](../../apps/web/src/components/integrations/parts.stories.tsx) | web |
+| MenuSlot, IntegrationTile, StatusBadge, AgentStack, AgentToggleList, CardHead, SectionTitle, SourceBadge | [apps/web/src/components/integrations/parts.tsx](../../apps/web/src/components/integrations/parts.tsx) | [parts.stories.tsx](../../apps/web/src/components/integrations/parts.stories.tsx) | web |
 | SignInStep | [apps/web/src/components/integrations/SignInStep.tsx](../../apps/web/src/components/integrations/SignInStep.tsx) | [SignInStep.stories.tsx](../../apps/web/src/components/integrations/SignInStep.stories.tsx) | web |
 | StoredMeetingsList | [apps/web/src/components/integrations/StoredMeetingsList.tsx](../../apps/web/src/components/integrations/StoredMeetingsList.tsx) | [StoredMeetingsList.stories.tsx](../../apps/web/src/components/integrations/StoredMeetingsList.stories.tsx) | web |
 

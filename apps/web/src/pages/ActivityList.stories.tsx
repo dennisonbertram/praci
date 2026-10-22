@@ -86,11 +86,11 @@ export const ErrorOnly: Story = {
     }),
 };
 
-/** Opens the filter form and its "More filters" fields. */
+/** Opens the filter popover and its "More filters" fields. */
 async function openFilters(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByTestId("activity-show-filters"));
-  await userEvent.click(canvas.getByText("More filters"));
+  await userEvent.click(await within(document.body).findByText("More filters"));
 }
 
 export const FilterOpen: Story = {
@@ -104,7 +104,7 @@ export const FilteredToNothing: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
   play: async ({ canvasElement }) => {
     await openFilters(canvasElement);
-    const search = await within(canvasElement).findByTestId("activity-search");
+    const search = await within(document.body).findByTestId("activity-search");
     await userEvent.type(search, "zzz-no-match");
   },
 };
@@ -113,10 +113,10 @@ export const WithFilterChips: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
   play: async ({ canvasElement }) => {
     await openFilters(canvasElement);
-    const search = await within(canvasElement).findByTestId("activity-search");
+    const search = await within(document.body).findByTestId("activity-search");
     await userEvent.type(search, "sample");
     await userEvent.selectOptions(
-      within(canvasElement).getByTestId("activity-status-filter"),
+      within(document.body).getByTestId("activity-status-filter"),
       "failed",
     );
   },
@@ -130,6 +130,31 @@ export const InSidebarColumn: Story = {
       <div className="flex h-[640px] w-72 flex-col overflow-y-auto border border-border">
         <Story />
         <div className="h-[900px] shrink-0 px-2.5 text-[13px] text-muted-foreground">Chat list</div>
+      </div>
+    ),
+  ],
+};
+
+const busy = Array.from({ length: 8 }, (_, index) =>
+  row({
+    runId: `run_busy_${index}`,
+    botName: `Bot ${index + 1}`,
+    status: index < 2 ? "waiting_input" : "running",
+    promptSnippet: `Sample task ${index + 1}`,
+  }),
+);
+
+/** Eight active runs in a sidebar-width column: at least five rows show before the list scrolls. */
+export const ManyRuns: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "runs.list": (input: unknown) =>
+        (input as { filter: string }).filter === "active" ? { runs: busy } : { runs: [] },
+    }),
+  decorators: [
+    (Story) => (
+      <div className="flex w-72 flex-col border border-border">
+        <Story />
       </div>
     ),
   ],

@@ -284,7 +284,7 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
 }
 
 /** A bank's request to send money, whichever server slug the tool sits under. */
-const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
+export const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
 
 export type MoneyNames = { recipient?: string; account?: string };
 

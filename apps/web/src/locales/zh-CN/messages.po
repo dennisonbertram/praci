@@ -311,6 +311,12 @@ msgstr ""
 msgid "{0} settings"
 msgstr ""
 
+#. placeholder {0}: monthShort(running.month)
+#. placeholder {1}: money(running.cents)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0} so far: {1}"
+msgstr ""
+
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid "{0} transactions"
@@ -1061,10 +1067,6 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr ""
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1109,10 +1111,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -1362,6 +1360,10 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Approved"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2710,6 +2712,10 @@ msgstr "连接模型"
 
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
+msgstr ""
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4819,20 +4825,11 @@ msgstr ""
 msgid "Filter by {label}"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr ""
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
 
@@ -5464,6 +5461,10 @@ msgstr ""
 msgid "In runway"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
 msgstr ""
@@ -5795,12 +5796,11 @@ msgstr ""
 msgid "Let other agents use {service} directly"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
-#: src/components/legal/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -6082,6 +6082,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark read"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark reply done"
 msgstr ""
 
 #: src/components/fundraising/SafeDialog.tsx
@@ -6874,6 +6878,10 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -7792,6 +7800,10 @@ msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci can now read your documents."
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Praci doesn't read your documents."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -8926,6 +8938,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8951,7 +8964,7 @@ msgid "Search and read files and folders"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
+msgid "Search artifacts"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -10979,10 +10992,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
 msgstr "使用自己的密钥"
-
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
