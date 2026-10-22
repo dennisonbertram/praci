@@ -1882,7 +1882,7 @@ function InboxListPage({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="mb-5 -mt-3 text-muted-foreground"
+                      className="mb-5 -ms-2.5 -mt-3 text-muted-foreground"
                       onClick={() => setAllReplies(true)}
                     >
                       <Trans>Show {hiddenReplies} more</Trans>

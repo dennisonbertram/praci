@@ -102,10 +102,8 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
 
   expect(container.textContent).toContain("Needs you");
   expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs you");
-  // Height stays bounded so the chat roster below remains visible.
-  expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain(
-    "max-h-[45vh]",
-  );
+  // The list no longer caps its own height; it keeps its size and the sidebar scrolls.
+  expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain("shrink-0");
   expect(container.textContent).not.toContain("Finished");
   const toggle = container.querySelector<HTMLButtonElement>(
     '[data-testid="activity-show-finished"]',

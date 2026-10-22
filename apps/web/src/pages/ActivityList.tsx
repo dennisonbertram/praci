@@ -137,12 +137,19 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
     if (!scroller) return;
     const fit = () => {
       scroller.style.maxHeight = "";
-      if (scroller.scrollHeight <= scroller.clientHeight) return;
       const top = scroller.getBoundingClientRect().top;
+      const endOf = (row: Element) => row.getBoundingClientRect().bottom - top + scroller.scrollTop;
+      // Everything waiting on the person always shows; the other runs share what is left of 30% of the window.
+      const needsRows = scroller.querySelectorAll(
+        '[aria-labelledby="activity-needs-heading"] [data-activity-row]',
+      );
+      const lastNeeds = needsRows[needsRows.length - 1];
+      const limit = Math.max(window.innerHeight * 0.3, lastNeeds ? endOf(lastNeeds) : 0);
+      if (scroller.scrollHeight <= limit) return;
       let bottom = 0;
       for (const row of scroller.querySelectorAll("[data-activity-row]")) {
-        const end = row.getBoundingClientRect().bottom - top + scroller.scrollTop;
-        if (end <= scroller.clientHeight) bottom = end;
+        const end = endOf(row);
+        if (end <= limit) bottom = end;
       }
       if (bottom > 0) scroller.style.maxHeight = `${Math.ceil(bottom)}px`;
     };
@@ -176,7 +183,7 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[45vh] shrink-0 lg:max-h-[40%] short:lg:max-h-none snap-start flex-col border-b border-border pb-2"
+      className="mb-2 flex shrink-0 snap-start flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">

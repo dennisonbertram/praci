@@ -768,6 +768,8 @@ export const Transcript = memo(function Transcript({
           const messageReactions = reactionView.reactions.get(message.id);
           // Email cards run the full width of the transcript, like the "New" divider.
           const fullWidth = message.blocks.some((block) => block.kind === "emails");
+          // A mail approval card leaves less than the hover rail's width beside it, so its rail sits below too.
+          const mailCard = message.blocks.some((block) => block.kind === "ask" && block.mail);
           return (
             <Fragment key={message.id}>
               {separatorIds.has(message.id) ? (
@@ -803,7 +805,7 @@ export const Transcript = memo(function Transcript({
                               ? "max-w-[max(min(84%,calc(100%_-_8rem)),min(84%,20rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
                               : fullWidth
                                 ? "w-full max-w-full"
-                                : message.blocks.some((block) => block.kind === "ask" && block.mail)
+                                : mailCard
                                   ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
                                   : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
@@ -846,7 +848,7 @@ export const Transcript = memo(function Transcript({
                         message={message}
                         hasReactions={Boolean(messageReactions)}
                         side={message.role === "user" ? "start" : "end"}
-                        below={fullWidth}
+                        below={fullWidth || mailCard}
                         onReply={onReply}
                         onReact={onReact}
                         remember={remember}
