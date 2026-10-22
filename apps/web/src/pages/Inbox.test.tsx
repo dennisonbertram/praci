@@ -768,6 +768,10 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   // Each poll returns a fresh answer, as the server does.
   rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
+  // The first stall starts the sort over once by itself; the notice comes after the second.
+  for (let i = 0; i < 7; i++) await dwell(5_000);
+  expect(c.textContent).not.toContain("taking longer than usual");
+  expect(rpcMock.refresh.mock.calls.length).toBeGreaterThan(1);
   for (let i = 0; i < 7; i++) await dwell(5_000);
   expect(c.textContent).not.toContain("Sorting your mail…");
   expect(c.textContent).toContain("Sorting is taking longer than usual.");
@@ -782,7 +786,7 @@ it("keeps the sorting stall notice through the minute sync", async () => {
   try {
     rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
     const c = await render();
-    for (let i = 0; i < 7; i++)
+    for (let i = 0; i < 14; i++)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5_000);
       });
@@ -842,6 +846,8 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
   const sorting = () => c.textContent?.includes("Sorting your mail…");
+  // No row shows before the sort has landed, so none can move afterwards.
+  expect(c.querySelector("[data-row-id]")).toBeNull();
   const category = (id: string) =>
     c.querySelector<HTMLElement>(`[data-row-id="${id}"]`)?.dataset.category;
   // Part of the mail is sorted while sorting goes on: the rows show none of it yet.
@@ -852,7 +858,7 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   );
   await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
   expect(sorting()).toBe(true);
-  expect(category("b")).toBe("");
+  expect(c.querySelector("[data-row-id]")).toBeNull();
   // Sorting finished, and its to-dos are still loading: the page waits for them.
   let todosLoaded: (value: unknown) => void = () => {};
   rpcMock.todos.mockReturnValue(new Promise((resolve) => (todosLoaded = resolve)));
@@ -861,7 +867,7 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   );
   await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
   expect(sorting()).toBe(true);
-  expect(category("b")).toBe("");
+  expect(c.querySelector("[data-row-id]")).toBeNull();
   const todo = {
     id: "t1",
     connectionId: "c1",
@@ -1394,7 +1400,7 @@ describe("selecting rows", () => {
   it("clears the selection when the pile changes", async () => {
     const c = await pickTwo(await render());
     expect(c.textContent).toContain("2 selected");
-    await act(async () => go("/app/inbox?pile=updates"));
+    await act(async () => go("/app/inbox?filter=unread"));
     expect(c.textContent).not.toContain("selected");
   });
 
@@ -1428,5 +1434,64 @@ describe("selecting rows", () => {
     await pickTwo(d);
     await press("e");
     expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["n"] });
+  });
+});
+
+describe("a list that holds still", () => {
+  it("shows no pile tabs until sorting is allowed", async () => {
+    rpcMock.list.mockResolvedValue(
+      list([row("a")], {
+        enabled: false,
+        triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+      }),
+    );
+    const c = await render();
+    expect(c.textContent).toContain("Subject a");
+    expect(c.querySelector('[role="tab"]')).toBeNull();
+  });
+
+  it("keeps a to-do that arrives after the rows show out of the list until the list changes", async () => {
+    rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+    const c = await render();
+    expect(c.textContent).not.toContain("Send the deck");
+    const todo = {
+      id: "t1",
+      connectionId: "c1",
+      messageId: "a",
+      text: "Send the deck",
+      detail: null,
+      from: "Dana",
+      priority: null,
+      dueOn: null,
+      doneAt: null,
+    };
+    rpcMock.todos.mockResolvedValue({ todos: [todo] });
+    // A later sync lands with a new to-do: the rows under the pointer stay where they are.
+    rpcMock.list.mockResolvedValue(
+      list([row("a", { needsReply: true })], { syncedAt: "2026-10-12T00:05:00.000Z" }),
+    );
+    await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+    expect(c.textContent).not.toContain("Send the deck");
+    await act(async () => go("/app/inbox?filter=unread"));
+    await act(async () => go("/app/inbox"));
+    expect(c.textContent).toContain("Send the deck");
+  });
+
+  it("names each filter once and keeps the filter menu short", async () => {
+    const c = await render();
+    await click(c.querySelector('[data-testid="inbox-filter"]'));
+    const items = [...document.querySelectorAll('[role^="menuitem"]')].map((el) => el.textContent);
+    expect(items.length).toBeLessThan(10);
+    expect(new Set(items).size).toBe(items.length);
+    // Those two names belong to the pile tabs.
+    expect(items).not.toContain("Updates");
+    expect(items).not.toContain("Newsletters");
+  });
+
+  it("gives Compose the same box as the other toolbar buttons", async () => {
+    const c = await render();
+    const box = (label: string) => c.querySelector(`button[aria-label="${label}"]`)?.className;
+    expect(box("Compose")).toBeTruthy();
+    expect(box("Compose")).toBe(box("Cleanup"));
   });
 });

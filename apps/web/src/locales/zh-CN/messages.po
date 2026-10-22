@@ -5702,6 +5702,10 @@ msgstr ""
 msgid "last"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
+msgid "Last 7 days"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
@@ -7973,6 +7977,10 @@ msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Quote"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Rarely read, and you never wrote to them"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -11394,6 +11402,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "你已接管"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "You read most of these"
+msgstr ""
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx

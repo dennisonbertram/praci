@@ -4,10 +4,13 @@ import { Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 
 /** Spam shows only when it has mail, or when it is the open pile, so the open tab never vanishes. */
 export function InboxPileTabs({
+  sorted = true,
   value,
   counts,
   onChange,
 }: {
+  /** False before sorting is allowed: every mail is in Important then, so only Spam can add a tab. */
+  sorted?: boolean;
   /** Undefined while a filter, search or category is open: no tab is selected. */
   value: InboxPile | undefined;
   counts: InboxPileCounts | undefined;
@@ -25,12 +28,16 @@ export function InboxPileTabs({
         <TabsTrigger value="important" className="rounded-full px-3 pointer-coarse:h-11">
           {t`Important`}
         </TabsTrigger>
-        <TabsTrigger value="updates" className="rounded-full px-3 pointer-coarse:h-11">
-          {t`Updates`}
-        </TabsTrigger>
-        <TabsTrigger value="newsletters" className="rounded-full px-3 pointer-coarse:h-11">
-          {t`Newsletters`}
-        </TabsTrigger>
+        {sorted ? (
+          <>
+            <TabsTrigger value="updates" className="rounded-full px-3 pointer-coarse:h-11">
+              {t`Updates`}
+            </TabsTrigger>
+            <TabsTrigger value="newsletters" className="rounded-full px-3 pointer-coarse:h-11">
+              {t`Newsletters`}
+            </TabsTrigger>
+          </>
+        ) : null}
         {spam > 0 || value === "spam" ? (
           <TabsTrigger value="spam" className="rounded-full px-3 pointer-coarse:h-11">
             {t`Spam`}

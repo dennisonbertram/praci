@@ -21,6 +21,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   InputGroup,
   InputGroupAddon,
@@ -287,6 +290,7 @@ function InboxListPage({
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
+  const autoRetried = useRef(false);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
   const appliedKey = useRef<string | null>(null);
@@ -388,13 +392,35 @@ function InboxListPage({
 
   // To-dos load beside the list, so the card never pushes loaded rows down.
   const tabKey = tab ?? ALL;
+  const todosNow = useRef(todosByTab);
+  todosNow.current = todosByTab;
+  const meetingsNow = useRef(meetings);
+  meetingsNow.current = meetings;
+  // A later answer that adds or removes a to-do waits here, so the rows under the pointer stay put.
+  const heldTodos = useRef<
+    { tabKey: string; todos: InboxTodo[]; state: MeetingsState | null } | undefined
+  >(undefined);
+  const applyTodos = (key: string, todos: InboxTodo[], state: MeetingsState | null) => {
+    heldTodos.current = undefined;
+    setTodosByTab((all) => ({ ...all, [key]: todos }));
+    setMeetings(state);
+  };
   useEffect(() => {
     if (paused) return;
     let live = true;
     const done = (todos: InboxTodo[], state: MeetingsState | null = null) => {
       if (!live) return;
-      setTodosByTab((all) => ({ ...all, [tabKey]: todos }));
-      setMeetings(state);
+      const before = todosNow.current[tabKey];
+      const sameMeetings = JSON.stringify(state) === JSON.stringify(meetingsNow.current);
+      if (
+        before !== undefined &&
+        before.length !== todos.length &&
+        sameMeetings &&
+        !sortingRef.current &&
+        !sortEnding.current
+      )
+        heldTodos.current = { tabKey, todos, state };
+      else applyTodos(tabKey, todos, state);
       if (sortEnding.current) {
         sortEnding.current = false;
         setSorting(false);
@@ -409,6 +435,11 @@ function InboxListPage({
       live = false;
     };
   }, [tab, tabKey, todoRefresh, paused]);
+  // Opening another list is a change the user made, so the held to-dos show with it.
+  useEffect(() => {
+    const held = heldTodos.current;
+    if (held) applyTodos(held.tabKey, held.todos, held.state);
+  }, [listKey]);
   // The first meeting sync has no event to wait for; look again until it has a checkpoint.
   const meetingsSyncing = Boolean(meetings?.syncing);
   useEffect(() => {
@@ -439,9 +470,16 @@ function InboxListPage({
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
+    if (!data?.triagePending) autoRetried.current = false;
     if (paused || !data?.triagePending) return;
     if (polls.current >= TRIAGE_MAX_POLLS) {
-      setStalled(true);
+      // A sort that stalls once starts over by itself before the page says it is slow.
+      if (!autoRetried.current) {
+        autoRetried.current = true;
+        restartSortWatch();
+        setAttempt((n) => n + 1);
+        setReload((n) => n + 1);
+      } else setStalled(true);
       return;
     }
     const timer = setTimeout(() => {
@@ -514,6 +552,8 @@ function InboxListPage({
     // The to-dos reload when triage finishes; sorting ends when they arrive, so the page changes once.
     else if (!shown?.triagePending && !sortEnding.current) setSorting(false);
   }, [firstSort, shown?.triagePending]);
+  // Until the user allows sorting, mail is not sorted into piles yet, so the pile tabs wait.
+  const pileTabs = shown?.triageBlocked?.reason !== "needs_consent";
   const narrowed = triage && Boolean(category);
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
@@ -622,8 +662,11 @@ function InboxListPage({
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
+  // The first sort shows no rows at all: they would regroup and the To do card would push them down.
+  const sortingRows = (sorting || firstSort) && !stalled;
   const loading =
     !shown ||
+    sortingRows ||
     (!filtered && shown.rows.length === 0 && !synced) ||
     // The To do card is waited for on the Important pile even before it is known to show (meetings
     // arrive with it), so it never pushes the loaded rows down.
@@ -1279,31 +1322,38 @@ function InboxListPage({
                             {filterLabels()[name]}
                           </DropdownMenuRadioItem>
                         ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          <DropdownMenuLabel>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
                             <Trans>Gmail tabs</Trans>
-                          </DropdownMenuLabel>
-                          {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                            <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                              {filterLabels()[name]}
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuGroup>
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {/* With the pile tabs showing, the Updates tab is the Updates list, so Gmail's tab of that name is left out. */}
+                            {(pileTabs
+                              ? (["primary", "promotions", "social"] as const)
+                              : (["primary", "promotions", "social", "updates"] as const)
+                            ).map((name) => (
+                              <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                                {filterLabels()[name]}
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
                         {triage ? (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuGroup>
-                              <DropdownMenuLabel>
-                                <Trans>Categories</Trans>
-                              </DropdownMenuLabel>
-                              {InboxViewCategorySchema.options.map((name) => (
-                                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                                  {categoryLabels()[name]}
-                                </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuGroup>
-                          </>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Trans>Categories</Trans>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {/* Newsletters is a pile tab, so the category of that name is left out. */}
+                              {InboxViewCategorySchema.options
+                                .filter((name) => name !== "newsletter")
+                                .map((name) => (
+                                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                                    {categoryLabels()[name]}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
                         ) : null}
                       </DropdownMenuRadioGroup>
                       {accounts.length > 1 ? (
@@ -1354,8 +1404,8 @@ function InboxListPage({
                       render={
                         <Button
                           variant="outline"
-                          size="icon-sm"
-                          className="pointer-coarse:size-10"
+                          size="sm"
+                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                           aria-label={t`Compose`}
                           onClick={() => setComposing(true)}
                         />
@@ -1370,9 +1420,10 @@ function InboxListPage({
               </>
             }
           />
-          {tools && !query ? (
+          {tools && !query && (pileTabs || (pileCounts?.spam ?? 0) > 0 || pile === "spam") ? (
             <div className="flex flex-wrap items-center gap-2">
               <InboxPileTabs
+                sorted={pileTabs}
                 value={pile}
                 counts={pileCounts}
                 onChange={(next) => setParam("pile", next === "important" ? "" : next)}
@@ -1463,7 +1514,20 @@ function InboxListPage({
         ) : loading ? (
           <div className="flex flex-col gap-2" aria-busy="true">
             {consentPrompt}
-            {synced ? null : (
+            {sortingRows ? (
+              // After Allow it takes the consent card's place at its height, so the list does not jump.
+              <p
+                role="status"
+                className={cn(
+                  "mb-2 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
+                  justAllowed && "min-h-16",
+                )}
+              >
+                <Spinner aria-hidden="true" />
+                <Trans>Sorting your mail…</Trans>
+              </p>
+            ) : null}
+            {synced || sortingRows ? null : (
               <p role="status" className="text-sm text-muted-foreground">
                 {slowSync ? (
                   <Trans>First sync can take a minute</Trans>
@@ -1522,18 +1586,6 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
-            ) : sorting ? (
-              // After Allow it takes the consent card's place at its height, so the list does not jump.
-              <p
-                role="status"
-                className={cn(
-                  "mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
-                  justAllowed && "min-h-16",
-                )}
-              >
-                <Spinner aria-hidden="true" />
-                <Trans>Sorting your mail…</Trans>
-              </p>
             ) : showTodos ? (
               todoCard
             ) : null}
@@ -1653,6 +1705,7 @@ function InboxListPage({
                 />
                 {resultsView ? (
                   <InboxGroup
+                    query={query}
                     rows={[...groups.today, ...groups.earlier]}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}

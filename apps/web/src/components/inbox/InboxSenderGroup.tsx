@@ -123,6 +123,8 @@ export function InboxSenderGroup({
             checked={checked === group.count}
             indeterminate={checked > 0 && checked < group.count}
             onClick={onPickGroup}
+            // The x key checks the focused group, so the box is not a second Tab stop.
+            tabIndex={-1}
             className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:after:-start-3.25 pointer-coarse:after:-end-4.25 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
           />
         ) : null}
