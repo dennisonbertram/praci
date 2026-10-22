@@ -617,7 +617,7 @@ test("Data room failed row retries in place, and columns stay put as a file sett
     await expect(page.getByRole("dialog")).toHaveCount(0);
   }
 
-  // Header cells keep their x and width when the processing file becomes ready.
+  // The Status column goes away when nothing is being read; the fixed columns keep their widths.
   for (const viewport of [VIEWPORTS[0], VIEWPORTS[1]]) {
     settled = false;
     await page.setViewportSize(viewport);
@@ -638,7 +638,13 @@ test("Data room failed row retries in place, and columns stay put as a file sett
     settled = true;
     await page.evaluate(() => window.dispatchEvent(new Event("rakazo:data-room-changed")));
     await expect(status.filter({ hasText: "Reading" })).toHaveCount(0);
-    expect(await cells()).toEqual(shapeBefore);
+    const shapeAfter = await cells();
+    expect(shapeAfter).toHaveLength(shapeBefore.length - 1);
+    // Name is the flexible column and takes the freed width; the fixed columns before Status stay put.
+    expect(shapeAfter[0][0]).toBe(shapeBefore[0][0]);
+    expect(shapeAfter.slice(1, 4).map(([, w]) => w)).toEqual(
+      shapeBefore.slice(1, 4).map(([, w]) => w),
+    );
     // The Type cell never carries a status word.
     await expect(page.locator("tr[data-item-id]").first()).not.toContainText("Reading");
   }

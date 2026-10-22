@@ -344,7 +344,14 @@ export function AiDataSharingSection() {
       ) : null}
       {/* The text above is fixed, so only the row waits. */}
       {recipients === null ? (
-        <Skeleton className="mt-3 h-10 rounded-md" />
+        // The switch row and the "Per model" link at their loaded heights, drawn so they show on the card.
+        <div aria-hidden="true" className="mt-3 flex flex-col gap-3">
+          <div className="flex h-10 items-center gap-3 pointer-coarse:h-11">
+            <Skeleton static className="h-5 w-9 rounded-full" />
+            <Skeleton static className="h-8 w-40" />
+          </div>
+          <Skeleton static className="h-5 w-44" />
+        </div>
       ) : (
         <SwitchRow
           className="mt-3"

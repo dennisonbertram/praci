@@ -74,10 +74,11 @@ describe("parseTriageResponse", () => {
         item("a", { category: "reply", needsReply: true }),
         item("b", { category: "billing", needsReply: true }),
         item("c", { category: "newsletter", needsReply: true }),
+        item("d", { category: "personal", needsReply: true }),
       ]),
-      ["a", "b", "c"],
+      ["a", "b", "c", "d"],
     );
-    expect(parsed.map((i) => i.needsReply)).toEqual([true, false, false]);
+    expect(parsed.map((i) => i.needsReply)).toEqual([true, false, false, false]);
   });
 
   it("trims and caps the text fields, and treats a blank to-do as none", () => {

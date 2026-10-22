@@ -99,8 +99,9 @@ export const ListByDocumentDate: Story = {
   render: () => <ListView rows={rows} o={o} sortField="date" />,
 };
 /**
- * A file read for over two minutes (it shows its age), an unreadable file (its one Delete is in the row menu) and a
- * file that failed for another reason (offers Try again). Status is its own column.
+ * A file read for over two minutes (it shows its age), an unreadable file and a file that failed
+ * for another reason: both failed rows show one red reason and a visible Try again (Delete is in
+ * the row menu). Status is its own column only while some file is being read.
  */
 export const ListWithStatus: Story = {
   render: () => (
@@ -392,4 +393,20 @@ export const ListWide: Story = {
     ),
   ],
   render: () => <ListView rows={longRows} o={o} />,
+};
+
+/** Only failed files: no Status column, one red reason and a Try again on each; the grid card matches. */
+const failedRows = rows.slice(0, 2).map((row, index) => ({
+  ...row,
+  item: {
+    ...row.item,
+    status: "failed" as const,
+    error: index === 0 ? "This file isn't a readable PDF." : "TimeoutError: the step timed out",
+  },
+}));
+export const ListFailed: Story = {
+  render: () => <ListView rows={failedRows} o={o} />,
+};
+export const GridFailed: Story = {
+  render: () => <GridView rows={failedRows} o={o} />,
 };
