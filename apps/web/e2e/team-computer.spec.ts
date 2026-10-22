@@ -306,7 +306,7 @@ async function setComputerMode(
   });
   await settings
     .getByRole("button", {
-      name: mode === "team" ? "Shared with your other bots" : "Only this bot",
+      name: mode === "team" ? "Shared" : "Only this bot",
       exact: true,
     })
     .click();

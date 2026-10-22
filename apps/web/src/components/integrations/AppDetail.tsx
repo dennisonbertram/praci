@@ -107,7 +107,10 @@ function AccountRow({
           {lapsed ? (
             <Trans>Signed out. Reconnect to keep reading this account's mail.</Trans>
           ) : row.status === "connected" ? (
-            <Trans>Connected {new Date(row.createdAt).toLocaleDateString()}</Trans>
+            <Trans>
+              Connected{" "}
+              {new Date(row.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+            </Trans>
           ) : row.status === "error" ? (
             providerErrorMessage(row.error ?? "", t`Sign-in failed`)
           ) : (
@@ -369,7 +372,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const back = (
     <Link
       to="/app/integrations"
-      className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      className="rk-tap mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden="true" />
       <Trans>Integrations</Trans>

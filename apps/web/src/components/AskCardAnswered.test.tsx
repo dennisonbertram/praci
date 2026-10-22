@@ -136,3 +136,23 @@ it("shows a long instruction in full, with no nested scroll box", () => {
   );
   expect(container.querySelector(".overflow-auto")).toBeNull();
 });
+
+it("names the chosen option on an answered question", () => {
+  const container = document.createElement("div");
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{
+          kind: "ask",
+          text: "Which name?",
+          actions: [{ id: "bolt", label: "Name Bolt Freight" }],
+          status: "answered",
+          answer: "bolt",
+        }}
+        canAnswer={false}
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  expect(container.querySelector(".font-medium")?.textContent).toBe("Answered: Name Bolt Freight");
+});

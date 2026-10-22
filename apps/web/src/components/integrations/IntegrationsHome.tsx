@@ -174,9 +174,6 @@ function McpCard({
   const managePath = granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`;
   return (
     <Card>
-      {status === "connected" ? (
-        <TileMenu label={t`More ${server.name} actions`} manageTo={managePath} />
-      ) : null}
       <CardHead
         name={server.name}
         logo={known?.logo}
@@ -229,10 +226,8 @@ function GranolaKeyCard({
   status: NonNullable<IntegrationsData["meetings"]>;
   description?: string;
 }) {
-  const { t } = useLingui();
   return (
     <Card>
-      <TileMenu label={t`More Granola actions`} manageTo={GRANOLA_PATH} />
       <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <GranolaStatusLine status={status} />
@@ -262,13 +257,9 @@ function AppCard({
   const description = data.catalog.find(
     (item) => item.connectorId === app.connectorId && item.slug === app.provider,
   )?.description;
-  const { t } = useLingui();
   const to = appPath({ connectorId: app.connectorId, slug: app.provider });
   return (
     <Card>
-      {app.status === "connected" ? (
-        <TileMenu label={t`More ${app.name} actions`} manageTo={to} />
-      ) : null}
       <CardHead
         name={app.name}
         logo={app.logo}
@@ -632,7 +623,7 @@ export function IntegrationsHome({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* The title stays put and the cards scroll under its line. */}
-      <div className={`${PAGE_GUTTER_X} border-b border-border pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         <PageHeader title={<Trans>Integrations</Trans>} className="mb-2" />
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pt-4 pb-6`}>

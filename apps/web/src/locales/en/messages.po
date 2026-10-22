@@ -2036,6 +2036,7 @@ msgstr "Browser notifications"
 msgid "Building graph…"
 msgstr "Building graph…"
 
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
@@ -2993,7 +2994,7 @@ msgstr "Connected"
 msgid "Connected · {0}"
 msgstr "Connected · {0}"
 
-#. placeholder {0}: new Date(row.createdAt).toLocaleDateString()
+#. placeholder {0}: new Date(row.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })
 #: src/components/integrations/AppDetail.tsx
 msgid "Connected {0}"
 msgstr "Connected {0}"
@@ -4031,6 +4032,10 @@ msgstr "Created"
 msgid "Created {0}"
 msgstr "Created {0}"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Creates a {service} agent that asks you before each change."
+msgstr "Creates a {service} agent that asks you before each change."
+
 #: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr "Creating agent"
@@ -4184,11 +4189,13 @@ msgid "Delete"
 msgstr "Delete"
 
 #. placeholder {0}: deleting?.title ?? ""
-#. placeholder {0}: pendingDelete.name
 #: src/components/integrations/StoredMeetingsList.tsx
-#: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
+
+#: src/pages/Artifacts.tsx
+msgid "Delete \"{deleteTitle}\"?"
+msgstr "Delete \"{deleteTitle}\"?"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.name
@@ -5101,6 +5108,10 @@ msgstr "Financing, {when}"
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr "Find and summarize files in Box. Changes ask first."
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Find any page, chat or email."
+msgstr "Find any page, chat or email."
+
 #: src/components/fundraising/SafeList.tsx
 msgid "Find in Finance"
 msgstr "Find in Finance"
@@ -5244,6 +5255,11 @@ msgstr "From Google Drive"
 #: src/components/fundraising/SafeList.tsx
 msgid "from Mercury"
 msgstr "from Mercury"
+
+#. placeholder {0}: message.routineName
+#: src/pages/shell/transcript.tsx
+msgid "From routine: {0}"
+msgstr "From routine: {0}"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
@@ -6746,9 +6762,8 @@ msgstr "Monthly spend · {0} – {1}"
 msgid "More"
 msgstr "More"
 
-#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
-#. placeholder {0}: server.name
+#. placeholder {0}: source.name
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
@@ -6782,10 +6797,6 @@ msgstr "More computer actions"
 #: src/pages/ActivityList.tsx
 msgid "More filters"
 msgstr "More filters"
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "More Granola actions"
-msgstr "More Granola actions"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "More settings"
@@ -6902,6 +6913,7 @@ msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
 
@@ -7605,14 +7617,6 @@ msgstr "Off"
 msgid "Off in Settings"
 msgstr "Off in Settings"
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: other agents reach {service} only through this agent."
-msgstr "Off: other agents reach {service} only through this agent."
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7621,14 +7625,6 @@ msgstr "On a call with {0}"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "On a schedule"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: creates a {service} agent that can read and, after you approve, make changes."
-msgstr "On: creates a {service} agent that can read and, after you approve, make changes."
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
-msgstr "On: other agents can read {service}. Changes still go through this agent and ask first."
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -7884,6 +7880,10 @@ msgstr "Original message unavailable"
 msgid "Other"
 msgstr "Other"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents can read {service}; changes still go through this agent."
+msgstr "Other agents can read {service}; changes still go through this agent."
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Other connection types"
 msgstr "Other connection types"
@@ -8137,6 +8137,10 @@ msgstr "Playing…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr "Plugins"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
@@ -9451,6 +9455,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9500,10 +9505,6 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Search finds any page, chat or email."
-msgstr "Search finds any page, chat or email."
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -9575,6 +9576,10 @@ msgstr "Searching…"
 #: src/pages/Inbox.tsx
 msgid "Security"
 msgstr "Security"
+
+#: src/pages/Shell.tsx
+msgid "See all in Data room"
+msgstr "See all in Data room"
 
 #: src/pages/shell/composer.tsx
 msgid "See usage"
@@ -9856,10 +9861,6 @@ msgstr "Shared by all bots"
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shared with your other bots"
-msgstr "Shared with your other bots"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
@@ -10653,6 +10654,10 @@ msgstr "That folder no longer exists"
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
 msgstr "the {month} statement"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "The agent asks you before each change."
+msgstr "The agent asks you before each change."
 
 #: src/pages/investors/UpdateEditor.tsx
 msgid "The agent did not finish a draft"
@@ -11717,6 +11722,10 @@ msgid "Waiting {minutes}m"
 msgstr "Waiting {minutes}m"
 
 #: src/lib/roster-status.ts
+msgid "Waiting for AI to be allowed"
+msgstr "Waiting for AI to be allowed"
+
+#: src/lib/roster-status.ts
 msgid "Waiting for approval"
 msgstr "Waiting for approval"
 
@@ -12137,6 +12146,10 @@ msgstr "Your own tool server"
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
 msgstr "Your text is saved as a draft. Attachments are not kept."
+
+#: src/pages/RoutineEditor.tsx
+msgid "Yours"
+msgstr "Yours"
 
 #: src/components/gtm/GtmCalendar.tsx
 msgid "Zernio not connected"

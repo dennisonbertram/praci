@@ -360,6 +360,7 @@ describe("thread message pages", () => {
     ]);
     const prisma = {
       message: { findMany, count: vi.fn(async () => 0) },
+      run: { findMany: vi.fn(async () => []) },
     } as unknown as PrismaClient;
 
     const page = await loadMessagePage(
@@ -403,7 +404,7 @@ describe("thread message pages", () => {
         findMany: vi
           .fn()
           .mockResolvedValueOnce([{ id: "run-peer" }])
-          .mockResolvedValueOnce([]),
+          .mockResolvedValue([]),
       },
     } as unknown as PrismaClient;
 
@@ -483,7 +484,7 @@ describe("thread message pages", () => {
         findMany: vi
           .fn()
           .mockResolvedValueOnce([{ id: "run-peer" }])
-          .mockResolvedValueOnce([]),
+          .mockResolvedValue([]),
       },
     } as unknown as PrismaClient;
 
@@ -847,4 +848,37 @@ it("derives attachment metadata from a validated parent outside the loaded page"
   } as unknown as PrismaClient;
   const page = await loadMessagePage(prisma, "thread", undefined, 1);
   expect(page.messages[0]?.replyPreview).toEqual({ role: "user", text: "", attachment: image });
+});
+
+it("names the routine on a reply its run wrote", async () => {
+  const row = (id: string, runId: string | null) => ({
+    id,
+    threadId: "thread-1",
+    seq: 1,
+    role: "bot",
+    blocks: [{ kind: "text", text: "Done" }],
+    botId: "bot-1",
+    replyToMessageId: null,
+    replyQuote: null,
+    runId,
+    clientNonce: null,
+    createdAt: new Date("2026-08-16T00:00:01.000Z"),
+  });
+  const prisma = {
+    message: {
+      findMany: vi.fn(async () => [row("m-chat", "run-chat"), row("m-routine", "run-routine")]),
+    },
+    run: {
+      findMany: vi.fn(async (args: { where: { routineId?: unknown; trigger?: unknown } }) =>
+        args.where.routineId ? [{ id: "run-routine", routine: { name: "Monday cash check" } }] : [],
+      ),
+    },
+  } as unknown as PrismaClient;
+
+  const page = await loadMessagePage(prisma, "thread-1", undefined, 6);
+
+  expect(page.messages.map((message) => message.routineName)).toEqual([
+    "Monday cash check",
+    undefined,
+  ]);
 });

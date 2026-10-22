@@ -240,7 +240,7 @@ export function InboxCleanup({
   return (
     <div
       data-inbox-cleanup
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5"
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7"
     >
       <PageHeader
         onBack={onBack}
