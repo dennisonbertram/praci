@@ -132,6 +132,7 @@ export const mockAssignments: BotMcpServer[] = [
 export function mockIntegrations(extra: Partial<IntegrationsData> = {}): IntegrationsData {
   return {
     loaded: true,
+    fresh: true,
     error: null,
     catalog: mockCatalog,
     connections: [],

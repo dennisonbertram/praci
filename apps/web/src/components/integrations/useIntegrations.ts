@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { INTEGRATIONS_CHANGED_EVENT } from "../../lib/agent-app";
 import { desktopBridge, nativeGoogleAvailable } from "../../lib/desktop";
 import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
-import { rpc } from "../../lib/rpc";
+import { rpc, selectedSpaceId } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
 /** The stored grant, which the access switches edit and save. */
@@ -27,6 +27,8 @@ export type ConnectionAccessState = ConnectionAccess & {
 
 export type IntegrationsData = {
   loaded: boolean;
+  /** This data came from a request made now, not from the revisit cache. Navigation waits for it. */
+  fresh: boolean;
   error: string | null;
   catalog: ConnectionCatalogItem[];
   connections: Connection[];
@@ -50,11 +52,23 @@ export type IntegrationsData = {
 type LoadedData = Omit<IntegrationsData, "refresh">;
 
 /** The last successful load, so a revisit paints the list at once while it refreshes. */
-let lastLoaded: LoadedData | null = null;
+let lastLoaded: { owner: string; data: LoadedData } | null = null;
+let cacheUser: string | null = null;
 
-/** Forget the last load when the person logs out. */
+/** The cache belongs to one person in one Space; anything else is a miss. */
+function cacheOwner(): string {
+  return `${cacheUser ?? ""}:${selectedSpaceId() ?? ""}`;
+}
+
+/** Forget the last load on every sign-in, sign-out and session expiry. */
 export function clearIntegrationsCache() {
   lastLoaded = null;
+}
+
+/** Tell the cache who is signed in; a different person (or none) empties it. */
+export function bindIntegrationsCache(userId: string | null) {
+  if (userId !== cacheUser) lastLoaded = null;
+  cacheUser = userId;
 }
 
 /** Everything the Integrations pages show, loaded together and refreshed after any change. */
@@ -65,8 +79,9 @@ export function useIntegrations(): IntegrationsData {
   loadFailed.current = t`Could not load integrations`;
   const [data, setData] = useState<LoadedData>(
     () =>
-      lastLoaded ?? {
+      (lastLoaded?.owner === cacheOwner() ? { ...lastLoaded.data, fresh: false } : null) ?? {
         loaded: false,
+        fresh: false,
         error: null,
         catalog: [],
         connections: [],
@@ -90,6 +105,7 @@ export function useIntegrations(): IntegrationsData {
   }, []);
 
   const refresh = useCallback(async () => {
+    const owner = cacheOwner();
     try {
       // A server without a managed catalog fails or returns nothing: custom connections still work.
       const [
@@ -143,6 +159,7 @@ export function useIntegrations(): IntegrationsData {
       if (!mounted.current) return;
       const next: LoadedData = {
         loaded: true,
+        fresh: true,
         error: null,
         catalogFailed: catalog === null,
         catalog: preferNativeGoogle(catalog ?? [], {
@@ -162,13 +179,14 @@ export function useIntegrations(): IntegrationsData {
         meetings,
         feedEnabled: feed.enabled,
       };
-      lastLoaded = next;
+      if (owner === cacheOwner()) lastLoaded = { owner, data: next };
       setData(next);
     } catch (err) {
       if (mounted.current)
         setData((prev) => ({
           ...prev,
           loaded: true,
+          fresh: !prev.loaded,
           error: errorText(err, loadFailed.current),
         }));
     }

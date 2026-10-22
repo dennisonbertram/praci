@@ -81,6 +81,7 @@ const gmail: ConnectionCatalogItem = {
 
 const data = (over: Partial<IntegrationsData> = {}): IntegrationsData => ({
   loaded: true,
+  fresh: true,
   error: null,
   catalog: [gmail],
   connections: [],
@@ -421,6 +422,24 @@ it("returns straight to ?next= when the app is already connected", async () => {
   } as IntegrationsData["connections"][number];
   await show(`${PAGE}?connect=1&next=%2Fapp%2Fdata-room`, data({ connections: [row] }));
   expect(where()).toBe("/app/data-room");
+});
+
+it("does not redirect on cached connections that the server has not confirmed yet", async () => {
+  const row = {
+    id: "c1",
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "Gmail",
+    status: "connected",
+    error: null,
+    capabilities: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  } as IntegrationsData["connections"][number];
+  await show(
+    `${PAGE}?connect=1&next=%2Fapp%2Fdata-room`,
+    data({ connections: [row], fresh: false }),
+  );
+  expect(where()).not.toBe("/app/data-room");
 });
 
 it("says so when the app is not in the catalog, and points the owner at setup", async () => {

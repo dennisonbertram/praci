@@ -22,10 +22,13 @@ const rpcMock = vi.hoisted(() => ({
   finance: { overview: vi.fn(async () => null) },
   meetings: { status: vi.fn() },
 }));
-vi.mock("../../lib/rpc", () => ({ rpc: rpcMock }));
+vi.mock("../../lib/rpc", () => ({
+  rpc: rpcMock,
+  selectedSpaceId: () => window.localStorage.getItem("rakazo:space-id"),
+}));
 
 import type { IntegrationsData } from "./useIntegrations";
-import { clearIntegrationsCache, useIntegrations } from "./useIntegrations";
+import { bindIntegrationsCache, clearIntegrationsCache, useIntegrations } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -115,4 +118,61 @@ it("shows the last list in the first frame on a revisit, then refreshes it", asy
   expect(frames[0]).toBe(true);
   await act(async () => second.unmount());
   clearIntegrationsCache();
+});
+
+it("does not show one account's cached list to another account or Space", async () => {
+  rpcMock.connections.list.mockResolvedValue([conn("a")]);
+  rpcMock.connections.effectiveAccess.mockResolvedValue({});
+  const seen: string[][] = [];
+  function Probe() {
+    seen.push(useIntegrations().connections.map((c) => c.id));
+    return null;
+  }
+  const mount = async () => {
+    const root = createRoot(document.createElement("div"));
+    await act(async () => root.render(<Probe />));
+    await act(async () => {});
+    await act(async () => root.unmount());
+  };
+  bindIntegrationsCache("user-1");
+  await mount();
+  rpcMock.connections.list.mockResolvedValue([conn("b")]);
+  // Another Space: first frame must be empty, not user-1's cache.
+  window.localStorage.setItem("rakazo:space-id", "space-2");
+  seen.length = 0;
+  await mount();
+  expect(seen[0]).toEqual([]);
+  window.localStorage.removeItem("rakazo:space-id");
+  // Another account: same.
+  bindIntegrationsCache("user-2");
+  seen.length = 0;
+  await mount();
+  expect(seen[0]).toEqual([]);
+  bindIntegrationsCache(null);
+});
+
+it("is not fresh from the cache, so a connection revoked elsewhere is not acted on", async () => {
+  rpcMock.connections.list.mockResolvedValue([conn("a")]);
+  rpcMock.connections.effectiveAccess.mockResolvedValue({});
+  bindIntegrationsCache("user-1");
+  const frames: { fresh: boolean; n: number }[] = [];
+  function Probe() {
+    const d = useIntegrations();
+    frames.push({ fresh: d.fresh, n: d.connections.length });
+    return null;
+  }
+  const first = createRoot(document.createElement("div"));
+  await act(async () => first.render(<Probe />));
+  await act(async () => {});
+  await act(async () => first.unmount());
+  // Revoked in another tab.
+  rpcMock.connections.list.mockResolvedValue([]);
+  frames.length = 0;
+  const second = createRoot(document.createElement("div"));
+  await act(async () => second.render(<Probe />));
+  expect(frames[0]).toEqual({ fresh: false, n: 1 });
+  await act(async () => {});
+  expect(frames.at(-1)).toEqual({ fresh: true, n: 0 });
+  await act(async () => second.unmount());
+  bindIntegrationsCache(null);
 });

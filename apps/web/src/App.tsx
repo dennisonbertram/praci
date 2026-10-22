@@ -25,6 +25,7 @@ import {
 import { LoadingState } from "./components/ai/primitives";
 import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { bindIntegrationsCache } from "./components/integrations/useIntegrations";
 import { MailOutbox } from "./components/MailOutbox";
 import { ShellSkeleton } from "./components/ShellSkeleton";
 import { SubscriptionGate } from "./components/SubscriptionGate";
@@ -133,6 +134,8 @@ function SessionApp() {
   );
   const session = authClient.useSession();
   const gate = sessionGate(session);
+  // Sign-in, sign-out, expiry and an account switch all change this id, which empties the cache.
+  bindIntegrationsCache(session.data?.user?.id ?? null);
   const [holdingUnreachable, setHoldingUnreachable] = useState(false);
   const nextHolding = holdUnreachableGate(gate, holdingUnreachable);
   if (nextHolding !== holdingUnreachable) setHoldingUnreachable(nextHolding);

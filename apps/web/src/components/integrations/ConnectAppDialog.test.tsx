@@ -57,6 +57,7 @@ const pendingRow = (status: Connection["status"], extra: Partial<Connection> = {
 const bot = { id: "bot_1", name: "Ada", color: "#000000" } as IntegrationsData["bots"][number];
 const data = (connections: Connection[] = []): IntegrationsData => ({
   loaded: true,
+  fresh: true,
   error: null,
   catalog: [item],
   connections,
