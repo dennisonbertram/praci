@@ -574,6 +574,18 @@ it("hides the pile tabs and keeps one Clear while showing search results", async
   expect(clears).toHaveLength(1);
 });
 
+it("keeps a Clear when the search text is deleted but the search is still applied", async () => {
+  const c = await render(["/app/inbox?q=zebra"]);
+  const input = c.querySelector("input") as HTMLInputElement;
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(input, "");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(byText(c, "Clear"));
+  expect(location.search).toBe("");
+});
+
 it("names the active filter in the results bar, not on the Filter button", async () => {
   const c = await render(["/app/inbox?filter=unread"]);
   expect(c.textContent).toContain("3 results · Unread");

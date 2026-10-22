@@ -1525,7 +1525,7 @@ function InboxListPage({
                   {activeFilterLabel ? ` · ${activeFilterLabel}` : null}
                 </span>
                 {/* A search already has the X in its box; a filter or category has only this. */}
-                {query && !filter && !category ? null : (
+                {query && draft && !filter && !category ? null : (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     <Trans>Clear</Trans>
                   </Button>
