@@ -197,7 +197,7 @@ describe("OpenAPI export", () => {
     );
   });
 
-  it("allows only the three declared event-iterator procedures as text/event-stream", () => {
+  it("allows only the declared event-iterator procedures as text/event-stream", () => {
     const document = createOpenAPIDocument();
     const streamPaths = Object.entries(document.paths)
       .filter(
@@ -208,6 +208,7 @@ describe("OpenAPI export", () => {
 
     expect(streamPaths).toEqual([
       "/rpc/boards/subscribe",
+      "/rpc/companyImport/subscribe",
       "/rpc/notifications/subscribe",
       "/rpc/threads/subscribe",
     ]);

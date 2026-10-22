@@ -26,6 +26,7 @@ type OpenAPIDocument = {
 const streamingPaths = new Set([
   "threads/subscribe",
   "boards/subscribe",
+  "companyImport/subscribe",
   "notifications/subscribe",
 ]);
 
