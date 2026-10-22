@@ -200,7 +200,7 @@ export function SettingsOverlay({
         aria-current={active ? "page" : undefined}
         disabled={panelBusy}
         onClick={() => setSection(item.id)}
-        className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+        className={`flex w-full shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
           active
             ? "bg-foreground/10 font-medium text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"
