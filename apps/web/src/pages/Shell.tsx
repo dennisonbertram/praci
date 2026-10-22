@@ -1342,36 +1342,6 @@ export function ShellPage() {
     },
     [navigate],
   );
-  // A bot made with "New bot" that was never renamed or used goes when its panel closes.
-  const newBotSeen = useRef<{ id: string; touched: boolean } | null>(null);
-  useEffect(() => {
-    if (!namingBotId) {
-      newBotSeen.current = null;
-      return;
-    }
-    const open = panel === "settings" && active?.id === namingBotId;
-    if (open) {
-      const used =
-        snapshot?.botId === namingBotId && snapshot.messages.some((m) => m.role === "user");
-      const kept = newBotSeen.current?.touched || active.name !== t`New Bot` || used;
-      newBotSeen.current = { id: namingBotId, touched: kept };
-      return;
-    }
-    // Not yet open (it is still opening) or already handled.
-    const seen = newBotSeen.current;
-    if (!seen || seen.id !== namingBotId) return;
-    newBotSeen.current = null;
-    setNamingBotId(null);
-    if (seen.touched) return;
-    void rpc.bots
-      .remove({ botId: namingBotId, deleteMemories: true })
-      .then(() => {
-        if (botId === namingBotId) navigate("/app", { replace: true });
-        return refreshBots(true);
-      })
-      .catch(() => undefined);
-  }, [namingBotId, panel, active, snapshot, refreshBots, botId, navigate, t]);
-
   useLayoutEffect(() => {
     routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
   }, [botId]);
