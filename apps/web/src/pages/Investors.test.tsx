@@ -846,6 +846,35 @@ it("shows a dash for Equity raised when the SAFE list fails to load", async () =
   expect(container.textContent).toContain("Equity raised—");
 });
 
+it("shows a loading state, not a dash, until the SAFE list answers", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  let answer: (rows: ReturnType<typeof safeRow>[]) => void = () => {};
+  rpcMock.safesList.mockReturnValue(
+    new Promise<ReturnType<typeof safeRow>[]>((resolve) => (answer = resolve)),
+  );
+  await show();
+  expect(container.textContent).not.toContain("Equity raised—");
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  answer([safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 })]);
+  await flush();
+  expect(container.textContent).toContain("Equity raised$525,000");
+});
+
+it("offers Try again when the SAFE list cannot load", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList.mockRejectedValue(new Error("down"));
+  await show();
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+  ]);
+  const retry = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Try again",
+  );
+  await act(async () => retry?.click());
+  await flush();
+  expect(container.textContent).toContain("Equity raised$525,000");
+});
+
 it("retries the SAFE list once before showing a dash", async () => {
   rpcMock.capTable.mockResolvedValue(state(carta));
   rpcMock.safesList
