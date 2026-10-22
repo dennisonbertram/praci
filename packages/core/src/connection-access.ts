@@ -1,12 +1,15 @@
 import {
+  inboxAgentSpawnKey,
   integrationAgentSpawnKey,
   isCartaAgentSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
+  isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
   isVoiceAgentSpawnKey,
 } from "@rakazo/contracts";
 
@@ -55,6 +58,33 @@ export function botMayUseConnection(row: {
   botAccess: { botId: string }[];
 }): boolean {
   return row.allAgents || row.botAccess.length > 0;
+}
+
+/**
+ * The access rows a run reads for its bot. An email's own agent has exactly the Inbox agent's
+ * permissions, so it reads the Inbox agent's rows ALONE. Its own rows are ignored: combining the
+ * two could grant it an account that the Inbox agent is denied.
+ */
+export function connectionAccessFilter(bot: {
+  id: string;
+  userId: string;
+  spawnKey: string | null;
+}) {
+  return isMailThreadAgentSpawnKey(bot.spawnKey)
+    ? { bot: { spawnKey: inboxAgentSpawnKey(bot.userId) } }
+    : { botId: bot.id };
+}
+
+/**
+ * For an email's own agent, a connection whose agent is the Inbox agent is linked to it too, so it
+ * may make the changes the Inbox agent may (the write rule compares `agentBotId` with the bot).
+ */
+export function withInboxAgentStandIn<
+  T extends { agentBotId: string | null; agentBot?: { spawnKey: string | null } | null },
+>(row: T, bot: { id: string; spawnKey: string | null }): T {
+  return isMailThreadAgentSpawnKey(bot.spawnKey) && isInboxAgentSpawnKey(row.agentBot?.spawnKey)
+    ? { ...row, agentBotId: bot.id }
+    : row;
 }
 
 /** Whether the bot works with Composio, Pipedream and other connector tools at all. */
@@ -139,12 +169,15 @@ export function effectiveAccessByConnection(
   bots: { id: string; spawnKey: string | null; archivedAt: Date | null; audience?: string }[],
 ): Record<string, EffectiveAccess> {
   const active = bots.filter((bot) => !bot.archivedAt);
+  // An email's own agent is judged by the Inbox agent's grants alone, as the executor reads them.
+  const inboxId = bots.find((bot) => isInboxAgentSpawnKey(bot.spawnKey))?.id;
   const usable = new Map<string, string[]>(rows.map((row) => [row.id, []]));
   for (const bot of active) {
+    const grantee = isMailThreadAgentSpawnKey(bot.spawnKey) ? inboxId : bot.id;
     const own = connectionRowsForAudience(
       rows.map((row) => ({
         ...row,
-        botAccess: row.botAccess.filter((entry) => entry.botId === bot.id),
+        botAccess: row.botAccess.filter((entry) => entry.botId === grantee),
       })),
       bot.audience,
     );

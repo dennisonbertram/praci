@@ -43,6 +43,7 @@ export function ComposerError({
   message,
   onDismiss,
   onRetry,
+  onRetrySend,
   onOpenModelSettings,
   onNavigate,
 }: {
@@ -51,6 +52,8 @@ export function ComposerError({
   onDismiss: () => void;
   /** Sends the last message again; offered only for a run that ended without a reply. */
   onRetry?: () => void;
+  /** Sends the message that failed to leave again. */
+  onRetrySend?: () => void;
   onOpenModelSettings?: (provider?: string) => void;
   onNavigate?: (path: string) => void;
 }) {
@@ -75,8 +78,8 @@ export function ComposerError({
             <Trans>Open Models settings</Trans>
           </Button>
         ) : null}
-        {message === MISSING_TOOL_FINAL_RESPONSE_ERROR && onRetry ? (
-          <Button size="sm" variant="outline" onClick={onRetry}>
+        {(message === MISSING_TOOL_FINAL_RESPONSE_ERROR && onRetry) || onRetrySend ? (
+          <Button size="sm" variant="outline" onClick={onRetrySend ?? onRetry}>
             <Trans>Retry</Trans>
           </Button>
         ) : null}

@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
 import { latestAnswerableAskMessageId, newClientId } from "@rakazo/core";
 import { BotAvatar, Button } from "@rakazo/ui-web";
-import { PanelRightClose } from "lucide-react";
+import { ArrowLeft, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { rpc } from "../../lib/rpc";
@@ -35,10 +35,6 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
 }
 
 const DRAFT_REQUEST = "Draft a reply";
-// A leading "Draft reply:" label, with optional markdown emphasis around it, such as **Draft reply:**.
-const DRAFT_LABEL = /^[*_]*draft( reply)?[*_]*:[*_]*\s*/i;
-const asksForDraft = (text: string) =>
-  /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
 /**
  * A message the owner wrote. Agent-to-agent deliveries also carry role "user", and the seeded email
@@ -49,29 +45,6 @@ const isOwnerMessage = (message: ThreadMessage) =>
   !message.blocks.some((b) =>
     ["bot_message_received", "channel_message", "handoff"].includes(b.kind),
   );
-
-/**
- * The text of the agent's first plain-text answer after the owner's latest request, when that
- * request asks to draft or write a reply. It is for a model that writes the draft as text instead
- * of proposing a mail_send card. Later agent messages do not move it; questions and other
- * requests have none.
- */
-export function latestTextDraft(messages: readonly ThreadMessage[]): string | undefined {
-  const at = messages.findLastIndex(isOwnerMessage);
-  if (at < 0 || !asksForDraft(textOf(messages[at] as ThreadMessage))) return undefined;
-  for (const message of messages.slice(at + 1)) {
-    const answer = message.role === "bot" ? textOf(message) : "";
-    // A question is the agent asking for more, not a draft.
-    if (answer && !answer.endsWith("?")) return answer.replace(DRAFT_LABEL, "");
-  }
-  return undefined;
-}
-
-const textOf = (message: ThreadMessage) =>
-  message.blocks
-    .flatMap((block) => (block.kind === "text" ? [block.text] : []))
-    .join("\n\n")
-    .trim();
 
 /**
  * An email's own agent, docked inside the message dialog. It is the Shell's page-agent panel (header,
@@ -150,18 +123,27 @@ export function EmailAgentPanel({
     }
   }, [snapshot, running, lastBotId]);
 
-  const draft =
-    latestPendingDraft(snapshot?.messages ?? []) ?? latestTextDraft(snapshot?.messages ?? []);
+  const draft = latestPendingDraft(snapshot?.messages ?? []);
+  const lastSend = useRef<{ text: string; nonce: string } | null>(null);
   const send = async (text: string, clientNonce?: string) => {
+    const attempt = { text, nonce: clientNonce || newClientId() };
+    lastSend.current = attempt;
+    setSendError(null);
     setStale(true);
     setSending(true);
     try {
       sentHere.current = true;
-      await rpc.threads.send({ botId: bot.id, clientNonce: clientNonce || newClientId(), text });
+      await rpc.threads.send({ botId: bot.id, clientNonce: attempt.nonce, text });
       await load();
       return true;
     } catch (cause) {
-      setSendError(cause instanceof Error ? cause.message : String(cause));
+      setStale(false);
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setSendError(
+        cause instanceof TypeError || /failed to fetch|load failed|network/i.test(message)
+          ? t`Could not reach Praci. Try again.`
+          : message,
+      );
       return false;
     } finally {
       setSending(false);
@@ -174,7 +156,16 @@ export function EmailAgentPanel({
       aria-label={t`Email agent`}
       className="flex h-full min-h-0 w-full flex-col border-s border-sidebar-border bg-background"
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 max-md:justify-start">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t`Back to email`}
+          className="-ms-2 md:hidden"
+          onClick={onClose}
+        >
+          <ArrowLeft aria-hidden="true" className="rtl:rotate-180" />
+        </Button>
         <button
           type="button"
           aria-label={t`Open email agent full screen`}
@@ -187,7 +178,13 @@ export function EmailAgentPanel({
             <Trans>Email agent</Trans>
           </span>
         </button>
-        <Button variant="ghost" size="icon-sm" aria-label={t`Close agent`} onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t`Close agent`}
+          className="max-md:hidden"
+          onClick={onClose}
+        >
           <PanelRightClose aria-hidden="true" />
         </Button>
       </div>
@@ -269,6 +266,10 @@ export function EmailAgentPanel({
         runErrorId={null}
         onRunErrorPresented={noop}
         onDismissError={() => setSendError(null)}
+        onRetrySend={() => {
+          const last = lastSend.current;
+          if (last) void send(last.text, last.nonce);
+        }}
         sending={false}
         fileInputRef={fileInputRef}
         onAttachmentPick={() => false}

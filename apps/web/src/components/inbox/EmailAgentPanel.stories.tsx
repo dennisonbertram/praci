@@ -63,8 +63,8 @@ export const Empty: Story = {
     }),
 };
 
-/** A plain-text answer to a draft request offers Reply with draft. */
-export const DraftAnswered: Story = {
+/** A reply proposed as a mail card waiting for approval offers Reply with draft. */
+export const DraftProposed: Story = {
   beforeEach: () =>
     mockRpc({
       "threads.get": {
@@ -72,7 +72,25 @@ export const DraftAnswered: Story = {
         cursor: 2,
         messages: [
           message(1, "user", "Draft a reply"),
-          message(2, "bot", "Hi Sam, thanks for sending this over. I will sign it today."),
+          {
+            ...message(2, "bot", ""),
+            blocks: [
+              {
+                kind: "ask",
+                text: "Send this reply?",
+                status: "pending",
+                mail: {
+                  tool: "mail_send",
+                  to: [],
+                  cc: [],
+                  bcc: [],
+                  subject: "Re: Notice",
+                  body: "Hi Sam, thanks for sending this over. I will sign it today.",
+                  reply: true,
+                },
+              },
+            ],
+          },
         ],
         olderCursor: null,
         botId: bot.id,
