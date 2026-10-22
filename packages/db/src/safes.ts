@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from "./client.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
-type Db = Pick<PrismaClient, "safe" | "contact" | "fundraiseRound">;
+type Db = Pick<PrismaClient, "safe" | "contact" | "fundraiseRound" | "$transaction">;
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
 
@@ -148,16 +148,28 @@ export async function markSafe(db: Db, actor: Scope, input: SafeMarkInput): Prom
   const at = input.at ? new Date(input.at) : null;
   if (input.action === "cancel" && at && row.paidAt)
     throw new SafeStateError("A funded SAFE cannot be canceled.");
-  await db.safe.updateMany({
-    where: { id: row.id, ...scope },
-    data: MARK_FIELDS[input.action](at),
-  });
-  if (at && row.contactId && (input.action === "signed" || input.action === "funded"))
-    await db.contact.updateMany({
-      where: { id: row.contactId, ...scope, kind: "prospect" },
-      data: { kind: "investor" },
+  // Undoing a cancel must not leave the contact with two active SAFEs.
+  if (input.action === "cancel" && !at && row.contactId) {
+    const others = (await listSafesOf(db, scope, row.contactId)).filter((s) => s.id !== row.id);
+    if (others.some((safe) => isActiveSafe(safe.status))) throw new SafeActiveError();
+  }
+  const flips = Boolean(
+    at && row.contactId && (input.action === "signed" || input.action === "funded"),
+  );
+  await db.$transaction(async (tx) => {
+    // A cancel applies only while unpaid, so it cannot race a funding request.
+    const { count } = await tx.safe.updateMany({
+      where: { id: row.id, ...scope, ...(input.action === "cancel" && at ? { paidAt: null } : {}) },
+      data: MARK_FIELDS[input.action](at),
     });
-  return toSafe(await db.safe.findUniqueOrThrow({ where: { id: row.id } }));
+    if (count === 0) throw new SafeStateError("A funded SAFE cannot be canceled.");
+    if (flips)
+      await tx.contact.updateMany({
+        where: { id: row.contactId as string, ...scope, kind: "prospect" },
+        data: { kind: "investor" },
+      });
+  });
+  return toSafe(await db.safe.findFirstOrThrow({ where: { id: row.id, ...scope } }));
 }
 
 /** Deletes a native SAFE. Throws IsolationError for another user's SAFE, SafeStateError for a Mercury one. */
