@@ -2,7 +2,7 @@ import type { NotificationDto } from "@rakazo/contracts";
 import { isDevinSessionUrl } from "@rakazo/contracts";
 import type { NotificationToastInput } from "@rakazo/ui-web";
 import { enqueueNotificationToast } from "@rakazo/ui-web";
-import { enqueueApprovalToast } from "./approval-toasts";
+import { enqueueApprovalToast, hasApprovalToast, retainApprovalToasts } from "./approval-toasts";
 import { requestBrowserNotificationPermission } from "./browser-notifications";
 import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
 
@@ -20,10 +20,35 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
     title: maskCurrencyWhenHidden(n.title),
     body: n.body ? maskCurrencyWhenHidden(n.body) : undefined,
     href: n.link ?? undefined,
+    botId: n.botId,
     createdAt: n.createdAt,
     // An approval waits for the person, so its toast stays until it is opened or dismissed.
     ...(n.kind === "needs_input" ? { timeout: 0, approval: isApprovalRequest(n) } : {}),
   };
+}
+
+/**
+ * Makes the approval toasts match the server's unanswered approvals: shows the ones with no toast
+ * (a reload loses them) and drops the ones answered elsewhere. `complete` is false when the list
+ * was cut short, so a missing approval is not proof that it was answered.
+ */
+export function syncApprovalToasts(
+  notifications: readonly NotificationDto[],
+  options: {
+    complete: boolean;
+    onSeen: (n: NotificationDto) => () => void;
+    skip?: (n: NotificationDto) => boolean;
+  },
+) {
+  const unanswered = notifications.filter(
+    (n) => n.importance === "attention" && !n.seenAt && isApprovalRequest(n),
+  );
+  for (const n of unanswered) {
+    if (hasApprovalToast(n.id) || options.skip?.(n)) continue;
+    const { approval: _approval, botId, ...toast } = attentionFromDto(n);
+    enqueueApprovalToast({ ...toast, onSeen: options.onSeen(n) }, { botId });
+  }
+  if (options.complete) retainApprovalToasts(new Set(unanswered.map((n) => n.id)));
 }
 
 /**
@@ -60,6 +85,8 @@ export function openNotificationLink(navigate: (href: string) => void | Promise<
 export type AttentionNotification = NotificationToastInput & {
   /** Set on an approval request: its toast joins the approvals toast and goes when its chat is opened. */
   approval?: boolean;
+  /** The agent whose chat holds the approval card; its toast goes when that chat opens or the card is answered. */
+  botId?: string | null;
 };
 
 /** Present (visible tab with focus) -> in-app toast; otherwise -> OS notification. */
@@ -92,8 +119,8 @@ export type DeliveryDeps = {
 export const AWAY_DELAY_MS = 1500;
 
 const defaultDeps = (): DeliveryDeps => ({
-  toast: ({ approval, ...toast }) =>
-    approval ? enqueueApprovalToast(toast) : enqueueNotificationToast(toast),
+  toast: ({ approval, botId, ...toast }) =>
+    approval ? enqueueApprovalToast(toast, { botId }) : enqueueNotificationToast(toast),
   requestPermission: () => requestBrowserNotificationPermission(),
   show: (title, options, onClick) => {
     const shown = new Notification(title, options);

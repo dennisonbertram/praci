@@ -1217,8 +1217,9 @@ export function ShellPage() {
   const openChatHref =
     inGroup && groupId ? `/app/g/${groupId}` : active ? `/app/${active.id}` : undefined;
   useEffect(() => {
-    if (openChatHref) dismissApprovalToasts(openChatHref);
-  }, [openChatHref]);
+    if (openChatHref)
+      dismissApprovalToasts({ href: openChatHref, botId: inGroup ? undefined : active?.id });
+  }, [openChatHref, inGroup, active?.id]);
   const opening = chatIsOpening({
     hasChat: Boolean(active || activeGroup),
     botsLoaded: initialBotsLoaded,
@@ -2816,7 +2817,9 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
-      dismissApprovalToasts(groupId ? `/app/g/${groupId}` : `/app/${botId}`);
+      dismissApprovalToasts(
+        groupId ? { href: `/app/g/${groupId}` } : { href: `/app/${botId}`, botId },
+      );
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -4278,6 +4281,7 @@ export function ShellPage() {
       <aside
         ref={sidebarRef}
         data-sidebar=""
+        data-drawer-open={mobileSidebarOpen ? "" : undefined}
         aria-label={t`Sidebar`}
         onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
         onFocus={(event) => {

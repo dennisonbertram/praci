@@ -81,6 +81,11 @@ function secretFieldLabel(purpose: AskBlock["purpose"]): string {
   return t`Code`;
 }
 
+/** When a card here was last answered; the next card to appear soon after may land under the pointer. */
+let lastAnsweredAt = 0;
+const RECENT_ANSWER_MS = 30_000;
+const SETTLE_MS = 1000;
+
 export function AskCard({
   block,
   canAnswer,
@@ -100,6 +105,16 @@ export function AskCard({
   const [error, setError] = useState<string | null>(null);
   const questionId = useId();
   const answeredHere = useRef(false);
+  // A card that replaces one just answered keeps its buttons off for a second, so a second click
+  // meant for the old card cannot approve the new one.
+  const [settling, setSettling] = useState(
+    () => block.status !== "answered" && Date.now() - lastAnsweredAt < RECENT_ANSWER_MS,
+  );
+  useEffect(() => {
+    if (!settling) return;
+    const timer = setTimeout(() => setSettling(false), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [settling]);
   const submitting = pendingAction !== null;
   const approvalActions = isApprovalAskBlock(block) ? block.actions : undefined;
   const askActions = block.actions;
@@ -134,6 +149,7 @@ export function AskCard({
     }
     try {
       await onAnswer(submitValue, submitUsername);
+      lastAnsweredAt = Date.now();
       answeredHere.current = true;
       // The card's buttons vanish with the answer; keep the keyboard in the conversation.
       if (!secretInput) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
@@ -239,7 +255,7 @@ export function AskCard({
                   <Button
                     variant="link"
                     className="h-auto p-0"
-                    disabled={submitting}
+                    disabled={submitting || settling}
                     onClick={() => void submitAnswer(action.id)}
                   >
                     {pendingAction === action.id ? (
@@ -257,7 +273,7 @@ export function AskCard({
                   key={action.id}
                   variant={approvalActions && action.id === "allow" ? "default" : "outline"}
                   className="h-auto w-full justify-start whitespace-normal px-3.5 py-3 text-start font-normal"
-                  disabled={submitting}
+                  disabled={submitting || settling}
                   onClick={() => void submitAnswer(action.id)}
                 >
                   {pendingAction === action.id ? (
@@ -279,7 +295,7 @@ export function AskCard({
         </div>
       ) : secretInput ? (
         <div className="mt-3.5 border-t border-border pt-3.5">
-          <Button disabled={submitting} onClick={() => setDialogOpen(true)}>
+          <Button disabled={submitting || settling} onClick={() => setDialogOpen(true)}>
             {submitting ? <Trans>Saving…</Trans> : <Trans>Provide secret</Trans>}
           </Button>
           <SecretRequestDialog
@@ -313,7 +329,7 @@ export function AskCard({
             </Button>
             <Button
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || settling}
               onClick={() => {
                 setAnswer("");
                 setEditing(false);
@@ -325,10 +341,14 @@ export function AskCard({
         </form>
       ) : (
         <div className="mt-3.5 flex gap-2">
-          <Button disabled={submitting} onClick={() => void submitAnswer("approved")}>
+          <Button disabled={submitting || settling} onClick={() => void submitAnswer("approved")}>
             {submitting ? <Trans>Sending…</Trans> : <Trans>Send it</Trans>}
           </Button>
-          <Button variant="outline" disabled={submitting} onClick={() => setEditing(true)}>
+          <Button
+            variant="outline"
+            disabled={submitting || settling}
+            onClick={() => setEditing(true)}
+          >
             <Trans>Edit first</Trans>
           </Button>
         </div>

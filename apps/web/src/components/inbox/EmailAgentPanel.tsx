@@ -5,8 +5,9 @@ import { BotAvatar, Button } from "@rakazo/ui-web";
 import { ArrowLeft, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { dismissApprovalToasts } from "../../lib/approval-toasts";
+import { dismissApprovalToasts, markApprovalChatOpen } from "../../lib/approval-toasts";
 import { rpc } from "../../lib/rpc";
+import { useAttended } from "../../lib/use-sidebar-glance";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
 
@@ -87,6 +88,20 @@ export function EmailAgentPanel({
   useEffect(() => {
     void load();
   }, [load]);
+  // This email's cards are on screen, so they raise no toast. Marking them seen also drops the
+  // toast in other tabs.
+  useEffect(() => markApprovalChatOpen(bot.id), [bot.id]);
+  // Only a tab the person is looking at may clear the alert; a background one would hide it unseen.
+  const attended = useAttended();
+  const cardOnScreen = Boolean(
+    snapshot?.messages.some((m) =>
+      m.blocks.some((b) => b.kind === "ask" && b.status !== "answered"),
+    ),
+  );
+  useEffect(() => {
+    if (cardOnScreen && attended)
+      void rpc.notifications.markSeen({ botId: bot.id }).catch(() => undefined);
+  }, [cardOnScreen, attended, bot.id]);
   const running = Boolean(
     snapshot?.run && ["running", "queued", "leased"].includes(snapshot.run.status),
   );
@@ -221,7 +236,7 @@ export function EmailAgentPanel({
                 ...(username ? { username } : {}),
                 ...(mail ? { mail } : {}),
               });
-              dismissApprovalToasts(`/app/${bot.id}`);
+              dismissApprovalToasts({ href: `/app/${bot.id}`, botId: bot.id });
               await load();
             }}
             onReply={noop}
@@ -243,7 +258,7 @@ export function EmailAgentPanel({
         <div className="min-h-0 flex-1" />
       )}
       {snapshot && !snapshot.messages.some(isOwnerMessage) ? (
-        <div className="shrink-0 px-7 pb-2">
+        <div data-toast-avoid="" className="shrink-0 px-7 pb-2">
           <Button
             variant="outline"
             size="sm"
@@ -255,7 +270,7 @@ export function EmailAgentPanel({
         </div>
       ) : null}
       {draft && !running && !stale ? (
-        <div className="shrink-0 px-7 pb-2">
+        <div data-toast-avoid="" className="shrink-0 px-7 pb-2">
           <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
             <Trans>Reply with draft</Trans>
           </Button>
