@@ -2,6 +2,7 @@ import type { MessageBlock } from "@rakazo/contracts";
 import {
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
   financeAgentSpawnKey,
+  GTM_AGENT_BUILTIN_TOOLS,
   VOICE_AGENT_BUILTIN_TOOLS,
   voiceAgentSpawnKey,
 } from "@rakazo/contracts";
@@ -46,6 +47,8 @@ import {
 import { UnavailableModelForAuthError } from "./model-selection.js";
 import { RetiredModelCredentialError, serializeModelSecret } from "./pi-oauth.js";
 
+const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
+
 describe("bot tool permissions", () => {
   it("never lets self-edit change disabled tools alongside an allowed field", () => {
     expect(parseUpdateBotPatch({ name: "Scout", disabledBuiltinTools: [] }, "Bot")).toEqual({
@@ -72,6 +75,47 @@ describe("bot tool permissions", () => {
       }).map((tool) => tool.name),
     ).toEqual(baseline.filter((name) => name !== "search_history" && name !== "read_history"));
   });
+
+  it.each(["user", "follow_up", "routine", "bot_message", "webhook"])(
+    "keeps the GTM built-ins closed and offers takeover only on %s runs",
+    (trigger) => {
+      const offered = selectBuiltinToolsForRun({
+        graphicalToolsAllowed: true,
+        pageBrowserAllowed: true,
+        groupId: null,
+        trigger,
+        semanticMemoryEnabled: true,
+        messagingChannelRun: false,
+        mailEnabled: true,
+        calendarEnabled: true,
+        driveEnabled: true,
+        dataRoomEnabled: true,
+        financeEnabled: true,
+        legalEnabled: true,
+        contactsEnabled: true,
+        cloudAgentEnabled: true,
+        ticketBoardEnabled: true,
+        gtmAgent: true,
+      }).map((tool) => tool.name);
+
+      expect(offered.every((name) => gtmAgentBuiltinToolSet.has(name))).toBe(true);
+      expect(offered.includes("request_takeover")).toBe(
+        trigger === "user" || trigger === "follow_up",
+      );
+      for (const name of [
+        "mail_send",
+        "computer_observe",
+        "computer_act",
+        "run_subagent",
+        "spawn_bot",
+        "message_agent",
+        "gtm_post",
+      ]) {
+        expect(offered).not.toContain(name);
+      }
+      expect(offered).toEqual(expect.arrayContaining(["mail_search", "mail_grep", "mail_get"]));
+    },
+  );
 });
 
 describe("voice agent permissions", () => {
@@ -1287,6 +1331,11 @@ describe("directoryDescription", () => {
     expect(integration).toContain("[Open Integrations](/app/integrations)");
     expect(integration).toContain("copied exactly");
     expect(NOT_CONNECTED_GUIDANCE).toContain("[Open Integrations](/app/integrations)");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("do not say no payment connection exists");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("If no bank is connected");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("If a bank is connected but has no agent yet");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("Allow changes");
+    expect(PLAIN_CAPABILITY_GUIDANCE).toContain("never by its id");
     expect(integration).not.toContain("instead of messaging it");
   });
 
@@ -1846,6 +1895,142 @@ describe("createRunExecutor", () => {
       ...threadContext,
       includeSemanticRecall: true,
     });
+  });
+
+  it.each(["active", "empty"] as const)(
+    "advances a GTM routine without creating a run when its work is %s",
+    async (workState) => {
+      const scheduledAt = new Date(Date.now() - 10 * 60_000);
+      const routine = {
+        id: "routine-1",
+        spaceId: "space-1",
+        botId: "bot-1",
+        userId: "user-1",
+        prompt: "Work the plan.",
+        crons: ["*/5 * * * *"],
+        timezone: "UTC",
+        active: true,
+        nextRunAt: scheduledAt,
+        lastRunAt: null,
+        threadId: null,
+      };
+      const enqueue = vi.fn(async () => undefined);
+      const routineClaim = vi.fn(async () => ({ count: 1 }));
+      const activeRunFindFirst = vi.fn(async () =>
+        workState === "active" ? { id: "active-run" } : null,
+      );
+      const scratchpadFindMany = vi.fn(async () => []);
+      const taskCreate = vi.fn(async () => ({ id: "task-1" }));
+      const runCreate = vi.fn(async () => ({ id: "run-1" }));
+      const prisma = {
+        routine: { findUnique: vi.fn(async () => routine) },
+        bot: {
+          findUnique: vi.fn(async () => ({
+            id: "bot-1",
+            userId: "user-1",
+            spawnKey: "gtm-agent:user-1",
+            archivedAt: null,
+            thread: { id: "thread-1" },
+          })),
+        },
+        agentSkill: { findMany: vi.fn(async () => []) },
+        botSkillSetting: { findMany: vi.fn(async () => []) },
+        $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            routine: {
+              updateMany: routineClaim,
+              findUnique: vi.fn(async () => ({
+                modelProvider: null,
+                modelId: null,
+                thinkingLevel: null,
+              })),
+            },
+            run: { findFirst: activeRunFindFirst, create: runCreate },
+            scratchpadItem: { findMany: scratchpadFindMany },
+            task: { create: taskCreate },
+          }),
+        ),
+      } as unknown as PrismaClient;
+      const executor = createRunExecutor({
+        prisma,
+        jobs: {
+          enqueue,
+          cancel: vi.fn(async () => undefined),
+          close: vi.fn(async () => undefined),
+        },
+        events: { append: vi.fn(async () => undefined) },
+      } as unknown as Parameters<typeof createRunExecutor>[0]);
+
+      await executor.wakeRoutine("routine-1", scheduledAt.toISOString());
+
+      expect(activeRunFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            spaceId: "space-1",
+            userId: "user-1",
+            botId: "bot-1",
+            routineId: "routine-1",
+            status: { in: ["queued", "leased", "running", "waiting_input", "waiting_takeover"] },
+          },
+        }),
+      );
+      expect(taskCreate).not.toHaveBeenCalled();
+      expect(runCreate).not.toHaveBeenCalled();
+      if (workState === "empty") {
+        expect(scratchpadFindMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { spaceId: "space-1", userId: "user-1", botId: "bot-1", status: "open" },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          }),
+        );
+      } else {
+        expect(scratchpadFindMany).not.toHaveBeenCalled();
+      }
+      expect(enqueue).toHaveBeenCalledTimes(1);
+      expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ name: "routine.wakeup" }));
+    },
+  );
+
+  it.each([
+    { state: "inactive", active: false, offsetMs: -10 * 60_000, enqueueCount: 0 },
+    { state: "stale", active: true, offsetMs: -8 * 60_000, enqueueCount: 0 },
+    { state: "future", active: true, offsetMs: 60 * 60_000, enqueueCount: 1 },
+  ])("does not claim a GTM routine when its wake is $state", async (wake) => {
+    const scheduledAt = new Date(Date.now() - 10 * 60_000);
+    const routine = {
+      id: "routine-1",
+      spaceId: "space-1",
+      botId: "bot-1",
+      userId: "user-1",
+      prompt: "Work the plan.",
+      crons: ["*/5 * * * *"],
+      timezone: "UTC",
+      active: wake.active,
+      nextRunAt:
+        wake.state === "stale"
+          ? new Date(scheduledAt.getTime() + 2 * 60_000)
+          : wake.state === "future"
+            ? new Date(Date.now() + wake.offsetMs)
+            : scheduledAt,
+      threadId: null,
+    };
+    const enqueue = vi.fn(async () => undefined);
+    const transaction = vi.fn();
+    const prisma = {
+      routine: { findUnique: vi.fn(async () => routine) },
+      $transaction: transaction,
+    } as unknown as PrismaClient;
+    const executor = createRunExecutor({
+      prisma,
+      jobs: { enqueue, cancel: vi.fn(async () => undefined), close: vi.fn(async () => undefined) },
+      events: { append: vi.fn(async () => undefined) },
+    } as unknown as Parameters<typeof createRunExecutor>[0]);
+    const wakeFor = wake.state === "future" ? routine.nextRunAt! : scheduledAt;
+
+    await executor.wakeRoutine("routine-1", wakeFor.toISOString());
+
+    expect(transaction).not.toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledTimes(wake.enqueueCount);
   });
 
   it("deactivates one-shot routines after wake without scheduling another wakeup", async () => {

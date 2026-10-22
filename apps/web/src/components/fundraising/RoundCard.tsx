@@ -4,7 +4,6 @@ import { Trans } from "@lingui/react/macro";
 import type { FundraiseRound } from "@rakazo/contracts";
 import {
   Button,
-  Card,
   Dialog,
   DialogBody,
   DialogContent,
@@ -18,6 +17,7 @@ import {
   Input,
   Label,
 } from "@rakazo/ui-web";
+import { cn } from "@rakazo/ui-web/lib/utils";
 import { MoreHorizontal } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
@@ -25,6 +25,8 @@ import { centsFromText } from "../../lib/dollars-input";
 import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { SectionCard } from "../SectionCard";
+import { LegendValuePlaceholder, RoundBarPlaceholder } from "./Placeholders";
 
 const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
 
@@ -131,18 +133,29 @@ function Segment({ cents, scale, className }: { cents: number; scale: number; cl
   return <div className={className} style={{ width: `${(cents / scale) * 100}%` }} />;
 }
 
-function Figure({ title, cents }: { title: string; cents: number }) {
+function Figure({ title, cents, dot }: { title: string; cents: number; dot: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-xs text-muted-foreground">{title}</div>
-      <div className="text-sm font-semibold tabular-nums">{usd(cents)}</div>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <i aria-hidden="true" className={cn("size-2 rounded-full", dot)} />
+        {title}
+      </div>
+      <div className="mt-0.5 text-lg font-semibold tabular-nums">{usd(cents)}</div>
     </div>
   );
 }
 
+const LEGEND_DOTS = {
+  funded: "bg-primary",
+  signed: "bg-primary/70",
+  pending: "bg-primary/35",
+  target: "ring-1 ring-input",
+};
+
 /**
  * The round: its name and cap, the menu, and the bar Funded, Signed, Pending, Target. A closed
- * round is one line with Reopen in its menu. With no round there is only Start a round.
+ * round is one line with Reopen in its menu. With no round it is the empty Round card: Start a
+ * round over a static skeleton of the bar and legend.
  */
 export function RoundCard({
   round,
@@ -168,48 +181,80 @@ export function RoundCard({
   const locale = i18n.locale || "en";
   if (!round || round.closedAt) {
     return (
-      <Card className="max-w-5xl gap-3 px-3.5 py-3">
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            {round ? <h2 className="truncate text-sm font-semibold">{round.name}</h2> : null}
-            {round?.closedAt ? (
-              <p className="text-xs text-muted-foreground">
-                {t`Closed ${shortDay(round.closedAt.slice(0, 10), new Date(), locale)} · funded ${usd(fundedCents)}`}
-              </p>
+      <SectionCard
+        title={round ? round.name : t`Round`}
+        heading={
+          round ? (
+            <>
+              <h2 className="truncate text-sm font-semibold">{round.name}</h2>
+              {round.closedAt ? (
+                <p className="text-xs text-muted-foreground">
+                  {t`Closed ${shortDay(round.closedAt.slice(0, 10), new Date(), locale)} · funded ${usd(fundedCents)}`}
+                </p>
+              ) : null}
+            </>
+          ) : undefined
+        }
+        actions={
+          <>
+            <Button onClick={onStart}>
+              <Trans>Start a round</Trans>
+            </Button>
+            {round ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button variant="ghost" size="icon-sm" aria-label={t`Round actions`} />}
+                >
+                  <MoreHorizontal aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onReopen}>
+                    <Trans>Reopen</Trans>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
-          </div>
-          <Button onClick={onStart}>
-            <Trans>Start a round</Trans>
-          </Button>
-          {round ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon-sm" aria-label={t`Round actions`} />}
-              >
-                <MoreHorizontal aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onReopen}>
-                  <Trans>Reopen</Trans>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
-      </Card>
+          </>
+        }
+      >
+        {round ? null : (
+          <>
+            <RoundBarPlaceholder />
+            <div className="mt-3 grid grid-cols-2 gap-3 @md/bd:grid-cols-4">
+              {[
+                [t`Funded`, LEGEND_DOTS.funded],
+                [t`Signed`, LEGEND_DOTS.signed],
+                [t`Pending`, LEGEND_DOTS.pending],
+                [t`Target`, LEGEND_DOTS.target],
+              ].map(([title, dot]) => (
+                <div key={title} className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <i aria-hidden="true" className={cn("size-2 rounded-full", dot)} />
+                    {title}
+                  </div>
+                  <LegendValuePlaceholder />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </SectionCard>
     );
   }
   const total = fundedCents + signedCents + pendingCents;
   const scale = Math.max(round.targetCents, total);
   return (
-    <Card className="max-w-5xl gap-3 px-3.5 py-3">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
+    <SectionCard
+      title={round.name}
+      heading={
+        <>
           <h2 className="truncate text-sm font-semibold">{round.name}</h2>
           <p className="text-xs text-muted-foreground">
             {t`Post-money cap ${usd(round.capCents)}`}
           </p>
-        </div>
+        </>
+      }
+      actions={
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<Button variant="ghost" size="icon-sm" aria-label={t`Round actions`} />}
@@ -225,18 +270,21 @@ export function RoundCard({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-      <div className="flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+      }
+    >
+      <div className="flex h-3 overflow-hidden rounded-full bg-foreground/10" aria-hidden="true">
         <Segment cents={fundedCents} scale={scale} className="bg-primary" />
         <Segment cents={signedCents} scale={scale} className="bg-primary/70" />
         <Segment cents={pendingCents} scale={scale} className="bg-primary/35" />
       </div>
-      <div className="grid grid-cols-2 gap-3 @md/bd:grid-cols-4">
-        <Figure title={t`Funded`} cents={fundedCents} />
-        <Figure title={t`Signed`} cents={signedCents} />
-        <Figure title={t`Pending`} cents={pendingCents} />
-        {round.targetCents > 0 ? <Figure title={t`Target`} cents={round.targetCents} /> : null}
+      <div className="mt-3 grid grid-cols-2 gap-3 @md/bd:grid-cols-4">
+        <Figure title={t`Funded`} cents={fundedCents} dot={LEGEND_DOTS.funded} />
+        <Figure title={t`Signed`} cents={signedCents} dot={LEGEND_DOTS.signed} />
+        <Figure title={t`Pending`} cents={pendingCents} dot={LEGEND_DOTS.pending} />
+        {round.targetCents > 0 ? (
+          <Figure title={t`Target`} cents={round.targetCents} dot={LEGEND_DOTS.target} />
+        ) : null}
       </div>
-    </Card>
+    </SectionCard>
   );
 }

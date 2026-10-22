@@ -20,6 +20,22 @@ export const PAGE_GUTTER_START = "ps-4 md:ps-7";
 /** The title row's height. The title and actions sit in it, so titles align on every page. */
 export const PAGE_HEADER_ROW = "h-10";
 
+/** The phone navigation button. A page header that shows it also claims the shell's menu band. */
+export function PageNavButton() {
+  const nav = useContext(PageNavContext);
+  useLayoutEffect(() => nav?.claim(), [nav]);
+  return nav ? (
+    <button
+      type="button"
+      aria-label={t`Open navigation`}
+      onClick={nav.open}
+      className="-ms-2 grid size-10 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
+    >
+      <Menu size={19} strokeWidth={1.7} />
+    </button>
+  ) : null;
+}
+
 /**
  * A page's title row: the h1, optional meta (status, "Updated …", eye toggle, search), and
  * trailing actions. The first line is always PAGE_HEADER_ROW tall. Where the page is wide enough
@@ -41,23 +57,12 @@ export function PageHeader({
   /** Keeps the meta on the title's line down to a narrower pane (512px, not 672px). */
   compact?: boolean;
 }) {
-  const nav = useContext(PageNavContext);
-  useLayoutEffect(() => nav?.claim(), [nav]);
   return (
     <div
       data-page-header
       className={cn("@container/ph mb-4 flex flex-wrap items-center gap-x-3", className)}
     >
-      {nav ? (
-        <button
-          type="button"
-          aria-label={t`Open navigation`}
-          onClick={nav.open}
-          className="-ms-2 grid size-10 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
-        >
-          <Menu size={19} strokeWidth={1.7} />
-        </button>
-      ) : null}
+      <PageNavButton />
       <h1
         className={cn(
           PAGE_HEADER_ROW,
