@@ -92,3 +92,10 @@ body,
     min-width: 44px;
   }
 }
+
+/* One ink focus ring for every sidebar control, whatever classes the row carries. */
+[data-sidebar] :is(a, button, summary, [role="button"]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}

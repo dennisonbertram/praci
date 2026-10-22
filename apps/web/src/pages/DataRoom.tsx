@@ -161,6 +161,13 @@ export function DataRoomPage({
   const sort = searching ? searchSort : listSort;
   const list = useDataRoomList({ query, filters, sort });
   const importActivity = useDataRoomImports();
+  // The import strip belongs to the folder it was shown in; moving to another folder clears it.
+  const strippedFolder = useRef(filters.folderId);
+  useEffect(() => {
+    if (strippedFolder.current === filters.folderId) return;
+    strippedFolder.current = filters.folderId;
+    importActivity.dismiss(importActivity.imports.filter((e) => e.finished).map((e) => e.id));
+  }, [filters.folderId, importActivity]);
   const processing = useDataRoomProcessing();
   const openImported = useCallback(
     (id: string) =>

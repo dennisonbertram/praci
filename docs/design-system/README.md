@@ -70,7 +70,7 @@ Borders, input fills and the focus ring.
 | --- | --- | --- | --- |
 | `border` | `--border` | `#f0f0ed` | `#2e2d2a` |
 | `input` | `--input` | `#c8c8c4` | `#4a4944` |
-| `ring` | `--ring` | `#6c6c70` | `#3b82f6` |
+| `ring` | `--ring` | `#1a1a1a` | `#ecebe6` |
 
 ### Status
 

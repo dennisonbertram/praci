@@ -244,3 +244,22 @@ it("names the sign-in button Sign in and keeps room for an error line", async ()
   // The alert line exists before any error, so showing one moves no field.
   expect(host.querySelector('[role="alert"]')?.textContent).toBe("");
 });
+
+it("shows the 8-character rule in red on the page, not as a native bubble", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  const password = host.querySelector<HTMLInputElement>('input[type="password"]')!;
+  expect(password.minLength).toBe(-1);
+  await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, "maya@example.com");
+    setValue(password, "short");
+  });
+  const form = host.querySelector("form")!;
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  const hint = [...host.querySelectorAll("p")].find(
+    (p) => p.textContent === "At least 8 characters.",
+  );
+  expect(hint?.className).toContain("text-destructive");
+});

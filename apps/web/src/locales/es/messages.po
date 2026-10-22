@@ -1000,7 +1000,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Avanzado"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -1298,6 +1293,10 @@ msgstr "La API volvió, pero la actualización no terminó. Revisa los logs del 
 #: src/pages/Onboarding.tsx
 msgid "API key"
 msgstr "Clave de API"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
@@ -2186,6 +2185,10 @@ msgstr "Apps de chat"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Apps de chat, canales de grupo y conexiones de agentes."
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr ""
@@ -2633,6 +2636,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Las computadoras están apagadas. Configura SANDBOX_PROVIDER=docker con SANDBOX_SUPERVISOR_TOKEN, o establece SANDBOX_PROVIDER en e2b, daytona o box con su clave de API. Recrea el stack después de cambiar .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirmar eliminación"
@@ -2789,6 +2796,10 @@ msgstr "Conectar Treg"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -7194,6 +7205,10 @@ msgstr "Se canceló la autorización OAuth."
 msgid "OAuth connection failed"
 msgstr "Falló la conexión OAuth"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr ""
@@ -7494,6 +7509,10 @@ msgstr ""
 msgid "Out"
 msgstr ""
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -7773,12 +7792,26 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -8909,13 +8942,6 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "Buscar apps"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr ""
@@ -8938,6 +8964,13 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -10809,6 +10842,10 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr ""
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
 msgstr ""
@@ -10819,10 +10856,6 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use. Artifacts holds what bots make."
-msgstr ""
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -10872,12 +10905,20 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Usa Conectar para verificar la clave."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -11058,10 +11099,6 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
-msgstr ""
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx

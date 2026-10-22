@@ -101,12 +101,7 @@ function CryptoTile({
         <div className="min-w-0">
           <TileName name="Blockscout" to={manageTo} />
           <div className="line-clamp-2 text-xs text-muted-foreground">
-            {hasKey ? (
-              <Trans>Wallet balances and history</Trans>
-            ) : (
-              // Without a key it is complete: balances come from public networks.
-              <Trans>Wallet balances and history · no key needed</Trans>
-            )}
+            <Trans>Wallet balances and history</Trans>
           </div>
         </div>
       </div>

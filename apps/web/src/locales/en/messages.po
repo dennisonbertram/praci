@@ -1000,7 +1000,6 @@ msgstr "Address or ENS"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr "Address or ENS"
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Advanced"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr "Advanced: connect an outside memory service"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -1298,6 +1293,10 @@ msgstr "API is back, but the update did not finish. Check the host logs."
 #: src/pages/Onboarding.tsx
 msgid "API key"
 msgstr "API key"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr "API key configured (not verified)."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
@@ -2186,6 +2185,10 @@ msgstr "Chat apps"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Chat apps, group channels, and agent connections."
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr "Chat display"
+
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr "Chat settings"
@@ -2633,6 +2636,10 @@ msgstr "Computers are available. Reload or open a bot to continue."
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr "Configure API key"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
@@ -2790,6 +2797,10 @@ msgstr "Connect Treg"
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
 msgstr "Connect your apps"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
+msgstr "Connect Zernio to enable reads."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -7194,6 +7205,10 @@ msgstr "OAuth authorization was cancelled."
 msgid "OAuth connection failed"
 msgstr "OAuth connection failed"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr "OAuth connects reads only. Posting requires an API key."
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr "Obligation"
@@ -7494,6 +7509,10 @@ msgstr "Other ways to connect"
 msgid "Out"
 msgstr "Out"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr "Outside memory service"
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr "Owner"
@@ -7773,6 +7792,14 @@ msgstr "Posted · {0} notified"
 msgid "Posted {0}"
 msgstr "Posted {0}"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr "Posting needs an API key."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr "Posting readiness unavailable."
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
@@ -7780,6 +7807,12 @@ msgstr "Praci doesn't tag new files."
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
 msgstr "Praci keeps your meetings and to-dos."
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
+msgstr "Pre-money cap {0}"
 
 #: src/components/ComposeEmail.tsx
 msgid "Preparing draft…"
@@ -8909,13 +8942,6 @@ msgstr "Search and follow Devin sessions. Read-only."
 msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "Search apps"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr "Search artifacts…"
@@ -8939,6 +8965,13 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
+msgstr "Search integrations"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
@@ -10809,6 +10842,10 @@ msgstr "Upload {statement} for {0}"
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr "Upload a skill file"
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
 msgstr "Upload failed"
@@ -10820,10 +10857,6 @@ msgstr "Upload files"
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use. Artifacts holds what bots make."
 msgstr "Upload files for bots to use. Artifacts holds what bots make."
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
-msgstr "Upload SKILL.md"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
@@ -10872,6 +10905,10 @@ msgstr "Use a Google Sheet"
 msgid "Use an API key instead"
 msgstr "Use an API key instead"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr "Use API key"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Use Connect to verify the key."
@@ -10879,6 +10916,10 @@ msgstr "Use Connect to verify the key."
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Use default guidance"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
+msgstr "Use OAuth"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
@@ -11059,10 +11100,6 @@ msgstr "Wallet balances and allocation."
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
 msgstr "Wallet balances and history"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
-msgstr "Wallet balances and history · no key needed"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

@@ -150,3 +150,11 @@ it("says Not supported here when the Notification API is missing", async () => {
   expect(container.textContent).not.toContain("Blocked");
   expect((row("Browser notifications") as HTMLButtonElement).disabled).toBe(true);
 });
+
+it("keeps the Notifications card in place while preferences load", async () => {
+  setPermission("granted");
+  api.preferences.mockReturnValue(new Promise(() => {}));
+  await render();
+  expect(container.textContent).toContain("Notifications");
+  expect(row("Browser notifications")?.hasAttribute("disabled")).toBe(true);
+});

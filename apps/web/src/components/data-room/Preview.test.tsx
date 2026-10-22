@@ -338,3 +338,20 @@ it("opens the picture in a full-screen dialog without fetching it again, and Esc
   });
   expect(document.body.querySelector('[data-slot="dialog-content"]')).toBeNull();
 });
+
+it("offers no Try again for a PDF that cannot be read, since it fails the same way", async () => {
+  const unreadable = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "failed",
+    error: "This PDF is password-protected.",
+  };
+  await act(async () => {
+    root.render(
+      <Preview item={unreadable} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).not.toContain("Try again");
+  expect(labels).toContain("Delete");
+});
