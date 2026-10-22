@@ -35,6 +35,8 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
 }
 
 const DRAFT_REQUEST = "Draft a reply";
+// A leading "Draft reply:" label, with optional markdown emphasis around it, such as **Draft reply:**.
+const DRAFT_LABEL = /^[*_]*draft( reply)?[*_]*:[*_]*\s*/i;
 const asksForDraft = (text: string) =>
   /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
@@ -60,7 +62,7 @@ export function latestTextDraft(messages: readonly ThreadMessage[]): string | un
   for (const message of messages.slice(at + 1)) {
     const answer = message.role === "bot" ? textOf(message) : "";
     // A question is the agent asking for more, not a draft.
-    if (answer && !answer.endsWith("?")) return answer.replace(/^draft( reply)?:\s*/i, "");
+    if (answer && !answer.endsWith("?")) return answer.replace(DRAFT_LABEL, "");
   }
   return undefined;
 }

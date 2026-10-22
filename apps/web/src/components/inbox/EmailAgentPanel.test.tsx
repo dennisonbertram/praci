@@ -301,3 +301,16 @@ it("hides Reply with draft after a send until a fresh snapshot, and disables the
   finish({});
   await flush();
 });
+
+it("strips a Draft reply label, also with markdown emphasis", () => {
+  for (const label of [
+    "Draft reply:",
+    "**Draft reply:**",
+    "*Draft:*",
+    "__Draft reply__:",
+    "**Draft reply:**\n",
+  ])
+    expect(
+      latestTextDraft([turn(1, "user", "Draft a reply"), turn(2, "bot", `${label}\n\nHi Sam`)]),
+    ).toBe("Hi Sam");
+});
