@@ -401,13 +401,13 @@ describe("resolveMoneyNames", () => {
 });
 
 describe("buildConsentAskBlock", () => {
-  it("names the model and router in words, never the raw model id", () => {
+  it("names the model in words, never the raw model id", () => {
     const block = buildConsentAskBlock("e1", {
       name: "OpenRouter",
       detail: "openai/gpt-6-luna, forwarded to its provider",
     });
     expect(block).toMatchObject({
-      text: "Allow your mail to be sent to GPT-6 Luna (via OpenRouter)?",
+      text: "Allow your mail to be sent to GPT-6 Luna?",
     });
     expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });

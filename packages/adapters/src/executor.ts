@@ -141,6 +141,7 @@ import {
 } from "@rakazo/core/node/approval-effect-key";
 import type { McpServer, NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  AUDIT_DRAFT_PROMPT_START,
   appendEventInTransaction,
   createSpaceForMember,
   createThreadMessageInTransaction,
@@ -359,6 +360,7 @@ import {
 } from "./imessage-tools.js";
 import { triageStatus } from "./inbox-triage.js";
 import {
+  auditRequestToolFromTool,
   INVESTOR_UPDATE_TOOL_NAMES,
   investorUpdateToolFromTool,
   investorUpdateToolsAllowed,
@@ -2684,8 +2686,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         // The Investors agent may overwrite the cap table only on the routine sheet read, so text in a
         // document or email cannot steer a chat turn into writing it.
+        // An audit drafting run reads untrusted email, so it never writes the cap table either.
         const capTableWriteBlocked =
-          isInvestorsAgentSpawnKey(bot.spawnKey) && run.trigger !== "routine";
+          isInvestorsAgentSpawnKey(bot.spawnKey) &&
+          (run.trigger !== "routine" || task.prompt.startsWith(AUDIT_DRAFT_PROMPT_START));
         const investorsEnabled = investorUpdateToolsAllowed({
           hasProvider: true,
           groupId: thread.groupId,
@@ -4909,14 +4913,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (INVESTOR_UPDATE_TOOL_NAMES.has(name) && investorsEnabled) {
+            const investorToolDeps = {
+              prisma: deps.prisma,
+              scope: { spaceId: run.spaceId, userId: bot.userId },
+            };
             return finish(
-              await investorUpdateToolFromTool(
-                {
-                  prisma: deps.prisma,
-                  scope: { spaceId: run.spaceId, userId: bot.userId },
-                },
-                args,
-              ),
+              name === "audit_request_upsert"
+                ? await auditRequestToolFromTool(investorToolDeps, args)
+                : await investorUpdateToolFromTool(investorToolDeps, args),
             );
           }
           if (FUNDRAISING_TOOL_NAMES.has(name) && fundraisingEnabled) {
@@ -7615,7 +7619,7 @@ export function selectBuiltinToolsForRun(options: {
   contactsEnabled?: boolean;
   /** The Carta agent on a run its owner started: the Cap Table tools are offered. */
   capTableEnabled?: boolean;
-  /** The Investors agent on a run its owner started: investor_update_draft is offered. */
+  /** The Investors agent on a run its owner started: investor_update_draft and audit_request_upsert are offered. */
   investorsEnabled?: boolean;
   /** The Investors agent on a run its owner started: the Fundraising read tool is offered. */
   fundraisingEnabled?: boolean;
