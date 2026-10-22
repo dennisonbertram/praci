@@ -2639,6 +2639,10 @@ msgstr "Close voice settings"
 msgid "Closed {0} · funded {1}"
 msgstr "Closed {0} · funded {1}"
 
+#: src/pages/Legal.tsx
+msgid "Closed deadlines"
+msgstr "Closed deadlines"
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Cloud"
 msgstr "Cloud"
@@ -4452,6 +4456,10 @@ msgstr "Dismiss {name}"
 msgid "Dismiss error"
 msgstr "Dismiss error"
 
+#: src/pages/Legal.tsx
+msgid "Dismissed"
+msgstr "Dismissed"
+
 #. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
@@ -4520,10 +4528,6 @@ msgstr "Don't share"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "Done"
-
-#: src/pages/Legal.tsx
-msgid "Done deadlines"
-msgstr "Done deadlines"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
@@ -7145,6 +7149,10 @@ msgstr "No bot uses {0} yet. Choose bots on its page."
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
 
+#: src/pages/Legal.tsx
+msgid "No closed deadlines."
+msgstr "No closed deadlines."
+
 #: src/components/finance/StatementReviewCard.tsx
 msgid "No closing balance found to check against"
 msgstr "No closing balance found to check against"
@@ -7166,10 +7174,6 @@ msgstr "No contracts yet"
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
-
-#: src/pages/Legal.tsx
-msgid "No deadlines marked done."
-msgstr "No deadlines marked done."
 
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
@@ -9063,6 +9067,7 @@ msgstr "Restart the Praci server to start using iMessage."
 msgid "Restart to update"
 msgstr "Restart to update"
 
+#: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Restore"
 msgstr "Restore"
@@ -9888,8 +9893,11 @@ msgstr "Show all {0} changes"
 msgid "Show all {total}"
 msgstr "Show all {total}"
 
-#: src/pages/Investors.tsx
 #: src/pages/Legal.tsx
+msgid "Show closed"
+msgstr "Show closed"
+
+#: src/pages/Investors.tsx
 msgid "Show done"
 msgstr "Show done"
 
@@ -11433,6 +11441,14 @@ msgstr "Updated {0}"
 #: src/pages/shell/bot-pins.tsx
 msgid "Updated {updated}"
 msgstr "Updated {updated}"
+
+#: src/pages/Legal.tsx
+msgid "Updated: {list} and {more} more."
+msgstr "Updated: {list} and {more} more."
+
+#: src/pages/Legal.tsx
+msgid "Updated: {list}."
+msgstr "Updated: {list}."
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx

@@ -2639,6 +2639,10 @@ msgstr "Ses ayarlarını kapat"
 msgid "Closed {0} · funded {1}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Closed deadlines"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Cloud"
 msgstr "Bulut"
@@ -4452,6 +4456,10 @@ msgstr ""
 msgid "Dismiss error"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Dismissed"
+msgstr ""
+
 #. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
@@ -4520,10 +4528,6 @@ msgstr ""
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "Bitti"
-
-#: src/pages/Legal.tsx
-msgid "Done deadlines"
-msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
@@ -7145,6 +7149,10 @@ msgstr ""
 msgid "No chat apps linked yet."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No closed deadlines."
+msgstr ""
+
 #: src/components/finance/StatementReviewCard.tsx
 msgid "No closing balance found to check against"
 msgstr ""
@@ -7165,10 +7173,6 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "No deadlines marked done."
 msgstr ""
 
 #: src/pages/Devin.tsx
@@ -9063,6 +9067,7 @@ msgstr ""
 msgid "Restart to update"
 msgstr ""
 
+#: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Restore"
 msgstr "Geri yükle"
@@ -9888,8 +9893,11 @@ msgstr ""
 msgid "Show all {total}"
 msgstr ""
 
-#: src/pages/Investors.tsx
 #: src/pages/Legal.tsx
+msgid "Show closed"
+msgstr ""
+
+#: src/pages/Investors.tsx
 msgid "Show done"
 msgstr ""
 
@@ -11432,6 +11440,14 @@ msgstr ""
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Updated {updated}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Updated: {list} and {more} more."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Updated: {list}."
 msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx

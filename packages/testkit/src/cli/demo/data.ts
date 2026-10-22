@@ -2349,7 +2349,7 @@ export const DEMO_LEGAL = {
       party: "Shieldwell Insurance (Mock)",
       jurisdiction: "California",
       effectiveInDays: -324,
-      expiresInDays: 41,
+      expiresInDays: 40,
       autoRenews: true,
       renewalNoticeDays: 30,
       valueCents: 310_000n,
