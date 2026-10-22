@@ -1290,6 +1290,32 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await wipeConsent();
     });
 
+    it("drops the Action and priority tags from a thread the user already answered", async () => {
+      await wipe();
+      await wipeConsent();
+      await allow(a);
+      await cache(a, connA, "answered", {
+        threadId: "h",
+        category: "action",
+        priority: "important",
+        alreadyHandled: true,
+        ...triaged,
+      });
+      await cache(a, connA, "open", {
+        threadId: "o",
+        category: "action",
+        priority: "important",
+        ...triaged,
+      });
+
+      const out = await inboxList({ ...deps, ...ready }, a, {});
+      const byThread = Object.fromEntries(
+        out.rows.map((r) => [r.threadId, [r.category, r.priority]]),
+      );
+      expect(byThread).toEqual({ h: [null, null], o: ["action", "important"] });
+      await wipeConsent();
+    });
+
     it("reports needsReply as needsReply and not alreadyHandled", async () => {
       await wipe();
       await wipeConsent();
