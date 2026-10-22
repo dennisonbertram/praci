@@ -39,19 +39,30 @@ const asksForDraft = (text: string) =>
   /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
 /**
- * The text of the newest agent answer when it replies to a request to draft or write a reply, for
- * a model that answers in plain text instead of proposing a mail_send card. Other answers have none.
+ * A message the owner wrote. Agent-to-agent deliveries also carry role "user", and the seeded email
+ * context card is a system message, so both are excluded.
+ */
+const isOwnerMessage = (message: ThreadMessage) =>
+  message.role === "user" &&
+  !message.blocks.some((b) =>
+    ["bot_message_received", "channel_message", "handoff"].includes(b.kind),
+  );
+
+/**
+ * The text of the agent's first plain-text answer after the owner's latest request, when that
+ * request asks to draft or write a reply. It is for a model that writes the draft as text instead
+ * of proposing a mail_send card. Later agent messages do not move it; questions and other
+ * requests have none.
  */
 export function latestTextDraft(messages: readonly ThreadMessage[]): string | undefined {
-  const last = messages.at(-1);
-  if (last?.role !== "bot") return undefined;
-  // The agent may post interim bot messages, so the request is the newest user message before it.
-  const asked = [...messages].reverse().find((m) => m.role === "user");
-  const answer = textOf(last);
-  // An answer ending in a question is the agent asking for more, not a draft.
-  return asked && asksForDraft(textOf(asked)) && answer && !answer.endsWith("?")
-    ? answer
-    : undefined;
+  const at = messages.findLastIndex(isOwnerMessage);
+  if (at < 0 || !asksForDraft(textOf(messages[at] as ThreadMessage))) return undefined;
+  for (const message of messages.slice(at + 1)) {
+    const answer = message.role === "bot" ? textOf(message) : "";
+    // A question is the agent asking for more, not a draft.
+    if (answer && !answer.endsWith("?")) return answer.replace(/^draft( reply)?:\s*/i, "");
+  }
+  return undefined;
 }
 
 const textOf = (message: ThreadMessage) =>
@@ -225,7 +236,7 @@ export function EmailAgentPanel({
       ) : (
         <div className="min-h-0 flex-1" />
       )}
-      {snapshot && snapshot.messages.length === 0 ? (
+      {snapshot && !snapshot.messages.some(isOwnerMessage) ? (
         <div className="shrink-0 px-7 pb-2">
           <Button
             variant="outline"

@@ -231,14 +231,43 @@ it("does not treat a question, a negated request or a different request as a dra
   ).toBeUndefined();
 });
 
-it("finds the draft request past interim bot messages", () => {
+const context = {
+  ...message(0, [{ kind: "mail_thread", subject: "x", messages: [] }]),
+  role: "system",
+} as ThreadMessage;
+const peer = (seq: number, role: "user" | "bot", kind: string) =>
+  ({ ...message(seq, [{ kind, text: "ping" } as never]), role }) as ThreadMessage;
+
+it("uses the owner's latest request and the first answer after it, past agent-to-agent entries", () => {
   expect(
     latestTextDraft([
+      context,
       turn(1, "user", "Draft a reply"),
-      turn(2, "bot", "Checking the thread"),
-      turn(3, "bot", "Hi Sam"),
+      turn(2, "bot", "Draft reply: Hi Sam, thanks. Best, Maya"),
+      peer(3, "bot", "bot_message_sent"),
+      peer(4, "user", "bot_message_received"),
+      turn(5, "bot", "I have not sent this."),
     ]),
-  ).toBe("Hi Sam");
+  ).toBe("Hi Sam, thanks. Best, Maya");
+  // A bot-to-bot delivery is not the owner's latest request.
+  expect(
+    latestTextDraft([
+      context,
+      turn(1, "user", "Summarize"),
+      turn(2, "bot", "Rent"),
+      peer(3, "user", "bot_message_received"),
+    ]),
+  ).toBeUndefined();
+});
+
+it("shows the chip when only the context card and agent entries are in the thread", async () => {
+  get.mockResolvedValue(snapshot([context, peer(1, "user", "bot_message_received")]));
+  send.mockResolvedValue({});
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  expect(button("Draft a reply")).toBeDefined();
 });
 
 it("hides Reply with draft after a send until a fresh snapshot, and disables the chip while sending", async () => {
