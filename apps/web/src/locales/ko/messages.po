@@ -814,10 +814,6 @@ msgstr ""
 msgid "Add a model"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Add a model in Settings to use this."
-msgstr "이 기능을 사용하려면 설정에서 모델을 추가하세요."
-
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
@@ -979,6 +975,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
+#: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "고급 설정"
@@ -1092,10 +1089,6 @@ msgstr "확인 없이 {0} 커넥터 허용"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} without asking"
 msgstr "확인 없이 {0} 허용"
-
-#: src/pages/Legal.tsx
-msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
@@ -1865,8 +1858,11 @@ msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
-#: src/components/NotificationSettings.tsx
 msgid "Browser"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Browser notifications"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -3400,10 +3396,6 @@ msgstr "루틴을 실행할 수 없습니다"
 msgid "Could not save"
 msgstr "저장하지 못했습니다."
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Could not save Auto Review"
-msgstr "자동 검토를 저장할 수 없습니다"
-
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Could not save backup models"
 msgstr "백업 모델을 저장하지 못했습니다."
@@ -3886,8 +3878,8 @@ msgstr "삭제"
 msgid "Delete \"{0}\"?"
 msgstr ""
 
-#. placeholder {0}: artifact.name
 #. placeholder {0}: bot.name
+#. placeholder {0}: displayName(artifact.name)
 #. placeholder {0}: group.name
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
@@ -4779,10 +4771,6 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
 msgstr ""
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Flag unexpected actions"
-msgstr "예상하지 못한 작업 표시"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/Preview.tsx
@@ -6610,6 +6598,11 @@ msgstr ""
 msgid "No contacts yet"
 msgstr ""
 
+#. placeholder {0}: fullDay(data.agent.lastScanAt)
+#: src/pages/Legal.tsx
+msgid "No contracts or deadlines found on {0}."
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -7841,6 +7834,10 @@ msgstr ""
 msgid "Reading your contacts"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Reading your Data room…"
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
@@ -9024,10 +9021,6 @@ msgstr "셸"
 
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Show amounts"
 msgstr ""
 
 #: src/pages/Investors.tsx
