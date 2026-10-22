@@ -111,7 +111,7 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
       }`}
     >
       {embedded ? null : <WindowChrome />}
-      <div className={`${PAGE_GUTTER_X} flex items-start gap-2 pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} flex items-start gap-2 pt-2`}>
         {embedded ? null : (
           <Button
             variant="ghost"

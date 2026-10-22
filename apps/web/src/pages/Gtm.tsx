@@ -97,7 +97,7 @@ export function GtmPage({
     ? Math.max(0, Math.ceil((Date.parse(data.nextRunAt) - now) / 60_000))
     : null;
   return (
-    <div className="@container rk-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-8 pt-2 md:px-7 md:pt-5">
+    <div className="@container rk-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-8 pt-2 md:px-7">
       <div className="mx-auto max-w-5xl space-y-6">
         <PageHeader
           title={<Trans>GTM</Trans>}

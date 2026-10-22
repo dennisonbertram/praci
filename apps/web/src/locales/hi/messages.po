@@ -2036,6 +2036,7 @@ msgstr ""
 msgid "Building graph…"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "अंतर्निहित"
@@ -5245,6 +5246,11 @@ msgstr ""
 msgid "from Mercury"
 msgstr ""
 
+#. placeholder {0}: message.routineName
+#: src/pages/shell/transcript.tsx
+msgid "From routine: {0}"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr ""
@@ -6897,6 +6903,7 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
@@ -8120,6 +8127,10 @@ msgstr "प्ले हो रहा है…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "प्लगइन"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
@@ -9837,10 +9848,6 @@ msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shared with your other bots"
 msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
@@ -11692,6 +11699,10 @@ msgid "Waiting {minutes}m"
 msgstr ""
 
 #: src/lib/roster-status.ts
+msgid "Waiting for AI to be allowed"
+msgstr ""
+
+#: src/lib/roster-status.ts
 msgid "Waiting for approval"
 msgstr ""
 
@@ -12111,6 +12122,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Yours"
 msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx

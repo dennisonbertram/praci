@@ -1,27 +1,35 @@
-/** The most height the list gives up: a larger gap above the footer reads as dead space. */
-const MAX_GAP = 8;
+import { moreBarHeight, scrollingList } from "./rows-below";
 
 /**
- * Ends a scrolling list on a row boundary when that costs at most MAX_GAP px (as bottom margin);
- * a bigger leftover stays as a partly shown row, which the edge fade and snapping scroll mark as
- * more to see. Run after layout changes; it measures from the list's natural height, so repeated
- * calls settle on the same value.
+ * Ends the scrolling sidebar list on a row boundary, with the "+N more" bar in the margin below
+ * it, so no row or space heading is ever cut in half at rest. An expanded space heading counts only
+ * when the row under it fits too. Run after layout changes; it measures from the list's natural
+ * height (height plus its own margin), so repeated calls settle on the same value.
  */
 export function endOnWholeRow(
-  scroller: HTMLElement | null,
+  scrollers: (HTMLElement | null)[],
   rowSelector = "[data-roster-row],[data-roster-fold]",
 ) {
-  if (!scroller) return;
-  const margin = Number.parseFloat(scroller.style.marginBottom) || 0;
-  const natural = scroller.clientHeight + margin;
-  const top = scroller.getBoundingClientRect().top - scroller.scrollTop;
+  const list = scrollingList(scrollers) ?? scrollers.find((el) => el?.style.marginBottom);
+  for (const el of scrollers) if (el && el !== list) el.style.marginBottom = "";
+  if (!list) return;
+  const bar = moreBarHeight();
+  const margin = Number.parseFloat(list.style.marginBottom) || 0;
+  const natural = list.clientHeight + margin;
+  const top = list.getBoundingClientRect().top - list.scrollTop;
+  const rows = [...list.querySelectorAll<HTMLElement>(rowSelector)].map((row) => ({
+    // Only an expanded heading is followed by its own first row; a collapsed one is not.
+    head: row.hasAttribute("data-roster-head") && row.getAttribute("aria-expanded") === "true",
+    bottom: row.getBoundingClientRect().bottom - top,
+  }));
+  const limit = natural - bar + 0.5;
   let fit = 0;
-  for (const row of scroller.querySelectorAll<HTMLElement>(rowSelector)) {
-    const bottom = row.getBoundingClientRect().bottom - top;
-    if (bottom <= natural + 0.5) fit = Math.max(fit, bottom);
-  }
-  const overflows = scroller.scrollHeight > natural + 1;
-  const leftover = overflows && fit > 0 ? natural - fit : 0;
-  const next = leftover > 0 && leftover <= MAX_GAP ? leftover : 0;
-  if (next !== margin) scroller.style.marginBottom = next ? `${next}px` : "";
+  rows.forEach((row, i) => {
+    const next = rows[i + 1];
+    if (row.bottom > limit || (row.head && next && next.bottom > limit)) return;
+    fit = Math.max(fit, row.bottom);
+  });
+  const overflows = list.scrollHeight > natural + 1;
+  const next = overflows && fit > 0 ? natural - fit : 0;
+  if (next !== margin) list.style.marginBottom = next ? `${next}px` : "";
 }

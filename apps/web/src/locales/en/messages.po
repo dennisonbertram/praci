@@ -2036,6 +2036,7 @@ msgstr "Browser notifications"
 msgid "Building graph…"
 msgstr "Building graph…"
 
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
@@ -5245,6 +5246,11 @@ msgstr "From Google Drive"
 msgid "from Mercury"
 msgstr "from Mercury"
 
+#. placeholder {0}: message.routineName
+#: src/pages/shell/transcript.tsx
+msgid "From routine: {0}"
+msgstr "From routine: {0}"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr "From URL"
@@ -6897,6 +6903,7 @@ msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
 
@@ -8120,6 +8127,10 @@ msgstr "Playing…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr "Plugins"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
@@ -9838,10 +9849,6 @@ msgstr "Shared by all bots"
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shared with your other bots"
-msgstr "Shared with your other bots"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
@@ -11692,6 +11699,10 @@ msgid "Waiting {minutes}m"
 msgstr "Waiting {minutes}m"
 
 #: src/lib/roster-status.ts
+msgid "Waiting for AI to be allowed"
+msgstr "Waiting for AI to be allowed"
+
+#: src/lib/roster-status.ts
 msgid "Waiting for approval"
 msgstr "Waiting for approval"
 
@@ -12112,6 +12123,10 @@ msgstr "Your own tool server"
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
 msgstr "Your text is saved as a draft. Attachments are not kept."
+
+#: src/pages/RoutineEditor.tsx
+msgid "Yours"
+msgstr "Yours"
 
 #: src/components/gtm/GtmCalendar.tsx
 msgid "Zernio not connected"

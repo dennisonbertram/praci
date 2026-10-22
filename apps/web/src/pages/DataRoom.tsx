@@ -672,7 +672,7 @@ export function DataRoomPage({
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         {fromLegal ? (
           <Link
             to="/app/legal"
