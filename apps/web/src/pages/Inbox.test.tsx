@@ -955,6 +955,34 @@ it("starts the first-sort clock at Allow: sorting is said at once and the unsort
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
+it("keeps rows still while a row menu is open and the first sort finishes", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], blocked));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  await click(byText(c, "Allow sorting"));
+  await dwell(16_000);
+  expect(c.textContent).toContain("Sorting your mail…");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: true }));
+  });
+  // Triage lands while the menu is open; the sort ends, and the rows must stay where they are.
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(61_000);
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  const headings = () => [...c.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings()).not.toContain("Needs reply");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: false }));
+  });
+  await dwell(100);
+  expect(headings()).toContain("Needs reply");
+});
+
 it("does not say First sync once a refresh reports an earlier sync", async () => {
   vi.useFakeTimers();
   try {

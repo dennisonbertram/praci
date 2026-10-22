@@ -676,20 +676,23 @@ function InboxListPage({
     () =>
       groupInbox(
         sorting
-          ? // Rows sorted so far show nothing new until the whole sort lands.
-            rows.map((row) => ({
-              ...row,
-              needsReply: null,
-              priority: null,
-              reason: null,
-              category: null,
-            }))
+          ? // Rows sorted so far show nothing new until the whole sort lands. An open row menu
+            // holds the blank view, so the rows do not move when the sort finishes.
+            (rowMenuOpen ? holdWhilePending : (list: MailRow[]) => list)(
+              rows.map((row) => ({
+                ...row,
+                needsReply: null,
+                priority: null,
+                reason: null,
+                category: null,
+              })),
+            )
           : resultsView
             ? rows.map((row) => ({ ...row, needsReply: null }))
             : holdWhilePending(rows),
         new Date(),
       ),
-    [rows, resultsView, sorting, holdWhilePending],
+    [rows, resultsView, sorting, rowMenuOpen, holdWhilePending],
   );
   const replyRows = allReplies ? groups.needsReply : groups.needsReply.slice(0, NEEDS_REPLY_SHOWN);
   const hiddenReplies = groups.needsReply.length - replyRows.length;
