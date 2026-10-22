@@ -170,7 +170,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={needsAnswerLabel()}>
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}

@@ -40,3 +40,13 @@ export function resolveRouteBot(input: {
   if (tracked && applied > seen.epoch) return { bot: bots[0], waiting: false, needsRefresh: false };
   return { bot: undefined, waiting: true, needsRefresh: !tracked };
 }
+
+/** A route given up on as missing is real after all once a stored list holds its bot. */
+export function shouldClearMissingBot(
+  missingPath: string | null,
+  pathname: string,
+  bots: Bot[],
+  botId: string | undefined,
+): boolean {
+  return missingPath === pathname && bots.some((bot) => bot.id === botId);
+}

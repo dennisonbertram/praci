@@ -8735,7 +8735,14 @@ async function spaceNavigationDto(
     select: {
       spaceId: true,
       role: true,
-      space: { select: { name: true, isDefault: true, deletingAt: true } },
+      space: {
+        select: {
+          name: true,
+          isDefault: true,
+          deletingAt: true,
+          _count: { select: { memberships: true } },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -8804,6 +8811,7 @@ async function spaceNavigationDto(
         name: membership.space.name,
         isDefault: membership.space.isDefault,
         hasContent: spacesWithContent.has(membership.spaceId),
+        memberCount: membership.space._count.memberships,
         canRename: membership.role === "owner" && membership.space.deletingAt === null,
         canDelete:
           membership.role === "owner" &&

@@ -118,6 +118,7 @@ export function CommandPalette({
   onSelectGroup = () => undefined,
   searchLinks,
   onOpenPath = () => undefined,
+  actions = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -130,6 +131,8 @@ export function CommandPalette({
   /** Documents and artifacts matching the text; entry ids are the routes they open. */
   searchLinks?: (query: string) => Promise<PaletteLinkGroup[]>;
   onOpenPath?: (path: string) => void;
+  /** Commands found only by typing; they have no row in the empty palette. */
+  actions?: { label: string; run: () => void }[];
 }) {
   useHideAmounts();
   const [search, setSearch] = useState("");
@@ -177,6 +180,9 @@ export function CommandPalette({
     paletteMatchScore(entry.label, needle, entry.keywords);
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
+  const shownActions = needle
+    ? ranked(actions, (action) => paletteMatchScore(action.label, needle))
+    : [];
   const filteredBots = useMemo(
     () => (needle ? ranked(bots, (bot) => paletteMatchScore(bot.name, needle, bot.title)) : bots),
     [bots, needle],
@@ -407,6 +413,7 @@ export function CommandPalette({
           !shownLinks.length &&
           !shownPages.length &&
           !shownGroups.length &&
+          !shownActions.length &&
           !filteredBots.length ? (
             <div className="flex justify-center py-4">
               <Spinner aria-hidden="true" />
@@ -424,6 +431,25 @@ export function CommandPalette({
             </Fragment>
           ))}
           {linksGroups}
+          {shownActions.length ? (
+            <CommandGroup>
+              {shownActions.map((action) => (
+                <CommandItem
+                  key={action.label}
+                  value={`action:${action.label}`}
+                  onSelect={() => {
+                    action.run();
+                    onOpenChange(false);
+                  }}
+                  className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
+                >
+                  <span className="truncate font-medium text-foreground">
+                    <Highlight text={action.label} needle={needle} />
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
         </CommandList>
         {moreBelow ? (
           <div

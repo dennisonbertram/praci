@@ -248,7 +248,7 @@ import {
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
-import { resolveRouteBot, useGiveUpOnMissingBot } from "../lib/route-bot";
+import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import type { DataRoomRef } from "../lib/send-to-agent";
@@ -1332,6 +1332,19 @@ export function ShellPage() {
           navigate("/onboarding", { replace: true });
           return;
         }
+        // A chat given up on while this refresh was slow is real after all.
+        if (
+          listApplied &&
+          shouldClearMissingBot(
+            missingPathRef.current,
+            window.location.pathname,
+            list,
+            routeBotId.current,
+          )
+        ) {
+          missingPathRef.current = null;
+          setMissingPath(null);
+        }
         // An unknown address keeps showing Page not found instead of jumping to a chat.
         if (missingPathRef.current === window.location.pathname) return;
         const currentGroupId = routeGroupId.current;
@@ -1920,7 +1933,14 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, null);
+    // Only a space of one person goes without a heading; a shared space keeps its name and menu.
+    const alone = spaces.length === 1 && spaces[0]?.memberCount === 1;
+    return sidebarGroupsForSpaces(
+      sidebarSpaces,
+      "",
+      bootstrapMe?.spaceId,
+      alone ? null : t`Personal`,
+    );
   }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -6703,6 +6723,8 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          // Without a space heading, its menu is gone; the palette still reaches this action.
+          actions={[{ label: t`Group chats into folders`, run: () => void autoGroupSidebar() }]}
           searchLinks={searchPaletteLinks}
           onOpenPath={openSearchResult}
         />

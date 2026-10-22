@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
+import type { Bot } from "@rakazo/contracts";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ROUTE_BOT_GIVE_UP_MS, useGiveUpOnMissingBot } from "./route-bot";
+import { ROUTE_BOT_GIVE_UP_MS, shouldClearMissingBot, useGiveUpOnMissingBot } from "./route-bot";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -32,4 +33,11 @@ it("does nothing once the bot is found", () => {
   act(() => root.render(<Probe waiting={false} onGiveUp={onGiveUp} />));
   act(() => vi.advanceTimersByTime(ROUTE_BOT_GIVE_UP_MS * 2));
   expect(onGiveUp).not.toHaveBeenCalled();
+});
+
+it("clears a missing chat once a later roster holds it", () => {
+  const bots = [{ id: "bot-1" }] as Bot[];
+  expect(shouldClearMissingBot("/app/bot-1", "/app/bot-1", bots, "bot-1")).toBe(true);
+  expect(shouldClearMissingBot("/app/bot-1", "/app/bot-1", [], "bot-1")).toBe(false);
+  expect(shouldClearMissingBot("/app/other", "/app/bot-1", bots, "bot-1")).toBe(false);
 });

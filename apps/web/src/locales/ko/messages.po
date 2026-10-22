@@ -6598,6 +6598,7 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "인수 필요"
 
+#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Needs you"
