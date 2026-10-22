@@ -229,7 +229,7 @@ function MemoryDocumentList({
       {error ? <div className="px-2.5 pb-2 text-[13px] text-destructive">{error}</div> : null}
       {loading ? <Skeleton className="h-7 w-full" /> : null}
       {emptyMessage && !loading && remembered.length === 0 && !error ? (
-        <div className="py-1 text-[13.5px] text-muted-foreground">
+        <div className="rounded-xl border border-border px-4 py-3 text-[13.5px] text-muted-foreground">
           <Trans>Nothing remembered yet</Trans>
         </div>
       ) : null}

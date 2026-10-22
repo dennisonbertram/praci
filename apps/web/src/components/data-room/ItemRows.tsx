@@ -24,6 +24,7 @@ import { useEffect, useRef, useState } from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import {
+  canRetryItem,
   dateText,
   isSettled,
   isStuck,
@@ -81,7 +82,7 @@ function FileContext({
           menu="context"
           item={item}
           onAction={o.onAction}
-          canRetry={item.status === "failed" || isStuck(item)}
+          canRetry={canRetryItem(item)}
           agents={o.agents}
           onSendToAgent={o.onSendToAgent}
         />
@@ -127,7 +128,8 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
         o.onCheck(item);
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        o.onToggle(item);
+        // Enter on the row whose preview is open keeps it; Escape or the close button closes it.
+        if (o.shownId !== item.id) o.onToggle(item);
       }
     },
   };
@@ -170,10 +172,14 @@ export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
         : FileText;
 
 const DASH = "—";
-/** The document type; "Not tagged" for a finished file without one; empty while it is still being read or failed (the red reason says why). */
+/** The document type; "Not tagged" for a finished file without one, "Not read" for a failed one; empty while it is still being read. */
 const typeText = (item: DataRoomApiItem) =>
   typeLabel(item.facets.docType) ||
-  (item.status !== "failed" && isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
+  (item.status === "failed"
+    ? t`Not read`
+    : isSettled(item.status, !!item.previewText)
+      ? t`Not tagged`
+      : "");
 const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** A failed file has nothing to show in a data column; its reason is under the name. */
 const blank = (item: DataRoomApiItem) => (item.status === "failed" ? null : empty);
@@ -396,7 +402,7 @@ function ItemRow({
                     <Trans>Could not read this file. Delete it and upload it again.</Trans>
                   )}
                 </span>
-                <RetryButton item={item} o={o} />
+                {canRetryItem(item) ? <RetryButton item={item} o={o} /> : null}
               </span>
             ) : null}
             {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
@@ -436,7 +442,7 @@ function ItemRow({
         <ItemMenu
           item={item}
           onAction={o.onAction}
-          canRetry={item.status === "failed" || isStuck(item)}
+          canRetry={canRetryItem(item)}
           agents={o.agents}
           onSendToAgent={o.onSendToAgent}
           triggerTabIndex={-1}
@@ -703,7 +709,7 @@ export function GridView({
           <ItemMenu
             item={item}
             onAction={o.onAction}
-            canRetry={item.status === "failed" || isStuck(item)}
+            canRetry={canRetryItem(item)}
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
             triggerTabIndex={-1}
@@ -747,7 +753,7 @@ export function GridView({
               </>
             )}
           </span>
-          {item.status === "failed" || isStuck(item) ? <RetryButton item={item} o={o} /> : null}
+          {canRetryItem(item) ? <RetryButton item={item} o={o} /> : null}
         </FileContext>
       ))}
     </ul>

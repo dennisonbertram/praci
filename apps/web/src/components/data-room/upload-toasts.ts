@@ -171,7 +171,11 @@ async function followImport(id: number, importId: string, current: () => boolean
   }
 }
 
-async function uploadOne(file: File, folderId: string | undefined) {
+async function uploadOne(
+  file: File,
+  folderId: string | undefined,
+  onUploaded?: (itemId: string) => void,
+) {
   const id = nextId++;
   const mine = epoch;
   const current = () => mine === epoch;
@@ -257,6 +261,7 @@ async function uploadOne(file: File, folderId: string | undefined) {
       });
     if (!current()) return;
     publish();
+    onUploaded?.(item.id);
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
     dismissLater(id, DONE_TOAST_MS);
     // Where the file is: without it the user goes looking (and "Already there" says nothing
@@ -292,9 +297,14 @@ export function setOpenDataRoomFolder(folderId: string | undefined) {
  * Uploads each file into `folderId`, else the folder the Data room page shows (else the root), one
  * toast per file.
  */
-export function uploadFilesToDataRoom(files: Iterable<File>, folderId = openFolder) {
+export function uploadFilesToDataRoom(
+  files: Iterable<File>,
+  folderId = openFolder,
+  /** Called with the new item's id once a file is stored (not for zips). */
+  onUploaded?: (itemId: string) => void,
+) {
   sync();
-  for (const file of files) void uploadOne(file, folderId);
+  for (const file of files) void uploadOne(file, folderId, onUploaded);
 }
 
 function showShortToast(name: string, state: UploadToast["state"]) {

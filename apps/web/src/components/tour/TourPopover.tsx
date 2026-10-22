@@ -251,15 +251,15 @@ export function TourPopover({
 
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (card) {
-    const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
+    const column = sidebar ? sidebar.getBoundingClientRect() : null;
     // One fixed spot at every stop, so Next stays put and no row below the target is hidden.
     // Desktop: inside the sidebar column, just above its footer links (the chat stays clear).
     // Phone: the foot of the screen, with the drawer padded above it.
     const footerTop = document
       .querySelector('[data-tour="sidebar-integrations"]')
       ?.getBoundingClientRect().top;
-    const floor = column && footerTop ? footerTop - 8 : window.innerHeight - 16;
-    const place = { bottom: column ? window.innerHeight - floor : 16 };
+    const floor = wide && column && footerTop ? footerTop - 8 : window.innerHeight - 16;
+    const place = { bottom: wide && column ? window.innerHeight - floor : 16 };
     const span = column
       ? { left: column.left + 14, width: Math.min(288, column.width - 28) }
       : undefined;

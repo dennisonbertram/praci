@@ -131,6 +131,8 @@ export const LegalDeadlineSchema = z.object({
   status: LegalDeadlineStatusSchema,
   sourceQuote: z.string().nullable(),
   notes: z.string().nullable(),
+  /** A scan found this no longer applies; it stays open until the founder dismisses it or keeps it. */
+  removalProposed: z.boolean(),
 });
 export type LegalDeadline = z.infer<typeof LegalDeadlineSchema>;
 
@@ -200,6 +202,8 @@ export const LegalUpdateDeadlineInputSchema = z.object({
   id: Id,
   status: LegalDeadlineStatusSchema.optional(),
   notes: z.string().max(2000).nullable().optional(),
+  /** Keep a deadline a scan proposed removing. */
+  keep: z.boolean().optional(),
 });
 
 /** What deleting a Data room item also removes from Legal: its contract and that contract's deadlines. */
