@@ -74,14 +74,34 @@ it("shows a compact label dot in the narrow pane that names the label", async ()
   expect(dot?.className).toContain("@md:hidden");
 });
 
-it("lets Tab reach the revealed row actions once the row has focus", async () => {
+it("keeps the row actions out of the Tab order and reaches them with the arrow keys", async () => {
   await show();
-  const archive = () => document.querySelector<HTMLElement>('button[aria-label="Archive"]');
-  expect(archive()?.tabIndex).toBe(-1);
-  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.focus());
-  expect(archive()?.tabIndex).toBe(0);
-  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.blur());
-  expect(archive()?.tabIndex).toBe(-1);
+  const rowButton = document.querySelector<HTMLElement>("button[data-row-id]");
+  const archive = document.querySelector<HTMLElement>('button[aria-label="Archive"]');
+  expect(archive?.tabIndex).toBe(-1);
+  await act(async () => rowButton?.focus());
+  await act(async () => {
+    rowButton?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(document.activeElement).toBe(archive);
+  await act(async () => {
+    archive?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(document.activeElement).toBe(rowButton);
+});
+
+it("marks the searched words and shows the snippet around the match", async () => {
+  await show({
+    query: "halcyon",
+    row: { ...row, subject: "Release notes", snippet: `${"x ".repeat(40)}the Halcyon board ships` },
+  });
+  const marks = [...document.querySelectorAll("mark")].map((m) => m.textContent);
+  expect(marks).toEqual(["Halcyon"]);
+  expect(document.querySelector("button[data-row-id]")?.textContent).toContain("…");
 });
 
 it("gives the More trigger a larger touch target on coarse pointers", async () => {

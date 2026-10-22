@@ -108,6 +108,24 @@ describe("Composio Gmail linked to the Inbox agent", () => {
   });
 });
 
+describe("effectiveAccessByConnection for an email's own agent", () => {
+  const bots = [
+    { id: "inbox", spawnKey: "inbox-agent:user-1", archivedAt: null },
+    { id: "thread", spawnKey: "mail-thread:c1:t1", archivedAt: null },
+  ];
+  it("follows the Inbox agent's grants and ignores its own", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("a", "connected", false, { botAccess: grant("inbox") }),
+        row("b", "connected", false, { provider: "slack", botAccess: grant("thread") }),
+      ],
+      bots,
+    );
+    expect(result.a?.botIds).toEqual(["inbox", "thread"]);
+    expect(result.b?.botIds).toEqual([]);
+  });
+});
+
 describe("effectiveAccessByConnection for an external bot", () => {
   const bots = [
     { id: "chief", spawnKey: null, archivedAt: null },
@@ -301,5 +319,68 @@ describe("appStatus", () => {
   it("needs a reconnect when every connected account's sign-in was refused", () => {
     expect(appStatus([conn("connected", true)])).toBe("reconnect");
     expect(appStatus([conn("connected", true), conn("connected")])).toBe("connected");
+  });
+});
+
+describe("an email's own agent shares the Inbox agent's Gmail access", () => {
+  const thread = { id: "bot-thread", userId: "u1", spawnKey: "mail-thread:c1:t1" };
+  const inboxKey = "inbox-agent:u1";
+  // The demo's Gmail: limited to the Inbox agent, which is also its linked agent.
+  const gmail = {
+    id: "c1",
+    connectorId: "composio",
+    provider: "GMAIL",
+    status: "connected",
+    allAgents: false,
+    agentBotId: "bot-inbox",
+    agentBot: { spawnKey: inboxKey },
+  };
+
+  it("reads the Inbox agent's access rows too, so Gmail is not denied to it", async () => {
+    const { connectionAccessFilter, deniedConnectionIds, withInboxAgentStandIn } = await import(
+      "./connection-access.js"
+    );
+    expect(connectionAccessFilter(thread)).toEqual({ bot: { spawnKey: inboxKey } });
+    expect(connectionAccessFilter({ id: "b", userId: "u1", spawnKey: null })).toEqual({
+      botId: "b",
+    });
+    const row = { ...gmail, botAccess: [{ botId: "bot-inbox" }] };
+    expect(deniedConnectionIds([row]).size).toBe(0);
+    expect(withInboxAgentStandIn(row, thread).agentBotId).toBe("bot-thread");
+  });
+
+  it("gives the thread agent exactly what Inbox gets when accounts are granted unevenly", async () => {
+    const { connectionAccessFilter, deniedConnectionIds } = await import("./connection-access.js");
+    // A grants only Inbox; legacy unlinked B grants only the thread agent.
+    const grants = [
+      { rowId: "A", botId: "bot-inbox", spawnKey: inboxKey },
+      { rowId: "B", botId: "bot-thread", spawnKey: thread.spawnKey },
+    ];
+    const base = {
+      connectorId: "composio",
+      provider: "GMAIL",
+      status: "connected",
+      allAgents: false,
+      agentBotId: null,
+    };
+    // The filter lets through only grants held by the Inbox agent.
+    expect(connectionAccessFilter(thread)).not.toHaveProperty("OR");
+    const seen = (rowId: string) =>
+      grants
+        .filter((g) => g.rowId === rowId && g.spawnKey === inboxKey)
+        .map((g) => ({ botId: g.botId }));
+    const rows = [
+      { ...base, id: "A", botAccess: seen("A") },
+      { ...base, id: "B", botAccess: seen("B") },
+    ];
+    // Same denial Inbox sees: B has no Inbox grant, so the whole app is denied to both.
+    expect([...deniedConnectionIds(rows)].sort()).toEqual(["A", "B"]);
+  });
+
+  it("does not stand in for another bot, or for another agent's connection", async () => {
+    const { withInboxAgentStandIn } = await import("./connection-access.js");
+    expect(withInboxAgentStandIn(gmail, { id: "x", spawnKey: null }).agentBotId).toBe("bot-inbox");
+    const other = { ...gmail, agentBot: { spawnKey: "integration-agent:c1" } };
+    expect(withInboxAgentStandIn(other, thread).agentBotId).toBe("bot-inbox");
   });
 });

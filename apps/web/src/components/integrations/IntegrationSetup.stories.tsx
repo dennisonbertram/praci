@@ -54,7 +54,7 @@ export const SearchResults: Story = {
   beforeEach: () => mockRpc({ "capabilities.catalogSearch": catalog }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(canvas.getByLabelText("Search apps"), "notes{enter}");
+    await userEvent.type(canvas.getByLabelText("Search integrations"), "notes{enter}");
     await canvas.findByText("Demo Notes");
   },
 };
@@ -63,7 +63,7 @@ export const SearchNoResults: Story = {
   beforeEach: () => mockRpc({ "capabilities.catalogSearch": { results: [] } }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(canvas.getByLabelText("Search apps"), "nothing{enter}");
+    await userEvent.type(canvas.getByLabelText("Search integrations"), "nothing{enter}");
     await canvas.findByText("No remote MCP servers found");
   },
 };
@@ -73,7 +73,7 @@ export const SearchError: Story = {
     mockRpc({ "capabilities.catalogSearch": () => Promise.reject(new Error("Catalog is down")) }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(canvas.getByLabelText("Search apps"), "notes{enter}");
+    await userEvent.type(canvas.getByLabelText("Search integrations"), "notes{enter}");
     await canvas.findByRole("alert");
   },
 };

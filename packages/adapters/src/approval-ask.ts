@@ -7,12 +7,13 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
+  isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isInvestorsAgentSpawnKey,
   isMailAgentSpawnKey,
   isReadTool,
+  isZernioEndpoint,
   MAX_COMPOSE_BODY,
-  modelLabel,
 } from "@rakazo/contracts";
 import { humanizeToolName, redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
@@ -135,16 +136,11 @@ export function buildApprovalAskBlock(
  * run and the owner's answer resumes it. "Allow" records consent for the recipient named in the
  * effect (never the card), at this disclosure version.
  */
-export function buildConsentAskBlock(
-  effectId: string,
-  recipient: { name: string; detail?: string },
-): MessageBlock {
-  // "GPT-6 Luna", as Settings names it, not the router's raw "openai/gpt-6-luna, forwarded to its provider".
-  const model = modelLabel(recipient.detail ?? "");
+export function buildConsentAskBlock(effectId: string): MessageBlock {
   return {
     kind: "ask",
     approvalEffectId: effectId,
-    text: `Share your chats and mail with ${model || recipient.name}?`,
+    text: "Share your chats and mail with the AI model that runs your bots?",
     // The clause says the permission is standing, not for this one read.
     detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Settings under Privacy and approvals.`,
     consent: { version: AI_DISCLOSURE_VERSION },
@@ -192,6 +188,13 @@ export const isIntegrationAgentWrite = (
     | undefined,
   readOnly: boolean | undefined,
 ): boolean => {
+  if (isGtmAgentSpawnKey(botSpawnKey)) {
+    if (route?.connectorId !== "mcp" || !isZernioEndpoint(route.endpoint)) return false;
+    return !isReadTool(
+      { name: route.toolName ?? "", annotations: { readOnlyHint: readOnly } },
+      integrationPresetForEndpoint(route.endpoint),
+    );
+  }
   if (isCartaAgentSpawnKey(botSpawnKey)) {
     if (route?.connectorId !== "mcp" || !isCartaEndpoint(route.endpoint)) return false;
     return !isReadTool(

@@ -404,89 +404,96 @@ function Overview({
 
   return (
     <div>
-      <PageHeader
-        title={<Trans>Finance</Trans>}
-        meta={
-          <>
-            <CompanyMenu>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      to={financePath.accounts()}
-                      aria-label={
-                        data.excludedNonUsdCount > 0
-                          ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
-                          : undefined
-                      }
-                      className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+      {/* Sticks like the Inbox header: -top cancels the scroller's padding, so rows never show above it. */}
+      <div className="sticky -top-2 z-20 -mx-4 -mt-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 pb-4">
+        <PageHeader
+          className="mb-0"
+          title={<Trans>Finance</Trans>}
+          meta={
+            <>
+              <CompanyMenu>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Link
+                        to={financePath.accounts()}
+                        aria-label={
+                          data.excludedNonUsdCount > 0
+                            ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
+                            : undefined
+                        }
+                        className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+                      />
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                     />
-                  }
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
-                  />
-                  {sourceDot !== "bg-success" ? (
-                    <span className="sr-only">
-                      {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
+                    {sourceDot !== "bg-success" ? (
+                      <span className="sr-only">
+                        {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
+                      </span>
+                    ) : null}
+                    <span className="truncate">
+                      {syncing
+                        ? t`${sourceNames} · syncing…`
+                        : updated
+                          ? t`${sourceNames} · synced ${updated}`
+                          : sourceNames}
                     </span>
+                  </TooltipTrigger>
+                  {data.excludedNonUsdCount > 0 ? (
+                    <TooltipContent>{t`${data.excludedNonUsdCount} non-USD not counted`}</TooltipContent>
                   ) : null}
-                  <span className="truncate">
-                    {syncing
-                      ? t`${sourceNames} · syncing…`
-                      : updated
-                        ? t`${sourceNames} · synced ${updated}`
-                        : sourceNames}
-                  </span>
-                </TooltipTrigger>
-                {data.excludedNonUsdCount > 0 ? (
-                  <TooltipContent>{t`${data.excludedNonUsdCount} non-USD not counted`}</TooltipContent>
-                ) : null}
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t`Refresh`}
-                      disabled={syncing}
-                      // Keeps keyboard focus on the button while it syncs instead of dropping it.
-                      focusableWhenDisabled
-                      onClick={onRefresh}
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t`Refresh`}
+                        disabled={syncing}
+                        // Keeps keyboard focus on the button while it syncs instead of dropping it.
+                        focusableWhenDisabled
+                        onClick={onRefresh}
+                      />
+                    }
+                  >
+                    <RefreshCw
+                      aria-hidden="true"
+                      className={syncing ? "animate-spin" : undefined}
                     />
-                  }
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <Trans>Refresh</Trans>
+                  </TooltipContent>
+                </Tooltip>
+              </CompanyMenu>
+              {missing.length > 0 ? (
+                // One way to connect: the same Add account dialog as the empty state.
+                <Button
+                  variant="link"
+                  size="xs"
+                  className="text-muted-foreground"
+                  onClick={() => onAdd("type")}
                 >
-                  <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <Trans>Refresh</Trans>
-                </TooltipContent>
-              </Tooltip>
-            </CompanyMenu>
-            {missing.length > 0 ? (
-              // One way to connect: the same Add account dialog as the empty state.
-              <Button
-                variant="link"
-                size="xs"
-                className="text-muted-foreground"
-                onClick={() => onAdd("type")}
-              >
-                {onlyOne ? t`Add ${providerName(onlyOne.provider)}` : t`Add account`}
+                  {onlyOne ? t`Add ${providerName(onlyOne.provider)}` : t`Add account`}
+                </Button>
+              ) : null}
+            </>
+          }
+          actions={
+            <>
+              <Button variant="outline" render={<Link to={financePath.accounts()} />}>
+                <Trans>Accounts</Trans>
               </Button>
-            ) : null}
-          </>
-        }
-        actions={
-          <>
-            <Button variant="outline" render={<Link to={financePath.accounts()} />}>
-              <Trans>Accounts</Trans>
-            </Button>
-            <AskAgentButton />
-          </>
-        }
-      />
+              <AskAgentButton />
+            </>
+          }
+        />
+      </div>
       {data.sources
         .filter((source) => source.status === "needs_reconnect")
         .map((source) => (
@@ -673,8 +680,8 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Side by side, the two cards end on the same line. */}
-          <div className="grid items-stretch gap-3 @3xl:grid-cols-2">
+          {/* Each card keeps its own height: an expanded Upcoming does not stretch Breakdown. */}
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -949,7 +956,7 @@ function SubscriptionsTable({
             <Trans>Vendor</Trans>
           </TableHead>
           <TableHead
-            className="text-end"
+            className="text-end whitespace-nowrap"
             title={t`The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure.`}
           >
             <Trans>Per month</Trans>

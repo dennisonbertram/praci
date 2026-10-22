@@ -31,6 +31,10 @@ const investors = vi.hoisted(() => ({ shares: vi.fn(), share: vi.fn(), unshare: 
 const contacts = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc, legal, investors, contacts } }));
 
+const notice = vi.hoisted(() => vi.fn());
+const scopeToken = vi.hoisted(() => vi.fn(() => 7));
+vi.mock("./upload-toasts", () => ({ showNoticeToast: notice, uploadScopeToken: scopeToken }));
+
 import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { folderNodes } from "./folders";
 import { ItemDialog } from "./ItemDialogs";
@@ -393,6 +397,8 @@ describe("Share with investors", () => {
       emailLink: true,
     });
     expect(onClose).toHaveBeenCalled();
+    // The dialog closes, so a toast is the only confirmation.
+    expect(notice).toHaveBeenCalledWith("Shared Lease.pdf", 7);
   });
 
   it("shows the links when they could not be emailed", async () => {

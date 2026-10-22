@@ -25,10 +25,9 @@ import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import type { CategoryFilter, ConnectedApp } from "../../lib/integrations";
+import type { ConnectedApp } from "../../lib/integrations";
 import {
   appPath,
-  CATEGORY_IDS,
   FINANCE_PROVIDERS,
   FIRST_PARTY_MCP,
   filterCatalog,
@@ -68,6 +67,10 @@ import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
 const PHONE_POPULAR = 3;
+
+/** The filter chips: All, then the section headings that hold tiles of their own. */
+const CHIPS = ["all", "finance", "social", "equity", "tools"] as const;
+type Chip = (typeof CHIPS)[number];
 const GRANOLA_PATH = "/app/integrations/granola";
 
 function hostOf(value: string | null) {
@@ -372,6 +375,7 @@ function AppTile({
         >
           <Trans>Connect</Trans>
         </Button>
+        <MenuSlot />
       </div>
     </IntegrationTile>
   );
@@ -389,7 +393,7 @@ export function IntegrationsHome({
   const { t } = useLingui();
   const [params] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState<CategoryFilter>(
+  const [category, setCategory] = useState<Chip>(
     params.get("category") === "finance" ? "finance" : "all",
   );
   const financeRef = useRef<HTMLDivElement>(null);
@@ -420,14 +424,13 @@ export function IntegrationsHome({
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const labels: Record<CategoryFilter, string> = {
+  // The chips are the page's own section headings (plus All), so each one jumps to a heading you can see.
+  const labels: Record<Chip, string> = {
     all: t`All`,
-    email_calendar: t`Email & calendar`,
-    chat: t`Chat`,
-    docs_files: t`Docs & files`,
     finance: t`Finance`,
-    developer: t`Developer`,
-    sales_crm: t`Sales & CRM`,
+    social: t`Social`,
+    equity: t`Equity`,
+    tools: t`Tools`,
   };
 
   const apps = useMemo(
@@ -438,17 +441,13 @@ export function IntegrationsHome({
     () => popularApps(data.catalog, data.connections),
     [data.catalog, data.connections],
   );
-  const results = useMemo(() => filterCatalog(open, { query, category }), [open, query, category]);
-  // A chip that leads to no app is not offered. Finance always has its own tiles.
-  const chips = CATEGORY_IDS.filter(
-    (id) =>
-      id === "all" ||
-      id === "finance" ||
-      id === category ||
-      open.some((item) => item.category === id) ||
-      FIRST_PARTY_MCP.some((entry) => entry.category === id),
+  // Only Finance also narrows the Popular catalog; Social, Equity and Tools hold just their own tiles.
+  const results = useMemo(
+    () =>
+      category === "all" || category === "finance" ? filterCatalog(open, { query, category }) : [],
+    [open, query, category],
   );
-  const firstPartySections = { social: t`Social`, equity: t`Equity`, tools: t`Tools` };
+  const firstPartySections = { social: labels.social, equity: labels.equity, tools: labels.tools };
   const firstPartyDescription = {
     zernio: t`Post and schedule to social accounts`,
     carta: t`Investors, equity and cap table`,
@@ -470,16 +469,27 @@ export function IntegrationsHome({
     data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
   const hasGranolaServer = data.servers.some((server) => isGranolaEndpoint(server.endpoint));
   const keyOnlyGranola = Boolean(granolaKey) && !hasGranolaServer;
-  const firstPartyMcp = FIRST_PARTY_MCP.filter(
+  const unconnectedFirstParty = FIRST_PARTY_MCP.filter(
     (entry) =>
-      (category === "all" || category === entry.category) &&
-      entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
       !data.servers.some(
         (server) => "endpoint" in server && isSameMcpEndpoint(server.endpoint, entry.endpoint),
       ) &&
       !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)) &&
       // A connected API key is already Granola's tile under Connected.
       !(entry.id === "granola" && keyOnlyGranola),
+  );
+  const firstPartyMcp = unconnectedFirstParty.filter(
+    (entry) =>
+      (category === "all" || category === entry.section || category === entry.category) &&
+      entry.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  // A chip whose heading would not show is not offered. Finance always has its own tiles.
+  const chips = CHIPS.filter(
+    (id) =>
+      id === "all" ||
+      id === "finance" ||
+      id === category ||
+      unconnectedFirstParty.some((entry) => entry.section === id),
   );
   const [chatMatches, setChatMatches] = useState(0);
   const financeServerIds = data.financeSources.flatMap((source) =>
@@ -763,8 +773,8 @@ export function IntegrationsHome({
                       type="search"
                       className="h-9 ps-8"
                       value={query}
-                      placeholder={t`Search apps`}
-                      aria-label={t`Search apps`}
+                      placeholder={t`Search integrations`}
+                      aria-label={t`Search integrations`}
                       onChange={(event) => {
                         setQuery(event.target.value);
                         setVisible(CONNECTION_CATALOG_PAGE_SIZE);
@@ -922,7 +932,7 @@ export function IntegrationsHome({
                   ) : null;
                 })}
 
-                {category === "all" || category === "chat" ? (
+                {category === "all" ? (
                   <IMessageSection
                     query={query}
                     flat={filtering}

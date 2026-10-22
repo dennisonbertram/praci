@@ -28,6 +28,7 @@ afterEach(() => {
 async function mount(
   onSelectPage = vi.fn(),
   searchLinks?: ComponentProps<typeof CommandPalette>["searchLinks"],
+  actions?: ComponentProps<typeof CommandPalette>["actions"],
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
@@ -64,6 +65,7 @@ async function mount(
         groups={[{ id: "g1", label: "Leadership sync" }]}
         onSelectPage={onSelectPage}
         searchLinks={searchLinks}
+        actions={actions}
       />,
     );
   });
@@ -250,4 +252,31 @@ it("keeps a row selected for Enter on open and after the search is cleared", asy
   onSelectPage.mockClear();
   await enter();
   expect(onSelectPage).toHaveBeenCalledWith("finance");
+});
+
+it("offers an action only once the query matches it, and runs it", async () => {
+  const run = vi.fn();
+  await mount(vi.fn(), undefined, [{ label: "Group chats into folders", run }]);
+  expect(document.body.textContent).not.toContain("Group chats into folders");
+  await search("folders");
+  const item = [...document.querySelectorAll("[cmdk-item]")].find((node) =>
+    node.textContent?.includes("Group chats into folders"),
+  );
+  await act(async () => {
+    item?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  expect(run).toHaveBeenCalledOnce();
+});
+
+it("offers New folder as an action too", async () => {
+  const run = vi.fn();
+  await mount(vi.fn(), undefined, [{ label: "New folder", run }]);
+  await search("new fol");
+  const item = [...document.querySelectorAll("[cmdk-item]")].find((node) =>
+    node.textContent?.includes("New folder"),
+  );
+  await act(async () => {
+    item?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  expect(run).toHaveBeenCalledOnce();
 });

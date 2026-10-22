@@ -20,3 +20,12 @@ describe("voice agent tool contract", () => {
     expect(isVoiceAgentSpawnKey(null)).toBe(false);
   });
 });
+
+describe("GTM posting tool contract", () => {
+  it("registers the app-owned post name without adding it to generic GTM tools", async () => {
+    const { GTM_AGENT_BUILTIN_TOOLS } = await import("./gtm.js");
+
+    expect(BUILTIN_TOOL_NAMES).toContain("gtm_post");
+    expect(GTM_AGENT_BUILTIN_TOOLS).not.toContain("gtm_post");
+  });
+});

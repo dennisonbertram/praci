@@ -648,7 +648,7 @@ export function BotSettings({
           />
           <details
             data-testid="bot-settings-advanced"
-            className="group mt-5"
+            className="group mt-5 open:rounded-xl open:border open:border-border/40 open:px-3 open:pb-3"
             onToggle={(event) => {
               if (!event.currentTarget.open) return;
               setAdvancedOpened(true);
@@ -823,7 +823,7 @@ export function BotSettings({
               <Input
                 id={`${ids}-disabled-tools`}
                 value={toolNameDraft}
-                placeholder={t`Web search`}
+                placeholder={t`Tool name`}
                 spellCheck={false}
                 autoCapitalize="off"
                 autoCorrect="off"
@@ -869,7 +869,7 @@ export function BotSettings({
           <div className="mt-3 flex flex-col gap-3">
             <Button
               variant="ghost"
-              className={`${FOOTER_ROW} h-auto p-0 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground`}
+              className={`${FOOTER_ROW} h-auto justify-start p-0 font-normal text-muted-foreground underline underline-offset-4 hover:bg-transparent hover:text-foreground`}
               onClick={() => void onExport()}
             >
               <Trans>Export</Trans>

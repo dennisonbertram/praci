@@ -54,7 +54,11 @@ import {
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   disabledBuiltinToolSet,
   externalBotMayUseBuiltin,
+  financeProviderForEndpoint,
   GTM_AGENT_BUILTIN_TOOLS,
+  GTM_CHANNELS,
+  GTM_POST_TOOL,
+  GtmPostInputSchema,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   INVESTORS_AGENT_BUILTIN_TOOLS,
@@ -93,6 +97,7 @@ import {
   botUsesConnectorTools,
   CALL_CLIENT_NONCE_PREFIX,
   callIdFromClientNonce,
+  connectionAccessFilter,
   connectionRowsForAudience,
   connectorKindFromToolName,
   containsSecret,
@@ -135,6 +140,7 @@ import {
   unattendedTriggerToolRequiresApproval,
   userTurnMessageForRun,
   VOICE_AGENT_INSTRUCTIONS,
+  withInboxAgentStandIn,
 } from "@rakazo/core";
 import {
   approvalEffectKey,
@@ -248,7 +254,12 @@ import {
   browserSnapshotFromTool,
 } from "./browser-tools.js";
 import { INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
-import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
+import {
+  agentConnectionTools,
+  builtinAgentTools,
+  gtmPostTool,
+  sharedMemorySaveError,
+} from "./builtin-tools.js";
 import type { CalendarAccount } from "./calendar-tools.js";
 import {
   CALENDAR_TOOL_NAMES,
@@ -344,6 +355,11 @@ import {
 } from "./fundraising-tools.js";
 import { handoffToGroupBot, loadGroupContext } from "./group-handoff.js";
 import {
+  createZernioRestAdapter,
+  executeApprovedGtmPost,
+  resolveZernioApiKey,
+} from "./gtm-posting.js";
+import {
   COMPACTION_BATCH_SIZE,
   formatCompactedSummary,
   formatRecalledMemory,
@@ -396,6 +412,7 @@ import {
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
+import type { McpOAuthBroker } from "./mcp-oauth.js";
 import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
@@ -489,6 +506,7 @@ import {
   addScratchpadItemFromTool,
   completeScratchpadItemFromTool,
   findWorkableOpenItem,
+  hasApprovedOpenPost,
   hasApprovedOpenSignup,
   listScratchpadItemsFromTool,
   removeScratchpadItemFromTool,
@@ -697,6 +715,8 @@ export interface ExecutorDeps {
   connectors?: { managed(id: string): ManagedConnectorProvider | undefined };
   /** Lists a server's tools so pins_write can check a pin source's annotations. */
   mcp?: Pick<McpConnector, "listServerTools">;
+  /** Sign-in state of an MCP server; without it the prompt carries no bank connection line. */
+  mcpOAuth?: Pick<McpOAuthBroker, "statusFor">;
   secrets: string[];
   secretStore: SecretStore;
   deploymentModelKey?: string;
@@ -1512,22 +1532,25 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : Promise.resolve(undefined),
           deps.prisma.task.findUniqueOrThrow({ where: { id: run.taskId } }),
           // Elio gets no connector tools, but Data Room reads still need the denied ids.
-          deps.prisma.connection.findMany({
-            where: { userId: run.userId, spaceId: run.spaceId },
-            select: {
-              id: true,
-              connectorId: true,
-              provider: true,
-              providerRef: true,
-              displayName: true,
-              status: true,
-              allAgents: true,
-              writesEnabled: true,
-              agentBotId: true,
-              privateByDefault: true,
-              botAccess: { where: { botId: run.botId }, select: { botId: true } },
-            },
-          }),
+          deps.prisma.connection
+            .findMany({
+              where: { userId: run.userId, spaceId: run.spaceId },
+              select: {
+                id: true,
+                connectorId: true,
+                provider: true,
+                providerRef: true,
+                displayName: true,
+                status: true,
+                allAgents: true,
+                writesEnabled: true,
+                agentBotId: true,
+                privateByDefault: true,
+                botAccess: { where: connectionAccessFilter(bot), select: { botId: true } },
+                agentBot: { select: { spawnKey: true } },
+              },
+            })
+            .then((rows) => rows.map((row) => withInboxAgentStandIn(row, bot))),
           findDefaultModelCredential(deps.prisma, run),
           deps.prisma.deploymentSettings.findUnique({
             where: { id: "default" },
@@ -2597,10 +2620,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 writesEnabled: true,
                 agentBotId: true,
                 privateByDefault: true,
-                botAccess: { where: { botId: bot.id }, select: { botId: true } },
+                botAccess: { where: connectionAccessFilter(bot), select: { botId: true } },
+                agentBot: { select: { spawnKey: true } },
               },
             })
-            .then((rows) => connectionRowsForAudience(rows, bot.audience));
+            .then((rows) =>
+              connectionRowsForAudience(
+                rows.map((row) => withInboxAgentStandIn(row, bot)),
+                bot.audience,
+              ),
+            );
         // The account must exist in this space and user, be connected, be open to this bot, and for
         // a write follow the agent rule.
         const accountAllowedIn = (
@@ -2905,6 +2934,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
             ? (peerDiscovered ?? discovered).filter(
                 (tool) =>
+                  tool.name !== GTM_POST_TOOL &&
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
                   (!integrationPeerRun ||
                     (tool.route?.connectorId === "mcp" &&
@@ -2945,12 +2975,34 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The intro turn confirms how a bot read its own role before anyone hands it
         // real work — it must not be able to act on that reading (shell, computer,
         // scheduling, spawning another bot, ...) before the user has assigned any task.
-        const tools =
+        const baseTools =
           run.trigger === "created"
             ? []
             : voiceAgent
               ? builtins
               : [...builtins, ...exposedConnectorTools];
+        const gtmPostEligible =
+          run.trigger !== "created" &&
+          ["user", "follow_up", "routine"].includes(run.trigger) &&
+          gtmAgent &&
+          bot.userId === run.userId &&
+          bot.archivedAt === null &&
+          bot.audience !== "external" &&
+          !thread.groupId &&
+          !disabledBuiltinTools.has(GTM_POST_TOOL) &&
+          (await hasApprovedOpenPost(deps, {
+            spaceId: run.spaceId,
+            userId: run.userId,
+            botId: bot.id,
+          })) &&
+          Boolean(
+            await resolveZernioApiKey({
+              prisma: deps.prisma,
+              secretStore: deps.secretStore,
+              scope: { spaceId: run.spaceId, userId: run.userId, botId: bot.id },
+            }),
+          );
+        const tools = [...baseTools, ...(gtmPostEligible ? [gtmPostTool] : [])];
         const offeredToolNames = new Set(tools.map((tool) => tool.name));
         const taskCatalogInstruction = tools.some((tool) => tool.name === "task_catalog")
           ? TASK_CATALOG_GUIDANCE
@@ -3211,6 +3263,117 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (disabledBuiltinTools.has(name)) {
             return { error: "This tool is disabled for this bot." };
+          }
+          if (name === GTM_POST_TOOL) {
+            if (!offeredToolNames.has(name)) {
+              return { error: `Tool ${name} is not available to this bot.` };
+            }
+            const parsed = GtmPostInputSchema.safeParse(args);
+            if (!parsed.success) return { error: "Invalid approved-post input." };
+            if (
+              !gtmAgent ||
+              bot.userId !== run.userId ||
+              bot.archivedAt !== null ||
+              bot.audience === "external" ||
+              thread.groupId ||
+              !["user", "follow_up", "routine"].includes(run.trigger)
+            ) {
+              return { error: "GTM posting is unavailable for this run." };
+            }
+            const liveBot = await deps.prisma.bot.findFirst({
+              where: {
+                id: bot.id,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                archivedAt: null,
+              },
+              select: { id: true, userId: true, spawnKey: true },
+            });
+            if (!liveBot || liveBot.spawnKey !== bot.spawnKey) {
+              return { error: "The GTM agent is no longer owned by this actor." };
+            }
+            const apiKey = await resolveZernioApiKey({
+              prisma: deps.prisma,
+              secretStore: deps.secretStore,
+              scope: { spaceId: run.spaceId, userId: run.userId, botId: bot.id },
+            });
+            if (!apiKey) return { error: "A ready Zernio API key is required." };
+            runSecrets.push(apiKey);
+            const effectKey = approvalEffectKey(runId, GTM_POST_TOOL, parsed.data);
+            const previous = await deps.prisma.externalEffect.findUnique({
+              where: { idempotencyKey: effectKey },
+            });
+            if (
+              previous &&
+              (previous.runId !== run.id ||
+                previous.spaceId !== run.spaceId ||
+                previous.kind !== GTM_POST_TOOL ||
+                stableJsonValue(previous.request) !== stableJsonValue(parsed.data))
+            ) {
+              return { error: "The stored post effect does not match this request." };
+            }
+            if (previous?.status === "completed") return previous.result;
+            if (previous?.status === "executing") {
+              return settleUncertainEffect(deps.prisma, previous.id, GTM_POST_TOOL);
+            }
+            if (previous?.status === "uncertain") {
+              return previous.result ?? uncertainEffectResult(GTM_POST_TOOL);
+            }
+            if (previous && previous.status !== "intended") {
+              return { error: "The previous post attempt cannot be resumed." };
+            }
+            const selectedPosts = await deps.prisma.scratchpadItem.findMany({
+              where: {
+                spaceId: run.spaceId,
+                userId: run.userId,
+                botId: bot.id,
+                category: "public_post",
+                status: "open",
+                approvedAt: { not: null },
+                notes: parsed.data.content,
+                scheduledFor: new Date(parsed.data.scheduledFor),
+                target: parsed.data.accountId,
+                OR: previous ? [{ proof: effectKey }] : [{ proof: null }, { proof: effectKey }],
+              },
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            });
+            const channels = new Set(selectedPosts.map((item) => item.channel));
+            if (!selectedPosts.length || channels.size !== 1) {
+              return { error: "No unique matching approved post is available." };
+            }
+            const selectedChannel =
+              GTM_CHANNELS[selectedPosts[0]!.channel as keyof typeof GTM_CHANNELS];
+            if (!selectedChannel || !("platform" in selectedChannel)) {
+              return { error: "The approved post channel is unsupported." };
+            }
+            return executeApprovedGtmPost({
+              prisma: deps.prisma,
+              scope: {
+                runId,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                botId: bot.id,
+              },
+              input: parsed.data,
+              platform: selectedChannel.platform,
+              effectKey,
+              createEffect: () =>
+                recordEffect(
+                  deps,
+                  run,
+                  GTM_POST_TOOL,
+                  effectKey,
+                  parsed.data,
+                  executionId,
+                  consumedEffectIds,
+                ),
+              dispatch: (postInput) =>
+                createZernioRestAdapter().createPost({
+                  apiKey,
+                  input: postInput,
+                  signal: context.signal,
+                }),
+            });
           }
           // A model can call a built-in it was never offered; the offer is the run's tool list.
           if (BUILTIN_AGENT_TOOL_NAMES.has(name) && !offeredToolNames.has(name)) {
@@ -3950,7 +4113,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if (current?.status === "waiting_input") return pauseForApproval();
             }
             return pauseForAsk(
-              buildConsentAskBlock(recorded.effect.id, recipient),
+              buildConsentAskBlock(recorded.effect.id),
               "Allow access to your mail",
             );
           };
@@ -6494,6 +6657,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 bot.audience === "external" ? bot.externalMessageTargets : undefined,
               );
 
+        // Bank facts come from the owner's private connections: never for external bots or chains.
+        const financeConnectionLine =
+          voiceAgent || restrictedContext
+            ? undefined
+            : await loadFinanceConnectionLine(deps.prisma, deps.mcpOAuth, run);
+
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
             (
@@ -6597,6 +6766,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     botDirectory,
                     pluginLine,
                     mailSearchGuidance: mailSkill.guidance,
+                    financeConnectionLine,
                     dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
                     agentSkillsLine: restrictedContext ? undefined : agentSkillsLine,
                     taughtSkillsLine: restrictedContext ? undefined : taughtSkillsLine,
@@ -8199,6 +8369,63 @@ export const PLAIN_CAPABILITY_GUIDANCE =
 export const NOT_CONNECTED_GUIDANCE =
   "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say so and that connecting one under Integrations comes first. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).";
 
+/**
+ * The user's connected banks as plain facts, so the model does not guess which branch of
+ * NOT_CONNECTED_GUIDANCE applies. A bank counts as connected only while its sign-in is valid.
+ */
+export function financeConnectionLineFor(
+  servers: readonly {
+    endpoint: string | null;
+    agentBotId: string | null;
+    login: "none" | "connected" | "reconnect";
+  }[],
+): string {
+  // Same rule as Finance: only a signed-in server is connected; "reconnect" is a separate state.
+  const banks = servers.flatMap((server) => {
+    const provider = financeProviderForEndpoint(server.endpoint);
+    return provider && server.login !== "none"
+      ? [
+          {
+            name: provider === "mercury" ? "Mercury" : "Brex",
+            hasAgent: Boolean(server.agentBotId),
+            reconnect: server.login === "reconnect",
+          },
+        ]
+      : [];
+  });
+  if (banks.length === 0) {
+    return "Facts: no bank (Mercury or Brex) is connected. For a bank request, say that connecting one under Integrations comes first.";
+  }
+  const list = banks
+    .map(
+      (bank) =>
+        `${bank.name} (${bank.reconnect ? "sign-in expired: tell the user to reconnect it under Integrations" : bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"})`,
+    )
+    .join(", ");
+  return `Facts: connected banks: ${list}. Never tell the user to connect a bank listed here, and never say no bank is connected.`;
+}
+
+export async function loadFinanceConnectionLine(
+  prisma: Pick<PrismaClient, "mcpServer">,
+  mcpOAuth: Pick<McpOAuthBroker, "statusFor"> | undefined,
+  actor: { spaceId: string; userId: string },
+): Promise<string | undefined> {
+  if (!mcpOAuth) return undefined;
+  const servers = await prisma.mcpServer.findMany({
+    where: { spaceId: actor.spaceId, userId: actor.userId, enabled: true },
+    select: { id: true, endpoint: true, secretId: true, agentBotId: true },
+  });
+  return financeConnectionLineFor(
+    await Promise.all(
+      servers.map(async (server) => ({
+        endpoint: server.endpoint,
+        agentBotId: server.agentBotId,
+        login: await mcpOAuth.statusFor(server, actor),
+      })),
+    ),
+  );
+}
+
 export function userTurnInstructions(parts: {
   botInstructions: string;
   voiceAgent?: boolean;
@@ -8217,6 +8444,8 @@ export function userTurnInstructions(parts: {
   botDirectory: string | undefined;
   pluginLine: string | undefined;
   mailSearchGuidance?: string | undefined;
+  /** The user's connected banks, from server state; see financeConnectionLine. */
+  financeConnectionLine?: string | undefined;
   /** add_to_data_room is offered in this run. */
   dataRoomEnabled?: boolean;
   agentSkillsLine: string | undefined;
@@ -8239,6 +8468,7 @@ export function userTurnInstructions(parts: {
     "A bot and a subagent are different. Never use both for the same request.",
     PLAIN_CAPABILITY_GUIDANCE,
     NOT_CONNECTED_GUIDANCE,
+    parts.financeConnectionLine,
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "create_space",

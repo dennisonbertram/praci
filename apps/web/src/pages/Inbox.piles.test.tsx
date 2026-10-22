@@ -272,7 +272,7 @@ describe("Newsletters digest", () => {
   it("archives only the issues shown with Archive all, and Undo restores them", async () => {
     const c = await render("/app/inbox?pile=newsletters");
     await click(toggle(c));
-    await click(byText(c, "Archive all 3"));
+    await click(byText(c, "Archive all 3 messages from 2 senders"));
     expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["d1", "d2", "d3"] });
     const toast = c.querySelector('[role="status"]') as HTMLElement;
     expect(toast.textContent).toContain("Archived 3");

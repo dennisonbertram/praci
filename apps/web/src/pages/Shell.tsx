@@ -154,7 +154,6 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
-import { LegalPanelConsent } from "../components/legal/ConsentPrompt";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
@@ -181,8 +180,8 @@ import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOv
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
-import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
+import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
@@ -219,7 +218,12 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
-import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
+import {
+  maskCurrencyWhenHidden,
+  setHideAmounts,
+  setHideAmountsUser,
+  useHideAmounts,
+} from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
@@ -243,11 +247,13 @@ import {
 import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
+  rosterHeldFor,
+  rosterStatusChanged,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
-import { resolveRouteBot } from "../lib/route-bot";
+import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import type { DataRoomRef } from "../lib/send-to-agent";
@@ -371,6 +377,24 @@ export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
 
 /** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
+/**
+ * Stops a slow run, then resends only if the stop succeeded and the person is still in the
+ * chat they clicked in (the resend reads the current chat, so it must not follow a navigation).
+ */
+export async function retryAfterStop({
+  stop,
+  destination,
+  resend,
+}: {
+  stop: () => Promise<boolean>;
+  destination: () => string | null;
+  resend: () => void;
+}) {
+  const origin = destination();
+  if (!(await stop()) || destination() !== origin) return;
+  resend();
+}
+
 export const BOTS_POLL_MS = 90_000;
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
@@ -592,6 +616,9 @@ export function ShellPage() {
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
+  useEffect(() => {
+    setHideAmountsUser(userId ?? null);
+  }, [userId]);
   useEffect(() => {
     setCollapsedSidebarSections(readCollapsedSidebarSections(userId));
     setCollapsedRosterParents(readCollapsedRosterParents(userId));
@@ -898,16 +925,15 @@ export function ShellPage() {
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
   // Phones open the drawer on the chat list; Activity there is one tap away.
-  const [activityMode, setActivityMode] = useState(
-    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
-  );
-  const toggleActivityMode = useCallback(() => {
-    setActivityMode((on) => {
-      const next = !on;
-      writeActivityMode(next);
-      return next;
-    });
-  }, []);
+  // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
+  const [activityMode, setActivityMode] = useState(false);
+  const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // Activity sits above the chats: show it from its top, not from the row the list had settled on.
+  useEffect(() => {
+    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+  }, [activityMode]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
+  useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
     kind: "bot" | "group";
     id: string;
@@ -1187,6 +1213,12 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  // An approval in the chat that is open (a bot, a page agent or a group) is already on screen.
+  const openChatHref =
+    inGroup && groupId ? `/app/g/${groupId}` : active ? `/app/${active.id}` : undefined;
+  useEffect(() => {
+    if (openChatHref) dismissApprovalToasts(openChatHref);
+  }, [openChatHref]);
   const opening = chatIsOpening({
     hasChat: Boolean(active || activeGroup),
     botsLoaded: initialBotsLoaded,
@@ -1314,6 +1346,19 @@ export function ShellPage() {
           navigate("/onboarding", { replace: true });
           return;
         }
+        // A chat given up on while this refresh was slow is real after all.
+        if (
+          listApplied &&
+          shouldClearMissingBot(
+            missingPathRef.current,
+            window.location.pathname,
+            list,
+            routeBotId.current,
+          )
+        ) {
+          missingPathRef.current = null;
+          setMissingPath(null);
+        }
         // An unknown address keeps showing Page not found instead of jumping to a chat.
         if (missingPathRef.current === window.location.pathname) return;
         const currentGroupId = routeGroupId.current;
@@ -1347,6 +1392,7 @@ export function ShellPage() {
     routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
   }, [botId]);
 
+  useGiveUpOnMissingBot(routeBot.waiting, botId, () => markMissing(window.location.pathname));
   // A route bot the list does not know yet (created on another page) gets one refresh before the
   // chat falls back to the first bot; the chat area keeps its loading state meanwhile.
   useEffect(() => {
@@ -1539,6 +1585,8 @@ export function ShellPage() {
         if (cancelled) return;
         const groupList = bootstrap.groups;
         setBootstrapMe(bootstrap.me);
+        // The saved choice belongs to the signed-in user; it replaces the last person's.
+        setHideAmounts(bootstrap.me.hideAmounts ?? false);
         // Agents and new schedules use the user's zone; follow the browser without asking.
         const zone = timezoneToReport(bootstrap.me);
         if (zone) {
@@ -1784,9 +1832,7 @@ export function ShellPage() {
         } else if (
           event.type === "bot.spawned" ||
           event.type === "bot.deleted" ||
-          event.type === "bot.updated" ||
-          event.type === "run.started" ||
-          isRunTerminalEvent(event) ||
+          rosterStatusChanged(event) ||
           event.type === "thread.cleared"
         ) {
           void refreshBots().catch(() => undefined);
@@ -1862,11 +1908,7 @@ export function ShellPage() {
           computerRef,
         ),
       onEvent: (event, _initial) => {
-        if (
-          event.type === "run.started" ||
-          event.type === "bot.updated" ||
-          isRunTerminalEvent(event)
-        ) {
+        if (rosterStatusChanged(event)) {
           void refreshBots().catch(() => undefined);
         }
         if (isRunTerminalEvent(event) || event.type === "run.waiting_input") {
@@ -1907,7 +1949,14 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
+    // Only a space of one person goes without a heading; a shared space keeps its name and menu.
+    const alone = spaces.length === 1 && spaces[0]?.memberCount === 1;
+    return sidebarGroupsForSpaces(
+      sidebarSpaces,
+      "",
+      bootstrapMe?.spaceId,
+      alone ? null : t`Personal`,
+    );
   }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -2674,9 +2723,13 @@ export function ShellPage() {
       bots.length > 0 &&
       !firstQuestionOpen &&
       !connectCardsWaiting);
-  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
+  // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
+  // (for this session only; the saved preference is unchanged).
   useEffect(() => {
-    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+    if (!tourOpen) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) setBotsSidebarCollapsed(false);
+    else setMobileSidebarOpen(true);
   }, [tourOpen]);
   const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
@@ -2758,6 +2811,7 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
+      dismissApprovalToasts(groupId ? `/app/g/${groupId}` : `/app/${botId}`);
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -3042,8 +3096,8 @@ export function ShellPage() {
       t,
     ],
   );
-  const stopRun = useCallback(async () => {
-    if (sending) return;
+  const stopRun = useCallback(async (): Promise<boolean> => {
+    if (sending) return false;
     sendingRef.current = true;
     setSending(true);
     try {
@@ -3057,7 +3111,7 @@ export function ShellPage() {
           if (activeGroupId.current === groupTarget) {
             setSendError(errorText(error, t`Failed to stop`));
           }
-          return;
+          return false;
         }
         // Clear run UI ahead of the run.cancelled event so refresh races with in-flight gets.
         if (activeGroupId.current === groupTarget) {
@@ -3066,9 +3120,9 @@ export function ShellPage() {
           );
         }
         await refreshGroupThreadRef.current(groupTarget).catch(() => undefined);
-        return;
+        return true;
       }
-      if (!botTarget) return;
+      if (!botTarget) return false;
       setSendError(null);
       try {
         await rpc.threads.stop({ botId: botTarget });
@@ -3076,7 +3130,7 @@ export function ShellPage() {
         if (activeBotId.current === botTarget) {
           setSendError(errorText(error, t`Failed to stop`));
         }
-        return;
+        return false;
       }
       // Clear local run/busy immediately rather than waiting for run.cancelled so a
       // superseded in-flight refresh (older cursor) cannot leave Stop enabled / Take control
@@ -3091,6 +3145,7 @@ export function ShellPage() {
         }
       }
       await refreshThreadRef.current(botTarget).catch(() => undefined);
+      return true;
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -3783,10 +3838,11 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on but has no screen would show a heading over an empty box.
+  // A computer that is on without a screen, or has never run, would show a heading over an
+  // empty box; the panel is then just the bot's routines.
   const noComputerScreen =
-    computer?.state === "running" &&
-    computer.kind !== "desktop" &&
+    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
+    computer?.kind !== "desktop" &&
     !embeddedScreenUrl &&
     !computerError &&
     !computerOpen &&
@@ -3964,6 +4020,18 @@ export function ShellPage() {
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
+                onStopRun={() => void stopRun()}
+                onRetryRun={
+                  // A routine has no message to resend; Stop is the only slow-run action.
+                  activeSnapshot?.run?.trigger === "routine"
+                    ? undefined
+                    : () =>
+                        void retryAfterStop({
+                          stop: stopRun,
+                          destination: () => activeGroupId.current ?? activeBotId.current ?? null,
+                          resend: retryFailedRun,
+                        })
+                }
                 failedNote={dismissedRunError}
                 failedScheduled={activeSnapshot?.run?.trigger === "routine"}
                 onLoadOlder={loadOlder}
@@ -4053,7 +4121,6 @@ export function ShellPage() {
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
             </div>
           ) : null}
-          {legalWaitsForConsent ? <LegalPanelConsent /> : null}
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
@@ -4096,7 +4163,9 @@ export function ShellPage() {
                     }
                   : undefined
               }
-              onStop={stopRun}
+              onStop={async () => {
+                await stopRun();
+              }}
               onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
               replyTarget={activeReplyTarget}
@@ -4203,6 +4272,7 @@ export function ShellPage() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: key and focus events bubble up from the row buttons inside */}
       <aside
         ref={sidebarRef}
+        data-sidebar=""
         aria-label={t`Sidebar`}
         onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
         onFocus={(event) => {
@@ -4248,10 +4318,15 @@ export function ShellPage() {
                 <InputGroupInput
                   readOnly
                   value=""
-                  onClick={() => setCommandPaletteOpen(true)}
+                  onClick={(e) => {
+                    // The drawer's box would keep the keyboard; the palette's own input takes it.
+                    e.currentTarget.blur();
+                    setCommandPaletteOpen(true);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
+                      e.currentTarget.blur();
                       setCommandPaletteOpen(true);
                     }
                   }}
@@ -4292,17 +4367,6 @@ export function ShellPage() {
                 >
                   <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
                 </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="app-no-drag lg:hidden"
-                  aria-label={t`Close menu`}
-                  title={t`Close menu`}
-                  data-testid="close-mobile-sidebar"
-                  onClick={() => setMobileSidebarOpen(false)}
-                >
-                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
-                </Button>
                 <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                   <PopoverTrigger
                     className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -4349,16 +4413,43 @@ export function ShellPage() {
                     />
                   </PopoverContent>
                 </Popover>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="app-no-drag lg:hidden"
+                  aria-label={t`Close menu`}
+                  title={t`Close menu`}
+                  data-testid="close-mobile-sidebar"
+                  onClick={() => setMobileSidebarOpen(false)}
+                >
+                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
+                </Button>
               </div>
             )
           }
         />
+        {/* A page has no top band in the rail (the desktop app keeps one for its window controls), so the way back to the full sidebar sits here. */}
+        {rail && pageMode && !desktopBridge() ? (
+          <button
+            type="button"
+            data-testid="restore-bots-sidebar"
+            aria-label={t`Show sidebar`}
+            title={t`Show sidebar`}
+            onClick={() => setBotsSidebarCollapsedPref(false)}
+            className="app-no-drag mx-auto mt-1 grid size-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          >
+            <PanelLeftOpen size={16} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        ) : null}
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
         <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-            <div className="flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto">
+            // On a phone Activity takes its place until it is closed, so the chats stay in view.
+            <div
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
+            >
               <SidebarPagesGroup
                 title={t`Pages`}
                 collapsed={collapsedSidebarSections.has("pages")}
@@ -4798,6 +4889,16 @@ export function ShellPage() {
                             if ("foldHeader" in displayRow) {
                               const email = displayRow.foldHeader === "email";
                               const rows = email ? emailChatRows : pageAgentRows;
+                              const held = rows.map((row) =>
+                                row.item.kind === "bot"
+                                  ? rosterHeldFor(row.item.chat.status)
+                                  : null,
+                              );
+                              const heldFor = held.includes("answer")
+                                ? "answer"
+                                : held.includes("takeover")
+                                  ? "takeover"
+                                  : null;
                               return (
                                 <PageAgentsRow
                                   key={displayRow.foldHeader}
@@ -4805,10 +4906,14 @@ export function ShellPage() {
                                   testId={email ? "sidebar-email-chats" : undefined}
                                   open={email ? showEmailChats : showPageAgents}
                                   count={rows.length}
-                                  needsYou={rows.some(
-                                    (row) =>
-                                      row.item.chat.unread || glance.botKinds[row.item.chat.id],
-                                  )}
+                                  needsYou={
+                                    heldFor !== null ||
+                                    rows.some(
+                                      (row) =>
+                                        row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                    )
+                                  }
+                                  heldFor={heldFor}
                                   onToggle={() =>
                                     email
                                       ? setEmailChatsOpen((open) => !open)
@@ -5097,7 +5202,7 @@ export function ShellPage() {
                                                   </span>
                                                 ) : null}
                                               </div>
-                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
+                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
                                                 {item.kind === "bot" &&
                                                 glance.botKinds[item.chat.id] ? (
                                                   <StatusMark
@@ -5183,7 +5288,7 @@ export function ShellPage() {
                                             position: { x: rect.left, y: rect.bottom },
                                           });
                                         }}
-                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:top-0 pointer-coarse:size-11 pointer-coarse:opacity-100 ${
                                           botMenu?.id === item.chat.id ? "opacity-100" : ""
                                         }`}
                                       >
@@ -5515,7 +5620,7 @@ export function ShellPage() {
           <div
             className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
               pageMode
-                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
+                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed && desktopBridge() ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
                 : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
             }`}
           >
@@ -5532,7 +5637,7 @@ export function ShellPage() {
               >
                 <Menu size={19} strokeWidth={1.7} />
               </button>
-              {botsSidebarCollapsed ? (
+              {botsSidebarCollapsed && (!pageMode || desktopBridge()) ? (
                 <button
                   type="button"
                   data-testid="restore-bots-sidebar"
@@ -5859,7 +5964,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="mb-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (
@@ -5872,7 +5977,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen ? null : (
+                    noComputerScreen || computerScreenError ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -6639,6 +6744,11 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          // Without a space heading, its menu is gone; the palette still reaches this action.
+          actions={[
+            { label: t`New folder`, run: () => void createFolder() },
+            { label: t`Group chats into folders`, run: () => void autoGroupSidebar() },
+          ]}
           searchLinks={searchPaletteLinks}
           onOpenPath={openSearchResult}
         />
@@ -6835,7 +6945,7 @@ export function ShellPage() {
                 {!recordingSkill && hasControl ? (
                   computer?.takeoverRequested ? (
                     <span className="rounded-full bg-warning/15 px-[11px] py-1 text-[13px] text-warning">
-                      <Trans>Needs you</Trans>
+                      <Trans>Needs takeover</Trans>
                     </span>
                   ) : (
                     <span className="rounded-full bg-success/15 px-[11px] py-1 text-[13px] text-success">

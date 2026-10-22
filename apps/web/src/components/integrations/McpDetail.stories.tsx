@@ -106,9 +106,19 @@ export const CartaWritesOn: Story = {
 const mercury = (extra: Partial<McpServer> = {}) =>
   mockServer("srv_1", "Mercury", { endpoint: "https://mcp.mercury.com/mcp", ...extra });
 
-export const CanCreateAgent: Story = {
+/** A bank with no agent yet: the Allow changes switch is the one setup control. */
+export const BankNoAgent: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: { data: mockIntegrations({ servers: [mercury()] }) },
+};
+
+export const CanCreateAgent: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [mockServer("srv_1", "Files", { endpoint: "https://mcp.example.com/sse" })],
+    }),
+  },
 };
 
 /** While the agent is being created every header button is disabled. */
@@ -120,7 +130,11 @@ export const CreatingAgent: Story = {
       await within(canvasElement).findByRole("button", { name: "Create agent" }),
     );
   },
-  args: { data: mockIntegrations({ servers: [mercury()] }) },
+  args: {
+    data: mockIntegrations({
+      servers: [mockServer("srv_1", "Files", { endpoint: "https://mcp.example.com/sse" })],
+    }),
+  },
 };
 
 export const WithAgent: Story = {

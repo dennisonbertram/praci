@@ -377,7 +377,7 @@ describe("BotSettings saving without a Save button", () => {
 
   it("names the unknown tool right under the Disabled tools field", async () => {
     await render();
-    const input = container.querySelector<HTMLInputElement>("input[placeholder='Web search']");
+    const input = container.querySelector<HTMLInputElement>("input[placeholder='Tool name']");
     if (!input) throw new Error("Missing disabled tools field");
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(

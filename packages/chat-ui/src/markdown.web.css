@@ -88,10 +88,15 @@
 }
 
 .rk-chat-markdown a {
-  color: var(--link);
+  color: var(--foreground);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--link) 55%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--foreground) 55%, transparent);
   text-underline-offset: 0.15em;
+}
+
+.rk-chat-markdown a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .rk-chat-markdown .rk-chat-markdown-image {

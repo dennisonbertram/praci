@@ -119,6 +119,26 @@ export const CrowdedHeaderPhone375: Story = {
   ],
 };
 
+/** Triage on and enough rows to scroll: at a phone viewport the search leaves with the list, the title and tabs stay. */
+export const LongListPhone: Story = {
+  args: { onShowAgent: () => undefined },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        enabled: true,
+        triageBlocked: null,
+        rows: Array.from({ length: 24 }, (_, index) => ({
+          ...rows[0],
+          id: `long-${index}`,
+          threadId: `long-t-${index}`,
+          subject: `Sample message ${index + 1}`,
+        })) as MailRow[],
+      },
+      "inbox.todos.list": { enabled: true, todos },
+    }),
+};
+
 export const NeedsConsent: Story = {
   beforeEach: () =>
     mockRpc({
@@ -129,6 +149,26 @@ export const NeedsConsent: Story = {
           reason: "needs_consent",
           recipient: { key: "demo-model", name: "Demo model provider" },
         },
+      },
+    }),
+};
+
+/** The first sort after Allow: no rows until it lands, so nothing moves afterwards. */
+export const SortingFirstTime: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        enabled: true,
+        triageBlocked: null,
+        triagePending: true,
+        rows: rows.map((r) => ({
+          ...r,
+          needsReply: null,
+          priority: null,
+          category: null,
+          reason: null,
+        })),
       },
     }),
 };

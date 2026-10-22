@@ -386,8 +386,13 @@ describe("runway and projectCash", () => {
       { month: "2027-01", balanceCents: 0 },
     ]);
   });
-  it("stops at 24 months and returns [] when not burning", () => {
-    expect(projectCash(1_000_000, 1, NOW)).toHaveLength(24);
+  it("reaches zero for a runway longer than two years", () => {
+    const points = projectCash(2_450, 100, NOW);
+    expect(points).toHaveLength(26);
+    expect(points.at(-1)).toEqual({ month: "2028-11", balanceCents: 0 });
+  });
+  it("stops at 60 months and returns [] when not burning", () => {
+    expect(projectCash(1_000_000, 1, NOW)).toHaveLength(60);
     expect(projectCash(1_000, 0, NOW)).toEqual([]);
   });
 });

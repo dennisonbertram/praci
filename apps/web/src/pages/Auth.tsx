@@ -31,6 +31,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     return authErrorText({ code }, t`Could not continue`);
   });
   const [pending, setPending] = useState(false);
+  const [tooShort, setTooShort] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
@@ -74,6 +75,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     const issue = credentialIssue({ email, password: mode === "forgot" ? undefined : password });
     if (issue) {
       setError(credentialIssueText(issue));
+      return;
+    }
+    // The rule is shown under the field; a short password turns that line red, with no native bubble.
+    if (mode === "up" && password.length < 8) {
+      setTooShort(true);
       return;
     }
     setPending(true);
@@ -171,7 +177,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           ) : null}
           <Link
             to="/sign-in"
-            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <Trans>Back to sign in</Trans>
           </Link>
@@ -259,12 +265,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       name="password"
                       autoComplete={mode === "in" ? "current-password" : "new-password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setTooShort(false);
+                      }}
                       placeholder={t`Password`}
                       type={showPassword ? "text" : "password"}
                       required
-                      minLength={8}
-                      aria-invalid={error ? true : undefined}
+                      aria-invalid={error || tooShort ? true : undefined}
                       className={`${fieldClass} mt-0 pr-12`}
                     />
                     <Button
@@ -280,15 +288,18 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     </Button>
                   </div>
                   {mode === "up" ? (
-                    <p className="mt-1.5 text-sm text-muted-foreground">
+                    <p
+                      role={tooShort ? "alert" : undefined}
+                      className={`mt-1.5 text-sm ${tooShort ? "text-destructive" : "text-muted-foreground"}`}
+                    >
                       <Trans>At least 8 characters.</Trans>
                     </p>
                   ) : null}
                   {mode === "in" && reset?.passwordReset ? (
-                    <div className="mt-0.5 text-right text-sm">
+                    <div className="text-right text-sm">
                       <Link
                         to="/forgot-password"
-                        className="inline-block py-3 font-medium text-foreground"
+                        className="inline-block py-2 font-medium text-foreground pointer-coarse:py-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <Trans>Forgot password?</Trans>
                       </Link>
@@ -297,7 +308,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 </div>
               ) : null}
               {/* Always present with room for one line, so an error moves no field. */}
-              <p role="alert" className="mt-3 min-h-5 w-full text-sm text-destructive">
+              <p role="alert" className="mt-1 min-h-5 w-full text-sm text-destructive">
                 {error}
               </p>
               <Button type="submit" size="lg" disabled={pending} className={submitClass}>
@@ -329,7 +340,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Don’t have an account?</Trans>{" "}
                     <Link
                       to="/sign-up"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <Trans>Sign up</Trans>
                     </Link>
@@ -339,7 +350,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Already have an account?</Trans>{" "}
                     <Link
                       to="/sign-in"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <Trans>Sign in</Trans>
                     </Link>
@@ -347,7 +358,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 ) : (
                   <Link
                     to="/sign-in"
-                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <Trans>Back to sign in</Trans>
                   </Link>
@@ -405,7 +416,10 @@ export function PasswordResetPage() {
     >
       {linkInvalid ? (
         <>
-          <Link to="/forgot-password" className="font-medium">
+          <Link
+            to="/forgot-password"
+            className="font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Request a new link</Trans>
           </Link>
         </>
@@ -414,7 +428,10 @@ export function PasswordResetPage() {
           <p className="text-lg">
             <Trans>Password updated</Trans>
           </p>
-          <Link to="/sign-in" className="mt-6 inline-block font-medium">
+          <Link
+            to="/sign-in"
+            className="mt-6 inline-block font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Sign in</Trans>
           </Link>
         </div>
@@ -441,7 +458,10 @@ export function PasswordResetPage() {
           <Button type="submit" size="lg" disabled={pending} className={submitClass}>
             {pending ? <Trans>Working…</Trans> : <Trans>Reset password</Trans>}
           </Button>
-          <Link to="/sign-in" className="mt-6 font-medium">
+          <Link
+            to="/sign-in"
+            className="mt-6 font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Back to sign in</Trans>
           </Link>
         </>

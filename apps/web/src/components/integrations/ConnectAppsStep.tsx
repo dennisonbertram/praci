@@ -86,8 +86,8 @@ export function ConnectAppsStep({
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-foreground">{t`Connect your apps`}</h1>
       <Input
-        aria-label={t`Search apps`}
-        placeholder={t`Search apps`}
+        aria-label={t`Search integrations`}
+        placeholder={t`Search integrations`}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
