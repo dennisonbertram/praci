@@ -242,6 +242,22 @@ it("draws the partial month as one mark, with no two markers within 8 px", async
   done();
 });
 
+it("keeps the partial month's financing marker 8 px from the revenue marker", async () => {
+  const series = [
+    month(8, 130_000, 70_000),
+    { ...month(9, 100_000, 10_000, true), financingCents: 15_000 },
+  ];
+  const { el, done } = await mount(
+    600,
+    <BurnLines label="Burn" height={200} series={series} onOpen={() => {}} />,
+  );
+  const pts = markers(el);
+  for (const [i, a] of pts.entries())
+    for (const b of pts.slice(i + 1))
+      expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThanOrEqual(8);
+  done();
+});
+
 it("starts quarters at the first one with data and fills the plot width", async () => {
   const q = (start: string, outCents: number) => ({
     start,

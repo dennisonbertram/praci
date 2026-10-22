@@ -419,6 +419,7 @@ export function BurnLines({
         const apart = (a?: [number, number], b?: [number, number]) =>
           !a || !b || Math.hypot(a[0] - b[0], a[1] - b[1]) >= 8;
         const revDrawn = partial ? rev.slice(0, -1) : rev;
+        const revEnd = partial && series[last]?.revenueCents && apart(rev.at(-1), out.at(-1));
         const outSegs = monotoneSegments(drawn);
         const start = (p: [number, number] | undefined) =>
           `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
@@ -529,7 +530,7 @@ export function BurnLines({
                 className="fill-muted-foreground"
               />
             ) : null}
-            {partial && series[last]?.revenueCents && apart(rev.at(-1), out.at(-1)) ? (
+            {revEnd ? (
               <circle
                 data-testid="burn-revenue-end"
                 cx={(rev.at(-1) as [number, number])[0]}
@@ -551,7 +552,14 @@ export function BurnLines({
                   strokeLinejoin="round"
                 />
               ) : m.financingCents > 0 &&
-                !(i === last && partial && !apart([cx(i), y(m.financingCents)], out.at(-1))) ? (
+                !(
+                  i === last &&
+                  partial &&
+                  !(
+                    apart([cx(i), y(m.financingCents)], out.at(-1)) &&
+                    (!revEnd || apart([cx(i), y(m.financingCents)], rev.at(-1)))
+                  )
+                ) ? (
                 <circle
                   key={m.start}
                   cx={cx(i)}
