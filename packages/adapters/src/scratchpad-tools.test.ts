@@ -42,7 +42,7 @@ function row(partial: Record<string, unknown> = {}) {
 }
 
 function prismaWith(overrides: Record<string, unknown> = {}) {
-  const executeRaw = vi.fn(async () => 1);
+  const executeRaw = vi.fn(async (_query: TemplateStringsArray, _lockKey: string) => 1);
   const scratchpadItem = {
     findFirst: vi.fn(async () => row()),
     findMany: vi.fn(async () => []),
@@ -63,15 +63,109 @@ function prismaWith(overrides: Record<string, unknown> = {}) {
     deleteMany: vi.fn(async () => ({ count: 1 })),
     ...overrides,
   };
-  const tx = { scratchpadItem, $executeRaw: executeRaw };
+  const scratchpadApproval = {
+    findMany: vi.fn(async () => [{ itemId: "a" }, { itemId: "b" }, { itemId: "c" }]),
+    count: vi.fn(async () => 0),
+    create: vi.fn(async () => ({})),
+  };
+  const tx = { scratchpadItem, scratchpadApproval, $executeRaw: executeRaw };
   return {
     scratchpadItem,
+    scratchpadApproval,
     executeRaw,
     $transaction: vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx)),
   };
 }
 
 describe("scratchpad tools store", () => {
+  it.each([
+    [2, 0, false],
+    [3, 4, true],
+    [4, 5, false],
+    [4, 6, false],
+  ])(
+    "directory policy with %i founder items and %i grants opens: %s",
+    async (founders, grants, opens) => {
+      const prisma = prismaWith({
+        findFirst: vi.fn(async () => row({ category: "create_account", channel: "directory" })),
+      });
+      prisma.scratchpadApproval.findMany.mockResolvedValue(
+        Array.from({ length: founders }, (_, i) => ({ itemId: `founder-${i}` })),
+      );
+      prisma.scratchpadApproval.count.mockResolvedValue(grants);
+      const result = await updateScratchpadItemFromTool(
+        { prisma: prisma as never, now: () => now },
+        { ...scope, itemId: "item-1", status: "open" },
+      );
+      expect("item" in result).toBe(opens);
+      expect(prisma.scratchpadApproval.create).toHaveBeenCalledTimes(opens ? 1 : 0);
+      if (opens) {
+        expect(result).toMatchObject({ item: { status: "open", approvedBy: "policy" } });
+        expect(prisma.executeRaw.mock.calls[0]?.[1]).toBe("gtm-channel:ws:user:bot:directory");
+        expect(prisma.scratchpadApproval.findMany).toHaveBeenCalledWith({
+          where: {
+            ...scope,
+            category: "create_account",
+            channel: "directory",
+            approvedBy: "user",
+            approvedAt: { gt: new Date(now.getTime() - 86_400_000), lte: now },
+          },
+          distinct: ["itemId"],
+          select: { itemId: true },
+        });
+      }
+    },
+  );
+
+  it("records directory founder approval atomically and records nothing on a lost update", async () => {
+    const prisma = prismaWith({
+      findFirst: vi.fn(async () => row({ category: "create_account", channel: "directory" })),
+    });
+    const input = { ...scope, itemId: "item-1", status: "open", updatedAt: now.toISOString() };
+    expect(
+      await updateScratchpadItemFromUser({ prisma: prisma as never, now: () => now }, input),
+    ).toMatchObject({ item: { approvedBy: "user" } });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.scratchpadApproval.create).toHaveBeenCalledWith({
+      data: {
+        ...scope,
+        itemId: "item-1",
+        category: "create_account",
+        channel: "directory",
+        approvedBy: "user",
+        approvedAt: now,
+      },
+    });
+    prisma.scratchpadApproval.create.mockClear();
+    prisma.scratchpadItem.updateMany.mockResolvedValue({ count: 0 });
+    expect(await updateScratchpadItemFromUser({ prisma: prisma as never }, input)).toEqual({
+      conflict: true,
+    });
+    expect(prisma.scratchpadApproval.create).not.toHaveBeenCalled();
+  });
+
+  it("does not approve directory content changed while waiting for the lock", async () => {
+    const initial = row({ category: "create_account", channel: "directory" });
+    const prisma = prismaWith({
+      findFirst: vi
+        .fn()
+        .mockResolvedValueOnce(initial)
+        .mockResolvedValue({
+          ...initial,
+          notes: "Changed",
+          updatedAt: new Date(now.getTime() + 1),
+        }),
+    });
+    expect(
+      await updateScratchpadItemFromUser(
+        { prisma: prisma as never },
+        { ...scope, itemId: "item-1", status: "open", updatedAt: now.toISOString() },
+      ),
+    ).toEqual({ conflict: true });
+    expect(prisma.scratchpadItem.updateMany).not.toHaveBeenCalled();
+    expect(prisma.scratchpadApproval.create).not.toHaveBeenCalled();
+  });
+
   it("maps new nullable fields and tolerates old rows", () => {
     const mapped = mapScratchpadItem(row());
     expect(mapped).toMatchObject({
