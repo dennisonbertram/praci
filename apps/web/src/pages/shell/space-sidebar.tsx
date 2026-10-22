@@ -35,6 +35,7 @@ import {
   Lock,
   LogOut,
   Mail,
+  Megaphone,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -355,10 +356,12 @@ export type SpaceSidebarProps = {
     legalDueSoon: number;
     devinConnected: boolean;
     devinNeedsYou: number;
+    gtmNeedsYou: number;
     dataRoomWaiting: number;
     botKinds: Record<string, (typeof NOTIFICATION_KINDS)[number]>;
   };
   legalMode: boolean;
+  gtmMode: boolean;
   devinMode: boolean;
   investorsMode: boolean;
   fundraisingMode: boolean;
@@ -468,6 +471,7 @@ export function SpaceSidebar({
   financeMode,
   glance,
   legalMode,
+  gtmMode,
   devinMode,
   investorsMode,
   fundraisingMode,
@@ -812,6 +816,28 @@ export function SpaceSidebar({
                     valueLabel: plural(glance.legalDueSoon, {
                       one: "# overdue or due in the next 7 days",
                       other: "# overdue or due in the next 7 days",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("gtm") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-gtm"
+                  current={gtmMode}
+                  icon={<Megaphone size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`GTM`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/gtm");
+                  }}
+                  {...glanceBadge({
+                    unseen: 0,
+                    rail,
+                    value: glance.gtmNeedsYou > 0 ? String(glance.gtmNeedsYou) : undefined,
+                    valueLabel: plural(glance.gtmNeedsYou, {
+                      one: "# needs you",
+                      other: "# need you",
                     }),
                   })}
                 />

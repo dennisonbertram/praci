@@ -97,6 +97,8 @@ type Mode = "expanded" | "rail" | "search-trigger" | "folder-roster";
 
 export function SidebarFixture({
   mode,
+  gtmMode = false,
+  gtmNeedsYou = 0,
   devinMode = false,
   devinConnected = false,
   devinNeedsYou = 0,
@@ -112,6 +114,8 @@ export function SidebarFixture({
   activeEmailChat = false,
 }: {
   mode: Mode;
+  gtmMode?: boolean;
+  gtmNeedsYou?: number;
   devinMode?: boolean;
   devinConnected?: boolean;
   devinNeedsYou?: number;
@@ -208,11 +212,13 @@ export function SidebarFixture({
       hasTickets: false,
       devinConnected,
       devinNeedsYou,
+      gtmNeedsYou,
       legalDueSoon: 0,
       dataRoomWaiting: 0,
       botKinds: {},
     },
     legalMode: false,
+    gtmMode,
     devinMode,
     investorsMode,
     fundraisingMode,

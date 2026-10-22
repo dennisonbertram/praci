@@ -376,6 +376,52 @@ it("shows Devin's needs-you count and opens its page", async () => {
   }
 });
 
+it("shows GTM's needs-you count and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderSidebar = () =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(
+        "div",
+        null,
+        createElement(SidebarFixture, {
+          mode: "expanded",
+          gtmMode: true,
+          gtmNeedsYou: 2,
+        }),
+        createElement(CurrentPath),
+      ),
+    );
+  try {
+    await act(async () => root.render(renderSidebar()));
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-gtm"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    expect(link?.getAttribute("aria-label")).toBe("GTM, 2 need you");
+    expect(link?.querySelector('[data-testid="glance-value"]')?.textContent).toBe("2");
+
+    await act(async () => {
+      link?.click();
+    });
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/app/gtm");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
 it("marks Investors as current and opens its page", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
