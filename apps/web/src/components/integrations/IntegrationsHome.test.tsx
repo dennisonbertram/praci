@@ -666,15 +666,16 @@ it("shows no Reconnect on a healthy Composio tile", async () => {
   );
 });
 
-it("hides category chips that have no apps", async () => {
+it("offers only chips that are section headings on the page", async () => {
   const value = data(true, true);
   value.catalog = [
     { ...google("slack"), connectorId: "composio", name: "Slack", connected: false },
   ];
   await show(value);
+  const headings = [...container.querySelectorAll("h2")].map((h) => h.textContent);
   const chips = [...container.querySelectorAll("fieldset button")].map((b) => b.textContent);
-  expect(chips).toContain("Email & calendar");
-  expect(chips).not.toContain("Sales & CRM");
+  expect(chips).toContain("Finance");
+  for (const chip of chips) if (chip !== "All") expect(headings).toContain(chip);
 });
 
 it("lists results as one flat grid without headings and hides Connected while searching", async () => {
@@ -712,7 +713,7 @@ it("keeps matching connected apps visible while a category chip is active", asyn
   const value = data(true, true);
   value.catalog = [
     ...value.catalog,
-    { ...google("notion"), connectorId: "composio", name: "Notion", category: "docs_files" },
+    { ...google("notion"), connectorId: "composio", name: "Notion", category: "finance" },
   ];
   value.connections = [
     composioGmail(),
@@ -720,7 +721,7 @@ it("keeps matching connected apps visible while a category chip is active", asyn
   ];
   await show(value, "/app/integrations");
   const chip = [...container.querySelectorAll("fieldset button")].find(
-    (b) => b.textContent === "Docs & files",
+    (b) => b.textContent === "Finance",
   ) as HTMLElement;
   await act(async () => chip.click());
   const connected = [...container.querySelectorAll("h2")].find(

@@ -126,6 +126,7 @@ export const BUILTIN_TOOL_NAMES = [
   "connect_agent",
   "respond_agent_connection",
   "message_agent",
+  "gtm_post",
 ] as const;
 
 export const BuiltinToolNameSchema = z.enum(BUILTIN_TOOL_NAMES);
