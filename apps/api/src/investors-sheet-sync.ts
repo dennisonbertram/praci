@@ -22,7 +22,10 @@ const sheetRunWhere = (actor: Actor) => ({
 });
 
 export type SheetReadDeps = {
-  prisma: Pick<PrismaClient, "run" | "capTableSnapshot" | "$transaction" | "routine" | "user">;
+  prisma: Pick<
+    PrismaClient,
+    "run" | "capTableSnapshot" | "$transaction" | "routine" | "user" | "bot"
+  >;
   jobs: Pick<JobPublisher, "enqueue" | "cancel">;
   repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   /** False when no model is set up, so a run would only fail. */

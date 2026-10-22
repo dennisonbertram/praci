@@ -249,6 +249,7 @@ import {
 } from "../lib/right-panel-state";
 import {
   compactRosterStatusLabel,
+  needsAnswerLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
   rosterStatusChanged,
@@ -4167,7 +4168,7 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
-              placeholder={waitingOnApproval ? t`Waiting for approval` : undefined}
+              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4381,7 +4382,7 @@ export function ShellPage() {
                   onClick={toggleActivityMode}
                   className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                     activityMode
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-sidebar-accent text-foreground"
                       : "text-muted-foreground/70 hover:text-foreground/75"
                   }`}
                 >

@@ -228,7 +228,7 @@ export function InboxRow({
   const { t } = useLingui();
   useHideAmounts();
   const labelNames = {
-    attention: t`Needs attention`,
+    attention: row.needsReply === true ? t`Needs reply` : t`Needs attention`,
     newsletter: t`Newsletter`,
     spam: t`Spam`,
     junk: t`Junk`,

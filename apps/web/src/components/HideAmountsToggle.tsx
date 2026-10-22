@@ -22,7 +22,7 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
   return (
     <Button
       variant="ghost"
-      className="h-auto w-full justify-start py-1.5 font-normal"
+      className="w-full justify-start font-normal"
       role="menuitemcheckbox"
       aria-checked={hidden}
       data-testid="hide-amounts-menu-item"
