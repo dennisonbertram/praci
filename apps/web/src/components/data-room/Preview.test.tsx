@@ -201,6 +201,20 @@ it("opens a readable PDF in the browser, and says an untagged file has no type y
   expect(openItem).toHaveBeenCalledWith(pdf);
 });
 
+it("says nothing about the type while the file is still being tagged", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, status: "classifying", previewText: "Some text" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
+});
+
 it("gives no reason for an untagged file when no model is set up, since classification never ran", async () => {
   consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
   await act(async () => {

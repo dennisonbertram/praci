@@ -232,6 +232,8 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
       />
     );
   // With no model, or while the ask is loading, classification never ran, so there is nothing to say.
+  // A file still being tagged may yet get a type; only a finished classification can have failed.
+  if (item.status !== "indexing" && item.status !== "ready") return null;
   if (!consent?.allowed || consent.recipients.length === 0) return null;
   return (
     <p className={note}>
