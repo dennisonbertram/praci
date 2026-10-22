@@ -1481,6 +1481,7 @@ msgid "Ask before sending external email"
 msgstr "Demander avant d'envoyer un e-mail externe"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 

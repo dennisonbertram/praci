@@ -96,6 +96,7 @@ import {
   Mail,
   Maximize2,
   Menu,
+  MessageSquare,
   Monitor,
   MoreHorizontal,
   PanelLeftClose,
@@ -950,6 +951,10 @@ export function ShellPage() {
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
   const tourQuestion = useRef(false);
+  // Once the tour ends, a late profile response that still says unseen cannot restart it.
+  const [tourEnded, setTourEnded] = useState(false);
+  // After Skip tour the first question stays one tap away in Chief's composer.
+  const [askChiefChip, setAskChiefChip] = useState(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
   const firstQuestionOpen = Boolean(
     snapshot?.messages.some((message) =>
@@ -962,7 +967,8 @@ export function ShellPage() {
     ),
   );
   const tourOpen =
-    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false && !tourEnded && bots.length > 0 && !firstQuestionOpen);
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -2239,7 +2245,16 @@ export function ShellPage() {
       ]);
       return [
         {
+          heading: t`Mail`,
+          first: true,
+          icon: <Search size={16} strokeWidth={1.75} />,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
+        },
+        {
           heading: t`Contacts`,
+          icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
             id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
             label: c.label,
@@ -2248,25 +2263,21 @@ export function ShellPage() {
         },
         {
           heading: t`Documents`,
+          icon: <FileText size={16} strokeWidth={1.75} />,
           entries: found.documents.map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
             detail: doc.detail,
           })),
         },
-        { heading: t`Chats`, entries: chats },
+        { heading: t`Chats`, icon: <MessageSquare size={16} strokeWidth={1.75} />, entries: chats },
         {
           heading: t`Artifacts`,
+          icon: <Files size={16} strokeWidth={1.75} />,
           entries: found.artifacts.map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
           })),
-        },
-        {
-          heading: t`Mail`,
-          entries: [
-            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
-          ],
         },
       ];
     },
@@ -4045,6 +4056,17 @@ export function ShellPage() {
               onAttachmentPick={onAttachmentPick}
               onRemoveAttachment={removeAttachment}
               onSend={sendMessage}
+              quickAsk={
+                askChiefChip && active?.id === chiefId
+                  ? {
+                      label: t`Ask Chief`,
+                      onAsk: () => {
+                        setAskChiefChip(false);
+                        void sendMessage(t`What should I do first this week?`, [], newClientId());
+                      },
+                    }
+                  : undefined
+              }
               onStop={stopRun}
               onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
@@ -4771,6 +4793,11 @@ export function ShellPage() {
                                   rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
                                 )
                               : null;
+                          // Ink for work in progress; only a waiting question uses a status colour.
+                          const workTone =
+                            item.kind === "bot" && item.chat.status === "waiting_input"
+                              ? "text-warning"
+                              : "text-foreground";
                           const rowError =
                             item.kind === "bot" &&
                             (rosterHasUndismissedRunError(
@@ -5056,7 +5083,7 @@ export function ShellPage() {
                                                   rowError
                                                     ? "font-medium text-destructive"
                                                     : workStatusLabel
-                                                      ? "font-semibold text-status-working"
+                                                      ? `font-semibold ${workTone}`
                                                       : "font-medium text-foreground/75"
                                                 }`}
                                               >
@@ -5074,7 +5101,7 @@ export function ShellPage() {
                                               }
                                               className={`truncate text-[12px] leading-[18px] ${
                                                 workStatusLabel
-                                                  ? "font-semibold text-status-working"
+                                                  ? `font-semibold ${workTone}`
                                                   : item.chat.unread
                                                     ? "font-medium text-foreground/75"
                                                     : "text-muted-foreground"
@@ -5234,8 +5261,14 @@ export function ShellPage() {
             setFocusComposerBotId(chiefId);
             openBot(chiefId);
           }}
+          onSkip={() => {
+            setAskChiefChip(true);
+            // The chip lives in Chief's composer, so open Chief wherever the tour was skipped.
+            if (chiefId) openBot(chiefId);
+          }}
           onClose={(me, byEscape) => {
             setTourRestart(false);
+            setTourEnded(true);
             // Escape ends only the tour; the drawer it opened closes on the next press.
             if (!byEscape) setMobileSidebarOpen(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
@@ -5284,6 +5317,7 @@ export function ShellPage() {
               aria-label={t`Settings`}
               onClick={() => {
                 setMenuOpen(false);
+                setMobileSidebarOpen(false);
                 openSettings("general");
               }}
             >

@@ -177,6 +177,77 @@ it("shows the matched field under a contact and a date on a chat hit, with the m
   expect(marks.filter((mark) => mark.textContent === "Halcyon")).toHaveLength(2);
 });
 
+const listText = () =>
+  document.querySelector("[data-testid=command-palette-list]")?.textContent ?? "";
+const wait = (ms: number) =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  });
+
+it("does not say No results while the search is still running", async () => {
+  await mount(undefined, () => new Promise(() => undefined));
+  await search("zzzz");
+  await wait(300);
+  expect(listText()).not.toContain("No results");
+});
+
+it("says No results once the search has answered with nothing", async () => {
+  await mount(undefined, async () => []);
+  await search("zzzz");
+  await wait(300);
+  expect(listText()).toContain("No results");
+});
+
+it("lists the mail action first, marks rows with the group icon, and Enter still opens the best match", async () => {
+  const onSelectPage = vi.fn();
+  await mount(onSelectPage, async () => [
+    {
+      heading: "Mail",
+      first: true,
+      icon: <svg data-testid="mail-icon" />,
+      entries: [{ id: "/m", label: "Search mail for “fin”" }],
+    },
+    {
+      heading: "Contacts",
+      icon: <svg data-testid="contact-icon" />,
+      entries: [{ id: "/c", label: "Fin Person", detail: "fin" }],
+    },
+  ]);
+  await search("fin");
+  await wait(300);
+  const headings = [...document.querySelectorAll("[cmdk-group-heading]")].map((h) => h.textContent);
+  expect(headings[0]).toBe("Mail");
+  expect(document.querySelector("[data-testid=mail-icon]")).toBeTruthy();
+  expect(document.querySelector("[data-testid=contact-icon]")).toBeTruthy();
+  // A snippet that only repeats the query is left out.
+  expect(listText()).not.toMatch(/Fin Person\s*fin$/);
+  const input = document.querySelector("[data-testid=command-palette-search]");
+  await act(async () => {
+    input?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  expect(onSelectPage).toHaveBeenCalledWith("finance");
+});
+
 it("strips markdown from a chat snippet", () => {
   expect(plainSnippet("**Halcyon** closes `Friday`")).toBe("Halcyon closes Friday");
+});
+
+it("keeps a row selected for Enter on open and after the search is cleared", async () => {
+  const onSelectPage = vi.fn();
+  await mount(onSelectPage);
+  const enter = () =>
+    act(async () => {
+      document
+        .querySelector("[data-testid=command-palette-search]")
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+  expect(document.querySelector("[cmdk-item][data-selected=true]")).not.toBeNull();
+  await enter();
+  expect(onSelectPage).toHaveBeenLastCalledWith("finance");
+  await search("fin");
+  await search("");
+  expect(document.querySelector("[cmdk-item][data-selected=true]")).not.toBeNull();
+  onSelectPage.mockClear();
+  await enter();
+  expect(onSelectPage).toHaveBeenCalledWith("finance");
 });

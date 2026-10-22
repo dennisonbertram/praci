@@ -1481,6 +1481,7 @@ msgid "Ask before sending external email"
 msgstr "Dışarıya e-posta göndermeden önce sor"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 
