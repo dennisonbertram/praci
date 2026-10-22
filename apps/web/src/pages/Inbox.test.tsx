@@ -83,6 +83,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onMoveToInbox,
     onAskAgentPanel,
     onReplyDone,
+    replyDoneText,
     notice,
   }: {
     messageId: string | null;
@@ -91,6 +92,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onMoveToInbox?: () => void;
     onAskAgentPanel?: () => Promise<unknown>;
     onReplyDone?: () => void;
+    replyDoneText?: string;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -104,6 +106,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
             dialog archive
           </button>
         ) : null}
+        {replyDoneText ? <span>done text: {replyDoneText}</span> : null}
         {onReplyDone ? (
           <button type="button" onClick={onReplyDone}>
             dialog reply done
@@ -136,9 +139,9 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onArchive,
     onRead,
     selectedId,
-    todoIds,
+    todoDue,
   }: {
-    todoIds?: ReadonlySet<string>;
+    todoDue?: ReadonlyMap<string, string | null>;
     title?: ReactNode;
     rows: MailRow[];
     onOpen: (id: string) => void;
@@ -156,7 +159,8 @@ vi.mock("../components/inbox/InboxRow", () => ({
           data-selected={selectedId === row.id}
           data-feedback={row.feedback ?? ""}
           data-category={row.category ?? ""}
-          data-todo={todoIds?.has(row.id) ? "" : undefined}
+          data-todo={todoDue?.has(row.id) ? "" : undefined}
+          data-due={todoDue?.get(row.id) ?? undefined}
           onClick={() => onOpen(row.id)}
         >
           {row.subject}
@@ -466,6 +470,8 @@ it("drops only the undated reply to-do whose mail is listed under Needs reply, m
   // Those rows say "To do" instead.
   const marked = [...c.querySelectorAll("[data-todo]")].map((el) => el.getAttribute("data-row-id"));
   expect(marked).toEqual(["a", "b"]);
+  // The dated one keeps its due date on the row.
+  expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-due")).toBe("2099-01-01");
 });
 
 it("completes a hidden reply to-do from the open mail", async () => {
@@ -488,6 +494,25 @@ it("completes a hidden reply to-do from the open mail", async () => {
   await click(c.querySelector('[data-row-id="a"]'));
   await click(byText(document.body, "dialog reply done"));
   expect(rpcMock.setDone).toHaveBeenCalledWith({ id: "t1", done: true });
+});
+
+it("names the due date on the open mail's completion control", async () => {
+  const dated = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: "2099-01-01",
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+  rpcMock.todos.mockResolvedValue({ todos: [dated] });
+  const c = await render();
+  await click(c.querySelector('[data-row-id="a"]'));
+  expect(document.body.textContent).toContain("done text: Reply to Morgan · Jan 1");
 });
 
 it("does not show sorting when Allow is pressed on an already sorted mailbox", async () => {

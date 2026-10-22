@@ -340,7 +340,7 @@ function InboxMessage({
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
-          agentBot && "md:pe-96 min-[1280px]:pe-4",
+          agentBot && "md:pe-96 min-[1280px]:pe-4!",
         )}
       >
         <div className="flex items-start gap-2">

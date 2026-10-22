@@ -78,7 +78,7 @@ import {
   senderGroupId,
 } from "../components/inbox/InboxSenderGroup";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
-import { TodoCard } from "../components/inbox/TodoCard";
+import { dueLabel, TodoCard } from "../components/inbox/TodoCard";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
@@ -1070,8 +1070,8 @@ function InboxListPage({
   const replyRowIds = new Set(replyRows.map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
     todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
-  const todoRowIds = new Set(
-    (todos ?? []).filter(repeatsRow).map((todo) => todo.messageId as string),
+  const todoRowDue = new Map(
+    (todos ?? []).filter(repeatsRow).map((todo) => [todo.messageId as string, todo.dueOn ?? null]),
   );
   const cardTodos = todos?.filter((todo) => !repeatsRow(todo));
   // Its checkbox is gone from the card, so the open mail offers the completion instead.
@@ -1850,7 +1850,7 @@ function InboxListPage({
                     title={<Trans>Needs reply</Trans>}
                     hideAttention
                     rows={replyRows}
-                    todoIds={todoRowIds}
+                    todoDue={todoRowDue}
                     unreadTotal={groups.needsReply.filter((row) => row.unread).length}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
@@ -1999,7 +1999,11 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
-          replyDoneText={openReplyTodo?.text}
+          replyDoneText={
+            openReplyTodo?.dueOn
+              ? `${openReplyTodo.text} · ${dueLabel(openReplyTodo.dueOn, new Date())}`
+              : openReplyTodo?.text
+          }
           onReplyDone={
             openReplyTodo
               ? () =>
