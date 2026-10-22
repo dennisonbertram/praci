@@ -71,6 +71,17 @@ describe("describeApprovalAction money and generic tools", () => {
     expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
   });
 
+  it("names the service that must still approve a send-money request", () => {
+    const block = buildApprovalAskBlock(
+      "e1",
+      "mcp__finance-mercury__requestSendMoney",
+      { amount: 5 },
+      [],
+      { serviceName: "Mercury" },
+    );
+    expect(block.kind === "ask" && block.waitsFor).toBe("Mercury");
+  });
+
   it("keeps hand-written titles", () => {
     expect(describeApprovalAction("contacts_save", { name: "Ann" })).toBe("Save contact “Ann”");
   });

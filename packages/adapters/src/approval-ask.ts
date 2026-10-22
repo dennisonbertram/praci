@@ -98,6 +98,7 @@ export function buildApprovalAskBlock(
         ? safeDetail
         : truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH)
       : undefined,
+    waitsFor: isSendMoney(toolName) ? options?.serviceName : undefined,
     mail: mailApproval(
       toolName,
       options?.mailAccount && !(typeof args.account === "string" && args.account)
