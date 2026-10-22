@@ -11774,10 +11774,6 @@ msgstr ""
 msgid "What did we spend last month?"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
-msgstr ""
-
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
@@ -11796,6 +11792,10 @@ msgstr "어떤 작업을 직접 보여줄까요?"
 
 #: src/pages/Shell.tsx
 msgid "What should I do first this week?"
+msgstr ""
+
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx

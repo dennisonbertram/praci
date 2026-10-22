@@ -1080,8 +1080,9 @@ function InboxListPage({
       />
     ) : null;
   // A to-do made from a visible Needs reply row would show the same task twice, so the card drops
-  // it and the open mail offers its completion.
-  const replyRowIds = new Set(replyRows.map((row) => row.id));
+  // it and the open mail offers its completion. Only the first rows count, so "Show more" does not
+  // change the card.
+  const replyRowIds = new Set(groups.needsReply.slice(0, NEEDS_REPLY_SHOWN).map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
     todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
   const todoRowDue = new Map(

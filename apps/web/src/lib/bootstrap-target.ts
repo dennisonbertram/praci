@@ -4,11 +4,28 @@ export function initialBootstrapTarget(pathname: string, desktop: boolean) {
   return { botId: appRoute ? botIdFromPath(pathname) : undefined };
 }
 
+// The /app/<segment> routes in App.tsx that are pages, not agents; their bootstrap has no bot.
+const PAGE_SEGMENTS = new Set([
+  "g",
+  "artifacts",
+  "board",
+  "inbox",
+  "integrations",
+  "finance",
+  "legal",
+  "gtm",
+  "devin",
+  "data-room",
+  "investors",
+  "fundraising",
+  "cap-table",
+  "contacts",
+]);
+
 function botIdFromPath(pathname: string) {
   const segments = pathname.split("/");
-  if (segments[2] === "g" || segments[2] === "artifacts" || segments[2] === "board")
-    return undefined;
   const encoded = segments[2];
+  if (encoded && PAGE_SEGMENTS.has(encoded)) return undefined;
   if (!encoded) return undefined;
   try {
     return decodeURIComponent(encoded);

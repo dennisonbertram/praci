@@ -16,6 +16,11 @@ describe("initial bootstrap target", () => {
     expect(initialBootstrapTarget("/app/g/group-1", false)).toEqual({ botId: undefined });
   });
 
+  it("primes page routes without a bot, so the shell reuses the request", () => {
+    for (const page of ["inbox", "finance/overview", "data-room", "investors", "gtm", "contacts"])
+      expect(initialBootstrapTarget(`/app/${page}`, false)).toEqual({ botId: undefined });
+  });
+
   it("does not prime unrelated routes", () => {
     expect(initialBootstrapTarget("/sign-in", true)).toBeNull();
     expect(initialBootstrapTarget("/onboarding", false)).toBeNull();
