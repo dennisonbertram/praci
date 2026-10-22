@@ -6739,7 +6739,10 @@ export function ShellPage() {
             navigate(`/app/g/${id}`);
           }}
           // Without a space heading, its menu is gone; the palette still reaches this action.
-          actions={[{ label: t`Group chats into folders`, run: () => void autoGroupSidebar() }]}
+          actions={[
+            { label: t`New folder`, run: () => void createFolder() },
+            { label: t`Group chats into folders`, run: () => void autoGroupSidebar() },
+          ]}
           searchLinks={searchPaletteLinks}
           onOpenPath={openSearchResult}
         />

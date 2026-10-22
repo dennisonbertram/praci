@@ -267,3 +267,16 @@ it("offers an action only once the query matches it, and runs it", async () => {
   });
   expect(run).toHaveBeenCalledOnce();
 });
+
+it("offers New folder as an action too", async () => {
+  const run = vi.fn();
+  await mount(vi.fn(), undefined, [{ label: "New folder", run }]);
+  await search("new fol");
+  const item = [...document.querySelectorAll("[cmdk-item]")].find((node) =>
+    node.textContent?.includes("New folder"),
+  );
+  await act(async () => {
+    item?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  expect(run).toHaveBeenCalledOnce();
+});
