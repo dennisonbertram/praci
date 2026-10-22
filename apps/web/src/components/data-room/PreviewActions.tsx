@@ -114,6 +114,11 @@ export function FileViewer({
             : `${file.url}#toolbar=0`
         }
         title={item.name}
+        // The browser's PDF viewer takes focus when it loads, so the first Escape would go to it.
+        onLoad={(event) => {
+          if (fill)
+            event.currentTarget.closest<HTMLElement>('[data-slot="dialog-content"]')?.focus();
+        }}
         className={`w-full shrink-0 rounded-md border border-border bg-muted max-sm:hidden ${fill ? "h-full" : height}`}
       />
     </>
@@ -251,7 +256,11 @@ export function FullScreenPreview({
   const [error, setError] = useState("");
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-dvh max-h-none w-screen max-w-none flex-col gap-3 max-sm:rounded-none sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none">
+      <DialogContent
+        // Start on Close rather than "Open in new tab"; Escape then works from the first press.
+        initialFocus={() => document.querySelector<HTMLElement>('[data-slot="dialog-close"]')}
+        className="flex h-dvh max-h-none w-screen max-w-none flex-col gap-3 max-sm:rounded-none sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none"
+      >
         <div className="flex items-center gap-1 pe-9">
           <DialogTitle className="min-w-0 flex-1 truncate">{item.name}</DialogTitle>
           <PreviewActions item={item} hidden={hidden} onError={setError} />

@@ -251,6 +251,13 @@ export function ContactsPage({
                 : undefined
             }
             contacts={contacts ?? []}
+            finalFocus={() =>
+              editing === "new"
+                ? undefined
+                : container.current?.querySelector<HTMLElement>(
+                    `[data-contact-id="${editing.id}"] [data-row-open]`,
+                  )
+            }
             onClose={() => setEditing(null)}
             onSaved={(saved) => {
               load();

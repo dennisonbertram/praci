@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { MAIN_CONTENT_ID } from "../../components/SkipToContent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** Chat snippets come from markdown replies; show them as plain text. */
@@ -447,7 +448,13 @@ export function CommandPalette({
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
-      finalFocus={() => openedFrom.current}
+      finalFocus={() => {
+        // A trigger that is gone (a closed phone drawer) or the page body falls back to the page itself.
+        const from = openedFrom.current;
+        return from?.isConnected && from !== document.body
+          ? from
+          : document.getElementById(MAIN_CONTENT_ID);
+      }}
       title={t`Go to`}
       description={t`Search pages, bots, groups, documents and artifacts`}
       // On a phone the keyboard covers the lower half, so the palette sits at the top.
