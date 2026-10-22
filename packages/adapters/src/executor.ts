@@ -6765,7 +6765,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               toolResultError(result) === undefined
             ) {
               await recordPaymentSubmitted(deps, run, applied.effect.id, callRoute.serverName);
-              return finish(approvedPaymentResult(result));
+              return finish(approvedPaymentResult(result, callRoute.serverName));
             }
             return finish(result);
           }

@@ -364,11 +364,17 @@ export type ExternalEffectStore = {
 export const DENIED_ACTION_MESSAGE =
   'The person you are talking to denied this action. When you tell them, address them as "you" (say "you denied it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.';
 
-/** An approved payment is final from the person's side: the bank processes it, nothing is left to approve here. */
-export function approvedPaymentResult(result: unknown): unknown {
+/**
+ * Wording for a payment the person approved here and the tool call returned without an error.
+ * When the bank reports `pendingApproval` it still needs its own approval, so the note says so.
+ */
+export function approvedPaymentResult(result: unknown, bank = "the bank"): unknown {
+  const pending = JSON.stringify(result)?.includes("pendingApproval");
   return {
     result,
-    note: "The person approved this payment and it was sent to the bank, which is processing it. No further approval is needed. Tell them in one line that it was sent and is being processed; do not ask them to approve again.",
+    note: pending
+      ? `The person's approval in Praci is done, and ${bank} accepted the request, but ${bank} still needs its own approval before it processes the payment. Tell them in one line to finish that approval in ${bank}; do not say it was sent, and do not ask them to approve again in chat.`
+      : `The person approved this payment and ${bank} accepted it. Tell them in one line that it was sent; do not ask them to approve again.`,
   };
 }
 

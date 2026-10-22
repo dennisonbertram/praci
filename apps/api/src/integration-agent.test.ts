@@ -1,6 +1,6 @@
 import type { Actor } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { ensureConnectedAppAgent } from "./integration-agent.js";
+import { ensureConnectedAppAgent, instructions } from "./integration-agent.js";
 
 const actor = {
   userId: "user",
@@ -41,5 +41,14 @@ describe("connected app agent description", () => {
     const input = createBot.mock.calls[0]?.[1] as { description: string };
     expect(input.description).toBe("Your Slack account");
     expect(input.description).not.toContain("message_bot");
+  });
+});
+
+describe("writer agent instructions on payment outcomes", () => {
+  it("allows 'sent' only when the tool result shows acceptance and reports failures", () => {
+    const text = instructions("Mercury");
+    expect(text).toContain("only when the tool result shows Mercury accepted it");
+    expect(text).toContain("error or refuses the call, report that failure");
+    expect(text).not.toContain("say it was sent; never");
   });
 });

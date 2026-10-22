@@ -586,11 +586,17 @@ describe("catalog wrapper names", () => {
 });
 
 describe("payment outcome wording for the model", () => {
-  it("tells the agent an approved payment is sent and needs no further approval", () => {
-    const out = approvedPaymentResult({ status: "pendingApproval" }) as { note: string };
-    expect(out.note).toContain("No further approval");
-    expect(out.note).toContain("sent");
-    expect(JSON.stringify(out)).toContain("pendingApproval");
+  it("says sent when the bank accepted the payment", () => {
+    const out = approvedPaymentResult({ status: "sent" }, "Mercury") as { note: string };
+    expect(out.note).toContain("Mercury accepted it");
+    expect(out.note).toContain("was sent");
+  });
+
+  it("names the bank's own approval when the payment is pendingApproval", () => {
+    const out = approvedPaymentResult({ status: "pendingApproval" }, "Mercury") as { note: string };
+    expect(out.note).toContain("Mercury still needs its own approval");
+    expect(out.note).not.toContain("No further approval");
+    expect(out.note).toContain("do not say it was sent");
   });
 
   it("speaks to the person in the second person after a denial", () => {
