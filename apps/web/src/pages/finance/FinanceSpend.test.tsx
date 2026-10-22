@@ -153,7 +153,7 @@ it("says how many non-USD transactions a category's total leaves out", async () 
   );
   await act(async () => {});
   expect(container.textContent).toContain("$22,500");
-  expect(container.textContent).toContain("1 non-USD not counted");
+  expect(container.textContent).toContain("1 non-USD transaction not counted");
 });
 
 it("says what the month under way has cost, since the chart and the change stop at the last full month", async () => {

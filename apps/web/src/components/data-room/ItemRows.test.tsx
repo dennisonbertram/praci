@@ -96,8 +96,8 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
-  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
-  expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
+  expect(head?.textContent).toBe("NameTypeAddedParties");
+  expect(container.querySelectorAll("colgroup > col")).toHaveLength(5);
 });
 
 it("cuts parties to one line with the full value in the title, and shows a dash when empty", () => {
@@ -143,8 +143,8 @@ it("puts the status in its own column as a badge, and never in the Type cell", (
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
-  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", ""]);
-  expect(cells[0]?.querySelector("[data-slot=badge]")).not.toBeNull();
+  expect(cells.map((cell) => cell.textContent)).toEqual(["", "Reading", ""]);
+  expect(cells[1]?.querySelector("[data-slot=badge]")).not.toBeNull();
   // The Type cell (second) never holds a status word.
   for (const row of container.querySelectorAll("[data-row]")) {
     expect(row.children[1]?.textContent).not.toMatch(/Reading|Failed/);
@@ -289,8 +289,8 @@ it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  // Type, Added, Parties and Status.
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
+  // Type, Added and Parties; Status only while a row has one.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
 });
 
 it("opens the file when its search snippet is clicked", () => {
@@ -335,8 +335,9 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
       <ListView
         rows={[{ item: item("a", null), snippets: [] }]}
         o={o()}
-        lead={() => (
+        lead={(status) => (
           <SubfolderList
+            status={status}
             folders={[invoices]}
             contents={() => "2 items"}
             onOpen={vi.fn()}
@@ -611,21 +612,30 @@ it("ticks a row from its checkbox or the x key without opening the preview", () 
 const asRows = (...items: unknown[]) =>
   items.map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
 
-it("gives a file that cannot be read its reason, an Unreadable type and no inline button", () => {
+it("gives a failed file one red reason and a visible Try again, with no pill, no Type and no Status column", () => {
   const rows = asRows({
     ...item("scan", null),
     status: "failed",
     error: "This file isn't a readable PDF.",
   });
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  // The row menu holds its one Delete; the row shows only the reason, at every width.
   const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
-  expect(buttons).not.toContain("Try again");
+  expect(buttons).toContain("Try again");
   expect(buttons).not.toContain("Delete");
   const reason = container.querySelector('[data-testid="data-room-error"]');
   expect(reason?.textContent).toBe("This file isn't a readable PDF.");
   expect(reason?.className).not.toContain("hidden");
-  expect(container.querySelector("[data-row]")?.children[1]?.textContent).toBe("Unreadable");
+  expect(container.textContent).not.toContain("Unreadable");
+  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
+  expect(container.querySelector("[data-testid=data-room-head]")?.textContent).not.toContain(
+    "Status",
+  );
+});
+
+it("keeps the Status column while a file is being read", () => {
+  const rows = asRows({ ...item("busy", null), status: "extracting" });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector('[data-testid="data-room-status"]')).not.toBeNull();
 });
 
 it("keeps Try again for a failure that is not about the file's bytes", () => {
@@ -698,9 +708,9 @@ it("shows a file icon, not a spinner, on a file whose text is already stored, in
   expect(container.querySelector("[role=presentation]")).toBeNull();
 });
 
-it("keeps the Status column when no row has a status, so the columns never move", () => {
+it("drops the Status column when no row has a status, so it takes no width", () => {
   act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
-  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain(
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
     "Status",
   );
 });

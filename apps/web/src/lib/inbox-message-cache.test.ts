@@ -64,3 +64,35 @@ it("loads a conversation again after mail is sent, so the reply shows in it", as
   await expect(cache.loadInboxMessage("a")).resolves.toEqual({ id: "a", later: [{}] });
   expect(get).toHaveBeenCalledTimes(2);
 });
+
+it("ignores a late original request after a retry has been cached", async () => {
+  let resolveOld: (v: unknown) => void = () => {};
+  get.mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolveOld = r;
+      }),
+  );
+  const old = cache.loadInboxMessage("a");
+  cache.forgetInboxMessage("a");
+  get.mockResolvedValueOnce({ id: "a", v: "new" });
+  await cache.loadInboxMessage("a");
+  resolveOld({ id: "a", v: "old" });
+  await old;
+  expect(cache.peekInboxMessage("a")).toEqual({ id: "a", v: "new" });
+});
+
+it("does not cache a request that finishes after the cache was cleared", async () => {
+  let resolveOld: (v: unknown) => void = () => {};
+  get.mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolveOld = r;
+      }),
+  );
+  const old = cache.loadInboxMessage("a");
+  cache.clearInboxMessages();
+  resolveOld({ id: "a" });
+  await old;
+  expect(cache.peekInboxMessage("a")).toBeUndefined();
+});

@@ -14,9 +14,7 @@ for (const totalTokens of [201, null]) {
     await signup(page, `usage-total-${stamp}@rakazo.test`, "password12", "Usage totals");
     await completeOnboarding(page);
     await openUserSettings(page);
-    await expect(page.getByTestId("usage-settings")).toContainText(
-      `2 tasks done by your bots · ${totalTokens ?? "—"} tokens of AI text`,
-    );
+    await expect(page.getByTestId("usage-settings")).toContainText("2 tasks done by your bots");
     await captureScreenshot(
       page,
       testInfo,

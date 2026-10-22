@@ -758,6 +758,7 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
       bankCents: parts.bankCents,
       stablecoinCents: parts.stablecoinCents,
       otherCryptoCents: parts.otherCryptoCents,
+      unpricedTokenCount: crypto?.unpricedTokenCount ?? 0,
     },
     monthlyBurnCents: monthlyCents,
     runway: runway(cashCents, monthlyCents, now),

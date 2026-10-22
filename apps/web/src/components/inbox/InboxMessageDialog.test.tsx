@@ -783,3 +783,25 @@ it("shows the loading state, not the previous message, after switching", async (
   expect(document.body.textContent).toContain("Next row");
   expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
 });
+
+it("shows Reply and Archive while the body loads, and a retry line after 5 seconds", async () => {
+  vi.useFakeTimers();
+  get.mockReturnValue(new Promise(() => {}));
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="slow" subject="Hi" onArchive={() => {}} onClose={() => {}} />,
+    ),
+  );
+  const labels = () => [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels()).toEqual(expect.arrayContaining(["Reply", "Archive"]));
+  expect(document.body.textContent).not.toContain("Still loading");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(document.body.textContent).toContain("Still loading…");
+  expect(labels()).toContain("Try again");
+  await act(async () => {
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Try again")?.click();
+  });
+  expect(get).toHaveBeenCalledTimes(2);
+});

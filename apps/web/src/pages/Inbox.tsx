@@ -1677,8 +1677,9 @@ function InboxListPage({
                 )}
               </p>
             )}
-            {/* Real rows are 57px apart with no gap, so the list does not jump when they arrive. */}
-            <div>
+            {/* Real rows are 57px apart with no gap, so the list does not jump when they arrive.
+                Beside the consent card, blank bars look stalled, so only the card shows. */}
+            <div hidden={Boolean(consentPrompt) && !sortingRows}>
               {[0, 1, 2, 3, 4].map((n) => (
                 <Skeleton
                   key={n}
@@ -1794,7 +1795,11 @@ function InboxListPage({
                 </Button>
               </div>
             ) : null}
-            <div className={cn(sorting && slowSort && !stalled && "opacity-60")}>
+            {/* The sort is about to regroup these rows, so a tap now could open a different mail: inert until it lands. */}
+            <div
+              className={cn(sorting && slowSort && !stalled && "opacity-60")}
+              inert={sorting && slowSort && !stalled}
+            >
               {digestOn ? (
                 <InboxDigest
                   rows={digestList}

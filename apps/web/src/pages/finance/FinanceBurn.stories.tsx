@@ -242,6 +242,23 @@ export const RunwayBankOnly: Story = {
       },
     }),
 };
+/** Crypto held but not counted: the switch is off, and the chart sits where it does with the switch on. */
+export const RunwayCryptoOff: Story = {
+  render: () => <FinanceRunwayPage />,
+  beforeEach: () =>
+    mockRpc({ "finance.runway": { ...runway, runwayCrypto: "bank", cashCents: 120_000_00 } }),
+};
+/** A token without a price is named beside the crypto line. */
+export const RunwayUnpriced: Story = {
+  render: () => <FinanceRunwayPage />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.runway": {
+        ...runway,
+        breakdown: { ...runway.breakdown, unpricedTokenCount: 1 },
+      },
+    }),
+};
 export const RunwayNotBurning: Story = {
   render: () => <FinanceRunwayPage />,
   beforeEach: () =>

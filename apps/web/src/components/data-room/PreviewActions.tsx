@@ -17,6 +17,7 @@ import {
   canPreviewImage,
   canPreviewPdf,
   dataRoomFileUrl,
+  openDataRoomFileDirect,
   openDataRoomItem,
   saveDataRoomItem,
 } from "../../lib/data-room";
@@ -97,10 +98,16 @@ export function FileViewer({
   }
   if (!file.url)
     return (
-      <div
-        data-testid="preview-skeleton"
-        className={`animate-pulse rounded-md bg-muted ${fill ? "h-full" : "h-48"}`}
-      />
+      <>
+        {/* On a phone the PDF's Open and Download do not need the file loaded, so they show at once. */}
+        {item.mimeType === "application/pdf" ? (
+          <PdfPhoneFallback item={item} url={file.url} fill={fill} />
+        ) : null}
+        <div
+          data-testid="preview-skeleton"
+          className={`animate-pulse rounded-md bg-muted ${item.mimeType === "application/pdf" ? "max-sm:hidden " : ""}${fill ? "h-full" : "h-48"}`}
+        />
+      </>
     );
   return item.mimeType === "application/pdf" ? (
     <>
@@ -138,6 +145,7 @@ function PdfPhoneFallback({
   fill,
 }: {
   item: DataRoomApiItem;
+  /** Empty while the file loads; Open then fetches it itself. */
   url: string;
   fill: boolean;
 }) {
@@ -152,7 +160,13 @@ function PdfPhoneFallback({
     >
       <FileText aria-hidden="true" className="size-8 text-muted-foreground" />
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => window.open(url, "_blank", "noopener")}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            url ? window.open(url, "_blank", "noopener") : run(openDataRoomFileDirect)
+          }
+        >
           <ExternalLink aria-hidden="true" />
           {t`Open`}
         </Button>

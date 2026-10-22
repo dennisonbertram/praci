@@ -99,7 +99,7 @@ function Highlight({ text, needle, clip }: { text: string; needle: string; clip?
 }
 
 /** The row Enter opens: data-selected's bg-muted barely shows on the popover, so mark it. */
-const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_currentColor]";
+const SELECTED_ROW = "data-selected:bg-accent";
 
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
 export type PaletteEntry = {
@@ -336,7 +336,7 @@ export function CommandPalette({
           }}
           className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
         >
-          <span className="grid size-8 place-items-center text-muted-foreground">{page.icon}</span>
+          <span className="grid size-5 place-items-center text-muted-foreground">{page.icon}</span>
           <span className="truncate font-medium text-foreground">
             <Highlight text={page.label} needle={needle} />
           </span>
@@ -411,12 +411,6 @@ export function CommandPalette({
       return { ...group, entries: [...titles, ...bodies] };
     })
     .sort((a, b) => groupRank(b) - groupRank(a));
-  const noDirectMatch =
-    !directLinks.length &&
-    !shownPages.length &&
-    !shownGroups.length &&
-    !shownActions.length &&
-    !filteredBots.length;
   const searching = Boolean(needle && searchLinks && answered !== needle);
 
   // Direct matches come first, so Enter opens the first row; with none, the catch-all search does.
@@ -501,11 +495,6 @@ export function CommandPalette({
               <Trans>No results</Trans>
             </CommandEmpty>
           )}
-          {needle && !searching && noDirectMatch && fallbackLinks.length ? (
-            <p className="px-3 py-3 text-sm text-muted-foreground">
-              <Trans>No matches</Trans>
-            </p>
-          ) : null}
           {sectionOrder.map((section) => (
             <Fragment key={section}>
               {section === "bots" ? botsGroup : section === "groups" ? groupsGroup : pagesGroup}

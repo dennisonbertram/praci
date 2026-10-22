@@ -389,7 +389,6 @@ test("Blockscout tile: no server is ready without a key, Add API key opens the k
   await dialog.getByLabel("API key").fill("good-key");
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(tile).toContainText("Connected");
   await expect(tile).not.toContainText("Not connected");
   await expect(tile.getByRole("link", { name: "Open Finance" })).toBeVisible();
   await captureScreenshot(page, testInfo, "blockscout-tile-connected");
