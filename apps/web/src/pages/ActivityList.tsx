@@ -13,7 +13,7 @@ import {
   emptyActivityFilters,
   filterActivityRuns,
 } from "../lib/activity-list-filters";
-import { formatRelativeTime } from "../lib/relative-time";
+import { formatRosterTime } from "../lib/roster-time";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -450,7 +450,7 @@ function ActivityRow({ run, onOpen }: { run: RunActivityRow; onOpen: () => void 
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-sm font-medium text-foreground">{title}</span>
           <span className="shrink-0 text-xs text-muted-foreground/80">
-            {formatRelativeTime(run.updatedAt)}
+            {formatRosterTime(run.updatedAt)}
           </span>
         </div>
         <div className="mt-0.5 flex items-baseline gap-2">
@@ -475,7 +475,7 @@ export function statusLabel(status: RunActivityRow["status"]): string {
     case "running":
       return t`Running`;
     case "waiting_input":
-      return t`Needs input`;
+      return t`Needs your answer`;
     case "waiting_takeover":
       return t`Needs takeover`;
     case "completed":

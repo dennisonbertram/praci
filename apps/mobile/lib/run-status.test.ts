@@ -8,7 +8,7 @@ describe("botRowStatus", () => {
   it("says what each run state is", () => {
     expect(botRowStatus({ status: "queued" })).toBe("Waiting in line…");
     expect(botRowStatus({ status: "running" })).toBe("Working…");
-    expect(botRowStatus({ status: "waiting_input" })).toBe("Needs an answer");
+    expect(botRowStatus({ status: "waiting_input" })).toBe("Needs your answer");
     expect(botRowStatus({ status: "waiting_takeover" })).toBe("Needs you");
     expect(botRowStatus({ status: "idle" })).toBeNull();
   });

@@ -22,7 +22,7 @@ msgid " (failed)"
 msgstr ""
 
 #: src/components/sidebar-glance.tsx
-msgid " (needs input)"
+msgid " (needs your answer)"
 msgstr ""
 
 #: src/components/sidebar-glance.tsx
@@ -6564,9 +6564,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
-#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Girdi bekliyor"
 
@@ -6582,6 +6580,7 @@ msgstr ""
 msgid "Needs sign-in"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Devralma bekliyor"
@@ -6595,9 +6594,12 @@ msgstr "Devralma bekliyor"
 msgid "Needs you"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
+#: src/components/sidebar-glance.tsx
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
-msgstr ""
+msgstr "Girdi bekliyor"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx

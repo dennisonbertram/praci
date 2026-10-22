@@ -181,7 +181,6 @@ import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOv
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
-import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -243,6 +242,7 @@ import {
 import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
+  rosterHeldFor,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
@@ -916,16 +916,11 @@ export function ShellPage() {
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
   // Phones open the drawer on the chat list; Activity there is one tap away.
-  const [activityMode, setActivityMode] = useState(
-    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
-  );
-  const toggleActivityMode = useCallback(() => {
-    setActivityMode((on) => {
-      const next = !on;
-      writeActivityMode(next);
-      return next;
-    });
-  }, []);
+  // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
+  const [activityMode, setActivityMode] = useState(false);
+  const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
+  useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
     kind: "bot" | "group";
     id: string;
@@ -4392,7 +4387,9 @@ export function ShellPage() {
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-            <div className="flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto">
+            <div
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:overflow-y-auto ${activityMode ? "lg:max-h-[16vh]" : "lg:max-h-[50vh]"}`}
+            >
               <SidebarPagesGroup
                 title={t`Pages`}
                 collapsed={collapsedSidebarSections.has("pages")}
@@ -4832,6 +4829,16 @@ export function ShellPage() {
                             if ("foldHeader" in displayRow) {
                               const email = displayRow.foldHeader === "email";
                               const rows = email ? emailChatRows : pageAgentRows;
+                              const held = rows.map((row) =>
+                                row.item.kind === "bot"
+                                  ? rosterHeldFor(row.item.chat.status)
+                                  : null,
+                              );
+                              const heldFor = held.includes("answer")
+                                ? "answer"
+                                : held.includes("takeover")
+                                  ? "takeover"
+                                  : null;
                               return (
                                 <PageAgentsRow
                                   key={displayRow.foldHeader}
@@ -4839,10 +4846,14 @@ export function ShellPage() {
                                   testId={email ? "sidebar-email-chats" : undefined}
                                   open={email ? showEmailChats : showPageAgents}
                                   count={rows.length}
-                                  needsYou={rows.some(
-                                    (row) =>
-                                      row.item.chat.unread || glance.botKinds[row.item.chat.id],
-                                  )}
+                                  needsYou={
+                                    heldFor !== null ||
+                                    rows.some(
+                                      (row) =>
+                                        row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                    )
+                                  }
+                                  heldFor={heldFor}
                                   onToggle={() =>
                                     email
                                       ? setEmailChatsOpen((open) => !open)
