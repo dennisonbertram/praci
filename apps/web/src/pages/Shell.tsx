@@ -4116,7 +4116,9 @@ export function ShellPage() {
                     }
                   : undefined
               }
-              onStop={() => void stopRun()}
+              onStop={async () => {
+                await stopRun();
+              }}
               onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
               replyTarget={activeReplyTarget}
