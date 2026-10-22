@@ -780,6 +780,10 @@ msgstr ""
 msgid "Accounts"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+msgid "Action"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Action confirmations"
 msgstr "İşlem onayları"
@@ -2129,14 +2133,13 @@ msgstr ""
 msgid "Category"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Cc"
-msgstr ""
-
-#. placeholder {0}: message.cc
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "cc {0}"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -5444,6 +5447,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -6089,6 +6093,10 @@ msgstr ""
 msgid "Mark done"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark done: {replyDoneText}"
+msgstr ""
+
 #: src/components/fundraising/SafeList.tsx
 msgid "Mark funded"
 msgstr ""
@@ -6600,10 +6608,6 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
-msgstr ""
-
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
 msgstr ""
 
 #: src/lib/devin-format.ts
@@ -10500,6 +10504,10 @@ msgstr ""
 msgid "Title"
 msgstr "Başlık"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "to"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
@@ -10508,16 +10516,12 @@ msgstr "Başlık"
 msgid "To"
 msgstr ""
 
-#. placeholder {0}: message.to
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "to {0}"
-msgstr ""
-
 #. placeholder {0}: filters.dateRange.to
 #: src/pages/ActivityList.tsx
 msgid "To {0}"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
 msgid "To do"
@@ -11014,6 +11018,7 @@ msgstr ""
 msgid "Uploaded"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
