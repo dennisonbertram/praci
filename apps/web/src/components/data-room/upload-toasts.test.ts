@@ -4,10 +4,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
   upload: vi.fn(),
+  enqueue: vi.fn(),
   folders: vi.fn(),
   imports: vi.fn(),
   space: { id: "s1" },
 }));
+vi.mock("@rakazo/ui-web", () => ({ enqueueNotificationToast: hoisted.enqueue }));
 vi.mock("../../lib/rpc", () => ({
   rpc: { dataRoom: { folders: hoisted.folders, imports: hoisted.imports } },
   selectedSpaceId: () => hoisted.space.id,
@@ -247,17 +249,44 @@ it("says a deleted folder is gone and offers to upload the same file to the top 
   if (toast?.state.kind !== "error") throw new Error("expected an error toast");
   toast.state.toTop?.();
   await flush();
-  expect(hoisted.upload).toHaveBeenLastCalledWith(deck, undefined, expect.any(Function));
+  expect(hoisted.upload).toHaveBeenLastCalledWith(
+    deck,
+    undefined,
+    expect.any(Function),
+    expect.any(AbortSignal),
+  );
   expect(getUploadToasts().map((t) => t.state.kind)).toEqual(["uploaded"]);
   window.removeEventListener(DATA_ROOM_CHANGED, changed);
 });
 
-it("drops a notice whose user changed before it was shown", () => {
+it("drops a notice whose user changed before it was shown, and shows the rest in the shared host", () => {
   setUploadScope("u1");
   const since = uploadScopeToken();
   setUploadScope("u2");
   showNoticeToast("Shared secret.pdf", since);
-  expect(names()).toEqual([]);
+  expect(hoisted.enqueue).not.toHaveBeenCalled();
   showNoticeToast("Shared ok.pdf", uploadScopeToken());
-  expect(names()).toEqual(["Shared ok.pdf"]);
+  expect(hoisted.enqueue).toHaveBeenCalledWith(expect.objectContaining({ title: "Shared ok.pdf" }));
+  expect(names()).toEqual([]);
+});
+
+it("calls an upload with no progress slow, and offers Cancel and Retry", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockReturnValue(new Promise(() => undefined));
+  uploadFilesToDataRoom([file("deck.pdf")]);
+  await flush();
+  expect(getUploadToasts()[0]?.state).toMatchObject({ kind: "uploading" });
+  expect(getUploadToasts()[0]?.state).not.toHaveProperty("stalled");
+  await vi.advanceTimersByTimeAsync(15_000);
+  const state = getUploadToasts()[0]?.state;
+  if (state?.kind !== "uploading" || !state.stalled) throw new Error("expected a stalled upload");
+  state.stalled.retry();
+  expect(hoisted.upload).toHaveBeenCalledTimes(2);
+  expect(hoisted.upload.mock.calls[0]?.[3].aborted).toBe(true);
+  expect(names()).toEqual(["deck.pdf"]);
+  await vi.advanceTimersByTimeAsync(15_000);
+  const again = getUploadToasts()[0]?.state;
+  if (again?.kind !== "uploading" || !again.stalled) throw new Error("expected a stalled upload");
+  again.stalled.cancel();
+  expect(names()).toEqual([]);
 });

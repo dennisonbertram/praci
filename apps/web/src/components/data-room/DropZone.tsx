@@ -157,8 +157,6 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   <span className="font-medium">
                     {plural(state.count, { one: "Sorted # item", other: "Sorted # items" })}
                   </span>
-                ) : state.kind === "notice" ? (
-                  <span className="min-w-0">{name}</span>
                 ) : (
                   <span className="min-w-0 truncate" title={name}>
                     {name}
@@ -179,7 +177,21 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   </Button>
                 )}
               </div>
-              {state.kind === "uploading" ? (
+              {state.kind === "uploading" && state.stalled ? (
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">
+                    <Trans>Taking longer than usual</Trans>
+                  </span>
+                  <span className="flex gap-1">
+                    <Button variant="link" size="xs" className="h-auto p-0" onClick={state.stalled.cancel}>
+                      <Trans>Cancel</Trans>
+                    </Button>
+                    <Button variant="link" size="xs" className="h-auto p-0" onClick={state.stalled.retry}>
+                      <Trans>Retry</Trans>
+                    </Button>
+                  </span>
+                </div>
+              ) : state.kind === "uploading" ? (
                 <div
                   role="progressbar"
                   aria-label={name}
@@ -250,7 +262,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                 <Button variant="link" size="xs" className="mt-1 h-auto p-0" onClick={state.undo}>
                   <Trans>Undo</Trans>
                 </Button>
-              ) : state.kind === "notice" ? null : (
+              ) : (
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs">
                   <span className="text-destructive">{failureText(state.reason)}</span>
                   {state.toTop ? (

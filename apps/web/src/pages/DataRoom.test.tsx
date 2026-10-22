@@ -24,6 +24,13 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/ui-web", async (original) => ({
+  ...(await original<typeof import("@rakazo/ui-web")>()),
+  enqueueNotificationToast: toast,
+}));
+const toastTitles = () => toast.mock.calls.map(([toast]) => toast.title as string);
+
 const rpcMock = vi.hoisted(() => ({
   folders: vi.fn(),
   list: vi.fn(),
@@ -78,7 +85,6 @@ vi.mock("../lib/rpc", () => ({
 }));
 
 import { Snippet } from "../components/data-room/ItemRows";
-import { getUploadToasts } from "../components/data-room/upload-toasts";
 import { DataRoomPage } from "./DataRoom";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -896,7 +902,7 @@ it("says a linked document could not be found and drops it from the URL", async 
   });
   await settle();
   expect(search).toBe("");
-  expect(getUploadToasts().map((toast) => toast.name)).toContain(
+  expect(toastTitles()).toContain(
     "That document could not be found",
   );
 });
@@ -950,8 +956,7 @@ it("offers every type and party in the folder, also those not on the loaded page
 it("says so when the open folder was deleted elsewhere, and shows All items", async () => {
   const legal = { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" };
   rpcMock.folders.mockResolvedValue([legal]);
-  const gone = () =>
-    getUploadToasts().filter((toast) => toast.name === "That folder no longer exists").length;
+  const gone = () => toastTitles().filter((title) => title === "That folder no longer exists").length;
   await renderPage("/?folder=f1");
   await settle();
   const before = gone();
@@ -973,7 +978,7 @@ it("confirms Try again at once, so the click visibly did something", async () =>
   );
   await act(async () => again?.click());
   await settle();
-  expect(getUploadToasts().map((toast) => toast.name)).toContain("Reading junk.pdf again");
+  expect(toastTitles()).toContain("Reading junk.pdf again");
 });
 
 const running = {
@@ -1151,6 +1156,35 @@ it("shows stats for the open filters, and a click on a type filters the list", a
   expect(rpcMock.list).toHaveBeenLastCalledWith(
     expect.objectContaining({ folderId: "f1", docType: "legal" }),
   );
+});
+
+it("keeps the consent card in Stats, so the folder tree does not move", async () => {
+  rpcMock.consent.mockResolvedValue({
+    key: "k",
+    version: "v",
+    allowed: false,
+    disclosure: "",
+    recipients: [{ name: "Model", provider: "p" }],
+  });
+  rpcMock.stats.mockResolvedValue({
+    documents: 0,
+    bytes: 0,
+    duplicates: 0,
+    status: { ready: 0, processing: 0, failed: 0, notSearchable: 0 },
+    types: [],
+    sources: [],
+    dates: { unit: "month", buckets: [] },
+    parties: [],
+    largest: [],
+    amounts: [],
+  });
+  await renderPage();
+  expect(container.textContent).toContain("Let Praci read your documents");
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Stats"]')?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-stats"]')).not.toBeNull();
+  expect(container.textContent).toContain("Let Praci read your documents");
 });
 
 it("does not ask for the list again while a request is still in flight", async () => {

@@ -297,7 +297,7 @@ export function Preview({
         <Field label={t`Source`}>
           {item.source === "gmail" ? (
             item.sourceUrl?.startsWith("/app/") ? (
-              <Link to={item.sourceUrl} className="underline-offset-2 hover:underline">
+              <Link to={item.sourceUrl} className="underline-offset-2 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">
                 {t`From email`}
               </Link>
             ) : (
@@ -308,7 +308,7 @@ export function Preview({
               href={item.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline-offset-2 hover:underline"
+              className="underline-offset-2 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
             >
               {t`From Google Drive`}
             </a>

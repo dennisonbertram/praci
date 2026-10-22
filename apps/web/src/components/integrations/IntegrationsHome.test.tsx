@@ -704,9 +704,20 @@ it("does not say 'No apps match' while iMessage tiles match the search", async (
   expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
 });
 
-it("still says 'No apps match' when nothing matches", async () => {
+it("keeps the search above Connected so typing never moves it, and drops the intro once connected", async () => {
+  const value = data(true, true);
+  value.connections = [composioGmail()];
+  await show(value, "/app/integrations");
+  const search = container.querySelector('input[type="search"]') as HTMLElement;
+  const connected = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Connected");
+  expect(connected).toBeDefined();
+  expect(search.compareDocumentPosition(connected as Element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(container.textContent).not.toContain("Connect the apps you use");
+});
+
+it("still says 'No integrations match' when nothing matches", async () => {
   await show(data(true, true), "/app/integrations?q=zzzz");
-  expect(container.querySelector('[data-testid="no-apps"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="no-apps"]')?.textContent).toBe("No integrations match.");
 });
 
 it("keeps matching connected apps visible while a category chip is active", async () => {

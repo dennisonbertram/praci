@@ -73,9 +73,9 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual(["lease.pdfLegal— · Mar 4, 2026", "loose.pdf— · Mar 4, 2026"]);
+  expect(names()).toEqual(["lease.pdfLegal— · Added Mar 4, 2026", "loose.pdf— · Added Mar 4, 2026"]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdf— · Mar 4, 2026"]);
+  expect(names()).toEqual(["lease.pdf— · Added Mar 4, 2026"]);
 });
 
 it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
@@ -320,7 +320,7 @@ it("shows the added date under the name of an untagged file on a phone", () => {
   const rows = [{ item: item("loose", null), snippets: [] }];
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
-    "— · Mar 4, 2026",
+    "— · Added Mar 4, 2026",
   );
 });
 
@@ -685,6 +685,14 @@ it("shows no Reading on a file whose text is already stored", () => {
   const rows = asRows({ ...item("texted", null), status: "classifying", previewText: "Minutes" });
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.textContent).not.toContain("Reading");
+});
+
+it("shows a file icon, not a spinner, on a file whose text is already stored, in list and grid", () => {
+  const rows = asRows({ ...item("texted", null), status: "classifying", previewText: "Minutes" });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector("[role=presentation]")).toBeNull();
+  act(() => root.render(<GridView rows={rows} o={o()} />));
+  expect(container.querySelector("[role=presentation]")).toBeNull();
 });
 
 it("leaves the Status column out when no row has a status", () => {
