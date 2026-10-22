@@ -122,7 +122,12 @@ export function DataRoomPage({
   // View and sort are remembered for this browser.
   const [saved] = useState(readDataRoomView);
   const [view, setView] = useState<"list" | "grid">(saved.view);
-  const [queryInput, setQueryInput] = useState("");
+  // The command palette's "See all in Data room" arrives with the search in ?q=.
+  const urlQuery = params.get("q") ?? "";
+  const [queryInput, setQueryInput] = useState(urlQuery);
+  useEffect(() => {
+    if (urlQuery) setQueryInput(urlQuery);
+  }, [urlQuery]);
   const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   // Clearing the box shows the list again at once; only typing waits for a pause.
   const query = queryInput.trim() === "" ? "" : debouncedQuery;

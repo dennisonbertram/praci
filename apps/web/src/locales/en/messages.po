@@ -4180,11 +4180,13 @@ msgid "Delete"
 msgstr "Delete"
 
 #. placeholder {0}: deleting?.title ?? ""
-#. placeholder {0}: pendingDelete.name
 #: src/components/integrations/StoredMeetingsList.tsx
-#: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
+
+#: src/pages/Artifacts.tsx
+msgid "Delete \"{deleteTitle}\"?"
+msgstr "Delete \"{deleteTitle}\"?"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.name
@@ -5096,6 +5098,10 @@ msgstr "Financing, {when}"
 #: src/lib/slash-skills.ts
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr "Find and summarize files in Box. Changes ask first."
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Find any page, chat or email."
+msgstr "Find any page, chat or email."
 
 #: src/components/fundraising/SafeList.tsx
 msgid "Find in Finance"
@@ -9446,6 +9452,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9495,10 +9502,6 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Search finds any page, chat or email."
-msgstr "Search finds any page, chat or email."
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -9570,6 +9573,10 @@ msgstr "Searching…"
 #: src/pages/Inbox.tsx
 msgid "Security"
 msgstr "Security"
+
+#: src/pages/Shell.tsx
+msgid "See all in Data room"
+msgstr "See all in Data room"
 
 #: src/pages/shell/composer.tsx
 msgid "See usage"
