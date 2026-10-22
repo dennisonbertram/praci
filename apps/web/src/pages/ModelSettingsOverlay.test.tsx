@@ -516,6 +516,24 @@ it("lists the server's own provider as In use, not Connected, ahead of the A-Z l
   }
 });
 
+it("marks In use on the provider of the active model only, not also the server's own provider", async () => {
+  vi.mocked(rpc.me).mockResolvedValue({
+    ...account("amazon", "a"),
+    hostCredentialProvider: "openrouter",
+    hostCredentialSource: "environment",
+  } as never);
+  models.list.mockResolvedValue([
+    { ...deepseekEntry, provider: "amazon", providerName: "Amazon Bedrock", id: "a" },
+    { ...deepseekEntry, provider: "openrouter", providerName: "OpenRouter", id: "or-model" },
+  ]);
+  const view = await renderSettings();
+  try {
+    expect(view.container.textContent?.match(/In use/g)).toHaveLength(1);
+  } finally {
+    await view.unmount();
+  }
+});
+
 it("shows a skeleton, not 'No providers found', while the catalog loads", async () => {
   models.list.mockReturnValue(new Promise(() => undefined));
   const view = await renderSettings();

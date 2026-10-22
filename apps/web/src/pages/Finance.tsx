@@ -731,74 +731,78 @@ function Overview({
               </Section>
             </BackHere>
 
-            <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
-              <Section
-                id="upcoming"
-                title={<Trans>Upcoming · 30 days</Trans>}
-                action={
-                  data.upcoming.totalCents > 0 ? (
-                    <span className="text-xs font-semibold tabular-nums">
-                      ~{money(data.upcoming.totalCents)}
-                    </span>
-                  ) : null
-                }
-              >
-                <div className="-mx-2">
-                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
-                    <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
-                  ))}
-                </div>
-                {upcomingRows.length === 0 ? (
-                  <div className="py-2 text-muted-foreground">
-                    <Trans>Nothing due in the next 30 days</Trans>
+            {/* Subscriptions sit under Upcoming, which is short, so the right column has no dead area. */}
+            <div className="flex flex-col gap-3">
+              <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
+                <Section
+                  id="upcoming"
+                  title={<Trans>Upcoming · 30 days</Trans>}
+                  action={
+                    data.upcoming.totalCents > 0 ? (
+                      <span className="text-xs font-semibold tabular-nums">
+                        ~{money(data.upcoming.totalCents)}
+                      </span>
+                    ) : null
+                  }
+                >
+                  <div className="-mx-2">
+                    {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
+                      <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
+                    ))}
                   </div>
-                ) : null}
-                <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
-                  <ShowAll
-                    total={upcomingRows.length}
-                    cap={MAX_ROWS}
-                    expanded={allUpcoming}
-                    onToggle={() => setAllUpcoming((v) => !v)}
-                  />
-                </div>
-              </Section>
-            </BackHere>
-          </div>
-
-          <BackHere
-            value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
-          >
-            <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
-              {subs.items.length === 0 ? (
-                <div className="py-2 text-muted-foreground">
-                  <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
-                </div>
-              ) : (
-                // Capped so a vendor and its amount stay within reach of each other on a wide screen.
-                <div className="max-w-2xl">
-                  <SubscriptionsTable
-                    subs={subs}
-                    rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
-                  />
-                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
-                    <span>
-                      {plural(subs.items.length, {
-                        one: "# subscription",
-                        other: "# subscriptions",
-                      })}{" "}
-                      · {t`${monthlyTotal}/mo`}
-                    </span>
+                  {upcomingRows.length === 0 ? (
+                    <div className="py-2 text-muted-foreground">
+                      <Trans>Nothing due in the next 30 days</Trans>
+                    </div>
+                  ) : null}
+                  <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
                     <ShowAll
-                      total={subs.items.length}
+                      total={upcomingRows.length}
                       cap={MAX_ROWS}
-                      expanded={allSubs}
-                      onToggle={() => setAllSubs((v) => !v)}
+                      expanded={allUpcoming}
+                      onToggle={() => setAllUpcoming((v) => !v)}
                     />
                   </div>
-                </div>
-              )}
-            </Section>
-          </BackHere>
+                </Section>
+              </BackHere>
+
+              <BackHere
+                value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
+              >
+                <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
+                  {subs.items.length === 0 ? (
+                    <div className="py-2 text-muted-foreground">
+                      <Trans>
+                        None yet. A vendor shows here after three similar monthly charges.
+                      </Trans>
+                    </div>
+                  ) : (
+                    <div>
+                      <SubscriptionsTable
+                        subs={subs}
+                        rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
+                      />
+                      <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+                        <span>
+                          {plural(subs.items.length, {
+                            one: "# subscription",
+                            other: "# subscriptions",
+                          })}{" "}
+                          · {t`${monthlyTotal}/mo`}
+                        </span>
+                        <ShowAll
+                          total={subs.items.length}
+                          cap={MAX_ROWS}
+                          expanded={allSubs}
+                          onToggle={() => setAllSubs((v) => !v)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Section>
+              </BackHere>
+            </div>
+          </div>
         </div>
       )}
     </div>

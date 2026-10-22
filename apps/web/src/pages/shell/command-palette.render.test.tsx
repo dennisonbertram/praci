@@ -358,3 +358,9 @@ it("offers New folder as an action too", async () => {
   });
   expect(run).toHaveBeenCalledOnce();
 });
+
+it("shows only the link text of a markdown link in a snippet", () => {
+  expect(plainSnippet("a reply. [Open Settings](/app?settings=privacy) **now**")).toBe(
+    "a reply. Open Settings now",
+  );
+});

@@ -2287,6 +2287,98 @@ export function createRunExecutor(deps: ExecutorDeps) {
           await failRunBeforeModel(MEETING_CONSENT_REQUIRED_MESSAGE);
           return;
         }
+        // A chat message, its history and the bot's memories go to this run's model, so a chat
+        // needs consent for that recipient too. Missing consent asks on a card in the chat; Not now
+        // ends the run. Only a configured model counts: a runtime's own fallback sends nothing out.
+        let chatRecipient: ReturnType<typeof aiRecipient> = null;
+        const chatGated =
+          !legalOnly &&
+          (run.trigger === "user" || run.trigger === "follow_up") &&
+          selected.provider;
+        if (chatGated && selected.provider) {
+          try {
+            chatRecipient = aiRecipient({
+              provider: selected.provider,
+              modelId: runModelId,
+              baseUrl: resolved.baseUrl,
+              use: "model",
+            });
+          } catch {
+            // A malformed endpoint cannot be called either; mail tools still refuse it themselves.
+          }
+        }
+        const chatConsented = chatRecipient
+          ? await deps.prisma.aiDataConsent
+              .findUnique({
+                where: {
+                  userId_spaceId_recipientKey: {
+                    userId: bot.userId,
+                    spaceId: run.spaceId,
+                    recipientKey: chatRecipient.key,
+                  },
+                },
+                select: { version: true },
+              })
+              // Unknown is treated as not allowed.
+              .then(
+                (row) => row?.version === AI_DISCLOSURE_VERSION,
+                () => false,
+              )
+          : true;
+        if (chatRecipient && !chatConsented) {
+          const request = { recipientKey: chatRecipient.key, version: AI_DISCLOSURE_VERSION };
+          const recorded = await recordEffect(
+            deps,
+            run,
+            AI_CONSENT_EFFECT_KIND,
+            approvalEffectKey(runId, AI_CONSENT_EFFECT_KIND, request),
+            request,
+          );
+          if (recorded.duplicate && recorded.effect.status !== "intended") {
+            await failRunBeforeModel(CHAT_CONSENT_DECLINED_MESSAGE);
+            return;
+          }
+          const paused = await deps.events.pauseRunForInput({
+            spaceId: run.spaceId,
+            threadId: run.threadId,
+            botId: run.botId,
+            runId,
+            attemptId: attempt.id,
+            leaseOwner: workerId,
+            leaseFence: fence,
+            blocks: [buildConsentAskBlock(recorded.effect.id)],
+          });
+          if (!paused) throw new Error("Could not pause this run for consent; try sending again.");
+          return;
+        }
+        // Backup models and subagent model choices are other recipients: a chat run may use one only
+        // with consent on file for it. Unknown or failing lookups mean no.
+        const chatModelAllowed = async (provider: string, modelId: string): Promise<boolean> => {
+          if (!chatGated) return true;
+          try {
+            const model = await resolveConnectedModel(run, provider, modelId);
+            const recipient = aiRecipient({
+              provider,
+              modelId,
+              baseUrl: model.baseUrl,
+              use: "model",
+            });
+            if (!recipient) return true;
+            const row = await deps.prisma.aiDataConsent.findUnique({
+              where: {
+                userId_spaceId_recipientKey: {
+                  userId: bot.userId,
+                  spaceId: run.spaceId,
+                  recipientKey: recipient.key,
+                },
+              },
+              select: { version: true },
+            });
+            return row?.version === AI_DISCLOSURE_VERSION;
+          } catch {
+            return false;
+          }
+        };
         if (legalOnly) {
           // The Legal agent's history and tools carry document content, so the model that receives
           // them must be one the user allowed. Without that consent the run ends before any model call.
@@ -6752,6 +6844,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           } catch (error) {
             getLogger().warn("Backup models could not be loaded", { runId, error });
           }
+          const allowed = await Promise.all(
+            fallbackModels.map((candidate) =>
+              chatModelAllowed(candidate.provider, candidate.modelId),
+            ),
+          );
+          fallbackModels = fallbackModels.filter((_, index) => allowed[index]);
         }
         let meetingMarkedMidRun = false;
         const fallbackModelKeys = new Set(
@@ -6904,10 +7002,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               executeTool: scripted ? undefined : applyTool,
               resolveModel: scripted
                 ? undefined
-                : (provider, modelId) =>
-                    resolveConnectedModel(run, provider, modelId, (values) =>
+                : async (provider, modelId) => {
+                    if (!(await chatModelAllowed(provider, modelId)))
+                      throw new Error("Allow that model's provider to receive this chat first");
+                    return resolveConnectedModel(run, provider, modelId, (values) =>
                       runSecrets.push(...values),
-                    ),
+                    );
+                  },
               onToolCompleted: (completion) =>
                 appendToolCompletionAudit(
                   deps,
@@ -9126,6 +9227,10 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
 }
 
 /** What the agent is told when the owner declined the consent card in this chat. */
+/** The run error after Not now on a chat's consent card; Settings has the switch. */
+const CHAT_CONSENT_DECLINED_MESSAGE =
+  "Chat is off until you allow AI models in Settings under Privacy and approvals.";
+
 export const MAIL_CONSENT_DECLINED =
   "The user chose not to allow AI data sharing for mail, so mail cannot be read. Tell them you can't read their mail, and don't send them to another page.";
 

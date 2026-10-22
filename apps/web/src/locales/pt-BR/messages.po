@@ -1915,10 +1915,6 @@ msgstr ""
 msgid "Brex bill, not paid yet"
 msgstr ""
 
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Brex does not share it"
-msgstr ""
-
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Browser"
 msgstr ""
@@ -2785,7 +2781,7 @@ msgid "Connect Mercury"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
+msgid "Connect the apps you use so your bots can read and act in them."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6270,8 +6266,8 @@ msgid "Message {0}"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
-msgid "Message {activeName}"
-msgstr "Mensagem {activeName}"
+msgid "Message {placeholderName}"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
@@ -6687,10 +6683,6 @@ msgstr "Novo item de trabalho aberto"
 msgid "New password"
 msgstr "Nova senha"
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "New skill"
-msgstr "Nova habilidade"
-
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "New space"
@@ -6840,6 +6832,7 @@ msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
 msgid "No folder"
 msgstr ""
 
@@ -10680,10 +10673,6 @@ msgstr ""
 msgid "Unassign"
 msgstr ""
 
-#: src/pages/BotContextMenu.tsx
-msgid "Unassigned"
-msgstr "Não atribuído"
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr ""
@@ -10917,16 +10906,16 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload a skill file"
-msgstr ""
-
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. The server could not save this file."
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload file"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx

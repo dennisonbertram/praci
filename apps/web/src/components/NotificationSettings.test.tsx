@@ -155,7 +155,7 @@ it("keeps the Notifications card in place while preferences load", async () => {
   setPermission("granted");
   api.preferences.mockReturnValue(new Promise(() => {}));
   await render();
-  expect(container.textContent).toContain("Notifications");
+  expect(container.querySelector("section[aria-label=Notifications]")).not.toBeNull();
   expect(row("Browser notifications")?.hasAttribute("disabled")).toBe(true);
 });
 
