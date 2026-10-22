@@ -31,3 +31,16 @@ export const NoLogo: Story = { args: { logo: null } };
 export const BrokenImage: Story = { args: { logo: "data:image/png;base64,broken" } };
 
 export const EmptyName: Story = { args: { name: "  ", logo: null } };
+
+/** First-party apps without a vendored mark show a glyph for what they do. */
+export const GlyphApps: Story = {
+  render: () => (
+    <div className="flex items-end gap-3">
+      {["Carta", "Treg", "Devin", "Granola", "Wispr Flow", "iMessage", "iMessage on your Mac"].map(
+        (name) => (
+          <AppLogo key={name} name={name} logo={null} />
+        ),
+      )}
+    </div>
+  ),
+};

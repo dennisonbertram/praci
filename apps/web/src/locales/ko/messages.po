@@ -7151,10 +7151,6 @@ msgstr ""
 msgid "No draft made, see Ask"
 msgstr ""
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr ""
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr ""
@@ -7520,10 +7516,6 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "아직 기억한 내용이 없습니다"
 
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr ""
-
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
 msgstr ""
@@ -7571,6 +7563,10 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Off"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
