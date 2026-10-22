@@ -196,7 +196,12 @@ export function EmailAgentPanel({
             scrollRequest={null}
             onScrollRequestHandled={noop}
             artifactTarget={artifactTarget}
-            messages={snapshot.messages}
+            // A run held on an approval is not working; its progress line would say it is.
+            messages={
+              running
+                ? snapshot.messages
+                : snapshot.messages.filter((message) => !message.id.startsWith("progress:"))
+            }
             // The lookups are the point of this panel, so they show whatever the chat setting says.
             showToolActivity
             olderCursor={snapshot.olderCursor}

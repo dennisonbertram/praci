@@ -88,6 +88,7 @@ describe("reaction messages", () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([]),
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue({ id: "parent" }),
         findUnique: vi.fn(
           async ({ where }: { where: { threadId_clientNonce: { clientNonce: string } } }) =>
@@ -1043,6 +1044,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1149,6 +1151,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1230,6 +1233,7 @@ describe("sendThreadMessage", () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const prisma = {
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findUnique: vi.fn().mockResolvedValue({
           id: "msg-1",
           seq: 4,
@@ -1317,6 +1321,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1415,6 +1420,7 @@ describe("sendThreadMessage", () => {
         update: vi.fn().mockResolvedValue({ nextMessageSeq: 2 }),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1495,6 +1501,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1565,6 +1572,81 @@ describe("sendThreadMessage", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
+  it("closes the open focus card when the first message is typed", async () => {
+    const tx = {
+      $executeRaw: vi.fn(),
+      thread: {
+        update: vi.fn(async ({ data }: { data: { nextMessageSeq?: unknown } }) =>
+          data.nextMessageSeq ? { nextMessageSeq: 2 } : { nextEventSeq: 3 },
+        ),
+      },
+      message: {
+        count: vi.fn().mockResolvedValue(1),
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "card-1", blocks: [{ kind: "choice", answerId: null }] }]),
+        create: vi.fn().mockResolvedValue({
+          id: "msg-1",
+          threadId: "thread-1",
+          seq: 1,
+          role: "user",
+          blocks: [{ kind: "text", text: "Check the inbox" }],
+          botId: null,
+          replyToMessageId: null,
+          runId: null,
+          createdAt: new Date(),
+        }),
+        update: vi.fn(),
+      },
+      run: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([
+            { id: "intro-run", taskId: "intro-task", status: "running", trigger: "created" },
+          ]),
+        create: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue({ status: "running", startedAt: new Date() }),
+        updateMany: vi.fn(),
+      },
+      task: { create: vi.fn(), updateMany: vi.fn() },
+      steeringMessage: { create: vi.fn() },
+      event: { create: vi.fn().mockResolvedValue({ seq: 2, threadId: "thread-1" }) },
+    };
+    const prisma = {
+      message: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+    const actor = { spaceId: "workspace-1", userId: "user-1" } as Actor;
+    const target = {
+      kind: "bot",
+      botId: "bot-1",
+      threadId: "thread-1",
+      bot: { computer: null },
+    } as ThreadTarget;
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      sendThreadMessage(
+        {
+          prisma,
+          events: { notify: vi.fn().mockResolvedValue(undefined) } as never,
+          jobs: { enqueue } as never,
+        },
+        actor,
+        target,
+        { text: "Check the inbox", clientNonce: "nonce-during-intro" },
+      ),
+    ).resolves.toMatchObject({
+      runId: "intro-run",
+      taskId: "intro-task",
+      runIds: ["intro-run"],
+    });
+    expect(tx.message.update).toHaveBeenCalledWith({
+      where: { id: "card-1" },
+      data: { blocks: [{ kind: "choice", answerId: "_dismissed" }] },
+    });
+  });
+
   it("steers a waiting-takeover run instead of refusing the message", async () => {
     const tx = {
       thread: {
@@ -1574,6 +1656,7 @@ describe("sendThreadMessage", () => {
           .mockResolvedValueOnce({ nextEventSeq: 3 }),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1654,6 +1737,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1737,6 +1821,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1829,6 +1914,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -1921,6 +2007,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -2023,6 +2110,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -2111,6 +2199,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
           threadId: "thread-1",
@@ -2238,6 +2327,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue({
           id: "parent",
           role: "bot",
@@ -2320,6 +2410,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue(null),
         update: vi.fn(),
         create: vi.fn().mockResolvedValue({
@@ -2381,6 +2472,7 @@ describe("sendThreadMessage", () => {
           ),
         },
         message: {
+          count: vi.fn().mockResolvedValue(2),
           findFirst: vi.fn().mockResolvedValue({
             id: "parent",
             role: "bot",
@@ -2460,6 +2552,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         // The parent was deleted (or paged out) between arming and send.
         findFirst: vi.fn().mockResolvedValue(null),
         update: vi.fn(),
@@ -2535,6 +2628,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue({
           id: "parent",
           role: "bot",
@@ -2637,6 +2731,7 @@ describe("sendThreadMessage", () => {
           ),
         },
         message: {
+          count: vi.fn().mockResolvedValue(2),
           findFirst: vi.fn().mockResolvedValue({
             id: "parent",
             role: "bot",
@@ -2747,6 +2842,7 @@ describe("sendThreadMessage", () => {
           ),
         },
         message: {
+          count: vi.fn().mockResolvedValue(2),
           findFirst: vi.fn().mockResolvedValue({
             id: "parent",
             role: "bot",
@@ -2832,6 +2928,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue({
           id: "parent",
           role: "bot",
@@ -2920,6 +3017,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue({
           id: "parent",
           role: "bot",
@@ -2990,6 +3088,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        count: vi.fn().mockResolvedValue(2),
         findFirst: vi.fn().mockResolvedValue({
           id: "parent",
           role: "bot",

@@ -21,6 +21,7 @@ import {
   createRunWorkspaceCheckpoint,
   directoryDescription,
   dockerComputerToolInstruction,
+  financeConnectionLineFor,
   isTerminalModelSetupError,
   loadCurrentTurnImages,
   MEMORY_GUIDANCE,
@@ -1358,6 +1359,26 @@ describe("directoryDescription", () => {
     expect(directoryDescription({ description: "Drafts contracts.", spawnKey: null })).toBe(
       "Drafts contracts.",
     );
+  });
+});
+
+describe("financeConnectionLineFor", () => {
+  const mercury = "https://mcp.mercury.com/mcp";
+  it("says no bank is connected when none is", () => {
+    expect(
+      financeConnectionLineFor([{ endpoint: "https://example.com/mcp", agentBotId: "b" }]),
+    ).toContain("no bank (Mercury or Brex) is connected");
+  });
+  it("points a connected bank without an agent to Allow changes", () => {
+    const line = financeConnectionLineFor([{ endpoint: mercury, agentBotId: null }]);
+    expect(line).toContain("Mercury (no agent yet");
+    expect(line).toContain("Allow changes");
+    expect(line).toContain("never say no bank is connected");
+  });
+  it("hands a connected bank with an agent to that agent", () => {
+    const line = financeConnectionLineFor([{ endpoint: mercury, agentBotId: "bot" }]);
+    expect(line).toContain("Mercury (has an agent: message it with message_bot");
+    expect(line).not.toContain("Allow changes");
   });
 });
 

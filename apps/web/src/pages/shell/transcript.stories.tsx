@@ -154,3 +154,81 @@ export const UnreadEmailCards: Story = {
     </div>
   ),
 };
+
+/** Status card labels, plain tool rows, a peer message row with a chevron, and a monochrome link. */
+export const WorkLog: Story = {
+  render: () => (
+    <div className="h-[640px]">
+      <Transcript
+        {...baseProps}
+        showToolActivity
+        messages={[
+          message(1, "user", "Where are we on cash?"),
+          {
+            ...message(2, "bot", ""),
+            blocks: [
+              {
+                kind: "steps",
+                steps: [
+                  { label: "task_catalog", count: 1 },
+                  { label: "legal_unreviewed_documents", count: 1 },
+                  { label: "mcp__finance-mercury__requestSendMoney", count: 1 },
+                  { label: "mail_search", count: 1 },
+                ],
+              },
+              {
+                kind: "bot_message_received",
+                fromBotId: "bot_peer",
+                fromBotName: "Investors agent",
+                text: "Sample text",
+              },
+              {
+                kind: "card",
+                lines: [
+                  { k: "Cash", v: "$100,000" },
+                  { k: "Monthly burn", v: "$10,000" },
+                  { k: "Runway", v: "10 months" },
+                ],
+              },
+              {
+                kind: "text",
+                text: "Write to [sam@example.com](mailto:sam@example.com) for detail.",
+              },
+            ],
+          },
+        ]}
+      />
+    </div>
+  ),
+};
+
+/** A live run: tool rows keep their full label instead of cutting it to a few characters. */
+export const WorkingLog: Story = {
+  render: () => (
+    <div className="h-[420px] w-[360px]">
+      <Transcript
+        {...baseProps}
+        showToolActivity
+        running
+        messages={[
+          message(1, "user", "Find the invoice and reply."),
+          {
+            ...message(2, "bot", ""),
+            id: "progress:run_demo",
+            runId: "run_demo",
+            blocks: [
+              {
+                kind: "steps",
+                steps: [
+                  { label: "mail_search", count: 1 },
+                  { label: "mail_open", count: 1 },
+                  { label: "mail_send", count: 1 },
+                ],
+              },
+            ],
+          },
+        ]}
+      />
+    </div>
+  ),
+};

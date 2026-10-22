@@ -54,6 +54,7 @@ import {
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   disabledBuiltinToolSet,
   externalBotMayUseBuiltin,
+  financeProviderForEndpoint,
   GTM_AGENT_BUILTIN_TOOLS,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
@@ -6505,6 +6506,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 bot.audience === "external" ? bot.externalMessageTargets : undefined,
               );
 
+        const financeConnectionLine = voiceAgent
+          ? undefined
+          : financeConnectionLineFor(
+              await deps.prisma.mcpServer.findMany({
+                where: { spaceId: run.spaceId, userId: run.userId, enabled: true },
+                select: { endpoint: true, agentBotId: true },
+              }),
+            );
+
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
             (
@@ -6608,6 +6618,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     botDirectory,
                     pluginLine,
                     mailSearchGuidance: mailSkill.guidance,
+                    financeConnectionLine,
                     dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
                     agentSkillsLine: restrictedContext ? undefined : agentSkillsLine,
                     taughtSkillsLine: restrictedContext ? undefined : taughtSkillsLine,
@@ -8210,6 +8221,36 @@ export const PLAIN_CAPABILITY_GUIDANCE =
 export const NOT_CONNECTED_GUIDANCE =
   "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say so and that connecting one under Integrations comes first. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).";
 
+/**
+ * The user's connected banks as plain facts, so the model does not guess which branch of
+ * NOT_CONNECTED_GUIDANCE applies. A bank counts as connected while its MCP server is enabled.
+ */
+export function financeConnectionLineFor(
+  servers: readonly { endpoint: string | null; agentBotId: string | null }[],
+): string {
+  const banks = servers.flatMap((server) => {
+    const provider = financeProviderForEndpoint(server.endpoint);
+    return provider
+      ? [
+          {
+            name: provider === "mercury" ? "Mercury" : "Brex",
+            hasAgent: Boolean(server.agentBotId),
+          },
+        ]
+      : [];
+  });
+  if (banks.length === 0) {
+    return "Facts: no bank (Mercury or Brex) is connected. For a bank request, say that connecting one under Integrations comes first.";
+  }
+  const list = banks
+    .map(
+      (bank) =>
+        `${bank.name} (${bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"})`,
+    )
+    .join(", ");
+  return `Facts: connected banks: ${list}. Never tell the user to connect a bank listed here, and never say no bank is connected.`;
+}
+
 export function userTurnInstructions(parts: {
   botInstructions: string;
   voiceAgent?: boolean;
@@ -8228,6 +8269,8 @@ export function userTurnInstructions(parts: {
   botDirectory: string | undefined;
   pluginLine: string | undefined;
   mailSearchGuidance?: string | undefined;
+  /** The user's connected banks, from server state; see financeConnectionLine. */
+  financeConnectionLine?: string | undefined;
   /** add_to_data_room is offered in this run. */
   dataRoomEnabled?: boolean;
   agentSkillsLine: string | undefined;
@@ -8250,6 +8293,7 @@ export function userTurnInstructions(parts: {
     "A bot and a subagent are different. Never use both for the same request.",
     PLAIN_CAPABILITY_GUIDANCE,
     NOT_CONNECTED_GUIDANCE,
+    parts.financeConnectionLine,
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "create_space",
