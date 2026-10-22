@@ -6252,14 +6252,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (name === "notify_user") {
             if (companyImporter) {
-              const latestImport = await deps.prisma.companyImportRun.findFirst({
-                where: { spaceId: run.spaceId, ownerUserId: bot.userId },
-                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-                select: { status: true },
+              const eligibleImport = await deps.prisma.companyImportRun.findFirst({
+                where: {
+                  spaceId: run.spaceId,
+                  ownerUserId: bot.userId,
+                  status: { in: ["budget_reached", "awaiting_consent"] },
+                },
+                select: { id: true },
               });
-              const attentionAllowed =
-                latestImport !== null &&
-                ["budget_reached", "awaiting_consent"].includes(latestImport.status);
+              const attentionAllowed = eligibleImport !== null;
               if (args.importance === "attention" && !attentionAllowed) {
                 return finish({
                   error:

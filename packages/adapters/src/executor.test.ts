@@ -56,9 +56,16 @@ import { RetiredModelCredentialError, serializeModelSecret } from "./pi-oauth.js
 const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
 
 const companyStoreMock = vi.hoisted(() => ({ current: null as unknown }));
+const createNotificationMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    status: "created" as const,
+    notification: { id: "notification-1", importance: "attention" as const },
+  })),
+);
 vi.mock("@rakazo/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@rakazo/db")>()),
   companyForActor: vi.fn(() => companyStoreMock.current),
+  createNotification: createNotificationMock,
 }));
 
 describe("bot tool permissions", () => {
@@ -141,6 +148,7 @@ async function runIdentityExecutor({
   callBatches,
   autoReview,
   companyImport,
+  companyImportRuns,
   resumeApprovedEffect = false,
   backupModel,
   selectBackup = false,
@@ -164,6 +172,13 @@ async function runIdentityExecutor({
     engine: Record<string, unknown>;
     mutateBeforeResume?: () => void;
   };
+  companyImportRuns?: Array<{
+    id: string;
+    spaceId: string;
+    ownerUserId: string;
+    status: string;
+    createdAt: Date;
+  }>;
   resumeApprovedEffect?: boolean;
   backupModel?: { provider: string; modelId: string };
   selectBackup?: boolean;
@@ -489,7 +504,35 @@ async function runIdentityExecutor({
       ),
     },
     companyImportRun: {
-      findFirst: vi.fn(async () => companyImport?.run ?? null),
+      findFirst: vi.fn(
+        async ({
+          where,
+        }: {
+          where?: {
+            spaceId?: string;
+            ownerUserId?: string;
+            status?: string | { in?: string[] };
+          };
+        } = {}) => {
+          if (!companyImportRuns) return companyImport?.run ?? null;
+          const matchingRuns = companyImportRuns.filter((importRun) => {
+            if (where?.spaceId && importRun.spaceId !== where.spaceId) return false;
+            if (where?.ownerUserId && importRun.ownerUserId !== where.ownerUserId) return false;
+            if (typeof where?.status === "string") return importRun.status === where.status;
+            if (where?.status && "in" in where.status) {
+              return where.status.in?.includes(importRun.status) ?? false;
+            }
+            return true;
+          });
+          return (
+            matchingRuns.sort(
+              (left, right) =>
+                right.createdAt.getTime() - left.createdAt.getTime() ||
+                right.id.localeCompare(left.id),
+            )[0] ?? null
+          );
+        },
+      ),
     },
     externalEffect: {
       findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) => {
@@ -705,6 +748,50 @@ describe("Company identity executor boundaries", () => {
     expect(toolResults[0]?.result).toEqual({
       error: "Importer attention notifications are reserved for budget or consent issues.",
     });
+  });
+
+  it("sends importer attention notifications for an eligible run despite a newer draft", async () => {
+    createNotificationMock.mockClear();
+    const { toolResults, prisma } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      companyImportRuns: [
+        {
+          id: "eligible-import",
+          spaceId: "space-1",
+          ownerUserId: "user-1",
+          status: "awaiting_consent",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+        {
+          id: "newer-draft",
+          spaceId: "space-1",
+          ownerUserId: "user-1",
+          status: "draft",
+          createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        },
+      ],
+      calls: [{ name: "notify_user", args: { importance: "attention", title: "Import" } }],
+    });
+
+    expect(toolResults[0]?.result).toEqual({ ok: true, note: "Notification sent." });
+    expect(prisma.companyImportRun.findFirst).toHaveBeenCalledWith({
+      where: {
+        spaceId: "space-1",
+        ownerUserId: "user-1",
+        status: { in: ["budget_reached", "awaiting_consent"] },
+      },
+      select: { id: true },
+    });
+    expect(createNotificationMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        spaceId: "space-1",
+        userId: "user-1",
+        surface: "company",
+        importance: "attention",
+        kind: "urgent",
+      }),
+    );
   });
 
   it("rejects forged importer source, connector, write, and confirmation tools before provider calls", async () => {
