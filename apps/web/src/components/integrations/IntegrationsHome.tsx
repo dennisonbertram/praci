@@ -632,7 +632,7 @@ export function IntegrationsHome({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* The title stays put and the cards scroll under its line. */}
-      <div className={`${PAGE_GUTTER_X} border-b border-border pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         <PageHeader title={<Trans>Integrations</Trans>} className="mb-2" />
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pt-4 pb-6`}>
