@@ -21,16 +21,16 @@ beforeEach(() => {
 const tabbable = () =>
   [...root.querySelectorAll<HTMLElement>("button")].filter((b) => b.tabIndex >= 0);
 
-it("leaves two tab stops for the whole list: the open chat's row and its Actions", () => {
+it("leaves the first row, the open chat's row and its Actions as tab stops", () => {
   syncRosterTabStops(root, null);
   expect(
     tabbable().map((b) => b.closest("[data-roster-item]")?.getAttribute("data-roster-item")),
-  ).toEqual(["b", "b"]);
+  ).toEqual(["a", "b", "b"]);
   // The last focused row wins over the open chat; an id that is gone falls back.
   syncRosterTabStops(root, "c");
-  expect(tabbable()[0]?.dataset.rosterRow).toBe("c");
+  expect(tabbable()[1]?.dataset.rosterRow).toBe("c");
   syncRosterTabStops(root, "gone");
-  expect(tabbable()[0]?.dataset.rosterRow).toBe("b");
+  expect(tabbable()[1]?.dataset.rosterRow).toBe("b");
 });
 
 const key = (name: string, target: HTMLElement, extra: object = {}) => {

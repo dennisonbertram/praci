@@ -83,7 +83,7 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
                   </span>
                 ) : null}
                 {pct ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[11px] font-normal text-muted-foreground">
+                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-xs font-normal text-muted-foreground">
                     {t`${pct} yield`}
                   </span>
                 ) : null}
@@ -211,7 +211,9 @@ export function FinanceAccountsPage({
   // Cash accounts and cards both carry a provider; a source filter narrows the total with the list.
   const fromSource = (rows: AccountRow[]) =>
     source ? rows.filter((a) => a.provider === source) : rows;
-  const shownCash = data ? fromSource(data.cash) : [];
+  const shownCash = data
+    ? fromSource(data.cash).sort((a, b) => b.balanceCents - a.balanceCents)
+    : [];
   // With no account and no crypto yet, a year-long $0 line says nothing.
   const anyBalance =
     (data?.cash.length ?? 0) + (data?.cards.length ?? 0) > 0 ||

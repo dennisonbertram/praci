@@ -312,12 +312,15 @@ it("offers Mark reply done only when the page passes it", async () => {
         unread={false}
         onRead={() => {}}
         onReplyDone={onReplyDone}
+        replyDoneText="Reply to Morgan"
         onClose={() => {}}
       />,
     ),
   );
   await flush();
-  await act(async () => (await menuItem("Mark reply done"))?.click());
+  const item = await menuItem("Mark done: Reply to Morgan");
+  expect(item).toBeDefined();
+  await act(async () => item?.click());
   expect(onReplyDone).toHaveBeenCalledTimes(1);
 });
 
@@ -357,11 +360,14 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
     "Thread agent",
   );
-  // The email column keeps its width: from 1280px the panel sits beside it (1152px dialog), and
-  // below that the panel overlays it (no width formula that shrinks the column).
+  // From 1280px the dialog grows right (left edge fixed) and the panel sits beside the email; below
+  // that the panel overlays and the email column reserves its width.
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
-  expect(popup).toContain("xl:w-[1152px]");
-  expect(popup).not.toContain("calc(50vw");
+  expect(popup).toContain("min-[1280px]:w-[min(1152px,calc(50vw+376px))]!");
+  expect(popup).toContain("min-[1280px]:left-[calc(50%-384px)]!");
+  expect(document.querySelector("[data-slot=dialog-content] > div")?.className).toContain(
+    "md:pe-96",
+  );
   expect(document.querySelector('[data-testid="agent-panel"]')?.parentElement?.className).toContain(
     "absolute",
   );
@@ -426,7 +432,10 @@ it("shows no Ask agent button when the page gives no action", async () => {
 });
 
 it("keeps Reply as the one filled button, with Reply all and Forward in More", async () => {
-  get.mockImplementation(async ({ messageId }) => message(messageId));
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    cc: "c@example.com",
+  }));
   act(() =>
     root.render(<InboxMessageDialog messageId="m2" onArchive={() => {}} onClose={() => {}} />),
   );
@@ -437,6 +446,23 @@ it("keeps Reply as the one filled button, with Reply all and Forward in More", a
   expect(visible).toEqual(["Reply", "Archive", "More"]);
   expect(await menuItem("Reply all")).toBeDefined();
   expect(document.querySelector('[role="menuitem"]:nth-child(2)')?.textContent).toBe("Forward");
+});
+
+it("offers no Reply all when the server says it would address the same people", async () => {
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    replyAllDiffers: false,
+  }));
+  act(() =>
+    root.render(<InboxMessageDialog messageId="m2" onArchive={() => {}} onClose={() => {}} />),
+  );
+  await flush();
+  const more = document.querySelector<HTMLElement>('button[aria-label="More"]');
+  await act(async () => more?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
+  await act(async () => more?.click());
+  const items = [...document.querySelectorAll('[role="menuitem"]')].map((i) => i.textContent);
+  expect(items).toContain("Forward");
+  expect(items).not.toContain("Reply all");
 });
 
 it("shows no archive or read buttons and ignores e without them", async () => {

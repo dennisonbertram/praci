@@ -13,7 +13,7 @@ test("opening a bot reply link asks before leaving the app", async ({ page }, te
   await signup(page, `external-link-${stamp}@rakazo.test`, "password12", "External Link");
   await completeOnboarding(page);
 
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await expect(composer).toBeVisible();
   await composer.fill(`Read the [guide](${destination})`);
   await composer.press("Enter");

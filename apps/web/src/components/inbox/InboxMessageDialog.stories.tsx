@@ -126,7 +126,7 @@ export const WithAskAgent: Story = {
   beforeEach: () => mockRpc({ "inbox.get": message }),
 };
 
-/** The agent opens beside the email and the dialog stays centred. */
+/** The agent opens beside the email (from 1280px) or over its right side, and the email text starts where it did. */
 export const AskAgentPanelOpen: Story = {
   args: {
     messageId: "msg_ask_panel",
@@ -150,6 +150,19 @@ export const AskAgentPanelOpen: Story = {
     await userEvent.click(await body.findByRole("button", { name: "Ask agent" }));
     await body.findByTestId("email-agent-panel");
   },
+};
+
+/** Hyphenated recipient addresses wrap between recipients, never inside an address. */
+export const LongRecipients: Story = {
+  args: { messageId: "msg_long_to" },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": {
+        ...message,
+        to: "Maya Chen (Sample) <sample-founder@northwind-sample.example>, Jordan Lee <jordan-lee@example-ventures.test>",
+        cc: "Priya Rao <priya-rao@sample-legal-group.test>",
+      },
+    }),
 };
 
 export const AskAgentFailed: Story = {

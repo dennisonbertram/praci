@@ -42,7 +42,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   api.history.mockReset();
 });
-async function mounted(routineId = "routine-1") {
+async function mounted(routineId = "routine-1", name?: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -51,7 +51,7 @@ async function mounted(routineId = "routine-1") {
     act(async () =>
       root.render(
         <MemoryRouter>
-          <RoutineRunHistory key={id} routineId={id} />
+          <RoutineRunHistory key={id} routineId={id} name={name} />
         </MemoryRouter>,
       ),
     );
@@ -369,4 +369,23 @@ it("keeps loaded older runs when a run finishes while they are open", async () =
   expect(container.querySelectorAll("li")).toHaveLength(3);
   await act(async () => root.unmount());
   container.remove();
+});
+
+it("shows the routine name on each run row", async () => {
+  api.history.mockResolvedValue(page([run]));
+  const view = await mounted("routine-1", "Monday cash check");
+  try {
+    expect(view.container.querySelector("li")?.textContent).toContain("Monday cash check");
+  } finally {
+    await view.close();
+  }
+});
+
+it("shows a finished run that only asked another agent as waiting on that agent", async () => {
+  api.history.mockResolvedValue(page([{ ...run, waitingOn: "Inbox agent" }]));
+  const view = await mounted();
+  const row = view.container.querySelector('[data-testid="routine-run-row"]');
+  expect(row?.textContent).toContain("Waiting on Inbox agent");
+  expect(row?.textContent).not.toContain("Done");
+  await view.close();
 });

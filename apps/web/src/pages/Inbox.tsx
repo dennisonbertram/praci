@@ -78,7 +78,7 @@ import {
   senderGroupId,
 } from "../components/inbox/InboxSenderGroup";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
-import { TodoCard } from "../components/inbox/TodoCard";
+import { dueLabel, TodoCard } from "../components/inbox/TodoCard";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
@@ -89,7 +89,11 @@ import {
   readInboxListState,
   setInboxListParam,
 } from "../lib/inbox-list-input";
-import { INBOX_CHANGED_EVENT, prefetchInboxMessage } from "../lib/inbox-message-cache";
+import {
+  INBOX_CHANGED_EVENT,
+  prefetchInboxMessage,
+  ROW_MENU_EVENT,
+} from "../lib/inbox-message-cache";
 import { moveInChunks } from "../lib/inbox-move";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { MAIL_SENT_EVENT } from "../lib/outbox";
@@ -161,7 +165,8 @@ type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
 const filterLabels = (): Record<InboxFilter, string> => ({
   unread: t`Unread`,
   starred: t`Starred`,
-  important: t`Important`,
+  // The Important tab above is a different list, so the Gmail label says which one it is.
+  important: t`Gmail Important`,
   attachment: t`Has attachment`,
   primary: t`Primary`,
   promotions: t`Promotions`,
@@ -318,6 +323,13 @@ function InboxListPage({
   const [composing, setComposing] = useState(false);
   // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
   const [sorting, setSorting] = useState(false);
+  // Rows keep their groups while a row's More menu is open, so the item under the pointer stays put.
+  const [rowMenuOpen, setRowMenuOpen] = useState(false);
+  useEffect(() => {
+    const onMenu = (event: Event) => setRowMenuOpen((event as CustomEvent<boolean>).detail);
+    window.addEventListener(ROW_MENU_EVENT, onMenu);
+    return () => window.removeEventListener(ROW_MENU_EVENT, onMenu);
+  }, []);
   const sortingRef = useRef(false);
   sortingRef.current = sorting;
   // Triage finished during the first sort, and the to-dos it made are still loading.
@@ -621,7 +633,7 @@ function InboxListPage({
   // classifications from before stay, and rows classified later join the grouping when it finishes.
   const holdWhilePending = useCallback(
     (list: MailRow[]) => {
-      if (!shown?.triagePending || stalled || filtered) {
+      if ((!shown?.triagePending && !rowMenuOpen) || stalled || filtered) {
         heldTriage.current = null;
         return list;
       }
@@ -658,26 +670,29 @@ function InboxListPage({
         return { ...row, ...classes };
       });
     },
-    [shown?.triagePending, stalled, filtered, listKey],
+    [shown?.triagePending, rowMenuOpen, stalled, filtered, listKey],
   );
   const groups = useMemo(
     () =>
       groupInbox(
         sorting
-          ? // Rows sorted so far show nothing new until the whole sort lands.
-            rows.map((row) => ({
-              ...row,
-              needsReply: null,
-              priority: null,
-              reason: null,
-              category: null,
-            }))
+          ? // Rows sorted so far show nothing new until the whole sort lands. An open row menu
+            // holds the blank view, so the rows do not move when the sort finishes.
+            (rowMenuOpen ? holdWhilePending : (list: MailRow[]) => list)(
+              rows.map((row) => ({
+                ...row,
+                needsReply: null,
+                priority: null,
+                reason: null,
+                category: null,
+              })),
+            )
           : resultsView
             ? rows.map((row) => ({ ...row, needsReply: null }))
             : holdWhilePending(rows),
         new Date(),
       ),
-    [rows, resultsView, sorting, holdWhilePending],
+    [rows, resultsView, sorting, rowMenuOpen, holdWhilePending],
   );
   const replyRows = allReplies ? groups.needsReply : groups.needsReply.slice(0, NEEDS_REPLY_SHOWN);
   const hiddenReplies = groups.needsReply.length - replyRows.length;
@@ -1064,15 +1079,15 @@ function InboxListPage({
         shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
-  // "Reply to Morgan ..." with no date repeats its row under Needs reply: the row stays, the card drops it.
-  // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
-  const needsReplyIds = new Set(groups.needsReply.map((row) => row.id));
+  // A to-do made from a visible Needs reply row would show the same task twice, so the card drops
+  // it and the open mail offers its completion. Only the first rows count, so "Show more" does not
+  // change the card.
+  const replyRowIds = new Set(groups.needsReply.slice(0, NEEDS_REPLY_SHOWN).map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
-    todo.doneAt === null &&
-    !todo.dueOn &&
-    Boolean(todo.messageId) &&
-    needsReplyIds.has(todo.messageId as string) &&
-    /^(reply|respond|answer)\b/i.test(todo.text);
+    todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
+  const todoRowDue = new Map(
+    (todos ?? []).filter(repeatsRow).map((todo) => [todo.messageId as string, todo.dueOn ?? null]),
+  );
   const cardTodos = todos?.filter((todo) => !repeatsRow(todo));
   // Its checkbox is gone from the card, so the open mail offers the completion instead.
   const openReplyTodo = openId
@@ -1238,7 +1253,10 @@ function InboxListPage({
 
   const count = status?.kind === "archivedMany" ? status.messageIds.length : 0;
   const toast = status ? (
-    <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg">
+    <div
+      data-toast-avoid
+      className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg"
+    >
       {status.kind === "archivedMany" ? (
         <Trans>Archived {count}</Trans>
       ) : status.kind === "archived" ? (
@@ -1339,13 +1357,6 @@ function InboxListPage({
           </InputGroup>
         </form>
       )}
-      {/* After the search box, which arrives first: the name loads later and must not push it. */}
-      {spaceName ? (
-        // The full name is in the hover title when the row is too short for it.
-        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-          {spaceName}
-        </span>
-      ) : null}
     </>
   );
 
@@ -1361,6 +1372,7 @@ function InboxListPage({
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
+            spaceName={phone ? undefined : spaceName}
             meta={phone ? undefined : searchMeta}
             actions={
               <>
@@ -1656,7 +1668,7 @@ function InboxListPage({
                 <Trans>Sorting your mail…</Trans>
               </p>
             ) : null}
-            {synced || sortingRows ? null : (
+            {synced || sortingRows || consentPrompt ? null : (
               <p role="status" className="text-sm text-muted-foreground">
                 {slowSync && !everSynced && !data?.syncedAt ? (
                   <Trans>First sync can take a minute</Trans>
@@ -1665,9 +1677,15 @@ function InboxListPage({
                 )}
               </p>
             )}
-            {[0, 1, 2, 3, 4].map((n) => (
-              <Skeleton key={n} className="h-9 w-full" />
-            ))}
+            {/* Real rows are 57px apart with no gap, so the list does not jump when they arrive. */}
+            <div>
+              {[0, 1, 2, 3, 4].map((n) => (
+                <Skeleton
+                  key={n}
+                  className="h-[57px] w-full rounded-none border-b border-background"
+                />
+              ))}
+            </div>
           </div>
         ) : shown && rows.length === 0 ? (
           <>
@@ -1844,6 +1862,7 @@ function InboxListPage({
                     title={<Trans>Needs reply</Trans>}
                     hideAttention
                     rows={replyRows}
+                    todoDue={todoRowDue}
                     unreadTotal={groups.needsReply.filter((row) => row.unread).length}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
@@ -1992,6 +2011,11 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          replyDoneText={
+            openReplyTodo?.dueOn
+              ? `${openReplyTodo.text} · ${dueLabel(openReplyTodo.dueOn, new Date())}`
+              : openReplyTodo?.text
+          }
           onReplyDone={
             openReplyTodo
               ? () =>

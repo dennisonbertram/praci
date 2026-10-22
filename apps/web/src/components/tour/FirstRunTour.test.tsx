@@ -20,6 +20,7 @@ const update = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { preferences: { update } } }));
 
 import { FirstRunTour } from "./FirstRunTour";
+import { clearTourStep, tourInProgress } from "./TourPopover";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -36,6 +37,7 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
   update.mockReset().mockResolvedValue({ tourSeen: true });
   document.body.innerHTML = "";
+  sessionStorage.clear();
   for (const id of anchors) {
     const el = document.createElement("button");
     el.dataset.tour = id;
@@ -96,7 +98,49 @@ it("keeps Back and the primary button in the same slots on every stop", async ()
   expect(button("Back").className).toBe(middle[0]);
   expect(button("Done").className).toContain("min-w-16");
   expect(button("Next")).toBeUndefined();
-  expect(button("Skip tour")?.className ?? "invisible").toContain("invisible");
+  // Hidden (not just invisible), so the 9/9 counter sits at the card edge.
+  expect(button("Skip tour")).toBeUndefined();
+});
+
+it("restores the same step after a reload and forgets it when the tour ends", async () => {
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await click("Next");
+  expect(document.body.textContent).toContain("2/3");
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  expect(document.body.textContent).toContain("2/3");
+  await click("Skip tour");
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  expect(document.body.textContent).toContain("1/3");
+});
+
+it("keeps the saved step per user, reports it as in progress, and clears it on sign-out", async () => {
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await click("Next");
+  expect(tourInProgress("u1")).toBe(true);
+  expect(tourInProgress("u2")).toBe(false);
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await act(async () =>
+    root.render(<FirstRunTour userId="u2" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  expect(document.body.textContent).toContain("1/3");
+  clearTourStep("u1");
+  expect(tourInProgress("u1")).toBe(false);
 });
 
 it("records Skip tour", async () => {
@@ -124,7 +168,7 @@ it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not ab
   expect(onSkip).toHaveBeenCalledTimes(1);
 });
 
-it("on a phone the card sits right beside its target, below a high one and above a low one", async () => {
+it("on a phone the card stays at the foot at every stop and the drawer is padded above it", async () => {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -136,22 +180,30 @@ it("on a phone the card sits right beside its target, below a high one and above
   const at = (id: string, top: number) => {
     const el = document.querySelector(`[data-tour="${id}"]`) as HTMLElement;
     el.getBoundingClientRect = () => rect(top);
+    el.scrollIntoView = vi.fn();
   };
-  at("sidebar-inbox", 100);
+  const drawer = document.createElement("aside");
+  document.body.append(drawer);
+  drawer.append(...document.querySelectorAll("[data-tour]"));
+  at("sidebar-inbox", 20);
+  at("sidebar-integrations", 650);
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Upper-half target (bottom at 140): the card starts 8px under it.
-  expect(card().style.top).toBe("148px");
-  expect(card().style.bottom).toBe("");
-  await click("Next");
-  await click("Next");
-  // Lower-half target (top at 700): the card ends 8px above it.
-  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 8}px`);
-  expect(card().style.top).toBe("");
+  // A target at the top of the screen and footer rows low down: the card never moves.
+  for (let i = 0; i < 2; i++) {
+    expect(card().style.bottom).toBe("16px");
+    expect(card().style.top).toBe("");
+    expect(drawer.style.paddingBottom).not.toBe("");
+    await click("Next");
+  }
+  await act(async () =>
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  expect(drawer.style.paddingBottom).toBe("");
 });
 
-it("on desktop the card sits beside the sidebar at the foot of the page, the same at every stop", async () => {
+it("on desktop the card sits inside the sidebar above its footer, so the chat stays clear", async () => {
   const aside = document.createElement("aside");
   aside.getBoundingClientRect = () =>
     ({
@@ -168,11 +220,14 @@ it("on desktop the card sits beside the sidebar at the foot of the page, the sam
   target.getBoundingClientRect = () =>
     ({ top: 100, bottom: 140, left: 10, right: 300, width: 290, height: 40 }) as DOMRect;
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  const footer = document.querySelector('[data-tour="sidebar-integrations"]') as HTMLElement;
+  footer.getBoundingClientRect = () => ({ top: 700, bottom: 740 }) as DOMRect;
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Not level with the target: that would cover the page title or the chat's first lines.
+  // Inside the column (x < 316), so no chat text is under it.
   expect(card.style.top).toBe("");
-  expect(card.style.bottom).toBe("16px");
-  expect(card.style.left).toBe("324px");
+  expect(card.style.bottom).toBe(`${window.innerHeight - 692}px`);
+  expect(card.style.left).toBe("14px");
   expect(card.style.width).toBe("288px");
 });
 
@@ -182,7 +237,7 @@ it("does not tell anyone to connect Gmail, which may already be connected", asyn
   el.dataset.tour = "sidebar-integrations";
   document.body.append(el);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
-  expect(document.body.textContent).toContain("add more in Integrations");
+  expect(document.body.textContent).toContain("add more");
   expect(document.body.textContent).not.toContain("Gmail");
 });
 
@@ -233,8 +288,7 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     if (i < order.length - 1) await click("Next");
   }
   expect(document.body.textContent).toContain("9/9");
-  expect(seen[0]).toMatch(/^Search: Type here/);
-  expect(seen[0]).toContain("find any page, chat");
+  expect(seen[0]).toBe("Search finds any page, chat or email.");
   expect(seen[6]).toContain("Ask Chief");
   expect(seen[1]).toContain("create a bot");
   // New users already ask before email and purchases, so the tour sends nobody to Settings.
@@ -264,4 +318,24 @@ it("ends on Escape before the drawer's own Escape handler sees it", async () => 
   document.removeEventListener("keydown", drawer);
   expect(onClose).toHaveBeenCalledWith(null, true);
   expect(drawer).not.toHaveBeenCalled();
+});
+
+it("waits for a late sidebar item so a reload keeps its step and stop count", async () => {
+  vi.useFakeTimers();
+  try {
+    sessionStorage.setItem("tour-step:u1", "apps");
+    const late = document.querySelector('[data-tour="sidebar-integrations"]') as HTMLElement;
+    late.remove();
+    await act(async () =>
+      root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+    );
+    expect(document.body.textContent).not.toContain("/3");
+    document.body.append(late);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(document.body.textContent).toContain("2/3");
+  } finally {
+    vi.useRealTimers();
+  }
 });

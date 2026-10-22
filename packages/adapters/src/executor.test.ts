@@ -8,6 +8,7 @@ import {
 } from "@rakazo/contracts";
 import {
   expandSkillReferencesInPrompt,
+  GTM_PAGE_INSTRUCTIONS,
   ONCE_ROUTINE_CRON,
   ownsLine,
   renderBotDirectory,
@@ -50,6 +51,18 @@ import { UnavailableModelForAuthError } from "./model-selection.js";
 import { RetiredModelCredentialError, serializeModelSecret } from "./pi-oauth.js";
 
 const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
+
+it("adds live page guidance to existing GTM agents without duplicating it on new ones", () => {
+  const bot = { name: "GTM", title: "", description: "", instructions: "Existing instructions." };
+  const prompt = runIdentityInstruction(bot, "user", "gtm-agent:demo");
+  expect(prompt).toContain(GTM_PAGE_INSTRUCTIONS);
+  expect(
+    runIdentityInstruction({ ...bot, instructions: prompt }, "routine", "gtm-agent:demo"),
+  ).toBe(prompt);
+  expect(runIdentityInstruction(bot, "user", "other-agent:demo")).not.toContain(
+    GTM_PAGE_INSTRUCTIONS,
+  );
+});
 
 describe("bot tool permissions", () => {
   it("never lets self-edit change disabled tools alongside an allowed field", () => {
@@ -1350,6 +1363,18 @@ describe("directoryDescription", () => {
     expect(integration).not.toContain("instead of messaging it");
   });
 
+  it("sends a bot-delegated payment to the agent's own chat, not Integrations", () => {
+    const line = directoryDescription({
+      id: "bot-9",
+      name: "Mercury",
+      description: "Works with the user's Mercury account.",
+      spawnKey: "integration-agent:server-1",
+    });
+    expect(line).toContain(
+      "approve it in the Mercury chat and end with [Open Mercury](/app/bot-9)",
+    );
+  });
+
   it("tells peers to message the Carta agent and assembles one consistent directory entry", () => {
     const description = `${directoryDescription({
       description: "Reads the cap table.",
@@ -1372,6 +1397,10 @@ describe("directoryDescription", () => {
     });
     expect(finance).not.toContain("or the recipient is unknown");
     expect(finance).toContain("has no matching recipient");
+    expect(finance).not.toContain("so the user can reach the bank");
+    expect(finance).toContain("Integrations cannot add a recipient");
+    expect(finance).toContain("asks again in a new message for the same payment");
+    expect(finance).toContain("never mention a missing request link");
     expect(finance).toContain("Post exactly one message per payment request");
     expect(finance).toContain("ask the Mercury or Brex agent directly");
   });

@@ -9,6 +9,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("@rakazo/ui-web", () => ({
+  Skeleton: (props: React.ComponentProps<"div">) => <div data-testid="rules-skeleton" {...props} />,
   Button: (props: React.ComponentProps<"button">) => <button type="button" {...props} />,
   Label: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   Switch: ({
@@ -95,4 +96,14 @@ it("adds the rule when switched on and removes it when switched off", async () =
   await act(async () => email()?.click());
   expect(api.remove).toHaveBeenCalledWith({ id: "rule_1" });
   expect(email()?.getAttribute("aria-checked")).toBe("false");
+});
+
+it("shows no switch value until the rules have loaded", async () => {
+  let resolve: (rules: unknown[]) => void = () => {};
+  api.list.mockReturnValue(new Promise((r) => (resolve = r)));
+  await act(async () => root.render(<ApprovalRulesSettings />));
+  expect(email()).toBeNull();
+  expect(container.querySelectorAll("[data-testid=rules-skeleton]").length).toBe(2);
+  await act(async () => resolve([emailRule]));
+  expect(email()?.getAttribute("aria-checked")).toBe("true");
 });

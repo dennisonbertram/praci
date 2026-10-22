@@ -5,6 +5,7 @@ import type { DataRoomAi } from "@rakazo/adapters";
 import { toLegalContract, toLegalDeadline } from "@rakazo/adapters";
 import type { Actor, Bot, LegalGraph, LegalOverview } from "@rakazo/contracts";
 import { LEGAL_AGENT_MODEL, LEGAL_SCAN_ROUTINE_NAME } from "@rakazo/contracts";
+import { connectionRowsForAudience, deniedConnectionIds } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError, LEGAL_NOT_LEGAL_TYPE } from "@rakazo/db";
 import { createDataRoomService } from "./data-room.js";
@@ -41,6 +42,24 @@ export const legalDueSoonCount = (
     },
   });
 
+/** Connections the Legal agent may not use; the scan skips their documents, so the page does not count them. */
+async function deniedForLegal(deps: Pick<LegalDeps, "prisma">, actor: Actor, bot: Bot) {
+  const rows = await deps.prisma.connection.findMany({
+    where: scope(actor),
+    select: {
+      id: true,
+      connectorId: true,
+      provider: true,
+      status: true,
+      allAgents: true,
+      agentBotId: true,
+      privateByDefault: true,
+      botAccess: { where: { botId: bot.id }, select: { botId: true } },
+    },
+  });
+  return [...deniedConnectionIds(connectionRowsForAudience(rows, bot.audience))];
+}
+
 export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<LegalOverview> {
   const repo = createLegalRepos(deps.prisma);
   const now = today();
@@ -50,7 +69,7 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
     repo.listContracts(actor, { limit: 500 }),
     repo.listDeadlines(actor, { status: "open", limit: 500 }),
     repo.deadlineCounts(actor, now),
-    repo.countUnreviewed(actor),
+    deniedForLegal(deps, actor, bot).then((denied) => repo.countUnreviewed(actor, denied)),
   ]);
   const lastScan = await deps.prisma.run.findFirst({
     where: { botId: bot.id, trigger: "routine", status: "completed" },
@@ -116,6 +135,12 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
   };
 }
 
+/** SAFEs found in the Data room. Reads only; the agent and its scan routine are not created. */
+export async function legalSafeCount(deps: Pick<LegalDeps, "prisma">, actor: Actor) {
+  const contracts = await createLegalRepos(deps.prisma).listContracts(actor, { limit: 500 });
+  return { count: contracts.filter((c) => /\bsafe\b/i.test(c.contractType)).length };
+}
+
 /** What deleting this Data room item would also remove from Legal. Reads only; the agent is not created. */
 export async function legalItemLinks(
   deps: Pick<LegalDeps, "prisma">,
@@ -152,6 +177,19 @@ export async function legalGraph(deps: LegalDeps, actor: Actor): Promise<LegalGr
       sourceQuote: e.sourceQuote,
     })),
   };
+}
+
+/** Deadlines the user marked done, latest due date first. */
+export async function legalDoneDeadlines(deps: LegalDeps, actor: Actor) {
+  const repo = createLegalRepos(deps.prisma);
+  const [rows, contracts] = await Promise.all([
+    repo.listDeadlines(actor, { status: "done", limit: 200, newestFirst: true }),
+    repo.listContracts(actor, { limit: 500 }),
+  ]);
+  const titles = new Map(contracts.map((c) => [c.id, c.title]));
+  return rows
+    .map((d) => toLegalDeadline(d, d.contractId ? (titles.get(d.contractId) ?? null) : null))
+    .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
 }
 
 export async function legalUpdateDeadline(

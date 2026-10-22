@@ -13,12 +13,13 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
 import { PickFilter, SearchField } from "../components/ListControls";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import { rpc } from "../lib/rpc";
@@ -86,20 +87,18 @@ export function ContactsPage({
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
+          // The space name is in the sidebar; on a phone it only adds a row under the title.
+          className="max-sm:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Contacts</Trans>}
-          meta={
-            spaceName ? (
-              <span className="truncate" title={spaceName}>
-                {spaceName}
-              </span>
-            ) : null
-          }
+          spaceName={spaceName}
           actions={
             <>
-              <Button onClick={() => setEditing("new")}>
-                <Plus aria-hidden="true" />
-                <Trans>Add contact</Trans>
-              </Button>
+              {contacts?.length === 0 ? null : (
+                <Button onClick={() => setEditing("new")}>
+                  <Plus aria-hidden="true" />
+                  <Trans>Add contact</Trans>
+                </Button>
+              )}
               {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
             </>
           }
@@ -116,9 +115,20 @@ export function ContactsPage({
         ) : contacts === null ? (
           <RowsSkeleton className="pt-2" />
         ) : contacts.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            <Trans>No contacts yet</Trans>
-          </p>
+          <PageEmptyState
+            icon={<Users className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+            title={<Trans>No contacts yet</Trans>}
+            description={
+              <Trans>
+                Investors, advisors and customers you add or your bots find appear here.
+              </Trans>
+            }
+          >
+            <Button variant="outline" onClick={() => setEditing("new")}>
+              <Plus aria-hidden="true" />
+              <Trans>Add contact</Trans>
+            </Button>
+          </PageEmptyState>
         ) : (
           <>
             <div className="mb-4 flex flex-wrap items-center gap-1.5">
@@ -168,7 +178,7 @@ export function ContactsPage({
               </div>
             ) : (
               <div>
-                <Table compact className="max-w-4xl table-fixed">
+                <Table compact className="table-fixed">
                   <TableHeader>
                     <TableHeadRow>
                       <TableHead className="ps-2">
@@ -202,12 +212,12 @@ export function ContactsPage({
                           >
                             {contact.name}
                           </button>
-                          {/* Without room for the Email column, the email (else the organization) shows here. */}
+                          {/* Without room for the Email column, the organization (else the email) shows here. */}
                           <div
                             className="truncate text-xs text-muted-foreground @md:hidden"
-                            title={contact.email ?? contact.organization ?? undefined}
+                            title={contact.organization ?? contact.email ?? undefined}
                           >
-                            {contact.email ?? contact.organization}
+                            {contact.organization ?? contact.email}
                           </div>
                         </TableCell>
                         <TableCell

@@ -109,6 +109,7 @@ import {
   findSkillByName,
   formatSkillRunPrompt,
   formatSkillsCatalogInstruction,
+  GTM_PAGE_INSTRUCTIONS,
   humanizeToolName,
   inferAttachmentMimeType,
   isBackgroundRunTrigger,
@@ -4412,11 +4413,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               select: { id: true, status: true, request: true, result: true },
             });
-            const repeated = denied.find(
-              (prior) =>
-                prior.id !== applied.effect.id &&
-                repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
-            );
+            const repeated =
+              denied.find(
+                (prior) =>
+                  prior.id !== applied.effect.id &&
+                  repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
+              ) ??
+              (await priorDenialAwaitingOwner(
+                deps.prisma,
+                run,
+                replayEffectToolName,
+                effectRequest,
+                applied.effect.id,
+              ));
             if (repeated) {
               const gate = resolveDuplicateEffectGate(repeated, name);
               const result =
@@ -4698,7 +4707,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               await pageToolFromTool(
                 name,
                 { prisma: deps.prisma, events: deps.events },
-                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
+                {
+                  spaceId: run.spaceId,
+                  botId: bot.id,
+                  userId: bot.userId,
+                  runId,
+                  gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
+                },
                 args,
               ),
             );
@@ -6765,7 +6780,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
                   : undefined
                 : integrationAgent
-                  ? undefined
+                  ? integrationPeerRun
+                    ? INTEGRATION_PEER_RUN_LINE
+                    : undefined
                   : financeOnly
                     ? financeAgentRunLine(financeEnabled, run.trigger)
                     : connectedPlugins.length > 0
@@ -8567,25 +8584,110 @@ async function loadBotDirectory(
   );
 }
 
+/**
+ * A delegate (bank) run asked again for a payment the owner already denied in an earlier run.
+ * The denial stands until the owner sends a new message in the requester's thread; an agent
+ * re-asking on its own gets the existing denial back instead of a new approval card.
+ */
+export async function priorDenialAwaitingOwner(
+  prisma: PrismaClient,
+  run: {
+    spaceId: string;
+    userId: string;
+    botId: string;
+    trigger: string;
+    sourceMessageId: string | null;
+  },
+  kind: string,
+  request: unknown,
+  currentEffectId: string,
+) {
+  if (run.trigger !== "bot_message" || !run.sourceMessageId) return undefined;
+  const source = await prisma.message.findUnique({
+    where: { id: run.sourceMessageId },
+    select: { blocks: true },
+  });
+  const returnTo = (Array.isArray(source?.blocks) ? (source.blocks as MessageBlock[]) : []).find(
+    (block) => block.kind === "bot_message_received" && block.returnToMessageId,
+  );
+  const sentId = returnTo?.kind === "bot_message_received" ? returnTo.returnToMessageId : undefined;
+  const sent = sentId
+    ? await prisma.message.findUnique({ where: { id: sentId }, select: { threadId: true } })
+    : null;
+  if (!sent) return undefined;
+  // Page through the denials until one matches: an old matching denial still applies.
+  let prior:
+    | { id: string; status: string; request: unknown; result: unknown; updatedAt: Date }
+    | undefined;
+  for (let skip = 0; !prior; skip += 50) {
+    const page = await prisma.externalEffect.findMany({
+      where: {
+        spaceId: run.spaceId,
+        kind,
+        status: "denied",
+        id: { not: currentEffectId },
+        run: { userId: run.userId, botId: run.botId, trigger: "bot_message" },
+      },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: 50,
+      select: { id: true, status: true, request: true, result: true, updatedAt: true },
+    });
+    prior = page.find((effect) => repeatsDeniedRequest(kind, effect.request, request));
+    if (page.length < 50) break;
+  }
+  if (!prior) return undefined;
+  // Only words the owner typed reset the guard: bot-to-bot deliveries are also stored as user-role
+  // messages, but they carry a bot author or a bot_message_received block.
+  for (let skip = 0; ; skip += 50) {
+    const page = await prisma.message.findMany({
+      where: {
+        threadId: sent.threadId,
+        role: "user",
+        botId: null,
+        createdAt: { gt: prior.updatedAt },
+      },
+      orderBy: { createdAt: "asc" },
+      skip,
+      take: 50,
+      select: { blocks: true },
+    });
+    const human = page.some(
+      (message) =>
+        !(Array.isArray(message.blocks) ? (message.blocks as MessageBlock[]) : []).some(
+          (block) => block.kind === "bot_message_received",
+        ),
+    );
+    if (human) return undefined;
+    if (page.length < 50) return prior;
+  }
+}
+
+/** A bank agent asked by another bot still posts its own approval card; it never sends the user away to authorize. */
+const INTEGRATION_PEER_RUN_LINE =
+  "Another bot sent this request for the user. Use your tools for it. A payment or other change posts an approval card in this chat, and the user approves it there: call the tool, then say it waits for their approval in this chat. Never tell the user to authorize it directly or somewhere else.";
+
 /** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
 const CONSENT_LINK_GUIDANCE =
-  " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and do not link Settings or Integrations.";
+  ' If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first ("Add it in Mercury" or the bank\'s name), and add no link, because Integrations cannot add a recipient. When the user approves a payment, report the outcome in one plain line (submitted, or failed with the reason) instead of repeating that it waits for approval, and never mention a missing request link or other tool internals. A denial covers only the request that was denied: when the user asks again in a new message for the same payment, message the agent again as a new request.';
 
 /**
  * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged
  * by other bots: they answer with their own data and the asking bot passes it on to the user.
  */
 export function directoryDescription(peer: {
+  id?: string;
+  name?: string;
   description: string;
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request: then give no link; never reply only that the request could not be completed.${CONSENT_LINK_GUIDANCE}`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself, speaking to them as "you" (say "your mail", never the user's name). Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request or the reason is a payee with no matching recipient: then give no link; never reply only that the request could not be completed.${peer.id ? ` If its answer says the user must approve a payment or other change, tell the user in one line to approve it in the ${peer.name ?? "agent"} chat and end with [Open ${peer.name ?? "the agent"}](/app/${peer.id}), never with an Integrations link.` : ""}${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. When the user denied the request, say it was not submitted and add no link. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. When the user denied the request, say it was not submitted and add no link; when a payee has no matching recipient, say to add it at the bank and add no link. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
@@ -8825,6 +8927,9 @@ function identityInstruction(
   const guide = isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
   const inbox = isInboxAgentSpawnKey(spawnKey);
   const withGuide = (text: string) => {
+    if (isGtmAgentSpawnKey(spawnKey) && !text.includes(GTM_PAGE_INSTRUCTIONS)) {
+      text = `${text}\n\n${GTM_PAGE_INSTRUCTIONS}`.trim();
+    }
     if (guide && !text.includes(ONE_APPROVAL_GUIDANCE)) {
       text = `${text} ${ONE_APPROVAL_GUIDANCE}`.trim();
     }

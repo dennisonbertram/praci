@@ -135,7 +135,7 @@ test("aged queued work is marked and an expired wait leaves a status line", asyn
   await page.route("**/rpc/threads/get", fulfillExpiredStatus);
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("combobox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("textbox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(EXPIRED_TAKEOVER)).toBeVisible({ timeout: 20_000 });
   await captureScreenshot(page, testInfo, "stuck-expired-status");
 });

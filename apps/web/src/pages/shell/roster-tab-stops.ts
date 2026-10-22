@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 
 // The sidebar's page rows and chat rows are one tab stop, like a listbox: Tab enters it once and
-// leaves it, and the arrow keys move between rows. Without this a long list puts dozens of Tab
+// leaves it (plus the first row, so Tab reaches the pages), and the arrow keys move between rows. Without this a long list puts dozens of Tab
 // presses before the page. Rows (pages, chats, space headings) carry `data-roster-row`; a row's
 // wrapper (`data-roster-item`) holds its Actions button (`data-roster-actions`), which is a tab
 // stop only while its row is.
@@ -23,7 +23,8 @@ export function syncRosterTabStops(root: HTMLElement | null, stopId: string | nu
     rows[0];
   for (const row of rows) {
     const index = row === stop ? "0" : "-1";
-    row.setAttribute("tabindex", index);
+    // The first row (a page) stays reachable with Tab even when a chat is the stop.
+    row.setAttribute("tabindex", row === rows[0] ? "0" : index);
     row
       .closest("[data-roster-item]")
       ?.querySelector("[data-roster-actions]")

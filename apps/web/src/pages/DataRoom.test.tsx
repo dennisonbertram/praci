@@ -163,12 +163,32 @@ function GoToB() {
   );
 }
 
+function GoFailed() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="go-failed" onClick={() => navigate("/?status=failed")}>
+      failed
+    </button>
+  );
+}
+
+function GoAll() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="go-all" onClick={() => navigate("/")}>
+      all
+    </button>
+  );
+}
+
 async function renderPage(entry = "/") {
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={[entry]}>
         <DataRoomPage />
         <GoToB />
+        <GoFailed />
+        <GoAll />
       </MemoryRouter>,
     );
   });
@@ -1031,19 +1051,24 @@ it("shows an import's progress, reloads the list while it runs, and stops when i
   expect(rpcMock.imports.mock.calls.length).toBe(settledImports);
 });
 
-it("opens a file of a finished import, and lets the row be dismissed", async () => {
-  rpcMock.imports.mockResolvedValue([
-    {
-      ...running,
-      done: 5,
-      inProgress: 0,
-      finished: true,
-      latest: ["b.txt", "c.txt", "d.txt"].map((name, n) => ({ id: n ? name : "B", name })),
-    },
-  ]);
-  rpcMock.item.mockResolvedValue({ ...item("b.txt"), id: "B" });
+/** The import was started (or still running) on this visit, then finished: its row shows. */
+const finishedThisVisit = async (finished: object) => {
+  rpcMock.imports.mockResolvedValueOnce([running]).mockResolvedValue([finished]);
   await renderPage();
   await settle();
+  await act(async () => void window.dispatchEvent(new Event("rakazo:data-room-import-started")));
+  await settle();
+};
+
+it("opens a file of a finished import, and lets the row be dismissed", async () => {
+  await finishedThisVisit({
+    ...running,
+    done: 5,
+    inProgress: 0,
+    finished: true,
+    latest: ["b.txt", "c.txt", "d.txt"].map((name, n) => ({ id: n ? name : "B", name })),
+  });
+  rpcMock.item.mockResolvedValue({ ...item("b.txt"), id: "B" });
   const link = Array.from(container.querySelectorAll("[role=status] button")).find(
     (b) => b.textContent === "b.txt",
   );
@@ -1059,9 +1084,11 @@ it("opens a file of a finished import, and lets the row be dismissed", async () 
 });
 
 it("clears the finished-import row when the open folder changes", async () => {
-  rpcMock.imports.mockResolvedValue([
-    { ...running, done: 5, inProgress: 0, finished: true, latest: [{ id: "B", name: "b.txt" }] },
-  ]);
+  rpcMock.imports
+    .mockResolvedValueOnce([running])
+    .mockResolvedValue([
+      { ...running, done: 5, inProgress: 0, finished: true, latest: [{ id: "B", name: "b.txt" }] },
+    ]);
   rpcMock.folders.mockResolvedValue(
     ["A", "B"].map((name) => ({
       id: `f${name}`,
@@ -1083,6 +1110,8 @@ it("clears the finished-import row when the open folder changes", async () => {
       </MemoryRouter>,
     );
   });
+  await settle();
+  await act(async () => void window.dispatchEvent(new Event("rakazo:data-room-import-started")));
   await settle();
   expect(activity()).toContain("Imported 5 files");
   await act(async () => go("/?folder=fB"));
@@ -1287,4 +1316,23 @@ it("lists only the new folder's items when it is opened with the preview open", 
   await settle();
   await settle();
   expect(names()).toEqual(["c.txt"]);
+});
+
+it("filters to failed files when the sidebar badge link is followed while the page is open", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-failed"]')?.click();
+  });
+  expect(rpcMock.list.mock.calls.at(-1)?.[0]).toMatchObject({ status: "failed" });
+});
+
+it("shows all files again when the sidebar row is followed after the failed filter", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-failed"]')?.click();
+  });
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-all"]')?.click();
+  });
+  expect(rpcMock.list.mock.calls.at(-1)?.[0]).not.toHaveProperty("status", "failed");
 });

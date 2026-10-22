@@ -10,3 +10,12 @@ export function delegateWaitTarget(messages: readonly { blocks: readonly Message
   }
   return null;
 }
+
+/** The agents holding an approval for this chat's requests, once each, in the order they were asked. */
+export function pendingDelegateAgents(
+  pending: readonly { id: string; name: string }[] | undefined,
+) {
+  return [...new Map((pending ?? []).map((agent) => [agent.id, agent])).values()].map(
+    ({ id, name }) => ({ id, name }),
+  );
+}

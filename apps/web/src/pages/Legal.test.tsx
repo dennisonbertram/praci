@@ -23,6 +23,7 @@ vi.mock("@lingui/react/macro", () => ({
 const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
   graph: vi.fn(),
+  doneDeadlines: vi.fn(),
   updateDeadline: vi.fn(),
   scanNow: vi.fn(),
   consent: vi.fn(),
@@ -740,7 +741,7 @@ it("names the Legal agent on Ask, with no Hide amounts switch in the header", as
   expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
-it("links the unchecked documents line to the Data room and opens Deadlines on the overdue ones", async () => {
+it("has one scan button beside the unchecked documents line and opens Deadlines on the overdue ones", async () => {
   // One deadline long past and one far ahead, so which one is overdue never depends on today.
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -750,9 +751,13 @@ it("links the unchecked documents line to the Data room and opens Deadlines on t
     ],
   });
   await render(<LegalPage />);
-  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')?.textContent).toBe(
-    "3 Data room documents not yet checked by Legal",
-  );
+  expect(container.textContent).toContain("3 Data room documents not yet checked by Legal");
+  // The line is a count only: the header's Scan now is the one scan button.
+  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
+  expect(button("Check now")).toBeUndefined();
+  rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
+  await click(button("Scan now"));
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -932,17 +937,16 @@ it("opens no two deadline rows with the same words and leaves out an all-active 
   expect(container.textContent).not.toContain("Status");
 });
 
-it("shows the Status column only for two or more non-active contracts, else a chip by the title", async () => {
+it("keeps the same columns whatever the statuses: no Status column, a chip by the title", async () => {
   const [first, second] = contracts;
   if (!first || !second) throw new Error("fixtures");
-  const one = [first, { ...second, status: "expired" as const }].map((c, i) =>
-    i === 0 ? { ...c, status: "active" as const } : c,
+  const widths = () => [...container.querySelectorAll("col")].map((col) => col.className);
+  await render(
+    <LegalContracts
+      contracts={[first, second].map((c) => ({ ...c, status: "active" as const }))}
+    />,
   );
-  await render(<LegalContracts contracts={one} />);
-  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).not.toContain(
-    "Status",
-  );
-  expect(container.querySelector("tbody")?.textContent).toContain("Expired");
+  const before = widths();
   await act(async () => root.unmount());
   root = createRoot(container);
   await render(
@@ -953,9 +957,12 @@ it("shows the Status column only for two or more non-active contracts, else a ch
       ]}
     />,
   );
-  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).toContain(
+  expect(widths()).toEqual(before);
+  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).not.toContain(
     "Status",
   );
+  expect(container.querySelector("tbody")?.textContent).toContain("Expired");
+  expect(container.querySelector("tbody")?.textContent).toContain("Draft");
 });
 
 it("puts the contract name in the deadline title", async () => {
@@ -1010,7 +1017,9 @@ it("opens the contract from a click anywhere on its row, and shows the Renewal n
   const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
     td.textContent?.startsWith("Auto-renews"),
   );
-  expect(renewalCell?.className).not.toContain("truncate");
+  // A narrow column clips the notice (the title holds it all) rather than running into Value.
+  expect(renewalCell?.className).toContain("truncate");
+  expect(renewalCell?.className).not.toContain("whitespace-nowrap");
   await click(row?.querySelectorAll("td")[3]);
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
     `/app/data-room?item=${contracts[0]!.dataRoomItemId}`,
@@ -1065,4 +1074,83 @@ it("ends a scan that outlasts the wait with a one-line result", async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("shows Reading n of N while a scan runs, from the falling unchecked count", async () => {
+  vi.useFakeTimers();
+  try {
+    const running = (left: number) => ({
+      ...overview,
+      counts: { ...overview.counts, unreviewedDocuments: left },
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "running" as const, error: null },
+      },
+    });
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(running(3));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    expect(container.textContent).toContain("Reading 0 of 3");
+    rpcMock.overview.mockResolvedValue(running(1));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Reading 2 of 3");
+    // Every document is read, but the run goes on writing: the line says so instead of freezing.
+    rpcMock.overview.mockResolvedValue(running(0));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Saving results");
+    expect(container.textContent).not.toContain("Reading 3 of 3");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("reopens a done deadline from Show done", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  rpcMock.updateDeadline.mockResolvedValue({});
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show done"));
+  rpcMock.doneDeadlines.mockResolvedValue([]);
+  await click(button("Reopen"));
+  expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "open" });
+  expect(container.textContent).toContain("No deadlines marked done.");
+});
+
+it("shows a phone contract card without repeated labels, and no value while amounts are hidden", async () => {
+  setHideAmounts(true);
+  try {
+    await render(<LegalContracts contracts={contracts} />);
+    const card = container.querySelector('ul[aria-label="Contracts"] li');
+    expect(card?.textContent).not.toMatch(/Parties|Term|Renewal|Value|Next deadline/);
+    expect(card?.textContent).not.toContain("•••");
+  } finally {
+    setHideAmounts(false);
+  }
+});
+
+it("keeps Show done reachable when only done deadlines remain", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview,
+    counts: { ...emptyOverview.counts, doneDeadlines: 1 },
+    agent: { ...emptyOverview.agent, lastScanAt: "2026-10-20T10:00:00.000Z" },
+  });
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show done"));
+  expect(container.querySelector('ul[aria-label="Done deadlines"]')).not.toBeNull();
+});
+
+it("lists the deadlines marked done", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show done"));
+  expect(container.querySelector('ul[aria-label="Done deadlines"]')?.textContent).toContain(
+    deadlines[0]!.title,
+  );
+  expect(button("Show open")).toBeDefined();
 });

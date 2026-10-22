@@ -48,7 +48,7 @@ export const Wide: StoryObj<typeof meta> = {
   ],
 };
 
-/** Every contract is active: no Status column. */
+/** Every contract is active: no chips. */
 export const AllActive: StoryObj<typeof meta> = {
   args: { contracts: contracts.filter((contract) => contract.status === "active") },
   decorators: [
@@ -98,6 +98,38 @@ export const TenOnDesktop: StoryObj<typeof meta> = {
   decorators: [
     (Story) => (
       <div className="@container w-[1280px]">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+const tenContracts = Array.from({ length: 10 }, (_, n) => ({
+  ...contracts[0]!,
+  id: `ten-${n}`,
+  title: `Sample agreement ${n + 1}`,
+  status: "active" as const,
+  nextDeadline: n % 3 === 0 ? "2026-11-15" : null,
+}));
+
+/** Ten contracts at a desktop width: one line per row, every cell on one baseline. */
+export const Ten: StoryObj<typeof meta> = {
+  args: { contracts: tenContracts },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[1370px]">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/** Ten contracts on a phone: five or more fit one screen. */
+export const TenNarrow: StoryObj<typeof meta> = {
+  args: { contracts: tenContracts },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[358px]">
         <Story />
       </div>
     ),

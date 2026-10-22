@@ -163,6 +163,7 @@ export function ComposeEmail({
   connectionId,
   restore: restoreProp,
   draft,
+  spaceId,
   onClose,
 }: {
   seed: ComposeSeed;
@@ -174,8 +175,14 @@ export function ComposeEmail({
   restore?: ComposeRestore;
   /** Text for a reply to start with, above the quoted original: a draft the email's agent wrote. */
   draft?: string;
+  /** The Space the composer belongs to; save, send and discard stay in it if the shared selection moves. */
+  spaceId?: string | null;
   onClose: () => void;
 }) {
+  const spaceContext = useMemo(
+    () => (spaceId === undefined ? {} : { context: { spaceId } }),
+    [spaceId],
+  );
   // Reply, reply all and forward continue the composer closed last time for the same message.
   const [recalled] = useState(() => restoreProp ?? recallClosed(seedProp));
   // A reply typed under Reply comes back under Reply all too, but with the recipients of the button
@@ -267,7 +274,7 @@ export function ComposeEmail({
     () =>
       createDraftSaver<Payload>(async (value) => {
         try {
-          const result = await rpc.inbox.compose.draftSave(value);
+          const result = await rpc.inbox.compose.draftSave(value, spaceContext);
           const { status } = result;
           if (status === "saved") {
             saved.current = true;
@@ -412,7 +419,11 @@ export function ComposeEmail({
 
   /** Drops the Gmail draft, if one was saved, once any save in flight has finished. */
   const dropDraft = () =>
-    saver.flush().then(() => (saved.current ? rpc.inbox.compose.discard({ clientId }) : undefined));
+    saver
+      .flush()
+      .then(() =>
+        saved.current ? rpc.inbox.compose.discard({ clientId }, spaceContext) : undefined,
+      );
 
   const discardNow = () => {
     done.current = true;
@@ -485,6 +496,10 @@ export function ComposeEmail({
   const send = async () => {
     if (sending || loading) return;
     const current = fieldsRef.current;
+    if (seed.kind === "new" && !current.connectionId) {
+      setNotice({ kind: "error", text: t`Choose which account to send from.` });
+      return;
+    }
     const all = [...current.to, ...current.cc, ...current.bcc];
     if (all.length === 0) {
       setNotice({ kind: "error", text: t`Add a recipient.` });
@@ -526,7 +541,7 @@ export function ComposeEmail({
       // Held for a few seconds so Undo can bring this composer back; a failure does too.
       holdSend(async () => {
         try {
-          const result = await rpc.inbox.compose.send(request);
+          const result = await rpc.inbox.compose.send(request, spaceContext);
           return result.status === "sent"
             ? null
             : notSent(problemText(result, true), result.status);
@@ -600,7 +615,8 @@ export function ComposeEmail({
         </div>
 
         <div className="shrink-0 px-4">
-          {seed.kind === "new" && accounts.length > 1 ? (
+          {seed.kind === "new" &&
+          (accounts.length > 1 || (accounts.length > 0 && !fields.connectionId)) ? (
             <Row label={t`From`}>
               <NativeSelect
                 size="sm"
@@ -610,6 +626,7 @@ export function ComposeEmail({
                 aria-label={t`From`}
                 onChange={(event) => update({ connectionId: event.target.value })}
               >
+                {fields.connectionId ? null : <NativeSelectOption value="" disabled />}
                 {accounts.map((account) => (
                   <NativeSelectOption key={account.connectionId} value={account.connectionId}>
                     {accountText(account)}

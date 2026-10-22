@@ -11,7 +11,7 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay, hiddenOr } from "../../lib/finance-format";
@@ -61,41 +61,15 @@ function NextDeadline({ contract }: { contract: LegalContract }) {
   );
 }
 
-function Title({ contract, inline = false }: { contract: LegalContract; inline?: boolean }) {
+function Title({ contract }: { contract: LegalContract }) {
   return (
-    <>
-      <Link
-        to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-        state={{ from: "legal" }}
-        className={cn("rk-tap font-medium hover:underline", inline && "line-clamp-2")}
-      >
-        {contract.title}
-      </Link>
-      {/* The table has no room for the type: its rows are one fixed height, so the type is in the tooltip. */}
-      {inline ? null : (
-        <span className="block text-xs text-muted-foreground">{contract.contractType}</span>
-      )}
-    </>
-  );
-}
-
-function Field({
-  label,
-  text,
-  nums = false,
-  children,
-}: {
-  label: ReactNode;
-  text: string;
-  nums?: boolean;
-  children?: ReactNode;
-}) {
-  if (!text || text === dash) return null;
-  return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn(nums && "tabular-nums")}>{children ?? text}</dd>
-    </>
+    <Link
+      to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
+      state={{ from: "legal" }}
+      className="rk-tap min-w-0 truncate font-medium hover:underline"
+    >
+      {contract.title}
+    </Link>
   );
 }
 
@@ -119,7 +93,7 @@ export function withoutSelf(contract: LegalContract, selfName?: string): LegalCo
 function Status({ status }: { status: LegalContractStatus }) {
   if (status === "active") return null;
   return (
-    <span className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs">
+    <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full border border-border px-2 text-xs leading-none">
       {statusName(status)}
     </span>
   );
@@ -139,57 +113,59 @@ export function LegalContracts({
   selfName?: string;
 }) {
   const contracts = all.map((contract) => withoutSelf(contract, selfName));
-  useHideAmounts();
+  const hidden = useHideAmounts();
   const navigate = useNavigate();
   // Any click on a row opens the contract; the title link stays the keyboard and screen-reader target.
   const open = (contract: LegalContract) => (event: MouseEvent) => {
     if ((event.target as HTMLElement).closest("a, button")) return;
     navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, { state: { from: "legal" } });
   };
-  // Active is the normal case. With one exception a chip beside the title says it; the column
-  // appears only when it would hold more than one value.
-  const showStatus = contracts.filter((contract) => contract.status !== "active").length >= 2;
   return (
     <>
       <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
-        {contracts.map((contract) => (
-          // biome-ignore lint/a11y/useKeyWithClickEvents: a mouse shortcut; the title link is the keyboard way in.
-          <li
-            key={contract.id}
-            onClick={open(contract)}
-            className="cursor-pointer border-t border-border py-3 text-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+        {contracts.map((contract) => {
+          const parties = contract.counterparties.join(", ");
+          const showValue = !hidden && contract.valueCents !== null;
+          return (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: a mouse shortcut; the title link is the keyboard way in.
+            <li
+              key={contract.id}
+              onClick={open(contract)}
+              className="cursor-pointer border-t border-border py-2.5 text-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
                 <Title contract={contract} />
+                <span className="flex shrink-0 items-center gap-2">
+                  {showValue ? <span className="tabular-nums">{value(contract)}</span> : null}
+                  <Status status={contract.status} />
+                </span>
               </div>
-              <Status status={contract.status} />
-            </div>
-            <dl className="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-2 gap-y-1">
-              {/* A field the agent did not find is left out rather than drawn as a dash. */}
-              <Field label={<Trans>Parties</Trans>} text={contract.counterparties.join(", ")} />
-              <Field label={<Trans>Term</Trans>} text={term(contract)} nums />
-              <Field label={<Trans>Renewal</Trans>} text={renewal(contract)} />
-              <Field label={<Trans>Value</Trans>} text={value(contract)} nums />
-              <Field label={<Trans>Next deadline</Trans>} text={contract.nextDeadline ?? ""} nums>
-                <NextDeadline contract={contract} />
-              </Field>
-            </dl>
-          </li>
-        ))}
+              {/* Only what the agent found: no labels, since the values say what they are. */}
+              {parties ? <p className="truncate text-xs text-muted-foreground">{parties}</p> : null}
+              <p className="text-xs text-muted-foreground">
+                {[term(contract), renewal(contract)].filter((text) => text !== dash).join(" · ")}
+                {contract.nextDeadline ? (
+                  <>
+                    {" · "}
+                    <Trans>Due</Trans> <NextDeadline contract={contract} />
+                  </>
+                ) : null}
+              </p>
+            </li>
+          );
+        })}
       </ul>
       <Table compact className="hidden table-fixed @4xl:table">
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[22%]" : "w-[25%]"} />
-          <col className={showStatus ? "w-[14%]" : "w-[16%]"} />
-          {showStatus ? <col className="w-[7%]" /> : null}
-          <col className={showStatus ? "w-[19%]" : "w-[20%]"} />
-          <col className={showStatus ? "w-[17%]" : "w-[17%]"} />
+          <col className="w-[28%]" />
+          <col className="w-[19%]" />
+          <col className="w-[16%]" />
+          <col className="w-[17%]" />
           <col className="w-[8%]" />
-          <col className="w-[13%]" />
+          <col className="w-[12%]" />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
@@ -199,11 +175,6 @@ export function LegalContracts({
             <TableHead>
               <Trans>Parties</Trans>
             </TableHead>
-            {showStatus ? (
-              <TableHead>
-                <Trans>Status</Trans>
-              </TableHead>
-            ) : null}
             <TableHead>
               <Trans>Term</Trans>
             </TableHead>
@@ -213,7 +184,7 @@ export function LegalContracts({
             <TableHead className="text-end pe-3">
               <Trans>Value</Trans>
             </TableHead>
-            <TableHead className="ps-6">
+            <TableHead className="ps-4">
               <Trans>Next deadline</Trans>
             </TableHead>
           </TableHeadRow>
@@ -223,35 +194,25 @@ export function LegalContracts({
             <TableRow
               key={contract.id}
               onClick={open(contract)}
-              className="cursor-pointer group-data-[compact]/table:h-14"
+              className="cursor-pointer group-data-[compact]/table:h-12"
             >
-              <TableCell
-                className="whitespace-normal"
-                title={`${contract.title} (${contract.contractType})`}
-              >
-                <Title contract={contract} inline />
-                {showStatus ? null : (
-                  <span className="ms-2 align-middle">
-                    <Status status={contract.status} />
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="whitespace-normal" title={contract.counterparties.join(", ")}>
-                <span className="line-clamp-2">{contract.counterparties.join(", ") || dash}</span>
-              </TableCell>
-              {showStatus ? (
-                <TableCell>
+              <TableCell title={`${contract.title} (${contract.contractType})`}>
+                <div className="flex items-center gap-2">
+                  <Title contract={contract} />
                   <Status status={contract.status} />
-                </TableCell>
-              ) : null}
-              <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>
+                </div>
+              </TableCell>
+              <TableCell className="truncate" title={contract.counterparties.join(", ")}>
+                {contract.counterparties.join(", ") || dash}
+              </TableCell>
+              <TableCell className="truncate tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="whitespace-normal" title={renewal(contract)}>
+              <TableCell className="truncate" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
-              <TableCell className="ps-6 whitespace-nowrap tabular-nums">
+              <TableCell className="ps-4 truncate tabular-nums">
                 <NextDeadline contract={contract} />
               </TableCell>
             </TableRow>

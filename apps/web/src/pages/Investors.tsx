@@ -14,7 +14,7 @@ import type {
   Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
-import { capTableMath, countedSafes, isSafeSecurity } from "@rakazo/core";
+import { capTableMath, countedSafes, equityRaisedUsd, isSafeSecurity } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,11 +70,6 @@ import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { ActionItems } from "../components/investors/ActionItems";
-import {
-  ContactRowPlaceholder,
-  FiguresPlaceholder,
-  OwnershipPlaceholder,
-} from "../components/investors/Placeholders";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { SectionCard } from "../components/SectionCard";
@@ -152,7 +147,6 @@ function Summary({
   safesFailed: boolean;
 }) {
   useHideAmounts();
-  const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
   // Nothing known to add up shows a dash, not $0. Table rows that are SAFEs are not counted: the
   // SAFE list is the record.
@@ -162,15 +156,10 @@ function Summary({
     counted
       .filter((safe) => status.includes(safe.status))
       .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
-  const safeUsd = sumUsd(["funded"]);
   const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
-  const raised =
-    !safesFailed &&
-    (counted.length > 0 ||
-      snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
-      ? usd(math.raisedUsd + safeUsd)
-      : DASH;
+  const raisedUsd = equityRaisedUsd(snapshot.holders, safes);
+  const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure
@@ -665,9 +654,58 @@ export function InvestorsPage({
     const timer = setInterval(loadAudits, POLL_MS);
     return () => clearInterval(timer);
   }, [anyDrafting, loadAudits]);
-  const auditAction = (call: () => Promise<unknown>, failure: string) =>
+  // Rows whose draft this page started: "starting" shows Drafting at once, before the server says
+  // so; "running" has been seen drafting. A run that ends with the request still open made no
+  // draft, and the row says so ("ended"); its reason is in the Ask panel.
+  const [draftPhase, setDraftPhase] = useState<Record<string, "starting" | "running" | "ended">>(
+    {},
+  );
+  useEffect(() => {
+    setDraftPhase((phase) => {
+      let next = phase;
+      for (const [id, state] of Object.entries(phase)) {
+        const audit = audits.find((a) => a.id === id);
+        if (!audit || audit.status !== "open") {
+          next = { ...next };
+          delete next[id];
+        } else if (audit.drafting && state !== "running") next = { ...next, [id]: "running" };
+        else if (!audit.drafting && state === "running") next = { ...next, [id]: "ended" };
+      }
+      return next;
+    });
+  }, [audits]);
+  const draftAudit = (audit: AuditRequest) => {
+    // A repeat click while the draft runs opens the panel instead of starting another.
+    const phase = draftPhase[audit.id];
+    if (audit.drafting || phase === "starting" || phase === "running") return onShowAgent?.();
+    setDraftPhase((p) => ({ ...p, [audit.id]: "starting" }));
+    rpc.investors.audits
+      .draft({ id: audit.id })
+      .then((started) => {
+        // Keep the started row so polling runs even if the list reads that follow fail.
+        setAudits((list) => list.map((a) => (a.id === started.id ? started : a)));
+        setDraftPhase((p) => {
+          const { [audit.id]: _, ...rest } = p;
+          return started.drafting ? { ...rest, [audit.id]: "running" } : rest;
+        });
+        loadAudits();
+        onShowAgent?.();
+      })
+      .catch((cause) => {
+        setDraftPhase((p) => {
+          const { [audit.id]: _, ...rest } = p;
+          return rest;
+        });
+        notify(errorText(cause, t`Could not start the draft`));
+        loadAudits();
+      });
+  };
+  const auditAction = (call: () => Promise<unknown>, failure: string, then?: () => void) =>
     call()
-      .then(loadAudits)
+      .then(() => {
+        loadAudits();
+        then?.();
+      })
       .catch((cause) => {
         notify(errorText(cause, failure));
         loadAudits();
@@ -1038,10 +1076,11 @@ export function InvestorsPage({
             snapshot && sourceLabel ? (
               <>
                 {/* The source line never truncates; a long company name gives way first. */}
-                <span className="truncate" title={snapshot.companyName}>
+                {/* The company name is in the sidebar; on a phone only the source stays. */}
+                <span className="truncate max-sm:hidden" title={snapshot.companyName}>
                   {snapshot.companyName}
                 </span>
-                <span className="whitespace-nowrap">·</span>
+                <span className="whitespace-nowrap max-sm:hidden">·</span>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -1055,7 +1094,7 @@ export function InvestorsPage({
                     {sourceLabel}
                     <ChevronDown aria-hidden="true" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
+                  <DropdownMenuContent align="start" className="w-max min-w-40">
                     {canRefresh ? (
                       <DropdownMenuItem
                         disabled={syncing || sheetReading}
@@ -1167,14 +1206,12 @@ export function InvestorsPage({
         <div className="flex flex-col gap-4">
           <ActionItems
             drafts={(updates ?? []).filter((u) => u.status === "draft")}
-            audits={audits.filter((a) => a.status !== "done" || showDone)}
+            audits={audits
+              .filter((a) => a.status !== "done" || showDone)
+              .map((a) => ({ ...a, drafting: a.drafting || draftPhase[a.id] === "starting" }))}
+            draftEnded={new Set(Object.keys(draftPhase).filter((id) => draftPhase[id] === "ended"))}
             onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
-            onDraftAudit={(audit) =>
-              void auditAction(
-                () => rpc.investors.audits.draft({ id: audit.id }),
-                t`Could not start the draft`,
-              )
-            }
+            onDraftAudit={draftAudit}
             onCloseAudit={(audit, status) =>
               void auditAction(
                 () => rpc.investors.audits.update({ id: audit.id, status }),
@@ -1200,9 +1237,7 @@ export function InvestorsPage({
                     {snapshot.holders.length === 0 &&
                     !snapshot.fullyDilutedShares &&
                     !snapshot.latest409a &&
-                    countedSafes(safes).length === 0 ? (
-                      <FiguresPlaceholder />
-                    ) : (
+                    countedSafes(safes).length === 0 ? null : (
                       <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
                     )}
                     {snapshot.source === "native" ? (
@@ -1316,17 +1351,6 @@ export function InvestorsPage({
                         </Button>
                       </div>
                     )}
-                    <hr className="my-4 border-border" />
-                    <FiguresPlaceholder />
-                    <OwnershipPlaceholder className="mb-3" />
-                    <div className="@container">
-                      <HoldingsTable
-                        rows={[]}
-                        placeholderRows={3}
-                        onAddContact={() => {}}
-                        onOpenContact={() => {}}
-                      />
-                    </div>
                   </>
                 )}
               </SectionCard>
@@ -1420,11 +1444,9 @@ export function InvestorsPage({
                       </Button>
                     </div>
                   ) : (
-                    <ul>
-                      {[0, 1, 2].map((n) => (
-                        <ContactRowPlaceholder key={n} />
-                      ))}
-                    </ul>
+                    <p className="text-sm text-muted-foreground">
+                      <Trans>No contacts yet</Trans>
+                    </p>
                   )
                 ) : (
                   <ul>

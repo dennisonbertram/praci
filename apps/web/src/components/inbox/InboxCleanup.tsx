@@ -2,7 +2,13 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { CleanupKind, CleanupListOutput, MailAction } from "@rakazo/contracts";
 import type { CleanupApi, CleanupFailure, CleanupRunResult } from "@rakazo/core";
-import { cleanupChoiceCounts, cleanupTargets, runCleanup, senderKey } from "@rakazo/core";
+import {
+  CLEANUP_MIN_MESSAGES,
+  cleanupChoiceCounts,
+  cleanupTargets,
+  runCleanup,
+  senderKey,
+} from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -237,9 +243,16 @@ export function InboxCleanup({
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5"
     >
       <PageHeader
+        onBack={onBack}
         title={
           <span className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" aria-label={t`Back`} onClick={onBack}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="max-lg:hidden"
+              aria-label={t`Back`}
+              onClick={onBack}
+            >
               <ArrowLeft aria-hidden="true" />
             </Button>
             <Trans>Cleanup</Trans>
@@ -276,7 +289,8 @@ export function InboxCleanup({
             <div className="flex flex-col items-start gap-2 py-8 text-sm text-muted-foreground">
               <p>
                 <Trans>
-                  Nothing to clean up. People you have written to or saved as contacts are left out.
+                  Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and
+                  people you have written to or saved as contacts are left out.
                 </Trans>
               </p>
               {newsletters > 0 && onOpenNewsletters ? (

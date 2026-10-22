@@ -577,31 +577,27 @@ it("reads the tab from the URL and names the kind when it is empty", async () =>
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
   await show("/app/investors?kind=board");
   expect(button("Board")?.getAttribute("aria-selected")).toBe("true");
-  expect(container.textContent).not.toContain("No board members yet");
-  expect(staticSkeletons("Contacts").length).toBeGreaterThan(0);
+  expect(container.querySelector('section[aria-label="Contacts"]')?.textContent).toContain(
+    "No contacts yet",
+  );
+  expect(container.querySelector("[data-slot=skeleton]")).toBeNull();
   await click(button("Add contact"));
   expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("board");
 });
 
 // ---- empty view and Carta ----
 
-const staticSkeletons = (label: string) =>
-  container.querySelectorAll(`section[aria-label="${label}"] [data-slot=skeleton][data-static]`);
-
-it("shows the empty Cap table, Updates and Contacts as static skeletons, with no 'No ... yet' line", async () => {
+it("shows the empty Cap table, Updates and Contacts as quiet lines, never skeleton bars", async () => {
   rpcMock.servers.mockResolvedValue([]);
   rpcMock.list.mockResolvedValue([]);
   await show();
-  for (const label of ["Cap table", "Contacts"]) {
-    expect(staticSkeletons(label).length).toBeGreaterThan(0);
-  }
-  // An empty Updates card says so in a sentence, not with grey bars.
-  expect(staticSkeletons("Updates")).toHaveLength(0);
+  expect(container.querySelector("[data-slot=skeleton]")).toBeNull();
   expect(container.querySelector('section[aria-label="Updates"]')?.textContent).toContain(
     "No updates yet",
   );
-  expect(container.querySelector("[data-slot=skeleton]:not([data-static])")).toBeNull();
-  expect(container.textContent).not.toMatch(/No (investors|board members) yet/);
+  expect(container.querySelector('section[aria-label="Contacts"]')?.textContent).toContain(
+    "No contacts yet",
+  );
   // The Cap table card holds the three source choices.
   const card = container.querySelector('section[aria-label="Cap table"]');
   expect([...(card?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
@@ -633,7 +629,9 @@ it("shows the typed-in table with an Add holder row and a labelled pool cell", a
   expect(pool?.placeholder).toBe("—");
   expect(pool?.closest("li")?.textContent).toContain("Unallocated pool");
   expect(pool?.closest("li")?.textContent).toContain("Pool");
-  expect(staticSkeletons("Cap table").length).toBeGreaterThan(0);
+  expect(
+    container.querySelector('section[aria-label="Cap table"] [data-slot=skeleton]'),
+  ).toBeNull();
 });
 
 it("offers Connect Carta and Type it in when nothing is set up, and no table or tabs of holders", async () => {
@@ -1564,12 +1562,75 @@ it("Draft reply starts the draft; Mark done and Dismiss close the request", asyn
   expect(rpcMock.auditsUpdate).toHaveBeenLastCalledWith({ id: "a1", status: "dismissed" });
 });
 
+it("Draft reply opens the agent panel so the outcome is on screen; a second click is ignored", async () => {
+  rpcMock.auditsList.mockImplementation(async () => [
+    audit({ drafting: rpcMock.auditsDraft.mock.calls.length > 0 }),
+  ]);
+  rpcMock.auditsDraft.mockResolvedValue(audit({ drafting: true }));
+  const onShowAgent = vi.fn();
+  await show("/app/investors", { onShowAgent });
+  await click(button("Draft reply"));
+  expect(button("Draft reply")).toBeUndefined();
+  expect(rpcMock.auditsDraft).toHaveBeenCalledTimes(1);
+  expect(onShowAgent).toHaveBeenCalled();
+});
+
+it("shows Drafting at once, opens the panel on a repeat click, and says when the run made no draft", async () => {
+  vi.useFakeTimers();
+  let drafting = false;
+  rpcMock.auditsList.mockImplementation(async () => [audit({ drafting })]);
+  let finish: (value: AuditRequest) => void = () => {};
+  rpcMock.auditsDraft.mockImplementation(
+    () =>
+      new Promise<AuditRequest>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const onShowAgent = vi.fn();
+  await show("/app/investors", { onShowAgent });
+  await click(button("Draft reply"));
+  // The server has not answered yet: the row already shows Drafting.
+  expect(button("Drafting…")).toBeDefined();
+  await click(button("Drafting…"));
+  expect(rpcMock.auditsDraft).toHaveBeenCalledTimes(1);
+  expect(onShowAgent).toHaveBeenCalledTimes(1);
+  drafting = true;
+  await act(async () => finish(audit({ drafting: true })));
+  drafting = false;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3500);
+  });
+  expect(items()?.textContent).toContain("No draft made, see Ask");
+  expect(button("Draft reply")).toBeDefined();
+});
+
+it("keeps polling after the draft starts when the list reads fail, so Draft reply is not stuck", async () => {
+  vi.useFakeTimers();
+  let started = false;
+  let recovered = false;
+  rpcMock.auditsList.mockImplementation(async () => {
+    if (started && !recovered) throw new Error("offline");
+    return [audit()];
+  });
+  rpcMock.auditsDraft.mockImplementation(async () => {
+    started = true;
+    return audit({ drafting: true });
+  });
+  await show("/app/investors", { onShowAgent: vi.fn() });
+  await click(button("Draft reply"));
+  recovered = true;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(7000);
+  });
+  expect(items()?.textContent).toContain("No draft made, see Ask");
+});
+
 it("shows a spinner and Drafting… instead of Draft reply while a drafting run is going", async () => {
   rpcMock.auditsList.mockResolvedValue([audit({ drafting: true })]);
   await show();
   expect(button("Draft reply")).toBeUndefined();
   const drafting = button("Drafting…") as HTMLButtonElement;
-  expect(drafting.disabled).toBe(true);
+  expect(drafting.getAttribute("aria-disabled")).toBe("true");
   expect(drafting.querySelector("svg")).not.toBeNull();
 });
 

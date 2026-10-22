@@ -20,9 +20,11 @@ import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
+import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
 import { errorText, KEY_REJECTED_PATTERN, runErrorText } from "../lib/user-error";
 import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
@@ -125,6 +127,10 @@ function Legal({
     deadlines: Map<string, string>;
   } | null>(null);
   const [scanResult, setScanResult] = useState("");
+  // How many documents were unchecked when Scan now was pressed; the count falling is the progress.
+  // Deadlines the user closed, listed on request under Deadlines.
+  const [showDone, setShowDone] = useState(false);
+  const [scanTotal, setScanTotal] = useState(0);
   const status = granted ?? consent.data;
   const data = overview.data;
   const lastRun = data?.agent.lastScanRun ?? null;
@@ -216,6 +222,7 @@ function Legal({
   const scan = async () => {
     setScanError("");
     setScanResult("");
+    setScanTotal(data?.counts.unreviewedDocuments ?? 0);
     timedOut.current = false;
     beforeScan.current = data && {
       contracts: new Map(data.contracts.map((c) => [c.id, c.analyzedAt])),
@@ -247,7 +254,11 @@ function Legal({
   if (!data) return <LegalSkeleton />;
   // Nothing in the Data room yet: one sentence and Add files, not a consent card or empty tabs.
   const noDocuments =
-    data.counts.contracts + data.counts.openDeadlines + data.counts.unreviewedDocuments === 0 &&
+    data.counts.contracts +
+      data.counts.openDeadlines +
+      data.counts.doneDeadlines +
+      data.counts.unreviewedDocuments ===
+      0 &&
     !data.agent.lastScanAt &&
     !running;
   const needsConsent = status?.allowed === false;
@@ -268,11 +279,40 @@ function Legal({
     Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
   // Below the tabs, so the result appearing never moves them.
-  const resultLine = scanResult ? (
-    <p role="status" className="mb-3 text-sm text-muted-foreground">
-      {scanResult}
-    </p>
-  ) : null;
+  const readCount = Math.min(scanTotal, Math.max(0, scanTotal - counts.unreviewedDocuments));
+  const resultLine =
+    running && scanTotal > 0 && !scanResult ? (
+      <p role="status" className="mb-3 text-sm text-muted-foreground">
+        {/* Every document is read; the agent is still writing deadlines and the graph. */}
+        {readCount >= scanTotal ? (
+          <Trans>Saving results…</Trans>
+        ) : (
+          <Trans>
+            Reading {readCount} of {scanTotal}
+          </Trans>
+        )}
+      </p>
+    ) : scanResult ? (
+      <p role="status" className="mb-3 text-sm text-muted-foreground">
+        {scanResult}
+      </p>
+    ) : null;
+  // A row, not a fifth tile. It sits below the tabs, so it going away after a scan never moves them.
+  const uncheckedLine = (
+    <>
+      {counts.unreviewedDocuments > 0 ? (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-2 text-sm">
+          <p className="min-w-0 text-muted-foreground">
+            {plural(counts.unreviewedDocuments, {
+              one: "# Data room document not yet checked by Legal",
+              other: "# Data room documents not yet checked by Legal",
+            })}
+          </p>
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <div>
       <PageHeader
@@ -364,20 +404,6 @@ function Legal({
           </button>
         </div>
       ) : null}
-      {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
-      {counts.unreviewedDocuments > 0 ? (
-        <p className="-mt-2 mb-4 text-sm text-muted-foreground">
-          <Link
-            to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground underline underline-offset-2"
-          >
-            {plural(counts.unreviewedDocuments, {
-              one: "# Data room document not yet checked by Legal",
-              other: "# Data room documents not yet checked by Legal",
-            })}
-          </Link>
-        </p>
-      ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
       {noDocuments ? (
         <PageEmptyState
@@ -389,9 +415,13 @@ function Legal({
             <Trans>Add files</Trans>
           </Button>
         </PageEmptyState>
-      ) : !needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
+      ) : !needsConsent &&
+        data.contracts.length === 0 &&
+        data.deadlines.length === 0 &&
+        data.counts.doneDeadlines === 0 ? (
         <>
           {resultLine}
+          {uncheckedLine}
           <PageEmptyState
             icon={<Scale className="size-8" strokeWidth={1.6} aria-hidden="true" />}
             title={<Trans>No contracts yet</Trans>}
@@ -435,10 +465,24 @@ function Legal({
             </TabsList>
           </Tabs>
           {resultLine}
+          {uncheckedLine}
           {view === "contracts" ? (
             <LegalContracts contracts={data.contracts} selfName={selfName} />
           ) : null}
           {view === "deadlines" ? (
+            <div className="mb-2 flex justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-pressed={showDone}
+                onClick={() => setShowDone(!showDone)}
+              >
+                {showDone ? <Trans>Show open</Trans> : <Trans>Show done</Trans>}
+              </Button>
+            </div>
+          ) : null}
+          {view === "deadlines" && showDone ? <DoneDeadlines onChanged={overview.reload} /> : null}
+          {view === "deadlines" && !showDone ? (
             <LegalDeadlines
               deadlines={data.deadlines}
               onChanged={overview.reload}
@@ -459,12 +503,93 @@ function Legal({
   );
 }
 
+function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
+  const [error, setError] = useState("");
+  const done = useFinanceQuery(() => rpc.legal.doneDeadlines(), []);
+  if (done.error) return <ErrorNotice message={done.error} onRetry={done.retry} />;
+  if (!done.data) return <Skeleton aria-busy="true" className="h-24 bg-border" />;
+  if (done.data.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        <Trans>No deadlines marked done.</Trans>
+      </p>
+    );
+  }
+  const reopen = async (id: string) => {
+    setError("");
+    try {
+      await rpc.legal.updateDeadline({ id, status: "open" });
+      done.reload();
+      onChanged();
+      // The sidebar Legal badge counts open deadlines.
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+    } catch (cause) {
+      setError(errorText(cause));
+    }
+  };
+  return (
+    <>
+      {error ? (
+        <p role="alert" className="mb-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <ul aria-label={t`Done deadlines`} className="flex flex-col">
+        {done.data.map((deadline) => (
+          <li
+            key={deadline.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 border-t border-border py-1.5 text-sm"
+          >
+            <span className="min-w-0 font-medium">
+              {maskCurrencyWhenHidden(
+                deadline.contractTitle
+                  ? `${deadline.title}: ${deadline.contractTitle}`
+                  : deadline.title,
+              )}
+            </span>
+            <span className="flex items-center gap-2">
+              <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
+                {fullDay(deadline.dueDate)}
+              </time>
+              <Button size="sm" variant="ghost" onClick={() => void reopen(deadline.id)}>
+                <Trans>Reopen</Trans>
+              </Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function GraphTab() {
   const graph = useFinanceQuery(() => rpc.legal.graph(), []);
   if (graph.error) return <ErrorNotice message={graph.error} onRetry={graph.retry} />;
   // bg-border: the default skeleton fill is almost the page colour, so the tab looked blank.
-  if (!graph.data) return <Skeleton aria-busy="true" className="h-64 bg-border" />;
+  if (!graph.data) return <BuildingGraph />;
   return <LegalGraphView graph={graph.data} />;
+}
+
+/** The graph's placeholder; after 2 seconds it says what is happening. */
+function BuildingGraph() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 2_000);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <div aria-busy="true" className="relative">
+      <Skeleton className="h-64 bg-border" />
+      {slow ? (
+        <p
+          role="status"
+          className="absolute inset-0 grid place-items-center text-sm text-muted-foreground"
+        >
+          <Trans>Building graph…</Trans>
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function LegalSkeleton() {

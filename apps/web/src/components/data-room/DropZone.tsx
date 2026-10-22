@@ -139,9 +139,9 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           data-testid="data-room-toasts"
           // Bottom of the page, never the top: the header's sort and filter controls, the phone's
           // search row and the notification toasts all live there. Phones: the full width less a
-          // 16px gutter, lifted clear of an open Ask panel's composer. Wider: centred in the list.
+          // 16px gutter, lifted clear of an open Ask panel's composer. Wider: bottom-right, the corner the notification toasts use, clear of the name column.
           // A batch scrolls inside this height, so newer toasts stay reachable.
-          className="fixed inset-x-4 bottom-24 z-100 flex max-h-[calc(100dvh-14rem)] flex-col gap-2 overflow-y-auto sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:w-72 sm:-translate-x-1/2"
+          className="fixed inset-x-4 bottom-24 z-100 flex max-h-[calc(100dvh-14rem)] flex-col gap-2 overflow-y-auto sm:inset-x-auto sm:right-4 sm:bottom-6 sm:w-72"
           onPointerEnter={() => holdUploadToasts(true)}
           onPointerLeave={() => holdUploadToasts(false)}
         >
@@ -253,7 +253,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     </span>
                   ) : (
                     <span className="text-success">
-                      <Trans>Uploaded</Trans>
+                      {state.folder ? t`Uploaded to ${state.folder}` : <Trans>Uploaded</Trans>}
                     </span>
                   )}
                   <Link

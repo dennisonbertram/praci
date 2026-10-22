@@ -65,6 +65,10 @@ export const Empty: Story = {
   beforeEach: () => mockRpc({ "pages.get": page(1, "") }),
 };
 
+export const NeverWritten: Story = {
+  beforeEach: () => mockRpc({ "pages.get": null }),
+};
+
 export const LoadError: Story = {
   beforeEach: () =>
     mockRpc({

@@ -138,7 +138,7 @@ it("shows the row's menu on hover or focus, and always on touch", () => {
 it("puts the status in its own column as a badge, and never in the Type cell", () => {
   const rows = [
     { ...item("junk", null), status: "failed" },
-    { ...item("busy", null), status: "processing" },
+    { ...item("busy", null), status: "processing", updatedAt: new Date().toISOString() },
     item("a-much-longer-file-name", null),
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
@@ -238,8 +238,8 @@ it("keeps a renamed file's type while search re-indexes it, and names a failure 
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.textContent).toContain("Roadmap");
   expect(container.textContent).not.toContain("Reading");
-  // The phone-only line under the name, for where the Type column is hidden.
-  expect(names()[1]).toContain("scan.pdfFailed");
+  // The reason under the name is the phone's one failure signal; a wide list shows the Failed pill.
+  expect(names()[1]).toContain("Could not read this file");
 });
 
 const tagged = (id: string, docType: string | null, docDate: string | null) =>
@@ -520,7 +520,7 @@ it("offers Send to agent in the row's More actions menu too", async () => {
 
 it("names the step a working item is in on its spinner, and leaves ready items plain", () => {
   const rows = ["pending", "classifying", "indexing", "ready"].map((status) => ({
-    item: { ...item(status, null), status } as DataRoomApiItem,
+    item: { ...item(status, null), status, updatedAt: new Date().toISOString() } as DataRoomApiItem,
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
@@ -611,22 +611,21 @@ it("ticks a row from its checkbox or the x key without opening the preview", () 
 const asRows = (...items: unknown[]) =>
   items.map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
 
-it("offers Delete, not Try again, on a file that cannot be read", () => {
-  const onAction = vi.fn();
+it("gives a file that cannot be read its reason, an Unreadable type and no inline button", () => {
   const rows = asRows({
     ...item("scan", null),
     status: "failed",
     error: "This file isn't a readable PDF.",
   });
-  act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  // The row menu holds its one Delete; the row shows only the reason, at every width.
   const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
   expect(buttons).not.toContain("Try again");
-  act(() =>
-    Array.from(container.querySelectorAll("button"))
-      .find((b) => b.textContent === "Delete")
-      ?.click(),
-  );
-  expect(onAction).toHaveBeenCalledWith("delete", expect.objectContaining({ id: "scan" }));
+  expect(buttons).not.toContain("Delete");
+  const reason = container.querySelector('[data-testid="data-room-error"]');
+  expect(reason?.textContent).toBe("This file isn't a readable PDF.");
+  expect(reason?.className).not.toContain("hidden");
+  expect(container.querySelector("[data-row]")?.children[1]?.textContent).toBe("Unreadable");
 });
 
 it("keeps Try again for a failure that is not about the file's bytes", () => {
@@ -677,6 +676,7 @@ it("offers Try again on a file still Reading after 3 minutes", () => {
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
     "Taking longer than usual",
   );
+  expect(container.querySelector('[data-testid="data-room-status"]')?.textContent).toBe("Failed");
   const retry = Array.from(container.querySelectorAll("button")).find(
     (b) => b.textContent === "Try again",
   );
@@ -721,11 +721,20 @@ it("closes the side preview on Escape from the shown row only", () => {
   expect(onClosePreview).toHaveBeenCalledTimes(1);
 });
 
-it("shows no dash in the Type and Parties cells of a failed file", () => {
+it("shows no dash in the Type cell and a dash in the Parties cell of a failed file", () => {
   act(() =>
     root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),
   );
   const row = container.querySelector("[data-row]");
   expect(row?.children[1]?.textContent).toBe("");
-  expect(row?.children[3]?.textContent).toBe("");
+  expect(row?.children[3]?.textContent).toBe("—");
+});
+
+it("makes the row checkbox a 44 px control on touch screens", () => {
+  act(() =>
+    root.render(<ListView rows={asRows(item("a", null))} o={{ ...o(), onCheck: () => {} }} />),
+  );
+  const box = container.querySelector('[aria-label^="Select"]')?.className ?? "";
+  expect(box).toContain("pointer-coarse:size-11");
+  expect(box).not.toContain("pointer-coarse:size-4.5");
 });

@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { cn } from "@rakazo/ui-web/lib/utils";
-import { Menu } from "lucide-react";
+import { ArrowLeft, Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import { createContext, useContext, useLayoutEffect } from "react";
 
@@ -21,17 +21,17 @@ export const PAGE_GUTTER_START = "ps-4 md:ps-7";
 export const PAGE_HEADER_ROW = "h-10";
 
 /** The phone navigation button. A page header that shows it also claims the shell's menu band. */
-export function PageNavButton() {
+export function PageNavButton({ onBack }: { onBack?: () => void }) {
   const nav = useContext(PageNavContext);
   useLayoutEffect(() => nav?.claim(), [nav]);
-  return nav ? (
+  return nav || onBack ? (
     <button
       type="button"
-      aria-label={t`Open navigation`}
-      onClick={nav.open}
+      aria-label={onBack ? t`Back` : t`Open navigation`}
+      onClick={onBack ?? nav?.open}
       className="-ms-2 grid size-10 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
     >
-      <Menu size={19} strokeWidth={1.7} />
+      {onBack ? <ArrowLeft size={19} strokeWidth={1.7} /> : <Menu size={19} strokeWidth={1.7} />}
     </button>
   ) : null;
 }
@@ -45,12 +45,18 @@ export function PageNavButton() {
  */
 export function PageHeader({
   title,
+  spaceName,
   meta,
   actions,
   className,
   compact = false,
+  onBack,
 }: {
   title: ReactNode;
+  /** The space's name, when the person has more than one: always the first thing after the title. */
+  spaceName?: string;
+  /** A sub-page: on a phone the back arrow takes the navigation button's place. */
+  onBack?: () => void;
   meta?: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -62,7 +68,7 @@ export function PageHeader({
       data-page-header
       className={cn("@container/ph mb-4 flex flex-wrap items-center gap-x-3", className)}
     >
-      <PageNavButton />
+      <PageNavButton onBack={onBack} />
       <h1
         className={cn(
           PAGE_HEADER_ROW,
@@ -71,7 +77,7 @@ export function PageHeader({
       >
         <span className="truncate">{title}</span>
       </h1>
-      {meta ? (
+      {meta || spaceName ? (
         <div
           data-page-header-meta
           className={cn(
@@ -81,6 +87,11 @@ export function PageHeader({
               : "@2xl/ph:order-2 @2xl/ph:basis-0 @2xl/ph:flex-1 @2xl/ph:flex-nowrap @2xl/ph:pb-0",
           )}
         >
+          {spaceName ? (
+            <span className="truncate" title={spaceName}>
+              {spaceName}
+            </span>
+          ) : null}
           {meta}
         </div>
       ) : null}

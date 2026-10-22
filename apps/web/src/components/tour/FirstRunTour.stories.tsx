@@ -6,12 +6,15 @@ import { mockMe } from "../../stories/fixtures";
 import { FirstRunTour } from "./FirstRunTour";
 
 const ids = ["sidebar-inbox", "sidebar-finance", "sidebar-legal", "sidebar-data-room"];
+const bots = ["Investor Relations", "Finance helper", "Legal helper", "Sales", "Support", "Hiring"];
 
 /** A stand-in sidebar carrying the same anchors as the real one. */
-function Sidebar({ without = [] }: { without?: string[] }) {
+function Sidebar({ without = [], phone = false }: { without?: string[]; phone?: boolean }) {
   const has = (id: string) => !without.includes(id);
   return (
-    <aside className="flex h-[640px] w-[316px] flex-col gap-1 border-e border-sidebar-border bg-sidebar p-3">
+    <aside
+      className={`flex w-[316px] flex-col gap-1 border-e border-sidebar-border bg-sidebar p-3 ${phone ? "fixed inset-y-0 start-0 h-dvh" : "h-[640px]"}`}
+    >
       <div className="flex gap-2">
         <div data-tour="sidebar-search" className="flex-1 rounded-xl border p-1.5 text-sm">
           Search
@@ -33,6 +36,15 @@ function Sidebar({ without = [] }: { without?: string[] }) {
       <div data-tour="sidebar-chat" className="my-2 rounded-xl bg-card p-2 text-sm">
         Chief
       </div>
+      {phone ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {bots.map((name) => (
+            <div key={name} className="rounded-xl p-2 text-sm">
+              {name}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {has("sidebar-integrations") ? (
         <button type="button" data-tour="sidebar-integrations" className="py-2 text-start text-sm">
           Connect apps
@@ -61,6 +73,16 @@ export default meta;
 
 /** Nine steps, top to bottom, ending on a button that focuses the composer. */
 export const Open: StoryObj<typeof meta> = {};
+
+/** At phone width the card stays at the foot at every stop and the drawer rows rise above it. */
+export const Phone: StoryObj<typeof meta> = {
+  render: (args) => (
+    <>
+      <Sidebar phone />
+      <FirstRunTour {...args} />
+    </>
+  ),
+};
 
 /** A page that is hidden has no anchor, so its steps are dropped. */
 export const HiddenPages: StoryObj<typeof meta> = {

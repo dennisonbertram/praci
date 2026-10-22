@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
   Input,
   NativeSelect,
-  Skeleton,
   Textarea,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
@@ -19,7 +18,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MASK, percentFigure, totalPercent } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
-import { OwnershipPlaceholder } from "../investors/Placeholders";
 import { OwnershipBar } from "./OwnershipBar";
 
 /** One typed row. Numbers stay text while they are typed; blank means unknown. */
@@ -302,9 +300,7 @@ export function CapTableEditor({
       ) : (
         <div className="flex min-h-8 items-center justify-end gap-2 text-xs">{statusLine}</div>
       )}
-      {empty ? (
-        <OwnershipPlaceholder className="mb-3" />
-      ) : (
+      {empty ? null : (
         <OwnershipBar className="mb-3" classes={math.classes} pool={math.pool?.percent ?? null} />
       )}
       <div
@@ -451,27 +447,6 @@ export function CapTableEditor({
             </li>
           );
         })}
-        {empty
-          ? [0, 1].map((n) => (
-              <li
-                key={`placeholder-${n}`}
-                aria-hidden="true"
-                className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 py-2 ${columns}`}
-              >
-                <Skeleton static className="h-2.5 w-2/5 @lg:col-start-1" />
-                <Skeleton static className="hidden h-2.5 w-14 @lg:col-start-2 @lg:block" />
-                <Skeleton
-                  static
-                  className="hidden h-2.5 w-3/4 justify-self-end @lg:col-start-3 @lg:block"
-                />
-                <Skeleton
-                  static
-                  className="hidden h-2.5 w-3/5 justify-self-end @lg:col-start-4 @lg:block"
-                />
-                <Skeleton static className="h-2.5 w-11 justify-self-end @lg:col-start-5" />
-              </li>
-            ))
-          : null}
         <li
           className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 ${columns}`}
         >
@@ -499,13 +474,7 @@ export function CapTableEditor({
               onBlur={() => void save()}
             />
           </div>
-          {empty ? (
-            <Skeleton
-              static
-              aria-hidden="true"
-              className="row-start-1 h-2.5 w-11 justify-self-end @lg:col-start-5"
-            />
-          ) : (
+          {empty ? null : (
             <span className="row-start-1 self-center text-end text-sm tabular-nums text-muted-foreground @lg:col-start-5">
               {percentFigure(math.pool?.percent ?? null, 1)}
             </span>

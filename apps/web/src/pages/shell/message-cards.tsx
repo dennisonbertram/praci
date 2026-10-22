@@ -7,14 +7,34 @@ import type { ComponentProps } from "react";
 import { useEffect, useRef, useState } from "react";
 import { BuiCard, SuccessPop } from "../../components/ai/primitives";
 import { AppLogo } from "../../components/integrations/AppLogo";
+import { isFocusQuestion } from "../../components/tour/connect-cards";
 import type { ArtifactTarget } from "../../lib/artifact-open";
 import { chartViewport } from "../../lib/chart-viewport";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { PLUGIN_CONNECT_WINDOW } from "../../lib/plugin-connect";
 import { rpc } from "../../lib/rpc";
 import { useArtifactImageState } from "../../lib/use-artifact-image";
 import { errorText } from "../../lib/user-error";
+
+/** The ticked lines under a reply, such as Cash → $100,000; amounts follow Hide amounts like the sentence above. */
+export function ResultCard({ block }: { block: Extract<MessageBlock, { kind: "card" }> }) {
+  useHideAmounts();
+  return (
+    <div className="flex justify-start">
+      <div className="flex flex-col gap-2 rounded-[20px] bg-muted px-5 py-4">
+        {block.lines.map((line) => (
+          <div key={line.k} className="flex items-baseline gap-2.5 text-[15px]">
+            <span className="text-success">✓</span>
+            <span className="font-semibold text-foreground">{line.k}</span>
+            <span className="text-muted-foreground">→</span>
+            <span>{maskCurrencyWhenHidden(line.v)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ChoiceCard({
   botId,
@@ -88,14 +108,12 @@ export function ChoiceCard({
                 type="button"
                 disabled={Boolean(block.answerId) || pending}
                 onClick={() => void choose(option.id)}
-                className={`flex w-full items-start gap-3 rounded-xl px-3.5 py-3.5 text-start text-foreground disabled:opacity-60 ${block.answerId ? "bg-accent" : "bg-muted hover:bg-accent"}`}
+                className={`flex w-full items-start gap-3 rounded-xl px-3.5 py-3.5 text-start text-foreground ${block.answerId ? "bg-accent" : "bg-muted hover:bg-accent disabled:opacity-60"}`}
               >
                 <span className="mt-0.5 grid h-[24px] w-[24px] shrink-0 place-items-center rounded-[7px] bg-background text-[12.5px] font-medium text-foreground/75">
                   {option.letter}
                 </span>
-                <span
-                  className={`flex-1 text-[15px] leading-[1.35] ${block.answerId ? "text-foreground/75" : "text-foreground"}`}
-                >
+                <span className="flex-1 text-[15px] leading-[1.35] text-foreground">
                   <OnboardingFocusOptionLabel
                     id={option.id}
                     label={option.label}
@@ -106,7 +124,7 @@ export function ChoiceCard({
                   )}
                 </span>
                 {block.answerId === option.id ? (
-                  <span className="mt-0.5 text-foreground/75">✓</span>
+                  <span className="mt-0.5 text-foreground">✓</span>
                 ) : null}
               </button>
             ))}
@@ -119,20 +137,20 @@ export function ChoiceCard({
 
 /** First-run Chief focus card: API stores English; UI locale catalogs translate it. */
 function OnboardingFocusQuestion({ question }: { question: string }) {
-  if (question === "What do you want me on first?") {
-    return <Trans>What do you want me on first?</Trans>;
+  if (isFocusQuestion(question)) {
+    return <Trans>What should I work on first?</Trans>;
   }
   return question;
 }
 
 /** One line on what each first-run focus covers, so the choice is clear before it is made. */
 function OnboardingFocusOptionHint({ id, question }: { id: string; question: string }) {
-  if (question !== "What do you want me on first?") return null;
+  if (!isFocusQuestion(question)) return null;
   const hint =
     id === "company" ? (
       <Trans>Email, calendar and your company pages</Trans>
     ) : id === "day" ? (
-      <Trans>Slack, calendar and email</Trans>
+      <Trans>Slack and your calendar</Trans>
     ) : id === "inbox" ? (
       <Trans>Email and calendar</Trans>
     ) : id === "research" ? (
@@ -154,7 +172,7 @@ function OnboardingFocusOptionLabel({
   label: string;
   question: string;
 }) {
-  if (question !== "What do you want me on first?") return label;
+  if (!isFocusQuestion(question)) return label;
   switch (id) {
     case "company":
       return <Trans>Run my company</Trans>;
@@ -242,7 +260,7 @@ export function AppConnectCard({
     <BuiCard
       role="group"
       aria-label={t`${block.name} connection`}
-      className="w-[min(420px,100%)] px-4 py-3.5"
+      className="w-160 max-w-full px-4 py-3.5"
     >
       {/* On a narrow card the button wraps under the name instead of covering it. */}
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">

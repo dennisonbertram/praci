@@ -23,13 +23,13 @@ import {
 } from "@rakazo/ui-web";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import type { ContactPrefill as Prefill } from "../components/ContactDialog";
 import { ContactDialog } from "../components/ContactDialog";
 import { AssignSafeDialog, InvestorEmailDialog } from "../components/fundraising/MercuryDialogs";
 import { MercuryLine } from "../components/fundraising/MercuryLine";
 import { Pipeline } from "../components/fundraising/Pipeline";
-import { SafeRowPlaceholder } from "../components/fundraising/Placeholders";
 import { RoundCard, RoundDialog } from "../components/fundraising/RoundCard";
 import { SafeCoverSummary, SafeDialog } from "../components/fundraising/SafeDialog";
 import type { SafeStep } from "../components/fundraising/SafeList";
@@ -60,7 +60,10 @@ const NEW_PROSPECT: Prefill = { name: "", email: null, organization: null, kind:
 export function FundraisingPage({
   onShowAgent,
   agentBusy = false,
+  spaceName,
 }: {
+  /** Shown beside the title when the person has more than one space. */
+  spaceName?: string;
   onShowAgent?: () => void;
   /** Whether the Investors agent is answering in the panel; its contact changes load when it ends. */
   agentBusy?: boolean;
@@ -68,6 +71,8 @@ export function FundraisingPage({
   const [overview, setOverview] = useState<FundraisingOverview | null>(null);
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [error, setError] = useState("");
+  // SAFEs the Legal agent found in the Data room: a hint only, never counted as raised.
+  const [legalSafes, setLegalSafes] = useState(0);
   const [editing, setEditing] = useState<Contact | Prefill | null>(null);
   const [roundDialog, setRoundDialog] = useState<"start" | "edit" | null>(null);
   // Send SAFE for this prospect; then the saved SAFE's cover summary.
@@ -97,6 +102,12 @@ export function FundraisingPage({
       });
   }, []);
   useEffect(load, [load]);
+  useEffect(() => {
+    rpc.legal
+      .safeCount()
+      .then(({ count }) => setLegalSafes(count))
+      .catch(() => undefined);
+  }, []);
   const container = useRef<HTMLDivElement>(null);
   const { notify, savedId, setSavedId, deleted } = useContactNotices(load, container, contacts);
 
@@ -191,6 +202,7 @@ export function FundraisingPage({
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
           title={<Trans>Fundraising</Trans>}
+          spaceName={spaceName}
           meta={
             overview ? (
               <MercuryLine
@@ -277,10 +289,19 @@ export function FundraisingPage({
 
             <SectionCard title={t`SAFEs`}>
               {overview.safes.length === 0 ? (
-                <ul>
-                  <SafeRowPlaceholder />
-                  <SafeRowPlaceholder />
-                </ul>
+                <p className="text-sm text-muted-foreground">
+                  <Trans>No SAFEs yet</Trans>
+                  {legalSafes > 0 ? (
+                    <>
+                      {" · "}
+                      <Link to="/app/legal" className="underline underline-offset-2">
+                        {legalSafes === 1
+                          ? t`1 SAFE found in Legal`
+                          : t`${legalSafes} SAFEs found in Legal`}
+                      </Link>
+                    </>
+                  ) : null}
+                </p>
               ) : (
                 <SafeList
                   safes={overview.safes}

@@ -182,6 +182,49 @@ export const NarrowLabels: StoryObj = {
   ),
 };
 
+/** Mail that wants an answer says Needs reply; other urgent mail says why: Urgent, Important or Action. */
+export const UrgentReasons: StoryObj = {
+  render: () => (
+    <div className="@container w-[760px]">
+      {(
+        [
+          { needsReply: true, priority: "normal", category: "reply" },
+          { needsReply: false, priority: "critical", category: "billing" },
+          { needsReply: false, priority: "important", category: "personal" },
+          { needsReply: false, priority: "normal", category: "action" },
+        ] as const
+      ).map((extra) => (
+        <InboxRow
+          key={`${extra.priority}_${extra.category}`}
+          row={row(`reason_${extra.priority}_${extra.category}`, {
+            ...extra,
+            from: "Sample Sender",
+            subject: `${extra.priority} ${extra.category}`,
+          })}
+          onOpen={noop}
+          onMark={undefined}
+        />
+      ))}
+    </div>
+  ),
+};
+
+/** A Needs reply row whose mail has an open to-do says so; the To do card leaves it out. */
+export const WithTodo: StoryObj = {
+  render: () => (
+    <InboxGroup
+      title="Needs reply"
+      hideAttention
+      rows={rows.slice(0, 2)}
+      todoDue={new Map([[rows[0]?.id ?? "", null]])}
+      onOpen={noop}
+      onMark={noop}
+      onArchive={noop}
+      onRead={noop}
+    />
+  ),
+};
+
 export const Group: StoryObj = {
   render: () => (
     <InboxGroup
@@ -228,6 +271,11 @@ export const SearchMatch: Story = {
 /** The checkbox takes the place of the unread dot once the row is checked. */
 export const Picked: Story = {
   args: { row: rows[0] as MailRow, picked: true, anyPicked: true, onPick: noop },
+};
+
+/** On touch the checkbox is always there, so the unread dot sits at its corner instead of under it. */
+export const UnreadWithCheckbox: Story = {
+  args: { row: rows[0] as MailRow, onPick: noop },
 };
 
 /** Once any row is checked, every row shows its checkbox. */

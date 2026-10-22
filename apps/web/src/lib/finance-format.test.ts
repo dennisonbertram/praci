@@ -74,8 +74,10 @@ describe("finance formatting", () => {
     expect(changeText(-53.2)).toBe("↓ 53%");
     expect(changeText(12.5)).toBe("↑ 13%");
     expect(changeText(null)).toBeNull();
-    expect(changeText(0.2)).toBe("0%");
-    expect(changeText(-0.4)).toBe("0%");
+    expect(changeText(0.04)).toBe("0%");
+    // Under 10% one decimal, so a 0.5% rise is not shown as 1%.
+    expect(changeText(0.5)).toBe("↑ 0.5%");
+    expect(changeText(-4.3)).toBe("↓ 4.3%");
   });
 
   it("says a flat subscription is flat and a rising one by how much", () => {
@@ -162,16 +164,13 @@ describe("figures the Finance pages derive from amounts", () => {
 
   it("masks shares, changes and axis labels while amounts are hidden", () => {
     setHideAmounts(true);
-    expect(shareText(50, 100)).not.toMatch(/\d/);
-    expect(shareText(500, 19_847_500)).not.toMatch(/\d/);
-    expect(changeText(53)).not.toMatch(/\d/);
-    // The arrow would still tell a viewer whether spend went up or down.
-    expect(changeText(53)).not.toMatch(/[↑↓]/);
-    expect(changeText(-53)).toBe(changeText(53));
-    expect(changeText(0)).not.toMatch(/\d/);
-    // A flat subscription has no change to show, masked or not.
+    expect(shareText(50, 100)).toBe("");
+    expect(shareText(500, 19_847_500)).toBe("");
+    // A percentage of a hidden amount would reveal it, so no change text is shown.
+    expect(changeText(53)).toBeNull();
+    expect(changeText(0)).toBeNull();
     expect(trendText([4_500, 4_500, 4_500])).toBeNull();
-    expect(trendText([10_000, 11_000, 12_000])).not.toMatch(/\d/);
+    expect(trendText([10_000, 11_000, 12_000])).toBeNull();
     expect(axisMoney(-250_000)).not.toMatch(/\d/);
     expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");
   });

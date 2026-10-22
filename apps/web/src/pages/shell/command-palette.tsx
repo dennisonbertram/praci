@@ -166,7 +166,8 @@ export function CommandPalette({
     }
   }, [open]);
 
-  const needle = search.trim().toLowerCase();
+  const query = search.trim();
+  const needle = query.toLowerCase();
   const [linkGroups, setLinkGroups] = useState<PaletteLinkGroup[]>([]);
   // The query the shown results belong to: while it differs from the typed one, a search is pending.
   const [answered, setAnswered] = useState("");
@@ -177,7 +178,7 @@ export function CommandPalette({
     }
     let stale = false;
     const timer = window.setTimeout(() => {
-      searchLinks(needle)
+      searchLinks(query)
         .then((groups) => {
           if (stale) return;
           setLinkGroups(groups);
@@ -193,7 +194,7 @@ export function CommandPalette({
       stale = true;
       window.clearTimeout(timer);
     };
-  }, [needle, searchLinks]);
+  }, [needle, query, searchLinks]);
   // A bot is found by its name or role, never by words in its description.
   const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, bot.title);
   const entryScore = (entry: PaletteEntry) =>
@@ -348,7 +349,10 @@ export function CommandPalette({
       {group.entries.map((entry) => {
         const icon = entry.icon ?? group.icon;
         // A snippet that only repeats the query adds nothing.
-        const detail = entry.detail && entry.detail.toLowerCase() !== needle ? entry.detail : null;
+        const detail =
+          entry.detail && entry.detail.toLowerCase() !== needle
+            ? maskCurrencyWhenHidden(entry.detail)
+            : null;
         return (
           <CommandItem
             key={entry.id}
@@ -366,7 +370,7 @@ export function CommandPalette({
             ) : null}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-foreground" dir="auto">
-                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} clip />
+                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} />
               </span>
               {detail ? (
                 <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
@@ -382,9 +386,30 @@ export function CommandPalette({
       })}
     </CommandGroup>
   );
-  const shownLinks = linkGroups.filter((group) => group.entries.length > 0);
+  // A chat of a bot already listed under Bots is not listed twice.
+  const shownBotPaths = new Set(filteredBots.map((bot) => `/app/${bot.id}`));
+  const shownLinks = linkGroups
+    .map((group) => ({
+      ...group,
+      entries: group.entries.filter((entry) => !shownBotPaths.has(entry.id)),
+    }))
+    .filter((group) => group.entries.length > 0);
   const fallbackLinks = shownLinks.filter((group) => group.fallback);
-  const directLinks = shownLinks.filter((group) => !group.fallback);
+  // A title match outranks text found only in a body: a group with an exact title comes first, then
+  // one with a partial title match, and a group keeps at most 3 body-only rows after its title matches.
+  const titleHit = (entry: PaletteEntry) => entry.label.toLowerCase().includes(needle);
+  const groupRank = (group: PaletteLinkGroup) =>
+    group.entries.some((entry) => entry.label.toLowerCase() === needle)
+      ? 2
+      : Number(group.entries.some(titleHit));
+  const directLinks = shownLinks
+    .filter((group) => !group.fallback)
+    .map((group) => {
+      const titles = group.entries.filter(titleHit);
+      const bodies = group.entries.filter((entry) => !titleHit(entry)).slice(0, 3);
+      return { ...group, entries: [...titles, ...bodies] };
+    })
+    .sort((a, b) => groupRank(b) - groupRank(a));
   const noDirectMatch =
     !directLinks.length &&
     !shownPages.length &&
@@ -456,8 +481,12 @@ export function CommandPalette({
           !shownGroups.length &&
           !shownActions.length &&
           !filteredBots.length ? (
-            <div className="flex justify-center py-4">
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground"
+            >
               <Spinner aria-hidden="true" />
+              <Trans>Searching…</Trans>
             </div>
           ) : null}
           {searching ? null : (
@@ -467,7 +496,7 @@ export function CommandPalette({
           )}
           {needle && !searching && noDirectMatch && fallbackLinks.length ? (
             <p className="px-3 py-3 text-sm text-muted-foreground">
-              <Trans>No matches in pages, documents, contacts</Trans>
+              <Trans>No matches</Trans>
             </p>
           ) : null}
           {sectionOrder.map((section) => (
@@ -514,8 +543,12 @@ export function CommandPalette({
             <Trans>Move</Trans>
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>↵</Kbd>
+            <Kbd>Enter</Kbd>
             <Trans>Open</Trans>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd>Esc</Kbd>
+            <Trans>Close</Trans>
           </span>
         </div>
       </Command>

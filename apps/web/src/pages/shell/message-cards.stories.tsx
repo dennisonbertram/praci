@@ -12,6 +12,7 @@ import {
   ChartCanvas,
   ChoiceCard,
   McpApprovalCard,
+  ResultCard,
 } from "./message-cards";
 
 type Block<K extends MessageBlock["kind"]> = Extract<MessageBlock, { kind: K }>;
@@ -33,7 +34,7 @@ const choice: Block<"choice"> = {
 
 const focus: Block<"choice"> = {
   kind: "choice",
-  question: "What do you want me on first?",
+  question: "What should I work on first?",
   options: [
     { id: "day", letter: "A", label: "Day-to-day work" },
     { id: "inbox", letter: "B", label: "Inbox & email" },
@@ -136,7 +137,9 @@ export const AppConnectWaiting: Story = {
   beforeEach: () => mockRpc({ "connections.begin": () => new Promise(() => undefined) }),
   render: () => <AppConnectCard botId="bot_ada" block={appConnect} />,
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button", { name: /^Connect$/ }));
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: /^Connect Sample Mail$/ }),
+    );
   },
 };
 
@@ -147,7 +150,9 @@ export const AppConnectFailed: Story = {
     }),
   render: () => <AppConnectCard botId="bot_ada" block={appConnect} />,
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button", { name: /^Connect$/ }));
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: /^Connect Sample Mail$/ }),
+    );
     await expect(
       await within(canvasElement).findByText("Could not authorize this app"),
     ).toBeTruthy();
@@ -307,5 +312,19 @@ export const ArtifactImageFailed: Story = {
   beforeEach: () => mockRpc({ "artifacts.get": () => Promise.reject(new Error("gone")) }),
   render: () => (
     <ArtifactImage target={{ botId: "bot_ada" }} artifactId="art_5" name="sample-missing.png" />
+  ),
+};
+
+export const Result: Story = {
+  render: () => (
+    <ResultCard
+      block={{
+        kind: "card",
+        lines: [
+          { k: "Cash", v: "$100,000" },
+          { k: "Runway", v: "10 months" },
+        ],
+      }}
+    />
   ),
 };

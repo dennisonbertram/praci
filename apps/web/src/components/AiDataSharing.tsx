@@ -2,10 +2,10 @@ import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient, DataRoomConsentStatus } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES, modelLabel } from "@rakazo/contracts";
-import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
+import { Button, Card, cn, Label, Skeleton, Switch } from "@rakazo/ui-web";
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   aiConsentStatus,
   allowDocuments,
@@ -193,6 +193,43 @@ export function InboxConsentPrompt({
 }
 
 /** One switch for every AI model that receives data; the models are listed under Advanced. Hidden when there is none or it cannot load. */
+/** A switch whose label and hint toggle it too, so the whole row is the tap target on a phone. */
+function SwitchRow({
+  name,
+  hint,
+  checked,
+  disabled,
+  onCheckedChange,
+  className,
+}: {
+  name: string;
+  hint: ReactNode;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  className?: string;
+}) {
+  const id = useId();
+  return (
+    <div className={cn("flex items-center gap-3 pointer-coarse:min-h-11", className)}>
+      <Switch
+        id={id}
+        aria-label={name}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
+      <Label
+        htmlFor={id}
+        className="min-w-0 flex-col items-start justify-center gap-0 self-stretch font-normal leading-normal pointer-coarse:flex-1"
+      >
+        <span className="text-[14px] text-foreground/75">{name}</span>
+        <span className="text-[12.5px] text-muted-foreground">{hint}</span>
+      </Label>
+    </div>
+  );
+}
+
 export function AiDataSharingSection() {
   const { t } = useLingui();
   // null until the first read, so the section holds its place instead of appearing late.
@@ -309,28 +346,20 @@ export function AiDataSharingSection() {
       {recipients === null ? (
         <Skeleton className="mt-3 h-10 rounded-md" />
       ) : (
-        <div className="mt-3 flex items-center gap-3 pointer-coarse:min-h-11">
-          <Switch
-            aria-label={t`Allow AI models`}
-            checked={allAllowed}
-            disabled={pending || documents === null}
-            onCheckedChange={setAll}
-          />
-          <span className="flex min-w-0 flex-col">
-            <span className="text-[14px] text-foreground/75">
-              <Trans>Allow AI models</Trans>
-            </span>
-            <span className="text-[12.5px] text-muted-foreground">
-              <Trans>For bots, mail, files and contracts</Trans>
-            </span>
-          </span>
-        </div>
+        <SwitchRow
+          className="mt-3"
+          name={t`Allow AI models`}
+          hint={<Trans>For bots, mail, files and contracts</Trans>}
+          checked={allAllowed}
+          disabled={pending || documents === null}
+          onCheckedChange={setAll}
+        />
       )}
       {/* With one model the switch above already is that model. */}
       {recipients && (recipients.length > 1 || documentsNeeded) ? (
         <details className="group mt-3" open={partlyAllowed}>
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-            <Trans>Advanced</Trans>
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[14px] text-foreground underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Trans>Per model and documents</Trans>
             <ChevronRight
               aria-hidden="true"
               className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
@@ -340,17 +369,11 @@ export function AiDataSharingSection() {
             {recipients.map((recipient) => {
               const model = modelLabel(recipient.detail) || recipient.name;
               return (
-                <li key={recipient.key} className="flex items-center gap-3 pointer-coarse:min-h-11">
-                  <Switch
-                    aria-label={model}
-                    checked={recipient.allowed}
-                    disabled={pending}
-                    onCheckedChange={(allowed) => setOne(recipient, allowed)}
-                  />
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-[14px] text-foreground/75">{model}</span>
-                    <span className="text-[12.5px] text-muted-foreground">
-                      {documents?.recipients.some((r) => r.detail === recipient.detail) ? (
+                <li key={recipient.key}>
+                  <SwitchRow
+                    name={model}
+                    hint={
+                      documents?.recipients.some((r) => r.detail === recipient.detail) ? (
                         chatKeys.has(recipient.key) ? (
                           <Trans>Send chats, mail and document text</Trans>
                         ) : (
@@ -358,28 +381,24 @@ export function AiDataSharingSection() {
                         )
                       ) : (
                         <Trans>Send chats and mail text</Trans>
-                      )}
-                    </span>
-                  </span>
+                      )
+                    }
+                    checked={recipient.allowed}
+                    disabled={pending}
+                    onCheckedChange={(allowed) => setOne(recipient, allowed)}
+                  />
                 </li>
               );
             })}
             {documentsNeeded ? (
-              <li className="flex items-center gap-3 pointer-coarse:min-h-11">
-                <Switch
-                  aria-label={t`Documents`}
+              <li>
+                <SwitchRow
+                  name={t`Documents`}
+                  hint={<Trans>Send files and contracts</Trans>}
                   checked={documents?.allowed === true}
                   disabled={pending}
                   onCheckedChange={setDocumentsAllowed}
                 />
-                <span className="flex min-w-0 flex-col">
-                  <span className="text-[14px] text-foreground/75">
-                    <Trans>Documents</Trans>
-                  </span>
-                  <span className="text-[12.5px] text-muted-foreground">
-                    <Trans>Send files and contracts</Trans>
-                  </span>
-                </span>
               </li>
             ) : null}
           </ul>

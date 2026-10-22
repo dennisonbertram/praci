@@ -18,6 +18,7 @@ import {
   Archive,
   BellOff,
   Ellipsis,
+  ListChecks,
   Mail,
   MailOpen,
   Paperclip,
@@ -28,7 +29,9 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
+import { ROW_MENU_EVENT } from "../../lib/inbox-message-cache";
 import { formatMailTime } from "../../lib/mail-time";
+import { dueLabel } from "./TodoCard";
 
 /** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
 const LABEL_DOT = {
@@ -141,6 +144,7 @@ export function InboxGroup({
   selectedId,
   hideAttention,
   unreadTotal,
+  todoDue,
   ...picking
 }: {
   /** Omitted for search results, which show one count instead. */
@@ -156,6 +160,9 @@ export function InboxGroup({
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
+  /** Rows whose mail has an open to-do; the To do card leaves them out, so the row says so. */
+  /** Mail ids that have a to-do on the Needs reply row, with its due date when it has one. */
+  todoDue?: ReadonlyMap<string, string | null>;
 } & RowPicking) {
   const { t } = useLingui();
   if (rows.length === 0) return null;
@@ -182,6 +189,8 @@ export function InboxGroup({
             onRead={onRead}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
+            todo={todoDue?.has(row.id)}
+            due={todoDue?.get(row.id) ?? undefined}
             {...rowPicking(row.id, picking)}
           />
         ))}
@@ -198,6 +207,8 @@ export function InboxRow({
   onRead,
   selected = false,
   hideAttention = false,
+  todo = false,
+  due,
   picked = false,
   anyPicked = false,
   onPick,
@@ -213,6 +224,8 @@ export function InboxRow({
   onRead?: (messageId: string, read: boolean) => void;
   selected?: boolean;
   hideAttention?: boolean;
+  todo?: boolean;
+  due?: string;
   /** The row's checkbox is checked. */
   picked?: boolean;
   /** Some row of the list is checked, so every row shows its checkbox. */
@@ -228,7 +241,15 @@ export function InboxRow({
   const { t } = useLingui();
   useHideAmounts();
   const labelNames = {
-    attention: row.needsReply === true ? t`Needs reply` : t`Needs attention`,
+    // Needs reply is the one phrase for mail that wants an answer; other urgent mail says why.
+    attention:
+      row.needsReply === true
+        ? t`Needs reply`
+        : row.priority === "critical"
+          ? t`Urgent`
+          : row.priority === "important"
+            ? t`Important`
+            : t`Action`,
     newsletter: t`Newsletter`,
     spam: t`Spam`,
     junk: t`Junk`,
@@ -291,12 +312,12 @@ export function InboxRow({
           data-row-id={row.id}
           data-row-stop=""
           onClick={onOpen}
-          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal outline-none [@media(hover:hover)]:hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
             data-unread-dot={row.unread ? "" : undefined}
-            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible pointer-coarse:invisible") : ""}`}
+            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible pointer-coarse:visible pointer-coarse:translate-x-2.5 pointer-coarse:-translate-y-3 pointer-coarse:ring-2 pointer-coarse:ring-background") : ""} `}
           />
           <span
             dir="auto"
@@ -318,7 +339,7 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length ? `@md:group-hover/row:pe-24 @md:group-focus-within/row:pe-24 ${selected ? "@md:pe-24" : ""}` : ""}`}
+            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length && selected ? "@md:pe-24" : ""}`}
           >
             {label ? (
               <span
@@ -343,6 +364,22 @@ export function InboxRow({
             >
               {labelNames[label]}
             </Badge>
+          ) : null}
+          {todo && !label ? (
+            <Badge
+              variant="outline"
+              className={`col-start-4 row-start-1 hidden @md:inline-flex ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
+            >
+              <Trans>To do</Trans>
+              {due ? ` · ${dueLabel(due, new Date())}` : null}
+            </Badge>
+          ) : null}
+          {todo && !label ? (
+            <ListChecks
+              role="img"
+              aria-label={due ? `${t`To do`} · ${dueLabel(due, new Date())}` : t`To do`}
+              className="col-start-4 row-start-1 size-4 text-muted-foreground @md:hidden"
+            />
           ) : null}
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           {row.inInbox || !showArchived ? null : (
@@ -438,7 +475,11 @@ export function InboxRow({
                 );
               })}
             </div>
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChange={(open) =>
+                window.dispatchEvent(new CustomEvent(ROW_MENU_EVENT, { detail: open }))
+              }
+            >
               <DropdownMenuTrigger
                 render={
                   <Button

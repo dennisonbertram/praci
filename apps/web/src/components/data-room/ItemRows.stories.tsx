@@ -99,7 +99,7 @@ export const ListByDocumentDate: Story = {
   render: () => <ListView rows={rows} o={o} sortField="date" />,
 };
 /**
- * A file read for over two minutes (it shows its age), an unreadable file (offers Delete) and a
+ * A file read for over two minutes (it shows its age), an unreadable file (its one Delete is in the row menu) and a
  * file that failed for another reason (offers Try again). Status is its own column.
  */
 export const ListWithStatus: Story = {
@@ -369,4 +369,27 @@ export const ListContextMenu: Story = {
 export const GridContextMenu: Story = {
   render: () => <GridView rows={rows} o={o} />,
   play: ({ canvasElement }) => openSendToAgent(canvasElement),
+};
+
+const longRows = rows.map((row, index) => ({
+  ...row,
+  item: {
+    ...row.item,
+    name: index === 0 ? "Master services agreement signed copy final v3.pdf" : row.item.name,
+    facets: {
+      ...row.item.facets,
+      parties: ["Northwind Robotics", "Acme Ventilation Holdings"],
+    },
+  },
+}));
+/** A list pane as wide as a 1440 px window gives it: Parties and a 40+ character name both show whole. */
+export const ListWide: Story = {
+  decorators: [
+    (Story) => (
+      <div className="@container/list w-[1100px]">
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => <ListView rows={longRows} o={o} />,
 };

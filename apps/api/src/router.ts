@@ -258,7 +258,6 @@ import {
   listInvestorUpdates,
   listNotifications,
   listPushEndpoints,
-  listSafes,
   listShareContactIds,
   listSidebarPages,
   listSpaceBackupModels,
@@ -416,7 +415,7 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
-import { fundraisingOverview, fundraisingRefresh } from "./fundraising.js";
+import { fundraisingOverview, fundraisingRefresh, safesList } from "./fundraising.js";
 import { gtmNeedsYouCount, gtmOverview, gtmPostingCapability, gtmQueue } from "./gtm.js";
 import { ensureGtmAgent, ensureGtmBot } from "./gtm-agent.js";
 import {
@@ -477,10 +476,12 @@ import {
   legalAgent,
   legalConsent,
   legalConsentGrant,
+  legalDoneDeadlines,
   legalDueSoonCount,
   legalGraph,
   legalItemLinks,
   legalOverview,
+  legalSafeCount,
   legalScanNow,
   legalUpdateDeadline,
 } from "./legal.js";
@@ -4042,6 +4043,7 @@ export function createRouter(deps: RouterDeps) {
               content: input.content,
               baseRevision: input.baseRevision,
               updatedBy: "user",
+              gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
             },
           );
           if (result.ok) return result;
@@ -7462,7 +7464,13 @@ export function createRouter(deps: RouterDeps) {
       overview: authed.legal.overview.handler(({ context }) =>
         legalOverview(legalDeps, context.actor),
       ),
+      safeCount: authed.legal.safeCount.handler(({ context }) =>
+        legalSafeCount(legalDeps, context.actor),
+      ),
       graph: authed.legal.graph.handler(({ context }) => legalGraph(legalDeps, context.actor)),
+      doneDeadlines: authed.legal.doneDeadlines.handler(({ context }) =>
+        legalDoneDeadlines(legalDeps, context.actor),
+      ),
       updateDeadline: authed.legal.updateDeadline.handler(({ context, input }) =>
         legalUpdateDeadline(legalDeps, context.actor, input),
       ),
@@ -7760,7 +7768,7 @@ export function createRouter(deps: RouterDeps) {
       },
       safes: {
         list: authed.fundraising.safes.list.handler(({ context }) =>
-          listSafes(deps.prisma, actorScope(context.actor)),
+          safesList(fundraisingDeps, context.actor),
         ),
         save: authed.fundraising.safes.save.handler(({ context, input }) =>
           saveSafe(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),

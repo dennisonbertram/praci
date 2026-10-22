@@ -59,6 +59,35 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
+it("reports only the bots whose runs the filters leave listed", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.runs.list.mockImplementation(async ({ filter }: { filter: string }) => ({
+    runs: filter === "active" ? [run("a", "waiting_input")] : [],
+  }));
+  const listed = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<ActivityList onOpenRun={() => {}} onListedBots={listed} />));
+  expect(listed).toHaveBeenLastCalledWith(new Set(["bot-1"]));
+
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>('[data-testid="activity-show-filters"]')?.click(),
+  );
+  const status = document.querySelector<HTMLSelectElement>(
+    '[data-testid="activity-status-filter"]',
+  );
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(
+      status,
+      "running",
+    );
+    status?.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(listed).toHaveBeenLastCalledWith(new Set());
+  await act(async () => root.unmount());
+});
+
 it("leads with what needs the founder and folds finished runs until asked", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   api.runs.list.mockImplementation(async ({ filter }: { filter: string }) => ({
@@ -73,9 +102,9 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
 
   expect(container.textContent).toContain("Needs you");
   expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs you");
-  // Height stays bounded so the chat roster below remains visible, yet holds about five rows.
+  // Height stays bounded so the chat roster below remains visible.
   expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain(
-    "max-h-[40vh]",
+    "max-h-[45vh]",
   );
   expect(container.textContent).not.toContain("Finished");
   const toggle = container.querySelector<HTMLButtonElement>(
@@ -164,4 +193,26 @@ it("names a held approval and a held question the same, 'Needs your answer', on 
   expect(statusLine).toEqual(["Needs your answer", "Draft the update"]);
   // The group heading is for screen readers only; each row carries its own state.
   expect(container.querySelector("#activity-needs-heading")?.className).toBe("sr-only");
+});
+
+it("shows the active runs before the finished runs arrive, and reports their bots", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  let finish: (value: { runs: RunActivityRow[] }) => void = () => {};
+  api.runs.list.mockImplementation(({ filter }: { filter: string }) =>
+    filter === "active"
+      ? Promise.resolve({ runs: [run("a", "waiting_input")] })
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
+  );
+  const listed = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(<ActivityList onOpenRun={() => {}} onListedBots={listed} />),
+  );
+
+  expect(container.querySelector('button[aria-label$=", Needs your answer"]')).not.toBeNull();
+  expect(listed).toHaveBeenLastCalledWith(new Set(["bot-1"]));
+  await act(async () => finish({ runs: [] }));
 });

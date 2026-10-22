@@ -10,9 +10,11 @@ import { statusLabel, statusTone } from "./ActivityList";
 
 export function RoutineRunHistory({
   routineId,
+  name,
   running = false,
 }: {
   routineId: string;
+  name?: string;
   running?: boolean;
 }) {
   const { i18n } = useLingui();
@@ -251,10 +253,17 @@ export function RoutineRunHistory({
                       minute: "2-digit",
                     })}
                   </time>
-                  <span className={statusTone(run.status)}>{statusLabel(run.status)}</span>
+                  {run.waitingOn ? (
+                    <span className="text-warning">
+                      <Trans>Waiting on {run.waitingOn}</Trans>
+                    </span>
+                  ) : (
+                    <span className={statusTone(run.status)}>{statusLabel(run.status)}</span>
+                  )}
                 </div>
+                {name ? <p className="mt-1 truncate font-medium text-foreground">{name}</p> : null}
                 {run.preview ? (
-                  <p className="mt-1 truncate text-foreground">{run.preview}</p>
+                  <p className={`truncate text-foreground ${name ? "" : "mt-1"}`}>{run.preview}</p>
                 ) : null}
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span>{duration}</span>

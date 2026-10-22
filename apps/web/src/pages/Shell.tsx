@@ -28,6 +28,7 @@ import {
   DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
+  isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
@@ -80,10 +81,10 @@ import {
 import {
   ArrowLeft,
   BookUser,
+  CalendarClock,
   ChartColumn,
   ChevronDown,
   CircleAlert,
-  Clock,
   CodeXml,
   Compass,
   Files,
@@ -98,9 +99,9 @@ import {
   LogOut,
   Mail,
   Maximize2,
+  Megaphone,
   Menu,
   MessageSquare,
-  Monitor,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -135,6 +136,7 @@ import {
   useLocation,
   useMatch,
   useNavigate,
+  useNavigationType,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -183,6 +185,7 @@ import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOv
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
+import { clearTourStep, tourInProgress } from "../components/tour/TourPopover";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -211,6 +214,7 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
+import { recoverComposerDraft } from "../lib/composer-accounts";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -219,8 +223,11 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
+import { pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
+import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
+import { findGtmAgent } from "../lib/gtm-agent";
 import {
   maskCurrencyWhenHidden,
   setHideAmounts,
@@ -254,6 +261,7 @@ import {
   rosterHeldFor,
   rosterStatusChanged,
   rosterWorkStatusLabel,
+  waitingForApprovalLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
@@ -272,6 +280,7 @@ import {
   useDrawerFocus,
   useSidebarDocked,
 } from "../lib/shell-layout";
+import { rememberThread } from "../lib/thread-cache";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -308,7 +317,9 @@ import { DevinPage } from "./Devin";
 import { FinancePage } from "./Finance";
 import { FundraisingPage } from "./Fundraising";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
+import { GtmPage } from "./Gtm";
 import { InboxPage } from "./Inbox";
+import { IntegrationsPage } from "./Integrations";
 import { InvestorsPage } from "./Investors";
 import { UpdateEditor } from "./investors/UpdateEditor";
 import { LegalPage } from "./Legal";
@@ -372,9 +383,6 @@ const SettingsOverlay = lazyOverlay(() =>
 );
 const PeerMessagesOverlay = lazyOverlay(() =>
   import("./PeerMessagesOverlay").then((module) => module.PeerMessagesOverlay),
-);
-const IntegrationsPage = lazy(() =>
-  import("./Integrations").then((module) => ({ default: module.IntegrationsPage })),
 );
 
 export type { PendingAttachment };
@@ -659,6 +667,9 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  const [gtmAgentOpen, setGtmAgentOpen] = useState(false);
+  const [creatingGtmAgent, setCreatingGtmAgent] = useState(false);
+  const [gtmAgentError, setGtmAgentError] = useState("");
   // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
   const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
@@ -790,6 +801,8 @@ export function ShellPage() {
   // Last-known computer/screen per bot, so switching back to an already-seen
   // bot paints its computer pane instantly instead of blanking it while the
   // thread + screen RPCs round-trip again (see refreshThread / refreshComputerScreen).
+  // Last thread per bot: returning to a chat shows its messages while the fresh copy loads.
+  const threadCacheRef = useRef(new Map<string, ThreadSnapshot>());
   const computerCacheRef = useRef(
     new Map<string, { computer: ComputerStatus | null; screenUrl: string | null }>(),
   );
@@ -815,6 +828,7 @@ export function ShellPage() {
 
   function commitSnapshot(next: ThreadSnapshot | null) {
     snapshotRef.current = next;
+    rememberThread(threadCacheRef.current, next, 8);
     setSnapshot(withLiveStreamingProgress(next, streamResponsesRef.current));
   }
 
@@ -850,8 +864,13 @@ export function ShellPage() {
     missingPathRef.current = path;
     setMissingPath(path);
   }, []);
-  // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
-  useEffect(() => setSettingsOpen(false), [pathname]);
+  // Only Back/Forward closes Settings. Nothing inside the dialog links to a page, and a route that
+  // is still loading pushes or replaces its own path, which must not close a dialog just opened.
+  const navigationType = useNavigationType();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new pathname closes Settings
+  useEffect(() => {
+    if (navigationType === "POP") setSettingsOpen(false);
+  }, [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
   /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
@@ -885,6 +904,7 @@ export function ShellPage() {
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
+  const sidebarPaneRef = useRef<HTMLDivElement>(null);
   const rosterStopId = useRef<string | null>(null);
   // After every render, since rows come and go: keeps the chat list to one tab stop.
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
@@ -907,6 +927,10 @@ export function ShellPage() {
       resize.disconnect();
       mutate.disconnect();
     };
+  }, [mobileSidebarOpen]);
+  // The drawer keeps its scroll offset while closed; open it on Pages, not where the chats were left.
+  useEffect(() => {
+    if (mobileSidebarOpen) sidebarPaneRef.current?.scrollTo({ top: 0 });
   }, [mobileSidebarOpen]);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
@@ -944,10 +968,15 @@ export function ShellPage() {
   // Phones open the drawer on the chat list; Activity there is one tap away.
   // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
   const [activityMode, setActivityMode] = useState(false);
+  // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
+  const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
   // Activity sits above the chats: show it from its top, not from the row the list had settled on.
   useEffect(() => {
-    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+    if (!activityMode) return;
+    // The list scrolls on a tall desktop; the pane around it scrolls on a phone and a short screen.
+    sidebarScrollRef.current?.scrollTo({ top: 0 });
+    sidebarPaneRef.current?.scrollTo({ top: 0 });
   }, [activityMode]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
@@ -997,6 +1026,10 @@ export function ShellPage() {
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
   const tourQuestion = useRef(false);
+  // A reload part-way through a tour reopens it, even a retake of a tour already seen.
+  useEffect(() => {
+    if (userId && tourInProgress(userId)) setTourRestart(true);
+  }, [userId]);
   // Once the tour ends, a late profile response that still says unseen cannot restart it.
   const [tourEnded, setTourEnded] = useState(false);
   // After Skip tour the first question stays one tap away in Chief's composer.
@@ -1142,6 +1175,7 @@ export function ShellPage() {
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
+  const gtmMode = useMatch("/app/gtm") != null;
   const devinMode = useMatch("/app/devin") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
@@ -1156,6 +1190,7 @@ export function ShellPage() {
     inboxMode ||
     financeMode ||
     legalMode ||
+    gtmMode ||
     devinMode ||
     investorsMode ||
     fundraisingMode ||
@@ -1173,6 +1208,9 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  useEffect(() => {
+    setGtmAgentOpen(gtmMode && window.matchMedia("(min-width: 768px)").matches);
+  }, [gtmMode]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
   }, [devinMode]);
@@ -1197,11 +1235,13 @@ export function ShellPage() {
             ? findDataRoomAgent(bots, userId)
             : legalMode
               ? findLegalAgent(bots, userId)
-              : devinMode
-                ? bots.find((bot) => bot.id === devinAgentId)
-                : investorsMode || fundraisingMode
-                  ? findInvestorsAgent(bots, userId)
-                  : routeBot.bot;
+              : gtmMode
+                ? findGtmAgent(bots, userId)
+                : devinMode
+                  ? bots.find((bot) => bot.id === devinAgentId)
+                  : investorsMode || fundraisingMode
+                    ? findInvestorsAgent(bots, userId)
+                    : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
   useEffect(() => {
     // The snapshot can still be the previous thread's for a render after the bot opens.
@@ -1788,6 +1828,8 @@ export function ShellPage() {
     } else {
       setScreenUrl(null);
     }
+    const cachedThread = threadCacheRef.current.get(active.id);
+    if (cachedThread && snapshotRef.current?.botId !== active.id) commitSnapshot(cachedThread);
     expandedHistoryThread.current = null;
     historyEpoch.current += 1;
     const abort = new AbortController();
@@ -2250,6 +2292,7 @@ export function ShellPage() {
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
       },
+      { id: "gtm", label: t`GTM`, icon: <Megaphone {...icon} /> },
       // Only once Devin is connected; before that its Integrations card is the way in.
       ...(glance.devinConnected
         ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
@@ -2320,7 +2363,11 @@ export function ShellPage() {
             detail: doc.detail,
           })),
         },
-        { heading: t`Chats`, icon: <MessageSquare size={16} strokeWidth={1.75} />, entries: chats },
+        {
+          heading: t`Chats`,
+          icon: <MessageSquare size={16} strokeWidth={1.75} />,
+          entries: chats,
+        },
         {
           heading: t`Artifacts`,
           icon: <Files size={16} strokeWidth={1.75} />,
@@ -2676,14 +2723,9 @@ export function ShellPage() {
     });
   }, []);
 
-  useEffect(() => {
+  // Routine mentions need one list call per bot, so they load when the @ menu opens, not on every page load.
+  const loadMentionRoutines = useCallback(() => {
     const bots = botsForMentionsRef.current;
-    if (!initialBotsLoaded || bots.length === 0) {
-      setMentionRoutines([]);
-      setMentionConnectors([]);
-      return;
-    }
-    let cancelled = false;
     const botNameById = new Map(bots.map((bot) => [bot.id, bot.name]));
     void Promise.all(
       bots.map((bot) =>
@@ -2697,12 +2739,14 @@ export function ShellPage() {
           )
           .catch(() => [] as Array<Routine & { botName?: string }>),
       ),
-    ).then((lists) => {
-      if (!cancelled) setMentionRoutines(lists.flat());
-    });
-    return () => {
-      cancelled = true;
-    };
+    ).then((lists) => setMentionRoutines(lists.flat()));
+  }, []);
+
+  useEffect(() => {
+    if (!initialBotsLoaded || mentionBotsKey === "") {
+      setMentionRoutines([]);
+      setMentionConnectors([]);
+    }
   }, [initialBotsLoaded, mentionBotsKey]);
 
   useLayoutEffect(() => {
@@ -2747,13 +2791,15 @@ export function ShellPage() {
     active?.id === chiefId &&
     snapshot?.botId === chiefId &&
     connectCardsOpen(snapshot?.messages ?? []);
+  // Not before the account loads: the sidebar pages render only then, and the tour lists its stops once.
   const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false &&
-      !tourEnded &&
-      bots.length > 0 &&
-      !firstQuestionOpen &&
-      !connectCardsWaiting);
+    bootstrapMe !== undefined &&
+    (tourRestart ||
+      (bootstrapMe?.tourSeen === false &&
+        !tourEnded &&
+        bots.length > 0 &&
+        !firstQuestionOpen &&
+        !connectCardsWaiting));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
   // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
   // (for this session only; the saved preference is unchanged).
@@ -2854,9 +2900,46 @@ export function ShellPage() {
     [],
   );
   const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
+  // The Space the open composer was started in, kept for its save and send calls.
+  const [composerSpaceId, setComposerSpaceId] = useState<string | null>(null);
+  // The From choices when a failed send named none: the composer shows a picker for them.
+  const [composerAccounts, setComposerAccounts] = useState<
+    Awaited<ReturnType<typeof rpc.inbox.list>>["accounts"] | null
+  >(null);
+  const composerScopeRef = useRef({ userId, spaceId: bootstrapMe?.spaceId });
+  composerScopeRef.current = { userId, spaceId: bootstrapMe?.spaceId };
   const botToolControls = useMemo<BotToolControls>(
     () => ({
-      openComposer: setComposerDraft,
+      openComposer: (draft) => {
+        setComposerAccounts(null);
+        // Pinned to the Space of the thread the failed send is in, not the shared selection.
+        const botId = activeBotId.current;
+        const groupId = activeGroupId.current;
+        const threadSpace = groupId
+          ? groupsRef.current.find((group) => group.id === groupId)?.spaceId
+          : botsRef.current.find((bot) => bot.id === botId)?.spaceId;
+        const origin = {
+          userId: composerScopeRef.current.userId,
+          spaceId: composerScopeRef.current.spaceId,
+          selected: selectedSpaceId(),
+        };
+        const spaceId = threadSpace ?? origin.spaceId ?? null;
+        setComposerSpaceId(spaceId);
+        if (draft.connectionId) return setComposerDraft(draft);
+        void recoverComposerDraft(
+          draft,
+          spaceId,
+          (space) => rpc.inbox.list({}, { context: { spaceId: space } }),
+          () =>
+            composerScopeRef.current.userId === origin.userId &&
+            composerScopeRef.current.spaceId === origin.spaceId &&
+            selectedSpaceId() === origin.selected,
+        ).then((recovered) => {
+          if (!recovered) return;
+          setComposerAccounts(recovered.accounts);
+          setComposerDraft(recovered.draft);
+        });
+      },
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
       disableTool: async (botId, tool) => {
         const bot = botsRef.current.find((item) => item.id === botId);
@@ -3330,6 +3413,37 @@ export function ShellPage() {
     if (!active && !creatingLegalAgent) void createLegalAgent();
   }
 
+  async function createGtmAgent() {
+    setCreatingGtmAgent(true);
+    setGtmAgentError("");
+    try {
+      await rpc.gtm.agent();
+      await refreshBots();
+    } catch (error) {
+      setGtmAgentError(errorText(error, t`Could not create the GTM agent`));
+    } finally {
+      setCreatingGtmAgent(false);
+    }
+  }
+
+  function askGtmAgent() {
+    setGtmAgentOpen(true);
+    if (!active && !creatingGtmAgent) void createGtmAgent();
+  }
+
+  const gtmAgentAsked = useRef<string | null>(null);
+  const gtmAgentScope =
+    gtmMode && initialBotsLoaded && userId ? `${bootstrapMe?.spaceId}:${userId}` : null;
+  useEffect(() => {
+    if (!gtmAgentScope) {
+      gtmAgentAsked.current = null;
+      return;
+    }
+    if (active || gtmAgentAsked.current === gtmAgentScope) return;
+    gtmAgentAsked.current = gtmAgentScope;
+    void createGtmAgent();
+  });
+
   /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
   function askLegalAgentAbout(question: string) {
     askLegalAgent();
@@ -3423,6 +3537,7 @@ export function ShellPage() {
     () => {
       setCartaAgentCollapsed(true);
       setInboxAgentCollapsed(true);
+      setGtmAgentOpen(false);
     },
     () => {
       setCartaAgentCollapsed(readCartaAgentCollapsed(userId));
@@ -3431,6 +3546,18 @@ export function ShellPage() {
   );
 
   const cartaSuggestions = [t`Who are our investors?`];
+  // A bank's own chat starts with two read questions, like the other page agents.
+  const bankAgent = active ? agentAppFor(active.id, active.spaceId)?.bank : undefined;
+  const bankAgentPage =
+    !pageMode &&
+    !inGroup &&
+    active !== undefined &&
+    isIntegrationAgentSpawnKey(active.spawnKey) &&
+    bankAgent === true;
+  const bankSuggestions = [
+    t`What are our account balances?`,
+    t`What were the biggest payments this month?`,
+  ];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
@@ -3514,22 +3641,41 @@ export function ShellPage() {
                 creating: creatingLegalAgent,
                 error: legalAgentError,
               }
-            : investorsAgentPage
+            : gtmMode
               ? {
-                  name: "investors-agent",
-                  testId: "investors-agent-panel",
-                  // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                  open: investorsPanel.open,
-                  collapse: () => setCartaAgentCollapsedPref(true),
-                  collapseLabel: t`Collapse Investors agent`,
-                  // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                  create: investorsAgentError ? createInvestorsAgent : undefined,
-                  createLabel: t`Try again`,
-                  creating: creatingInvestorsAgent,
-                  error: investorsAgentError,
-                  suggestions: investorsAgentSuggestions(),
+                  name: "gtm-agent",
+                  testId: "gtm-agent-panel",
+                  open: gtmAgentOpen,
+                  collapse: () => setGtmAgentOpen(false),
+                  collapseLabel: t`Collapse GTM agent`,
+                  create: createGtmAgent,
+                  createLabel: t`Create GTM agent`,
+                  creating: creatingGtmAgent,
+                  error: gtmAgentError,
+                  suggestions: [t`Help me find our first 50 design partners`],
                 }
-              : null;
+              : investorsAgentPage
+                ? {
+                    name: "investors-agent",
+                    testId: "investors-agent-panel",
+                    // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+                    open: investorsPanel.open,
+                    collapse: () => setCartaAgentCollapsedPref(true),
+                    collapseLabel: t`Collapse Investors agent`,
+                    // A failed creation is retried from the panel; the agent otherwise appears by itself.
+                    create: investorsAgentError ? createInvestorsAgent : undefined,
+                    createLabel: t`Try again`,
+                    creating: creatingInvestorsAgent,
+                    error: investorsAgentError,
+                    suggestions: investorsAgentSuggestions(),
+                  }
+                : null;
+  // The toaster skips an approval toast for the agent whose panel is open.
+  const dockedAgentId = agentPanel?.open ? active?.id : undefined;
+  useEffect(() => {
+    setDockedAgentBotId(dockedAgentId);
+    return () => setDockedAgentBotId(undefined);
+  }, [dockedAgentId]);
   // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -3768,10 +3914,13 @@ export function ShellPage() {
   useEffect(() => {
     if (!computerOpen) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setComputerOpen(false);
+      if (event.key !== "Escape") return;
+      // Capture phase plus preventDefault: the side panel underneath stays open.
+      event.preventDefault();
+      setComputerOpen(false);
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [computerOpen]);
 
   useEffect(() => {
@@ -3876,6 +4025,7 @@ export function ShellPage() {
   const noComputerScreen = isRoutinesOnlyPanel({
     kind: computer?.kind,
     hasScreen: Boolean(embeddedScreenUrl),
+    state: computer?.state,
     hasError: Boolean(computerError),
     open: computerOpen,
     showRecoveryHint: showComputerRecoveryHint,
@@ -3983,6 +4133,15 @@ export function ShellPage() {
             <Trans>Back to Investors</Trans>
           </Link>
         </div>
+      ) : null}
+      {bankAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
+        <AgentPanelIntro
+          description=""
+          suggestions={bankSuggestions}
+          onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
+          disabled={sending}
+          onPick={(text) => void sendMessage(text, [], newClientId())}
+        />
       ) : null}
       {cartaAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
         <AgentPanelIntro
@@ -4102,10 +4261,13 @@ export function ShellPage() {
           {composerDraft ? (
             <ComposeEmail
               seed={NEW_MESSAGE}
-              accounts={[
-                { connectionId: composerDraft.connectionId, label: composerDraft.account },
-              ]}
+              accounts={
+                composerAccounts ?? [
+                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                ]
+              }
               connectionId={composerDraft.connectionId}
+              spaceId={composerSpaceId}
               restore={{
                 seed: NEW_MESSAGE,
                 clientId: crypto.randomUUID().replaceAll("-", ""),
@@ -4121,7 +4283,7 @@ export function ShellPage() {
                 forwarded: [],
                 files: [],
                 saved: false,
-                accounts: [
+                accounts: composerAccounts ?? [
                   { connectionId: composerDraft.connectionId, label: composerDraft.account },
                 ],
               }}
@@ -4149,6 +4311,18 @@ export function ShellPage() {
               </Button>
             </div>
           ) : null}
+          {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
+            <div key={agent.id} className="px-6 pb-2">
+              <Button
+                variant="outline"
+                className="w-full pointer-coarse:h-11"
+                data-testid="delegate-approval-open"
+                onClick={() => navigate(`/app/${encodeURIComponent(agent.id)}`)}
+              >
+                <Trans>Open {agent.name}</Trans>
+              </Button>
+            </div>
+          ))}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
@@ -4169,7 +4343,13 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
-              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
+              placeholder={
+                activeSnapshot?.delegatePending?.length
+                  ? waitingForApprovalLabel()
+                  : waitingOnApproval
+                    ? needsAnswerLabel()
+                    : undefined
+              }
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4207,7 +4387,10 @@ export function ShellPage() {
               replyTargetName={replyTargetName}
               onClearReply={clearReply}
               mentionTargets={composerMentionTargets}
-              onMentionOpen={loadMentionConnectors}
+              onMentionOpen={() => {
+                loadMentionConnectors();
+                loadMentionRoutines();
+              }}
               agentSkills={agentSkills}
               onSlashOpen={refreshAgentSkills}
               sentHistory={sentHistory}
@@ -4344,7 +4527,7 @@ export function ShellPage() {
               <InputGroup
                 data-testid="sidebar-search"
                 data-tour="sidebar-search"
-                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground has-[[data-slot=input-group-control]:focus-visible]:ring-0"
               >
                 <InputGroupAddon>
                   <Search size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -4476,13 +4659,16 @@ export function ShellPage() {
           </button>
         ) : null}
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
-        <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
+        <div
+          ref={sidebarPaneRef}
+          className="rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
+        >
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
             // On a phone Activity takes its place until it is closed, so the chats stay in view.
             <div
-              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "max-lg:hidden" : ""}`}
             >
               <SidebarPagesGroup
                 title={t`Pages`}
@@ -4493,6 +4679,7 @@ export function ShellPage() {
                   { key: "inbox", label: t`Inbox` },
                   { key: "finance", label: t`Finance` },
                   { key: "legal", label: t`Legal` },
+                  { key: "gtm", label: t`GTM` },
                   ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
                   { key: "investors", label: t`Investors` },
                   { key: "fundraising", label: t`Fundraising` },
@@ -4507,6 +4694,7 @@ export function ShellPage() {
                 {hiddenPages.includes("inbox") ? null : (
                   <SidebarPageLink
                     testId="sidebar-inbox"
+                    href="/app/inbox"
                     current={inboxMode}
                     icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Inbox`}
@@ -4526,6 +4714,7 @@ export function ShellPage() {
                 {hiddenPages.includes("finance") ? null : (
                   <SidebarPageLink
                     testId="sidebar-finance"
+                    href="/app/finance"
                     current={financeMode}
                     icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Finance`}
@@ -4540,6 +4729,7 @@ export function ShellPage() {
                 {hiddenPages.includes("legal") ? null : (
                   <SidebarPageLink
                     testId="sidebar-legal"
+                    href="/app/legal"
                     current={legalMode}
                     icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Legal`}
@@ -4553,8 +4743,31 @@ export function ShellPage() {
                       rail,
                       value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
                       valueLabel: plural(glance.legalDueSoon, {
-                        one: "# due soon",
-                        other: "# due soon",
+                        one: "# overdue or due in the next 7 days",
+                        other: "# overdue or due in the next 7 days",
+                      }),
+                    })}
+                  />
+                )}
+                {hiddenPages.includes("gtm") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-gtm"
+                    href="/app/gtm"
+                    current={gtmMode}
+                    icon={<Megaphone size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`GTM`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/gtm");
+                    }}
+                    {...glanceBadge({
+                      unseen: 0,
+                      rail,
+                      value: glance.gtmNeedsYou > 0 ? String(glance.gtmNeedsYou) : undefined,
+                      valueLabel: plural(glance.gtmNeedsYou, {
+                        one: "# needs you",
+                        other: "# need you",
                       }),
                     })}
                   />
@@ -4562,6 +4775,7 @@ export function ShellPage() {
                 {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                   <SidebarPageLink
                     testId="sidebar-devin"
+                    href="/app/devin"
                     current={devinMode}
                     icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Devin`}
@@ -4585,6 +4799,7 @@ export function ShellPage() {
                 {hiddenPages.includes("investors") ? null : (
                   <SidebarPageLink
                     testId="sidebar-investors"
+                    href="/app/investors"
                     current={investorsMode}
                     icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Investors`}
@@ -4599,6 +4814,7 @@ export function ShellPage() {
                 {hiddenPages.includes("fundraising") ? null : (
                   <SidebarPageLink
                     testId="sidebar-fundraising"
+                    href="/app/fundraising"
                     current={fundraisingMode}
                     icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Fundraising`}
@@ -4612,6 +4828,7 @@ export function ShellPage() {
                 {hiddenPages.includes("contacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-contacts"
+                    href="/app/contacts"
                     current={contactsMode}
                     icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Contacts`}
@@ -4625,6 +4842,7 @@ export function ShellPage() {
                 {hiddenPages.includes("data-room") ? null : (
                   <SidebarPageLink
                     testId="sidebar-data-room"
+                    href="/app/data-room"
                     current={dataRoomMode}
                     icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Data room`}
@@ -4639,6 +4857,11 @@ export function ShellPage() {
                       value:
                         glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
                       failure: true,
+                      // Only the badge opens the failed files; the row opens everything.
+                      onValueClick: () => {
+                        setMobileSidebarOpen(false);
+                        navigate("/app/data-room?status=failed");
+                      },
                       // The count is failed files, the only ones a person can retry or remove.
                       valueLabel: plural(glance.dataRoomWaiting, {
                         one: "# file failed",
@@ -4650,6 +4873,7 @@ export function ShellPage() {
                 {hiddenPages.includes("artifacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-artifacts"
+                    href="/app/artifacts"
                     current={artifactsMode}
                     // Not the Data room's folder icon: these are files bots made.
                     icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
@@ -4673,11 +4897,12 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
-            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
               {activityMode && !rail ? (
                 <ActivityList
+                  onListedBots={setActivityBotIds}
                   onOpenRun={(run) => {
                     setMobileSidebarOpen(false);
                     if (run.groupId) navigate(`/app/g/${run.groupId}`);
@@ -4733,6 +4958,7 @@ export function ShellPage() {
                   const isPageAgent = (row: (typeof nestedRows)[number]) =>
                     row.item.kind === "bot" &&
                     (pageAgentKind(rowKey(row)) !== null ||
+                      isGtmAgentSpawnKey(rowKey(row)) ||
                       isIntegrationAgentSpawnKey(rowKey(row)));
                   const foldable = !rail && !folder && group.kind !== "pinned";
                   // A page makes its agent when opened; it is listed once it has a message or a run.
@@ -4742,14 +4968,22 @@ export function ShellPage() {
                     !row.item.chat.preview &&
                     row.item.chat.status === "idle" &&
                     row.item.chat.id !== active?.id;
-                  const listedRows = foldable
-                    ? nestedRows.filter((row) => !unusedPageAgent(row))
-                    : nestedRows;
+                  const inActivity = (row: (typeof nestedRows)[number]) =>
+                    activityMode &&
+                    !rail &&
+                    row.item.kind === "bot" &&
+                    activityBotIds.has(row.item.chat.id) &&
+                    row.item.chat.id !== active?.id;
+                  const listedRows = (
+                    foldable ? nestedRows.filter((row) => !unusedPageAgent(row)) : nestedRows
+                  ).filter((row) => !inActivity(row));
                   const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
                   const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
                   const holdsActive = (rows: typeof nestedRows) =>
                     rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-                  const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+                  // On a page the group keeps the state the person gave it; the page's own row is highlighted elsewhere.
+                  const showPageAgents =
+                    pageAgentsOpen || (!pageMode && holdsActive(pageAgentRows));
                   const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
                   const displayRows: (
                     | (typeof nestedRows)[number]
@@ -4759,7 +4993,15 @@ export function ShellPage() {
                       ? [
                           ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
                           ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
-                          ...(showPageAgents ? pageAgentRows : []),
+                          // Open only because the chat is a page agent: list just that one.
+                          ...(showPageAgents
+                            ? pageAgentsOpen
+                              ? pageAgentRows
+                              : pageAgentRows.filter(
+                                  (row) =>
+                                    row.item.kind === "bot" && row.item.chat.id === active?.id,
+                                )
+                            : []),
                           ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
                           ...(showEmailChats ? emailChatRows : []),
                         ]
@@ -5234,7 +5476,7 @@ export function ShellPage() {
                                                     item.kind === "bot" ? "" : undefined
                                                   }
                                                   title={item.chat.name}
-                                                  className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                                  className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
                                                     item.chat.unread ? "font-medium" : ""
                                                   }`}
                                                 >
@@ -5247,7 +5489,9 @@ export function ShellPage() {
                                                 ) : null}
                                               </div>
                                               <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
-                                                {item.kind === "bot" &&
+                                                {/* Roomy rows show the status mark on the preview line, so a Working row keeps its height. */}
+                                                {compact &&
+                                                item.kind === "bot" &&
                                                 glance.botKinds[item.chat.id] ? (
                                                   <StatusMark
                                                     kind={glance.botKinds[item.chat.id]!}
@@ -5298,7 +5542,7 @@ export function ShellPage() {
                                                 data-roster-preview={
                                                   !workStatusLabel ? "true" : undefined
                                                 }
-                                                className={`truncate text-[12px] leading-[18px] ${
+                                                className={`flex items-center gap-1.5 text-[12px] leading-[18px] ${
                                                   workStatusLabel
                                                     ? `font-semibold ${workTone}`
                                                     : item.chat.unread
@@ -5306,7 +5550,16 @@ export function ShellPage() {
                                                       : "text-muted-foreground"
                                                 }`}
                                               >
-                                                {rosterLine}
+                                                {item.kind === "bot" &&
+                                                glance.botKinds[item.chat.id] ? (
+                                                  <StatusMark
+                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    botId={item.chat.id}
+                                                  />
+                                                ) : null}
+                                                <span className="min-w-0 truncate">
+                                                  {rosterLine}
+                                                </span>
                                               </div>
                                             )}
                                           </div>
@@ -5458,6 +5711,7 @@ export function ShellPage() {
         </div>
         <FirstRunTour
           open={tourOpen}
+          userId={userId}
           onAsk={() => {
             if (!chiefId) return;
             tourQuestion.current = true;
@@ -5559,6 +5813,7 @@ export function ShellPage() {
               className="w-full justify-start font-normal"
               onClick={() =>
                 void authClient.signOut().then(() => {
+                  clearTourStep(userId);
                   clearAgentAppCache();
                   clearSpaceSelection();
                   navigate("/");
@@ -5784,24 +6039,19 @@ export function ShellPage() {
                   data-active={panel === "computer" ? "" : undefined}
                   className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  {noComputerScreen ? (
-                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
-                  ) : (
-                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
-                  )}
+                  {/* One icon whatever the computer state, so it does not change while the panel loads. */}
+                  <CalendarClock size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
               ) : null}
             </div>
           </div>
           {integrationsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <IntegrationsPage
-                  activeBotId={activeBotId.current}
-                  onOpenMessaging={() => setMessagingSettingsOpen(true)}
-                  onOpenAiDataSharing={() => openSettings("general")}
-                />
-              </Suspense>
+              <IntegrationsPage
+                activeBotId={activeBotId.current}
+                onOpenMessaging={() => setMessagingSettingsOpen(true)}
+                onOpenAiDataSharing={() => openSettings("general")}
+              />
             </ErrorBoundary>
           ) : dataRoomMode ? (
             <DataRoomPage
@@ -5820,7 +6070,7 @@ export function ShellPage() {
           ) : artifactsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
               <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} bots={bots} />
               </Suspense>
             </ErrorBoundary>
           ) : boardMode ? (
@@ -5854,6 +6104,14 @@ export function ShellPage() {
                 if (selectSpace(spaceId)) window.location.assign("/app/legal");
               }}
             />
+          ) : gtmMode ? (
+            <GtmPage
+              key={bootstrapMe?.spaceId}
+              botId={active?.id}
+              remote={pageRemote}
+              onAskAgent={askGtmAgent}
+              agentOpen={gtmAgentOpen}
+            />
           ) : devinMode ? (
             <DevinPage
               key={devinPageKey}
@@ -5868,6 +6126,7 @@ export function ShellPage() {
             />
           ) : fundraisingMode ? (
             <FundraisingPage
+              spaceName={pageSpaceName}
               onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
               agentBusy={transcriptRunning}
             />
@@ -5935,6 +6194,7 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
+        onClose={agentPanel ? agentPanel.collapse : () => setPanel(null)}
         open={agentPanel ? agentPanel.open : Boolean(panel && (active || activeGroup))}
         panel={agentPanel ? agentPanel.name : (panel ?? "closed")}
       >
@@ -6017,8 +6277,11 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
-                <span className="text-[13.5px] text-muted-foreground">
+              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
+                <span
+                  className="min-w-0 truncate text-[13.5px] text-muted-foreground"
+                  title={panel === "settings" && active ? t`${active.name} settings` : undefined}
+                >
                   {panel === "settings" ? (
                     active ? (
                       t`${active.name} settings`
@@ -6037,7 +6300,7 @@ export function ShellPage() {
                     <Trans>Group</Trans>
                   )}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   {active &&
                   panel === "computer" &&
                   !computerOpen &&
@@ -6050,7 +6313,7 @@ export function ShellPage() {
                       }}
                     />
                   ) : null}
-                  {/* The Monitor button in the chat header is the way back to the computer. */}
+                  {/* The Routines button in the chat header is the way back to the computer. */}
                   {active && panel !== "settings" ? (
                     <Button
                       variant="ghost"
@@ -7246,13 +7509,15 @@ function computerPlaceholder(
 export function isRoutinesOnlyPanel(input: {
   kind: ComputerStatus["kind"] | undefined;
   hasScreen: boolean;
+  state?: ComputerStatus["state"];
   hasError: boolean;
   open: boolean;
   showRecoveryHint: boolean;
 }) {
   return (
     input.kind !== "desktop" &&
-    !input.hasScreen &&
+    // A stale screen address with the computer stopped shows nothing; asleep still offers Open.
+    !(input.hasScreen && input.state !== "stopped") &&
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint

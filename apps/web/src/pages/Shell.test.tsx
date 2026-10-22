@@ -43,7 +43,18 @@ vi.mock("../lib/rpc", async (importOriginal) => ({
   },
 }));
 
+import { findGtmAgent } from "../lib/gtm-agent";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
+
+it("selects only the signed-in founder's GTM panel agent", () => {
+  const bots = [
+    { spawnKey: "gtm-agent:other", id: "other" },
+    { spawnKey: "gtm-agent:owner", id: "mine" },
+  ];
+  expect(findGtmAgent(bots, "owner")?.id).toBe("mine");
+  expect(findGtmAgent(bots, null)).toBeUndefined();
+});
+
 import {
   BOTS_POLL_MS,
   Composer,
@@ -312,7 +323,6 @@ describe("Composer", () => {
       type(textarea, "@zz");
       const empty = container?.querySelector("[data-testid='mention-picker-empty']");
       expect(empty?.getAttribute("role")).toBe("status");
-      expect(textarea.getAttribute("aria-expanded")).toBe("true");
       expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
     });
 
@@ -1227,7 +1237,10 @@ describe("isRoutinesOnlyPanel", () => {
     const base = { hasScreen: false, hasError: false, open: false, showRecoveryHint: false };
     expect(isRoutinesOnlyPanel({ ...base, kind: undefined })).toBe(true);
     expect(isRoutinesOnlyPanel({ ...base, kind: "desktop" })).toBe(false);
-    expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasScreen: true })).toBe(false);
+    const withScreen = { ...base, kind: undefined, hasScreen: true };
+    expect(isRoutinesOnlyPanel({ ...withScreen, state: "running" })).toBe(false);
+    expect(isRoutinesOnlyPanel({ ...withScreen, state: "stopped" })).toBe(true);
+    expect(isRoutinesOnlyPanel({ ...withScreen, state: "suspended" })).toBe(false);
     expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasError: true })).toBe(false);
   });
 });

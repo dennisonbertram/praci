@@ -16,7 +16,7 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   await expect(
     page.getByText("Hey Robin. Fresh start on my side, so I’ll keep this short."),
   ).toHaveCount(0);
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible();
+  await expect(page.getByText("What should I work on first?", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Day-to-day work/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Research & writing/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /A bit of everything/ })).toHaveCount(0);
@@ -93,7 +93,7 @@ test("focus choice follows Simplified Chinese UI locale", async ({ page }, testI
   await signup(page, `onboarding-zh-cn-${stamp}@rakazo.test`, "password12", "Robin");
   await completeOnboarding(page);
 
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible();
+  await expect(page.getByText("What should I work on first?", { exact: true })).toBeVisible();
 
   const settings = await openUserSettings(page);
   const picker = settings.getByTestId("ui-locale-select");
@@ -103,7 +103,7 @@ test("focus choice follows Simplified Chinese UI locale", async ({ page }, testI
   await settings.getByRole("button", { name: "关闭用户设置" }).click();
   await expect(settings).toHaveCount(0);
 
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("What should I work on first?", { exact: true })).toHaveCount(0);
   await expect(page.getByText("你想让我先做什么？", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /日常工作/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /收件箱和邮件/ })).toBeVisible();

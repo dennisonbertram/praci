@@ -55,6 +55,7 @@ vi.mock("../lib/rpc", () => ({
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
   INBOX_CHANGED_EVENT: "rakazo:inbox-changed",
+  ROW_MENU_EVENT: "rakazo:inbox-row-menu",
   prefetchInboxMessage: () => {},
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),
@@ -83,6 +84,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onMoveToInbox,
     onAskAgentPanel,
     onReplyDone,
+    replyDoneText,
     notice,
   }: {
     messageId: string | null;
@@ -91,6 +93,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onMoveToInbox?: () => void;
     onAskAgentPanel?: () => Promise<unknown>;
     onReplyDone?: () => void;
+    replyDoneText?: string;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -104,6 +107,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
             dialog archive
           </button>
         ) : null}
+        {replyDoneText ? <span>done text: {replyDoneText}</span> : null}
         {onReplyDone ? (
           <button type="button" onClick={onReplyDone}>
             dialog reply done
@@ -136,7 +140,9 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onArchive,
     onRead,
     selectedId,
+    todoDue,
   }: {
+    todoDue?: ReadonlyMap<string, string | null>;
     title?: ReactNode;
     rows: MailRow[];
     onOpen: (id: string) => void;
@@ -154,6 +160,8 @@ vi.mock("../components/inbox/InboxRow", () => ({
           data-selected={selectedId === row.id}
           data-feedback={row.feedback ?? ""}
           data-category={row.category ?? ""}
+          data-todo={todoDue?.has(row.id) ? "" : undefined}
+          data-due={todoDue?.get(row.id) ?? undefined}
           onClick={() => onOpen(row.id)}
         >
           {row.subject}
@@ -427,7 +435,7 @@ it("focuses the row it returns to without scrolling the list", async () => {
   }
 });
 
-it("drops an undated reply to-do whose mail is listed under Needs reply, and keeps the rest", async () => {
+it("drops only the undated reply to-do whose mail is listed under Needs reply, marks that row, and keeps the rest", async () => {
   const todo = (id: string, messageId: string, text: string, dueOn: string | null = null) => ({
     id,
     connectionId: "c1",
@@ -440,19 +448,31 @@ it("drops an undated reply to-do whose mail is listed under Needs reply, and kee
     doneAt: null,
   });
   rpcMock.list.mockResolvedValue(
-    list([row("a", { needsReply: true }), row("b", { needsReply: true })]),
+    list([
+      row("a", { needsReply: true }),
+      row("b", { needsReply: true }),
+      row("c", { needsReply: false }),
+    ]),
   );
   rpcMock.todos.mockResolvedValue({
     todos: [
       todo("t1", "a", "Reply to Morgan about section 9"),
       todo("t2", "b", "File the trademark form"),
       todo("t3", "a", "Reply to Morgan by Friday", "2099-01-01"),
+      todo("t4", "c", "Pay the invoice"),
     ],
   });
   const c = await render();
+  // No to-do from a visible Needs reply thread is repeated on the card, dated or not.
   expect(c.textContent).not.toContain("Reply to Morgan about section 9");
-  expect(c.textContent).toContain("File the trademark form");
-  expect(c.textContent).toContain("Reply to Morgan by Friday");
+  expect(c.textContent).not.toContain("File the trademark form");
+  expect(c.textContent).not.toContain("Reply to Morgan by Friday");
+  expect(c.textContent).toContain("Pay the invoice");
+  // Those rows say "To do" instead.
+  const marked = [...c.querySelectorAll("[data-todo]")].map((el) => el.getAttribute("data-row-id"));
+  expect(marked).toEqual(["a", "b"]);
+  // The dated one keeps its due date on the row.
+  expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-due")).toBe("2099-01-01");
 });
 
 it("completes a hidden reply to-do from the open mail", async () => {
@@ -475,6 +495,25 @@ it("completes a hidden reply to-do from the open mail", async () => {
   await click(c.querySelector('[data-row-id="a"]'));
   await click(byText(document.body, "dialog reply done"));
   expect(rpcMock.setDone).toHaveBeenCalledWith({ id: "t1", done: true });
+});
+
+it("names the due date on the open mail's completion control", async () => {
+  const dated = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: "2099-01-01",
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+  rpcMock.todos.mockResolvedValue({ todos: [dated] });
+  const c = await render();
+  await click(c.querySelector('[data-row-id="a"]'));
+  expect(document.body.textContent).toContain("done text: Reply to Morgan · Jan 1");
 });
 
 it("does not show sorting when Allow is pressed on an already sorted mailbox", async () => {
@@ -614,6 +653,8 @@ it("offers Undo after an archive, which restores the thread and reloads the list
   const toast = c.querySelector('[role="status"]');
   // It names the email, so the person knows which one Undo brings back.
   expect(toast?.textContent).toContain('Archived "Subject b"');
+  // The shared toasts rise above it, so a pending approval never hides Undo.
+  expect(toast?.querySelector("[data-toast-avoid]")).not.toBeNull();
   const lists = rpcMock.list.mock.calls.length;
   await click(byText(toast as HTMLElement, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "b" });
@@ -916,6 +957,34 @@ it("starts the first-sort clock at Allow: sorting is said at once and the unsort
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
+it("keeps rows still while a row menu is open and the first sort finishes", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], blocked));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  await click(byText(c, "Allow sorting"));
+  await dwell(16_000);
+  expect(c.textContent).toContain("Sorting your mail…");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: true }));
+  });
+  // Triage lands while the menu is open; the sort ends, and the rows must stay where they are.
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(61_000);
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  const headings = () => [...c.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings()).not.toContain("Needs reply");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: false }));
+  });
+  await dwell(100);
+  expect(headings()).toContain("Needs reply");
+});
+
 it("does not say First sync once a refresh reports an earlier sync", async () => {
   vi.useFakeTimers();
   try {
@@ -970,7 +1039,7 @@ it("says it is reading the mail during the first sync and asks the server a few 
   }
 });
 
-it("says a first sync can take a minute after 5 s, and shows the consent prompt while it runs", async () => {
+it("shows the consent prompt without loading text while the first sync runs", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockResolvedValue(
@@ -985,13 +1054,13 @@ it("says a first sync can take a minute after 5 s, and shows the consent prompt 
     );
     rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
     const c = await render();
-    expect(c.textContent).toContain("Reading your mail…");
-    expect(c.textContent).not.toContain("First sync can take a minute");
+    // The choice is the one thing to read before consent: no sync status beside it.
+    expect(c.textContent).not.toContain("Reading your mail");
     expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
-    expect(c.textContent).toContain("First sync can take a minute");
+    expect(c.textContent).not.toContain("First sync can take a minute");
   } finally {
     vi.useRealTimers();
   }
@@ -1026,7 +1095,7 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   const todo = {
     id: "t1",
     connectionId: "c1",
-    messageId: "a",
+    messageId: "elsewhere",
     text: "Send the deck",
     detail: null,
     from: "Dana",
@@ -1078,6 +1147,31 @@ it("shows five Needs reply rows and the rest behind 'Show n more'", async () => 
   expect(byText(c, "Show 2 more")).toBeUndefined();
 });
 
+it("keeps the To do card the same when 'Show n more' lists more Needs reply rows", async () => {
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  rpcMock.list.mockResolvedValue(list(ids.map((id) => row(id, { needsReply: true }))));
+  const todo = (id: string, messageId: string, text: string) => ({
+    id,
+    connectionId: "c1",
+    messageId,
+    text,
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  });
+  rpcMock.todos.mockResolvedValue({
+    todos: [todo("t1", "r1", "Reply about one"), todo("t7", "r7", "Reply about seven")],
+  });
+  const c = await render();
+  expect(c.textContent).not.toContain("Reply about one");
+  expect(c.textContent).toContain("Reply about seven");
+  await click(byText(c, "Show 2 more"));
+  expect(c.textContent).not.toContain("Reply about one");
+  expect(c.textContent).toContain("Reply about seven");
+});
+
 it("holds rows in their groups while triage is still running", async () => {
   // Each answer is pending; the poll after the first load classifies row b as well.
   let calls = 0;
@@ -1095,6 +1189,35 @@ it("holds rows in their groups while triage is still running", async () => {
   expect(
     other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
+});
+
+it("keeps rows in their groups while a row menu is open", async () => {
+  let classified = false;
+  rpcMock.list.mockImplementation(async () =>
+    list([row("a", { needsReply: true }), classified ? row("b", { needsReply: true }) : row("b")]),
+  );
+  const c = await render();
+  const menu = (open: boolean) =>
+    act(async () => {
+      window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: open }));
+    });
+  const afterOther = () => {
+    const other = [...c.querySelectorAll("h2")].find((h) => h.textContent === "Other mail today");
+    const b = c.querySelector('button[data-row-id="b"]');
+    return Boolean(
+      other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  };
+  await menu(true);
+  classified = true;
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:inbox-changed"));
+  });
+  await dwell(1_000);
+  expect(afterOther()).toBe(true);
+  await menu(false);
+  await dwell(100);
+  expect(afterOther()).toBe(false);
 });
 
 it("does not hold a mark back while triage is running", async () => {
@@ -1691,7 +1814,7 @@ describe("a list that holds still", () => {
     const todo = {
       id: "t1",
       connectionId: "c1",
-      messageId: "a",
+      messageId: "elsewhere",
       text: "Send the deck",
       detail: null,
       from: "Dana",
@@ -1716,7 +1839,7 @@ describe("a list that holds still", () => {
     const make = (id: string) => ({
       id,
       connectionId: "c1",
-      messageId: "a",
+      messageId: "elsewhere",
       text: `Task ${id}`,
       detail: null,
       from: "Dana",

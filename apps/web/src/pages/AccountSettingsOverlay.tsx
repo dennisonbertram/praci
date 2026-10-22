@@ -215,7 +215,7 @@ export function GeneralSettingsPanels({
                   disabled={avatarPending}
                   onPressedChange={() => void chooseAvatarStyle(style)}
                   data-testid={`avatar-style-${style}`}
-                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-foreground aria-pressed:ring-1 aria-pressed:ring-foreground"
+                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
                 >
                   <BotAvatar
                     color="#D9508A"
@@ -252,7 +252,7 @@ export function GeneralSettingsPanels({
               />
             </summary>
             <div className="border-t border-border px-4 pb-5">
-              <div className="flex items-start gap-3 pt-5 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <div className="mt-5 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={streamRepliesId}
                   data-testid="response-streaming-toggle"
@@ -270,7 +270,7 @@ export function GeneralSettingsPanels({
                   <Trans>Stream replies</Trans>
                 </Label>
               </div>
-              <div className="flex items-start gap-3 pt-4 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={showToolActivityId}
                   data-testid="tool-activity-toggle"
@@ -288,7 +288,7 @@ export function GeneralSettingsPanels({
                   <Trans>Show tool activity</Trans>
                 </Label>
               </div>
-              <div className="flex items-start gap-3 pt-4 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={loadRemoteImagesId}
                   data-testid="remote-images-toggle"
@@ -328,11 +328,11 @@ export function GeneralSettingsPanels({
         {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
             Delete is last of all, so a destructive action is never the first thing on the page. */}
         <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4 @2xl:col-start-1 @2xl:row-start-2">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
+          <div className="py-3">
             <h3 className="text-[15px] font-medium text-foreground">
               <Trans>Account</Trans>
             </h3>
-            <p className="min-w-0 text-[14px] text-foreground/75">
+            <p className="mt-1 min-w-0 text-[14px] text-foreground/75">
               {name}
               {email ? (
                 <span title={email} className="block truncate text-[13px] text-muted-foreground/70">
@@ -495,7 +495,7 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
 
   return (
     <details data-testid="change-password" className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-medium text-foreground">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[14px] text-foreground/75">
         <Trans>Change password</Trans>
         <ChevronRight
           aria-hidden="true"
@@ -665,12 +665,22 @@ function TimezonePicker({
     <div className="mt-3">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button variant="outline" className="h-9 w-full justify-between font-normal" />}
+          render={
+            <Button
+              variant="outline"
+              className="h-9 w-full justify-between px-3 text-sm font-normal"
+            />
+          }
           aria-label={t`Time zone`}
           disabled={pending !== null}
         >
-          {timezoneLabel(pending ?? value)}
-          <ChevronDown aria-hidden="true" />
+          <span className="min-w-0 truncate">{timezoneLabel(pending ?? value)}</span>
+          <ChevronDown
+            aria-hidden="true"
+            size={16}
+            strokeWidth={1.8}
+            className="ml-3 shrink-0 text-muted-foreground"
+          />
         </PopoverTrigger>
         <PopoverContent align="start" className="w-(--anchor-width) min-w-64 p-0">
           <Command>

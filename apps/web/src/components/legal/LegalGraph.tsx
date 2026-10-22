@@ -28,6 +28,8 @@ const ROW = 46;
 const PAD = 24;
 const NODE_W = 220;
 const NODE_H = 38;
+/** The smallest the drawing is shrunk to (12px labels stay at 11px or more); narrower panels scroll sideways instead. */
+const MIN_SCALE = 0.92;
 /** Characters per label line at 12px in a NODE_W box. */
 const LINE_CHARS = 30;
 
@@ -140,15 +142,21 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
   // Drawn at its own size so labels stay readable; when that is wider than the page, say it scrolls.
   const frame = useRef<HTMLDivElement>(null);
   const [scrolls, setScrolls] = useState(false);
+  const [frameWidth, setFrameWidth] = useState(0);
+  // Shrunk to fit the panel, but not below MIN_SCALE where the labels stop being readable.
+  const scale = frameWidth > 0 ? Math.min(1, Math.max(MIN_SCALE, frameWidth / width)) : 1;
   useEffect(() => {
     const el = frame.current;
     if (!el) return;
-    const check = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    const check = () => {
+      setFrameWidth(el.clientWidth);
+      setScrolls(el.scrollWidth > el.clientWidth + 1);
+    };
     check();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
     observer?.observe(el);
     return () => observer?.disconnect();
-  }, [width]);
+  }, [width, scale]);
   if (graph.nodes.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -184,8 +192,8 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
           role="group"
           aria-label={t`Legal relationships`}
           viewBox={`0 0 ${width} ${height}`}
-          width={width}
-          height={height}
+          width={width * scale}
+          height={height * scale}
           className="mx-auto block max-w-none"
         >
           {heads.map((head) => (

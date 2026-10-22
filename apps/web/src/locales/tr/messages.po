@@ -54,11 +54,6 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
-#. placeholder {0}: glance.legalDueSoon
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# due soon} other {# due soon}}"
-msgstr ""
-
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -95,8 +90,16 @@ msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# model} other {# model}}"
 
 #. placeholder {0}: glance.devinNeedsYou
+#. placeholder {0}: glance.gtmNeedsYou
+#. placeholder {0}: needsYou.length
+#: src/pages/Gtm.tsx
 #: src/pages/Shell.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
+msgstr ""
+
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -305,10 +308,23 @@ msgstr ""
 msgid "{0} non-USD not counted"
 msgstr ""
 
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{0} not counted"
+msgstr ""
+
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{0} of {1}"
+msgstr ""
+
+#. placeholder {0}: policy.founderApprovals
+#. placeholder {1}: policy.approvalsBeforeAuto
+#. placeholder {2}: policy.autoOpenings
+#. placeholder {3}: policy.dailyCap
+#: src/pages/gtm/GtmChannels.tsx
+msgid "{0} of {1} approvals before auto · {2} of {3} today"
 msgstr ""
 
 #. placeholder {0}: sender.name
@@ -416,6 +432,14 @@ msgstr ""
 msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr ""
 
+#: src/components/gtm/XPostPreview.tsx
+msgid "{count} / 280"
+msgstr ""
+
+#: src/components/gtm/LinkedInPostPreview.tsx
+msgid "{count} / 3,000"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr ""
@@ -520,12 +544,20 @@ msgstr ""
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "{minutes} dk önce"
 
 #: src/pages/Finance.tsx
 msgid "{monthlyTotal}/mo"
+msgstr ""
+
+#: src/components/gtm/GtmBlock.tsx
+msgid "{n} of {goal}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -678,12 +710,20 @@ msgstr ""
 msgid "+{more} more"
 msgstr ""
 
+#: src/components/data-room/ImportActivity.tsx
+msgid "+{unnamed} more"
+msgstr ""
+
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -780,6 +820,10 @@ msgstr ""
 msgid "Accounts"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+msgid "Action"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Action confirmations"
 msgstr "İşlem onayları"
@@ -864,6 +908,10 @@ msgstr ""
 msgid "Add a model"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Add a postal address"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
@@ -885,6 +933,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Add address"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -991,6 +1043,10 @@ msgstr ""
 msgid "Add to routine"
 msgstr "Rutine ekle"
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Add unsubscribe instructions"
+msgstr ""
+
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -1008,6 +1064,10 @@ msgstr ""
 #. placeholder {0}: contact.addedBy.name
 #: src/components/ContactDialog.tsx
 msgid "Added by {0}"
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Added to Data room"
 msgstr ""
 
 #. placeholder {0}: currentName ?? ""
@@ -1028,9 +1088,7 @@ msgstr ""
 msgid "Address or ENS"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -1287,6 +1345,10 @@ msgstr ""
 msgid "Any model, with your own key"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Any time"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
 msgstr ""
@@ -1332,6 +1394,14 @@ msgstr "API anahtarı üstbilgisi"
 msgid "API key name"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "API key required"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "API key required for Zernio queue"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
 msgstr ""
@@ -1350,11 +1420,21 @@ msgstr ""
 msgid "Approval boundaries"
 msgstr "Onay sınırları"
 
+#: src/components/gtm/EmailItemCard.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Approve"
 msgstr "Onayla"
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Approve every email"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Approve every post"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
@@ -1366,6 +1446,10 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Approved here. Waiting for {waitsFor}"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Approved, opens next wakeup"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1518,6 +1602,10 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything."
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Ask GTM agent"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1694,6 +1782,7 @@ msgstr ""
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -1926,11 +2015,16 @@ msgid "Brex bill, not paid yet"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Browser"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
 msgid "Browser notifications"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Building graph…"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -1976,6 +2070,11 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/components/gtm/GtmCalendar.tsx
+#: src/pages/Gtm.tsx
+msgid "Calendar"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr ""
@@ -2010,6 +2109,7 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/components/fundraising/RoundCard.tsx
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -2025,6 +2125,8 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Fundraising.tsx
+#: src/pages/Gtm.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2125,14 +2227,13 @@ msgstr ""
 msgid "Category"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Cc"
-msgstr ""
-
-#. placeholder {0}: message.cc
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "cc {0}"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -2159,8 +2260,17 @@ msgstr ""
 msgid "Change source"
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Changed"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 msgid "Changed elsewhere"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Changed, review again"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -2171,6 +2281,11 @@ msgstr ""
 msgid "Changing…"
 msgstr "Değiştiriliyor…"
 
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Channel"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Channels"
 msgstr ""
@@ -2240,6 +2355,10 @@ msgstr ""
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Check queue"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
@@ -2312,6 +2431,10 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Choose which account to send from."
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr ""
@@ -2339,6 +2462,10 @@ msgstr ""
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Clear {sourceName} filter"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Clear all"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -2409,6 +2536,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Kapat"
@@ -2533,6 +2661,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Collapse GTM agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2766,6 +2898,10 @@ msgstr "Executor'a bağlan"
 msgid "Connect Gmail"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Connect Gmail in Inbox"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
@@ -2802,6 +2938,14 @@ msgstr "Treg'i bağla"
 msgid "Connect your apps"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Connect Zernio"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Connect Zernio first"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Zernio to enable reads."
 msgstr ""
@@ -2814,6 +2958,7 @@ msgstr ""
 #: src/components/integrations/parts.tsx
 #: src/pages/ConnectedCallback.tsx
 #: src/pages/GoogleOAuthCallback.tsx
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2941,6 +3086,7 @@ msgstr ""
 #: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/transcript.tsx
@@ -3106,6 +3252,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the GTM agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3831,6 +3981,10 @@ msgid "Create group"
 msgstr "Grup oluştur"
 
 #: src/pages/Shell.tsx
+msgid "Create GTM agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Create Inbox agent"
 msgstr ""
 
@@ -3854,10 +4008,6 @@ msgstr ""
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
-msgstr ""
-
-#: src/components/integrations/McpDetail.tsx
-msgid "Created when you allow changes"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -4046,6 +4196,10 @@ msgid "Delete account"
 msgstr "Hesabı sil"
 
 #: src/pages/shell/bot-page-panel.tsx
+msgid "Delete block"
+msgstr ""
+
+#: src/pages/shell/bot-page-panel.tsx
 msgid "Delete chart"
 msgstr ""
 
@@ -4142,6 +4296,11 @@ msgstr ""
 msgid "Desktop update"
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Destination"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Details"
@@ -4196,6 +4355,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr ""
@@ -4321,6 +4481,7 @@ msgstr ""
 
 #: src/components/CopyLinkDialog.tsx
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/gtm/GtmBlock.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -4330,11 +4491,16 @@ msgstr ""
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Gtm.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "Bitti"
+
+#: src/pages/Legal.tsx
+msgid "Done deadlines"
+msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
@@ -4398,6 +4564,10 @@ msgstr ""
 msgid "Draft not saved"
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Draft only"
+msgstr ""
+
 #: src/components/investors/ActionItems.tsx
 msgid "Draft ready"
 msgstr ""
@@ -4409,6 +4579,10 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Draft saved, not sent."
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -4443,6 +4617,11 @@ msgstr ""
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
 msgstr ""
 
+#: src/components/gtm/GtmBlock.tsx
+#: src/pages/Gtm.tsx
+msgid "Drafts for you"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
 msgstr "Görüntüyü sürükleyip bırakın veya yapıştırın"
@@ -4464,6 +4643,7 @@ msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr ""
 
@@ -4501,6 +4681,8 @@ msgstr ""
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/Gtm.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/Investors.tsx
 msgid "Edit"
 msgstr ""
@@ -4549,12 +4731,24 @@ msgstr ""
 msgid "Email chats can use {appName}"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email checks"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "Bu e-posta adresinin kaydolmasına izin verilmiyor"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email send not recorded. Check Inbox before trying again."
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email sending is disabled."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4568,6 +4762,10 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "E-posta doğrulaması gerekiyor"
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email was not sent. Review it before trying again."
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email, calendar and your company pages"
@@ -4667,7 +4865,6 @@ msgstr ""
 msgid "Equity"
 msgstr ""
 
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr ""
@@ -4702,7 +4899,7 @@ msgstr "Her saat"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
+msgid "Every month on the 1st"
 msgstr "Her ay"
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -4713,6 +4910,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "Her hafta"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Exact text"
+msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -4986,6 +5187,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -5033,7 +5235,6 @@ msgstr "Tam ekran"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr ""
@@ -5083,6 +5284,10 @@ msgstr ""
 msgid "Git event"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Give the GTM agent a goal"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Gmail"
 msgstr ""
@@ -5099,8 +5304,16 @@ msgstr ""
 msgid "Gmail filter limit reached"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Important"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Gmail is limiting requests. Nothing was sent."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5138,6 +5351,10 @@ msgstr ""
 
 #: src/pages/NotFound.tsx
 msgid "Go to Praci"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Goal"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -5197,6 +5414,11 @@ msgstr ""
 msgid "Groups"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+#: src/pages/Shell.tsx
+msgid "GTM"
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
 msgstr "Aramayı sonlandır"
@@ -5234,6 +5456,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
 msgstr "Örnek dinle"
+
+#: src/pages/Shell.tsx
+msgid "Help me find our first 50 design partners"
+msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Help me with \"{title}\" on {contractTitle}, due {due}."
@@ -5349,6 +5575,10 @@ msgstr ""
 msgid "I answer questions about your cap table, investors and finances, using your Data room and contacts."
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "I checked: this post is not in the queue"
+msgstr ""
+
 #: src/components/PageAgentIntro.tsx
 msgid "I keep your cap table and investor contacts up to date from Carta."
 msgstr ""
@@ -5439,7 +5669,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Important"
 msgstr ""
 
@@ -5465,7 +5695,9 @@ msgstr ""
 msgid "In Data room"
 msgstr ""
 
+#: src/components/gtm/GtmBlock.tsx
 #: src/lib/ticket-status.ts
+#: src/pages/Gtm.tsx
 msgid "In progress"
 msgstr ""
 
@@ -5489,6 +5721,10 @@ msgstr ""
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Inbox"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Inbox (Gmail)"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -5601,6 +5837,10 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Investors"
+msgstr ""
+
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -5852,6 +6092,10 @@ msgstr ""
 msgid "Link address"
 msgstr ""
 
+#: src/components/gtm/XPostPreview.tsx
+msgid "Link counts as 23"
+msgstr ""
+
 #. placeholder {0}: link.name
 #: src/components/CopyLinkDialog.tsx
 msgid "Link for {0}"
@@ -5924,6 +6168,10 @@ msgstr "Etkinlik yükleniyor…"
 msgid "Loading integrations"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Hafıza ayarları yükleniyor…"
@@ -5940,10 +6188,6 @@ msgstr "Model kataloğu yükleniyor…"
 msgid "Loading preview…"
 msgstr "Önizleme yükleniyor…"
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "Kurallar yükleniyor…"
-
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
 msgstr ""
@@ -5951,6 +6195,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Loading voice providers…"
 msgstr "Ses sağlayıcıları yükleniyor…"
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Loading Zernio queue…"
+msgstr ""
 
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
@@ -6080,6 +6328,10 @@ msgstr ""
 msgid "Mark done"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark done: {replyDoneText}"
+msgstr ""
+
 #: src/components/fundraising/SafeList.tsx
 msgid "Mark funded"
 msgstr ""
@@ -6100,6 +6352,10 @@ msgstr ""
 #. placeholder {0}: row.from
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark noise: all mail from {0}"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Mark posted"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -6510,6 +6766,10 @@ msgstr "{full} modelini aşağı taşı"
 msgid "Move {full} up"
 msgstr "{full} modelini yukarı taşı"
 
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Move down"
+msgstr ""
+
 #: src/components/sidebar-folders/SidebarDnd.tsx
 msgid "Move of {item} cancelled."
 msgstr ""
@@ -6529,6 +6789,10 @@ msgstr "Taşı"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Move to Inbox"
+msgstr ""
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Move up"
 msgstr ""
 
 #. placeholder {0}: maskCurrencyWhenHidden(status.subject)
@@ -6581,6 +6845,10 @@ msgstr "Gruba bir ad ver"
 msgid "Name this routine"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Needed to post approved text"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Needs a monthly burn"
 msgstr ""
@@ -6591,10 +6859,6 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
-msgstr ""
-
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
 msgstr ""
 
 #: src/lib/devin-format.ts
@@ -6622,9 +6886,11 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "Devralma bekliyor"
 
+#: src/components/gtm/GtmCalendar.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
+#: src/pages/Gtm.tsx
 msgid "Needs you"
 msgstr ""
 
@@ -6762,6 +7028,14 @@ msgstr ""
 msgid "Next step"
 msgstr ""
 
+#: src/pages/Gtm.tsx
+msgid "Next wakeup in {minutes} min"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Next week"
+msgstr ""
+
 #: src/components/fundraising/SafeDialog.tsx
 msgid "No"
 msgstr ""
@@ -6824,6 +7098,7 @@ msgid "No closing balance found to check against"
 msgstr ""
 
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "No contacts yet"
 msgstr ""
 
@@ -6840,6 +7115,10 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No deadlines marked done."
+msgstr ""
+
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
 msgstr ""
@@ -6850,6 +7129,14 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "No documents here name a party"
+msgstr ""
+
+#: src/components/investors/ActionItems.tsx
+msgid "No draft made, see Ask"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "No drafts"
 msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
@@ -6885,7 +7172,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "No longer active"
-msgstr "Artık etkin değil"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "No mail"
@@ -6903,11 +7190,8 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-msgid "No matches"
-msgstr ""
-
 #: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
+msgid "No matches"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -6958,6 +7242,14 @@ msgstr ""
 msgid "No open deadlines."
 msgstr ""
 
+#: src/components/fundraising/Pipeline.tsx
+msgid "No prospects yet"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "No provider posts in this window"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "Sağlayıcı bulunamadı."
@@ -7003,6 +7295,14 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "No rush"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "No SAFEs yet"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "No scheduled items in this view."
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -7090,6 +7390,7 @@ msgstr ""
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
+#: src/pages/gtm/GtmChannels.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "Bağlı değil"
@@ -7204,12 +7505,16 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "Henüz hatırlanan bir şey yok"
 
+#: src/pages/Gtm.tsx
+msgid "Nothing running"
+msgstr ""
+
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -7270,6 +7575,10 @@ msgstr "{0} ile görüşmede"
 msgid "On a schedule"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: creates a {service} agent that can read and, after you approve, make changes."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -7282,6 +7591,7 @@ msgstr ""
 msgid "Only this bot"
 msgstr ""
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -7296,9 +7606,9 @@ msgstr ""
 msgid "Open"
 msgstr "Aç"
 
+#. placeholder {0}: agent.name
 #. placeholder {0}: group.title
 #. placeholder {0}: ref.name
-#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx
@@ -7308,6 +7618,10 @@ msgstr ""
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Open {agentName}"
 msgstr ""
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
@@ -7475,6 +7789,10 @@ msgstr "İsteğe bağlı"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Optional faster balance reads"
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7703,6 +8021,10 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Per model and documents"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Per month"
@@ -7755,6 +8077,11 @@ msgstr "Sabitle"
 
 #: src/pages/Fundraising.tsx
 msgid "Pipeline"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+#: src/pages/Gtm.tsx
+msgid "Plan"
 msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -7815,6 +8142,14 @@ msgstr ""
 msgid "Post-money cap {0}"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Postal address"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Postal address present"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Investors.tsx
@@ -7830,6 +8165,14 @@ msgstr ""
 #. placeholder {0}: day(update.sentAt)
 #: src/pages/Investors.tsx
 msgid "Posted {0}"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Posting may have failed"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Posting needs an API key"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -7911,6 +8254,10 @@ msgstr ""
 msgid "Previous message"
 msgstr ""
 
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Previous week"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Primary"
 msgstr ""
@@ -7982,10 +8329,18 @@ msgstr ""
 msgid "Provider"
 msgstr "Sağlayıcı"
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Provider queue around this scheduled time"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Providers"
 msgstr "Sağlayıcılar"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Public URL"
+msgstr ""
 
 #: src/components/CloudAgentCard.tsx
 #: src/pages/devin/DevinSessions.tsx
@@ -8004,9 +8359,17 @@ msgstr ""
 msgid "Quarterly"
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Queue check incomplete. Check Zernio before trying again."
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "Kuyrukta"
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Queued in Zernio"
+msgstr ""
 
 #: src/pages/shell/GroupIntro.tsx
 msgid "Quick status check from everyone, please"
@@ -8018,6 +8381,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Rarely read, and you never wrote to them"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Re-approve"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -8090,6 +8457,10 @@ msgstr ""
 msgid "Reading {done} of {total}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Reading {readCount} of {scanTotal}"
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
@@ -8156,6 +8527,7 @@ msgid "Reads document text"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Ready"
 msgstr ""
 
@@ -8215,6 +8587,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Reconnect Gmail"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Reconnect Gmail in Inbox before sending."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
@@ -8293,6 +8669,7 @@ msgstr ""
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/fundraising/MercuryLine.tsx
+#: src/components/gtm/GtmCalendar.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -8508,6 +8885,7 @@ msgid "Renews {day}"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Yeniden aç"
@@ -8530,6 +8908,10 @@ msgstr "Anahtarı değiştir"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Replaced by a newer request"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -8689,6 +9071,10 @@ msgstr "Praci'ya dön"
 msgid "Revenue"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Review again"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "Sağlayıcı ayarlarını gözden geçir ve yeniden test et."
@@ -8743,6 +9129,10 @@ msgstr "Rutinler"
 
 #: src/pages/Paywall.tsx
 msgid "Routines that run while you're away"
+msgstr ""
+
+#: src/pages/gtm/GtmChannels.tsx
+msgid "Rule"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -8841,6 +9231,7 @@ msgstr ""
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -8848,6 +9239,8 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
+#: src/pages/Gtm.tsx
+#: src/pages/gtm/GtmPlan.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -8859,6 +9252,10 @@ msgstr "Kaydet"
 #. placeholder {0}: prefill.name
 #: src/components/ContactDialog.tsx
 msgid "Save {0} as a contact"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Save address"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -8879,6 +9276,14 @@ msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Save output limit"
+msgstr ""
+
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Save proof"
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Save the routine first"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -8916,6 +9321,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -8976,6 +9385,10 @@ msgstr ""
 msgid "Scheduled run failed."
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "Scheduled time (ISO)"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Scheduling"
 msgstr ""
@@ -8987,7 +9400,6 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9036,6 +9448,10 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -9099,6 +9515,10 @@ msgstr ""
 msgid "Searching your mail"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/Inbox.tsx
@@ -9110,7 +9530,7 @@ msgid "See usage"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "See what bots can reach, and add more in Integrations."
+msgid "See what bots can reach and add more."
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
@@ -9183,6 +9603,10 @@ msgstr ""
 msgid "Send an unsubscribe email to {0}?"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Send and receive iMessages"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Send answer"
 msgstr "Yanıtı gönder"
@@ -9247,6 +9671,10 @@ msgstr ""
 msgid "Sending is turned off."
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Sending was not confirmed. Check Sent in Inbox; this email will not be sent again."
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -9258,6 +9686,7 @@ msgid "Sends your meeting notes and transcripts to your AI model."
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -9403,11 +9832,17 @@ msgstr "Kabuk"
 msgid "Show {hiddenReplies} more"
 msgstr ""
 
+#. placeholder {0}: plan.operations.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Show all {0} changes"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr ""
 
 #: src/pages/Investors.tsx
+#: src/pages/Legal.tsx
 msgid "Show done"
 msgstr ""
 
@@ -9434,6 +9869,10 @@ msgstr ""
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Daha fazla göster"
+
+#: src/pages/Legal.tsx
+msgid "Show open"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Show original message"
@@ -9638,6 +10077,10 @@ msgstr "Atla veya dağıtım anahtarı kullan"
 msgid "Skip to content"
 msgstr ""
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to message box"
+msgstr ""
+
 #: src/components/tour/TourPopover.tsx
 msgid "Skip tour"
 msgstr ""
@@ -9660,12 +10103,12 @@ msgstr ""
 msgid "Slack"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "Slack message"
+#: src/pages/shell/message-cards.tsx
+msgid "Slack and your calendar"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "Slack, calendar and email"
+#: src/pages/RoutineEditor.tsx
+msgid "Slack message"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -9708,7 +10151,11 @@ msgid "Sort descending"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort every file in the Data room"
+msgid "Sort files"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort new files"
 msgstr ""
 
 #: src/components/ListControls.tsx
@@ -9863,7 +10310,7 @@ msgstr ""
 #: src/pages/devin/DevinSessions.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
-#: src/pages/legal/LegalContracts.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Status"
 msgstr ""
 
@@ -10397,6 +10844,10 @@ msgstr "Bu işlem hesabınızı ve verilerinizi kalıcı olarak siler."
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr ""
 
+#: src/pages/gtm/GtmPlan.tsx
+msgid "This post has no valid scheduled time."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
 msgstr "Bu sağlayıcı kaydetmeden test edilemez."
@@ -10455,10 +10906,6 @@ msgid "This zip is too large to unpack"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Through a Photon project"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
 msgid "Through BlueBubbles on your Mac"
 msgstr ""
 
@@ -10480,8 +10927,13 @@ msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
+#: src/pages/gtm/GtmPlan.tsx
 msgid "Title"
 msgstr "Başlık"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "to"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
@@ -10491,16 +10943,12 @@ msgstr "Başlık"
 msgid "To"
 msgstr ""
 
-#. placeholder {0}: message.to
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "to {0}"
-msgstr ""
-
 #. placeholder {0}: filters.dateRange.to
 #: src/pages/ActivityList.tsx
 msgid "To {0}"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
 msgid "To do"
@@ -10511,6 +10959,7 @@ msgid "To pick up, press space. Use the arrow keys to move, space to drop, escap
 msgstr ""
 
 #: src/components/EmailCards.tsx
+#: src/components/gtm/GtmCalendar.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
@@ -10647,6 +11096,7 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Fundraising.tsx
+#: src/pages/Gtm.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -10694,10 +11144,6 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
-msgstr ""
-
 #: src/pages/Investors.tsx
 msgid "Type it in"
 msgstr ""
@@ -10729,6 +11175,7 @@ msgid "Unassign"
 msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/gtm/GtmChannels.tsx
 msgid "Unavailable"
 msgstr ""
 
@@ -10809,6 +11256,10 @@ msgstr "Sabitlemeyi kaldır"
 msgid "Unread"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
+msgstr ""
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
 msgstr ""
@@ -10816,6 +11267,10 @@ msgstr ""
 #. placeholder {0}: counts.unsubscribe
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Unsubscribe {0}"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Unsubscribe line present"
 msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx
@@ -10862,6 +11317,7 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/Gtm.tsx
 msgid "Up to date"
 msgstr ""
 
@@ -10911,7 +11367,9 @@ msgid "Updated"
 msgstr ""
 
 #. placeholder {0}: formatRelativeTime(data.fetchedAt)
+#. placeholder {0}: formatRelativeTime(page.updatedAt)
 #: src/pages/Devin.tsx
+#: src/pages/Gtm.tsx
 msgid "Updated {0}"
 msgstr ""
 
@@ -10997,6 +11455,12 @@ msgstr ""
 msgid "Uploaded"
 msgstr ""
 
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
+msgstr ""
+
+#: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
@@ -11022,6 +11486,10 @@ msgstr "Bulunan bir modeli kullan"
 
 #: src/pages/Investors.tsx
 msgid "Use a Google Sheet"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Use a subject up to 200 characters, recipients up to 200, and a body up to 4,000."
 msgstr ""
 
 #: src/pages/Onboarding.tsx
@@ -11148,6 +11616,10 @@ msgstr ""
 msgid "View chat"
 msgstr "Sohbeti görüntüle"
 
+#: src/components/gtm/GtmCalendar.tsx
+msgid "View proof"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -11178,6 +11650,10 @@ msgstr ""
 msgid "Waiting {minutes}m"
 msgstr ""
 
+#: src/lib/roster-status.ts
+msgid "Waiting for approval"
+msgstr ""
+
 #: src/components/fundraising/Pipeline.tsx
 msgid "Waiting for Mercury · {waiting}"
 msgstr ""
@@ -11206,6 +11682,11 @@ msgstr ""
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
 msgstr "Sırada bekleniyor…"
+
+#. placeholder {0}: run.waitingOn
+#: src/pages/RoutineRunHistory.tsx
+msgid "Waiting on {0}"
+msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Waiting on {delegate}"
@@ -11277,6 +11758,10 @@ msgstr ""
 msgid "What about its memories?"
 msgstr "Hafızası ne olsun?"
 
+#: src/pages/Shell.tsx
+msgid "What are our account balances?"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What bots remember by default"
 msgstr ""
@@ -11291,10 +11776,6 @@ msgstr ""
 
 #: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
-msgstr ""
-
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
 msgstr ""
 
 #: src/lib/finance-agent.ts
@@ -11317,6 +11798,10 @@ msgstr "Hangi sonucu göstereceksin?"
 msgid "What should I do first this week?"
 msgstr ""
 
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr ""
@@ -11328,6 +11813,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "Ne döndürülecek"
+
+#: src/pages/Shell.tsx
+msgid "What were the biggest payments this month?"
+msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What your bots remember between chats, and where they keep it."
@@ -11445,6 +11934,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "Written by GTM agent"
 msgstr ""
 
 #: src/lib/slash-skills.ts
@@ -11569,4 +12062,16 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Zernio not connected"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Zernio queue incomplete"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Zernio queue unavailable"
 msgstr ""

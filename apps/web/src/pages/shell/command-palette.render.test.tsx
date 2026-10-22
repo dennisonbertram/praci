@@ -237,7 +237,7 @@ it("says nothing matched in pages, documents and contacts, and keeps the mail se
   ]);
   await search("zzzqq");
   await wait(300);
-  expect(listText()).toContain("No matches in pages, documents, contacts");
+  expect(listText()).toContain("No matches");
   expect(listText()).toContain("Search mail for “zzzqq”");
   expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toContain(
     "Search mail for",
@@ -283,7 +283,7 @@ it("returns focus to the element that opened it when it closes", async () => {
   expect(document.activeElement).toBe(opener);
 });
 
-it("Enter opens a contact named exactly as typed, not the mail search, and a long title keeps the match in view", async () => {
+it("Enter opens a contact named exactly as typed, not the mail search, and a long title keeps its start", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   await mount(vi.fn(), async () => [
     {
@@ -304,7 +304,8 @@ it("Enter opens a contact named exactly as typed, not the mail search, and a lon
   ]);
   await search("zed quill");
   await wait(300);
-  expect(listText()).toContain("…");
+  expect(listText()).toContain("Board materials for the annual");
+  expect(listText()).not.toContain("…");
   expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toBe("Zed Quill");
 });
 
@@ -363,4 +364,85 @@ it("shows only the link text of a markdown link in a snippet", () => {
   expect(plainSnippet("a reply. [Open Settings](/app?settings=privacy) **now**")).toBe(
     "a reply. Open Settings now",
   );
+});
+
+it("masks dollar amounts in result details while Hide amounts is on, and shows them again off", async () => {
+  const { setHideAmounts } = await import("../../lib/hide-amounts-preference");
+  const searchLinks = async () => [
+    {
+      heading: "Chats",
+      entries: [{ id: "/c", label: "Chief", detail: "runway is $1,620,000 at current burn" }],
+    },
+  ];
+  await mount(vi.fn(), searchLinks);
+  await search("runway");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(listText()).toContain("$1,620,000");
+  await act(async () => setHideAmounts(true));
+  expect(listText()).not.toContain("1,620,000");
+  await act(async () => setHideAmounts(false));
+  expect(listText()).toContain("$1,620,000");
+});
+
+it("lists an exact title match ahead of body-only hits and passes the query as typed", async () => {
+  const seen: string[] = [];
+  const searchLinks = async (q: string) => {
+    seen.push(q);
+    return [
+      {
+        heading: "Documents",
+        entries: [
+          { id: "/d1", label: "Monthly Update", detail: "mentions hiring plan" },
+          { id: "/d2", label: "Board Update", detail: "mentions hiring plan" },
+        ],
+      },
+      { heading: "Artifacts", entries: [{ id: "/a1", label: "Hiring Plan - Q4" }] },
+    ];
+  };
+  await mount(vi.fn(), searchLinks);
+  await search("Hiring Plan");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(seen).toEqual(["Hiring Plan"]);
+  expect(headings()).toEqual(["Artifacts", "Documents"]);
+  expect(document.body.textContent).toContain("Esc");
+});
+
+it("puts a group with an exact title ahead of a group with a partial title match", async () => {
+  const searchLinks = async () => [
+    {
+      heading: "Documents",
+      entries: [
+        { id: "/d1", label: "Hiring Plan notes" },
+        { id: "/d2", label: "Board Update", detail: "mentions hiring plan" },
+      ],
+    },
+    { heading: "Artifacts", entries: [{ id: "/a1", label: "Hiring Plan" }] },
+  ];
+  await mount(vi.fn(), searchLinks);
+  await search("Hiring Plan");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(headings()).toEqual(["Artifacts", "Documents"]);
+});
+
+it("hides a chat only when its bot is shown under Bots", async () => {
+  await mount(undefined, async () => [
+    {
+      heading: "Chats",
+      entries: [
+        { id: "/app/b3", label: "Finance agent chat" },
+        { id: "/app/b1", label: "Chief chat" },
+      ],
+    },
+  ]);
+  // Finance agent matches by name; Chief matches only by words in its description.
+  await search("fin");
+  await wait(300);
+  expect(listText()).not.toContain("Finance agent chat");
+  expect(listText()).toContain("Chief chat");
 });

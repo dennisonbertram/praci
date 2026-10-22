@@ -209,30 +209,33 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
               />
             </Section>
           ) : null}
-          <Section title={t`Vendors · ${windowName}`}>
-            <Table compact>
-              <TableBody>
-                {data.vendors.map((vendor) => (
-                  <TableRow
-                    key={vendor.key}
-                    className="group/row cursor-pointer"
-                    {...rowProps(financePath.vendor(vendor.key))}
-                  >
-                    <TableCell className="font-semibold">
-                      <HereLink
-                        to={financePath.vendor(vendor.key)}
-                        className="outline-none hover:underline focus-visible:underline"
-                      >
-                        {vendor.label}
-                      </HereLink>
-                    </TableCell>
-                    <TableCell className="text-end tabular-nums">{money(vendor.cents)}</TableCell>
-                    <Chevron />
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Section>
+          {/* One vendor repeats the total and the transaction rows below. */}
+          {data.vendors.length === 1 ? null : (
+            <Section title={t`Vendors · ${windowName}`}>
+              <Table compact>
+                <TableBody>
+                  {data.vendors.map((vendor) => (
+                    <TableRow
+                      key={vendor.key}
+                      className="group/row cursor-pointer"
+                      {...rowProps(financePath.vendor(vendor.key))}
+                    >
+                      <TableCell className="font-semibold">
+                        <HereLink
+                          to={financePath.vendor(vendor.key)}
+                          className="outline-none hover:underline focus-visible:underline"
+                        >
+                          {vendor.label}
+                        </HereLink>
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{money(vendor.cents)}</TableCell>
+                      <Chevron />
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Section>
+          )}
           <TransactionsSection title={t`Transactions · ${windowName}`} rows={data.recent} />
         </>
       ) : null}
@@ -365,7 +368,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               label={t`Monthly spend`}
             />
             {running ? (
-              <div className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="text-xs text-muted-foreground tabular-nums">
                 {t`${monthShort(running.month)} so far: ${money(running.cents)}`}
               </div>
             ) : null}

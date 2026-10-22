@@ -22,7 +22,7 @@ async function serveFakeImages(page: Page) {
 async function sendImageReply(page: Page, name: string) {
   await signup(page, `${name}-${Date.now()}@rakazo.test`, "password12", "Markdown Image");
   await completeOnboarding(page);
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await expect(composer).toBeVisible();
   await composer.fill(`Here is the chart: ![Quarterly chart](${remoteImage})`);
   await composer.press("Enter");

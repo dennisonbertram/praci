@@ -37,6 +37,7 @@ import {
   createGroupRepos,
   createRepos,
   createThreadMessageInTransaction,
+  delegatePendingAgents,
   delegatePendingIds,
   expireComputerExecutionLeases,
   IsolationError,
@@ -360,13 +361,15 @@ async function delegatePendingField(
   prisma: PrismaClient,
   target: Extract<ThreadTarget, { kind: "bot" }>,
 ) {
-  const delegatePending = await delegatePendingIds(prisma, {
+  const where = {
     spaceId: target.bot.spaceId,
     userId: target.bot.userId,
     fromBotId: target.bot.id,
     threadId: target.threadId,
-  });
-  return delegatePending.length > 0 ? { delegatePending } : {};
+  };
+  const delegatePending = await delegatePendingIds(prisma, where);
+  if (delegatePending.length === 0) return {};
+  return { delegatePending, delegatePendingAgents: await delegatePendingAgents(prisma, where) };
 }
 
 export async function threadSnapshot(

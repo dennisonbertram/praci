@@ -111,6 +111,7 @@ import {
   ChartBlockView,
   ChoiceCard,
   McpApprovalCard,
+  ResultCard,
 } from "./message-cards";
 import { toolActionLabel } from "./working-label";
 
@@ -129,7 +130,7 @@ export function UnreadDivider() {
     <div
       data-unread-divider=""
       data-testid="unread-divider"
-      className="flex items-center gap-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground in-data-bot-accent:text-bot-accent"
+      className="flex w-160 max-w-full items-center gap-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground in-data-bot-accent:text-bot-accent"
     >
       <span aria-hidden="true" className="h-px flex-1 bg-border in-data-bot-accent:bg-bot-accent" />
       <Trans>New</Trans>
@@ -698,7 +699,7 @@ export const Transcript = memo(function Transcript({
             following.current = false;
           }
         }}
-        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-[max(1.75rem,calc((100%-900px)/2))] md:py-6"
+        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pt-5 pb-[calc(1.25rem+var(--toast-reserve,0px))] md:px-[max(1.75rem,calc((100%-900px)/2))] md:pt-6 md:pb-[calc(1.5rem+var(--toast-reserve,0px))]"
       >
         {olderCursor != null ? (
           <button
@@ -1749,20 +1750,7 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "card") {
-          return (
-            <div key={i} className="flex justify-start">
-              <div className="flex flex-col gap-2 rounded-[20px] bg-muted px-5 py-4">
-                {block.lines.map((line) => (
-                  <div key={line.k} className="flex items-baseline gap-2.5 text-[15px]">
-                    <span className="text-success">✓</span>
-                    <span className="font-semibold text-foreground">{line.k}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span>{line.v}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
+          return <ResultCard key={i} block={block} />;
         }
         if (block.kind === "ask") {
           // A card after text in the same message sits one message-gap (20 px) below it.
@@ -1778,9 +1766,9 @@ const MessageView = memo(function MessageView({
                   botName={botToolControls?.editableBotName(message.botId)}
                   onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
                   onOpenComposer={
-                    block.mail.connectionId || botToolControls?.accountFromThread
+                    botToolControls
                       ? (failed) =>
-                          botToolControls?.openComposer({
+                          botToolControls.openComposer({
                             connectionId: failed.connectionId ?? "",
                             account: failed.account ?? "",
                             to: failed.to,

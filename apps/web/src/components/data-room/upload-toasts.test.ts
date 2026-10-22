@@ -177,7 +177,7 @@ it("says uploaded, or where the identical file already is and its name when it d
   ]);
   hoisted.upload
     .mockResolvedValueOnce({
-      item: { id: "i1", name: "new.txt", folderId: null },
+      item: { id: "i1", name: "new.txt", folderId: "f-leases" },
       duplicate: false,
     })
     .mockResolvedValueOnce({
@@ -191,7 +191,7 @@ it("says uploaded, or where the identical file already is and its name when it d
   uploadFilesToDataRoom([file("new.txt"), file("lease copy.pdf"), file("same.txt")]);
   await flush();
   expect(getUploadToasts().map((toast) => toast.state)).toEqual([
-    { kind: "uploaded", itemId: "i1" },
+    { kind: "uploaded", itemId: "i1", folder: "Legal / Leases" },
     {
       kind: "uploaded",
       itemId: "i0",
@@ -199,6 +199,24 @@ it("says uploaded, or where the identical file already is and its name when it d
     },
     { kind: "uploaded", itemId: "i2", existing: {} },
   ]);
+});
+
+it("shows the upload as done even while the folder lookup is still pending", async () => {
+  setUploadScope("u1");
+  hoisted.folders.mockReturnValue(new Promise(() => {}));
+  hoisted.upload.mockResolvedValue({
+    item: { id: "i1", name: "a.txt", folderId: "f1" },
+    duplicate: false,
+  });
+  const changed = vi.fn();
+  window.addEventListener(DATA_ROOM_CHANGED, changed);
+  uploadFilesToDataRoom([file("a.txt")]);
+  await flush();
+  window.removeEventListener(DATA_ROOM_CHANGED, changed);
+  expect(getUploadToasts().map((toast) => toast.state)).toEqual([
+    { kind: "uploaded", itemId: "i1" },
+  ]);
+  expect(changed).toHaveBeenCalled();
 });
 
 it("shows a Deleted toast that goes away by itself after a few seconds", async () => {

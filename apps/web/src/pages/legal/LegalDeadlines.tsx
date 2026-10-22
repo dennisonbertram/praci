@@ -27,9 +27,6 @@ const rowNote = (notes: string | null) =>
     .replace(/\b\d{4}-\d{2}-\d{2}\b/g, (iso) => fullDay(iso))
     .trim();
 
-const rowHeight = (event: React.MouseEvent<HTMLElement>) =>
-  event.currentTarget.closest("li")?.getBoundingClientRect().height ?? 0;
-
 /** The title as the row shows it: the contract is part of it, so no two rows read alike. */
 const fullTitle = (deadline: LegalDeadline) =>
   maskCurrencyWhenHidden(
@@ -59,8 +56,6 @@ export function LegalDeadlines({
   const [undo, setUndo] = useState<{
     deadline: LegalDeadline;
     status: LegalDeadlineStatus;
-    /** The closed row's height, so the Undo line holds its place and the list does not move. */
-    height: number;
     /** Where the row stood, for when the refetched list no longer holds it. */
     index: number;
   } | null>(null);
@@ -69,17 +64,17 @@ export function LegalDeadlines({
   /** The latest close request, so Undo waits for it instead of racing it. */
   const closing = useRef<Promise<boolean>>(Promise.resolve(true));
   useEffect(() => () => clearTimeout(undoTimer.current), []);
-  const close = (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
-    const request = send(deadline, status, height);
+  const close = (deadline: LegalDeadline, status: LegalDeadlineStatus) => {
+    const request = send(deadline, status);
     closing.current = request;
     return request;
   };
-  const send = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
+  const send = async (deadline: LegalDeadline, status: LegalDeadlineStatus) => {
     const index = deadlines.indexOf(deadline);
     setError("");
     // The row leaves at once with its Undo line; the request settles behind it.
     setGone((ids) => new Set(ids).add(deadline.id));
-    setUndo({ deadline, status, height, index });
+    setUndo({ deadline, status, index });
     clearTimeout(undoTimer.current);
     undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
     try {
@@ -187,8 +182,7 @@ export function LegalDeadlines({
               <li
                 key={deadline.id}
                 role="status"
-                style={{ minHeight: undo.height }}
-                className="flex items-center gap-2 border-t border-border py-2.5 text-sm"
+                className="flex items-center gap-2 border-t border-border py-1 text-sm"
               >
                 {undoLine}
               </li>
@@ -253,40 +247,45 @@ export function LegalDeadlines({
                   </p>
                 ) : null}
               </div>
-              <time
-                dateTime={deadline.dueDate}
-                className={cn("text-sm tabular-nums", overdue && "font-medium text-destructive")}
-              >
-                {fullDay(deadline.dueDate)}
-              </time>
-              <div className="flex gap-2">
-                {onAsk ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <time
+                  dateTime={deadline.dueDate}
+                  className={cn(
+                    "w-32 shrink-0 text-sm tabular-nums",
+                    overdue && "font-medium text-destructive",
+                  )}
+                >
+                  {fullDay(deadline.dueDate)}
+                </time>
+                <div className="flex gap-2">
+                  {onAsk ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t`Ask agent about ${name}`}
+                      onClick={() => onAsk(deadline)}
+                    >
+                      <Trans>Ask agent</Trans>
+                    </Button>
+                  ) : null}
                   <Button
                     size="sm"
                     variant="outline"
-                    aria-label={t`Ask agent about ${name}`}
-                    onClick={() => onAsk(deadline)}
+                    aria-label={t`Mark ${name} done`}
+                    onClick={() => void close(deadline, "done")}
                   >
-                    <Trans>Ask agent</Trans>
+                    <Trans>Done</Trans>
                   </Button>
-                ) : null}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={t`Mark ${name} done`}
-                  onClick={(event) => void close(deadline, "done", rowHeight(event))}
-                >
-                  <Trans>Done</Trans>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title={t`Not a real deadline: hide it`}
-                  aria-label={t`Dismiss ${name}`}
-                  onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
-                >
-                  <Trans>Dismiss</Trans>
-                </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title={t`Not a real deadline: hide it`}
+                    aria-label={t`Dismiss ${name}`}
+                    onClick={() => void close(deadline, "dismissed")}
+                  >
+                    <Trans>Dismiss</Trans>
+                  </Button>
+                </div>
               </div>
             </li>
           );

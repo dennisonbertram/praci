@@ -12,7 +12,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { ChartCanvas, ChoiceCard } from "./message-cards";
+import { ChartCanvas, ChoiceCard, ResultCard } from "./message-cards";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
@@ -40,7 +40,7 @@ it("says what each first-run focus covers until one is picked", async () => {
   document.body.append(el);
   const block = {
     kind: "choice" as const,
-    question: "What do you want me on first?",
+    question: "What should I work on first?",
     options: [
       { id: "company", letter: "A", label: "Run my company" },
       { id: "research", letter: "D", label: "Research & writing" },
@@ -56,10 +56,68 @@ it("says what each first-run focus covers until one is picked", async () => {
     root.render(
       <ChoiceCard
         botId="bot-1"
+        block={{ ...block, question: "What do you want me on first?" }}
+        onBotChanged={async () => {}}
+      />,
+    ),
+  );
+  expect(el.textContent).toContain("What should I work on first?");
+  expect(el.textContent).toContain("The web, notes and docs");
+  await act(async () =>
+    root.render(
+      <ChoiceCard
+        botId="bot-1"
         block={{ ...block, answerId: "company" }}
         onBotChanged={async () => {}}
       />,
     ),
   );
   expect(el.textContent).not.toContain("Email, calendar and your company pages");
+});
+
+it("tells the two first-run focuses apart and keeps the chosen row at full contrast", async () => {
+  const el = document.createElement("div");
+  document.body.append(el);
+  const block = {
+    kind: "choice" as const,
+    question: "What should I work on first?",
+    options: [
+      { id: "company", letter: "A", label: "Run my company" },
+      { id: "day", letter: "B", label: "Day-to-day work" },
+    ],
+  };
+  const root = createRoot(el);
+  await act(async () =>
+    root.render(<ChoiceCard botId="bot-1" block={block} onBotChanged={async () => {}} />),
+  );
+  expect(el.textContent).toContain("Slack and your calendar");
+  expect(el.textContent).not.toContain("Slack, calendar and email");
+  await act(async () =>
+    root.render(
+      <ChoiceCard
+        botId="bot-1"
+        block={{ ...block, answerId: "day" }}
+        onBotChanged={async () => {}}
+      />,
+    ),
+  );
+  expect(el.querySelector("button")?.className).not.toContain("opacity-60");
+});
+
+it("masks every value in a result card while amounts are hidden and shows them again after", async () => {
+  setHideAmounts(true);
+  const el = document.createElement("div");
+  document.body.append(el);
+  const card = {
+    kind: "card" as const,
+    lines: [
+      { k: "Cash", v: "$1,633,221" },
+      { k: "Runway", v: "10 months" },
+    ],
+  };
+  await act(async () => createRoot(el).render(<ResultCard block={card} />));
+  expect(el.textContent).not.toContain("1,633,221");
+  expect(el.textContent).toContain("10 months");
+  await act(async () => setHideAmounts(false));
+  expect(el.textContent).toContain("$1,633,221");
 });

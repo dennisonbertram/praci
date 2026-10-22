@@ -34,8 +34,8 @@ export function axisMoney(cents: number): string {
   if (getHideAmounts()) return `$${MASK}`;
   const d = Math.round(Math.abs(cents) / 100);
   const sign = cents < 0 && d > 0 ? "−" : "";
-  if (d >= 999_500) return `${sign}$${+(d / 1_000_000).toFixed(1)}M`;
-  return d >= 1000 ? `${sign}$${+(d / 1000).toFixed(1)}k` : `${sign}$${d}`;
+  if (d >= 999_500) return `${sign}$${+(d / 1_000_000).toFixed(2)}M`;
+  return d >= 1000 ? `${sign}$${+(d / 1000).toFixed(2)}k` : `${sign}$${d}`;
 }
 
 const dayDate = (day: string) => new Date(`${day.slice(0, 10)}T00:00:00Z`);
@@ -131,11 +131,13 @@ export const monthLabel = (month: string, locale?: string) =>
 export const monthFull = (month: string, locale?: string) =>
   monthFormat(month, { month: "long", year: "numeric" }, locale);
 
-/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. While amounts are hidden the direction is hidden too. */
+/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. While amounts are hidden there is no text: a percentage of a hidden amount would reveal it. */
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
-  if (getHideAmounts()) return `${MASK}%`;
-  const rounded = Math.round(Math.abs(pct));
+  if (getHideAmounts()) return null;
+  // Under 10% one decimal, so 0.5% is not shown as 1% while the agent says 0.5%.
+  const abs = Math.abs(pct);
+  const rounded = abs < 10 ? Math.round(abs * 10) / 10 : Math.round(abs);
   if (rounded === 0) return "0%";
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
 }
@@ -150,10 +152,10 @@ export function trendText(values: readonly number[]): string | null {
   return Math.round(Math.abs(pct)) === 0 ? null : changeText(pct);
 }
 
-/** A part's share of a whole, as a whole percent (masked while amounts are hidden, since it follows from them); a small but real part reads "<1%", not "0%". */
+/** A part's share of a whole, as a whole percent (empty while amounts are hidden, since it follows from them); a small but real part reads "<1%", not "0%". */
 export function shareText(part: number, whole: number): string {
   if (whole <= 0) return "—";
-  if (getHideAmounts()) return `${MASK}%`;
+  if (getHideAmounts()) return "";
   const pct = Math.round((part / whole) * 100);
   return pct === 0 && part > 0 ? "<1%" : `${pct}%`;
 }

@@ -100,7 +100,7 @@ function ToastBody({
         </span>
         <Toast.Description
           render={<span />}
-          className="mt-1 line-clamp-3 text-sm text-muted-foreground break-words"
+          className="mt-1 line-clamp-3 max-sm:line-clamp-4 text-sm text-muted-foreground break-words"
         />
       </span>
     </>
@@ -133,6 +133,8 @@ function ToastBody({
 
 const GAP_ABOVE_PX = 8;
 const TOAST_GUTTER_PX = 16;
+/** The chat column's side padding; beside a docked panel the toasts stay inside it. */
+const COLUMN_GUTTER_PX = 28;
 
 /** Hides the toasts while an open dialog, menu or navigation drawer would sit under them. */
 const COVERED_BY_OVERLAY =
@@ -163,7 +165,10 @@ function besidePanel(): { shift: number; maxWidth: number } | null {
   if (!panel || isPhone()) return null;
   const { left } = panel.getBoundingClientRect();
   if (left >= window.innerWidth) return null;
-  return { shift: window.innerWidth - left, maxWidth: Math.max(0, left - 2 * TOAST_GUTTER_PX) };
+  return {
+    shift: window.innerWidth - left + (COLUMN_GUTTER_PX - TOAST_GUTTER_PX),
+    maxWidth: Math.max(0, left - 2 * COLUMN_GUTTER_PX),
+  };
 }
 
 function ToastList({
@@ -185,6 +190,9 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
+      // The toasts sit over the bottom of the thread above the composer; the thread pads by their height.
+      const reserve = lift > 0 ? viewport.getBoundingClientRect().height + GAP_ABOVE_PX : 0;
+      document.documentElement.style.setProperty("--toast-reserve", `${reserve}px`);
       const beside = besidePanel();
       if (beside === null) {
         viewport.style.removeProperty("--toast-shift");
@@ -204,6 +212,7 @@ function ToastList({
       viewport.style.removeProperty("--toast-lift");
       viewport.style.removeProperty("--toast-shift");
       viewport.style.removeProperty("--toast-max-width");
+      document.documentElement.style.removeProperty("--toast-reserve");
     };
   }, [shownCount, viewportRef]);
   const [, tick] = useState(0);

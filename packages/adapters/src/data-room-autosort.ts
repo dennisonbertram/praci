@@ -139,7 +139,21 @@ export function buildAutoSortPlan(input: {
     const out: string[] = [];
     let level: Node[] | null = roots;
     let prefix = "";
-    for (const name of path) {
+    let rest = path;
+    // A name with no match at the top that matches exactly one folder deeper down is that folder, not a second one.
+    const first = folderKey(path[0] as string);
+    if (!roots.some((n) => folderKey(n.name) === first)) {
+      const deeper = [...new Set(nodeOf.values())].filter((n) => folderKey(n.name) === first);
+      const [only] = deeper;
+      // Reuse only when the whole path still fits the three-level limit.
+      if (only && deeper.length === 1 && only.path.length + path.length - 1 <= 3) {
+        out.push(...only.path);
+        prefix = only.path.map((n) => `\0${folderKey(n)}`).join("");
+        level = only.children;
+        rest = path.slice(1);
+      }
+    }
+    for (const name of rest) {
       const hit: Node | undefined = level?.find((n) => folderKey(n.name) === folderKey(name));
       prefix += `\0${folderKey(name)}`;
       // New folders that differ only in case or a "(2)" suffix are one folder, spelled as first seen.

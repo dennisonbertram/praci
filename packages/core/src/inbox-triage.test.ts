@@ -68,6 +68,18 @@ describe("parseTriageResponse", () => {
     expect(parsed).toMatchObject({ category: "suspicious", needsReply: false, todo: null });
   });
 
+  it("keeps Needs reply for mail that can wait on an answer, not newsletters or bills", () => {
+    const parsed = parseTriageResponse(
+      wrap([
+        item("a", { category: "reply", needsReply: true }),
+        item("b", { category: "billing", needsReply: true }),
+        item("c", { category: "newsletter", needsReply: true }),
+      ]),
+      ["a", "b", "c"],
+    );
+    expect(parsed.map((i) => i.needsReply)).toEqual([true, false, false]);
+  });
+
   it("trims and caps the text fields, and treats a blank to-do as none", () => {
     const [long, blank] = parseTriageResponse(
       wrap([

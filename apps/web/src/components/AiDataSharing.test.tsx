@@ -24,6 +24,8 @@ vi.mock("@rakazo/ui-web", () => ({
   Skeleton: (props: React.ComponentProps<"div">) => <div data-skeleton {...props} />,
   Card: ({ children }: { children?: ReactNode }) => <section>{children}</section>,
   cn: (...names: unknown[]) => names.filter(Boolean).join(" "),
+  // biome-ignore lint/a11y/noLabelWithoutControl: htmlFor comes through props
+  Label: (props: React.ComponentProps<"label">) => <label {...props} />,
   Switch: ({
     checked,
     onCheckedChange,
@@ -175,7 +177,7 @@ it("shows one switch for every model, on only when all are allowed, with the mod
     ["Model", "true"],
     ["TypeSafe", "false"],
   ]);
-  expect(container.querySelector("details")?.textContent).toContain("Advanced");
+  expect(container.querySelector("details")?.textContent).toContain("Per model and documents");
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
   expect(container.textContent).not.toContain("ElevenLabs");
 });
@@ -271,6 +273,20 @@ it("allows every model with the one switch and revokes every model when it is tu
   await click(container.querySelector('[aria-label="Allow AI models"]'));
   expect(consent.revokeRecipient.mock.calls).toEqual([["a"], ["b"]]);
   expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+});
+
+it("turns the switch from its label, so the whole row is the tap target on a phone", async () => {
+  const list = (allowed: boolean) =>
+    statusOf([
+      { ...modelA, allowed },
+      { ...modelB, allowed },
+    ]);
+  consent.aiConsentStatus.mockResolvedValue(list(false));
+  consent.allowRecipient.mockResolvedValue(list(true));
+  await render(<AiDataSharingSection />);
+
+  await click(container.querySelector("label"));
+  expect(consent.allowRecipient.mock.calls.map((c) => c[0])).toEqual(["a", "b"]);
 });
 
 it("changes only one model from its switch under Advanced", async () => {

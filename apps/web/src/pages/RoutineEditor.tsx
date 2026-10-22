@@ -31,6 +31,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@rakazo/ui-web";
 import {
   ChevronLeft,
@@ -426,9 +429,30 @@ export function RoutineEditor({
               <Trans>Delete</Trans>
             </Button>
           ) : null}
-          <Button variant="secondary" disabled={!canTest} onClick={onTestRun}>
-            {running ? t`Running…` : t`Test run`}
-          </Button>
+          {editing ? (
+            <Button variant="secondary" disabled={!canTest} onClick={onTestRun}>
+              {running ? t`Running…` : t`Test run`}
+            </Button>
+          ) : (
+            // aria-disabled, not disabled, so hover and keyboard focus can still show the reason.
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="secondary"
+                    aria-disabled
+                    className="opacity-50"
+                    onClick={(event) => event.preventDefault()}
+                  />
+                }
+              >
+                <Trans>Test run</Trans>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <Trans>Save the routine first</Trans>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
@@ -448,7 +472,11 @@ export function RoutineEditor({
         <Textarea
           id={`${fieldId}-prompt`}
           value={instruction}
-          placeholder={t`What should this routine do each time it runs?`}
+          placeholder={
+            skill
+              ? t`Optional: add details for this skill`
+              : t`What should this routine do each time it runs?`
+          }
           onChange={(e) => onChange({ ...draft, prompt: withSkillMention(e.target.value, skill) })}
           rows={4}
           className="mt-2"
@@ -720,7 +748,12 @@ export function RoutineEditor({
       ) : null}
 
       {editing ? (
-        <RoutineRunHistory key={editing.id} routineId={editing.id} running={running} />
+        <RoutineRunHistory
+          key={editing.id}
+          routineId={editing.id}
+          name={editing.name}
+          running={running}
+        />
       ) : null}
     </div>
   );
@@ -857,7 +890,7 @@ function schedulePresetLabel(freq: CronFreq): string {
     case "Every week":
       return t`Every week`;
     case "Every month":
-      return t`Every month`;
+      return t`Every month on the 1st`;
     case "Interval":
       return t`Interval`;
     case "Advanced":
