@@ -41,7 +41,15 @@ const wide = `| Merchant | Date | Category | Amount |
 | Rivet Legal LLP | Oct 9 | Legal | $12,500.00 |
 | Blue Bottle Coffee | Oct 12 | Meals | $86.40 |`;
 
-/** The docked Ask panel is about 263 px wide: no row numbers, cells wrap, every column shows. */
+const vendors = `| Vendor | Category | Amount | Share |
+| --- | --- | ---: | ---: |
+| Amazon Web Services | Software | $4,210.00 | 31% |
+| Rivet Legal LLP | Legal | $12,500.00 | 48% |
+| Blue Bottle Coffee | Meals | $86.40 | 1% |
+| Gusto | Payroll | $3,900.00 | 15% |
+| Notion Labs | Software | $240.00 | 5% |`;
+
+/** The docked Ask panel is about 263 px wide: no row numbers, text columns keep a readable width, the rest scrolls sideways with an edge fade. */
 export const NarrowPanel: Story = {
   decorators: [
     (Story) => (
@@ -51,4 +59,9 @@ export const NarrowPanel: Story = {
     ),
   ],
   render: () => <ChatMarkdown>{wide}</ChatMarkdown>,
+};
+
+export const NarrowPanelVendors: Story = {
+  decorators: NarrowPanel.decorators,
+  render: () => <ChatMarkdown>{vendors}</ChatMarkdown>,
 };
