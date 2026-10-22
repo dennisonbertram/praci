@@ -362,7 +362,7 @@ export type ExternalEffectStore = {
 };
 
 export const DENIED_ACTION_MESSAGE =
-  "The person you are talking to denied this action. When you tell them, address them as \"you\" (say \"you denied it\"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.";
+  'The person you are talking to denied this action. When you tell them, address them as "you" (say "you denied it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.';
 
 /** An approved payment is final from the person's side: the bank processes it, nothing is left to approve here. */
 export function approvedPaymentResult(result: unknown): unknown {
