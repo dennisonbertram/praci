@@ -654,6 +654,50 @@ export function InvestorsPage({
     const timer = setInterval(loadAudits, POLL_MS);
     return () => clearInterval(timer);
   }, [anyDrafting, loadAudits]);
+  // Rows whose draft this page started: "starting" shows Drafting at once, before the server says
+  // so; "running" has been seen drafting. A run that ends with the request still open made no
+  // draft, and the row says so ("ended"); its reason is in the Ask panel.
+  const [draftPhase, setDraftPhase] = useState<Record<string, "starting" | "running" | "ended">>(
+    {},
+  );
+  useEffect(() => {
+    setDraftPhase((phase) => {
+      let next = phase;
+      for (const [id, state] of Object.entries(phase)) {
+        const audit = audits.find((a) => a.id === id);
+        if (!audit || audit.status !== "open") {
+          next = { ...next };
+          delete next[id];
+        } else if (audit.drafting && state !== "running") next = { ...next, [id]: "running" };
+        else if (!audit.drafting && state === "running") next = { ...next, [id]: "ended" };
+      }
+      return next;
+    });
+  }, [audits]);
+  const draftAudit = (audit: AuditRequest) => {
+    // A repeat click while the draft runs opens the panel instead of starting another.
+    const phase = draftPhase[audit.id];
+    if (audit.drafting || phase === "starting" || phase === "running") return onShowAgent?.();
+    setDraftPhase((p) => ({ ...p, [audit.id]: "starting" }));
+    rpc.investors.audits
+      .draft({ id: audit.id })
+      .then((started) => {
+        setDraftPhase((p) => {
+          const { [audit.id]: _, ...rest } = p;
+          return started.drafting ? { ...rest, [audit.id]: "running" } : rest;
+        });
+        loadAudits();
+        onShowAgent?.();
+      })
+      .catch((cause) => {
+        setDraftPhase((p) => {
+          const { [audit.id]: _, ...rest } = p;
+          return rest;
+        });
+        notify(errorText(cause, t`Could not start the draft`));
+        loadAudits();
+      });
+  };
   const auditAction = (call: () => Promise<unknown>, failure: string, then?: () => void) =>
     call()
       .then(() => {
@@ -1160,16 +1204,12 @@ export function InvestorsPage({
         <div className="flex flex-col gap-4">
           <ActionItems
             drafts={(updates ?? []).filter((u) => u.status === "draft")}
-            audits={audits.filter((a) => a.status !== "done" || showDone)}
+            audits={audits
+              .filter((a) => a.status !== "done" || showDone)
+              .map((a) => ({ ...a, drafting: a.drafting || draftPhase[a.id] === "starting" }))}
+            draftEnded={new Set(Object.keys(draftPhase).filter((id) => draftPhase[id] === "ended"))}
             onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
-            onDraftAudit={(audit) =>
-              void auditAction(
-                () => rpc.investors.audits.draft({ id: audit.id }),
-                t`Could not start the draft`,
-                // The agent's answer (a draft, or why it could not draft) appears in its panel.
-                onShowAgent,
-              )
-            }
+            onDraftAudit={draftAudit}
             onCloseAudit={(audit, status) =>
               void auditAction(
                 () => rpc.investors.audits.update({ id: audit.id, status }),

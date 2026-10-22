@@ -1575,12 +1575,41 @@ it("Draft reply opens the agent panel so the outcome is on screen; a second clic
   expect(onShowAgent).toHaveBeenCalled();
 });
 
+it("shows Drafting at once, opens the panel on a repeat click, and says when the run made no draft", async () => {
+  vi.useFakeTimers();
+  let drafting = false;
+  rpcMock.auditsList.mockImplementation(async () => [audit({ drafting })]);
+  let finish: (value: AuditRequest) => void = () => {};
+  rpcMock.auditsDraft.mockImplementation(
+    () =>
+      new Promise<AuditRequest>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const onShowAgent = vi.fn();
+  await show("/app/investors", { onShowAgent });
+  await click(button("Draft reply"));
+  // The server has not answered yet: the row already shows Drafting.
+  expect(button("Drafting…")).toBeDefined();
+  await click(button("Drafting…"));
+  expect(rpcMock.auditsDraft).toHaveBeenCalledTimes(1);
+  expect(onShowAgent).toHaveBeenCalledTimes(1);
+  drafting = true;
+  await act(async () => finish(audit({ drafting: true })));
+  drafting = false;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3500);
+  });
+  expect(items()?.textContent).toContain("No draft made, see Ask");
+  expect(button("Draft reply")).toBeDefined();
+});
+
 it("shows a spinner and Drafting… instead of Draft reply while a drafting run is going", async () => {
   rpcMock.auditsList.mockResolvedValue([audit({ drafting: true })]);
   await show();
   expect(button("Draft reply")).toBeUndefined();
   const drafting = button("Drafting…") as HTMLButtonElement;
-  expect(drafting.disabled).toBe(true);
+  expect(drafting.getAttribute("aria-disabled")).toBe("true");
   expect(drafting.querySelector("svg")).not.toBeNull();
 });
 

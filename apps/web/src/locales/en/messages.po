@@ -7103,6 +7103,10 @@ msgstr "No documents here have a date yet."
 msgid "No documents here name a party"
 msgstr "No documents here name a party"
 
+#: src/components/investors/ActionItems.tsx
+msgid "No draft made, see Ask"
+msgstr "No draft made, see Ask"
+
 #: src/pages/Gtm.tsx
 msgid "No drafts"
 msgstr "No drafts"
