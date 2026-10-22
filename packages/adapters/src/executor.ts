@@ -2293,8 +2293,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let chatRecipient: ReturnType<typeof aiRecipient> = null;
         const chatGated =
           !legalOnly &&
-          (run.trigger === "user" || run.trigger === "follow_up") &&
+          // A delegated run carries the owner's chat text to the target's model, so it needs the
+          // same consent; the owner's own run user holds it.
+          (run.trigger === "user" ||
+            run.trigger === "follow_up" ||
+            (run.trigger === "bot_message" && peerMessage?.ownerOrigin === true)) &&
           selected.provider;
+        const consentUserId = run.trigger === "bot_message" ? run.userId : bot.userId;
         if (chatGated && selected.provider) {
           try {
             chatRecipient = aiRecipient({
@@ -2312,7 +2317,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               .findUnique({
                 where: {
                   userId_spaceId_recipientKey: {
-                    userId: bot.userId,
+                    userId: consentUserId,
                     spaceId: run.spaceId,
                     recipientKey: chatRecipient.key,
                   },
@@ -2325,6 +2330,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 () => false,
               )
           : true;
+        if (chatRecipient && !chatConsented && run.trigger === "bot_message") {
+          // The delegating chat shows the card (before the message is sent); this chat has no
+          // one to ask, so the run ends and the sender is told.
+          await failRunBeforeModel(CHAT_CONSENT_DECLINED_MESSAGE);
+          return;
+        }
         if (chatRecipient && !chatConsented) {
           const request = { recipientKey: chatRecipient.key, version: AI_DISCLOSURE_VERSION };
           const recorded = await recordEffect(
@@ -2367,7 +2378,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             const row = await deps.prisma.aiDataConsent.findUnique({
               where: {
                 userId_spaceId_recipientKey: {
-                  userId: bot.userId,
+                  userId: consentUserId,
                   spaceId: run.spaceId,
                   recipientKey: recipient.key,
                 },
@@ -4230,7 +4241,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             intent: args.intent as "request" | "result" | "question" | "status" | "fyi" | undefined,
           };
           let delegatesToInbox = false;
-          if (name === "message_bot" && run.trigger === "user") {
+          let delegatesToModel = false;
+          if (name === "message_bot" && (run.trigger === "user" || run.trigger === "follow_up")) {
             const owned = await deps.prisma.bot.findMany({
               where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
               select: { id: true, name: true, spawnKey: true },
@@ -4240,6 +4252,50 @@ export function createRunExecutor(deps: ExecutorDeps) {
               name: botMessageArgs.confirm_name,
             });
             delegatesToInbox = isInboxAgentSpawnKey(target?.spawnKey);
+            // The target's model receives this conversation, so ask for consent for it here.
+            if (target) {
+              delegatesToModel = true;
+              const targetModel = await resolveModel({
+                userId: run.userId,
+                spaceId: run.spaceId,
+                botId: target.id,
+              }).catch(() => null);
+              const targetRecipient = targetModel
+                ? (() => {
+                    try {
+                      return aiRecipient({
+                        provider: targetModel.provider,
+                        modelId: targetModel.id,
+                        baseUrl: targetModel.baseUrl,
+                        use: "model",
+                      });
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null;
+              if (targetRecipient) {
+                const granted = await deps.prisma.aiDataConsent
+                  .findUnique({
+                    where: {
+                      userId_spaceId_recipientKey: {
+                        userId: run.userId,
+                        spaceId: run.spaceId,
+                        recipientKey: targetRecipient.key,
+                      },
+                    },
+                    select: { version: true },
+                  })
+                  .then(
+                    (row) => row?.version === AI_DISCLOSURE_VERSION,
+                    () => false,
+                  );
+                if (!granted) {
+                  const asked = await askMailConsent(targetRecipient, botMessageArgs);
+                  if (asked) return asked;
+                }
+              }
+            }
             if (delegatesToInbox) {
               const status = await triageStatus(
                 { prisma: deps.prisma, resolveModel },
@@ -6363,19 +6419,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (name === "message_bot") {
             // After Allow, the question saved with the consent card is what gets delivered.
-            const saved = delegatesToInbox
-              ? (
-                  await deps.prisma.externalEffect.findMany({
-                    where: {
-                      spaceId: run.spaceId,
-                      runId,
-                      kind: AI_CONSENT_EFFECT_KIND,
-                      status: "approved",
-                    },
-                    select: { id: true, result: true },
-                  })
-                ).find((effect) => (effect.result as { delegation?: unknown } | null)?.delegation)
-              : undefined;
+            const saved =
+              delegatesToInbox || delegatesToModel
+                ? (
+                    await deps.prisma.externalEffect.findMany({
+                      where: {
+                        spaceId: run.spaceId,
+                        runId,
+                        kind: AI_CONSENT_EFFECT_KIND,
+                        status: "approved",
+                      },
+                      select: { id: true, result: true },
+                    })
+                  ).find((effect) => (effect.result as { delegation?: unknown } | null)?.delegation)
+                : undefined;
             const delegation = saved
               ? (saved.result as { delegation: typeof botMessageArgs }).delegation
               : botMessageArgs;

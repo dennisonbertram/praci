@@ -34,6 +34,8 @@ async function runChat(
   consented: boolean | string[],
   effectStatus: string | null = null,
   trigger = "user",
+  sourceBlocks: unknown[] | null = null,
+  delegate = false,
 ) {
   const switchModel = { provider: "openrouter", modelId: "openai/gpt-4o" };
   const backupReadFails = false;
@@ -47,12 +49,16 @@ async function runChat(
     userId: "user-1",
     status: "queued",
     trigger,
+    sourceMessageId: sourceBlocks ? "source-1" : null,
     leaseFence: 0,
   };
   const get = vi.fn(async () => new Uint8Array([1, 2, 3, 4]));
   let request: AgentRunRequest | undefined;
   const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
     request = next;
+    if (delegate) {
+      await next.executeTool?.("message_bot", { bot_id: "bot-2", message: "hi" }, "call-1");
+    }
     yield { type: "done" as const, text: "Done" };
   });
   const prisma = {
@@ -84,7 +90,16 @@ async function runChat(
         memoryScope: null,
         computer: { id: "computer-1", scope: "dedicated" },
       })),
-      findMany: vi.fn(async () => []),
+      findMany: vi.fn(async () => [{ id: "bot-2", name: "Ana", spawnKey: null }]),
+      // The delegation target runs on a different model than the chat bot.
+      findFirst: vi.fn(async (args: { where?: { id?: string } }) => ({
+        id: "bot-2",
+        name: "Ana",
+        userId: "user-1",
+        modelProvider: args.where?.id === "bot-2" ? "openrouter" : null,
+        modelId: args.where?.id === "bot-2" ? "openai/gpt-4o" : null,
+        thinkingLevel: null,
+      })),
     },
     attempt: {
       create: vi.fn(async () => ({ id: "attempt-1" })),
@@ -104,7 +119,10 @@ async function runChat(
       findMany: vi.fn(async (args: { where?: { threadId?: string } }) =>
         args.where?.threadId ? historyMessages() : [],
       ),
-      findUnique: vi.fn(async () => null),
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async () =>
+        sourceBlocks ? { blocks: sourceBlocks, replyTo: null } : null,
+      ),
     },
     task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Look again" })) },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
@@ -159,6 +177,7 @@ async function runChat(
     botSkillSetting: { findMany: vi.fn(async () => []) },
     scratchpadItem: { findMany: vi.fn(async () => []) },
     externalEffect: {
+      update: vi.fn(async () => ({})),
       findMany: vi.fn(async () => []),
       findUnique: vi.fn(async () =>
         effectStatus
@@ -253,4 +272,44 @@ describe("Chat runs need AI consent for the model they use", () => {
     const { request } = await runChat(["openai/gpt-6-luna"]);
     await expect(request?.resolveModel?.("openrouter", "openai/gpt-4o")).rejects.toThrow(/Allow/);
   });
+
+  const delegated = (ownerOrigin: boolean) => [
+    {
+      kind: "bot_message_received",
+      fromBotId: "bot-2",
+      fromName: "Ana",
+      text: "Summarize my contracts",
+      intent: "request",
+      hop: 1,
+      ownerOrigin,
+    },
+  ];
+
+  it("does not send an owner's delegated chat to a model the user has not allowed", async () => {
+    const { runtimeRun, finalizeRun } = await runChat(false, null, "bot_message", delegated(true));
+    expect(runtimeRun).not.toHaveBeenCalled();
+    expect(finalizeRun).toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
+  });
+
+  it("runs a delegated chat once the user allowed the model", async () => {
+    const { runtimeRun } = await runChat(true, null, "bot_message", delegated(true));
+    expect(runtimeRun).toHaveBeenCalled();
+  });
+
+  it("leaves a delegation that did not start from the owner's chat alone", async () => {
+    const { runtimeRun } = await runChat(false, null, "bot_message", delegated(false));
+    expect(runtimeRun).toHaveBeenCalled();
+  });
+
+  it.each(["user", "follow_up"])(
+    "asks on a card before a %s message is delegated to an unallowed model",
+    async (trigger) => {
+      const { pauseRunForInput } = await runChat(["openai/gpt-6-luna"], null, trigger, null, true);
+      expect(pauseRunForInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          blocks: [expect.objectContaining({ kind: "ask", consent: expect.any(Object) })],
+        }),
+      );
+    },
+  );
 });
