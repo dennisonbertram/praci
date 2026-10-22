@@ -336,6 +336,14 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         onClose={() => {
           setAdding(false);
           setConfirmFirst(false);
+          // Spend the one-time ?connect=1 (and the router state of the button that pressed it), so a
+          // reload after cancelling does not start the sign-in again.
+          if (search.get("connect") === "1") {
+            const rest = new URLSearchParams(search);
+            rest.delete("connect");
+            const query = rest.toString();
+            navigate(`${location.pathname}${query ? `?${query}` : ""}`, { replace: true });
+          }
           setReplacing(null);
           setPermission(undefined);
         }}

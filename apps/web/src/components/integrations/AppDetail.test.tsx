@@ -105,6 +105,7 @@ function Where() {
   return (
     <>
       <output data-testid="where">{location.pathname}</output>
+      <output data-testid="query">{`${location.search}|${JSON.stringify(location.state)}`}</output>
       <button
         id="go"
         type="button"
@@ -389,6 +390,16 @@ it("starts the sign-in without a second question when the app's own button sent 
     root.render(tree(`${PAGE}?connect=1&next=%2Fapp%2Finbox`, data(), { connectNow: true })),
   );
   expect(dialog()?.getAttribute("data-confirm-first")).toBe("false");
+});
+
+it("spends ?connect=1 and the button's state when the sign-in is cancelled, so a reload does not restart it", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root.render(tree(`${PAGE}?connect=1&x=1`, data(), { connectNow: true })));
+  await act(async () => (dialog() as HTMLButtonElement).click());
+  expect(container.querySelector('[data-testid="query"]')?.textContent).toBe("?x=1|null");
+  expect(dialog()).toBeNull();
 });
 
 it("ignores an external ?next= and stays put after connecting", async () => {
