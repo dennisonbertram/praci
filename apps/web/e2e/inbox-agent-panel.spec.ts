@@ -79,5 +79,5 @@ test("a reload on /app/inbox shows the existing Inbox agent, not the first bot",
   await expect(panel.getByPlaceholder("Message Inbox agent")).toBeVisible();
   await expect(panel.getByRole("button", { name: "Create Inbox agent" })).toHaveCount(0);
   expect(new URL(page.url()).pathname).toBe("/app/inbox");
-  await expect(page.getByTitle("Computer and routines")).toHaveCount(0);
+  await expect(page.getByTitle(/^(Computer and )?routines$/i)).toHaveCount(0);
 });

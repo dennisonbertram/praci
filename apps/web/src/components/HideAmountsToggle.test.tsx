@@ -25,7 +25,7 @@ import {
   resetHideAmountsMemory,
   setHideAmounts,
 } from "../lib/hide-amounts-preference";
-import { HideAmountsMenuItem } from "./HideAmountsToggle";
+import { HideAmountsMenuItem, ShowAmountsButton } from "./HideAmountsToggle";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -70,5 +70,21 @@ it("saves the choice on the user, and keeps it with an error toast if saving fai
   expect(toast).toHaveBeenCalledWith(
     expect.objectContaining({ title: "Could not save Hide amounts" }),
   );
+  act(() => root.unmount());
+});
+
+it("offers Show only while amounts are hidden, and one click shows them", async () => {
+  update.mockResolvedValue({});
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  act(() => root.render(<ShowAmountsButton />));
+  expect(host.textContent).toBe("");
+  act(() => setHideAmounts(true));
+  expect(host.textContent).toBe("Amounts hidden · Show");
+  await act(async () => host.querySelector("button")?.click());
+  expect(update).toHaveBeenLastCalledWith({ hideAmounts: false });
+  expect(getHideAmounts()).toBe(false);
+  expect(host.textContent).toBe("");
   act(() => root.unmount());
 });

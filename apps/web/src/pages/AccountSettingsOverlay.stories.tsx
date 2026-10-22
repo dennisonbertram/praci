@@ -21,6 +21,7 @@ const security: AccountSecurity = {
 const accountSecurity = (value: AccountSecurity) => () => {
   mockRpc({
     "aiConsent.status": { recipients: [] },
+    "models.credentials": [],
     "approvalRules.list": [],
     "autoReview.get": { enabled: false, checkerAvailable: true },
   });
@@ -134,7 +135,23 @@ export const GeneralWithoutEmail: Story = {
   beforeEach: accountSecurity(security),
 };
 
+/** The system model needs no provider key, so the key sentence is absent. */
 export const Usage: StoryObj = {
+  beforeEach: () => mockRpc({ "models.credentials": [] }),
+  render: () => (
+    <div className="w-[560px]">
+      <UsageSettingsPanel
+        usage={{ runs: 42, inputTokens: 120000, outputTokens: 30000, totalTokens: 150000 }}
+      />
+    </div>
+  ),
+};
+
+export const UsageWithOwnKey: StoryObj = {
+  beforeEach: () =>
+    mockRpc({
+      "models.credentials": [{ provider: "openrouter", modelId: "x", thinkingLevels: [] }],
+    }),
   render: () => (
     <div className="w-[560px]">
       <UsageSettingsPanel
@@ -145,6 +162,7 @@ export const Usage: StoryObj = {
 };
 
 export const UsageEmpty: StoryObj = {
+  beforeEach: () => mockRpc({ "models.credentials": [] }),
   render: () => (
     <div className="w-[560px]">
       <UsageSettingsPanel usage={null} />

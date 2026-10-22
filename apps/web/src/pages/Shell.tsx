@@ -1710,6 +1710,11 @@ export function ShellPage() {
     void skills.then(setAgentSkills).catch(() => undefined);
   }, [slashBotId]);
 
+  // The routine form's skill picker lists this bot's enabled skills.
+  useEffect(() => {
+    if (panel === "routine") refreshAgentSkills();
+  }, [panel, refreshAgentSkills]);
+
   useEffect(() => {
     void rpc.voice
       .status()
@@ -5726,8 +5731,9 @@ export function ShellPage() {
               {!inGroup && !pageMode && active ? (
                 <button
                   type="button"
-                  title={t`Computer and routines`}
-                  aria-label={t`Computer and routines`}
+                  data-testid="computer-routines-button"
+                  title={noComputerScreen ? t`Routines` : t`Computer and routines`}
+                  aria-label={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   onClick={() => {
                     const next = panel === "computer" ? null : "computer";
                     setPanel(next);
@@ -5964,7 +5970,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-0 z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
+              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (
@@ -6077,7 +6083,7 @@ export function ShellPage() {
                           title={t`Bot screen preview`}
                           src={embeddedScreenUrl}
                           sandbox={screenIframeSandbox(embeddedScreenUrl)}
-                          className="h-full w-full border-0 bg-black"
+                          className="h-full w-full border-0 bg-background"
                           allow="clipboard-read; clipboard-write"
                           style={{ pointerEvents: "none" }}
                         />
@@ -6237,6 +6243,7 @@ export function ShellPage() {
                     : `/api/v1/bots/${active.id}/github`
                 }
                 messageProviders={messagingProviders}
+                skills={agentSkills}
                 saving={savingRoutine}
                 running={runningRoutine}
                 error={routineError}

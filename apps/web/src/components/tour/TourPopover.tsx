@@ -119,16 +119,17 @@ export function TourPopover({
       <p className="text-sm" aria-live="polite">
         {step.text}
       </p>
+      {/* Skip tour stays on the left and Next on the right at every stop, so neither moves. */}
       <div className="flex items-center gap-2">
+        {last ? null : (
+          <Button variant="ghost" size="sm" className="-ms-2" onClick={() => onFinish("skip")}>
+            <Trans>Skip tour</Trans>
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground tabular-nums">
           {index + 1}/{present?.length}
         </span>
         <span className="flex-1" />
-        {last ? null : (
-          <Button variant="ghost" size="sm" onClick={() => onFinish("skip")}>
-            <Trans>Skip tour</Trans>
-          </Button>
-        )}
         {index > 0 ? (
           <Button variant="outline" size="sm" onClick={() => setIndex(index - 1)}>
             <Trans>Back</Trans>
@@ -155,15 +156,20 @@ export function TourPopover({
 
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (card) {
-    // On the half of the screen away from the ring: the rows beside the target stay visible.
-    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
     const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
-    const edge = column ?? { top: 0, bottom: window.innerHeight };
+    // Beside the ringed row, in the page next to the sidebar, so the sidebar's own rows stay visible.
+    // Centred on the row and kept inside the window; a phone puts it on the half away from the ring.
+    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
     const place =
-      targetAbove || !ring
-        ? { bottom: window.innerHeight - edge.bottom + 16 }
-        : { top: edge.top + 16 };
-    const span = column ? { left: column.left + 8, width: column.width - 16 } : undefined;
+      column && ring
+        ? {
+            top: Math.min(Math.max(rect.top + rect.height / 2, 96), window.innerHeight - 96),
+            transform: "translateY(-50%)",
+          }
+        : targetAbove || !ring
+          ? { bottom: 16 }
+          : { top: 16 };
+    const span = column ? { left: column.right + 8, width: 288 } : undefined;
     return (
       <>
         {ring ? <Ring rect={rect} /> : null}
