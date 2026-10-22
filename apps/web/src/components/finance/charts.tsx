@@ -379,7 +379,7 @@ export function BurnLines({
   const trim =
     (granularity === "month" || granularity === "quarter" || granularity === "year") &&
     firstUsed > 0;
-  const series = trim ? allSeries.slice(firstUsed) : allSeries;
+  const trimmed = trim ? allSeries.slice(firstUsed) : allSeries;
   // A few quarters or years fill the plot; days, weeks and months keep a minimum so they start at the left edge.
   const minSlots = granularity === "quarter" || granularity === "year" ? 1 : MIN_SLOTS;
   // A finger cannot hit 20 px columns, so on touch the whole plot is one target: a tap picks the
@@ -388,6 +388,13 @@ export function BurnLines({
   return (
     <Chart height={height} label={label}>
       {(width) => {
+        // Each month is a control; on touch it must be 44 px wide, so a phone shows the latest few.
+        // The 60 px stands for the axis labels on the left and the margin on the right.
+        const fits = Math.max(1, Math.floor((width - 60) / 44));
+        const series =
+          touch && granularity === "month" && trimmed.length > fits
+            ? trimmed.slice(-fits)
+            : trimmed;
         const right = 8;
         const bottom = 24;
         // The scale follows spend and revenue; a raise many times larger would flatten every other
@@ -399,7 +406,7 @@ export function BurnLines({
         // Room for the widest axis label (about 7 px a character at 12 px) so none is cut off.
         const left = Math.max(40, axisMoney(scale.top).length * 7 + 10);
         const clipped = series.some((m) => m.financingCents > scale.top);
-        const top = clipped ? 22 : 10;
+        const top = clipped ? 28 : 10;
         const slot = (width - left - right) / Math.max(series.length, minSlots);
         // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
@@ -414,6 +421,8 @@ export function BurnLines({
         const partial = series[last]?.partial === true;
         // A bucket still running is a hollow dot only: a line to it would read as spend falling.
         const drawn = partial ? out.slice(0, -1) : out;
+        // One period cannot make a line: it is a bar (hollow while it is still running).
+        const single = series.length === 1 && (granularity === "year" || granularity === "quarter");
         const rev = line((m) => m.revenueCents);
         // The partial period is one mark: a second dot closer than 8 px would read as an "8".
         const apart = (a?: [number, number], b?: [number, number]) =>
@@ -486,6 +495,18 @@ export function BurnLines({
             />
             {series.length > 1 ? (
               <>
+                {partial && drawn.length >= 1 ? (
+                  <line
+                    data-testid="burn-out-pending"
+                    x1={drawn.at(-1)?.[0]}
+                    y1={drawn.at(-1)?.[1]}
+                    x2={out.at(-1)?.[0]}
+                    y2={out.at(-1)?.[1]}
+                    className="stroke-foreground"
+                    strokeWidth={1.5}
+                    strokeDasharray="3 3"
+                  />
+                ) : null}
                 {hasRevenue && revDrawn.length > 1 ? (
                   <>
                     <path
@@ -521,7 +542,36 @@ export function BurnLines({
                 ) : null}
               </>
             ) : null}
-            {hasRevenue && revDrawn.length === 1 ? (
+            {single
+              ? [
+                  { key: "out", cents: series[0]?.outCents ?? 0, tone: "foreground" },
+                  { key: "rev", cents: series[0]?.revenueCents ?? 0, tone: "muted-foreground" },
+                ]
+                  .filter((b) => b.cents > 0)
+                  .map((b, j, all) => {
+                    const w = Math.min(28, slot * 0.25);
+                    const x = cx(0) - (all.length * w + (all.length - 1) * 2) / 2 + j * (w + 2);
+                    return (
+                      <rect
+                        key={b.key}
+                        data-testid={`burn-bar-${b.key}`}
+                        x={x}
+                        y={y(b.cents)}
+                        width={w}
+                        height={base - y(b.cents)}
+                        rx={2}
+                        strokeWidth={1.5}
+                        strokeDasharray={partial ? "3 3" : undefined}
+                        className={
+                          b.tone === "foreground"
+                            ? "fill-foreground/25 stroke-foreground"
+                            : "fill-muted-foreground/20 stroke-muted-foreground"
+                        }
+                      />
+                    );
+                  })
+              : null}
+            {!single && hasRevenue && revDrawn.length === 1 ? (
               <circle
                 data-testid="burn-revenue-point"
                 cx={revDrawn[0]?.[0]}
@@ -530,7 +580,7 @@ export function BurnLines({
                 className="fill-muted-foreground"
               />
             ) : null}
-            {revEnd ? (
+            {!single && revEnd ? (
               <circle
                 data-testid="burn-revenue-end"
                 cx={(rev.at(-1) as [number, number])[0]}
@@ -571,7 +621,7 @@ export function BurnLines({
               ) : null,
             )}
             {out.map(([px, py], i) =>
-              i === last && series[i]?.partial ? (
+              single ? null : i === last && series[i]?.partial ? (
                 <circle
                   key="partial"
                   data-testid="burn-out-end"
@@ -679,7 +729,7 @@ export function BurnLines({
                   key={m.start}
                   data-testid="financing-clipped"
                   x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
-                  y={top - 6}
+                  y={top - 12}
                   textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={12}

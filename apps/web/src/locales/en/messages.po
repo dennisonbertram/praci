@@ -308,6 +308,11 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 msgid "{0} non-USD not counted"
 msgstr "{0} non-USD not counted"
 
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{0} not counted"
+msgstr "{0} not counted"
+
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
 #: src/pages/finance/FinanceCrypto.tsx
