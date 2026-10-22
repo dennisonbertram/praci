@@ -148,10 +148,11 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           <Trans>Filter</Trans>
         </Button>
       </div>
-      {showFilters || filtersOn ? (
-        <ActivityFilters filters={filters} onChange={setFilters} />
-      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
+        {/* Inside the scroll area so expanded filters can never squeeze the results to zero height. */}
+        {showFilters || filtersOn ? (
+          <ActivityFilters filters={filters} onChange={setFilters} />
+        ) : null}
         {error ? (
           <div className="px-2.5 pb-2" role="alert">
             <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />
