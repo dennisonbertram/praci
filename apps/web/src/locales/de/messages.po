@@ -1566,10 +1566,6 @@ msgstr ""
 msgid "Auditor"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "Auditors"
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Auth header"
 msgstr ""
@@ -6690,10 +6686,6 @@ msgstr ""
 msgid "No artifacts yet"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "No auditors yet"
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "Keine Authentifizierung"
@@ -8670,6 +8662,10 @@ msgstr ""
 msgid "SAFEs"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "SAFEs and funds"
+msgstr ""
+
 #: src/components/cap-table/SafeRows.tsx
 msgid "SAFEs, if converted at cap"
 msgstr ""
@@ -10329,6 +10325,8 @@ msgstr ""
 msgid "Top parties"
 msgstr ""
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Total"
 msgstr ""

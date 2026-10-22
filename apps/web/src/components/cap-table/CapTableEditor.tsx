@@ -15,7 +15,7 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MASK, percentFigure } from "../../lib/finance-format";
+import { MASK, percentFigure, totalPercent } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { OwnershipBar } from "./OwnershipBar";
 
@@ -457,6 +457,19 @@ export function CapTableEditor({
           </div>
           <span className="row-start-1 self-center text-end text-sm tabular-nums text-muted-foreground @lg:col-start-5">
             {percentFigure(math.pool?.percent ?? null, 1)}
+          </span>
+        </li>
+        <li
+          className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 text-sm font-medium ${columns}`}
+        >
+          <span className="@lg:col-start-1">
+            <Trans>Total</Trans>
+          </span>
+          <span className="text-end tabular-nums @lg:col-start-5">
+            {percentFigure(
+              totalPercent([math.pool?.percent, ...math.holders.map((h) => h.percent)]),
+              1,
+            )}
           </span>
         </li>
       </ul>

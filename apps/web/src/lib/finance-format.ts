@@ -236,6 +236,12 @@ export const usdFigure = (value: number | null, digits = 0, locale?: string) =>
 export const percentFigure = (value: number | null, digits = 2) =>
   value == null ? "—" : `${value.toFixed(digits)}%`;
 
+/** Sum of the known percentages, or null when none is known. */
+export const totalPercent = (percents: (number | null | undefined)[]): number | null => {
+  const known = percents.filter((p): p is number => p != null);
+  return known.length ? known.reduce((a, b) => a + b, 0) : null;
+};
+
 /**
  * Runway in months (`4.2`), undefined when unknown. A length of time, not money, so it stays
  * visible while amounts are hidden, as it does in bot replies and artifacts.
