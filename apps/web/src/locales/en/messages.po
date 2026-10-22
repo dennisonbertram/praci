@@ -10349,6 +10349,10 @@ msgstr "Steps to follow"
 msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Still loading…"
+msgstr "Still loading…"
+
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Still looking. This can take a minute."
 msgstr "Still looking. This can take a minute."

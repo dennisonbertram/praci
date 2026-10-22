@@ -29,6 +29,12 @@ if (typeof window !== "undefined") {
   window.addEventListener(INBOX_CHANGED_EVENT, clearInboxMessages);
 }
 
+/** Drops one message's cached or in-flight load, so the next load asks the server again (a retry of a hung request). */
+export function forgetInboxMessage(messageId: string): void {
+  promises.delete(messageId);
+  values.delete(messageId);
+}
+
 export function peekInboxMessage(messageId: string): InboxMessageOutput | undefined {
   return values.get(messageId);
 }
@@ -36,13 +42,14 @@ export function peekInboxMessage(messageId: string): InboxMessageOutput | undefi
 export function loadInboxMessage(messageId: string): Promise<InboxMessageOutput> {
   const existing = promises.get(messageId);
   if (existing) return existing;
-  const promise = rpc.inbox.get({ messageId }).then(
+  const promise: Promise<InboxMessageOutput> = rpc.inbox.get({ messageId }).then(
     (message) => {
-      values.set(messageId, message);
+      // Only the request still registered for this id may cache; a forgotten, cleared or evicted one is stale.
+      if (promises.get(messageId) === promise) values.set(messageId, message);
       return message;
     },
     (cause) => {
-      promises.delete(messageId);
+      if (promises.get(messageId) === promise) promises.delete(messageId);
       pausedUntil = Date.now() + PREFETCH_PAUSE_MS;
       throw cause;
     },
