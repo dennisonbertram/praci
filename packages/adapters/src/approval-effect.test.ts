@@ -616,10 +616,16 @@ describe("repeatsDeniedRequest", () => {
     const retry = [
       "m",
       "t",
-      { arguments: { amount: 450, recipientId: "r1", idempotencyKey: "b", note: "invoice 7 again" } },
+      {
+        arguments: { amount: 450, recipientId: "r1", idempotencyKey: "b", note: "invoice 7 again" },
+      },
     ];
     expect(repeatsDeniedRequest("connectors_execute_tool", denied, retry)).toBe(true);
-    const other = ["m", "t", { arguments: { amount: 451, recipientId: "r1", idempotencyKey: "b" } }];
+    const other = [
+      "m",
+      "t",
+      { arguments: { amount: 451, recipientId: "r1", idempotencyKey: "b" } },
+    ];
     expect(repeatsDeniedRequest("connectors_execute_tool", denied, other)).toBe(false);
   });
 });
