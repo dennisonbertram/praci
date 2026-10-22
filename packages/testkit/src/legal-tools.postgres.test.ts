@@ -605,6 +605,22 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(open.map((d: any) => d.kind)).toEqual(["notice"]);
   });
 
+  it("keeps a contract whose title contains 'handbook' when the model classifies it as a contract", async () => {
+    const item = await addItem(a, "handbook-deal.txt", "Handbook Publishing Agreement.");
+    const result = await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Handbook Publishing Agreement",
+      contractType: "publishing",
+      status: "active",
+      expirationDate: "2030-01-01",
+    });
+    expect(result.contract).toMatchObject({
+      title: "Handbook Publishing Agreement",
+      expirationDate: "2030-01-01",
+    });
+  });
+
   it("opens a new derived deadline when a closed one's date has changed, and keeps the closed one", async () => {
     const item = await addItem(a, "renewal.txt", "Software renewal.");
     const base = {

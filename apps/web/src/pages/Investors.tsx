@@ -14,7 +14,7 @@ import type {
   Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
-import { capTableMath, countedSafes, isSafeSecurity } from "@rakazo/core";
+import { capTableMath, countedSafes, equityRaisedUsd, isSafeSecurity } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,11 +70,6 @@ import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { ActionItems } from "../components/investors/ActionItems";
-import {
-  ContactRowPlaceholder,
-  FiguresPlaceholder,
-  OwnershipPlaceholder,
-} from "../components/investors/Placeholders";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { SectionCard } from "../components/SectionCard";
@@ -152,7 +147,6 @@ function Summary({
   safesFailed: boolean;
 }) {
   useHideAmounts();
-  const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
   // Nothing known to add up shows a dash, not $0. Table rows that are SAFEs are not counted: the
   // SAFE list is the record.
@@ -162,15 +156,10 @@ function Summary({
     counted
       .filter((safe) => status.includes(safe.status))
       .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
-  const safeUsd = sumUsd(["funded"]);
   const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
-  const raised =
-    !safesFailed &&
-    (counted.length > 0 ||
-      snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
-      ? usd(math.raisedUsd + safeUsd)
-      : DASH;
+  const raisedUsd = equityRaisedUsd(snapshot.holders, safes);
+  const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure
@@ -1038,10 +1027,11 @@ export function InvestorsPage({
             snapshot && sourceLabel ? (
               <>
                 {/* The source line never truncates; a long company name gives way first. */}
-                <span className="truncate" title={snapshot.companyName}>
+                {/* The company name is in the sidebar; on a phone only the source stays. */}
+                <span className="truncate max-sm:hidden" title={snapshot.companyName}>
                   {snapshot.companyName}
                 </span>
-                <span className="whitespace-nowrap">·</span>
+                <span className="whitespace-nowrap max-sm:hidden">·</span>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -1200,9 +1190,7 @@ export function InvestorsPage({
                     {snapshot.holders.length === 0 &&
                     !snapshot.fullyDilutedShares &&
                     !snapshot.latest409a &&
-                    countedSafes(safes).length === 0 ? (
-                      <FiguresPlaceholder />
-                    ) : (
+                    countedSafes(safes).length === 0 ? null : (
                       <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
                     )}
                     {snapshot.source === "native" ? (
@@ -1316,17 +1304,6 @@ export function InvestorsPage({
                         </Button>
                       </div>
                     )}
-                    <hr className="my-4 border-border" />
-                    <FiguresPlaceholder />
-                    <OwnershipPlaceholder className="mb-3" />
-                    <div className="@container">
-                      <HoldingsTable
-                        rows={[]}
-                        placeholderRows={3}
-                        onAddContact={() => {}}
-                        onOpenContact={() => {}}
-                      />
-                    </div>
                   </>
                 )}
               </SectionCard>
@@ -1420,11 +1397,9 @@ export function InvestorsPage({
                       </Button>
                     </div>
                   ) : (
-                    <ul>
-                      {[0, 1, 2].map((n) => (
-                        <ContactRowPlaceholder key={n} />
-                      ))}
-                    </ul>
+                    <p className="text-sm text-muted-foreground">
+                      <Trans>No contacts yet</Trans>
+                    </p>
                   )
                 ) : (
                   <ul>

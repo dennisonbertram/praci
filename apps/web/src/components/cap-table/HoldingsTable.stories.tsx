@@ -60,6 +60,3 @@ type Story = StoryObj<typeof meta>;
 
 /** A holder with a contact offers Open contact; one without offers Add as contact; the pool has no menu. */
 export const Default: Story = {};
-
-/** No rows: static skeleton rows keep the table's layout. */
-export const Placeholder: Story = { args: { rows: [], placeholderRows: 3 } };

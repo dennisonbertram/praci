@@ -30,7 +30,7 @@ test("spaces stay invisible by default and chat creation requires approval", asy
   await captureScreenshot(page, testInfo, "new-space-dialog");
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
-  const composer = page.getByRole("combobox", { name: "Message Chief" });
+  const composer = page.getByRole("textbox", { name: "Message Chief" });
   await composer.fill("Create a space named Customer support");
   await composer.press("Enter");
   await expect(page.getByRole("button", { name: "Create space", exact: true })).toBeVisible({

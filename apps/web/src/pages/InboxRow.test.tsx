@@ -275,7 +275,7 @@ it("marks a row whose mail has an open to-do", async () => {
         rows={[mail({ id: "m1" }), mail({ id: "m2" })]}
         onOpen={() => {}}
         onMark={undefined}
-        todoIds={new Set(["m2"])}
+        todoDue={new Map([["m2", null]])}
       />,
     ),
   );
@@ -283,4 +283,26 @@ it("marks a row whose mail has an open to-do", async () => {
   expect(badges).toEqual(["To do"]);
   // Phones hide the badge, so a labelled icon says it.
   expect(container.querySelectorAll('svg[role="img"][aria-label="To do"]')).toHaveLength(1);
+});
+
+it("shows a to-do's due date on the Needs reply row", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <InboxGroup
+        rows={[mail({ id: "m1" })]}
+        onOpen={() => {}}
+        onMark={undefined}
+        todoDue={new Map([["m1", "2099-01-01"]])}
+      />,
+    ),
+  );
+  expect(container.querySelector('[data-slot="badge"]')?.textContent).toBe("To do · Jan 1");
+  expect(container.querySelector('svg[role="img"]')?.getAttribute("aria-label")).toBe(
+    "To do · Jan 1",
+  );
+  await act(async () => root.unmount());
+  container.remove();
 });

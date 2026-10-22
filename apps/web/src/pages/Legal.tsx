@@ -24,6 +24,7 @@ import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
 import { errorText, KEY_REJECTED_PATTERN, runErrorText } from "../lib/user-error";
 import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
@@ -282,9 +283,14 @@ function Legal({
   const resultLine =
     running && scanTotal > 0 && !scanResult ? (
       <p role="status" className="mb-3 text-sm text-muted-foreground">
-        <Trans>
-          Reading {readCount} of {scanTotal}
-        </Trans>
+        {/* Every document is read; the agent is still writing deadlines and the graph. */}
+        {readCount >= scanTotal ? (
+          <Trans>Saving results…</Trans>
+        ) : (
+          <Trans>
+            Reading {readCount} of {scanTotal}
+          </Trans>
+        )}
       </p>
     ) : scanResult ? (
       <p role="status" className="mb-3 text-sm text-muted-foreground">
@@ -391,14 +397,18 @@ function Legal({
               other: "# Data room documents not yet checked by Legal",
             })}
           </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="shrink-0"
-            render={<Link to={`${DATA_ROOM_PATH}?legal=unchecked`} />}
-          >
-            <Trans>Review</Trans>
-          </Button>
+          {/* Before Allow the card above is the one action. */}
+          {needsConsent ? null : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              disabled={scanDisabled}
+              onClick={() => void scan()}
+            >
+              <Trans>Check now</Trans>
+            </Button>
+          )}
         </div>
       ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
@@ -476,7 +486,7 @@ function Legal({
               </Button>
             </div>
           ) : null}
-          {view === "deadlines" && showDone ? <DoneDeadlines /> : null}
+          {view === "deadlines" && showDone ? <DoneDeadlines onChanged={overview.reload} /> : null}
           {view === "deadlines" && !showDone ? (
             <LegalDeadlines
               deadlines={data.deadlines}
@@ -498,7 +508,8 @@ function Legal({
   );
 }
 
-function DoneDeadlines() {
+function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
+  const [error, setError] = useState("");
   const done = useFinanceQuery(() => rpc.legal.doneDeadlines(), []);
   if (done.error) return <ErrorNotice message={done.error} onRetry={done.retry} />;
   if (!done.data) return <Skeleton aria-busy="true" className="h-24 bg-border" />;
@@ -509,26 +520,50 @@ function DoneDeadlines() {
       </p>
     );
   }
+  const reopen = async (id: string) => {
+    setError("");
+    try {
+      await rpc.legal.updateDeadline({ id, status: "open" });
+      done.reload();
+      onChanged();
+      // The sidebar Legal badge counts open deadlines.
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+    } catch (cause) {
+      setError(errorText(cause));
+    }
+  };
   return (
-    <ul aria-label={t`Done deadlines`} className="flex flex-col">
-      {done.data.map((deadline) => (
-        <li
-          key={deadline.id}
-          className="flex flex-wrap justify-between gap-x-4 border-t border-border py-2.5 text-sm"
-        >
-          <span className="min-w-0 font-medium">
-            {maskCurrencyWhenHidden(
-              deadline.contractTitle
-                ? `${deadline.title}: ${deadline.contractTitle}`
-                : deadline.title,
-            )}
-          </span>
-          <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
-            {fullDay(deadline.dueDate)}
-          </time>
-        </li>
-      ))}
-    </ul>
+    <>
+      {error ? (
+        <p role="alert" className="mb-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <ul aria-label={t`Done deadlines`} className="flex flex-col">
+        {done.data.map((deadline) => (
+          <li
+            key={deadline.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 border-t border-border py-1.5 text-sm"
+          >
+            <span className="min-w-0 font-medium">
+              {maskCurrencyWhenHidden(
+                deadline.contractTitle
+                  ? `${deadline.title}: ${deadline.contractTitle}`
+                  : deadline.title,
+              )}
+            </span>
+            <span className="flex items-center gap-2">
+              <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
+                {fullDay(deadline.dueDate)}
+              </time>
+              <Button size="sm" variant="ghost" onClick={() => void reopen(deadline.id)}>
+                <Trans>Reopen</Trans>
+              </Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

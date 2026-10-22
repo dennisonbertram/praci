@@ -13,6 +13,7 @@ export function glanceBadge({
   value,
   valueLabel,
   failure = false,
+  onValueClick,
   rail,
 }: {
   unseen: number;
@@ -21,6 +22,8 @@ export function glanceBadge({
   valueLabel?: string;
   /** The value counts failures, so it takes the destructive color instead of the muted one. */
   failure?: boolean;
+  /** Makes the value its own button (for example the failed count opens the failed files). */
+  onValueClick?: () => void;
   rail: boolean;
 }) {
   if (unseen > 0) {
@@ -39,6 +42,7 @@ export function glanceBadge({
   if (!value || rail) return { badge: null, badgeLabel: undefined };
   return {
     badgeLabel: valueLabel,
+    onBadgeClick: onValueClick,
     badge: (
       <span
         data-testid="glance-value"

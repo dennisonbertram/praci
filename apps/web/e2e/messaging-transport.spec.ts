@@ -68,7 +68,7 @@ test("labels a Sendblue group message with its actual transport", async ({ page 
   await page.route("**/rpc/threads/get", fulfillWithInjection);
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("combobox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("textbox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
   const transportMessage = page.getByText("SMS · Alice: Dinner is at seven.");
   await expect(transportMessage).toBeVisible({ timeout: 20_000 });
   await captureScreenshot(page, testInfo, "sendblue-sms-transport");

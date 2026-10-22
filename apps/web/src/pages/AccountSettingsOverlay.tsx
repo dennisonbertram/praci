@@ -328,11 +328,11 @@ export function GeneralSettingsPanels({
         {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
             Delete is last of all, so a destructive action is never the first thing on the page. */}
         <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4 @2xl:col-start-1 @2xl:row-start-2">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
+          <div className="py-3">
             <h3 className="text-[15px] font-medium text-foreground">
               <Trans>Account</Trans>
             </h3>
-            <p className="min-w-0 text-[14px] text-foreground/75">
+            <p className="mt-1 min-w-0 text-[14px] text-foreground/75">
               {name}
               {email ? (
                 <span title={email} className="block truncate text-[13px] text-muted-foreground/70">
@@ -495,7 +495,7 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
 
   return (
     <details data-testid="change-password" className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-medium text-foreground">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[14px] text-foreground/75">
         <Trans>Change password</Trans>
         <ChevronRight
           aria-hidden="true"

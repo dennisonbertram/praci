@@ -71,7 +71,7 @@ test("account settings appearance control switches to light mode", async ({ page
   await captureScreenshot(page, testInfo, "ui-appearance-light-shell");
   await captureSidebarSearchSelected(page, testInfo, "sidebar-search-selected-light");
 
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await composer.fill("Please review `shared/PROJECT_CHECKPOINT_WRAPUP.md`.");
   await composer.press("Enter");
   const assistantReply = page

@@ -1048,7 +1048,6 @@ msgid "Address or ENS"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -2304,6 +2303,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Rechercher des mises à jour"
+
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
@@ -3951,10 +3954,6 @@ msgid "Created {0}"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Created when you allow changes"
-msgstr ""
-
-#: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr ""
 
@@ -4577,6 +4576,7 @@ msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr ""
 
@@ -4786,7 +4786,6 @@ msgstr ""
 msgid "Equity"
 msgstr ""
 
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr ""
@@ -5156,7 +5155,6 @@ msgstr "Plein écran"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr ""
@@ -5224,6 +5222,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Gmail filter limit reached"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Gmail Important"
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
@@ -5584,7 +5586,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
-#: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
 
@@ -6093,10 +6094,6 @@ msgstr "Chargement du catalogue de modèles…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Chargement de l'aperçu…"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "Chargement des règles…"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
@@ -6991,6 +6988,7 @@ msgid "No closing balance found to check against"
 msgstr ""
 
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "No contacts yet"
 msgstr ""
 
@@ -7078,11 +7076,8 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-msgid "No matches"
-msgstr ""
-
 #: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
+msgid "No matches"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -7131,6 +7126,10 @@ msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "No open deadlines."
+msgstr ""
+
+#: src/components/fundraising/Pipeline.tsx
+msgid "No prospects yet"
 msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
@@ -7182,6 +7181,10 @@ msgstr "Aucune exécution pour le moment"
 
 #: src/components/EmailCards.tsx
 msgid "No rush"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "No SAFEs yet"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -7453,6 +7456,10 @@ msgstr "En appel avec {0}"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "Sur planification"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: creates a {service} agent that can read and, after you approve, make changes."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -8737,6 +8744,7 @@ msgid "Renews {day}"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Rouvrir"
@@ -8920,10 +8928,6 @@ msgstr ""
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Review"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -9163,6 +9167,10 @@ msgstr "Enregistré. Tournez pour révéler."
 
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -9973,7 +9981,7 @@ msgid "Sort descending"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort every file in the Data room"
+msgid "Sort files"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -11558,6 +11566,10 @@ msgstr ""
 msgid "What about its memories?"
 msgstr "Qu'en est-il de ses mémoires ?"
 
+#: src/pages/Shell.tsx
+msgid "What are our account balances?"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What bots remember by default"
 msgstr ""
@@ -11609,6 +11621,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "Que retourner"
+
+#: src/pages/Shell.tsx
+msgid "What were the biggest payments this month?"
+msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What your bots remember between chats, and where they keep it."

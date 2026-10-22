@@ -524,7 +524,7 @@ export function AuthFrame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-full items-start justify-center bg-background px-6 pb-16 pt-16 md:pt-[12vh] text-foreground">
+    <main className="flex min-h-full items-start justify-center bg-background px-6 pb-16 pt-16 md:pt-[12vh] text-foreground">
       <form
         noValidate={noValidate}
         onSubmit={onSubmit}
@@ -536,13 +536,13 @@ export function AuthFrame({
         </div>
         <h1
           aria-live="polite"
-          className="mb-9 mt-7 text-center text-4xl font-medium tracking-tight"
+          className="mb-9 mt-7 text-balance text-center text-4xl font-medium tracking-tight"
         >
           {title}
         </h1>
         {children}
       </form>
-    </div>
+    </main>
   );
 }
 

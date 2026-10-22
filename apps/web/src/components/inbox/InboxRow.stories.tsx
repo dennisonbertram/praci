@@ -216,7 +216,7 @@ export const WithTodo: StoryObj = {
       title="Needs reply"
       hideAttention
       rows={rows.slice(0, 2)}
-      todoIds={new Set([rows[0]?.id ?? ""])}
+      todoDue={new Map([[rows[0]?.id ?? "", null]])}
       onOpen={noop}
       onMark={noop}
       onArchive={noop}

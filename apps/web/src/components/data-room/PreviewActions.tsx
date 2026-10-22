@@ -20,6 +20,7 @@ import {
   openDataRoomItem,
   saveDataRoomItem,
 } from "../../lib/data-room";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
 import { errorText } from "../../lib/user-error";
 import { SheetPreview } from "../SheetPreview";
@@ -74,6 +75,17 @@ export function FileViewer({
   /** A PDF's height where it does not fill (a phone's sheet gives it less, so the details stay in view). */
   height?: string;
 }) {
+  useHideAmounts();
+  if (item.mimeType?.startsWith("text/plain") && item.previewText) {
+    // The extracted text is the file for a plain text file, so show it instead of a placeholder icon.
+    return (
+      <pre
+        className={`overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs ${fill ? "h-full" : "max-h-64"}`}
+      >
+        {maskCurrencyWhenHidden(item.previewText)}
+      </pre>
+    );
+  }
   if (!isShowable(item) || file.failed) {
     return (
       <div

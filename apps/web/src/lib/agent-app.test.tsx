@@ -79,3 +79,15 @@ it("does not cache a failed lookup, and looks again after an integrations change
   await settle();
   expect(lookup("b1", "s1")?.name).toBe("Brex");
 });
+
+it("marks a bank agent by its endpoint even after the connection is renamed", async () => {
+  vi.mocked(rpc.bots.list).mockResolvedValue([
+    { id: "b1", spawnKey: "integration-agent:s" },
+  ] as never);
+  vi.mocked(rpc.mcp.servers.list).mockResolvedValue([
+    { name: "Mercury Operating", endpoint: "https://mcp.mercury.com/mcp", agentBotId: "b1" },
+  ] as never);
+  await act(async () => root.render(<Probe spaces={["s1"]} />));
+  await settle();
+  expect(lookup("b1", "s1")?.bank).toBe(true);
+});
