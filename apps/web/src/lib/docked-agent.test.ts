@@ -13,8 +13,10 @@ describe("openChatBotId", () => {
       false,
     );
   });
-  it("prefers the route bot and falls back to none", () => {
-    setDockedAgentBotId("legal");
+  it("prefers the docked bot over a page route's param, and falls back to the route, then none", () => {
+    setDockedAgentBotId("legal-id");
+    expect(openChatBotId("legal")).toBe("legal-id");
+    setDockedAgentBotId(undefined);
     expect(openChatBotId("b1")).toBe("b1");
     setDockedAgentBotId(undefined);
     expect(openChatBotId(undefined)).toBeUndefined();

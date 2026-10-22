@@ -103,15 +103,15 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
     };
   }, [t]);
 
-  useEffect(() => {
-    onListedBots?.(new Set(activeRuns.map((run) => run.botId)));
-    return () => onListedBots?.(new Set());
-  }, [activeRuns, onListedBots]);
-
   const filteredActive = useMemo(
     () => filterActivityRuns(activeRuns, filters),
     [activeRuns, filters],
   );
+  useEffect(() => {
+    onListedBots?.(new Set(filteredActive.map((run) => run.botId)));
+    return () => onListedBots?.(new Set());
+  }, [filteredActive, onListedBots]);
+
   const filteredRecent = useMemo(
     () => filterActivityRuns(recentRuns, filters),
     [recentRuns, filters],

@@ -129,7 +129,9 @@ export function AppToaster() {
     // the toasts are rebuilt from the server on load, on every change, and every 2 s while shown.
     const syncApprovals = () => {
       if (document.visibilityState !== "visible") return;
-      void followUnansweredApprovals(() => openBotIdRef.current).catch(() => undefined);
+      void followUnansweredApprovals(() => openChatBotId(openBotIdRef.current)).catch(
+        () => undefined,
+      );
     };
     syncApprovals();
     window.addEventListener("rakazo:notifications-changed", syncApprovals);
