@@ -21,8 +21,9 @@ vi.mock("@rakazo/ui-web", async (original) => ({
   enqueueNotificationToast: enqueue,
 }));
 const autoSort = vi.hoisted(() => ({ plan: vi.fn(), apply: vi.fn(), undo: vi.fn() }));
+const recentItems = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({
-  rpc: { dataRoom: { autoSort } },
+  rpc: { dataRoom: { autoSort, items: { list: recentItems } } },
   selectedSpaceId: () => "s1",
   withSpaceHeaders: () => new Headers(),
 }));
@@ -234,9 +235,34 @@ it("leaves files already in a folder unticked and groups moves by destination", 
   act(() => root.render(<AutoSortDialog onClose={() => undefined} onApplied={() => undefined} />));
   await flush();
   await flush();
+  act(() => button("Show all").click());
   const boxes = Array.from(document.querySelectorAll('[role="checkbox"]'));
   expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
   expect(document.querySelectorAll("h4")).toHaveLength(1);
+  expect(button("Apply").textContent).toBe("Apply 1 change");
+});
+
+it("opens on the recently added files, all ticked, and Show all adds the rest unticked", async () => {
+  recentItems.mockResolvedValue({
+    items: [{ id: "i3", createdAt: new Date().toISOString() }],
+    nextCursor: null,
+  });
+  const filed = { ...plan.operations[1], fromFolderId: "f9" };
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [
+      { ...filed, key: "move:i3", itemId: "i3", name: "new.pdf" },
+      { ...filed, key: "move:i4", itemId: "i4", name: "old.pdf" },
+    ],
+  });
+  act(() => root.render(<AutoSortDialog onClose={() => undefined} onApplied={() => undefined} />));
+  await flush();
+  await flush();
+  expect(document.body.textContent).toContain("new.pdf");
+  expect(document.body.textContent).not.toContain("old.pdf");
+  expect(button("Apply").textContent).toBe("Apply 1 change");
+  act(() => button("Show all").click());
+  expect(document.body.textContent).toContain("old.pdf");
   expect(button("Apply").textContent).toBe("Apply 1 change");
 });
 

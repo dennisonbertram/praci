@@ -49,10 +49,10 @@ export function ImportActivity({
   }
   const done = sum(imports, "done");
   const failed = sum(imports, "failed");
-  // The server names the newest three. Fewer names than files would read as a miscount, so then
-  // only the count shows. ponytail: no "View" link, as no filter lists just the imported files.
-  const latest = imports.flatMap((entry) => entry.latest);
-  const named = latest.length >= Math.min(done, 3) ? latest.slice(0, 3) : [];
+  // The server names the newest three; the rest are counted. ponytail: no "View" link, as no
+  // filter lists just the imported files.
+  const named = imports.flatMap((entry) => entry.latest).slice(0, 3);
+  const unnamed = done - named.length;
   return (
     <div role="status" className={`${row} flex-nowrap items-start text-muted-foreground`}>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
@@ -71,6 +71,7 @@ export function ImportActivity({
             <span className="truncate">{file.name}</span>
           </Button>
         ))}
+        {unnamed > 0 && named.length > 0 ? <span>{t`+${unnamed} more`}</span> : null}
       </div>
       <Button
         variant="ghost"

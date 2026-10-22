@@ -18,6 +18,11 @@ import { LoadingState } from "../ai/primitives";
 
 type Group = { type: AutoSortOperation["type"]; title: string };
 
+const RECENT_MS = 24 * 60 * 60 * 1000;
+/** Everything but moving a file that is already filed and was not added recently. */
+const isNew = (recent: Set<string>) => (op: AutoSortOperation) =>
+  op.type !== "move_item" || op.fromFolderId === null || recent.has(op.itemId);
+
 function Row({
   checked,
   onChange,
@@ -62,6 +67,9 @@ export function AutoSortDialog({
   const [off, setOff] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [slow, setSlow] = useState(false);
+  // Files added in the last day, so the dialog can open on the ones Maya just brought in.
+  const [recent, setRecent] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
   // Only the latest request may fill the list: an older answer arriving later would swap the proposal on screen.
   const latest = useRef(0);
 
@@ -70,16 +78,31 @@ export function AutoSortDialog({
     setPlan(null);
     setError("");
     setSlow(false);
-    rpc.dataRoom.autoSort
-      .plan()
-      .then((next: AutoSortPlan) => {
+    setShowAll(false);
+    const since = Date.now() - RECENT_MS;
+    // Without the list of new files the dialog just shows everything, as before.
+    const recentIds = Promise.resolve()
+      .then(() => rpc.dataRoom.items.list({ limit: 100 }))
+      .then(
+        ({ items }) =>
+          new Set(items.filter((i) => Date.parse(i.createdAt) >= since).map((i) => i.id)),
+      )
+      .catch(() => new Set<string>());
+    Promise.all([rpc.dataRoom.autoSort.plan(), recentIds])
+      .then(([next, ids]: [AutoSortPlan, Set<string>]) => {
         if (request !== latest.current) return;
         setPlan(next);
-        // Files already in a folder are left alone unless ticked; loose ones are the point.
+        setRecent(ids);
+        const fresh = new Set(next.operations.filter(isNew(ids)).map((op) => op.key));
+        // Only when some, but not all, changes are new does the dialog open on those alone.
+        const focus = fresh.size > 0 && fresh.size < next.operations.length;
+        // Otherwise files already in a folder are left alone unless ticked; loose ones are the point.
         setOff(
           new Set(
             next.operations
-              .filter((op) => op.type === "move_item" && op.fromFolderId !== null)
+              .filter((op) =>
+                focus ? !fresh.has(op.key) : op.type === "move_item" && op.fromFolderId !== null,
+              )
               .map((op) => op.key),
           ),
         );
@@ -108,6 +131,9 @@ export function AutoSortDialog({
           : null;
   // A model problem is fixed in Models; "Retry" alone would fail the same way.
   const fixInModels = plan?.reason === "ai_rejected" || plan?.reason === "ai_unavailable";
+  const fresh = plan?.operations.filter(isNew(recent)) ?? [];
+  const focused = !showAll && fresh.length > 0 && fresh.length < (plan?.operations.length ?? 0);
+  const visible = focused ? fresh : (plan?.operations ?? []);
   const chosen = plan?.operations.filter((op) => !off.has(op.key)) ?? [];
   const toggle = (key: string, on: boolean) =>
     setOff((prev) => {
@@ -141,8 +167,12 @@ export function AutoSortDialog({
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {/* Auto-sort always works on the whole Data room, never on ticked files. */}
-            <Trans>Sort every file in the Data room</Trans>
+            {/* Auto-sort never works on ticked rows; it opens on new files, with the rest one tap away. */}
+            {focused ? (
+              <Trans>Sort new files</Trans>
+            ) : (
+              <Trans>Sort every file in the Data room</Trans>
+            )}
           </DialogTitle>
         </DialogHeader>
         <div className="max-h-[60dvh] min-h-16 overflow-y-auto">
@@ -185,17 +215,21 @@ export function AutoSortDialog({
                   </Button>
                 </div>
               ) : null}
-              {plan.operations.length > 1 ? (
+              {visible.length > 1 ? (
                 <Row
-                  checked={chosen.length === plan.operations.length}
+                  checked={visible.every((op) => !off.has(op.key))}
                   onChange={(on) =>
-                    setOff(on ? new Set() : new Set(plan.operations.map((op) => op.key)))
+                    setOff((prev) => {
+                      const next = new Set(prev);
+                      for (const op of visible) on ? next.delete(op.key) : next.add(op.key);
+                      return next;
+                    })
                   }
                   title={t`Select all`}
                 />
               ) : null}
               {groups.map(({ type, title }) => {
-                const ops = plan.operations.filter((op) => op.type === type);
+                const ops = visible.filter((op) => op.type === type);
                 // Moves read by where they go, not as one flat list.
                 const destinations =
                   type === "move_item"
@@ -224,6 +258,16 @@ export function AutoSortDialog({
                   </section>
                 ) : null;
               })}
+              {focused ? (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => setShowAll(true)}
+                >
+                  <Trans>Show all {plan.operations.length} changes</Trans>
+                </Button>
+              ) : null}
             </div>
           )}
         </div>

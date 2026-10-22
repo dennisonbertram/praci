@@ -678,6 +678,10 @@ msgstr ""
 msgid "+{more} more"
 msgstr ""
 
+#: src/components/data-room/ImportActivity.tsx
+msgid "+{unnamed} more"
+msgstr ""
+
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr ""
@@ -2339,6 +2343,10 @@ msgstr ""
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Clear {sourceName} filter"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Clear all"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -9403,6 +9411,11 @@ msgstr "Оболочка"
 msgid "Show {hiddenReplies} more"
 msgstr ""
 
+#. placeholder {0}: plan.operations.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Show all {0} changes"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr ""
@@ -9709,6 +9722,10 @@ msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Sort every file in the Data room"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort new files"
 msgstr ""
 
 #: src/components/ListControls.tsx
