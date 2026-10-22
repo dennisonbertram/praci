@@ -251,6 +251,7 @@ it("shows the 8-character rule in red on the page, not as a native bubble", asyn
   const password = host.querySelector<HTMLInputElement>('input[type="password"]')!;
   expect(password.minLength).toBe(-1);
   await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>('input[name="name"]')!, "Maya");
     setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, "maya@example.com");
     setValue(password, "short");
   });
@@ -262,4 +263,17 @@ it("shows the 8-character rule in red on the page, not as a native bubble", asyn
     (p) => p.textContent === "At least 8 characters.",
   );
   expect(hint?.className).toContain("text-destructive");
+});
+
+it("shows an inline red message for an empty name, not the browser's native bubble", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  const form = host.querySelector("form")!;
+  expect(form.noValidate).toBe(true);
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  const alert = host.querySelector('[role="alert"]');
+  expect(alert?.textContent).toBe("Enter your name");
+  expect(alert?.className).toContain("text-destructive");
 });

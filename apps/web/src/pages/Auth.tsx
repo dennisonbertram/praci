@@ -72,6 +72,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!reset?.passwordAuth) return;
+    if (mode === "up" && !name.trim()) {
+      setError(t`Enter your name`);
+      return;
+    }
     const issue = credentialIssue({ email, password: mode === "forgot" ? undefined : password });
     if (issue) {
       setError(credentialIssueText(issue));
@@ -481,7 +485,7 @@ export function AuthFrame({
 }) {
   return (
     <div className="flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
-      <form onSubmit={onSubmit} className="flex w-[460px] flex-col items-center">
+      <form noValidate onSubmit={onSubmit} className="flex w-[460px] flex-col items-center">
         <div className="flex h-[74px] w-[74px] items-center justify-center gap-[11px] rounded-full bg-muted">
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />
