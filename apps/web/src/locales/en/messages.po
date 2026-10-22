@@ -10041,6 +10041,10 @@ msgstr "Skip or deploy key"
 msgid "Skip to content"
 msgstr "Skip to content"
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to message box"
+msgstr "Skip to message box"
+
 #: src/components/tour/TourPopover.tsx
 msgid "Skip tour"
 msgstr "Skip tour"

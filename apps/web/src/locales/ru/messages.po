@@ -10041,6 +10041,10 @@ msgstr "Пропустить или добавить ключ"
 msgid "Skip to content"
 msgstr ""
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to message box"
+msgstr ""
+
 #: src/components/tour/TourPopover.tsx
 msgid "Skip tour"
 msgstr ""

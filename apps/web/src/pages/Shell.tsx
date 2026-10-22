@@ -6185,6 +6185,7 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
+        onClose={agentPanel ? agentPanel.collapse : () => setPanel(null)}
         open={agentPanel ? agentPanel.open : Boolean(panel && (active || activeGroup))}
         panel={agentPanel ? agentPanel.name : (panel ?? "closed")}
       >
