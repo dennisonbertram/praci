@@ -902,9 +902,7 @@ it("says a linked document could not be found and drops it from the URL", async 
   });
   await settle();
   expect(search).toBe("");
-  expect(toastTitles()).toContain(
-    "That document could not be found",
-  );
+  expect(toastTitles()).toContain("That document could not be found");
 });
 
 it("reads a failed file again from its preview", async () => {
@@ -956,7 +954,8 @@ it("offers every type and party in the folder, also those not on the loaded page
 it("says so when the open folder was deleted elsewhere, and shows All items", async () => {
   const legal = { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" };
   rpcMock.folders.mockResolvedValue([legal]);
-  const gone = () => toastTitles().filter((title) => title === "That folder no longer exists").length;
+  const gone = () =>
+    toastTitles().filter((title) => title === "That folder no longer exists").length;
   await renderPage("/?folder=f1");
   await settle();
   const before = gone();

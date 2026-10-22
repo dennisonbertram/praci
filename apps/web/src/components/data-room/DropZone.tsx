@@ -183,10 +183,20 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     <Trans>Taking longer than usual</Trans>
                   </span>
                   <span className="flex gap-1">
-                    <Button variant="link" size="xs" className="h-auto p-0" onClick={state.stalled.cancel}>
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="h-auto p-0"
+                      onClick={state.stalled.cancel}
+                    >
                       <Trans>Cancel</Trans>
                     </Button>
-                    <Button variant="link" size="xs" className="h-auto p-0" onClick={state.stalled.retry}>
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="h-auto p-0"
+                      onClick={state.stalled.retry}
+                    >
                       <Trans>Retry</Trans>
                     </Button>
                   </span>

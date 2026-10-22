@@ -73,7 +73,10 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual(["lease.pdfLegal— · Added Mar 4, 2026", "loose.pdf— · Added Mar 4, 2026"]);
+  expect(names()).toEqual([
+    "lease.pdfLegal— · Added Mar 4, 2026",
+    "loose.pdf— · Added Mar 4, 2026",
+  ]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
   expect(names()).toEqual(["lease.pdf— · Added Mar 4, 2026"]);
 });
