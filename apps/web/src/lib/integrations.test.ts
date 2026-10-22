@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import type { Connection, ConnectionCatalogItem, McpServer } from "@rakazo/contracts";
+import { ZERNIO_MCP_ENDPOINT } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   appPath,
@@ -116,6 +117,20 @@ describe("status badges", () => {
     expect(mcpStatus(server({ oauthStatus: "none", transport: "stdio", endpoint: null }))).toBe(
       "connected",
     );
+  });
+
+  it("marks unconfigured Zernio servers for reconnect while preserving configured credentials", () => {
+    const zernio = (extra: Partial<McpServer>) =>
+      server({
+        endpoint: ZERNIO_MCP_ENDPOINT,
+        oauthStatus: "none",
+        oauthAttempted: false,
+        hasSecret: false,
+        ...extra,
+      });
+    expect(mcpStatus(zernio({}))).toBe("reconnect");
+    expect(mcpStatus(zernio({ hasSecret: true }))).toBe("connected");
+    expect(mcpStatus(zernio({ oauthStatus: "connected" }))).toBe("connected");
   });
 });
 

@@ -78,7 +78,7 @@ const CAP_TABLE_FOLDER = ["Finance", "Cap Table"];
 type Snapshot = NonNullable<CapTableState["snapshot"]>;
 
 /** The contact tabs: the people this page's relationships involve. */
-const CONTACT_TABS = ["investor", "board", "auditor"] as const satisfies readonly ContactKind[];
+const CONTACT_TABS = ["investor", "board"] as const satisfies readonly ContactKind[];
 type ContactTab = (typeof CONTACT_TABS)[number];
 const parseTab = (value: string | null): ContactTab =>
   CONTACT_TABS.find((tab) => tab === value) ?? "investor";
@@ -892,14 +892,12 @@ export function InvestorsPage({
     )
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   const tabNames: Record<ContactTab, string> = {
-    investor: t`Investors`,
+    investor: t`SAFEs and funds`,
     board: t`Board`,
-    auditor: t`Auditors`,
   };
   const emptyText: Record<ContactTab, string> = {
     investor: t`No investors yet`,
     board: t`No board members yet`,
-    auditor: t`No auditors yet`,
   };
   const hasBoard = allContacts.some((c) => c.kind === "board");
   const addKindLabel = contactAddLabels();

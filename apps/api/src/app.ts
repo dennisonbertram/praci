@@ -46,6 +46,7 @@ import {
   createRunSandbox,
   createRunSecretWriter,
   createRuntimeExtract,
+  createSafeCallToolFor,
   createSecretStore,
   createTicketChangeNotifier,
   createWebProvider,
@@ -662,6 +663,7 @@ export async function createApp(
     mail,
     imageProxySecret: env.authSecret,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
+    safeCallToolFor: createSafeCallToolFor(prisma, mcp),
     mcp,
     // The same offline fake serves exchange reads (Coinbase, Kraken) and their prices.
     ...(cryptoFetch ? { exchangeFetch: cryptoFetch } : {}),

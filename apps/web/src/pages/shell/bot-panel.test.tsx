@@ -328,7 +328,7 @@ describe("BotSettings saving without a Save button", () => {
 
   it("names the unknown tool right under the Disabled tools field", async () => {
     await render();
-    const input = container.querySelector<HTMLInputElement>("input[placeholder='web_search']");
+    const input = container.querySelector<HTMLInputElement>("input[placeholder='Web search']");
     if (!input) throw new Error("Missing disabled tools field");
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
@@ -401,6 +401,19 @@ describe("BotSettings audience", () => {
     expect(button("bot-audience-internal")?.getAttribute("aria-pressed")).toBe("true");
     expect(container.textContent).not.toContain(helper);
     expect(container.textContent).not.toContain("Can message");
+  });
+
+  it("follows an audience change that arrives from the server", async () => {
+    await renderWith();
+    await renderWith({ audience: "external" });
+    expect(button("bot-audience-external")?.getAttribute("aria-pressed")).toBe("true");
+    expect(button("bot-audience-internal")?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("shows a disabled tool by a readable name", async () => {
+    await renderWith({ disabledBuiltinTools: ["web_search"] });
+    expect(container.textContent).toContain("Web search");
+    expect(container.textContent).not.toContain("web_search");
   });
 
   it("saves the audience on selecting External and then shows the helper and the allowlist", async () => {

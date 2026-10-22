@@ -41,6 +41,7 @@ import type {
   MessagingSettings,
   PiOAuthLogins,
   RemoteConnectorDependencies,
+  SafeSyncDeps,
   TicketChangeNotifier,
   TriageReadinessDeps,
 } from "@rakazo/adapters";
@@ -188,6 +189,7 @@ import {
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isGranolaEndpoint,
+  isGtmAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isInvestorsAgentSpawnKey,
@@ -195,6 +197,7 @@ import {
   isMailThreadAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
+  isZernioEndpoint,
   NOTIFICATION_HEARTBEAT_ID,
   notificationKindOf,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -233,6 +236,7 @@ import {
   addSidebarFolder,
   addSidebarPage,
   appendEventInTransaction,
+  assignSafe,
   autoGroupSidebar,
   BotSectionNameConflictError,
   CannotDeleteDefaultSpaceError,
@@ -271,7 +275,6 @@ import {
   getAuditRequest,
   getCapTableSnapshot,
   getContact,
-  getFundraisingOverview,
   getInvestorUpdate,
   getNotificationPreferences,
   InvalidSpaceNameError,
@@ -298,14 +301,17 @@ import {
   markSafe,
   markSeen,
   markShown,
+  markWaiting,
   mintPortalTokenFor,
   moveSidebarFolder,
   moveSidebarItem,
   NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
+  notSent,
   PortalBlockedError,
   Prisma,
+  ProspectEmailRequiredError,
   PushSessionEndedError,
   parseComputerMode,
   pushSessionExpiresAt,
@@ -344,6 +350,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unassignSafe,
   unblockPortal,
   undoCapTableSource,
   unseenBotKinds,
@@ -446,6 +453,8 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
+import { fundraisingOverview, fundraisingRefresh } from "./fundraising.js";
+import { ensureGtmAgent, ensureGtmBot, gtmPostingCapability } from "./gtm-agent.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -1002,6 +1011,8 @@ export interface RouterDeps {
   boxFetch?: typeof fetch;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Builds the Mercury SAFE read-tool caller for Fundraising; unset where MCP is off. */
+  safeCallToolFor?: SafeSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */
@@ -1111,7 +1122,7 @@ function fundraisingError(error: unknown): never {
   if (error instanceof SafeActiveError || error instanceof SafeStateError) {
     throw new ORPCError("CONFLICT", { message: error.message });
   }
-  if (error instanceof SafeCapRequiredError) {
+  if (error instanceof SafeCapRequiredError || error instanceof ProspectEmailRequiredError) {
     throw new ORPCError("BAD_REQUEST", { message: error.message });
   }
   if (error instanceof FundraiseRoundOpenError) {
@@ -1432,6 +1443,11 @@ export function createRouter(deps: RouterDeps) {
       throw new Error("MCP OAuth redirect URI is not allowed");
     }
     return mcpOAuth.begin(input);
+  };
+  const fundraisingDeps = {
+    prisma: deps.prisma,
+    mcpOAuth,
+    ...(deps.safeCallToolFor ? { safeCallToolFor: deps.safeCallToolFor } : {}),
   };
   const financeDeps = {
     prisma: deps.prisma,
@@ -2395,6 +2411,7 @@ export function createRouter(deps: RouterDeps) {
           isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
+          isGtmAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
           isVoiceAgentSpawnKey(input.spawnKey)
         ) {
@@ -5173,7 +5190,7 @@ export function createRouter(deps: RouterDeps) {
           // checked, so the first tool call already works and a rejected key leaves nothing behind.
           if (!isCartaEndpoint(row.endpoint)) {
             const preset = integrationPresetForEndpoint(row.endpoint);
-            if (preset?.requiresAgent && deps.mcp) {
+            if (preset?.requiresAgent && !isZernioEndpoint(row.endpoint) && deps.mcp) {
               try {
                 await deps.mcp.listServerTools(
                   row,
@@ -5374,10 +5391,38 @@ export function createRouter(deps: RouterDeps) {
                 await deps.prisma.botMcpServer.deleteMany({
                   where: { serverId: row.id, ...actorScope(context.actor) },
                 });
+              if (
+                isZernioEndpoint(existing.endpoint) &&
+                existing.endpoint !== row.endpoint &&
+                existing.agentBotId
+              )
+                await deps.prisma.botMcpServer.deleteMany({
+                  where: {
+                    serverId: row.id,
+                    botId: existing.agentBotId,
+                    ...actorScope(context.actor),
+                  },
+                });
               // The released agent belongs to the old service (spawn key per server id): archive it so
               // Create agent makes a fresh one for the new service.
-              if (existing.agentBotId && !row.agentBotId && existing.endpoint !== row.endpoint)
+              if (
+                existing.agentBotId &&
+                !row.agentBotId &&
+                existing.endpoint !== row.endpoint &&
+                !isZernioEndpoint(existing.endpoint)
+              )
                 await archiveActorBot(context.actor, existing.agentBotId);
+              if (isZernioEndpoint(row.endpoint)) {
+                const bot = await ensureGtmBot({ prisma: deps.prisma, repos }, context.actor);
+                const linked = await deps.prisma.mcpServer.findFirst({
+                  where: { id: row.id, ...actorScope(context.actor) },
+                });
+                if (!linked || linked.endpoint !== row.endpoint || linked.agentBotId !== bot.id)
+                  throw new ORPCError("CONFLICT", {
+                    message: "The Zernio integration changed; retry",
+                  });
+                return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
+              }
               return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
             }
           }
@@ -5439,7 +5484,8 @@ export function createRouter(deps: RouterDeps) {
             agentToArchive =
               deleted.agentBotId &&
               !isCartaEndpoint(deleted.endpoint) &&
-              !isGranolaEndpoint(deleted.endpoint)
+              !isGranolaEndpoint(deleted.endpoint) &&
+              !isZernioEndpoint(deleted.endpoint)
                 ? deleted.agentBotId
                 : null;
             // Archived with the server, so the agent is never left active without it.
@@ -7537,6 +7583,23 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
     },
+    gtm: {
+      agent: authed.gtm.agent.handler(({ context }) =>
+        ensureGtmAgent(
+          {
+            prisma: deps.prisma,
+            repos,
+            jobs: deps.jobs,
+          },
+          context.actor,
+        ).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      postingCapability: authed.gtm.postingCapability.handler(({ context }) =>
+        gtmPostingCapability({ prisma: deps.prisma, secrets: deps.secrets }, context.actor),
+      ),
+    },
     legal: {
       agent: authed.legal.agent.handler(({ context }) =>
         legalAgent(legalDeps, context.actor).catch((error: unknown) => {
@@ -7815,7 +7878,10 @@ export function createRouter(deps: RouterDeps) {
     },
     fundraising: {
       overview: authed.fundraising.overview.handler(({ context }) =>
-        getFundraisingOverview(deps.prisma, actorScope(context.actor)),
+        fundraisingOverview(fundraisingDeps, context.actor),
+      ),
+      refresh: authed.fundraising.refresh.handler(({ context, signal }) =>
+        fundraisingRefresh(fundraisingDeps, context.actor, signal),
       ),
       round: {
         save: authed.fundraising.round.save.handler(({ context, input }) =>
@@ -7832,6 +7898,12 @@ export function createRouter(deps: RouterDeps) {
         save: authed.fundraising.prospects.save.handler(({ context, input }) =>
           saveProspect(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
         ),
+        markWaiting: authed.fundraising.prospects.markWaiting.handler(({ context, input }) =>
+          markWaiting(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
+        notSent: authed.fundraising.prospects.notSent.handler(({ context, input }) =>
+          notSent(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
       },
       safes: {
         list: authed.fundraising.safes.list.handler(({ context }) =>
@@ -7842,6 +7914,14 @@ export function createRouter(deps: RouterDeps) {
         ),
         mark: authed.fundraising.safes.mark.handler(({ context, input }) =>
           markSafe(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+        assign: authed.fundraising.safes.assign.handler(({ context, input }) =>
+          assignSafe(deps.prisma, actorScope(context.actor), input.id, input.contactId).catch(
+            fundraisingError,
+          ),
+        ),
+        unassign: authed.fundraising.safes.unassign.handler(({ context, input }) =>
+          unassignSafe(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
         ),
         delete: authed.fundraising.safes.delete.handler(async ({ context, input }) => {
           await deleteSafe(deps.prisma, actorScope(context.actor), input.id).catch(
