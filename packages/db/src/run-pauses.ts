@@ -264,7 +264,13 @@ export async function expireDelegatedApprovalsInTransaction(
   input: { spaceId: string; userId: string; fromBotId: string; threadId: string; runId: string },
 ): Promise<string[]> {
   const closed: string[] = [];
-  for (const run of await waitingDelegates(tx, input)) {
+  const delegates = await waitingDelegates(tx, input);
+  // Thread locks first, in a stable order, then run locks: the same order as commitAnswerRunInput,
+  // so expiry and an approval of the same delegate cannot deadlock.
+  for (const threadId of [...new Set(delegates.map((run) => run.threadId))].sort()) {
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${threadId} FOR UPDATE`;
+  }
+  for (const run of delegates) {
     const locked = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM runs WHERE id = ${run.id} AND status = 'waiting_input' FOR UPDATE`;
     if (locked.length === 0) continue;
@@ -308,6 +314,8 @@ async function announceDelegatePending(
   });
   if (!sent?.botId) return;
   const seq = await prisma.$transaction(async (tx) => {
+    // Lock first, so a finalize that published a newer list cannot be overwritten by an older one.
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${sent.threadId} FOR UPDATE`;
     const pending = await delegatePendingIds(tx, {
       spaceId: run.spaceId,
       userId: run.userId,

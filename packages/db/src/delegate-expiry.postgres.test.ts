@@ -248,4 +248,18 @@ describePostgres("delegated approvals when the requester fails (PostgreSQL)", ()
     expect(await d.effectStatus()).not.toBe("expired");
     expect(await d.requesterError()).toBe("This agent could not finish.");
   });
+
+  it("expiry and an approval of the same delegate never deadlock; one of them wins", async () => {
+    for (let i = 0; i < 5; i++) {
+      const d = await delegation();
+      await d.pause();
+      const [failed, answered] = await Promise.all([d.failRequester(), d.answer("allow")]);
+      expect(failed).toBeTruthy();
+      const status = await d.delegateStatus();
+      // Either the approval queued the run before expiry, or expiry cancelled it first.
+      expect(answered ? status : "cancelled").toBe(answered ? "queued" : "cancelled");
+      expect(["queued", "cancelled"]).toContain(status);
+      expect((await d.effectStatus()) === "expired").toBe(status === "cancelled");
+    }
+  });
 });
