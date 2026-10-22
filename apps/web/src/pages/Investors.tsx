@@ -865,9 +865,10 @@ export function InvestorsPage({
   const holdingRows: HoldingRow[] =
     snapshot && math
       ? [
-          // SAFEs belong to Fundraising: the table is shares and options.
+          // SAFEs belong to Fundraising: the table is shares and options. A SAFE holder with no
+          // matching contact stays here so its name, amount and Add as contact remain visible.
           ...snapshot.holders.flatMap((holder, i) =>
-            isSafeSecurity(holder.security)
+            isSafeSecurity(holder.security) && contactFor(allContacts, holder)
               ? []
               : [
                   {
@@ -982,7 +983,10 @@ export function InvestorsPage({
     reading ||
     sheetPending ||
     (contacts?.length ?? 0) > 0 ||
-    (updates?.length ?? 0) > 0;
+    (updates?.length ?? 0) > 0 ||
+    // A failed request is not known to be empty: keep its error and Try again visible.
+    Boolean(error) ||
+    updatesFailed;
   const source = snapshot?.source;
   const names = sourceNames();
   const sourceLabel =

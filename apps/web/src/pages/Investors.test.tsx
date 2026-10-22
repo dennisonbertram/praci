@@ -749,8 +749,9 @@ it("shows the figures, source line and holdings of a Carta table; SAFEs sit outs
   expect(ada).toContain("30.0%");
   expect(founder).toContain("60.0%");
   expect(pool).toContain("10.0%");
-  // SAFEs belong to Fundraising: the table has no SAFE row, and the card says it leaves them out.
-  expect(rows.some((r) => r.includes("Dee Newcomer"))).toBe(false);
+  // A SAFE holder with no contact stays visible with its amount (its menu offers Add as contact), and the card says it leaves SAFEs out.
+  const dee = rows.find((r) => r.includes("Dee Newcomer")) ?? "";
+  expect(dee).toContain("250,000");
   expect(text).toContain("Excludes SAFEs");
   // The total row shows the percentages adding up to 100%.
   expect(rows.find((r) => r.startsWith("Total")) ?? "").toContain("100.0%");
@@ -1530,6 +1531,23 @@ it("asks one question on an empty page and shows Updates and contacts after a ta
   await click(button("Type it in"));
   expect(container.querySelector("section[aria-label='Updates']")).not.toBeNull();
   expect(container.querySelector("[role=tab]")).not.toBeNull();
+});
+
+it("keeps the contacts error and Try again when contacts fail on an empty page", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  rpcMock.list.mockRejectedValue(new Error("down"));
+  await show();
+  expect(container.textContent).toContain("down");
+  expect(button("Try again")).toBeDefined();
+});
+
+it("keeps the updates error and Try again when updates fail on an empty page", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  rpcMock.list.mockResolvedValue([]);
+  rpcMock.updatesList.mockRejectedValue(new Error("down"));
+  await show();
+  expect(container.querySelector("section[aria-label='Updates']")).not.toBeNull();
+  expect(button("Try again")).toBeDefined();
 });
 
 it("shows one error and one Try again when the server is unreachable", async () => {
