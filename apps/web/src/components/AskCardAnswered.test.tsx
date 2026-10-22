@@ -65,7 +65,7 @@ it.each([
   ["allow", "Approved"],
   ["always", "Always allowed"],
   ["deny", "Denied"],
-  ["superseded", "No longer active"],
+  ["superseded", "Replaced by a newer request"],
   ["expired", "Expired"],
 ])("words the %s answer as %s", (answer, words) => {
   expect(render(answer).textContent).toBe(words);

@@ -14,11 +14,21 @@ export function useDataRoomImports() {
   const [imports, setImports] = useState<DataRoomApiImport[]>([]);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const wasActive = useRef(false);
+  const firstRead = useRef(true);
   const read = useCallback(
     () =>
       rpc.dataRoom
         .imports()
-        .then((next) => setImports(next))
+        .then((next) => {
+          setImports(next);
+          // An import that finished before this visit was reported on earlier; it must not
+          // greet every reload for hours.
+          if (firstRead.current) {
+            const old = next.filter((entry) => entry.finished).map((entry) => entry.id);
+            setDismissed((prev) => new Set([...prev, ...old]));
+          }
+          firstRead.current = false;
+        })
         .catch(() => undefined),
     [],
   );

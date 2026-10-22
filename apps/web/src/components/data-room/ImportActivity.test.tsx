@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({
-  t: (parts: TemplateStringsArray) => parts.join(""),
+  t: (parts: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: parts }, ...values),
   plural: (n: number, o: { one: string; other: string }) =>
     (n === 1 ? o.one : o.other).replace("#", String(n)),
 }));
@@ -41,9 +41,22 @@ const text = (imports: DataRoomApiImport[]) => {
   return { status, out };
 };
 
-it("names every imported file, or none, never fewer names than files", () => {
+it("names the newest files and counts the rest as +N more", () => {
   expect(text([entry(2, ["a.txt", "b.txt"])]).out).toEqual(["a.txt", "b.txt", ""]);
-  const miscount = text([entry(2, ["b.txt"])]);
-  expect(miscount.status).toBe("Imported 2 files");
-  expect(miscount.out).toEqual([""]);
+  const more = text([entry(4, ["a.txt", "b.txt", "c.txt"])]);
+  expect(more.status).toBe("Imported 4 files");
+  expect(more.out).toEqual(["a.txt", "b.txt", "c.txt", ""]);
+  const el = document.createElement("div");
+  const root = createRoot(el);
+  act(() =>
+    root.render(
+      <ImportActivity
+        imports={[entry(4, ["a.txt", "b.txt", "c.txt"])]}
+        onOpenItem={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    ),
+  );
+  expect(el.textContent).toContain("+1 more");
+  act(() => root.unmount());
 });

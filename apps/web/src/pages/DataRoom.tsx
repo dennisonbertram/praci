@@ -129,13 +129,24 @@ export function DataRoomPage({
   // The open folder lives in the URL and nothing else does: a reload, a bookmark, a shared link or
   // the Back button opens the folder again. The other filters are page state.
   const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>(
-    // The Legal page links here to list the documents it has not checked.
-    () => (params.get("legal") === "unchecked" ? { legalUnchecked: true } : {}),
+    // The Legal page links here to list the documents it has not checked, the sidebar badge to
+    // list the files that failed.
+    () => ({
+      ...(params.get("legal") === "unchecked" ? { legalUnchecked: true } : {}),
+      ...(params.get("status") === "failed" ? { status: "failed" as const } : {}),
+    }),
   );
   const filters = useMemo<Filters>(
     () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
     [otherFilters, urlFolder],
   );
+  // The sidebar badge links here while the page may already be open.
+  const urlFailed = params.get("status") === "failed";
+  useEffect(() => {
+    if (urlFailed) setOtherFilters((prev) => ({ ...prev, status: "failed" }));
+  }, [urlFailed]);
+  const statusParamRef = useRef(params.has("status"));
+  statusParamRef.current = params.has("status");
   const urlFolderRef = useRef(urlFolder);
   urlFolderRef.current = urlFolder;
   // setParams changes with every navigation; the callbacks below must not.
@@ -145,15 +156,18 @@ export function DataRoomPage({
   const setFilters = useCallback(
     ({ folderId, ...rest }: Filters, replace = false) => {
       setOtherFilters(rest);
-      if (folderId === urlFolderRef.current) return;
+      // A cleared failed-files filter must not come back on reload.
+      const dropStatus = rest.status !== "failed" && statusParamRef.current;
+      if (folderId === urlFolderRef.current && !dropStatus) return;
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
           if (folderId) next.set("folder", folderId);
           else next.delete("folder");
+          if (dropStatus) next.delete("status");
           return next;
         },
-        { replace },
+        { replace: replace || folderId === urlFolderRef.current },
       );
     },
     [setParams],
@@ -663,6 +677,8 @@ export function DataRoomPage({
           </Link>
         ) : null}
         <PageHeader
+          // The space name is in the sidebar; on a phone its own line pushes the first file below 160px.
+          className="max-sm:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Data room</Trans>}
           meta={
             spaceName ? (
@@ -868,14 +884,22 @@ export function DataRoomPage({
                           <Trans>No results</Trans>
                         </p>
                       )}
-                      {searching ? (
-                        <Button variant="outline" size="sm" onClick={() => setQueryInput("")}>
-                          <Trans>Clear search</Trans>
-                        </Button>
-                      ) : null}
-                      {filtered ? (
-                        <Button variant="outline" size="sm" onClick={clearFilters}>
-                          <Trans>Clear filters</Trans>
+                      {searching || filtered ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setQueryInput("");
+                            clearFilters();
+                          }}
+                        >
+                          {searching && filtered ? (
+                            <Trans>Clear all</Trans>
+                          ) : searching ? (
+                            <Trans>Clear search</Trans>
+                          ) : (
+                            <Trans>Clear filters</Trans>
+                          )}
                         </Button>
                       ) : null}
                     </div>

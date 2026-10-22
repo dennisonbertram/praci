@@ -1,5 +1,4 @@
 // Pure grouping for the Inbox list. The viewer's local midnight decides Today, so callers pass `now`.
-import { priorityRank } from "./inbox-triage.js";
 
 export type InboxGroupRow = {
   receivedAt: string;
@@ -18,10 +17,9 @@ export function groupInbox<T extends InboxGroupRow>(
     else if (new Date(row.receivedAt).getTime() >= midnight) groups.today.push(row);
     else groups.earlier.push(row);
   }
+  // Newest first, so the list reads in time order.
   groups.needsReply.sort(
-    (a, b) =>
-      priorityRank(a.priority ?? null) - priorityRank(b.priority ?? null) ||
-      new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime(),
+    (a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime(),
   );
   return groups;
 }

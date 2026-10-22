@@ -54,11 +54,6 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
-#. placeholder {0}: glance.legalDueSoon
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# due soon} other {# due soon}}"
-msgstr ""
-
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -100,6 +95,11 @@ msgstr "{0, plural, one {# модель} few {# модели} many {# модел
 #: src/pages/Gtm.tsx
 #: src/pages/Shell.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
+msgstr ""
+
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -689,6 +689,10 @@ msgstr ""
 msgid "+{more} more"
 msgstr ""
 
+#: src/components/data-room/ImportActivity.tsx
+msgid "+{unnamed} more"
+msgstr ""
+
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr ""
@@ -790,6 +794,10 @@ msgstr ""
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Accounts"
 msgstr "Аккаунты"
+
+#: src/components/inbox/InboxRow.tsx
+msgid "Action"
+msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Action confirmations"
@@ -1039,7 +1047,6 @@ msgstr ""
 msgid "Address or ENS"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1296,6 +1303,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Any time"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -1722,6 +1733,7 @@ msgstr ""
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -2164,14 +2176,13 @@ msgstr ""
 msgid "Category"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Cc"
-msgstr ""
-
-#. placeholder {0}: message.cc
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "cc {0}"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -2397,6 +2408,10 @@ msgstr ""
 msgid "Clear {sourceName} filter"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Clear all"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Clear conversation"
@@ -2465,6 +2480,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Закрыть"
@@ -4421,6 +4437,10 @@ msgstr ""
 msgid "Done"
 msgstr "Готово"
 
+#: src/pages/Legal.tsx
+msgid "Done deadlines"
+msgstr ""
+
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
 #: src/components/data-room/SelectionBar.tsx
@@ -5563,6 +5583,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -5730,6 +5751,10 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Investors"
+msgstr ""
+
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -6207,6 +6232,10 @@ msgstr ""
 
 #: src/components/investors/ActionItems.tsx
 msgid "Mark done"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark done: {replyDoneText}"
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -6730,10 +6759,6 @@ msgstr ""
 msgid "Needs approval"
 msgstr ""
 
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
-msgstr ""
-
 #: src/lib/devin-format.ts
 msgid "Needs input"
 msgstr "Требуется ввод данных"
@@ -6982,6 +7007,10 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No deadlines marked done."
+msgstr ""
+
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
 msgstr ""
@@ -7031,7 +7060,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "No longer active"
-msgstr "Больше не активен"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "No mail"
@@ -7632,6 +7661,10 @@ msgstr "Необязательно"
 msgid "Optional faster balance reads"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Или подключить API-ключ"
@@ -7856,6 +7889,10 @@ msgstr ""
 #: src/components/fundraising/RoundCard.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Per model and documents"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -8275,6 +8312,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Reading {done} of {total}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Reading {readCount} of {scanTotal}"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -8720,6 +8761,10 @@ msgstr "Заменить ключ"
 msgid "Replace value"
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "Replaced by a newer request"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -8875,6 +8920,10 @@ msgstr ""
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Review"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -9312,7 +9361,7 @@ msgid "See usage"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "See what bots can reach, and add more in Integrations."
+msgid "See what bots can reach and add more."
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
@@ -9383,6 +9432,10 @@ msgstr ""
 #. placeholder {0}: confirming[0]?.mailTo ?? ""
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Send an unsubscribe email to {0}?"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Send and receive iMessages"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -9605,11 +9658,17 @@ msgstr "Оболочка"
 msgid "Show {hiddenReplies} more"
 msgstr ""
 
+#. placeholder {0}: plan.operations.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Show all {0} changes"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr ""
 
 #: src/pages/Investors.tsx
+#: src/pages/Legal.tsx
 msgid "Show done"
 msgstr ""
 
@@ -9636,6 +9695,10 @@ msgstr ""
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Показать ещё"
+
+#: src/pages/Legal.tsx
+msgid "Show open"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Show original message"
@@ -9862,13 +9925,13 @@ msgstr ""
 msgid "Slack"
 msgstr ""
 
+#: src/pages/shell/message-cards.tsx
+msgid "Slack and your calendar"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Сообщение Slack"
-
-#: src/pages/shell/message-cards.tsx
-msgid "Slack, calendar and email"
-msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Slack, Notion, GitHub and more, with one Composio API key"
@@ -9911,6 +9974,10 @@ msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Sort every file in the Data room"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort new files"
 msgstr ""
 
 #: src/components/ListControls.tsx
@@ -10662,10 +10729,6 @@ msgid "This zip is too large to unpack"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Through a Photon project"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
 msgid "Through BlueBubbles on your Mac"
 msgstr ""
 
@@ -10691,6 +10754,10 @@ msgstr ""
 msgid "Title"
 msgstr "Заголовок"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "to"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
@@ -10699,16 +10766,12 @@ msgstr "Заголовок"
 msgid "To"
 msgstr ""
 
-#. placeholder {0}: message.to
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "to {0}"
-msgstr ""
-
 #. placeholder {0}: filters.dateRange.to
 #: src/pages/ActivityList.tsx
 msgid "To {0}"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
 msgid "To do"
@@ -11210,6 +11273,7 @@ msgstr ""
 msgid "Uploaded"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
@@ -11389,6 +11453,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
+msgstr ""
+
+#: src/lib/roster-status.ts
+msgid "Waiting for approval"
 msgstr ""
 
 #: src/components/fundraising/Pipeline.tsx

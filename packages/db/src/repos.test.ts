@@ -54,7 +54,10 @@ describe("createRepos.listBots", () => {
         thread: { ...baseBot.thread, runs: [{ id: "run-failed", status: "failed" }] },
       },
     ]);
-    const repos = createRepos({ bot: { findMany } } as unknown as PrismaClient);
+    const repos = createRepos({
+      bot: { findMany },
+      run: { findMany: async () => [] },
+    } as unknown as PrismaClient);
 
     const failed = await repos.listBots(actor);
     expect(failed[0]).toMatchObject({ status: "idle", runErrorId: "run-failed" });
@@ -113,13 +116,13 @@ describe("createRepos.listBots", () => {
           })),
         ),
       },
-      run: { findMany: vi.fn(async () => []) },
+      run: { findMany: vi.fn(async (_args?: unknown) => []) },
     };
 
     const bots = await createRepos(prisma as unknown as PrismaClient).listBots(actor);
 
     expect(bots.map((bot) => bot.preview)).toEqual(["Answer one", "Answer two"]);
-    expect(prisma.run.findMany).toHaveBeenCalledExactlyOnceWith({
+    expect(prisma.run.findMany).toHaveBeenNthCalledWith(1, {
       where: { id: { in: ["run-one", "run-two"] }, trigger: { in: ["bot_message", "tickets"] } },
       select: { id: true, trigger: true },
     });
@@ -148,7 +151,7 @@ describe("createRepos.listBots", () => {
           },
         ]),
       },
-      run: { findMany: vi.fn(async () => []) },
+      run: { findMany: vi.fn(async (_args?: unknown) => []) },
     };
 
     const bots = await createRepos(prisma as unknown as PrismaClient).listBots(actor);
@@ -175,7 +178,8 @@ describe("createRepos.listBots", () => {
         findMany: vi
           .fn()
           .mockResolvedValueOnce([{ id: "peer-new" }])
-          .mockResolvedValueOnce([{ id: "peer-old" }]),
+          .mockResolvedValueOnce([{ id: "peer-old" }])
+          .mockResolvedValue([]),
       },
       message: {
         findMany: vi
@@ -194,7 +198,6 @@ describe("createRepos.listBots", () => {
     const bots = await createRepos(prisma as unknown as PrismaClient).listBots(actor);
 
     expect(bots[0]?.preview).toBe("Visible answer");
-    expect(prisma.run.findMany).toHaveBeenCalledTimes(2);
     expect(prisma.run.findMany).toHaveBeenNthCalledWith(2, {
       where: {
         id: { in: ["peer-old", "user-old"] },
@@ -257,7 +260,7 @@ describe("createRepos.listBots", () => {
     );
   });
 
-  it("previews a delegate's answer, not the question that started the hand-off", async () => {
+  it("previews the last visible message, never a delegate's collapsed receipt", async () => {
     const prisma = {
       bot: {
         findMany: vi.fn(async () => [
@@ -291,7 +294,110 @@ describe("createRepos.listBots", () => {
     };
 
     await expect(createRepos(prisma as unknown as PrismaClient).listBots(actor)).resolves.toEqual([
-      expect.objectContaining({ preview: "Burn is $10 a month." }),
+      expect.objectContaining({ preview: "Ask Finance for burn." }),
+    ]);
+  });
+
+  it("reads past a bare hand-off step and says Waiting for approval while the delegate waits", async () => {
+    const handOff = {
+      runId: "run-user",
+      blocks: [{ kind: "steps", steps: [{ label: "Message bot", count: 1 }] }],
+    };
+    const prisma = {
+      bot: {
+        findMany: vi.fn(async () => [
+          {
+            ...baseBot,
+            thread: {
+              ...baseBot.thread,
+              messages: [
+                handOff,
+                { runId: "run-user", blocks: [{ kind: "text", text: "Pay Acme $300." }] },
+              ],
+            },
+          },
+        ]),
+      },
+      run: {
+        findMany: vi.fn(
+          async (_args: { where: Record<string, unknown> }): Promise<unknown[]> => [],
+        ),
+      },
+    };
+    const repos = createRepos(prisma as unknown as PrismaClient);
+    await expect(repos.listBots(actor)).resolves.toEqual([
+      expect.objectContaining({ preview: "Pay Acme $300." }),
+    ]);
+
+    prisma.run.findMany.mockImplementation(async (args: { where: Record<string, unknown> }) =>
+      args.where.status === "waiting_input"
+        ? [
+            {
+              id: "run-mercury",
+              taskId: "t1",
+              threadId: "thread-m",
+              botId: "bot-m",
+              sourceMessage: {
+                blocks: [
+                  {
+                    kind: "bot_message_received",
+                    fromBotId: baseBot.id,
+                    returnToMessageId: "m-sent",
+                  },
+                ],
+              },
+            },
+          ]
+        : [],
+    );
+    (prisma as unknown as { message: unknown }).message = {
+      findMany: vi.fn(async () => [{ id: "m-sent" }]),
+    };
+    await expect(repos.listBots(actor)).resolves.toEqual([
+      expect.objectContaining({ preview: "Waiting for approval" }),
+    ]);
+  });
+
+  it("says Waiting for approval even when the hand-off is older than the preview window", async () => {
+    const prisma = {
+      bot: {
+        findMany: vi.fn(async () => [
+          {
+            ...baseBot,
+            thread: {
+              ...baseBot.thread,
+              messages: [{ runId: "run-user", blocks: [{ kind: "text", text: "Any news?" }] }],
+            },
+          },
+        ]),
+      },
+      run: {
+        findMany: vi.fn(async (args: { where: Record<string, unknown> }) =>
+          args.where.status === "waiting_input"
+            ? [
+                {
+                  id: "run-mercury",
+                  taskId: "t1",
+                  threadId: "thread-m",
+                  botId: "bot-m",
+                  sourceMessage: {
+                    blocks: [
+                      {
+                        kind: "bot_message_received",
+                        fromBotId: baseBot.id,
+                        returnToMessageId: "m-sent",
+                      },
+                    ],
+                  },
+                },
+              ]
+            : [],
+        ),
+      },
+      message: { findMany: vi.fn(async () => [{ id: "m-sent" }]) },
+    };
+    await expect(createRepos(prisma as unknown as PrismaClient).listBots(actor)).resolves.toEqual([
+      expect.objectContaining({ preview: "Waiting for approval" }),
     ]);
   });
 
@@ -470,7 +576,10 @@ describe("createRepos.listSpaceBotsForSpaces", () => {
         runs: [{ status: "running" }],
       },
     ]);
-    const repos = createRepos({ bot: { findMany } } as unknown as PrismaClient);
+    const repos = createRepos({
+      bot: { findMany },
+      run: { findMany: async () => [] },
+    } as unknown as PrismaClient);
 
     await expect(repos.listSpaceBotsForSpaces(actor, ["ws-2"])).resolves.toEqual([
       {

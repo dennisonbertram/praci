@@ -143,6 +143,7 @@ export const LegalOverviewSchema = z.object({
     activeContracts: z.number().int(),
     openDeadlines: z.number().int(),
     overdueDeadlines: z.number().int(),
+    doneDeadlines: z.number().int(),
     /** Data Room items the agent has not analyzed yet, or analyzed at an older revision. */
     unreviewedDocuments: z.number().int(),
   }),

@@ -1565,6 +1565,8 @@ export const appContract = {
     agent: oc.output(BotSchema),
     overview: oc.output(LegalOverviewSchema),
     graph: oc.output(LegalGraphSchema),
+    /** Deadlines marked done, most recently due first, for the Done list under Deadlines. */
+    doneDeadlines: oc.output(z.array(LegalDeadlineSchema)),
     updateDeadline: oc.input(LegalUpdateDeadlineInputSchema).output(LegalDeadlineSchema),
     /** Queues one scan run in the Legal agent's thread (returns the active run if one is already going). */
     scanNow: oc.output(LegalScanNowOutputSchema),

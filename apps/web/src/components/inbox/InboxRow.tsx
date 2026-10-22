@@ -18,6 +18,7 @@ import {
   Archive,
   BellOff,
   Ellipsis,
+  ListChecks,
   Mail,
   MailOpen,
   Paperclip,
@@ -141,6 +142,7 @@ export function InboxGroup({
   selectedId,
   hideAttention,
   unreadTotal,
+  todoIds,
   ...picking
 }: {
   /** Omitted for search results, which show one count instead. */
@@ -156,6 +158,8 @@ export function InboxGroup({
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
+  /** Rows whose mail has an open to-do; the To do card leaves them out, so the row says so. */
+  todoIds?: ReadonlySet<string>;
 } & RowPicking) {
   const { t } = useLingui();
   if (rows.length === 0) return null;
@@ -182,6 +186,7 @@ export function InboxGroup({
             onRead={onRead}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
+            todo={todoIds?.has(row.id)}
             {...rowPicking(row.id, picking)}
           />
         ))}
@@ -198,6 +203,7 @@ export function InboxRow({
   onRead,
   selected = false,
   hideAttention = false,
+  todo = false,
   picked = false,
   anyPicked = false,
   onPick,
@@ -213,6 +219,7 @@ export function InboxRow({
   onRead?: (messageId: string, read: boolean) => void;
   selected?: boolean;
   hideAttention?: boolean;
+  todo?: boolean;
   /** The row's checkbox is checked. */
   picked?: boolean;
   /** Some row of the list is checked, so every row shows its checkbox. */
@@ -228,7 +235,15 @@ export function InboxRow({
   const { t } = useLingui();
   useHideAmounts();
   const labelNames = {
-    attention: row.needsReply === true ? t`Needs reply` : t`Needs attention`,
+    // Needs reply is the one phrase for mail that wants an answer; other urgent mail says why.
+    attention:
+      row.needsReply === true
+        ? t`Needs reply`
+        : row.priority === "critical"
+          ? t`Urgent`
+          : row.priority === "important"
+            ? t`Important`
+            : t`Action`,
     newsletter: t`Newsletter`,
     spam: t`Spam`,
     junk: t`Junk`,
@@ -318,7 +333,7 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length ? `@md:group-hover/row:pe-24 @md:group-focus-within/row:pe-24 ${selected ? "@md:pe-24" : ""}` : ""}`}
+            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length && selected ? "@md:pe-24" : ""}`}
           >
             {label ? (
               <span
@@ -343,6 +358,21 @@ export function InboxRow({
             >
               {labelNames[label]}
             </Badge>
+          ) : null}
+          {todo && !label ? (
+            <Badge
+              variant="outline"
+              className={`col-start-4 row-start-1 hidden @md:inline-flex ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
+            >
+              <Trans>To do</Trans>
+            </Badge>
+          ) : null}
+          {todo && !label ? (
+            <ListChecks
+              role="img"
+              aria-label={t`To do`}
+              className="col-start-4 row-start-1 size-4 text-muted-foreground @md:hidden"
+            />
           ) : null}
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           {row.inInbox || !showArchived ? null : (

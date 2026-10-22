@@ -85,9 +85,27 @@ it("shows one label naming why the row needs attention", async () => {
 
 it("keeps the attention label on important mail that needs no reply", async () => {
   const container = await render(
-    mail({ needsReply: false, priority: "important", category: "action" }),
+    mail({ needsReply: false, priority: "normal", category: "action" }),
   );
-  expect(badge(container)?.textContent).toBe("Needs attention");
+  expect(badge(container)?.textContent).toBe("Action");
+});
+
+it("says why other urgent mail is urgent instead of a second 'you must act' phrase", async () => {
+  expect(
+    badge(await render(mail({ needsReply: false, priority: "critical", category: "billing" })))
+      ?.textContent,
+  ).toBe("Urgent");
+  expect(
+    badge(await render(mail({ needsReply: false, priority: "important", category: "personal" })))
+      ?.textContent,
+  ).toBe("Important");
+});
+
+it("drops the attention label once the newest message is the user's own reply", async () => {
+  const container = await render(
+    mail({ needsReply: false, priority: "important", category: "action", fromSelf: true }),
+  );
+  expect(badge(container)).toBeNull();
 });
 
 it.each([
@@ -240,4 +258,29 @@ it("offers Archive only for mail that is in the inbox", async () => {
   expect(gone.querySelector('[aria-label="Archive"]')).toBeNull();
   const here = await render(mail(), { onArchive: () => {} });
   expect(here.querySelector('[aria-label="Archive"]')).not.toBeNull();
+});
+
+it("marks a row whose mail has an open to-do", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  cleanups.push(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+  await act(async () =>
+    root.render(
+      <InboxGroup
+        rows={[mail({ id: "m1" }), mail({ id: "m2" })]}
+        onOpen={() => {}}
+        onMark={undefined}
+        todoIds={new Set(["m2"])}
+      />,
+    ),
+  );
+  const badges = [...container.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent);
+  expect(badges).toEqual(["To do"]);
+  // Phones hide the badge, so a labelled icon says it.
+  expect(container.querySelectorAll('svg[role="img"][aria-label="To do"]')).toHaveLength(1);
 });

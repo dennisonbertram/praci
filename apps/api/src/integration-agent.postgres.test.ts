@@ -251,7 +251,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     });
     expect(bot.instructions).toContain("Mercury");
     expect(bot.instructions).toContain("Mercury may also hold it for its own approval");
-    expect(bot.description).toContain("Your Mercury account");
+    expect(bot.description).toBe("Reads your Mercury balances and transactions.");
     expect(bot.description).not.toContain("message_bot");
     expect(bot.instructions).toContain('turn on "Allow changes in Mercury"');
     // Changes on: the agent calls the tool so the approval card appears, never asks in chat.

@@ -20,6 +20,7 @@ import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
+import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -125,6 +126,10 @@ function Legal({
     deadlines: Map<string, string>;
   } | null>(null);
   const [scanResult, setScanResult] = useState("");
+  // How many documents were unchecked when Scan now was pressed; the count falling is the progress.
+  // Deadlines the user closed, listed on request under Deadlines.
+  const [showDone, setShowDone] = useState(false);
+  const [scanTotal, setScanTotal] = useState(0);
   const status = granted ?? consent.data;
   const data = overview.data;
   const lastRun = data?.agent.lastScanRun ?? null;
@@ -216,6 +221,7 @@ function Legal({
   const scan = async () => {
     setScanError("");
     setScanResult("");
+    setScanTotal(data?.counts.unreviewedDocuments ?? 0);
     timedOut.current = false;
     beforeScan.current = data && {
       contracts: new Map(data.contracts.map((c) => [c.id, c.analyzedAt])),
@@ -247,7 +253,11 @@ function Legal({
   if (!data) return <LegalSkeleton />;
   // Nothing in the Data room yet: one sentence and Add files, not a consent card or empty tabs.
   const noDocuments =
-    data.counts.contracts + data.counts.openDeadlines + data.counts.unreviewedDocuments === 0 &&
+    data.counts.contracts +
+      data.counts.openDeadlines +
+      data.counts.doneDeadlines +
+      data.counts.unreviewedDocuments ===
+      0 &&
     !data.agent.lastScanAt &&
     !running;
   const needsConsent = status?.allowed === false;
@@ -268,11 +278,19 @@ function Legal({
     Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
   // Below the tabs, so the result appearing never moves them.
-  const resultLine = scanResult ? (
-    <p role="status" className="mb-3 text-sm text-muted-foreground">
-      {scanResult}
-    </p>
-  ) : null;
+  const readCount = Math.min(scanTotal, Math.max(0, scanTotal - counts.unreviewedDocuments));
+  const resultLine =
+    running && scanTotal > 0 && !scanResult ? (
+      <p role="status" className="mb-3 text-sm text-muted-foreground">
+        <Trans>
+          Reading {readCount} of {scanTotal}
+        </Trans>
+      </p>
+    ) : scanResult ? (
+      <p role="status" className="mb-3 text-sm text-muted-foreground">
+        {scanResult}
+      </p>
+    ) : null;
   return (
     <div>
       <PageHeader
@@ -364,19 +382,24 @@ function Legal({
           </button>
         </div>
       ) : null}
-      {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
+      {/* A row, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
       {counts.unreviewedDocuments > 0 ? (
-        <p className="-mt-2 mb-4 text-sm text-muted-foreground">
-          <Link
-            to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground underline underline-offset-2"
-          >
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-2 text-sm">
+          <p className="min-w-0 text-muted-foreground">
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
               other: "# Data room documents not yet checked by Legal",
             })}
-          </Link>
-        </p>
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            render={<Link to={`${DATA_ROOM_PATH}?legal=unchecked`} />}
+          >
+            <Trans>Review</Trans>
+          </Button>
+        </div>
       ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
       {noDocuments ? (
@@ -389,7 +412,10 @@ function Legal({
             <Trans>Add files</Trans>
           </Button>
         </PageEmptyState>
-      ) : !needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
+      ) : !needsConsent &&
+        data.contracts.length === 0 &&
+        data.deadlines.length === 0 &&
+        data.counts.doneDeadlines === 0 ? (
         <>
           {resultLine}
           <PageEmptyState
@@ -439,6 +465,19 @@ function Legal({
             <LegalContracts contracts={data.contracts} selfName={selfName} />
           ) : null}
           {view === "deadlines" ? (
+            <div className="mb-2 flex justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-pressed={showDone}
+                onClick={() => setShowDone(!showDone)}
+              >
+                {showDone ? <Trans>Show open</Trans> : <Trans>Show done</Trans>}
+              </Button>
+            </div>
+          ) : null}
+          {view === "deadlines" && showDone ? <DoneDeadlines /> : null}
+          {view === "deadlines" && !showDone ? (
             <LegalDeadlines
               deadlines={data.deadlines}
               onChanged={overview.reload}
@@ -456,6 +495,40 @@ function Legal({
         </>
       )}
     </div>
+  );
+}
+
+function DoneDeadlines() {
+  const done = useFinanceQuery(() => rpc.legal.doneDeadlines(), []);
+  if (done.error) return <ErrorNotice message={done.error} onRetry={done.retry} />;
+  if (!done.data) return <Skeleton aria-busy="true" className="h-24 bg-border" />;
+  if (done.data.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        <Trans>No deadlines marked done.</Trans>
+      </p>
+    );
+  }
+  return (
+    <ul aria-label={t`Done deadlines`} className="flex flex-col">
+      {done.data.map((deadline) => (
+        <li
+          key={deadline.id}
+          className="flex flex-wrap justify-between gap-x-4 border-t border-border py-2.5 text-sm"
+        >
+          <span className="min-w-0 font-medium">
+            {maskCurrencyWhenHidden(
+              deadline.contractTitle
+                ? `${deadline.title}: ${deadline.contractTitle}`
+                : deadline.title,
+            )}
+          </span>
+          <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
+            {fullDay(deadline.dueDate)}
+          </time>
+        </li>
+      ))}
+    </ul>
   );
 }
 

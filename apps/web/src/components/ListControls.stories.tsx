@@ -9,7 +9,7 @@ const fields: [Field, string][] = [
   ["percent", "Ownership"],
 ];
 
-function Controls({ pick }: { pick?: string }) {
+function Controls({ pick, anyLabel }: { pick?: string; anyLabel?: string }) {
   const [query, setQuery] = useState("");
   const [value, setValue] = useState(pick);
   const [field, setField] = useState<Field>("percent");
@@ -26,6 +26,7 @@ function Controls({ pick }: { pick?: string }) {
       />
       <PickFilter
         label="Security"
+        anyLabel={anyLabel}
         value={value}
         options={[
           ["Common", "Common"],
@@ -53,3 +54,5 @@ type Story = StoryObj;
 
 export const Default: Story = { render: () => <Controls /> };
 export const WithFilterSet: Story = { render: () => <Controls pick="SAFE" /> };
+/** A filter whose menu starts with its unfiltered choice, selected by default. */
+export const WithAnyChoice: Story = { render: () => <Controls anyLabel="Any security" /> };
