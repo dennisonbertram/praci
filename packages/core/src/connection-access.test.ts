@@ -108,6 +108,24 @@ describe("Composio Gmail linked to the Inbox agent", () => {
   });
 });
 
+describe("effectiveAccessByConnection for an email's own agent", () => {
+  const bots = [
+    { id: "inbox", spawnKey: "inbox-agent:user-1", archivedAt: null },
+    { id: "thread", spawnKey: "mail-thread:c1:t1", archivedAt: null },
+  ];
+  it("follows the Inbox agent's grants and ignores its own", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("a", "connected", false, { botAccess: grant("inbox") }),
+        row("b", "connected", false, { provider: "slack", botAccess: grant("thread") }),
+      ],
+      bots,
+    );
+    expect(result.a?.botIds).toEqual(["inbox", "thread"]);
+    expect(result.b?.botIds).toEqual([]);
+  });
+});
+
 describe("effectiveAccessByConnection for an external bot", () => {
   const bots = [
     { id: "chief", spawnKey: null, archivedAt: null },

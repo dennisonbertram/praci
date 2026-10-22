@@ -643,7 +643,7 @@ export const Composer = memo(function Composer({
           onRetrySend={
             // A restored draft goes out again through the composer, so a success clears it.
             sendError && onRetrySend
-              ? () => (retryNonce.current ? void send() : onRetrySend())
+              ? () => (draft.trim() ? void send() : onRetrySend())
               : undefined
           }
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}

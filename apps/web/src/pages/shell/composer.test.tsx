@@ -84,3 +84,47 @@ it("Retry resends the restored draft with its nonce and clears it once the send 
   expect(onSend.mock.calls[1]?.[2]).toBe(onSend.mock.calls[0]?.[2]);
   expect((document.querySelector("textarea") as HTMLTextAreaElement).value).toBe("");
 });
+
+it("Retry sends the edited text when the restored draft was changed", async () => {
+  const onSend = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
+  const ui = (sendError: string | null) => (
+    <Composer
+      activeName="Agent"
+      running={false}
+      pendingAttachments={[]}
+      attachmentNotice={null}
+      sendError={sendError}
+      runError={null}
+      runErrorId={null}
+      onRunErrorPresented={() => {}}
+      onDismissError={() => {}}
+      onRetrySend={() => {}}
+      sending={false}
+      fileInputRef={createRef()}
+      onAttachmentPick={() => false}
+      onRemoveAttachment={() => {}}
+      onSend={onSend}
+      onStop={async () => {}}
+      artifactTarget={{ botId: "b2" }}
+    />
+  );
+  const type = async (text: string) => {
+    const box = document.querySelector("textarea") as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(box, text);
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  await act(async () => root.render(ui(null)));
+  await type("hello");
+  await act(async () => {
+    document
+      .querySelector("textarea")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  await act(async () => root.render(ui("Could not reach")));
+  await type("hello world");
+  const retry = [...document.querySelectorAll("button")].find((b) => b.textContent === "Retry");
+  await act(async () => retry?.click());
+  expect(onSend.mock.calls[1]?.[0]).toBe("hello world");
+});

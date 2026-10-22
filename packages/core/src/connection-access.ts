@@ -169,12 +169,15 @@ export function effectiveAccessByConnection(
   bots: { id: string; spawnKey: string | null; archivedAt: Date | null; audience?: string }[],
 ): Record<string, EffectiveAccess> {
   const active = bots.filter((bot) => !bot.archivedAt);
+  // An email's own agent is judged by the Inbox agent's grants alone, as the executor reads them.
+  const inboxId = bots.find((bot) => isInboxAgentSpawnKey(bot.spawnKey))?.id;
   const usable = new Map<string, string[]>(rows.map((row) => [row.id, []]));
   for (const bot of active) {
+    const grantee = isMailThreadAgentSpawnKey(bot.spawnKey) ? inboxId : bot.id;
     const own = connectionRowsForAudience(
       rows.map((row) => ({
         ...row,
-        botAccess: row.botAccess.filter((entry) => entry.botId === bot.id),
+        botAccess: row.botAccess.filter((entry) => entry.botId === grantee),
       })),
       bot.audience,
     );
