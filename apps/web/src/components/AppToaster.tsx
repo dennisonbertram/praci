@@ -37,27 +37,13 @@ const markOpened = (n: NotificationDto) =>
     )
     .then(announceChange, () => undefined);
 
-const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
-const APPROVAL_PAGES = 10;
 const APPROVAL_POLL_MS = 2000;
 
-/** Lists the week's notifications and lets the toasts follow the approvals still unanswered. */
+/** Lets the toasts follow the approvals still waiting for an answer, however long ago they were sent. */
 async function followUnansweredApprovals(openBotId: () => string | undefined) {
-  const found: NotificationDto[] = [];
-  let cursor: string | undefined;
-  let complete = false;
-  const since = new Date(Date.now() - APPROVAL_LOOKBACK_MS).toISOString();
-  for (let page = 0; page < APPROVAL_PAGES; page++) {
-    const result = await rpc.notifications.list(cursor ? { cursor } : { since });
-    found.push(...result.notifications);
-    if (!result.nextCursor) {
-      complete = true;
-      break;
-    }
-    cursor = result.nextCursor;
-  }
-  syncApprovalToasts(found, {
-    complete,
+  const { notifications } = await rpc.notifications.pendingApprovals();
+  syncApprovalToasts(notifications, {
+    complete: true,
     onSeen: (n) => () => void markOpened(n),
     skip: (n) => Boolean(n.botId) && n.botId === openBotId(),
   });

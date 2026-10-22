@@ -558,7 +558,7 @@ import {
 } from "./openrouter-oauth.js";
 import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
 import { listRoutineRuns } from "./routine-runs.js";
-import { listSpaceRuns } from "./runs.js";
+import { listPendingApprovalNotifications, listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
 import { querySpaceSearch } from "./search.js";
 import { withSerializableRetry } from "./serializable-retry.js";
@@ -8510,6 +8510,11 @@ export function createRouter(deps: RouterDeps) {
           throw error;
         }
       }),
+      pendingApprovals: authed.notifications.pendingApprovals.handler(async ({ context }) => ({
+        notifications: (await listPendingApprovalNotifications(deps.prisma, context.actor)).map(
+          toNotificationDto,
+        ),
+      })),
       markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
         count: await markSeen(deps.prisma, {
           ...context.actor,

@@ -125,3 +125,44 @@ export async function listSpaceRuns(
     ).toISOString(),
   }));
 }
+
+/**
+ * The unseen "needs approval" notifications whose card is still waiting for an answer: the run is
+ * held for input, its agent exists and is not archived, and a card on it is unanswered. Reading the
+ * runs rather than the notification history keeps an old approval, or one for a deleted agent,
+ * from being restored or dropped by how long ago it was sent.
+ */
+export async function listPendingApprovalNotifications(prisma: PrismaClient, actor: Actor) {
+  const runs = await prisma.run.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      status: "waiting_input",
+      bot: { archivedAt: null },
+    },
+    select: { id: true, threadId: true },
+  });
+  if (runs.length === 0) return [];
+  const messages = await prisma.message.findMany({
+    where: { runId: { in: runs.map((run) => run.id) }, thread: { spaceId: actor.spaceId } },
+    orderBy: { seq: "asc" },
+    select: { runId: true, blocks: true },
+  });
+  const threadIds = runs
+    .filter((run) => pendingAskSnippet(messages.filter((m) => m.runId === run.id)) !== undefined)
+    .map((run) => run.threadId);
+  if (threadIds.length === 0) return [];
+  return prisma.notification.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      surface: "thread",
+      threadId: { in: threadIds },
+      importance: "attention",
+      kind: "needs_input",
+      title: { endsWith: " needs approval" },
+      seenAt: null,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+}

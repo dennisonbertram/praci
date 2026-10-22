@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { activityNotificationsEnabled, activityPromptSnippet, pendingAskSnippet } from "./runs.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  activityNotificationsEnabled,
+  activityPromptSnippet,
+  listPendingApprovalNotifications,
+  pendingAskSnippet,
+} from "./runs.js";
 
 describe("run activity copy", () => {
   it("presents structured agent messages instead of their internal wake prompt", () => {
@@ -74,4 +79,45 @@ it("previews the pending question on a held run and skips answered cards", () =>
   );
   expect(pendingAskSnippet([ask("Done", "answered")])).toBeUndefined();
   expect(pendingAskSnippet([{ blocks: [{ kind: "text", text: "hi" }] }])).toBeUndefined();
+});
+
+describe("listPendingApprovalNotifications", () => {
+  const actor = { spaceId: "s", userId: "u" } as never;
+  const fake = (runs: unknown[], messages: unknown[]) => {
+    const notificationFind = vi.fn(async () => [{ id: "n1" }]);
+    const runFind = vi.fn(async () => runs);
+    const prisma = {
+      run: { findMany: runFind },
+      message: { findMany: vi.fn(async () => messages) },
+      notification: { findMany: notificationFind },
+    } as never;
+    return { prisma, runFind, notificationFind };
+  };
+
+  it("looks only at held runs of existing agents, however old the notification", async () => {
+    const { prisma, runFind, notificationFind } = fake(
+      [{ id: "r1", threadId: "t1" }],
+      [{ runId: "r1", blocks: [{ kind: "ask", text: "Send?", status: "pending" }] }],
+    );
+    await listPendingApprovalNotifications(prisma, actor);
+    expect(runFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "waiting_input", bot: { archivedAt: null } }),
+      }),
+    );
+    const where = (
+      notificationFind.mock.calls[0] as unknown as [{ where: Record<string, unknown> }]
+    )[0].where;
+    expect(where).toMatchObject({ threadId: { in: ["t1"] }, seenAt: null });
+    expect(where).not.toHaveProperty("createdAt");
+  });
+
+  it("returns nothing when the card was answered", async () => {
+    const { prisma, notificationFind } = fake(
+      [{ id: "r1", threadId: "t1" }],
+      [{ runId: "r1", blocks: [{ kind: "ask", text: "Send?", status: "answered" }] }],
+    );
+    expect(await listPendingApprovalNotifications(prisma, actor)).toEqual([]);
+    expect(notificationFind).not.toHaveBeenCalled();
+  });
 });
