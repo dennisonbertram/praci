@@ -7,6 +7,8 @@ export interface BotToolControls {
   disableTool(botId: string, tool: string): Promise<void>;
   /** Opens the mail composer on a message the person still needs to send themselves. */
   openComposer(draft: ComposerDraft): void;
+  /** The composer already knows the account (an email's own panel), so a card without one still opens it. */
+  accountFromThread?: boolean;
 }
 
 export interface ComposerDraft {

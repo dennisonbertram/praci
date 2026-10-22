@@ -146,8 +146,9 @@ export function LegalContracts({
     if ((event.target as HTMLElement).closest("a, button")) return;
     navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, { state: { from: "legal" } });
   };
-  // Active is the normal case, so the column appears only when some contract is not.
-  const showStatus = contracts.some((contract) => contract.status !== "active");
+  // Active is the normal case. With one exception a chip beside the title says it; the column
+  // appears only when it would hold more than one value.
+  const showStatus = contracts.filter((contract) => contract.status !== "active").length >= 2;
   return (
     <>
       <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
@@ -229,6 +230,11 @@ export function LegalContracts({
                 title={`${contract.title} (${contract.contractType})`}
               >
                 <Title contract={contract} inline />
+                {showStatus ? null : (
+                  <span className="ms-2 align-middle">
+                    <Status status={contract.status} />
+                  </span>
+                )}
               </TableCell>
               <TableCell className="whitespace-normal" title={contract.counterparties.join(", ")}>
                 <span className="line-clamp-2">{contract.counterparties.join(", ") || dash}</span>

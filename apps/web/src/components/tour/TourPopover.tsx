@@ -8,6 +8,8 @@ export type TourStep = {
   /** CSS selector of the element the step points at. A step whose element is missing is skipped. */
   anchor: string;
   text: string;
+  /** The item the step explains. The card stays in one spot, so its first word names the target. */
+  name: string;
 };
 
 /** About as tall as a card; keeps a card placed under a target inside the window. */
@@ -120,6 +122,8 @@ export function TourPopover({
   const body = (
     <>
       <p className="min-h-10 text-sm" aria-live="polite">
+        <span className="font-medium">{step.name}</span>
+        {": "}
         {step.text}
       </p>
       {last && lastAction ? (

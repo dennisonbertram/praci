@@ -313,8 +313,15 @@ it("says Sent, or Not sent with the reason, once an approved send ends", async (
   });
   expect(status()).toBe("Not sent");
   expect(host.textContent).toContain("No connected mail account");
-  // Without the account the send used there is nothing to reopen the draft in.
+  // The caller supplies the account when the card has none, so a failed send always has a way on.
   expect(button("Open in composer")).toBeUndefined();
+  await render({
+    status: "answered",
+    answer: "allow",
+    mail: { ...mail, outcome: "failed", error: "No connected mail account" },
+    onOpenComposer: vi.fn(),
+  });
+  expect(button("Open in composer")).toBeDefined();
 });
 
 it("offers the composer after the agent's own send fails, once the account is known", async () => {

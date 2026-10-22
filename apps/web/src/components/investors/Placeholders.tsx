@@ -35,20 +35,6 @@ export function OwnershipPlaceholder({ className }: { className?: string }) {
   );
 }
 
-/** One update row with no update. */
-export function UpdateRowPlaceholder() {
-  return (
-    <li aria-hidden="true" className="flex min-h-13 items-center gap-3 border-t border-border">
-      <div className="min-w-0 flex-1">
-        <Skeleton static className="h-[11px] w-2/5" />
-        <Skeleton static className="mt-1.5 h-2.5 w-1/4" />
-      </div>
-      <Skeleton static className="h-5 w-[52px] rounded-full" />
-      <span className="w-7" />
-    </li>
-  );
-}
-
 /** One contact row with no contact. */
 export function ContactRowPlaceholder() {
   return (
