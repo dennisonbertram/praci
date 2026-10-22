@@ -210,3 +210,33 @@ export const BehindDialog: Story = {
     </>
   ),
 };
+
+/** An open side panel (`data-toast-panel`) is never covered: the toast sits left of it. */
+export const BesideSidePanel: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <aside
+        data-toast-panel=""
+        className="absolute inset-y-0 right-0 w-96 border-l border-border bg-background p-4"
+      >
+        <p className="text-sm font-medium">New skill</p>
+        <div className="mt-3 h-24 rounded-md border border-border" />
+        <p className="mt-6 text-sm text-muted-foreground">Instructions</p>
+        <div className="mt-2 h-40 rounded-md border border-border" />
+      </aside>
+      <Demo
+        items={[
+          {
+            id: "help",
+            title: "Mercury agent needs approval",
+            body: "Send $250.00?",
+            withBot: true,
+          },
+        ]}
+      />
+    </>
+  ),
+};

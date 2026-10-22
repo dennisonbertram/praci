@@ -610,11 +610,6 @@ msgstr ""
 msgid "{sourceNames} · syncing…"
 msgstr ""
 
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{sourceNames}, {0} non-USD not counted"
-msgstr ""
-
 #: src/pages/Finance.tsx
 msgid "{stablecoins} stablecoins in runway"
 msgstr ""
@@ -2672,12 +2667,13 @@ msgstr "Prüfe, ob die URL aus dieser Browsersitzung erreichbar ist, und teste e
 msgid "Connect"
 msgstr "Verbinden"
 
+#. placeholder {0}: block.name
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
-#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
@@ -6427,7 +6423,6 @@ msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
-#: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
@@ -6441,7 +6436,9 @@ msgstr ""
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
+#. placeholder {0}: row.from
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr ""
@@ -6565,6 +6562,7 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
