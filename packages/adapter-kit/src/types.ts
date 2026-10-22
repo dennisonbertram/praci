@@ -751,6 +751,14 @@ export interface BackgroundJobPayloads {
     /** The provider's message id. */
     messageId: string;
   };
+  /** Files one newly synced message as an audit request (and starts the Investors agent's draft); one queued job per message. */
+  "audit.intake": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    /** The provider's message id. */
+    messageId: string;
+  };
   /** Renews the Gmail push watches that are close to expiring; run daily by the worker's cron. */
   "mail.watch.renew": Record<string, never>;
   /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
