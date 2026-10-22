@@ -1172,6 +1172,8 @@ export const ThreadSnapshotSchema = z.object({
   members: z.array(GroupMemberSchema).optional(),
   run: RunSchema.nullable(),
   activeRuns: z.array(RunSchema).optional(),
+  /** True while an agent this thread's bot handed work to waits for the owner's approval. */
+  delegatePending: z.boolean().optional(),
   computer: ComputerStatusSchema.optional(),
 });
 export type ThreadSnapshot = z.infer<typeof ThreadSnapshotSchema>;

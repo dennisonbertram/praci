@@ -251,3 +251,22 @@ describe("plainRunError", () => {
     expect(plainRunError("Allow it on the Legal page.", copy)).toBe("Allow it on the Legal page.");
   });
 });
+
+describe("threadRunError while a delegate waits for approval", () => {
+  const snap = (delegatePending?: boolean) =>
+    ({
+      run: { id: "r1", status: "failed", error: "This agent could not finish. Try again." },
+      messages: [],
+      delegatePending,
+    }) as unknown as Parameters<typeof threadRunError>[0];
+
+  it("shows no failure while the agent this bot asked waits for approval", () => {
+    expect(threadRunError(snap(true), (error) => error)).toBeNull();
+  });
+
+  it("shows the failure again once the approval is answered or denied", () => {
+    expect(threadRunError(snap(false), (error) => error)).toBe(
+      "This agent could not finish. Try again.",
+    );
+  });
+});

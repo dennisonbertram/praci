@@ -355,6 +355,34 @@ export async function threadHead(prisma: PrismaClient, target: ThreadTarget) {
   return { threadId: target.threadId, cursor: latest?.seq ?? -1 };
 }
 
+/** True while an agent this bot messaged has an approval waiting for the owner. */
+export async function delegatePending(
+  prisma: PrismaClient,
+  bot: { id: string; spaceId: string; userId: string },
+): Promise<boolean> {
+  const waiting = await prisma.run.findMany({
+    where: {
+      spaceId: bot.spaceId,
+      userId: bot.userId,
+      trigger: "bot_message",
+      status: "waiting_input",
+    },
+    select: { sourceMessage: { select: { blocks: true } } },
+    take: 20,
+  });
+  return waiting.some((run) => {
+    const blocks = run.sourceMessage?.blocks;
+    return (
+      Array.isArray(blocks) &&
+      blocks.some(
+        (block) =>
+          (block as { kind?: string; fromBotId?: string } | null)?.kind ===
+            "bot_message_received" && (block as { fromBotId?: string }).fromBotId === bot.id,
+      )
+    );
+  });
+}
+
 export async function threadSnapshot(
   deps: { prisma: PrismaClient },
   target: ThreadTarget,
@@ -455,6 +483,7 @@ export async function threadSnapshot(
       messages: messagesWithLiveEvents(core.messagePage.messages, core.liveEvents),
       olderCursor: core.messagePage.olderCursor,
       run: core.run ? mapRun(core.run) : null,
+      ...((await delegatePending(deps.prisma, target.bot)) ? { delegatePending: true } : {}),
       computer: toComputerStatus(target.botId, target.bot.computer, busyBotName),
     };
   }

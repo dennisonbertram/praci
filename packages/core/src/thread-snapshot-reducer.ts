@@ -338,7 +338,14 @@ export function reduceThreadSnapshot(
     const liveId = progressMessageId(event);
     const { remaining } = takeLiveMessage(prev.messages, liveId);
     const without = remaining.filter((message) => !replacedSubagent(message, replacedSubagentIds));
-    return { ...prev, cursor: event.seq, messages: upsertMessageById(without, next) };
+    // The delegate answered (or was denied): its outcome reaches this thread as a bot message.
+    const answered = blocks.some((block) => block.kind === "bot_message_received");
+    return {
+      ...prev,
+      cursor: event.seq,
+      messages: upsertMessageById(without, next),
+      ...(answered && prev.delegatePending ? { delegatePending: false } : {}),
+    };
   }
   return prev;
 }

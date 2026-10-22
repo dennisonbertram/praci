@@ -192,6 +192,8 @@ export function threadRunError(
     return null;
   // A run waiting on an approval is not failed: the failure belongs to an earlier run.
   if (snapshot.activeRuns?.some((active) => active.status === "waiting_input")) return null;
+  // The approval can live in the thread of the agent this bot handed the work to.
+  if (snapshot.delegatePending) return null;
   return run.error ? describe(run.error) : null;
 }
 

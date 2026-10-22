@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ThreadTarget } from "./thread-target.js";
 import {
   cancelSupersededQueuedRuns,
+  delegatePending,
   reactToThreadMessage,
   sendThreadMessage,
   stopThreadRuns,
@@ -210,6 +211,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -276,6 +278,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -360,6 +363,7 @@ describe("threadSnapshot", () => {
               run: { findFirst: botRunFindFirst([waitingPeer, olderUser]) },
             }),
           ),
+          run: { findMany: vi.fn().mockResolvedValue([]) },
         } as unknown as PrismaClient,
       },
       {
@@ -406,6 +410,7 @@ describe("threadSnapshot", () => {
                 run: { findFirst: botRunFindFirst([waitingTicket]) },
               }),
             ),
+            run: { findMany: vi.fn().mockResolvedValue([]) },
           } as unknown as PrismaClient,
         },
         {
@@ -465,6 +470,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -501,6 +507,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -3713,5 +3720,23 @@ describe("stopThreadRuns", () => {
     expect(transaction.event.deleteMany).not.toHaveBeenCalled();
     expect(transaction.thread.update).not.toHaveBeenCalled();
     expect(notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("delegatePending", () => {
+  const bot = { id: "bot-1", spaceId: "space-1", userId: "user-1" };
+  const prismaWith = (blocks: unknown[]) =>
+    ({
+      run: { findMany: vi.fn().mockResolvedValue([{ sourceMessage: { blocks } }]) },
+    }) as unknown as PrismaClient;
+
+  it("is true while an agent this bot asked waits for approval", async () => {
+    const prisma = prismaWith([{ kind: "bot_message_received", fromBotId: "bot-1" }]);
+    expect(await delegatePending(prisma, bot)).toBe(true);
+  });
+
+  it("ignores a waiting agent that another bot asked", async () => {
+    const prisma = prismaWith([{ kind: "bot_message_received", fromBotId: "bot-2" }]);
+    expect(await delegatePending(prisma, bot)).toBe(false);
   });
 });

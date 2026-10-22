@@ -2530,10 +2530,11 @@ export function ShellPage() {
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
   const waitingOnApproval = Boolean(
-    answerableAskMessageId &&
-      activeSnapshot?.messages
-        .find((message) => message.id === answerableAskMessageId)
-        ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block)),
+    activeSnapshot?.delegatePending ||
+      (answerableAskMessageId &&
+        activeSnapshot?.messages
+          .find((message) => message.id === answerableAskMessageId)
+          ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block))),
   );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),

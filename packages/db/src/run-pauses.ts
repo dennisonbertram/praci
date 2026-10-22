@@ -159,8 +159,17 @@ async function supersedeOlderApprovals(
     select: { id: true, taskId: true },
   });
   if (older.length === 0) return;
+  await closeAndCancelWaitingRuns(tx, input, older, "superseded");
+}
+
+async function closeAndCancelWaitingRuns(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; threadId: string; botId: string },
+  older: { id: string; taskId: string }[],
+  answer: ClosedApprovalAnswer,
+) {
   const runIds = older.map((run) => run.id);
-  await closeApprovalCardsInTransaction(tx, { ...input, runIds, answer: "superseded" });
+  await closeApprovalCardsInTransaction(tx, { ...input, runIds, answer });
   const now = new Date();
   await cancelRunsInTransaction(tx, older, now);
   await tx.attempt.updateMany({
@@ -178,6 +187,50 @@ async function supersedeOlderApprovals(
       payload: {},
     });
   }
+}
+
+/**
+ * The run that asked these agents to act failed, so their open approval cards can never be used.
+ * Closes each card as expired and cancels its waiting run. Returns how many runs were closed.
+ */
+export async function expireDelegatedApprovals(
+  prisma: PrismaClient,
+  input: { spaceId: string; userId: string; fromBotId: string; since: Date },
+): Promise<number> {
+  const waiting = await prisma.run.findMany({
+    where: {
+      spaceId: input.spaceId,
+      userId: input.userId,
+      trigger: "bot_message",
+      status: "waiting_input",
+      createdAt: { gte: input.since },
+    },
+    select: {
+      id: true,
+      taskId: true,
+      threadId: true,
+      botId: true,
+      sourceMessage: { select: { blocks: true } },
+    },
+  });
+  const mine = waiting.filter(
+    (run) =>
+      Array.isArray(run.sourceMessage?.blocks) &&
+      (run.sourceMessage.blocks as { kind?: string; fromBotId?: string }[]).some(
+        (block) => block.kind === "bot_message_received" && block.fromBotId === input.fromBotId,
+      ),
+  );
+  for (const run of mine) {
+    await prisma.$transaction((tx) =>
+      closeAndCancelWaitingRuns(
+        tx,
+        { spaceId: input.spaceId, threadId: run.threadId, botId: run.botId },
+        [run],
+        "expired",
+      ),
+    );
+  }
+  return mine.length;
 }
 
 async function findPendingAsk(
