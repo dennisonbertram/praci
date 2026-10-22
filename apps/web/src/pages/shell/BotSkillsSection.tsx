@@ -437,7 +437,7 @@ export function BotSkillsSection({
         </div>
       ) : null}
       {editorOpen ? (
-        <div className="px-2.5 pb-2">
+        <div className={creating ? "pb-2" : "px-2.5 pb-2"}>
           {open ? (
             <div className="flex items-center gap-2 pb-1">
               <div className="min-w-0 truncate text-[14px] text-foreground" dir="auto">

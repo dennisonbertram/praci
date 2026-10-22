@@ -55,6 +55,7 @@ vi.mock("../lib/rpc", () => ({
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
   INBOX_CHANGED_EVENT: "rakazo:inbox-changed",
+  ROW_MENU_EVENT: "rakazo:inbox-row-menu",
   prefetchInboxMessage: () => {},
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),
@@ -1133,6 +1134,35 @@ it("holds rows in their groups while triage is still running", async () => {
   expect(
     other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
+});
+
+it("keeps rows in their groups while a row menu is open", async () => {
+  let classified = false;
+  rpcMock.list.mockImplementation(async () =>
+    list([row("a", { needsReply: true }), classified ? row("b", { needsReply: true }) : row("b")]),
+  );
+  const c = await render();
+  const menu = (open: boolean) =>
+    act(async () => {
+      window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: open }));
+    });
+  const afterOther = () => {
+    const other = [...c.querySelectorAll("h2")].find((h) => h.textContent === "Other mail today");
+    const b = c.querySelector('button[data-row-id="b"]');
+    return Boolean(
+      other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  };
+  await menu(true);
+  classified = true;
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:inbox-changed"));
+  });
+  await dwell(1_000);
+  expect(afterOther()).toBe(true);
+  await menu(false);
+  await dwell(100);
+  expect(afterOther()).toBe(false);
 });
 
 it("does not hold a mark back while triage is running", async () => {

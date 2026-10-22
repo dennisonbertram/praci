@@ -89,7 +89,11 @@ import {
   readInboxListState,
   setInboxListParam,
 } from "../lib/inbox-list-input";
-import { INBOX_CHANGED_EVENT, prefetchInboxMessage } from "../lib/inbox-message-cache";
+import {
+  INBOX_CHANGED_EVENT,
+  prefetchInboxMessage,
+  ROW_MENU_EVENT,
+} from "../lib/inbox-message-cache";
 import { moveInChunks } from "../lib/inbox-move";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { MAIL_SENT_EVENT } from "../lib/outbox";
@@ -319,6 +323,13 @@ function InboxListPage({
   const [composing, setComposing] = useState(false);
   // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
   const [sorting, setSorting] = useState(false);
+  // Rows keep their groups while a row's More menu is open, so the item under the pointer stays put.
+  const [rowMenuOpen, setRowMenuOpen] = useState(false);
+  useEffect(() => {
+    const onMenu = (event: Event) => setRowMenuOpen((event as CustomEvent<boolean>).detail);
+    window.addEventListener(ROW_MENU_EVENT, onMenu);
+    return () => window.removeEventListener(ROW_MENU_EVENT, onMenu);
+  }, []);
   const sortingRef = useRef(false);
   sortingRef.current = sorting;
   // Triage finished during the first sort, and the to-dos it made are still loading.
@@ -622,7 +633,7 @@ function InboxListPage({
   // classifications from before stay, and rows classified later join the grouping when it finishes.
   const holdWhilePending = useCallback(
     (list: MailRow[]) => {
-      if (!shown?.triagePending || stalled || filtered) {
+      if ((!shown?.triagePending && !rowMenuOpen) || stalled || filtered) {
         heldTriage.current = null;
         return list;
       }
@@ -659,7 +670,7 @@ function InboxListPage({
         return { ...row, ...classes };
       });
     },
-    [shown?.triagePending, stalled, filtered, listKey],
+    [shown?.triagePending, rowMenuOpen, stalled, filtered, listKey],
   );
   const groups = useMemo(
     () =>

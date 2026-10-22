@@ -29,6 +29,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
+import { ROW_MENU_EVENT } from "../../lib/inbox-message-cache";
 import { formatMailTime } from "../../lib/mail-time";
 import { dueLabel } from "./TodoCard";
 
@@ -474,7 +475,11 @@ export function InboxRow({
                 );
               })}
             </div>
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChange={(open) =>
+                window.dispatchEvent(new CustomEvent(ROW_MENU_EVENT, { detail: open }))
+              }
+            >
               <DropdownMenuTrigger
                 render={
                   <Button
