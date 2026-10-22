@@ -4652,12 +4652,7 @@ export function ShellPage() {
                     rail={rail}
                     onOpen={() => {
                       setMobileSidebarOpen(false);
-                      // The badge counts failed files; the page opens on them.
-                      navigate(
-                        glance.dataRoomWaiting > 0
-                          ? "/app/data-room?status=failed"
-                          : "/app/data-room",
-                      );
+                      navigate("/app/data-room");
                     }}
                     {...glanceBadge({
                       unseen: unseen["data-room"] ?? 0,
@@ -4665,6 +4660,11 @@ export function ShellPage() {
                       value:
                         glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
                       failure: true,
+                      // Only the badge opens the failed files; the row opens everything.
+                      onValueClick: () => {
+                        setMobileSidebarOpen(false);
+                        navigate("/app/data-room?status=failed");
+                      },
                       // The count is failed files, the only ones a person can retry or remove.
                       valueLabel: plural(glance.dataRoomWaiting, {
                         one: "# file failed",

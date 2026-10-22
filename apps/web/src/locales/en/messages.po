@@ -9771,8 +9771,8 @@ msgid "Sort descending"
 msgstr "Sort descending"
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort every file in the Data room"
-msgstr "Sort every file in the Data room"
+msgid "Sort files"
+msgstr "Sort files"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Sort new files"
