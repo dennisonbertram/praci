@@ -79,6 +79,7 @@ export const Composer = memo(function Composer({
   onSend,
   onStop,
   onVoice,
+  quickAsk,
   replyTarget,
   replyQuote,
   replyTargetName,
@@ -119,6 +120,8 @@ export const Composer = memo(function Composer({
   onSend: (text: string, mentions: ComposerMention[], clientNonce: string) => Promise<boolean>;
   onStop: () => Promise<void>;
   onVoice?: () => void;
+  /** One suggested question shown above the empty composer; sending it is one tap. */
+  quickAsk?: { label: string; onAsk: () => void };
   artifactTarget: ArtifactTarget;
   /** Which chat this composer writes to, so a half-written message survives switching chats. */
   draftKey?: string;
@@ -865,6 +868,18 @@ export const Composer = memo(function Composer({
             );
           })}
         </div>
+      ) : null}
+      {quickAsk && !draft && !disabled ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mb-2 rounded-full"
+          data-testid="composer-quick-ask"
+          onClick={quickAsk.onAsk}
+        >
+          {quickAsk.label}
+        </Button>
       ) : null}
       <div
         ref={composerBarRef}
