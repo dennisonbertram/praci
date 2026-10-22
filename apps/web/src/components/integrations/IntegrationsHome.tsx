@@ -56,7 +56,6 @@ import {
   AgentStack,
   CardHead,
   IntegrationTile,
-  MenuSlot,
   OPEN_LINK,
   PHONE_ROW,
   SectionTitle,
@@ -99,7 +98,6 @@ function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
       <Link to={to} className={OPEN_LINK}>
         {children}
       </Link>
-      <MenuSlot />
     </>
   );
 }
@@ -375,7 +373,6 @@ function AppTile({
         >
           <Trans>Connect</Trans>
         </Button>
-        <MenuSlot />
       </div>
     </IntegrationTile>
   );
@@ -529,9 +526,11 @@ export function IntegrationsHome({
     chatMatches > 0 ||
     (searching && connectedApps.length > 0);
   const wholeList = category === "all";
+  const anyConnected =
+    apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
   const hasConnected = chipOnly
     ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
-    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
+    : anyConnected;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -617,22 +616,18 @@ export function IntegrationsHome({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
-        <div className="max-w-[1040px]">
+        <div>
           <PageHeader title={<Trans>Integrations</Trans>} className="mb-1" />
         </div>
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
-        <div className="max-w-[1040px]">
-          <p className="mb-5 max-w-[640px] text-muted-foreground">
-            <Trans>
-              Connect the apps you use so your bots can read and act in them. You choose which bots
-              get access to each one.
-            </Trans>
-          </p>
+        <div>
           {/* Until everything has loaded, show placeholders, not tiles that read "Not connected". */}
           {!data.loaded ? (
             <div
               aria-busy="true"
+              role="status"
+              aria-label={t`Loading integrations`}
               className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
             >
               {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -647,6 +642,51 @@ export function IntegrationsHome({
           ) : null}
           {data.loaded ? (
             <>
+              {/* Above Connected, so filtering it never moves the input. */}
+              {notSetUp ? null : (
+                <>
+                  <div className="relative mb-3 max-w-[420px]">
+                    <Search
+                      aria-hidden="true"
+                      className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
+                    />
+                    <Input
+                      type="search"
+                      className="h-9 ps-8"
+                      value={query}
+                      placeholder={t`Search integrations`}
+                      aria-label={t`Search integrations`}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                      }}
+                    />
+                  </div>
+                  <fieldset
+                    aria-label={t`Category`}
+                    className="m-0 mb-4 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+                  >
+                    {chips.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={category === id}
+                        onClick={() => {
+                          setCategory(id);
+                          setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                        }}
+                        className={`rounded-full border px-3 py-1 text-xs ${
+                          category === id
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {labels[id]}
+                      </button>
+                    ))}
+                  </fieldset>
+                </>
+              )}
               {(searching ? connectedApps.length > 0 : hasConnected) ? (
                 <>
                   <SectionTitle>
@@ -766,50 +806,6 @@ export function IntegrationsHome({
                   ))}
                 </div>
               ) : null}
-              {notSetUp ? null : (
-                <>
-                  <div className="relative mt-6 mb-3 max-w-[420px]">
-                    <Search
-                      aria-hidden="true"
-                      className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
-                    />
-                    <Input
-                      type="search"
-                      className="h-9 ps-8"
-                      value={query}
-                      placeholder={t`Search integrations`}
-                      aria-label={t`Search integrations`}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                      }}
-                    />
-                  </div>
-                  <fieldset
-                    aria-label={t`Category`}
-                    className="m-0 mb-1.5 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
-                  >
-                    {chips.map((id) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={category === id}
-                        onClick={() => {
-                          setCategory(id);
-                          setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                        }}
-                        className={`rounded-full border px-3 py-1 text-xs ${
-                          category === id
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {labels[id]}
-                      </button>
-                    ))}
-                  </fieldset>
-                </>
-              )}
               {/* While filtering, every kind of match shares this one grid; its parts drop their own. */}
               <div
                 className={
@@ -829,7 +825,7 @@ export function IntegrationsHome({
                         )}
                         {results.length === 0 && !otherMatches ? (
                           <p className="py-2 text-muted-foreground" data-testid="no-apps">
-                            <Trans>No apps match.</Trans>
+                            <Trans>No integrations match.</Trans>
                           </p>
                         ) : (
                           <>

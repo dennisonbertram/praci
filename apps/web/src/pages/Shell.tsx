@@ -25,6 +25,7 @@ import type {
 import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
+  DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
@@ -41,6 +42,7 @@ import {
   DEFAULT_BOT_COLOR,
   inferAttachmentMimeType,
   isActive,
+  isApprovalAskBlock,
   isRunTerminalEvent,
   latestAnswerableAskMessageId,
   matchesArtifactQuery,
@@ -81,6 +83,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  Clock,
   CodeXml,
   Compass,
   Files,
@@ -178,7 +181,7 @@ import { glanceBadge, StatusMark } from "../components/sidebar-glance";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { connectCardsOpen } from "../components/tour/connect-cards";
+import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { dismissApprovalToasts } from "../lib/approval-toasts";
@@ -246,6 +249,7 @@ import {
 } from "../lib/right-panel-state";
 import {
   compactRosterStatusLabel,
+  needsAnswerLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
   rosterStatusChanged,
@@ -474,7 +478,7 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
 type SearchLink = { id: string; label: string; detail?: string };
 
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
-async function findDocumentsAndArtifacts(query: string) {
+export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
       rpc.dataRoom.search({ query, limit: 5 }),
@@ -492,10 +496,16 @@ async function findDocumentsAndArtifacts(query: string) {
           }
           return names.join(" / ");
         };
-        return result.results.map(({ item }) => ({
+        return result.results.map(({ item, ordinal, snippet }) => ({
           id: item.id,
           label: item.name,
-          detail: folderPath(item.folderId) || undefined,
+          // A match inside the file shows the matching text; a name match shows the folder.
+          detail:
+            ordinal === DATA_ROOM_METADATA_ORDINAL
+              ? folderPath(item.folderId) || undefined
+              : (maskOptional(
+                  snippet.replaceAll("\u0001", "").replaceAll("\u0002", "").trim() || null,
+                ) ?? undefined),
         }));
       })
       .catch((): SearchLink[] => []),
@@ -506,7 +516,14 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
+          .map((item) => ({
+            id: item.id,
+            label: artifactDisplayName(item.name),
+            // A description hit shows why the artifact matched.
+            detail: item.name.toLowerCase().includes(query.toLowerCase())
+              ? undefined
+              : (maskOptional(item.description ?? null) ?? undefined),
+          })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -985,16 +1002,7 @@ export function ShellPage() {
   // After Skip tour the first question stays one tap away in Chief's composer.
   const [askChiefChip, setAskChiefChip] = useState(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
-  const firstQuestionOpen = Boolean(
-    snapshot?.messages.some((message) =>
-      message.blocks.some(
-        (block) =>
-          block.kind === "choice" &&
-          block.question === "What do you want me on first?" &&
-          !block.answerId,
-      ),
-    ),
-  );
+  const firstQuestionOpen = focusQuestionOpen(snapshot?.messages ?? []);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -2295,14 +2303,6 @@ export function ShellPage() {
       ]);
       return [
         {
-          heading: t`Mail`,
-          first: true,
-          icon: <Search size={16} strokeWidth={1.75} />,
-          entries: [
-            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
-          ],
-        },
-        {
           heading: t`Contacts`,
           icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
@@ -2327,7 +2327,16 @@ export function ShellPage() {
           entries: found.artifacts.map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
+            detail: item.detail,
           })),
+        },
+        {
+          heading: t`Mail`,
+          fallback: true,
+          icon: <Search size={16} strokeWidth={1.75} />,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
         },
       ];
     },
@@ -2422,6 +2431,15 @@ export function ShellPage() {
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
 
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  useEffect(() => {
+    if (searchParams.get("settings") !== "privacy") return;
+    openSettings("privacy");
+    const next = new URLSearchParams(searchParams);
+    next.delete("settings");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const messageId = searchParams.get("m");
     const routineId = searchParams.get("routine");
@@ -2512,6 +2530,12 @@ export function ShellPage() {
   }, []);
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
+  const waitingOnApproval = Boolean(
+    answerableAskMessageId &&
+      activeSnapshot?.messages
+        .find((message) => message.id === answerableAskMessageId)
+        ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block)),
+  );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
   );
@@ -3846,15 +3870,15 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on without a screen, or has never run, would show a heading over an
-  // empty box; the panel is then just the bot's routines.
-  const noComputerScreen =
-    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
-    computer?.kind !== "desktop" &&
-    !embeddedScreenUrl &&
-    !computerError &&
-    !computerOpen &&
-    !showComputerRecoveryHint;
+  // Without a screen to show (whatever the computer's state), the panel is just the bot's
+  // routines: no heading over an empty box.
+  const noComputerScreen = isRoutinesOnlyPanel({
+    kind: computer?.kind,
+    hasScreen: Boolean(embeddedScreenUrl),
+    hasError: Boolean(computerError),
+    open: computerOpen,
+    showRecoveryHint: showComputerRecoveryHint,
+  });
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -4144,6 +4168,7 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
+              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4163,7 +4188,7 @@ export function ShellPage() {
               quickAsk={
                 askChiefChip && active?.id === chiefId
                   ? {
-                      label: t`Ask Chief`,
+                      label: t`What should I do first this week?`,
                       onAsk: () => {
                         setAskChiefChip(false);
                         void sendMessage(t`What should I do first this week?`, [], newClientId());
@@ -4327,22 +4352,20 @@ export function ShellPage() {
                 <InputGroupInput
                   readOnly
                   value=""
-                  onClick={(e) => {
-                    // The drawer's box would keep the keyboard; the palette's own input takes it.
-                    e.currentTarget.blur();
+                  onClick={() => {
+                    // The box keeps focus until the palette takes it, so closing returns here.
                     setCommandPaletteOpen(true);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      e.currentTarget.blur();
                       setCommandPaletteOpen(true);
                     }
                   }}
                   placeholder={t`Search`}
                   autoComplete="off"
                   name="sidebar-search"
-                  className="cursor-pointer"
+                  className="cursor-pointer placeholder:text-foreground/70"
                 />
               </InputGroup>
             )
@@ -4359,7 +4382,7 @@ export function ShellPage() {
                   onClick={toggleActivityMode}
                   className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                     activityMode
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-sidebar-accent text-foreground"
                       : "text-muted-foreground/70 hover:text-foreground/75"
                   }`}
                 >
@@ -4429,6 +4452,7 @@ export function ShellPage() {
                   aria-label={t`Close menu`}
                   title={t`Close menu`}
                   data-testid="close-mobile-sidebar"
+                  data-drawer-focus
                   onClick={() => setMobileSidebarOpen(false)}
                 >
                   <X size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -4648,7 +4672,7 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
-            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start"
+            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
               {activityMode && !rail ? (
@@ -5554,7 +5578,7 @@ export function ShellPage() {
           data-testid="bots-sidebar-edge"
           aria-label={t`Resize sidebar`}
           tabIndex={-1}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:bg-ring focus-visible:outline-none lg:block ${
             botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
           onPointerDown={(event) => {
@@ -5673,7 +5697,7 @@ export function ShellPage() {
                   type="button"
                   data-testid="bot-settings-trigger"
                   onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-                  className="app-no-drag flex min-w-0 items-center gap-3"
+                  className="app-no-drag flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {inGroup ? (
                     <GroupAvatar
@@ -5725,7 +5749,7 @@ export function ShellPage() {
                   aria-label={t`Page`}
                   onClick={() => setPanel(panel === "page" ? null : "page")}
                   data-active={panel === "page" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -5737,7 +5761,7 @@ export function ShellPage() {
                   aria-label={t`List`}
                   onClick={() => setPanel(panel === "list" ? null : "list")}
                   data-active={panel === "list" ? "" : undefined}
-                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${panel === null ? "xl:hidden" : ""}`}
                 >
                   <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -5757,9 +5781,13 @@ export function ShellPage() {
                     }
                   }}
                   data-active={panel === "computer" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  {noComputerScreen ? (
+                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  ) : (
+                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  )}
                 </button>
               ) : null}
             </div>
@@ -6001,7 +6029,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen || computerScreenError ? null : (
+                    computerScreenError || noComputerScreen ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -6263,7 +6291,15 @@ export function ShellPage() {
                 messageProviders={messagingProviders}
                 skills={agentSkills}
                 saving={savingRoutine}
-                running={runningRoutine}
+                // Stays on until the run itself finishes, not just until the request returns.
+                running={
+                  runningRoutine ||
+                  Boolean(
+                    editingRoutine &&
+                      snapshot?.run?.routineId === editingRoutine.id &&
+                      isActive(snapshot.run.status),
+                  )
+                }
                 error={routineError}
                 onBack={() => setPanel("computer")}
                 onClose={() => setPanel(null)}
@@ -6529,14 +6565,14 @@ export function ShellPage() {
                 navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
               });
             }}
-            onClear={() => {
-              setClearTarget(
-                contextBot
-                  ? { kind: "bot", chat: contextBot }
-                  : { kind: "group", chat: contextGroup! },
-              );
-              setBotMenu(null);
-            }}
+            onClear={
+              contextBot
+                ? undefined
+                : () => {
+                    setClearTarget({ kind: "group", chat: contextGroup! });
+                    setBotMenu(null);
+                  }
+            }
             onArchive={() => {
               setBotMenu(null);
               const request = contextBot
@@ -7205,13 +7241,30 @@ function computerPlaceholder(
   return t`Computer is stopped`;
 }
 
+/** True when the panel has no computer screen to show, in any computer state: just routines. */
+export function isRoutinesOnlyPanel(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+  showRecoveryHint: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    !input.hasScreen &&
+    !input.hasError &&
+    !input.open &&
+    !input.showRecoveryHint
+  );
+}
+
 /** Panel heading for the bot computer, in words rather than the raw state slug. */
 function computerStateLabel(state: ComputerStatus["state"] | undefined) {
-  if (state === "running") return t`Computer is on`;
+  // The "Routines" heading below is the title; the header names the computer only when it needs attention.
+  if (state === "running" || state === "stopped" || !state) return null;
   if (state === "booting") return t`Computer is starting`;
   if (state === "suspended") return t`Computer is asleep`;
-  if (state === "error") return t`Computer could not start`;
-  return t`Computer is off`;
+  return t`Computer could not start`;
 }
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {

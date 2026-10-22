@@ -20,14 +20,21 @@ export const Default: Story = {
     mockRpc({ "legal.overview": overview, "legal.consent": consent, "legal.graph": graph }),
 };
 
+const withFiles = {
+  ...emptyOverview,
+  counts: { ...emptyOverview.counts, unreviewedDocuments: 3 },
+};
+
+/** Nothing in the Data room yet: one sentence and Add files, no consent card. */
 export const Empty: Story = {
   beforeEach: () => mockRpc({ "legal.overview": emptyOverview, "legal.consent": consent }),
 };
 
+/** Files wait for Legal: the card asks once, under the tabs it will fill. */
 export const NeedsConsent: Story = {
   beforeEach: () =>
     mockRpc({
-      "legal.overview": emptyOverview,
+      "legal.overview": withFiles,
       "legal.consent": { ...consent, allowed: false },
     }),
 };

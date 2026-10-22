@@ -154,7 +154,7 @@ export function GeneralSettingsPanels({
       ) : null}
 
       {/* Two columns when the pane is wide, so General is not one long scroll. */}
-      <div className="grid items-start gap-5 @2xl:grid-cols-2">
+      <div className="grid items-start gap-5 @2xl:grid-cols-2 @2xl:grid-rows-[auto_1fr]">
         <div className="min-w-0 space-y-5">
           <section className="rounded-xl border border-border px-4 py-4">
             <h3 className="text-[15px] font-medium text-foreground">
@@ -233,23 +233,8 @@ export function GeneralSettingsPanels({
               </p>
             ) : null}
           </section>
-
-          <section className="rounded-xl border border-border px-4 py-4">
-            <h3 className="text-[15px] font-medium text-foreground">
-              {timezone && onTimezoneChange ? (
-                <Trans>Language and time zone</Trans>
-              ) : (
-                <Trans>Language</Trans>
-              )}
-            </h3>
-            <UiLocalePicker value={locale} onChange={chooseLocale} />
-            {timezone && onTimezoneChange ? (
-              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
-            ) : null}
-          </section>
-          <NotificationSettingsSection />
         </div>
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
           {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
           <details
@@ -324,32 +309,47 @@ export function GeneralSettingsPanels({
             </div>
           </details>
 
+          <section className="rounded-xl border border-border px-4 py-4">
+            <h3 className="text-[15px] font-medium text-foreground">
+              {timezone && onTimezoneChange ? (
+                <Trans>Language and time zone</Trans>
+              ) : (
+                <Trans>Language</Trans>
+              )}
+            </h3>
+            <UiLocalePicker value={locale} onChange={chooseLocale} />
+            {timezone && onTimezoneChange ? (
+              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+            ) : null}
+          </section>
+          <NotificationSettingsSection />
           {children}
         </div>
+        {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
+            Delete is last of all, so a destructive action is never the first thing on the page. */}
+        <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4 @2xl:col-start-1 @2xl:row-start-2">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
+            <h3 className="text-[15px] font-medium text-foreground">
+              <Trans>Account</Trans>
+            </h3>
+            <p className="min-w-0 text-[14px] text-foreground/75">
+              {name}
+              {email ? (
+                <span title={email} className="block truncate text-[13px] text-muted-foreground/70">
+                  {email}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <DataExportSection />
+          {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
+            <ChangePasswordSection email={email} />
+          ) : null}
+          <div data-testid="account-access" className="pb-3">
+            <AccountAccess onSecurity={setAccountSecurity} />
+          </div>
+        </section>
       </div>
-
-      {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
-          Delete is last of all, so a destructive action is never the first thing on the page. */}
-      <section className="divide-y divide-border rounded-xl border border-border px-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Account</Trans>
-          </h3>
-          <p className="text-[14px] text-foreground/75">
-            {name}
-            {email ? (
-              <span className="ms-2 text-[13px] text-muted-foreground/70">{email}</span>
-            ) : null}
-          </p>
-        </div>
-        <DataExportSection />
-        {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
-          <ChangePasswordSection email={email} />
-        ) : null}
-        <div data-testid="account-access" className="pb-3">
-          <AccountAccess onSecurity={setAccountSecurity} />
-        </div>
-      </section>
     </div>
   );
 }

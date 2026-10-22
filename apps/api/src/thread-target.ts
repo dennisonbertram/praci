@@ -133,6 +133,10 @@ async function resolveOwnedConnectorDisplayNames(
   return connectionIds.map((id) => byId.get(id) ?? "connector");
 }
 
+function retryRunClientNonce(clientNonce: string) {
+  return `retry:${clientNonce}`;
+}
+
 function sendRunClientNonce(
   clientNonce: string | undefined,
   messageId: string,
@@ -171,12 +175,27 @@ async function replayExistingSend(
   clientNonce: string | undefined,
 ) {
   if (!clientNonce) return null;
-  const message = await findSendReceipt(deps.prisma, threadId, clientNonce);
+  let message = await findSendReceipt(deps.prisma, threadId, clientNonce);
+  if (!message) {
+    // A retry keeps the message's first nonce and records its own on the run it starts.
+    const retryRun = await deps.prisma.run.findFirst({
+      where: { threadId, clientNonce: retryRunClientNonce(clientNonce) },
+      select: { sourceMessageId: true },
+    });
+    const sourceId = retryRun?.sourceMessageId;
+    if (sourceId) {
+      message = await deps.prisma.message.findUnique({
+        where: { id: sourceId },
+        include: { sourceRuns: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
+      });
+    }
+  }
   if (!message) return null;
   const receiptEvent = await deps.prisma.event.findFirst({
     where: {
       threadId,
-      type: "thread.message.created",
+      // A retry reports its new run in a message.updated event.
+      type: { in: ["thread.message.created", "thread.message.updated"] },
       payload: { path: ["messageId"], equals: message.id },
     },
     orderBy: { seq: "desc" },
@@ -645,6 +664,33 @@ export async function dataRoomReferenceLines(
   return lines;
 }
 
+/**
+ * The person's own text sent again right after its run failed is a retry. It runs the message
+ * already in the thread instead of adding a second identical bubble. Only plain text qualifies,
+ * and only while that is the person's newest message and its latest run failed.
+ */
+async function findRetriedUserMessage(
+  tx: Prisma.TransactionClient,
+  threadId: string,
+  blocks: readonly MessageBlock[],
+) {
+  const plainText = (list: readonly MessageBlock[]) =>
+    list.length > 0 && list.every((block) => block.kind === "text")
+      ? list.map((block) => (block.kind === "text" ? block.text : "")).join("\n")
+      : null;
+  const sent = plainText(blocks);
+  if (!sent?.trim()) return null;
+  // Bot messages (an approval card) may follow the person's message, so look at their latest one.
+  const last = await tx.message.findFirst({
+    where: { threadId, role: "user" },
+    orderBy: { seq: "desc" },
+    include: { sourceRuns: { orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+  if (last?.sourceRuns?.[0]?.status !== "failed") return null;
+  const parsed = MessageBlockSchema.array().safeParse(last.blocks);
+  return parsed.success && plainText(parsed.data) === sent ? last : null;
+}
+
 export async function sendThreadMessage(
   deps: {
     prisma: PrismaClient;
@@ -744,14 +790,19 @@ export async function sendThreadMessage(
           mentionTargets.connectorMentionIds,
         );
         const blocks = buildUserMessageBlocks(sendText, attachmentBlocks);
-        const message = await createThreadMessageInTransaction(tx, {
-          threadId: target.threadId,
-          role: "user",
-          blocks,
-          replyToMessageId,
-          replyQuote,
-          clientNonce: input.clientNonce,
-        });
+        const retried = replyToMessageId
+          ? null
+          : await findRetriedUserMessage(tx, target.threadId, blocks);
+        const message =
+          retried ??
+          (await createThreadMessageInTransaction(tx, {
+            threadId: target.threadId,
+            role: "user",
+            blocks,
+            replyToMessageId,
+            replyQuote,
+            clientNonce: input.clientNonce,
+          }));
         // The focus card is only posted before the first user message, so only that message can
         // answer it by typing. Close the card instead of leaving it open.
         if (
@@ -873,7 +924,11 @@ export async function sendThreadMessage(
             userId: actor.userId,
             status: "queued",
             trigger: "user",
-            clientNonce: sendRunClientNonce(input.clientNonce, message.id),
+            // The message keeps its first nonce; a retry's own nonce is recorded on its run so a
+            // repeat of either request replays this send.
+            clientNonce: retried
+              ? input.clientNonce && retryRunClientNonce(input.clientNonce)
+              : sendRunClientNonce(input.clientNonce, message.id),
             sourceMessageId: message.id,
           },
         });
@@ -887,7 +942,8 @@ export async function sendThreadMessage(
           spaceId: actor.spaceId,
           threadId: target.threadId,
           botId: target.botId,
-          type: "thread.message.created",
+          // A retry reuses the bubble already on screen, so clients only refresh it.
+          type: retried ? "thread.message.updated" : "thread.message.created",
           runId: run.id,
           payload: {
             messageId: message.id,

@@ -44,3 +44,25 @@ export function resolveAskChoice(
   const lower = trimmed.toLowerCase();
   return actions.find((action) => action.label.trim().toLowerCase() === lower);
 }
+
+/**
+ * Answers the server stores on an approval card it closed itself, so no later click can approve it:
+ * a newer request for the same delegated work replaced it, or its run failed before it was answered.
+ */
+export const CLOSED_APPROVAL_ANSWERS = ["superseded", "expired"] as const;
+export type ClosedApprovalAnswer = (typeof CLOSED_APPROVAL_ANSWERS)[number];
+
+export function isClosedApprovalAnswer(answer: string | undefined): answer is ClosedApprovalAnswer {
+  return CLOSED_APPROVAL_ANSWERS.includes(answer as ClosedApprovalAnswer);
+}
+
+/** Marks every unanswered approval card in `blocks` as closed; other blocks are returned as given. */
+export function closeApprovalAsks<
+  T extends { kind: string; status?: string; answer?: string; approvalEffectId?: string },
+>(blocks: readonly T[], answer: ClosedApprovalAnswer): T[] {
+  return blocks.map((block) =>
+    block.kind === "ask" && block.approvalEffectId && block.status !== "answered"
+      ? { ...block, status: "answered", answer }
+      : block,
+  );
+}

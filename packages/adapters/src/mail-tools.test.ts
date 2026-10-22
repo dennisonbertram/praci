@@ -16,6 +16,7 @@ import {
   MAIL_TOOL_NAMES,
   mailToolFromTool,
   mailToolsAllowed,
+  recoveryMailAccount,
   selectMailTools,
 } from "./mail-tools.js";
 
@@ -928,5 +929,23 @@ describe("mail progress", () => {
       failed: true,
     });
     expect(lines.at(-1)?.summary).toBe("Searched mail · none found · incomplete");
+  });
+});
+
+describe("recoveryMailAccount", () => {
+  const accounts = [account("a", "a@example.test"), account("b", "b@example.test")];
+  const owner = { spaceId: "space-1", userId: "user-1" };
+  const prisma = {} as PrismaClient;
+
+  it("resolves an explicitly named account", async () => {
+    await expect(
+      recoveryMailAccount(prisma, owner, accounts, { account: "b@example.test" }),
+    ).resolves.toBe(accounts[1]);
+  });
+
+  it("offers none for a send of a saved draft, whose card is empty", async () => {
+    await expect(
+      recoveryMailAccount(prisma, owner, accounts, { draftId: "d1", account: "a@example.test" }),
+    ).resolves.toBeUndefined();
   });
 });

@@ -46,6 +46,10 @@ export function needsAttention(safe: SafeFacts, now = new Date()): "deposit" | "
   return null;
 }
 
+/** The SAFEs Investors counts: sent, signed or funded. Drafts, canceled and expired ones are not money yet. */
+export const countedSafes = <T extends { status: SafeStatus }>(safes: readonly T[]): T[] =>
+  safes.filter((s) => s.status === "sent" || s.status === "signed" || s.status === "funded");
+
 type CapFacts = Pick<SafeFacts, "amountCents" | "capCents"> & { valuationType?: string };
 
 /** Only a post-money cap converts to an ownership share; a pre-money or no-valuation SAFE has none. */

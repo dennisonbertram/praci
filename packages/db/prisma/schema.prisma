@@ -2966,7 +2966,7 @@ model DataRoomPreference {
   userId        String
   spaceMember   SpaceMember @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
   /// Sync files the qualifying attachments of new mail into the Data room.
-  autoFileEmail Boolean     @default(true)
+  autoFileEmail Boolean     @default(false)
   updatedAt     DateTime    @updatedAt
 
   @@id([spaceId, userId])

@@ -46,6 +46,8 @@ const consent = vi.hoisted(() => ({
   allowRecipient: vi.fn(),
   revokeRecipient: vi.fn(),
   aiConsentStatus: vi.fn(),
+  documentConsent: vi.fn(),
+  allowDocuments: vi.fn(),
 }));
 vi.mock("../lib/ai-consent", () => consent);
 vi.mock("../lib/user-error", () => ({
@@ -65,12 +67,22 @@ const statusOf = (list = recipients): AiConsentStatus => ({
   recipients: list,
 });
 
+const documents = (hasModel: boolean, allowed: boolean) => ({
+  key: "data-room:k",
+  version: "d1",
+  spaceId: "space-1",
+  allowed,
+  disclosure: "",
+  recipients: hasModel ? [{ name: "OpenRouter", detail: "vendor/model" }] : [],
+});
+
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.resetAllMocks();
+  consent.documentConsent.mockResolvedValue(documents(false, false));
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -208,10 +220,37 @@ it("shows a model slug as its display name under Advanced, so two models are tol
   );
   await render(<AiDataSharingSection />);
   expect([...container.querySelectorAll("li")].map((r) => r.textContent)).toEqual([
-    "GPT-6 Luna",
-    "Muse Spark 1.2",
+    "GPT-6 LunaSend chats and mail text",
+    "Muse Spark 1.2Send chats and mail text",
   ]);
   expect(container.textContent).not.toContain("OpenRouter");
+});
+
+const embed = { ...modelB, detail: "vendor/embed", allowed: true };
+const withEmbed = (chat: (typeof embed)[]) => {
+  consent.documentConsent.mockResolvedValue({
+    ...documents(true, true),
+    recipients: [{ name: "OpenRouter", detail: "vendor/embed" }],
+  });
+  // With `uses` the status lists chat recipients only, as the server does.
+  consent.aiConsentStatus.mockImplementation(async (uses?: string[]) =>
+    statusOf(uses ? chat : [{ ...modelA, allowed: true }, embed]),
+  );
+};
+
+it("describes a document-only embedding model as reading document text", async () => {
+  withEmbed([{ ...modelA, allowed: true }] as never);
+  await render(<AiDataSharingSection />);
+  const lines = [...container.querySelectorAll("li")].map((r) => r.textContent);
+  expect(lines[0]).toContain("Send chats and mail text");
+  expect(lines[1]).toContain("Reads document text");
+});
+
+it("says a model that is also a chat recipient gets chats, mail and document text", async () => {
+  withEmbed([{ ...modelA, allowed: true }, embed] as never);
+  await render(<AiDataSharingSection />);
+  const lines = [...container.querySelectorAll("li")].map((r) => r.textContent);
+  expect(lines[1]).toContain("Send chats, mail and document text");
 });
 
 it("allows every model with the one switch and revokes every model when it is turned off", async () => {
@@ -226,7 +265,7 @@ it("allows every model with the one switch and revokes every model when it is tu
   await render(<AiDataSharingSection />);
 
   await click(container.querySelector('[aria-label="Allow AI models"]'));
-  expect(consent.allowRecipient.mock.calls).toEqual([["a"], ["b"]]);
+  expect(consent.allowRecipient.mock.calls.map((c) => c[0])).toEqual(["a", "b"]);
   expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
 
   await click(container.querySelector('[aria-label="Allow AI models"]'));
@@ -285,4 +324,71 @@ it("sends one grant even if Allow is pressed again while the first is in flight"
 
   await act(async () => finish(statusOf()));
   expect(container.querySelector("button")?.disabled).toBe(false);
+});
+
+it("reads off until the documents are allowed too, and the switch then allows them with the models", async () => {
+  const list = (allowed: boolean) =>
+    statusOf([
+      { ...modelA, allowed },
+      { ...modelB, allowed },
+    ]);
+  consent.aiConsentStatus.mockResolvedValue(list(true));
+  consent.documentConsent.mockResolvedValue(documents(true, false));
+  await render(<AiDataSharingSection />);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+  expect(container.querySelector("details")?.open).toBe(true);
+
+  consent.allowRecipient.mockResolvedValue(list(true));
+  consent.allowDocuments.mockResolvedValue(documents(true, true));
+  consent.documentConsent.mockResolvedValue(documents(true, true));
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.allowDocuments).toHaveBeenCalledTimes(1);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+});
+
+it("allows only the documents from their own switch, and turning the master off revokes them", async () => {
+  const models = statusOf([{ ...modelA, allowed: true }]);
+  consent.aiConsentStatus.mockResolvedValue(models);
+  consent.documentConsent.mockResolvedValue(documents(true, false));
+  consent.allowDocuments.mockResolvedValue(documents(true, true));
+  await render(<AiDataSharingSection />);
+  consent.documentConsent.mockResolvedValue(documents(true, true));
+  await click(container.querySelector('[aria-label="Documents"]'));
+  expect(consent.allowDocuments).toHaveBeenCalledExactlyOnceWith(documents(true, false));
+  expect(consent.allowRecipient).not.toHaveBeenCalled();
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+
+  consent.revokeRecipient.mockResolvedValue(statusOf([{ ...modelA, allowed: false }]));
+  consent.documentConsent.mockResolvedValue(documents(true, false));
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.revokeRecipient.mock.calls).toEqual([["a"], ["data-room:k"]]);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+});
+
+it("binds each model grant to the scope and version it showed, not a fresh read", async () => {
+  consent.aiConsentStatus.mockResolvedValue(statusOf([{ ...modelA, allowed: false }]));
+  consent.allowRecipient.mockResolvedValue(statusOf([{ ...modelA, allowed: true }]));
+  await render(<AiDataSharingSection />);
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.allowRecipient).toHaveBeenCalledWith("a", { scope: "s", version: "v" });
+});
+
+it("reloads and shows the reason when the server refuses a stale grant", async () => {
+  consent.aiConsentStatus.mockResolvedValue(statusOf([{ ...modelA, allowed: false }]));
+  consent.allowRecipient.mockRejectedValue(new Error("AI data sharing changed. Review it again."));
+  await render(<AiDataSharingSection />);
+  consent.aiConsentStatus.mockClear();
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(container.textContent).toContain("Review it again");
+  expect(consent.aiConsentStatus).toHaveBeenCalled();
+});
+
+it("keeps the master switch disabled and off while the document status is missing", async () => {
+  consent.aiConsentStatus.mockResolvedValue(statusOf([{ ...modelA, allowed: true }]));
+  consent.documentConsent.mockRejectedValue(new Error("offline"));
+  await render(<AiDataSharingSection />);
+  const master = container.querySelector('[aria-label="Allow AI models"]') as HTMLButtonElement;
+  expect(master.disabled).toBe(true);
+  expect(master.getAttribute("aria-checked")).toBe("false");
+  expect(container.textContent).toContain("offline");
 });

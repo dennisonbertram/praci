@@ -33,7 +33,11 @@ function setup() {
       transcriptionSelection: { findUnique: vi.fn(async () => null) },
       spaceMemoryConfig: { findUnique: vi.fn(async () => null) },
       deploymentSettings: { findUnique: vi.fn(async () => null) },
-      aiDataConsent: { findMany: vi.fn(async () => []), upsert },
+      aiDataConsent: {
+        findMany: vi.fn(async () => []),
+        findFirst: vi.fn(async () => null),
+        upsert,
+      },
       $transaction: vi.fn(async (queries) => Promise.all(queries)),
     },
   } as unknown as RouterDeps;
@@ -296,5 +300,34 @@ describe("inbox classifier recipient", () => {
     deps.env.agentRuntime = "pi";
     const status = await aiConsentStatus(deps, actor);
     expect(status.recipients.map((recipient) => recipient.name)).not.toContain("TypeSafe");
+  });
+});
+
+describe("document embedding recipient", () => {
+  it("is listed in the settings view, but a Mail Allow grants only the recipient it names", async () => {
+    const { deps, actor, upsert } = setup();
+    deps.env.agentRuntime = "pi";
+    deps.resolveModel = (async () => ({
+      provider: "openai",
+      id: "chat-1",
+      apiKey: "sk-test",
+    })) as unknown as RouterDeps["resolveModel"];
+    vi.mocked(deps.prisma.spaceModelPreference.findFirst).mockResolvedValue({
+      embeddingModel: "embed-1",
+    } as never);
+    const status = await aiConsentStatus(deps, actor);
+    const embedding = status.recipients.find((recipient) => recipient.detail === "embed-1");
+    expect(embedding).toMatchObject({ use: "model", allowed: false });
+    // Not part of a chat send.
+    const send = await aiConsentStatus(deps, actor, { uses: ["model"] });
+    expect(send.recipients.map((recipient) => recipient.detail)).not.toContain("embed-1");
+
+    const chat = status.recipients.find((recipient) => recipient.detail === "chat-1");
+    await allowAiConsent(deps, actor, {
+      scope: status.scope,
+      version: status.version,
+      keys: [chat?.key as string],
+    });
+    expect(upsert).toHaveBeenCalledTimes(1);
   });
 });

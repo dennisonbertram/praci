@@ -31,6 +31,15 @@ type Story = StoryObj;
 
 export const WithItems: Story = { beforeEach: () => load(items) };
 /** An import is running: one row at the top of the list shows its progress. */
+/** A contract opened from Legal's list: a way back to Legal sits above the title. */
+export const OpenedFromLegal: Story = {
+  parameters: {
+    layout: "fullscreen",
+    initialEntries: [{ pathname: "/app/data-room", state: { from: "legal" } }],
+  },
+  beforeEach: () => load(items),
+};
+
 export const Importing: Story = {
   beforeEach: () => {
     load(items);

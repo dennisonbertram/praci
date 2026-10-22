@@ -24,6 +24,13 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/ui-web", async (original) => ({
+  ...(await original<typeof import("@rakazo/ui-web")>()),
+  enqueueNotificationToast: toast,
+}));
+const toastTitles = () => toast.mock.calls.map(([toast]) => toast.title as string);
+
 const rpcMock = vi.hoisted(() => ({
   folders: vi.fn(),
   list: vi.fn(),
@@ -78,7 +85,6 @@ vi.mock("../lib/rpc", () => ({
 }));
 
 import { Snippet } from "../components/data-room/ItemRows";
-import { getUploadToasts } from "../components/data-room/upload-toasts";
 import { DataRoomPage } from "./DataRoom";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -621,10 +627,10 @@ it("keeps the Type, Party and Date filters while no item has them, and keeps the
   expect(labels()).toContain("Filter by Document date");
   // One source filters nothing, and a source with no files would only lead to "No results".
   expect(labels()).not.toContain("Filter by Source");
-  // No file has a status, so the empty Status column is left out; the header is the same either way.
+  // The header is the same whether or not a file has a status.
   const head = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
   const bareHead = head();
-  expect(bareHead).toBe("NameTypeAddedParties");
+  expect(bareHead).toBe("NameTypeAddedPartiesStatus");
 
   rpcMock.list.mockResolvedValue({
     items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
@@ -896,9 +902,7 @@ it("says a linked document could not be found and drops it from the URL", async 
   });
   await settle();
   expect(search).toBe("");
-  expect(getUploadToasts().map((toast) => toast.name)).toContain(
-    "That document could not be found",
-  );
+  expect(toastTitles()).toContain("That document could not be found");
 });
 
 it("reads a failed file again from its preview", async () => {
@@ -951,7 +955,7 @@ it("says so when the open folder was deleted elsewhere, and shows All items", as
   const legal = { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" };
   rpcMock.folders.mockResolvedValue([legal]);
   const gone = () =>
-    getUploadToasts().filter((toast) => toast.name === "That folder no longer exists").length;
+    toastTitles().filter((title) => title === "That folder no longer exists").length;
   await renderPage("/?folder=f1");
   await settle();
   const before = gone();
@@ -973,7 +977,7 @@ it("confirms Try again at once, so the click visibly did something", async () =>
   );
   await act(async () => again?.click());
   await settle();
-  expect(getUploadToasts().map((toast) => toast.name)).toContain("Reading junk.pdf again");
+  expect(toastTitles()).toContain("Reading junk.pdf again");
 });
 
 const running = {
@@ -1009,7 +1013,7 @@ it("shows an import's progress, reloads the list while it runs, and stops when i
       failed: 1,
       inProgress: 0,
       finished: true,
-      latest: [{ id: "id-a.txt", name: "a.txt" }],
+      latest: ["a.txt", "x.txt", "y.txt"].map((name) => ({ id: `id-${name}`, name })),
     },
   ]);
   await act(async () => {
@@ -1034,7 +1038,7 @@ it("opens a file of a finished import, and lets the row be dismissed", async () 
       done: 5,
       inProgress: 0,
       finished: true,
-      latest: [{ id: "B", name: "b.txt" }],
+      latest: ["b.txt", "c.txt", "d.txt"].map((name, n) => ({ id: n ? name : "B", name })),
     },
   ]);
   rpcMock.item.mockResolvedValue({ ...item("b.txt"), id: "B" });
@@ -1153,6 +1157,35 @@ it("shows stats for the open filters, and a click on a type filters the list", a
   );
 });
 
+it("keeps the consent card in Stats, so the folder tree does not move", async () => {
+  rpcMock.consent.mockResolvedValue({
+    key: "k",
+    version: "v",
+    allowed: false,
+    disclosure: "",
+    recipients: [{ name: "Model", provider: "p" }],
+  });
+  rpcMock.stats.mockResolvedValue({
+    documents: 0,
+    bytes: 0,
+    duplicates: 0,
+    status: { ready: 0, processing: 0, failed: 0, notSearchable: 0 },
+    types: [],
+    sources: [],
+    dates: { unit: "month", buckets: [] },
+    parties: [],
+    largest: [],
+    amounts: [],
+  });
+  await renderPage();
+  expect(container.textContent).toContain("Let Praci read your documents");
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Stats"]')?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-stats"]')).not.toBeNull();
+  expect(container.textContent).toContain("Let Praci read your documents");
+});
+
 it("does not ask for the list again while a request is still in flight", async () => {
   const slow = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
   rpcMock.list.mockReturnValue(slow.promise);
@@ -1226,4 +1259,32 @@ it("sends every ticked file to the chosen agent in one go", async () => {
     "a.txt",
   ]);
   expect(container.querySelector('[data-testid="data-room-selection"]')).toBeNull();
+});
+
+it("lists only the new folder's items when it is opened with the preview open", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  await settle();
+  await clickRow(0);
+  expect(previewName()).toBe("b.txt");
+  const inFolder = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
+  rpcMock.list.mockImplementation((input: { folderId?: string }) =>
+    input.folderId === "f1"
+      ? inFolder.promise
+      : Promise.resolve({ items: [item("b.txt"), item("a.txt")], nextCursor: null }),
+  );
+  const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Legal",
+  );
+  await act(async () => legal?.click());
+  // A background change announcement arrives while the folder's answer is on its way.
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  inFolder.resolve({ items: [item("c.txt")], nextCursor: null });
+  await settle();
+  await settle();
+  expect(names()).toEqual(["c.txt"]);
 });

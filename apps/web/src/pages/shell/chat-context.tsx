@@ -69,12 +69,12 @@ function ReplyThumbnail({
 export function TimeSeparator({ createdAt, locale }: { createdAt: string; locale: string }) {
   const { t } = useLingui();
   return (
-    <h3
+    <h2
       data-testid="time-separator"
       className="my-3 select-none text-center text-xs font-normal text-muted-foreground"
     >
       {formatTimeSeparator(createdAt, locale, { today: t`Today`, yesterday: t`Yesterday` })}
-    </h3>
+    </h2>
   );
 }
 

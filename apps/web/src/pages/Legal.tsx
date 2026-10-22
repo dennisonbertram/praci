@@ -1,8 +1,9 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { LegalDeadline } from "@rakazo/contracts";
+import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
-import { X } from "lucide-react";
+import { Scale, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { FinanceSpace } from "../components/finance/ui";
@@ -15,6 +16,7 @@ import {
 } from "../components/finance/ui";
 import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
@@ -29,6 +31,7 @@ const VIEWS = ["contracts", "deadlines", "graph"] as const;
 type View = (typeof VIEWS)[number];
 const LEGAL_PATH = "/app/legal";
 
+const deadlineKey = (d: LegalDeadline) => [d.title, d.dueDate, d.notes].join("|");
 const deadlineQuestion = (deadline: LegalDeadline) => {
   const { title, contractTitle } = deadline;
   const due = fullDay(deadline.dueDate);
@@ -73,6 +76,7 @@ export function LegalPage({
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         <div className="mx-auto max-w-[1440px]">
           <Legal
+            selfName={spaces?.find((space) => space.id === spaceId)?.name}
             onOpenSettings={onOpenSettings}
             settingsOpen={settingsOpen}
             onAskAbout={onAskAbout}
@@ -85,11 +89,14 @@ export function LegalPage({
 }
 
 function Legal({
+  selfName,
   onOpenSettings,
   settingsOpen,
   onAskAbout,
   onConsentChange,
 }: {
+  /** The company itself, left out of each contract's Parties. */
+  selfName?: string;
   onOpenSettings?: () => void;
   settingsOpen: boolean;
   onAskAbout?: (question: string) => void;
@@ -112,6 +119,12 @@ function Legal({
   const [dismissedRun, setDismissedRun] = useState<string | null>(null);
   // The run Scan now queued, until the overview shows it finished.
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
+  // What the page showed when Scan now was pressed, and the one-line result once the scan ends.
+  const beforeScan = useRef<{
+    contracts: Map<string, string>;
+    deadlines: Map<string, string>;
+  } | null>(null);
+  const [scanResult, setScanResult] = useState("");
   const status = granted ?? consent.data;
   const data = overview.data;
   const lastRun = data?.agent.lastScanRun ?? null;
@@ -132,8 +145,27 @@ function Legal({
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the read changes.
   useEffect(() => setGranted(null), [consent.data]);
   useEffect(() => {
-    if (finishedWaiting) setWaitingFor(null);
-  }, [finishedWaiting]);
+    if (!finishedWaiting) return;
+    setWaitingFor(null);
+    const before = beforeScan.current;
+    beforeScan.current = null;
+    if (!before || !data || lastRun?.status === "failed") return;
+    if (lastRun?.status === "cancelled") {
+      setScanResult(t`Scan cancelled.`);
+      return;
+    }
+    const contractsChanged = data.contracts.filter(
+      (c) => before.contracts.get(c.id) !== c.analyzedAt,
+    ).length;
+    const deadlinesAdded = data.deadlines.filter(
+      (d) => before.deadlines.get(d.id) !== deadlineKey(d),
+    ).length;
+    setScanResult(
+      contractsChanged + deadlinesAdded === 0
+        ? t`Scan finished: nothing changed.`
+        : t`Scan finished: ${plural(contractsChanged, { one: "# contract", other: "# contracts" })} and ${plural(deadlinesAdded, { one: "# deadline", other: "# deadlines" })} added or updated.`,
+    );
+  }, [finishedWaiting, data, lastRun?.status]);
   // A key added in Settings, or a model changed in another tab, shows up when the user comes back.
   useEffect(() => {
     const refresh = () => {
@@ -156,6 +188,14 @@ function Legal({
     }
     settingsWasOpen.current = settingsOpen;
   }, [settingsOpen]);
+  // The run that outlived the wait has ended: drop the "still running" note.
+  const timedOut = useRef(false);
+  useEffect(() => {
+    if (timedOut.current && lastRun && lastRun.status !== "running") {
+      timedOut.current = false;
+      setScanResult("");
+    }
+  }, [lastRun]);
   // While a scan runs, re-read the overview until it ends; give up after a few minutes.
   useEffect(() => {
     if (!running) return;
@@ -163,6 +203,9 @@ function Legal({
     const stop = setTimeout(() => {
       clearInterval(poll);
       setWaitingFor(null);
+      beforeScan.current = null;
+      setScanResult(t`Scan is still running. Check back shortly.`);
+      timedOut.current = true;
     }, SCAN_WAIT_MS);
     return () => {
       clearInterval(poll);
@@ -172,6 +215,12 @@ function Legal({
 
   const scan = async () => {
     setScanError("");
+    setScanResult("");
+    timedOut.current = false;
+    beforeScan.current = data && {
+      contracts: new Map(data.contracts.map((c) => [c.id, c.analyzedAt])),
+      deadlines: new Map(data.deadlines.map((d) => [d.id, deadlineKey(d)])),
+    };
     try {
       const { runId } = await rpc.legal.scanNow();
       // The page shows the scan's progress and result; the agent panel stays as the founder left it.
@@ -196,6 +245,11 @@ function Legal({
     );
   }
   if (!data) return <LegalSkeleton />;
+  // Nothing in the Data room yet: one sentence and Add files, not a consent card or empty tabs.
+  const noDocuments =
+    data.counts.contracts + data.counts.openDeadlines + data.counts.unreviewedDocuments === 0 &&
+    !data.agent.lastScanAt &&
+    !running;
   const needsConsent = status?.allowed === false;
   const setupMissing = needsConsent;
   const scanDisabled = running;
@@ -213,6 +267,12 @@ function Legal({
     !running &&
     Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
+  // Below the tabs, so the result appearing never moves them.
+  const resultLine = scanResult ? (
+    <p role="status" className="mb-3 text-sm text-muted-foreground">
+      {scanResult}
+    </p>
+  ) : null;
   return (
     <div>
       <PageHeader
@@ -238,7 +298,7 @@ function Legal({
         actions={
           <>
             {/* Until consent exists the card holds the one action. */}
-            {setupMissing ? null : (
+            {setupMissing || noDocuments ? null : (
               <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
                 {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
               </Button>
@@ -259,7 +319,7 @@ function Legal({
           {scanError}
         </p>
       ) : null}
-      {status && !status.allowed && status.recipients.length > 0 ? (
+      {!noDocuments && status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt
           consent={status}
           onChange={(next) => {
@@ -269,7 +329,11 @@ function Legal({
           }}
         />
       ) : null}
-      {lastRun?.status === "failed" && !running && lastRun.id !== dismissedRun ? (
+      {lastRun?.status === "failed" &&
+      !running &&
+      lastRun.id !== dismissedRun &&
+      // A consent failure is fixed by the Allow card above, or already fixed: it is never a banner.
+      !(status && lastRun.error === LEGAL_CONSENT_REQUIRED_MESSAGE) ? (
         <div
           role="status"
           data-testid="scan-failed"
@@ -305,7 +369,7 @@ function Legal({
         <p className="-mt-2 mb-4 text-sm text-muted-foreground">
           <Link
             to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground hover:underline underline-offset-2"
+            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground underline underline-offset-2"
           >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
@@ -315,31 +379,49 @@ function Legal({
         </p>
       ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
-      {!needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {running ? (
-              <Trans>Reading your Data room…</Trans>
-            ) : data.agent.lastScanAt ? (
-              <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
-            ) : data.agent.dailyScanActive ? (
-              <Trans>
-                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
-                every day.
-              </Trans>
-            ) : (
-              <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
-            )}
-          </p>
-        </div>
+      {noDocuments ? (
+        <PageEmptyState
+          icon={<Scale className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+          title={<Trans>No contracts yet</Trans>}
+          description={<Trans>Add contracts to your Data room and Legal reads them.</Trans>}
+        >
+          <Button variant="outline" render={<Link to={DATA_ROOM_PATH} />}>
+            <Trans>Add files</Trans>
+          </Button>
+        </PageEmptyState>
+      ) : !needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
+        <>
+          {resultLine}
+          <PageEmptyState
+            icon={<Scale className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+            title={<Trans>No contracts yet</Trans>}
+            description={
+              running ? (
+                <Trans>Reading your Data room…</Trans>
+              ) : data.agent.lastScanAt ? (
+                <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
+              ) : data.agent.dailyScanActive ? (
+                <Trans>
+                  Press Scan now to read your Data room for contracts and deadlines. Legal also
+                  scans every day.
+                </Trans>
+              ) : (
+                <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
+              )
+            }
+          />
+        </>
       ) : (
         <>
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
-            <TabsList className="rounded-full" aria-label={t`View`}>
-              <TabsTrigger value="contracts" className="rounded-full px-3">
+            <TabsList
+              className="max-w-full justify-start overflow-x-auto rounded-full"
+              aria-label={t`View`}
+            >
+              <TabsTrigger value="contracts" className="rounded-full px-2 sm:px-3">
                 <Trans>Contracts</Trans> {counts.contracts}
               </TabsTrigger>
-              <TabsTrigger value="deadlines" className="rounded-full px-3">
+              <TabsTrigger value="deadlines" className="rounded-full px-2 sm:px-3">
                 <Trans>Deadlines</Trans> {counts.openDeadlines}
                 {overdue > 0 ? (
                   <span className="ms-1 text-destructive">
@@ -347,12 +429,15 @@ function Legal({
                   </span>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="graph" className="rounded-full px-3">
+              <TabsTrigger value="graph" className="rounded-full px-2 sm:px-3">
                 <Trans>Graph</Trans>
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          {view === "contracts" ? <LegalContracts contracts={data.contracts} /> : null}
+          {resultLine}
+          {view === "contracts" ? (
+            <LegalContracts contracts={data.contracts} selfName={selfName} />
+          ) : null}
           {view === "deadlines" ? (
             <LegalDeadlines
               deadlines={data.deadlines}

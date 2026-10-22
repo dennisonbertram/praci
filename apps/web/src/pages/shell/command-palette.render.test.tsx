@@ -200,12 +200,12 @@ it("says No results once the search has answered with nothing", async () => {
   expect(listText()).toContain("No results");
 });
 
-it("lists the mail action first, marks rows with the group icon, and Enter still opens the best match", async () => {
+it("lists direct matches before the mail search, marks rows with the group icon, and Enter opens the best match", async () => {
   const onSelectPage = vi.fn();
   await mount(onSelectPage, async () => [
     {
       heading: "Mail",
-      first: true,
+      fallback: true,
       icon: <svg data-testid="mail-icon" />,
       entries: [{ id: "/m", label: "Search mail for “fin”" }],
     },
@@ -218,7 +218,7 @@ it("lists the mail action first, marks rows with the group icon, and Enter still
   await search("fin");
   await wait(300);
   const headings = [...document.querySelectorAll("[cmdk-group-heading]")].map((h) => h.textContent);
-  expect(headings[0]).toBe("Mail");
+  expect(headings.at(-1)).toBe("Mail");
   expect(document.querySelector("[data-testid=mail-icon]")).toBeTruthy();
   expect(document.querySelector("[data-testid=contact-icon]")).toBeTruthy();
   // A snippet that only repeats the query is left out.
@@ -230,10 +230,67 @@ it("lists the mail action first, marks rows with the group icon, and Enter still
   expect(onSelectPage).toHaveBeenCalledWith("finance");
 });
 
+it("says nothing matched in pages, documents and contacts, and keeps the mail search", async () => {
+  const onOpenPath = vi.fn();
+  await mount(undefined, async () => [
+    { heading: "Mail", fallback: true, entries: [{ id: "/m", label: "Search mail for “zzzqq”" }] },
+  ]);
+  await search("zzzqq");
+  await wait(300);
+  expect(listText()).toContain("No matches in pages, documents, contacts");
+  expect(listText()).toContain("Search mail for “zzzqq”");
+  expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toContain(
+    "Search mail for",
+  );
+  expect(onOpenPath).not.toHaveBeenCalled();
+});
+
+it("returns focus to the element that opened it when it closes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const view = (open: boolean) => (
+    <>
+      <button type="button" data-testid="opener">
+        Search
+      </button>
+      <CommandPalette open={open} onOpenChange={() => undefined} bots={[]} onSelectBot={() => {}} />
+    </>
+  );
+  await act(async () => root.render(view(false)));
+  const opener = document.querySelector<HTMLButtonElement>("[data-testid=opener]")!;
+  opener.focus();
+  await act(async () => root.render(view(true)));
+  await wait(50);
+  expect(document.activeElement).not.toBe(opener);
+  await act(async () => root.render(view(false)));
+  await wait(300);
+  expect(document.activeElement).toBe(opener);
+});
+
 it("Enter opens a contact named exactly as typed, not the mail search, and a long title keeps the match in view", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   await mount(vi.fn(), async () => [
-    { heading: "Mail", first: true, entries: [{ id: "/m", label: "Search mail for “zed quill”" }] },
+    {
+      heading: "Mail",
+      fallback: true,
+      entries: [{ id: "/m", label: "Search mail for “zed quill”" }],
+    },
     {
       heading: "Contacts",
       entries: [{ id: "/c", label: "Zed Quill" }],
@@ -300,4 +357,10 @@ it("offers New folder as an action too", async () => {
     item?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
   expect(run).toHaveBeenCalledOnce();
+});
+
+it("shows only the link text of a markdown link in a snippet", () => {
+  expect(plainSnippet("a reply. [Open Settings](/app?settings=privacy) **now**")).toBe(
+    "a reply. Open Settings now",
+  );
 });

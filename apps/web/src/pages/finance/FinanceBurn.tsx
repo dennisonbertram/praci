@@ -317,7 +317,7 @@ export function FinanceRunwayPage() {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
+          <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
             <Kpi title={t`Cash`} value={money(data.cashCents)} to={financePath.accounts()} />
             <Kpi
               title={t`Monthly burn`}

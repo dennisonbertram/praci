@@ -5,6 +5,7 @@ import type {
   FinanceVendorOutput,
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { FinanceChromeProvider } from "../../components/finance/ui";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import {
   FinanceCategoryPage,
@@ -176,6 +177,26 @@ export const Vendor: Story = {
   beforeEach: () => mockRpc({ "finance.vendor": vendor }),
 };
 
+/** A phone's vendor header: Back, the title, the company and Ask share one row; the company truncates first. */
+export const VendorWithChrome: Story = {
+  render: () => (
+    <FinanceChromeProvider
+      value={{
+        onAskAgent: () => undefined,
+        spaceId: "s1",
+        spaces: [
+          { id: "s1", name: "Northwind Robotics" },
+          { id: "s2", name: "Northwind Labs" },
+        ],
+        onSwitchSpace: () => undefined,
+      }}
+    >
+      <FinanceVendorPage keyName="acme-hosting" />
+    </FinanceChromeProvider>
+  ),
+  beforeEach: () => mockRpc({ "finance.vendor": vendor }),
+};
+
 /** A vendor newer than three months compares with its first full month. */
 export const VendorComparedWithFirstMonth: Story = {
   render: () => <FinanceVendorPage keyName="acme-hosting" />,
@@ -188,6 +209,21 @@ export const VendorComparedWithFirstMonth: Story = {
         monthlyAvgMonths: 3,
         changePct: 0,
         changeFromMonth: "2025-12",
+      },
+    }),
+};
+
+/** The chart and the change stop at the last full month; the month under way is said under the chart. */
+export const VendorMonthSoFar: Story = {
+  render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.vendor": {
+        ...vendor,
+        charges: [
+          { ...txn("t9", 16, -240_000, "Acme Hosting"), postedAt: "2026-04-16T12:00:00.000Z" },
+          ...transactions,
+        ],
       },
     }),
 };

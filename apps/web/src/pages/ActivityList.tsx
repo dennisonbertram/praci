@@ -2,9 +2,18 @@ import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { RunActivityRow, RunStatus } from "@rakazo/contracts";
 import { isAgedStuckWork } from "@rakazo/core";
-import { Button, Input, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import {
+  Button,
+  Input,
+  Label,
+  NativeSelect,
+  NativeSelectOption,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@rakazo/ui-web";
 import type { ReactNode } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
 import {
@@ -105,6 +114,31 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   const hasAnyRuns = activeRuns.length > 0 || recentRuns.length > 0;
   const hasVisibleRuns = filteredActive.length > 0 || filteredRecent.length > 0;
 
+  // The list ends on a whole row: its height stops at the bottom of the last row that fits.
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const layoutKey = [...filteredActive, ...filteredRecent]
+    .map((run) => `${run.runId}${run.status}`)
+    .join();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: layoutKey, showFinished and error change which rows are drawn
+  useLayoutEffect(() => {
+    const scroller = rowsRef.current;
+    if (!scroller) return;
+    const fit = () => {
+      scroller.style.maxHeight = "";
+      if (scroller.scrollHeight <= scroller.clientHeight) return;
+      const top = scroller.getBoundingClientRect().top;
+      let bottom = 0;
+      for (const row of scroller.querySelectorAll("[data-activity-row]")) {
+        const end = row.getBoundingClientRect().bottom - top + scroller.scrollTop;
+        if (end <= scroller.clientHeight) bottom = end;
+      }
+      if (bottom > 0) scroller.style.maxHeight = `${Math.ceil(bottom)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [layoutKey, showFinished, error]);
+
   if (loading && !hasAnyRuns && !filtersOn) {
     return <RowsSkeleton rows={3} className="px-2.5 py-2" />;
   }
@@ -130,30 +164,37 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[28vh] shrink-0 snap-start lg:max-h-[max(14vh,7.5rem)] flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[40vh] shrink-0 snap-start flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
         <h2 className="text-[13px] font-medium text-foreground">
           <Trans>Activity</Trans>
         </h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
-          data-testid="activity-show-filters"
-          aria-expanded={showFilters}
-          onClick={() => setShowFilters((open) => !open)}
-        >
-          <Trans>Filter</Trans>
-        </Button>
+        {/* A popover, so the filter form never takes the list's space. */}
+        <Popover open={showFilters} onOpenChange={setShowFilters}>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
+                data-testid="activity-show-filters"
+              />
+            }
+          >
+            <Trans>Filter</Trans>
+            {filtersOn ? (
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+            ) : null}
+          </PopoverTrigger>
+          <PopoverContent side="right" align="start" className="w-72">
+            <ActivityFilters filters={filters} onChange={setFilters} />
+          </PopoverContent>
+        </Popover>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
-        {/* Inside the scroll area so expanded filters can never squeeze the results to zero height. */}
-        {showFilters || filtersOn ? (
-          <ActivityFilters filters={filters} onChange={setFilters} />
-        ) : null}
+      <div ref={rowsRef} className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
         {error ? (
           <div className="px-2.5 pb-2" role="alert">
             <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />
@@ -170,7 +211,8 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
+        {/* Each row names its own state, so this group's heading is for screen readers only. */}
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>} titleHidden>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
@@ -219,16 +261,25 @@ const NEEDS_YOU = new Set<RunStatus>(["waiting_input", "waiting_takeover"]);
 function ActivitySection({
   id,
   title,
+  titleHidden = false,
   children,
 }: {
   id: string;
   title: ReactNode;
+  titleHidden?: boolean;
   children: ReactNode[];
 }) {
   if (children.length === 0) return null;
   return (
     <section className="mt-1 first:mt-0" aria-labelledby={id}>
-      <div id={id} className="px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80">
+      <div
+        id={id}
+        className={
+          titleHidden
+            ? "sr-only"
+            : "px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80"
+        }
+      >
         {title}
       </div>
       {children}
@@ -288,7 +339,7 @@ function ActivityFilters({
   const statusLabelText = filters.status === "all" ? null : statusLabel(filters.status);
 
   return (
-    <div className="mb-2 flex flex-col gap-2 px-2.5 pt-1">
+    <div className="flex flex-col gap-2">
       <div>
         <Label htmlFor={statusId} className="text-[12.5px] text-muted-foreground/80">
           <Trans>Status</Trans>
@@ -450,6 +501,7 @@ function ActivityRow({
       type="button"
       aria-label={activityLabel}
       onClick={onOpen}
+      data-activity-row=""
       className={`flex w-full gap-3 rounded-xl px-2.5 text-left hover:bg-accent ${compact ? "py-1.5" : "py-[9px]"}`}
     >
       <span
@@ -467,13 +519,13 @@ function ActivityRow({
             </span>
           )}
         </div>
-        <div hidden={compact} className="mt-0.5 flex items-baseline gap-2">
+        <div hidden={compact} className="mt-0.5">
+          <span className={`block text-xs ${tone}`}>{label}</span>
           {run.promptSnippet ? (
-            <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+            <span className="block truncate text-[13px] text-muted-foreground">
               {run.promptSnippet}
             </span>
           ) : null}
-          <span className={`ms-auto shrink-0 text-xs ${tone}`}>{label}</span>
         </div>
       </div>
     </button>

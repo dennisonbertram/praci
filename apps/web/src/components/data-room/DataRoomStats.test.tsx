@@ -114,3 +114,15 @@ it("leaves out the Sources card when every file has the same source", () => {
   render({ ...manyDocuments, sources: [{ value: "upload", count: 3 }] });
   expect(container.textContent).not.toContain("Sources");
 });
+
+it("makes the Failed card a button that filters to failed files", () => {
+  render({
+    ...manyDocuments,
+    status: { ...manyDocuments.status, failed: 2 },
+  } as typeof manyDocuments);
+  const card = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Failed2",
+  );
+  act(() => card?.click());
+  expect(onPick).toHaveBeenCalledWith({ status: "failed" });
+});

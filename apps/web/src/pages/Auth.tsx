@@ -17,6 +17,9 @@ type AuthMode = "in" | "up" | "forgot";
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-base md:text-base";
 export const submitClass = "mt-3 h-12 w-full rounded-xl text-base";
 
+// The submit button is disabled while a request runs, which drops focus; an error puts it back on the email field.
+const focusEmail = () => document.getElementById("email")?.focus();
+
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -32,6 +35,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   });
   const [pending, setPending] = useState(false);
   const [tooShort, setTooShort] = useState(false);
+  // Each field's own message sits under it; `error` stays for what only the server can say.
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
@@ -72,20 +79,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!reset?.passwordAuth) return;
-    if (mode === "up" && !name.trim()) {
-      setError(t`Enter your name`);
-      return;
-    }
-    const issue = credentialIssue({ email, password: mode === "forgot" ? undefined : password });
-    if (issue) {
-      setError(credentialIssueText(issue));
-      return;
-    }
-    // The rule is shown under the field; a short password turns that line red, with no native bubble.
-    if (mode === "up" && password.length < 8) {
-      setTooShort(true);
-      return;
-    }
+    const issues = {
+      name: mode === "up" && !name.trim() ? t`Enter your name` : null,
+      email: credentialIssue({ email }) ? credentialIssueText("email") : null,
+      password: mode === "in" && !password ? credentialIssueText("password") : null,
+    };
+    // At sign-up the rule under the field is the message: a short or empty password turns it red.
+    const short = mode === "up" && password.length < 8;
+    setError(null);
+    setNameError(issues.name);
+    setEmailError(issues.email);
+    setPasswordError(issues.password);
+    setTooShort(short);
+    if (issues.name || issues.email || issues.password || short) return;
     setPending(true);
     setError(null);
     try {
@@ -116,6 +122,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           : await authClient.signIn.email({ email: trimmedEmail, password });
       if (result.error) {
         setError(authErrorText(result.error, t`Could not continue`));
+        focusEmail();
         return;
       }
       if (mode === "up" && signupRequiresEmailVerification(result.data)) {
@@ -126,6 +133,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       navigate(mode === "up" ? "/onboarding" : signInNext(searchParams.get("next")));
     } catch {
       setError(t`Could not reach the server`);
+      focusEmail();
     } finally {
       setPending(false);
     }
@@ -235,10 +243,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     // Chief greets the founder by this name; without it the email handle stood in.
                     required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t`Your name`}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setNameError(null);
+                    }}
+                    aria-invalid={nameError ? true : undefined}
+                    aria-describedby={nameError ? "name-error" : undefined}
                     className={fieldClass}
                   />
+                  {nameError ? (
+                    <p id="name-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                      {nameError}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               <div className="w-full">
@@ -250,13 +267,21 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   name="email"
                   autoComplete="username"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t`Your email address`}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(null);
+                  }}
                   type="email"
                   required
-                  aria-invalid={error ? true : undefined}
+                  aria-invalid={error || emailError ? true : undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
                   className={fieldClass}
                 />
+                {emailError ? (
+                  <p id="email-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                    {emailError}
+                  </p>
+                ) : null}
               </div>
               {mode !== "forgot" ? (
                 <div className="mt-4 w-full">
@@ -272,11 +297,18 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       onChange={(e) => {
                         setPassword(e.target.value);
                         setTooShort(false);
+                        setPasswordError(null);
                       }}
-                      placeholder={t`Password`}
                       type={showPassword ? "text" : "password"}
                       required
-                      aria-invalid={error || tooShort ? true : undefined}
+                      aria-invalid={error || tooShort || passwordError ? true : undefined}
+                      aria-describedby={
+                        mode === "up"
+                          ? "password-hint"
+                          : passwordError
+                            ? "password-error"
+                            : undefined
+                      }
                       className={`${fieldClass} mt-0 pr-12`}
                     />
                     <Button
@@ -293,10 +325,16 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   </div>
                   {mode === "up" ? (
                     <p
+                      id="password-hint"
                       role={tooShort ? "alert" : undefined}
                       className={`mt-1.5 text-sm ${tooShort ? "text-destructive" : "text-muted-foreground"}`}
                     >
                       <Trans>At least 8 characters.</Trans>
+                    </p>
+                  ) : null}
+                  {mode === "in" && passwordError ? (
+                    <p id="password-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                      {passwordError}
                     </p>
                   ) : null}
                   {mode === "in" && reset?.passwordReset ? (
@@ -496,7 +534,10 @@ export function AuthFrame({
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />
         </div>
-        <h1 aria-live="polite" className="mb-9 mt-7 text-4xl font-medium tracking-tight">
+        <h1
+          aria-live="polite"
+          className="mb-9 mt-7 text-center text-4xl font-medium tracking-tight"
+        >
           {title}
         </h1>
         {children}

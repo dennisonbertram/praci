@@ -1143,6 +1143,7 @@ function MessageHoverActions({
           <Popover open={reactionsOpen} onOpenChange={setReactionsOpen}>
             <PopoverTrigger
               aria-label={t`React`}
+              tabIndex={-1}
               className={cn(
                 iconButtonClass,
                 "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7 [@media(hover:none)]:hidden",
@@ -1175,6 +1176,7 @@ function MessageHoverActions({
         <button
           type="button"
           aria-label={t`Reply`}
+          tabIndex={-1}
           onClick={() => onReply(message)}
           className={cn(
             iconButtonClass,
@@ -1188,6 +1190,7 @@ function MessageHoverActions({
             type="button"
             aria-label={remembered ? t`Remembered` : t`Remember`}
             title={remembered ? t`Remembered` : t`Remember`}
+            tabIndex={-1}
             aria-pressed={remembered}
             disabled={remembered}
             onClick={() => remember?.onRemember(message.id)}
@@ -1205,15 +1208,16 @@ function MessageHoverActions({
             aria-label={t`More`}
             className={cn(
               iconButtonClass,
-              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+              // On touch this is the only way in to react, reply and bookmark, so it reads stronger.
+              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7 [@media(hover:none)]:text-foreground/75",
             )}
           >
             <MoreHorizontal size={15} strokeWidth={1.7} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align={side === "end" ? "start" : "end"}>
             {canReactToThreadMessage(message) ? (
-              // On a phone the React button is folded into this menu.
-              <div className="grid w-33 grid-cols-3 pb-1 [@media(hover:hover)_and_(pointer:fine)]:hidden">
+              // The row's buttons are not Tab stops (one stop per message), so this menu is the keyboard route to every action.
+              <div className="grid w-33 grid-cols-3 pb-1">
                 {MESSAGE_REACTIONS.map((emoji) => (
                   <DropdownMenuItem
                     key={emoji}
@@ -1773,17 +1777,18 @@ const MessageView = memo(function MessageView({
                   canAnswer={canAnswer}
                   botName={botToolControls?.editableBotName(message.botId)}
                   onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
-                  onOpenComposer={(failed) =>
-                    failed.connectionId
-                      ? botToolControls?.openComposer({
-                          connectionId: failed.connectionId,
-                          account: failed.account ?? "",
-                          to: failed.to,
-                          cc: failed.cc,
-                          bcc: failed.bcc,
-                          subject: failed.subject,
-                          body: failed.body,
-                        })
+                  onOpenComposer={
+                    block.mail.connectionId || botToolControls?.accountFromThread
+                      ? (failed) =>
+                          botToolControls?.openComposer({
+                            connectionId: failed.connectionId ?? "",
+                            account: failed.account ?? "",
+                            to: failed.to,
+                            cc: failed.cc,
+                            bcc: failed.bcc,
+                            subject: failed.subject,
+                            body: failed.body,
+                          })
                       : undefined
                   }
                   onDisableTool={
@@ -1799,6 +1804,7 @@ const MessageView = memo(function MessageView({
             <div key={i} className={gap}>
               <AskCard
                 block={block}
+                requestedAt={message.createdAt}
                 // A held message is answered without a waiting run, so it stays answerable.
                 canAnswer={canAnswer || block.share === true}
                 onAnswer={(text, username) => onAnswer(message, text, username)}

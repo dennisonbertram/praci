@@ -60,6 +60,7 @@ export interface ThreadEvents {
   answerRunInput(input: AnswerRunInput): Promise<boolean>;
   findMailApprovalForEdit(input: FindMailApprovalInput): Promise<PendingMailApproval | null>;
   setMailApprovalOutcome(input: SetMailApprovalOutcomeInput): Promise<void>;
+  setApprovalWaitsFor(input: SetApprovalWaitsForInput): Promise<void>;
   append(input: AppendEventInput): Promise<ProductEvent>;
   claimSteering(input: ClaimSteeringInput): Promise<ClaimedSteeringMessage[]>;
   clearThread(input: ClearThreadInput): Promise<ClearThreadResult>;
@@ -253,6 +254,7 @@ export function createThreadEvents(
     answerRunInput: (input) => answerRunInput(prisma, input, realtime, options.runSecretWriter),
     findMailApprovalForEdit: (input) => findMailApprovalForEdit(prisma, input),
     setMailApprovalOutcome: (input) => setMailApprovalOutcome(prisma, input, realtime),
+    setApprovalWaitsFor: (input) => setApprovalWaitsFor(prisma, input, realtime),
     append: (input) => appendEvent(prisma, input, realtime),
     claimSteering: (input) => claimSteering(prisma, input),
     clearThread: (input) => clearThread(prisma, input, realtime),
@@ -581,12 +583,60 @@ export interface SetMailApprovalOutcomeInput {
   note?: string;
   /** With a failed outcome: the reason the card shows. */
   error?: string;
+  /** With a failed outcome: the account the send used, so the card can reopen the draft in the composer. */
+  connectionId?: string;
+  account?: string;
   /**
    * For a recovery write: apply only while the approval is still unsettled (the effect still has
    * this note) and the compose record is in this state (null: there is none). Checked under the
    * same thread lock, so a send that finished meanwhile is never overwritten.
    */
   onlyIf?: { note: string; compose: { userId: string; clientId: string; state: string | null } };
+}
+
+export interface SetApprovalWaitsForInput {
+  spaceId: string;
+  threadId: string;
+  messageId: string;
+  effectId: string;
+  /** The service that accepted the submission and must still approve it on its own side. */
+  waitsFor: string;
+}
+
+/** Marks an approval card as waiting on its service, once the service has accepted the request. */
+export async function setApprovalWaitsFor(
+  prisma: PrismaClient,
+  input: SetApprovalWaitsForInput,
+  realtime?: RealtimeFanout,
+): Promise<void> {
+  const committed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${input.threadId} FOR UPDATE`;
+    const message = await tx.message.findFirst({
+      where: { id: input.messageId, threadId: input.threadId, role: "bot" },
+    });
+    const parsed = MessageBlockSchema.array().safeParse(message?.blocks);
+    if (!message?.runId || !parsed.success) return null;
+    const run = await tx.run.findUnique({ where: { id: message.runId }, select: { botId: true } });
+    if (!run) return null;
+    let changed = false;
+    const blocks = parsed.data.map((block) => {
+      if (block.kind !== "ask" || block.approvalEffectId !== input.effectId) return block;
+      changed = true;
+      return { ...block, waitsFor: input.waitsFor };
+    });
+    if (!changed) return null;
+    await tx.message.update({ where: { id: message.id }, data: { blocks } });
+    const event = await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: run.botId,
+      type: "thread.message.updated",
+      runId: message.runId,
+      payload: { messageId: message.id, role: "bot", blocks },
+    });
+    return { threadId: event.threadId, seq: event.seq };
+  });
+  if (committed) await notifyRealtime(realtime, committed.threadId, committed.seq);
 }
 
 /** Records how the person's own send of an edited mail approval ended, for the card to show. */
@@ -637,6 +687,8 @@ export async function setMailApprovalOutcome(
           ...block.mail,
           outcome: input.outcome,
           ...(input.error ? { error: input.error.slice(0, 300) } : {}),
+          ...(input.connectionId ? { connectionId: input.connectionId } : {}),
+          ...(input.account && !block.mail.account ? { account: input.account } : {}),
         },
       };
     });

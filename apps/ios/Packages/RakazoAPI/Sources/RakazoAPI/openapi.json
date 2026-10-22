@@ -7393,6 +7393,9 @@
                                                 "detailFolded": {
                                                   "type": "boolean"
                                                 },
+                                                "waitsFor": {
+                                                  "type": "string"
+                                                },
                                                 "mail": {
                                                   "type": "object",
                                                   "properties": {
@@ -25093,6 +25096,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -25226,6 +25232,12 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "documentsOnly": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -25286,6 +25298,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -32431,6 +32446,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
@@ -42507,21 +42525,11 @@
                         "monthly": {
                           "type": "array",
                           "items": {
-                            "type": "object",
-                            "properties": {
-                              "month": {
-                                "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema1"
-                              },
-                              "cents": {
-                                "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema0"
-                              }
-                            },
-                            "required": [
-                              "month",
-                              "cents"
-                            ],
-                            "additionalProperties": false
+                            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema4"
                           }
+                        },
+                        "currentMonth": {
+                          "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema4"
                         },
                         "charges": {
                           "type": "array",
@@ -48808,6 +48816,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
@@ -55776,6 +55787,9 @@
                                     "type": "null"
                                   }
                                 ]
+                              },
+                              "hasAttachment": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -66187,6 +66201,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -66320,6 +66337,12 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "documentsOnly": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -66380,6 +66403,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -85776,6 +85802,9 @@
                               "promptSnippet": {
                                 "type": "string"
                               },
+                              "needsApproval": {
+                                "type": "boolean"
+                              },
                               "updatedAt": {
                                 "type": "string"
                               }
@@ -94007,6 +94036,9 @@
                                         "detailFolded": {
                                           "type": "boolean"
                                         },
+                                        "waitsFor": {
+                                          "type": "string"
+                                        },
                                         "mail": {
                                           "type": "object",
                                           "properties": {
@@ -96157,6 +96189,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
@@ -106809,6 +106844,22 @@
           "brex",
           "statement"
         ]
+      },
+      "RpcFinanceVendorOutputSchema4": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema1"
+          },
+          "cents": {
+            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema0"
+          }
+        },
+        "required": [
+          "month",
+          "cents"
+        ],
+        "additionalProperties": false
       },
       "RpcFinanceWalletAddOutputSchema0": {
         "type": "string",

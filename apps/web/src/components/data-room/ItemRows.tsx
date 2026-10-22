@@ -45,6 +45,8 @@ export type RowInteraction = {
   /** An arrow key moved to this row: show it, as a click would, but never close the preview. */
   onSelect: (item: DataRoomApiItem) => void;
   onToggle: (item: DataRoomApiItem) => void;
+  /** Escape on the shown row closes the side preview (focus stays on the row after Enter). */
+  onClosePreview?: () => void;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
   folderPath: (id: string | null) => string;
   /** The folder the page shows; rows elsewhere (All items) name their folder. */
@@ -119,6 +121,8 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         moveFocus(event);
+      } else if (event.key === "Escape" && o.onClosePreview && o.shownId === item.id) {
+        o.onClosePreview();
       } else if (event.key === "x" && o.onCheck) {
         // The keyboard route to a tick, as in the inbox: the checkbox itself is not a Tab stop.
         o.onCheck(item);
@@ -138,7 +142,8 @@ function Marker({ item }: { item: DataRoomApiItem }) {
       <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
     );
   }
-  if (item.status !== "ready") {
+  // Stored text means the file is searchable already: the pipeline's later steps are not its reader's wait.
+  if (item.status !== "ready" && !item.previewText) {
     return (
       <span title={stageLabel(item.status)} className="inline-flex shrink-0">
         <Spinner
@@ -166,7 +171,13 @@ export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
         : FileText;
 
 const DASH = "—";
+/** The document type, or for a finished file without one the reason; empty while it is still being read. */
+const typeText = (item: DataRoomApiItem) =>
+  typeLabel(item.facets.docType) ||
+  (isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
 const empty = <span className="text-muted-foreground">{DASH}</span>;
+/** A failed file has nothing to show in a data column; its reason is under the name. */
+const blank = (item: DataRoomApiItem) => (item.status === "failed" ? null : empty);
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
 const MID_COL = "hidden @min-[640px]/list:table-cell";
 const PARTIES_COL = "hidden @min-[800px]/list:table-cell";
@@ -182,15 +193,21 @@ const LIST_PAD = "px-4 md:px-7 @min-[800px]/bd:px-2";
 const dateOf = (item: DataRoomApiItem, field: SortField | undefined) =>
   field === "date" ? dateText(item.facets.docDate) : dateText(item.createdAt, true);
 
-/** Fixed widths, so a one-row list leaves no stretched empty area and columns never shift. */
-function Columns({ showStatus }: { showStatus: boolean }) {
+/** The date where no column header names it: "Added Mar 4, 2026" unless the list is sorted by document date. */
+const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
+  const date = dateOf(item, field);
+  return date && field !== "date" ? `${t`Added`} ${date}` : date;
+};
+
+/** Fixed widths, so columns never shift and a wide pane gives its extra width to the Name only. */
+function Columns() {
   return (
     <colgroup>
       <col />
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
-      {showStatus ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
+      <col className={cn(PARTIES_COLUMN, "w-48 @min-[1100px]/list:w-64")} />
+      <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
@@ -200,12 +217,10 @@ function ListHead({
   sortField,
   rows,
   o,
-  showStatus,
 }: {
   sortField: SortField | undefined;
   rows: Row[];
   o: RowInteraction;
-  showStatus: boolean;
 }) {
   const allChecked = rows.length > 0 && rows.every(({ item }) => o.checked?.has(item.id));
   return (
@@ -240,11 +255,9 @@ function ListHead({
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        {showStatus ? (
-          <TableHead className={MID_COL}>
-            <Trans>Status</Trans>
-          </TableHead>
-        ) : null}
+        <TableHead className={MID_COL}>
+          <Trans>Status</Trans>
+        </TableHead>
         <TableHead />
       </TableHeadRow>
     </TableHeader>
@@ -280,7 +293,6 @@ function ItemRow({
   o,
   sortField,
   first,
-  showStatus,
 }: {
   item: DataRoomApiItem;
   /** Search only: the text that matched, under the name. */
@@ -288,7 +300,6 @@ function ItemRow({
   o: RowInteraction;
   sortField: SortField | undefined;
   first: boolean;
-  showStatus: boolean;
 }) {
   const label = statusLabel(item.status, !!item.previewText);
   const stuck = isStuck(item);
@@ -300,7 +311,7 @@ function ItemRow({
       : "";
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   const parties = item.facets.parties.join(", ");
-  const type = typeLabel(item.facets.docType);
+  const type = typeText(item);
   const date = dateOf(item, sortField);
   const shown = o.shownId === item.id;
   return (
@@ -322,7 +333,11 @@ function ItemRow({
       <TableCell data-testid="data-room-name">
         <div className="flex min-w-0 items-center gap-2">
           {/* On touch the checkbox always shows, so the slot is a 44 px target. */}
-          <span className="relative inline-flex shrink-0 pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center">
+          <span className="relative inline-flex shrink-0 pointer-coarse:items-center">
+            {/* On touch the box has its own 44 px slot beside the icon, so it never reads as the icon. */}
+            {o.onCheck ? (
+              <span aria-hidden="true" className="hidden size-11 pointer-coarse:block" />
+            ) : null}
             <Marker item={item} />
             {o.onCheck ? (
               <Checkbox
@@ -332,7 +347,7 @@ function ItemRow({
                 onCheckedChange={() => o.onCheck?.(item)}
                 onClick={(event) => event.stopPropagation()}
                 // Over the icon: shown on hover, while ticked, and always on touch screens.
-                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-3.25 pointer-coarse:opacity-100 data-checked:opacity-100"
+                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-y-3.25 pointer-coarse:start-3.25 pointer-coarse:end-auto pointer-coarse:size-4.5 pointer-coarse:opacity-100 data-checked:opacity-100 dark:bg-background"
               />
             ) : null}
           </span>
@@ -390,7 +405,7 @@ function ItemRow({
         className={cn(MID_COL, "truncate text-muted-foreground")}
         title={type || undefined}
       >
-        {type || empty}
+        {type || blank(item)}
       </TableCell>
       <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
         {date || empty}
@@ -400,19 +415,17 @@ function ItemRow({
         className={cn(PARTIES_COL, "truncate text-muted-foreground")}
         title={parties || undefined}
       >
-        {parties || empty}
+        {parties || blank(item)}
       </TableCell>
-      {showStatus ? (
-        <TableCell
-          data-testid="data-room-status"
-          className={MID_COL}
-          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-        >
-          {label ? (
-            <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-          ) : null}
-        </TableCell>
-      ) : null}
+      <TableCell
+        data-testid="data-room-status"
+        className={MID_COL}
+        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+      >
+        {label ? (
+          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+        ) : null}
+      </TableCell>
       <TableCell className="pe-0">
         <ItemMenu
           item={item}
@@ -445,7 +458,6 @@ export function SubfolderList({
   onAction,
   contents,
   tiles = false,
-  showStatus = true,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
@@ -453,8 +465,6 @@ export function SubfolderList({
   /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
   contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
-  /** Whether the file table has a Status column; the empty cells span the columns that exist. */
-  showStatus?: boolean;
 }) {
   if (!folders.length) return null;
   if (tiles) {
@@ -501,7 +511,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={showStatus ? 3 : 2} className={MID_COL} />
+          <TableCell colSpan={3} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -524,18 +534,16 @@ export function ListView({
 }: {
   rows: Row[];
   o: RowInteraction;
-  lead?: (showStatus: boolean) => ReactNode;
+  lead?: () => ReactNode;
   /** The field the list is sorted by; the Date column shows it. Without one: when added. */
   sortField?: SortField;
 }) {
-  // A column that is empty on every row is left out.
-  const showStatus = rows.some(({ item }) => statusLabel(item.status, !!item.previewText));
   return (
     <div className={LIST_PAD}>
-      <Table>
-        <Columns showStatus={showStatus} />
-        <ListHead sortField={sortField} rows={rows} o={o} showStatus={showStatus} />
-        {lead?.(showStatus)}
+      <Table className="max-w-4xl">
+        <Columns />
+        <ListHead sortField={sortField} rows={rows} o={o} />
+        {lead?.()}
         <TableBody aria-label={t`Items`} data-rows>
           {rows.map(({ item, snippets }, index) => (
             <ItemRow
@@ -545,7 +553,6 @@ export function ListView({
               o={o}
               sortField={sortField}
               first={index === 0}
-              showStatus={showStatus}
             />
           ))}
         </TableBody>
@@ -685,7 +692,7 @@ export function GridView({
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
             triggerTabIndex={-1}
-            className="absolute top-3 right-3 bg-card/80"
+            className="absolute top-3 right-3 rounded-full bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
           <span
@@ -721,8 +728,8 @@ export function GridView({
               </span>
             ) : (
               <>
-                <span>{typeLabel(item.facets.docType) || DASH}</span>
-                <span>{dateOf(item, sortField)}</span>
+                {typeText(item) ? <span>{typeText(item)}</span> : null}
+                <span>{datedLine(item, sortField)}</span>
               </>
             )}
           </span>
@@ -741,15 +748,7 @@ function TypeAndDate({
   item: DataRoomApiItem;
   sortField: SortField | undefined;
 }) {
-  const type = typeLabel(item.facets.docType);
-  const date = dateOf(item, sortField);
-  return (
-    <>
-      {[type || (isSettled(item.status, !!item.previewText) ? DASH : ""), date]
-        .filter(Boolean)
-        .join(" · ")}
-    </>
-  );
+  return <>{[typeText(item), datedLine(item, sortField)].filter(Boolean).join(" · ")}</>;
 }
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */

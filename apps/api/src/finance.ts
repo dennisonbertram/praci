@@ -995,6 +995,7 @@ export async function financeVendor(
     firstSeenAt,
     paidWith: recurring.find((r) => r.key === input.key)?.paidWith ?? paidWithFor(own, accounts),
     monthly: full,
+    currentMonth: seven[6],
     charges: newest(
       own.filter((t) => txnDay(t) >= sixMonthsFrom),
       LIST_LIMIT,

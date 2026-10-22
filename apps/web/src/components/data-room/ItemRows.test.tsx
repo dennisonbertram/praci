@@ -73,9 +73,12 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual(["lease.pdfLegal— · Mar 4, 2026", "loose.pdf— · Mar 4, 2026"]);
+  expect(names()).toEqual([
+    "lease.pdfLegalNot tagged · Added Mar 4, 2026",
+    "loose.pdfNot tagged · Added Mar 4, 2026",
+  ]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdf— · Mar 4, 2026"]);
+  expect(names()).toEqual(["lease.pdfNot tagged · Added Mar 4, 2026"]);
 });
 
 it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
@@ -93,8 +96,8 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
-  expect(head?.textContent).toBe("NameTypeAddedParties");
-  expect(container.querySelectorAll("colgroup > col")).toHaveLength(5);
+  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
+  expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
 });
 
 it("cuts parties to one line with the full value in the title, and shows a dash when empty", () => {
@@ -255,7 +258,7 @@ it("puts the type and date under the name for a phone, and says when a file is n
     (line) => line.textContent,
   );
   expect(lines[0]).toMatch(/^Presentation · Dec 21, 2025$/);
-  expect(lines[1]).toBe("—");
+  expect(lines[1]).toBe("Not tagged");
 });
 
 it("highlights the shown row and bolds only its name cell's text via the name style", () => {
@@ -278,15 +281,16 @@ it("gives a tile's type and date a line each, and marks an untagged tile", () =>
       (s) => s.textContent,
     );
   expect(lines(tiles[0] as Element)).toEqual(["Presentation", "Dec 21, 2025"]);
-  expect(tiles[1]?.textContent).toContain("—");
+  expect(tiles[1]?.textContent).toContain("Not tagged");
+  expect(tiles[1]?.textContent).not.toContain("—");
 });
 
 it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  // No row has a status, so that column is left out entirely.
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
+  // Type, Added, Parties and Status.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
 });
 
 it("opens the file when its search snippet is clicked", () => {
@@ -316,11 +320,11 @@ it("makes only the first row a Tab stop, with menus out of the Tab order", () =>
   expect(menus.map((m) => m.tabIndex)).toEqual([-1, -1, -1]);
 });
 
-it("shows the added date under the name of an untagged file on a phone", () => {
+it("says why a finished file has no type, with no dash, under the name on a phone", () => {
   const rows = [{ item: item("loose", null), snippets: [] }];
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
-    "— · Mar 4, 2026",
+    "Not tagged · Added Mar 4, 2026",
   );
 });
 
@@ -331,9 +335,8 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
       <ListView
         rows={[{ item: item("a", null), snippets: [] }]}
         o={o()}
-        lead={(showStatus) => (
+        lead={() => (
           <SubfolderList
-            showStatus={showStatus}
             folders={[invoices]}
             contents={() => "2 items"}
             onOpen={vi.fn()}
@@ -687,18 +690,42 @@ it("shows no Reading on a file whose text is already stored", () => {
   expect(container.textContent).not.toContain("Reading");
 });
 
-it("leaves the Status column out when no row has a status", () => {
+it("shows a file icon, not a spinner, on a file whose text is already stored, in list and grid", () => {
+  const rows = asRows({ ...item("texted", null), status: "classifying", previewText: "Minutes" });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector("[role=presentation]")).toBeNull();
+  act(() => root.render(<GridView rows={rows} o={o()} />));
+  expect(container.querySelector("[role=presentation]")).toBeNull();
+});
+
+it("keeps the Status column when no row has a status, so the columns never move", () => {
   act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
-  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
-    "Status",
-  );
-  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
-  act(() =>
-    root.render(
-      <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,
-    ),
-  );
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain(
     "Status",
   );
+});
+
+it("closes the side preview on Escape from the shown row only", () => {
+  const onClosePreview = vi.fn();
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "a", onClosePreview }} />));
+  const press = (id: string) =>
+    act(() => {
+      container
+        .querySelector(`[data-item-id="${id}"]`)
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+  press("b");
+  expect(onClosePreview).not.toHaveBeenCalled();
+  press("a");
+  expect(onClosePreview).toHaveBeenCalledTimes(1);
+});
+
+it("shows no dash in the Type and Parties cells of a failed file", () => {
+  act(() =>
+    root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),
+  );
+  const row = container.querySelector("[data-row]");
+  expect(row?.children[1]?.textContent).toBe("");
+  expect(row?.children[3]?.textContent).toBe("");
 });

@@ -8,7 +8,13 @@ import { rpc } from "../lib/rpc";
 import { formatToolActivityDuration } from "../lib/tool-activity-view";
 import { statusLabel, statusTone } from "./ActivityList";
 
-export function RoutineRunHistory({ routineId }: { routineId: string }) {
+export function RoutineRunHistory({
+  routineId,
+  running = false,
+}: {
+  routineId: string;
+  running?: boolean;
+}) {
   const { i18n } = useLingui();
   const [history, setHistory] = useState<RoutineHistory | null>(null);
   const [failed, setFailed] = useState(false);
@@ -91,6 +97,30 @@ export function RoutineRunHistory({ routineId }: { routineId: string }) {
       if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [routineId, revision]);
+
+  // A run starting or finishing refreshes the first page in place; it must not drop loaded older runs.
+  const lastRunning = useRef(running);
+  useEffect(() => {
+    if (lastRunning.current === running) return;
+    lastRunning.current = running;
+    if (expandedRef.current) return;
+    const request = generation.current;
+    const sequence = ++firstPageRequest.current;
+    void rpc.routines
+      .history({ routineId })
+      .then((page) => {
+        if (
+          request !== generation.current ||
+          expandedRef.current ||
+          sequence < acceptedFirstPage.current
+        )
+          return;
+        acceptedFirstPage.current = sequence;
+        hasLoadedOlder.current = false;
+        setHistory(page);
+      })
+      .catch(() => {});
+  }, [running, routineId]);
 
   function toggleExpanded() {
     const next = !expanded;
@@ -183,7 +213,13 @@ export function RoutineRunHistory({ routineId }: { routineId: string }) {
         <p role="status" className="mt-2 text-[13.5px]">
           <Trans>Loading…</Trans>
         </p>
-      ) : runs.length === 0 ? (
+      ) : null}
+      {/* The run row can lag the click by several seconds; say so at once. */}
+      {running && runs && !failed && (!runs[0] || runs[0].completedAt) ? (
+        <p role="status" className="mt-2 text-[13.5px]">
+          <Trans>Running…</Trans>
+        </p>
+      ) : runs?.length === 0 && !failed ? (
         <p className="mt-2 text-[13.5px]">
           <Trans>No runs yet</Trans>
         </p>
@@ -217,6 +253,9 @@ export function RoutineRunHistory({ routineId }: { routineId: string }) {
                   </time>
                   <span className={statusTone(run.status)}>{statusLabel(run.status)}</span>
                 </div>
+                {run.preview ? (
+                  <p className="mt-1 truncate text-foreground">{run.preview}</p>
+                ) : null}
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span>{duration}</span>
                   {chatTo ? (

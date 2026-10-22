@@ -7,7 +7,7 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import type { EmulatedMessage } from "./gmail-api-emulator.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
-import { GmailMailProvider } from "./gmail-mail-provider.js";
+import { GmailMailProvider, hasAttachmentPart } from "./gmail-mail-provider.js";
 
 const account: MailAccount = {
   id: "conn-1",
@@ -187,5 +187,31 @@ describe("GmailMailProvider signals", () => {
       signalsVersion: 1,
     });
     expect(row.signals.categories.spam).toBe(true);
+  });
+});
+
+describe("hasAttachmentPart", () => {
+  it("finds a named file nested inside multipart/signed", () => {
+    const signed = {
+      mimeType: "multipart/signed",
+      parts: [
+        {
+          mimeType: "multipart/mixed",
+          parts: [{ mimeType: "text/plain" }, { mimeType: "application/pdf", filename: "a.pdf" }],
+        },
+        { mimeType: "application/pgp-signature" },
+      ],
+    };
+    expect(hasAttachmentPart(signed)).toBe(true);
+  });
+
+  it("is false for text with only inline parts, even in multipart/mixed", () => {
+    expect(
+      hasAttachmentPart({
+        mimeType: "multipart/mixed",
+        parts: [{ mimeType: "text/plain", filename: "" }],
+      }),
+    ).toBe(false);
+    expect(hasAttachmentPart({ mimeType: "text/plain" })).toBe(false);
   });
 });

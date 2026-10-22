@@ -379,7 +379,7 @@ function Overview({
       : period === "year"
         ? t`${year} so far`
         : period === "month"
-          ? t`Spent so far this month`
+          ? t`Out so far this month`
           : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
@@ -417,11 +417,6 @@ function Overview({
                     render={
                       <Link
                         to={financePath.accounts()}
-                        aria-label={
-                          data.excludedNonUsdCount > 0
-                            ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
-                            : undefined
-                        }
                         className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                       />
                     }
@@ -430,18 +425,22 @@ function Overview({
                       aria-hidden="true"
                       className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                     />
+                    <span className="truncate">
+                      {/* A phone has room for the time only; Accounts names the sources. */}
+                      <span className={updated || syncing ? "max-sm:hidden" : undefined}>
+                        {sourceNames}
+                        {updated || syncing ? " · " : ""}
+                      </span>
+                      {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                    </span>
                     {sourceDot !== "bg-success" ? (
                       <span className="sr-only">
                         {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
                       </span>
                     ) : null}
-                    <span className="truncate">
-                      {syncing
-                        ? t`${sourceNames} · syncing…`
-                        : updated
-                          ? t`${sourceNames} · synced ${updated}`
-                          : sourceNames}
-                    </span>
+                    {data.excludedNonUsdCount > 0 ? (
+                      <span className="sr-only">{t`${data.excludedNonUsdCount} non-USD not counted`}</span>
+                    ) : null}
                   </TooltipTrigger>
                   {data.excludedNonUsdCount > 0 ? (
                     <TooltipContent>{t`${data.excludedNonUsdCount} non-USD not counted`}</TooltipContent>
@@ -526,7 +525,7 @@ function Overview({
             // leaves one alone, before they fit one row of five.
             className={`grid grid-cols-2 gap-3 ${
               kpiCount >= 5
-                ? "@max-md:[&>:last-child]:col-span-2 @md:grid-cols-6 @md:[&>*]:col-span-2 @md:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
+                ? "@max-md:[&>:first-child]:col-span-2 @md:grid-cols-6 @md:[&>*]:col-span-2 @md:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
                 : `[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
                     kpiCount === 4
                       ? "@3xl:grid-cols-4"
@@ -644,7 +643,7 @@ function Overview({
             title={
               <Link
                 to={financePath.burn()}
-                className="rk-tap inline-flex items-center hover:underline"
+                className="rk-tap inline-flex items-center py-1 hover:underline"
               >
                 <Trans>Burn</Trans>
                 <ChevronRight aria-hidden="true" className="size-3" />
@@ -680,7 +679,6 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Each card keeps its own height: an expanded Upcoming does not stretch Breakdown. */}
           <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
@@ -733,73 +731,78 @@ function Overview({
               </Section>
             </BackHere>
 
-            <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
-              <Section
-                id="upcoming"
-                title={<Trans>Upcoming · 30 days</Trans>}
-                action={
-                  data.upcoming.totalCents > 0 ? (
-                    <span className="text-xs font-semibold tabular-nums">
-                      ~{money(data.upcoming.totalCents)}
-                    </span>
-                  ) : null
-                }
-              >
-                <div className="-mx-2">
-                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
-                    <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
-                  ))}
-                </div>
-                {upcomingRows.length === 0 ? (
-                  <div className="py-2 text-muted-foreground">
-                    <Trans>Nothing due in the next 30 days</Trans>
+            {/* Subscriptions sit under Upcoming, which is short, so the right column has no dead area. */}
+            <div className="flex flex-col gap-3">
+              <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
+                <Section
+                  id="upcoming"
+                  title={<Trans>Upcoming · 30 days</Trans>}
+                  action={
+                    data.upcoming.totalCents > 0 ? (
+                      <span className="text-xs font-semibold tabular-nums">
+                        ~{money(data.upcoming.totalCents)}
+                      </span>
+                    ) : null
+                  }
+                >
+                  <div className="-mx-2">
+                    {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
+                      <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
+                    ))}
                   </div>
-                ) : null}
-                <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
-                  <ShowAll
-                    total={upcomingRows.length}
-                    cap={MAX_ROWS}
-                    expanded={allUpcoming}
-                    onToggle={() => setAllUpcoming((v) => !v)}
-                  />
-                </div>
-              </Section>
-            </BackHere>
-          </div>
-
-          <BackHere
-            value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
-          >
-            <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
-              {subs.items.length === 0 ? (
-                <div className="py-2 text-muted-foreground">
-                  <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
-                </div>
-              ) : (
-                <>
-                  <SubscriptionsTable
-                    subs={subs}
-                    rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
-                  />
-                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
-                    <span>
-                      {plural(subs.items.length, {
-                        one: "# subscription",
-                        other: "# subscriptions",
-                      })}{" "}
-                      · {t`${monthlyTotal}/mo`}
-                    </span>
+                  {upcomingRows.length === 0 ? (
+                    <div className="py-2 text-muted-foreground">
+                      <Trans>Nothing due in the next 30 days</Trans>
+                    </div>
+                  ) : null}
+                  <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
                     <ShowAll
-                      total={subs.items.length}
+                      total={upcomingRows.length}
                       cap={MAX_ROWS}
-                      expanded={allSubs}
-                      onToggle={() => setAllSubs((v) => !v)}
+                      expanded={allUpcoming}
+                      onToggle={() => setAllUpcoming((v) => !v)}
                     />
                   </div>
-                </>
-              )}
-            </Section>
-          </BackHere>
+                </Section>
+              </BackHere>
+
+              <BackHere
+                value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
+              >
+                <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
+                  {subs.items.length === 0 ? (
+                    <div className="py-2 text-muted-foreground">
+                      <Trans>
+                        None yet. A vendor shows here after three similar monthly charges.
+                      </Trans>
+                    </div>
+                  ) : (
+                    <div>
+                      <SubscriptionsTable
+                        subs={subs}
+                        rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
+                      />
+                      <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+                        <span>
+                          {plural(subs.items.length, {
+                            one: "# subscription",
+                            other: "# subscriptions",
+                          })}{" "}
+                          · {t`${monthlyTotal}/mo`}
+                        </span>
+                        <ShowAll
+                          total={subs.items.length}
+                          cap={MAX_ROWS}
+                          expanded={allSubs}
+                          onToggle={() => setAllSubs((v) => !v)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Section>
+              </BackHere>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -835,7 +838,11 @@ function ShowAll({
 }) {
   if (total <= cap) return null;
   return (
-    <button type="button" className="hover:text-foreground hover:underline" onClick={onToggle}>
+    <button
+      type="button"
+      className="-my-1.5 py-1.5 hover:text-foreground hover:underline"
+      onClick={onToggle}
+    >
       {expanded ? <Trans>Show less</Trans> : <Trans>Show all {total}</Trans>}
     </button>
   );
@@ -884,9 +891,11 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
-          <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
-            {upcomingTag(item)}
-          </span>
+          {item.kind === "recurring" && !item.cardBill ? null : (
+            <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
+              {upcomingTag(item)}
+            </span>
+          )}
         </span>
       </span>
       <span className="text-end tabular-nums">
@@ -992,11 +1001,11 @@ function SubscriptionsTable({
                   {sub.name}
                 </HereLink>
                 {trendText(sub.trendCents) ? (
-                  <div
-                    className={`text-[11px] font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
+                  <span
+                    className={`ms-1.5 text-[11px] font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
                   >
                     {trendText(sub.trendCents)}
-                  </div>
+                  </span>
                 ) : null}
                 {similar ? (
                   <span

@@ -104,6 +104,11 @@ msgstr ""
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr ""
 
+#. placeholder {0}: counted.length
+#: src/pages/Investors.tsx
+msgid "{0, plural, one {# SAFE} other {# SAFEs}}"
+msgstr ""
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -233,6 +238,11 @@ msgstr ""
 msgid "{0} can use {appName}"
 msgstr ""
 
+#. placeholder {0}: usd(committedUsd)
+#: src/pages/Investors.tsx
+msgid "{0} committed"
+msgstr ""
+
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} connected"
@@ -309,6 +319,12 @@ msgstr ""
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
 msgid "{0} settings"
+msgstr ""
+
+#. placeholder {0}: monthShort(running.month)
+#. placeholder {1}: money(running.cents)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0} so far: {1}"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -406,6 +422,10 @@ msgstr ""
 
 #: src/lib/billing.ts
 msgid "{count} months"
+msgstr ""
+
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} of {total} selected"
 msgstr ""
 
 #: src/pages/Fundraising.tsx
@@ -597,19 +617,6 @@ msgid "{sourceName} spend"
 msgstr ""
 
 #: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr ""
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{sourceNames}, {0} non-USD not counted"
-msgstr ""
-
-#: src/pages/Finance.tsx
 msgid "{stablecoins} stablecoins in runway"
 msgstr ""
 
@@ -746,6 +753,7 @@ msgstr ""
 msgid "Access token"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Inbox.tsx
 msgid "Account"
@@ -918,6 +926,10 @@ msgstr "बैकअप के रूप में उपयोग करने 
 msgid "Add contact"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Add contracts to your Data room and Legal reads them."
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr ""
@@ -929,6 +941,7 @@ msgstr ""
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "Add files"
 msgstr ""
 
@@ -1056,10 +1069,6 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr ""
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1104,10 +1113,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -1359,6 +1364,10 @@ msgstr ""
 msgid "Approved"
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -1504,7 +1513,6 @@ msgid "Ask before sending external email"
 msgstr "बाहरी ईमेल भेजने से पहले पूछें"
 
 #: src/components/tour/FirstRunTour.tsx
-#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 
@@ -1570,6 +1578,10 @@ msgstr "अटैचमेंट"
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Attachments"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Attachments are not kept."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -1704,6 +1716,10 @@ msgstr ""
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Back to Investors"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -1909,10 +1925,6 @@ msgstr ""
 msgid "Brex bill, not paid yet"
 msgstr ""
 
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Brex does not share it"
-msgstr ""
-
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Browser"
 msgstr ""
@@ -1987,6 +1999,7 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -2093,10 +2106,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Cash out and cash in over time"
-msgstr ""
-
-#: src/pages/shell/message-cards.tsx
-msgid "Cash, cap table, investors and email"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -2261,6 +2270,10 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Checkout has local changes. Clean it before updating."
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Chief"
 msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -2586,7 +2599,6 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "कंप्यूटर"
@@ -2613,14 +2625,6 @@ msgstr "कंप्यूटर निष्क्रिय है"
 
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2678,12 +2682,13 @@ msgstr "पुष्टि करें कि यह URL इस ब्राउ
 msgid "Connect"
 msgstr "कनेक्ट करें"
 
+#. placeholder {0}: block.name
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
-#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
@@ -2713,6 +2718,10 @@ msgstr "एक मॉडल कनेक्ट करें"
 
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
+msgstr ""
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2783,10 +2792,6 @@ msgstr "MCP सर्वर “{name}” कनेक्ट करें"
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "Connect Mercury"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -3767,6 +3772,7 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3851,6 +3857,10 @@ msgid "Created {0}"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
+msgid "Created when you allow changes"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr ""
 
@@ -3923,6 +3933,7 @@ msgstr ""
 msgid "Dark"
 msgstr "डार्क"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Data room"
@@ -4288,6 +4299,7 @@ msgstr ""
 msgid "Document date"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/portal/PortalHome.tsx
@@ -4414,6 +4426,7 @@ msgstr ""
 msgid "Drafted {0}"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr ""
@@ -4555,6 +4568,10 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "ईमेल सत्यापन आवश्यक है"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Email, calendar and your company pages"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email, Slack and docs"
@@ -4724,6 +4741,7 @@ msgstr ""
 msgid "Expected"
 msgstr ""
 
+#: src/components/AskCard.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Expired"
@@ -4821,20 +4839,11 @@ msgstr ""
 msgid "Filter by {label}"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr ""
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
 
@@ -4842,6 +4851,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5199,12 +5209,9 @@ msgstr ""
 msgid "Hang up, then enter the code on screen."
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5470,10 +5477,15 @@ msgstr ""
 msgid "In runway"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Inbox"
@@ -5481,6 +5493,10 @@ msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Included"
 msgstr ""
 
 #: src/components/data-room/ProcessingStrip.tsx
@@ -5538,6 +5554,7 @@ msgstr ""
 #: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr ""
@@ -5784,6 +5801,7 @@ msgstr ""
 
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -5801,12 +5819,11 @@ msgstr ""
 msgid "Let other agents use {service} directly"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
-#: src/components/legal/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -5902,6 +5919,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
 msgstr "गतिविधि लोड हो रही है…"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations"
+msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
@@ -6086,6 +6107,10 @@ msgstr ""
 msgid "Mark read"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark reply done"
+msgstr ""
+
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
 msgid "Mark sent"
@@ -6267,8 +6292,8 @@ msgid "Message {0}"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
-msgid "Message {activeName}"
-msgstr "{activeName} को संदेश भेजें"
+msgid "Message {placeholderName}"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
@@ -6426,7 +6451,6 @@ msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
-#: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
@@ -6440,7 +6464,9 @@ msgstr ""
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
+#. placeholder {0}: row.from
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr ""
@@ -6579,6 +6605,7 @@ msgstr "इनपुट चाहिए"
 msgid "Needs reconnect"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
 msgstr ""
@@ -6682,10 +6709,6 @@ msgstr "नया खुला-कार्य आइटम"
 msgid "New password"
 msgstr "नया पासवर्ड"
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "New skill"
-msgstr "नई स्किल"
-
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "New space"
@@ -6755,10 +6778,6 @@ msgstr ""
 msgid "No agent connections yet."
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "No apps match."
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 msgid "No artifacts match these filters."
 msgstr ""
@@ -6813,6 +6832,10 @@ msgstr ""
 msgid "No contracts or deadlines found on {0}."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No contracts yet"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -6839,6 +6862,7 @@ msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
 msgid "No folder"
 msgstr ""
 
@@ -6848,6 +6872,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "No integrations match."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -6876,6 +6904,10 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -7001,6 +7033,10 @@ msgstr ""
 msgid "No trigger"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "No updates yet"
+msgstr ""
+
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
 msgstr ""
@@ -7085,6 +7121,10 @@ msgstr ""
 msgid "Not now"
 msgstr "अभी नहीं"
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Not retried: the space changed"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Not saved"
@@ -7122,6 +7162,10 @@ msgstr ""
 
 #: src/components/NotificationSettings.tsx
 msgid "Not supported here"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -7166,6 +7210,10 @@ msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -7228,6 +7276,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -7492,6 +7544,10 @@ msgstr ""
 msgid "Out"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Out so far this month"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"
 msgstr ""
@@ -7598,7 +7654,7 @@ msgid "Paste a replacement key"
 msgstr "बदलने के लिए नई कुंजी पेस्ट करें"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Paste the MCP server URL from the app's documentation."
+msgid "Paste the app's connection URL from its documentation."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7788,6 +7844,10 @@ msgstr ""
 msgid "Praci can now read your documents."
 msgstr ""
 
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Praci doesn't read your documents."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
@@ -7866,10 +7926,6 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "निजी"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8095,8 +8151,11 @@ msgstr ""
 msgid "Reading…"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Reads document text"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
-#: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr ""
 
@@ -8597,6 +8656,7 @@ msgstr ""
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
@@ -8718,6 +8778,7 @@ msgid "Running · Stop"
 msgstr "चल रहा है · रोकें"
 
 #: src/pages/RoutineEditor.tsx
+#: src/pages/RoutineRunHistory.tsx
 msgid "Running…"
 msgstr "चल रहा है…"
 
@@ -8884,6 +8945,22 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "हां या ना कहें, या एक वाक्य में उत्तर दें।"
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -8910,7 +8987,9 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8936,7 +9015,7 @@ msgid "Search and read files and folders"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
+msgid "Search artifacts"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -9068,6 +9147,10 @@ msgstr "जुड़ा मॉडल चुनें"
 msgid "Select all"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "Select all {total}"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
 msgstr ""
@@ -9108,9 +9191,21 @@ msgstr "उत्तर भेजें"
 msgid "Send anyway"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Send chats and mail text"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Send chats, mail and document text"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
 msgstr "हटाने का कोड भेजें"
+
+#: src/components/AiDataSharing.tsx
+msgid "Send files and contracts"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Send it"
@@ -9282,13 +9377,13 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9303,6 +9398,10 @@ msgstr ""
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "शेल"
+
+#: src/pages/Inbox.tsx
+msgid "Show {hiddenReplies} more"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
@@ -9690,10 +9789,6 @@ msgstr ""
 msgid "Spent {spentRange}"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "Spent so far this month"
-msgstr ""
-
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr ""
@@ -9907,9 +10002,17 @@ msgstr ""
 msgid "Sync failed."
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -9938,6 +10041,7 @@ msgid "Take the tour"
 msgstr ""
 
 #: src/components/ai/primitives.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""
@@ -9971,10 +10075,6 @@ msgstr "कोई कार्य सिखाएं"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "सिखाना जारी है। नया संदेश भेजने से पहले सिखाना रोकें।"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "टीम"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -10628,10 +10728,6 @@ msgstr ""
 msgid "Unassign"
 msgstr ""
 
-#: src/pages/BotContextMenu.tsx
-msgid "Unassigned"
-msgstr "असाइन नहीं किया गया"
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr ""
@@ -10865,16 +10961,16 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload a skill file"
-msgstr ""
-
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. The server could not save this file."
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload file"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -10967,10 +11063,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
 msgstr "अपनी कुंजी इस्तेमाल करें"
-
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -11335,6 +11427,10 @@ msgstr "काम चल रहा है…"
 msgid "Workload and key people, from your connected tools"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
 msgstr ""
@@ -11459,17 +11555,9 @@ msgstr ""
 msgid "Your data in {name} is not deleted."
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "Your email address"
-msgstr "आपका ईमेल पता"
-
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "Your name"
-msgstr "आपका नाम"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"

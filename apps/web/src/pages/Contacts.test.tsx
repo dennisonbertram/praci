@@ -309,16 +309,17 @@ it("marks the Email invalid and focuses it when another contact has it", async (
   expect(document.activeElement).toBe(email);
 });
 
-it("shows the organization, else the email, under the name", async () => {
+it("shows the email, else the organization, under the name", async () => {
   rpcMock.list.mockResolvedValue([
     contact("c1", "Ada", "customer"),
     { ...contact("c3", "Cy", "vendor"), organization: null },
+    { ...contact("c4", "Di", "other"), email: null },
   ]);
   await show();
   const under = [...container.querySelectorAll("tbody td:first-child div")].map(
     (div) => div.textContent,
   );
-  expect(under).toEqual(["Acme Corp", "cy@example.test"]);
+  expect(under).toEqual(["ada@example.test", "cy@example.test", "Acme Corp"]);
 });
 
 it("lets the table fill the page and titles a long email", async () => {

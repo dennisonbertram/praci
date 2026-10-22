@@ -51,6 +51,7 @@ function fakes(
         ),
       },
       user: { findUnique: vi.fn(async () => ({ timezone: "UTC" })) },
+      bot: { updateMany: vi.fn(async () => ({ count: 0 })) },
       $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx),
     },
     jobs: { enqueue: vi.fn(async () => {}), cancel: vi.fn(async () => {}) },

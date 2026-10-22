@@ -8,6 +8,8 @@ import { errorText } from "../../lib/user-error";
 import { Shimmer } from "../ai/primitives";
 
 const COLLAPSED_OPEN = 2;
+/** A phone shows one open to-do first, so the first mail starts higher up the screen. */
+const COLLAPSED_OPEN_COMPACT = 1;
 
 /** The open to-dos triage keeps; the page loads them with the list. Hidden when there are none. */
 export function TodoCard({
@@ -15,7 +17,9 @@ export function TodoCard({
   onChange,
   onOpen,
   meetings,
+  compact = false,
 }: {
+  compact?: boolean;
   todos: InboxTodo[];
   onChange: (todo: InboxTodo) => void;
   /** Opens the email a to-do came from. */
@@ -41,10 +45,11 @@ export function TodoCard({
   const ordered = [...todos].sort(
     (a, b) => Number(doneWhenShown.current.get(a.id)) - Number(doneWhenShown.current.get(b.id)),
   );
+  const shownOpen = compact ? COLLAPSED_OPEN_COMPACT : COLLAPSED_OPEN;
   const isCollapsed = (todo: InboxTodo, index: number) =>
-    !expanded && todo.doneAt === null && index >= COLLAPSED_OPEN;
+    !expanded && todo.doneAt === null && index >= shownOpen;
   const hiddenCount = ordered.filter(
-    (todo, index) => todo.doneAt === null && index >= COLLAPSED_OPEN,
+    (todo, index) => todo.doneAt === null && index >= shownOpen,
   ).length;
   const dueLabel = (dueOn: string, days: number) => {
     if (days === 0) return t`Today`;
@@ -98,7 +103,8 @@ export function TodoCard({
                   aria-label={todo.text}
                   checked={done}
                   onCheckedChange={(checked) => setDone(todo, checked)}
-                  className="mt-0.5 border-muted-foreground pointer-coarse:size-5"
+                  // On touch the control itself is 44 px (drawn as a 16 px box inside it); negative margins keep the row height.
+                  className="mt-0.5 border-muted-foreground pointer-coarse:-mx-3 pointer-coarse:-my-3 pointer-coarse:mt-[-0.625rem] pointer-coarse:size-11 pointer-coarse:border-transparent pointer-coarse:bg-transparent pointer-coarse:data-checked:bg-transparent pointer-coarse:dark:bg-transparent pointer-coarse:after:hidden pointer-coarse:before:absolute pointer-coarse:before:size-4 pointer-coarse:before:rounded-[4px] pointer-coarse:before:border pointer-coarse:before:border-muted-foreground pointer-coarse:data-checked:before:border-primary pointer-coarse:data-checked:before:bg-primary pointer-coarse:[&>[data-slot=checkbox-indicator]]:relative"
                 />
                 <div
                   dir="auto"

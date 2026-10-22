@@ -145,6 +145,41 @@ export const ApprovalAllowed: Story = {
   },
 };
 
+/** A payment allowed here that its bank must still approve, with the time it was requested. */
+export const PaymentWaitingForProvider: Story = {
+  args: {
+    block: ask({
+      text: "Send $1,250.00 to Acme Supplies from Operating?",
+      approvalEffectId: "effect_money",
+      actions: [
+        { id: "allow", label: "Send $1,250.00" },
+        { id: "deny", label: "Deny" },
+      ],
+      waitsFor: "Mercury",
+      status: "answered",
+      answer: "allow",
+    }),
+    canAnswer: false,
+    requestedAt: "2030-01-01T09:44:00.000Z",
+  },
+};
+
+/** A routine's whole prompt reads in full: no nested scroll box, so nothing is cut off on a phone. */
+export const LongInstruction: Story = {
+  args: {
+    block: ask({
+      text: "Review before creating the repeating schedule",
+      detail: Array.from(
+        { length: 8 },
+        (_, i) =>
+          `Step ${i + 1}: read the open investor follow-ups from the Investors page and post a concise list here.`,
+      ).join("\n"),
+      approvalEffectId: "effect_routine",
+      actions: approvalActions,
+    }),
+  },
+};
+
 export const ApprovalDenied: Story = {
   args: {
     block: ask({
@@ -152,6 +187,30 @@ export const ApprovalDenied: Story = {
       actions: approvalActions,
       status: "answered",
       answer: "deny",
+    }),
+  },
+};
+
+/** A newer request replaced this one; the server closed it, so it has no buttons. */
+export const ApprovalSuperseded: Story = {
+  args: {
+    block: ask({
+      approvalEffectId: "effect_demo",
+      actions: approvalActions,
+      status: "answered",
+      answer: "superseded",
+    }),
+  },
+};
+
+/** The run failed before the card was answered; nothing was sent. */
+export const ApprovalExpired: Story = {
+  args: {
+    block: ask({
+      approvalEffectId: "effect_demo",
+      actions: approvalActions,
+      status: "answered",
+      answer: "expired",
     }),
   },
 };

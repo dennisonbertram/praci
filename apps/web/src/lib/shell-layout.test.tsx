@@ -63,6 +63,10 @@ describe("useDrawerFocus", () => {
           <button type="button" id="first">
             first
           </button>
+          <button type="button" id="close" data-drawer-focus>
+            close
+          </button>
+          <input readOnly id="search" />
         </aside>
       </div>
     );
@@ -75,7 +79,8 @@ describe("useDrawerFocus", () => {
     act(() => root.render(<Harness open={false} />));
     container.querySelector<HTMLElement>("#opener")?.focus();
     act(() => root.render(<Harness open />));
-    expect(document.activeElement?.id).toBe("first");
+    // The marked close button takes focus, not the first control or the search box.
+    expect(document.activeElement?.id).toBe("close");
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(close).toHaveBeenCalledTimes(1);
     act(() => root.render(<Harness open={false} />));

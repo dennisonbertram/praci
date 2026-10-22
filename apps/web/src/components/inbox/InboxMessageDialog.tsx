@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ComposeRestore } from "../../components/ComposeEmail";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
@@ -45,6 +46,7 @@ import {
 } from "../../lib/inbox-message-cache";
 import { MAIL_SENT_EVENT } from "../../lib/outbox";
 import { errorText } from "../../lib/user-error";
+import type { ComposerDraft } from "../BotToolControls";
 import { EmailAgentPanel } from "./EmailAgentPanel";
 import { MailAttachments } from "./MailAttachments";
 
@@ -61,6 +63,7 @@ export function InboxMessageDialog({
   onArchive,
   onMoveToInbox,
   onRead,
+  onReplyDone,
   onAskAgent,
   onAskAgentPanel,
   notice,
@@ -86,6 +89,8 @@ export function InboxMessageDialog({
   /** Offered while the message is archived, such as a search result. */
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  /** Adds Mark reply done, for a reply to-do the list page hides because this mail is under Needs reply. */
+  onReplyDone?: () => void;
   /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
   onAskAgent?: () => Promise<unknown>;
   /** Instead of `onAskAgent`: Ask agent opens this email's agent in a panel inside the dialog. */
@@ -116,12 +121,13 @@ export function InboxMessageDialog({
         tabIndex={-1}
         showCloseButton={false}
         className={cn(
-          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1",
-          // The email column never changes width. Where the screen has room (1634px: the grown dialog
-          // plus a margin), the panel grows the dialog 384px to the right; otherwise it overlays the
-          // email's right side.
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:transition-[left,width,transform] md:duration-200",
+          // The email column never changes width. From 1280px (`xl`, which Tailwind emits after `md`, so
+          // it overrides the width and position above) the panel sits beside the email in a 1152px
+          // dialog centred on the page. Below that it overlays the email's right side.
+          // It slides to the right-most spot that fits, so the email moves as little as the screen allows.
           agentBot &&
-            "md:h-[85vh] min-[1634px]:w-[1152px] min-[1634px]:left-[calc(50%-384px)] min-[1634px]:translate-x-0 min-[1634px]:flex-row min-[1634px]:gap-0",
+            "md:h-[85vh] xl:w-[1152px] xl:left-[max(0px,min(calc(50%-384px),calc(100vw-1168px)))] xl:translate-x-0 xl:flex-row xl:gap-0",
           composing && "invisible",
         )}
       >
@@ -139,6 +145,7 @@ export function InboxMessageDialog({
             onArchive={onArchive}
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
+            onReplyDone={onReplyDone}
             onAskAgent={onAskAgent}
             onAskAgentPanel={onAskAgentPanel}
             agentBot={agentBot}
@@ -167,6 +174,7 @@ function InboxMessage({
   onArchive,
   onMoveToInbox,
   onRead,
+  onReplyDone,
   onAskAgent,
   onAskAgentPanel,
   agentBot,
@@ -186,6 +194,7 @@ function InboxMessage({
   onArchive?: () => void;
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  onReplyDone?: () => void;
   onAskAgent?: () => Promise<unknown>;
   onAskAgentPanel?: () => Promise<AgentBot>;
   agentBot: AgentBot | null;
@@ -215,6 +224,32 @@ function InboxMessage({
   const [askError, setAskError] = useState("");
   // The agent's draft for the Reply composer, until that composer closes.
   const [agentDraft, setAgentDraft] = useState<string | undefined>();
+  // A failed send reopened as written, so its recipients and subject survive.
+  const [failedDraft, setFailedDraft] = useState<ComposerDraft | undefined>();
+  const restore = useMemo<ComposeRestore | undefined>(
+    () =>
+      failedDraft?.connectionId && composing === "reply"
+        ? {
+            seed: { kind: "reply", messageId },
+            clientId: crypto.randomUUID().replaceAll("-", ""),
+            fields: {
+              connectionId: failedDraft.connectionId,
+              to: failedDraft.to,
+              cc: failedDraft.cc,
+              bcc: failedDraft.bcc,
+              subject: failedDraft.subject,
+              html: "",
+              text: failedDraft.body,
+            },
+            replyToId: messageId,
+            forwarded: [],
+            files: [],
+            saved: false,
+            accounts: [{ connectionId: failedDraft.connectionId, label: failedDraft.account }],
+          }
+        : undefined,
+    [failedDraft, composing, messageId],
+  );
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
@@ -281,16 +316,11 @@ function InboxMessage({
     : parsed;
   return (
     <>
-      <div
-        className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
-          agentBot && "min-[1634px]:pe-4",
-        )}
-      >
+      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-2", agentBot && "xl:pe-4")}>
         <div className="flex items-start gap-2">
           <DialogTitle
             dir="auto"
-            className="min-w-0 flex-1 line-clamp-2 text-base leading-snug font-medium md:line-clamp-none md:text-xl"
+            className="min-w-0 flex-1 line-clamp-3 text-base leading-snug font-medium md:line-clamp-none md:text-xl"
           >
             {title}
           </DialogTitle>
@@ -328,7 +358,7 @@ function InboxMessage({
         {message ? (
           <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
             <div className="flex items-baseline justify-between gap-3">
-              <span dir="auto" className="min-w-0 truncate">
+              <span dir="auto" className="min-w-0 break-words sm:truncate">
                 <span className="font-semibold text-foreground">{sender.name}</span>
                 {sender.address ? <span className="text-xs"> {`<${sender.address}>`}</span> : null}
               </span>
@@ -347,12 +377,12 @@ function InboxMessage({
                 </time>
               </span>
             </div>
-            <div className="flex gap-x-3 text-xs">
-              <span dir="auto" title={message.to} className="min-w-0 truncate">
+            <div className="flex flex-wrap gap-x-3 text-xs sm:flex-nowrap">
+              <span dir="auto" title={message.to} className="min-w-0 break-words sm:truncate">
                 {t`to ${message.to}`}
               </span>
               {message.cc ? (
-                <span dir="auto" title={message.cc} className="min-w-0 truncate">
+                <span dir="auto" title={message.cc} className="min-w-0 break-words sm:truncate">
                   {t`cc ${message.cc}`}
                 </span>
               ) : null}
@@ -454,6 +484,12 @@ function InboxMessage({
                     {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
                   </DropdownMenuItem>
                 ) : null}
+                {onReplyDone ? (
+                  <DropdownMenuItem onClick={onReplyDone}>
+                    <Check aria-hidden="true" />
+                    <Trans>Mark reply done</Trans>
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
             {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
@@ -483,9 +519,11 @@ function InboxMessage({
             seed={seed}
             accounts={[]}
             draft={composing === "reply" ? agentDraft : undefined}
+            restore={restore}
             onClose={() => {
               setComposing(null);
               setAgentDraft(undefined);
+              setFailedDraft(undefined);
             }}
           />
         ) : null}
@@ -554,12 +592,13 @@ function InboxMessage({
         </div>
       </div>
       {agentBot ? (
-        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl min-[1634px]:relative min-[1634px]:-my-4 min-[1634px]:-me-4 min-[1634px]:w-96 min-[1634px]:max-w-none min-[1634px]:shrink-0 min-[1634px]:shadow-none">
+        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl xl:relative xl:-my-4 xl:-me-4 xl:w-96 xl:max-w-none xl:shrink-0 xl:shadow-none">
           <EmailAgentPanel
             bot={agentBot}
             onClose={() => setAgentBot(null)}
-            onReplyWithDraft={(text) => {
+            onReplyWithDraft={(text, failed) => {
               setAgentDraft(text);
+              setFailedDraft(failed);
               setComposing("reply");
             }}
           />

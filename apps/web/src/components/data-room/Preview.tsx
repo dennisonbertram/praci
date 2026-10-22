@@ -189,9 +189,20 @@ export function Preview({
   const canFullScreen =
     item.status !== "failed" && (sheet || (showFile && isShowable(item) && !file.failed));
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the pane from any control inside it
     <aside
       aria-label={t`Preview`}
       data-testid="data-room-preview"
+      onKeyDown={(event) => {
+        // Not for keys from a menu or the full-screen dialog, which render in portals but bubble here.
+        if (
+          !inDialog &&
+          event.key === "Escape" &&
+          !event.defaultPrevented &&
+          event.currentTarget.contains(event.target as Node)
+        )
+          onClose();
+      }}
       className={
         inDialog
           ? "flex flex-col gap-3 p-4"
@@ -297,7 +308,10 @@ export function Preview({
         <Field label={t`Source`}>
           {item.source === "gmail" ? (
             item.sourceUrl?.startsWith("/app/") ? (
-              <Link to={item.sourceUrl} className="underline-offset-2 hover:underline">
+              <Link
+                to={item.sourceUrl}
+                className="underline-offset-2 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+              >
                 {t`From email`}
               </Link>
             ) : (
@@ -308,7 +322,7 @@ export function Preview({
               href={item.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline-offset-2 hover:underline"
+              className="underline-offset-2 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
             >
               {t`From Google Drive`}
             </a>

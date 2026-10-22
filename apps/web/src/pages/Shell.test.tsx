@@ -20,8 +20,39 @@ vi.mock("@lingui/react/macro", () => {
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
+vi.mock("../lib/rpc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/rpc")>()),
+  rpc: {
+    dataRoom: {
+      search: async () => ({
+        results: [
+          {
+            item: { id: "d1", name: "Deal", folderId: null },
+            ordinal: 1,
+            snippet: "Payment: $1,250",
+          },
+        ],
+      }),
+      folders: async () => [],
+    },
+    artifacts: {
+      listSpace: async () => ({
+        items: [{ id: "a1", name: "Report", description: "Costs $9,900 total" }],
+      }),
+    },
+  },
+}));
+
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { BOTS_POLL_MS, Composer, chatIsOpening, retryAfterStop, Transcript } from "./Shell";
+import {
+  BOTS_POLL_MS,
+  Composer,
+  chatIsOpening,
+  findDocumentsAndArtifacts,
+  isRoutinesOnlyPanel,
+  retryAfterStop,
+  Transcript,
+} from "./Shell";
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
@@ -1179,5 +1210,24 @@ describe("retryAfterStop", () => {
       resend,
     });
     expect(resend).not.toHaveBeenCalled();
+  });
+});
+
+describe("search result details", () => {
+  it("mask currency amounts while amounts are hidden", async () => {
+    setHideAmounts(true);
+    const { documents, artifacts } = await findDocumentsAndArtifacts("a");
+    expect(documents[0]?.detail).not.toContain("1,250");
+    expect(artifacts[0]?.detail).not.toContain("9,900");
+  });
+});
+
+describe("isRoutinesOnlyPanel", () => {
+  it("hides the computer block without a screen, whatever the computer state", () => {
+    const base = { hasScreen: false, hasError: false, open: false, showRecoveryHint: false };
+    expect(isRoutinesOnlyPanel({ ...base, kind: undefined })).toBe(true);
+    expect(isRoutinesOnlyPanel({ ...base, kind: "desktop" })).toBe(false);
+    expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasScreen: true })).toBe(false);
+    expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasError: true })).toBe(false);
   });
 });

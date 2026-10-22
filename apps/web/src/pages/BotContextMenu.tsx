@@ -61,7 +61,8 @@ export function BotContextMenu({
   onRoutines?: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
-  onClear: () => void;
+  /** Only for a group, which has no settings panel; a bot clears its conversation there. */
+  onClear?: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
@@ -111,7 +112,7 @@ export function BotContextMenu({
             ))}
             <DropdownMenuItem onClick={() => onMoveToSection(null)}>
               <Folder />
-              {t`Unassigned`}
+              {t`No folder`}
               {bot.sectionId === null ? <Check className="ms-auto" /> : null}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -147,10 +148,12 @@ export function BotContextMenu({
           {t`Duplicate`}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onClear}>
-          <Eraser />
-          {t`Clear conversation`}
-        </DropdownMenuItem>
+        {onClear ? (
+          <DropdownMenuItem onClick={onClear}>
+            <Eraser />
+            {t`Clear conversation`}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={onArchive}>
           <Archive />
           {t`Archive`}

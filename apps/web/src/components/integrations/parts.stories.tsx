@@ -6,7 +6,6 @@ import {
   AgentStack,
   AgentToggleList,
   IntegrationTile,
-  MenuSlot,
   OPEN_LINK,
   PHONE_ROW,
   StatusBadge,
@@ -123,7 +122,6 @@ export const OpenLinks: StoryObj = {
             <a href="#open" className={OPEN_LINK}>
               {label}
             </a>
-            <MenuSlot />
           </div>
         </IntegrationTile>
       ))}

@@ -8,7 +8,12 @@ export type TourStep = {
   /** CSS selector of the element the step points at. A step whose element is missing is skipped. */
   anchor: string;
   text: string;
+  /** The item the step explains. The card stays in one spot, so its first word names the target. */
+  name: string;
 };
+
+/** About as tall as a card; keeps a card placed under a target inside the window. */
+const CARD_HEIGHT = 140;
 
 /** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour). */
 const WIDE = "(min-width: 1024px)";
@@ -116,16 +121,34 @@ export function TourPopover({
   const last = index === (present?.length ?? 0) - 1;
   const body = (
     <>
-      <p className="text-sm" aria-live="polite">
+      <p className="min-h-10 text-sm" aria-live="polite">
+        <span className="font-medium">{step.name}</span>
+        {": "}
         {step.text}
       </p>
-      {/* Skip tour stays on the left and Next on the right at every stop, so neither moves. */}
+      {last && lastAction ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => {
+            onFinish("done");
+            lastAction.run();
+          }}
+        >
+          {lastAction.label}
+        </Button>
+      ) : null}
+      {/* Same slots at every stop; Skip tour only hides on the last one. */}
       <div className="flex items-center gap-2">
-        {last ? null : (
-          <Button variant="ghost" size="sm" className="-ms-2" onClick={() => onFinish("skip")}>
-            <Trans>Skip tour</Trans>
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`-ms-2 ${last ? "invisible" : ""}`}
+          onClick={() => onFinish("skip")}
+        >
+          <Trans>Skip tour</Trans>
+        </Button>
         <span className="text-xs text-muted-foreground tabular-nums">
           {index + 1}/{present?.length}
         </span>
@@ -135,19 +158,12 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        {last && lastAction ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onFinish("done");
-              lastAction.run();
-            }}
-          >
-            {lastAction.label}
-          </Button>
-        ) : null}
-        <Button size="sm" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
+        <Button
+          size="sm"
+          className="min-w-16"
+          autoFocus
+          onClick={() => (last ? onFinish("done") : setIndex(index + 1))}
+        >
           {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
       </div>
@@ -157,18 +173,21 @@ export function TourPopover({
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (card) {
     const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
-    // Beside the ringed row, in the page next to the sidebar, so the sidebar's own rows stay visible.
-    // Centred on the row and kept inside the window; a phone puts it on the half away from the ring.
+    // Beside the sidebar at the foot of the page (above the composer when there is one), the same
+    // spot at every stop: it never covers the page title or the first lines of the chat, and Next stays put.
+    const composerTop = document
+      .querySelector('[data-testid="composer-bar"]')
+      ?.getBoundingClientRect().top;
     const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
     const place =
       column && ring
-        ? {
-            top: Math.min(Math.max(rect.top + rect.height / 2, 96), window.innerHeight - 96),
-            transform: "translateY(-50%)",
-          }
-        : targetAbove || !ring
-          ? { bottom: 16 }
-          : { top: 16 };
+        ? { bottom: composerTop ? window.innerHeight - composerTop + 8 : 16 }
+        : // A phone: right beside the target, below a high one and above a low one.
+          ring
+          ? targetAbove
+            ? { top: Math.min(rect.bottom + 8, window.innerHeight - CARD_HEIGHT - 8) }
+            : { bottom: Math.max(window.innerHeight - rect.top + 8, 8) }
+          : { bottom: 16 };
     const span = column ? { left: column.right + 8, width: 288 } : undefined;
     return (
       <>

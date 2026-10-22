@@ -20,6 +20,7 @@ import {
   Ellipsis,
   Mail,
   MailOpen,
+  Paperclip,
   ShieldAlert,
   ShieldCheck,
   Star,
@@ -139,10 +140,13 @@ export function InboxGroup({
   onRead,
   selectedId,
   hideAttention,
+  unreadTotal,
   ...picking
 }: {
   /** Omitted for search results, which show one count instead. */
   title?: React.ReactNode;
+  /** Unread across the whole group when only the first rows are listed, so the count holds when it expands. */
+  unreadTotal?: number;
   rows: MailRow[];
   onOpen: (id: string) => void;
   /** Present only while triage is enabled. */
@@ -156,7 +160,7 @@ export function InboxGroup({
   const { t } = useLingui();
   if (rows.length === 0) return null;
   // The same number the sidebar badge counts: mail not yet read, not every row in the group.
-  const unread = rows.filter((row) => row.unread).length;
+  const unread = unreadTotal ?? rows.filter((row) => row.unread).length;
   return (
     <section className="mb-5">
       {title ? (
@@ -224,7 +228,7 @@ export function InboxRow({
   const { t } = useLingui();
   useHideAmounts();
   const labelNames = {
-    attention: t`Needs attention`,
+    attention: row.needsReply === true ? t`Needs reply` : t`Needs attention`,
     newsletter: t`Newsletter`,
     spam: t`Spam`,
     junk: t`Junk`,
@@ -287,7 +291,7 @@ export function InboxRow({
           data-row-id={row.id}
           data-row-stop=""
           onClick={onOpen}
-          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -354,6 +358,13 @@ export function InboxRow({
             dateTime={row.receivedAt}
             className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
+            {row.hasAttachment ? (
+              <Paperclip
+                role="img"
+                aria-label={t`Has attachment`}
+                className="me-1 inline size-3 align-text-bottom"
+              />
+            ) : null}
             {formatMailTime(row.receivedAt)}
           </time>
         </button>
@@ -436,7 +447,7 @@ export function InboxRow({
                     className={`absolute end-3 top-1/2 hidden -translate-y-1/2 bg-muted pointer-coarse:inline-flex pointer-coarse:size-10 @max-md:inline-flex aria-expanded:opacity-100 pointer-coarse:opacity-100 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
                   />
                 }
-                aria-label={t`More`}
+                aria-label={t`More actions for ${row.from}`}
               >
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>

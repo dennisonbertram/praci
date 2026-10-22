@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { MailApproval, MailEdits } from "@rakazo/contracts";
+import { isClosedApprovalAnswer } from "@rakazo/core";
 import {
   Button,
   cn,
@@ -201,6 +202,9 @@ export function MailApprovalCard({
       )
     ) : mail.outcome === "unknown" ? (
       <Trans>Unknown</Trans>
+    ) : isClosedApprovalAnswer(answer) ? (
+      // The server closed this card (replaced by a newer one, or its run failed): never sent.
+      <Trans>Not sent</Trans>
     ) : answer === "deny" && mail.connectionId ? (
       draft ? (
         <Trans>Saving…</Trans>
@@ -474,7 +478,7 @@ export function MailApprovalCard({
               {mail.error}
             </p>
           ) : null}
-          {mail.outcome === "failed" && onOpenComposer && mail.connectionId ? (
+          {mail.outcome === "failed" && onOpenComposer ? (
             <div className="pt-3">
               <Button variant="outline" size="sm" onClick={() => onOpenComposer(mail)}>
                 <Trans>Open in composer</Trans>

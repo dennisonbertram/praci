@@ -1,10 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  ContactRowPlaceholder,
-  FiguresPlaceholder,
-  OwnershipPlaceholder,
-  UpdateRowPlaceholder,
-} from "./Placeholders";
+import { ContactRowPlaceholder, FiguresPlaceholder, OwnershipPlaceholder } from "./Placeholders";
 
 const meta = {
   title: "Investors/Placeholders",
@@ -26,15 +21,6 @@ export const CapTable: Story = {
       <FiguresPlaceholder />
       <OwnershipPlaceholder />
     </>
-  ),
-};
-
-export const Updates: Story = {
-  render: () => (
-    <ul>
-      <UpdateRowPlaceholder />
-      <UpdateRowPlaceholder />
-    </ul>
   ),
 };
 

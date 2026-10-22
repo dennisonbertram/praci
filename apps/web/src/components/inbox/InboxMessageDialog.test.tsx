@@ -23,10 +23,19 @@ vi.mock("../../components/SandboxedHtmlViewer", () => ({
   SandboxedHtmlViewer: () => <div data-testid="html-frame" />,
 }));
 vi.mock("../../components/ComposeEmail", () => ({
-  ComposeEmail: ({ seed, draft }: { seed: { kind: string }; draft?: string }) => (
+  ComposeEmail: ({
+    seed,
+    draft,
+    restore,
+  }: {
+    seed: { kind: string };
+    draft?: string;
+    restore?: { fields: object; replyToId?: string };
+  }) => (
     <div data-testid="compose">
       {seed.kind}
       {draft ? `:${draft}` : ""}
+      {restore ? `|${JSON.stringify(restore.fields)}|reply-to:${restore.replyToId}` : ""}
     </div>
   ),
 }));
@@ -38,7 +47,7 @@ vi.mock("./EmailAgentPanel", () => ({
   }: {
     bot: { name: string };
     onClose: () => void;
-    onReplyWithDraft: (text: string) => void;
+    onReplyWithDraft: (text: string, failed?: object) => void;
   }) => (
     <aside data-testid="agent-panel">
       {bot.name}
@@ -47,6 +56,22 @@ vi.mock("./EmailAgentPanel", () => ({
       </button>
       <button type="button" onClick={() => onReplyWithDraft("Hi Sam")}>
         panel draft
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onReplyWithDraft("Body", {
+            connectionId: "c9",
+            account: "me@example.com",
+            to: ["x@example.com"],
+            cc: ["cc@example.com"],
+            bcc: ["bcc@example.com"],
+            subject: "Edited subject",
+            body: "Body",
+          })
+        }
+      >
+        panel failed
       </button>
     </aside>
   ),
@@ -277,6 +302,25 @@ it("archives with the button or e, and marks read or unread, when the page allow
   expect(onRead).toHaveBeenLastCalledWith(false);
 });
 
+it("offers Mark reply done only when the page passes it", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onReplyDone = vi.fn();
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="m2"
+        unread={false}
+        onRead={() => {}}
+        onReplyDone={onReplyDone}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Mark reply done"))?.click());
+  expect(onReplyDone).toHaveBeenCalledTimes(1);
+});
+
 it("Ask agent runs the page's action, and shows why it failed", async () => {
   get.mockImplementation(async ({ messageId }) => message(messageId));
   const onAskAgent = vi.fn().mockResolvedValue(undefined);
@@ -313,10 +357,10 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
     "Thread agent",
   );
-  // The email column keeps its width: the dialog grows by exactly the panel width only where there is
-  // room, and otherwise the panel overlays it (no width formula that shrinks the column).
+  // The email column keeps its width: from 1280px the panel sits beside it (1152px dialog), and
+  // below that the panel overlays it (no width formula that shrinks the column).
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
-  expect(popup).toContain("min-[1634px]:w-[1152px]");
+  expect(popup).toContain("xl:w-[1152px]");
   expect(popup).not.toContain("calc(50vw");
   expect(document.querySelector('[data-testid="agent-panel"]')?.parentElement?.className).toContain(
     "absolute",
@@ -325,6 +369,28 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   expect(document.querySelector('[data-testid="compose"]')?.textContent).toBe("reply:Hi Sam");
   await click("panel close");
   expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
+});
+
+it("reopens a failed send with its own recipients and subject", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onAskAgentPanel = vi.fn().mockResolvedValue({ id: "bot-1", name: "Thread agent" });
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="m3" onAskAgentPanel={onAskAgentPanel} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  await clickAsk();
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "panel failed")?.click(),
+  );
+  const text = document.querySelector('[data-testid="compose"]')?.textContent ?? "";
+  expect(text).toContain('"to":["x@example.com"]');
+  expect(text).toContain('"cc":["cc@example.com"]');
+  expect(text).toContain('"bcc":["bcc@example.com"]');
+  expect(text).toContain('"subject":"Edited subject"');
+  expect(text).toContain('"connectionId":"c9"');
+  expect(text).toContain("reply-to:m3");
 });
 
 it("drops a late Ask agent answer when the user has moved to another email", async () => {
