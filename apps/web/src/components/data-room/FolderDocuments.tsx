@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import {
@@ -14,6 +15,7 @@ import { Link } from "react-router-dom";
 import { DATA_ROOM_CHANGED, dataRoomItemPath, findDataRoomFolder } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
+import { SectionCard } from "../SectionCard";
 import { dateText, typeLabel } from "./format";
 
 const LIMIT = 10;
@@ -52,10 +54,7 @@ export function FolderDocuments({ folderPath }: { folderPath: string[] }) {
   }, [key]);
   if (items.length === 0) return null;
   return (
-    <section className="mt-8">
-      <h2 className="mb-2 text-sm font-medium">
-        <Trans>Documents</Trans>
-      </h2>
+    <SectionCard title={t`Documents`}>
       <Table>
         <TableHeader>
           <TableHeadRow>
@@ -95,6 +94,6 @@ export function FolderDocuments({ folderPath }: { folderPath: string[] }) {
           })}
         </TableBody>
       </Table>
-    </section>
+    </SectionCard>
   );
 }

@@ -1,0 +1,56 @@
+# Walk J1: long first-run and daily journeys (iteration 8)
+
+Walker session uxl8-J1. Target: mock-data demo stack, web 127.0.0.1:5381, 1440x900. Screenshots in /tmp/uxloop8/J1/.
+
+Environment notes (observed):
+- The demo stack was restarted mid-walk (the Postgres container showed "Up 55 seconds"; the API on 3308 and web on 5381 were unreachable for about 2 minutes). The database was reseeded, so my fresh sign-up user was gone and I continued as mock-founder. While it was down, Inbox "Allow" showed "Could not reach the server" twice at once (a page-level banner with Try again, and again inside the sorting card). That is an expected failure state, not a product finding, except the duplicate message (J1-12).
+- mock-founder is shared with other walkers: a "New Bot" and changed Chief previews appeared while I walked, so counts (unread badge 9, 10) moved for reasons outside my steps.
+- The mock-founder password was read into a shell variable and never printed.
+- Not run: touch emulation checks (no touch-target claims made), phone width, dark/light theme toggle.
+
+## Story verdicts
+
+| Story | Verdict | Steps actual / ideal | Notes |
+|---|---|---|---|
+| STORY-APP-309 (sign-up, model, first answer) | BLOCKED (partly walked) | 4 form actions + 1 focus pick + 8 Next + Ask Chief = 14 / 6 | The demo server already has a default model, so "Connect a model" never appears; ChatGPT/OpenRouter sign-in is a real provider step anyway. Sign-up went straight to Chief. First answer arrived in about 30 s. |
+| STORY-APP-319 (model sign-in, Connect your apps, tour, first question) | PARTIAL / BLOCKED for the first two steps | 14 / 12 | "Connect your apps" did not appear (no integration needs setup on the demo). Tour (9 stops) and Ask Chief walked. Gmail connected in one click from the card in chat (emulated). |
+| STORY-APP-209 (first day to "when do we run out?") | PARTIAL | n/a | Landing, focus card, Gmail card, Inbox first sync (about 25 s of skeleton) and consent walked. Finance runway on the mock-founder account walked as the runway check. Real Mercury/Carta sign-in not attempted. |
+| STORY-INB-022 (first morning) | PARTIAL | n/a | Connect (chat card), first sync, "Let Praci sort your mail" card seen. The sort itself was interrupted by the stack restart; then re-walked on mock-founder (sorted data). |
+| STORY-INB-109 (Monday-morning reset) | PARTIAL | Steps 1, 2, 7, 8, 9, 10 walked of 23 | No Spam tab and no preselected Cleanup senders in the seed, so steps 3-6 and 11-19 are BLOCKED by seed data. Digest, Archive all, Show the pile, empty Cleanup walked. Open email, thread collapse, email agent walked. |
+| STORY-APP-211 (board prep) | PARTIAL / FAIL on the email agent step | 11 / 12 | Inbox, Investors, Finance, Runway, Legal Deadlines (Done), Hide amounts walked. Data room search and Carta agent not walked. "Reply with draft" failed (J1-01, J1-02). |
+| STORY-APP-203 (runway on Chief vs Finance) | PASS | 3 / 3 | Chief "about 24 months, $1,633,221 cash, $67,621 burn"; Finance 24.2 mo; Runway page run-out Oct 26, 2028; crypto breakdown adds up to $105,250. Numbers agree across all three. |
+| STORY-APP-201 (Hide amounts) | PASS with a11y finding | 3 / 3 | Money masked on Finance (cards, chart axis, breakdown bars, upcoming) and Investors (Invested column, 409A price); share counts and runway months stay. See J1-04. |
+
+## What is excellent
+
+- First-run is short on the demo: sign-up lands directly in Chief with a one-question card; no dead loading screens (the button reads "Working..." then the chat opens).
+- The tour waits for the focus question to be answered, so popovers never cover the choices. The ring tracks each sidebar row; every stop is one short sentence.
+- Chief's first answer is honest: "I don't have an open task list or connected email/calendar... this is a general recommendation."
+- Gmail connect from the chat card is one click and the card flips to "Connected".
+- Chief to Inbox agent hand-off: the approval card shows the full message, To, subject, with Send, Discard and Edit. Very clear.
+- Number consistency across Chief, Finance and Runway; hidden-amount mode is thorough.
+- Inbox email dialog collapses earlier messages into three one-line rows; "Archived 6" toast with Undo; Cleanup's empty state offers "Open Newsletters".
+
+## Findings
+
+| ID | Sev | Cat | Story / page | What happened vs expected | Evidence | Suspected location | Proposed fix |
+|---|---|---|---|---|---|---|---|
+| J1-01 | P1 | bug | APP-211, INB (email agent) | Observed: after "Reply with draft", the Reply composer opened with the agent's refusal as the email body: "I can't create the reply approval card because email reply isn't available in this chat. [Open Integrations](/app/integrations)" addressed to Morgan. One click on Send would email that text. Expected: refusals or errors never become a draft. | 38-replydraft.png, 37-askagent.png | apps/web/src/components/inbox/EmailAgentPanel.tsx `latestTextDraft` (about lines 60-70): returns any non-question bot text after a "draft a reply" request | Only offer "Reply with draft" for a mail_send card or text the agent marked as a draft; drop answers that start with a refusal or contain a link to Integrations. |
+| J1-02 | P1 | flow | Inbox > Ask agent > Draft a reply | Observed: the email agent answers "email reply isn't available in this chat. Open Integrations" although Gmail is connected, so Maya hits a dead end on her main Monday task. Cause UNVERIFIED (may be a demo-only tool gap; the same demo's Investors agent also says "mail access is not permitted"). | 37-askagent.png, 40-inboxagent.png | packages/adapters (mail reply tool gating for thread agents); suspected | Check the thread agent has mail_send in the demo seed; if a tool is missing, say which one in plain words and link to the agent's settings, not Integrations. |
+| J1-03 | P2 | copy | Chief consent card | Observed: title "Allow your mail to be sent to OpenRouter?" while the body lists "Messages, chat history, bot instructions, memories, attachments, screenshots and connected-app content". The title understates what is shared and names the router, while Legal's card says "Let Praci read your contracts" and Inbox's says "Let Praci sort your mail". The request was only "email Sam". | 15-chief-after.png, 23-legal.png | packages/adapters/src/approval-ask.ts:141 | Title the card by what is shared ("Let Praci share your chats and mail with the AI model?") and use one name for the recipient everywhere. |
+| J1-04 | P2 | a11y | Account menu, Hide amounts | Observed: the row label stays "Hide amounts" in both states; only the icon changes (Eye vs EyeOff). The checked state is aria-only, so a sighted user cannot tell whether amounts are hidden or what a click will do. No indicator on pages while hidden. | 29-menu-hidden.png | apps/web/src/components/HideAmountsToggle.tsx:14-26 | Show a visible check or switch on the row, and flip the label to "Show amounts" while hidden (a small "Amounts hidden" chip in page headers would help on a call). |
+| J1-05 | P2 | copy | Inbox > Newsletters > Digest | Observed: header "Archive all 6" above 4 cards (one per sender); the list view shows "2" per sender (8 messages). The number counts messages in the 7-day window, but the screen shows senders. | 31-newsletters.png, 32-digest.png | apps/web/src/components/inbox/InboxDigest.tsx:59 | Say "Archive all 6 messages" or show "6 messages from 4 senders"; show the count on every card. |
+| J1-06 | P3 | visual | Investors | Measured: header Ask button right edge x=1412, content cards (Action items, stat cards, Cap table) right edge x=1368 (44 px short) because cards are max-w-5xl while the header is full width. Finance and Inbox fill to 1412. | 22-investors.png | apps/web/src/pages/Investors.tsx:1126 (and :310, :1240) | Use the same content width as Finance, or cap the header too. |
+| J1-07 | P3 | flow | Sidebar badge | Observed: Inbox badge read 1 right after login, then 10 after opening Inbox (first sync), so the unread count undercounts until the page is visited. Other walkers share the account, so part of the change may be theirs. | 13-founder.png, 30-inbox.png | sidebar unreadCount in apps/web/src/pages/Shell.tsx (suspected) | Refresh the count on a timer after login, or show nothing until the first sync finishes. |
+| J1-08 | P3 | flow | Legal > Deadlines | Observed: "Done" on "Q3 board consent signature" removed the row and cleared the sidebar badge, but no Undo toast was visible one second later. Other pages (Archive, Cleanup) offer Undo. | 25-done.png | Legal deadlines list (apps/web/src/pages/legal), suspected | Add an Undo toast for Done and Dismiss. |
+| J1-09 | P3 | copy | Chief first answer | Observed: while the first reply ran, the transcript showed a tool row "Scratchpad list 12.4s", an internal tool name a first-time user cannot interpret; the first answer took about 30 s on the real model. | 06-ask-3.png | tool-row label mapping in apps/web transcript components, suspected | Map internal tool names to plain labels ("Checking your notes") or hide tools that return nothing. |
+| J1-10 | P3 | visual | First-run tour | Observed: popovers on stops 4-7 sit on top of the chat text and the final stop (with Back, Ask Chief, Done) covers the left of the composer. Stop 7 "Ask Chief anything." points at Chief's row while the user is already in Chief's chat. (Nine stops are an owner decision; only placement is noted.) | tour-grid.png, 06-askchief.png | apps/web/src/components/tour/TourPopover.tsx | Anchor popovers beside the target on the side away from the chat column. |
+| J1-11 | P3 | copy | Inbox agent thread (seeded Investors agent message) | Observed: agent text "Unable to read mock-demo-29: mail access is not permitted" exposes an internal message id. | 40-inboxagent.png | agent hand-off text (adapters), seed-dependent | Replace ids in user-facing agent errors with the email subject. |
+| J1-12 | P3 | bug | Inbox, server unreachable | Observed (during the stack restart): "Could not reach the server" appeared twice at once, in a banner with Try again and again inside the sorting card. | 11-sort-1.png | apps/web/src/pages/Inbox.tsx and the consent card, suspected | Show one error and keep Try again on the control that failed. |
+| J1-13 | P3 | flow | Investors header | Observed: header has "Add contact" and "Ask". The pass-5 decision said the Cap table header has only Ask; this may have been superseded by the pass-7 Investors/Contacts link. Also "Equity raised" shows an em dash while the table lists $325,000 of SAFEs. | 22-investors.png | apps/web/src/pages/Investors.tsx:1039 | Confirm the header decision; label the card "Priced equity raised" or include SAFEs. |
+| J1-14 | P3 | flow | Email dialog | Observed: "Ask agent" is a top-level button in the open email, next to Reply and Archive. The brief describes it as an item in the More menu. Treat as a spec drift to confirm, not a defect. | 36-email.png | apps/web/src/components/inbox/InboxMessageDialog.tsx | Confirm intended placement. |
+
+## Counts
+
+P0: 0, P1: 2, P2: 3, P3: 9 (14 findings).
+Skipped or not reachable: Connect a model step, Connect your apps step, Spam and Cleanup sender passes (seed), Data room search, Carta agent, phone width, touch emulation.
