@@ -485,7 +485,7 @@ export function CommandPalette({
           )}
           {needle && !searching && noDirectMatch && fallbackLinks.length ? (
             <p className="px-3 py-3 text-sm text-muted-foreground">
-              <Trans>No matches in pages, documents, contacts</Trans>
+              <Trans>No matches</Trans>
             </p>
           ) : null}
           {sectionOrder.map((section) => (
@@ -532,7 +532,7 @@ export function CommandPalette({
             <Trans>Move</Trans>
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>↵</Kbd>
+            <Kbd>Enter</Kbd>
             <Trans>Open</Trans>
           </span>
           <span className="flex items-center gap-1.5">

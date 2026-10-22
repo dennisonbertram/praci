@@ -565,6 +565,8 @@ export function SpaceSidebar({
       mutate.disconnect();
     };
   }, [mobileSidebarOpen]);
+  // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
+  const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
   const [emailChatsOpen, setEmailChatsOpen] = useState(false);
   return (
@@ -608,7 +610,7 @@ export function SpaceSidebar({
             <InputGroup
               data-testid="sidebar-search"
               data-tour="sidebar-search"
-              className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+              className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground has-[[data-slot=input-group-control]:focus-visible]:ring-0"
             >
               <InputGroupAddon>
                 <Search size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -768,6 +770,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("inbox") ? null : (
                 <SidebarPageLink
                   testId="sidebar-inbox"
+                  href="/app/inbox"
                   current={inboxMode}
                   icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Inbox`}
@@ -787,6 +790,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("finance") ? null : (
                 <SidebarPageLink
                   testId="sidebar-finance"
+                  href="/app/finance"
                   current={financeMode}
                   icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Finance`}
@@ -801,6 +805,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("legal") ? null : (
                 <SidebarPageLink
                   testId="sidebar-legal"
+                  href="/app/legal"
                   current={legalMode}
                   icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Legal`}
@@ -845,6 +850,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                 <SidebarPageLink
                   testId="sidebar-devin"
+                  href="/app/devin"
                   current={devinMode}
                   icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Devin`}
@@ -868,6 +874,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("investors") ? null : (
                 <SidebarPageLink
                   testId="sidebar-investors"
+                  href="/app/investors"
                   current={investorsMode}
                   icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Investors`}
@@ -882,6 +889,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("fundraising") ? null : (
                 <SidebarPageLink
                   testId="sidebar-fundraising"
+                  href="/app/fundraising"
                   current={fundraisingMode}
                   icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Fundraising`}
@@ -895,6 +903,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("contacts") ? null : (
                 <SidebarPageLink
                   testId="sidebar-contacts"
+                  href="/app/contacts"
                   current={contactsMode}
                   icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Contacts`}
@@ -908,17 +917,14 @@ export function SpaceSidebar({
               {hiddenPages.includes("data-room") ? null : (
                 <SidebarPageLink
                   testId="sidebar-data-room"
+                  href="/app/data-room"
                   current={dataRoomMode}
                   icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`Data room`}
                   rail={rail}
                   onOpen={() => {
                     setMobileSidebarOpen(false);
-                    navigate(
-                      glance.dataRoomWaiting > 0
-                        ? "/app/data-room?status=failed"
-                        : "/app/data-room",
-                    );
+                    navigate("/app/data-room");
                   }}
                   {...glanceBadge({
                     unseen: unseen["data-room"] ?? 0,
@@ -929,12 +935,17 @@ export function SpaceSidebar({
                       other: "# files failed",
                     }),
                     failure: true,
+                    onValueClick: () => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/data-room?status=failed");
+                    },
                   })}
                 />
               )}
               {hiddenPages.includes("artifacts") ? null : (
                 <SidebarPageLink
                   testId="sidebar-artifacts"
+                  href="/app/artifacts"
                   current={artifactsMode}
                   // Not the Data room's folder icon: these are files bots made.
                   icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
@@ -962,6 +973,7 @@ export function SpaceSidebar({
         >
           {activityMode && !rail ? (
             <ActivityList
+              onListedBots={setActivityBotIds}
               onOpenRun={(run) => {
                 setMobileSidebarOpen(false);
                 if (run.groupId) navigate(`/app/g/${run.groupId}`);
@@ -1024,14 +1036,20 @@ export function SpaceSidebar({
                 !row.item.chat.preview &&
                 row.item.chat.status === "idle" &&
                 row.item.chat.id !== active?.id;
-              const listedRows = foldable
-                ? nestedRows.filter((row) => !unusedPageAgent(row))
-                : nestedRows;
+              const inActivity = (row: (typeof nestedRows)[number]) =>
+                activityMode &&
+                !rail &&
+                row.item.kind === "bot" &&
+                activityBotIds.has(row.item.chat.id) &&
+                row.item.chat.id !== active?.id;
+              const listedRows = (
+                foldable ? nestedRows.filter((row) => !unusedPageAgent(row)) : nestedRows
+              ).filter((row) => !inActivity(row));
               const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
               const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
               const holdsActive = (rows: typeof nestedRows) =>
                 rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-              const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+              const showPageAgents = pageAgentsOpen || (!pageMode && holdsActive(pageAgentRows));
               const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
               const displayRows: (
                 | (typeof nestedRows)[number]

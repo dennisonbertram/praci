@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
+import { dueLabel } from "./TodoCard";
 
 /** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
 const LABEL_DOT = {
@@ -142,7 +143,7 @@ export function InboxGroup({
   selectedId,
   hideAttention,
   unreadTotal,
-  todoIds,
+  todoDue,
   ...picking
 }: {
   /** Omitted for search results, which show one count instead. */
@@ -159,7 +160,8 @@ export function InboxGroup({
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
   /** Rows whose mail has an open to-do; the To do card leaves them out, so the row says so. */
-  todoIds?: ReadonlySet<string>;
+  /** Mail ids that have a to-do on the Needs reply row, with its due date when it has one. */
+  todoDue?: ReadonlyMap<string, string | null>;
 } & RowPicking) {
   const { t } = useLingui();
   if (rows.length === 0) return null;
@@ -186,7 +188,8 @@ export function InboxGroup({
             onRead={onRead}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
-            todo={todoIds?.has(row.id)}
+            todo={todoDue?.has(row.id)}
+            due={todoDue?.get(row.id) ?? undefined}
             {...rowPicking(row.id, picking)}
           />
         ))}
@@ -204,6 +207,7 @@ export function InboxRow({
   selected = false,
   hideAttention = false,
   todo = false,
+  due,
   picked = false,
   anyPicked = false,
   onPick,
@@ -220,6 +224,7 @@ export function InboxRow({
   selected?: boolean;
   hideAttention?: boolean;
   todo?: boolean;
+  due?: string;
   /** The row's checkbox is checked. */
   picked?: boolean;
   /** Some row of the list is checked, so every row shows its checkbox. */
@@ -365,12 +370,13 @@ export function InboxRow({
               className={`col-start-4 row-start-1 hidden @md:inline-flex ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
             >
               <Trans>To do</Trans>
+              {due ? ` · ${dueLabel(due, new Date())}` : null}
             </Badge>
           ) : null}
           {todo && !label ? (
             <ListChecks
               role="img"
-              aria-label={t`To do`}
+              aria-label={due ? `${t`To do`} · ${dueLabel(due, new Date())}` : t`To do`}
               className="col-start-4 row-start-1 size-4 text-muted-foreground @md:hidden"
             />
           ) : null}

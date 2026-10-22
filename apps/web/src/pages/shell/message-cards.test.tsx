@@ -12,7 +12,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { ChartCanvas, ChoiceCard } from "./message-cards";
+import { ChartCanvas, ChoiceCard, ResultCard } from "./message-cards";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
@@ -91,4 +91,22 @@ it("tells the two first-run focuses apart and keeps the chosen row at full contr
     ),
   );
   expect(el.querySelector("button")?.className).not.toContain("opacity-60");
+});
+
+it("masks every value in a result card while amounts are hidden and shows them again after", async () => {
+  setHideAmounts(true);
+  const el = document.createElement("div");
+  document.body.append(el);
+  const card = {
+    kind: "card" as const,
+    lines: [
+      { k: "Cash", v: "$1,633,221" },
+      { k: "Runway", v: "10 months" },
+    ],
+  };
+  await act(async () => createRoot(el).render(<ResultCard block={card} />));
+  expect(el.textContent).not.toContain("1,633,221");
+  expect(el.textContent).toContain("10 months");
+  await act(async () => setHideAmounts(false));
+  expect(el.textContent).toContain("$1,633,221");
 });

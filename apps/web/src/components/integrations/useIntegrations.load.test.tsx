@@ -22,7 +22,11 @@ const rpcMock = vi.hoisted(() => ({
   finance: { overview: vi.fn(async () => null) },
   meetings: { status: vi.fn() },
 }));
-vi.mock("../../lib/rpc", () => ({ rpc: rpcMock }));
+vi.mock("../../lib/rpc", () => ({ rpc: rpcMock, selectedSpaceId: () => null }));
+const session = vi.hoisted(() => ({ id: "user-1" }));
+vi.mock("../../lib/auth", () => ({
+  authClient: { useSession: () => ({ data: { user: { id: session.id } } }) },
+}));
 
 import type { IntegrationsData } from "./useIntegrations";
 import { useIntegrations } from "./useIntegrations";
@@ -94,4 +98,28 @@ it("polls meetings.status every 5 seconds while Syncing and stops once Synced", 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("drops a response for the previous account and loads again for the new one", async () => {
+  session.id = "user-1";
+  let release: (rows: unknown[]) => void = () => {};
+  rpcMock.connections.list.mockReset();
+  rpcMock.connections.list.mockImplementationOnce(() => new Promise((r) => (release = r)));
+  rpcMock.connections.effectiveAccess.mockResolvedValue({});
+  let data: IntegrationsData | undefined;
+  function Probe() {
+    data = useIntegrations();
+    return null;
+  }
+  const root = createRoot(document.createElement("div"));
+  await act(async () => root.render(<Probe />));
+  // The person switches account while user-1's request is still outstanding.
+  rpcMock.connections.list.mockResolvedValue([conn("b")]);
+  session.id = "user-2";
+  await act(async () => root.render(<Probe />));
+  await act(async () => {});
+  expect(data?.connections.map((c) => c.id)).toEqual(["b"]);
+  await act(async () => release([conn("a")]));
+  expect(data?.connections.map((c) => c.id)).toEqual(["b"]);
+  await act(async () => root.unmount());
 });

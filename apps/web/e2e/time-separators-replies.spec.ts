@@ -10,7 +10,7 @@ test("a short reply thread shows one time separator and navigates to its parent"
   await rpc(page, "threads/clear", { botId });
   await page.reload({ waitUntil: "domcontentloaded" });
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await expect(composer).toBeVisible();
   await composer.fill("Let's review the release notes.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -81,7 +81,7 @@ test("replying to a photo shows authenticated thumbnails before and after sendin
   await expect(chip).toContainText("You: Photo");
   await expect(chip.locator("img")).toBeVisible();
   await captureScreenshot(page, testInfo, "photo-reply-composer");
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await composer.fill("Review this photo.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   const reply = page

@@ -374,22 +374,23 @@ it("shows an error with Try again when the page cannot load", async () => {
   expect(container.querySelector('section[aria-label="Pipeline"]')).not.toBeNull();
 });
 
-const staticSkeletons = (label: string) =>
-  container.querySelectorAll(`section[aria-label="${label}"] [data-slot=skeleton][data-static]`);
-
-it("shows the Round, Pipeline and SAFEs cards as static skeletons when empty, with no 'No ... yet' line", async () => {
+it("shows quiet empty lines, not skeleton bars, once an empty overview arrived", async () => {
   rpcMock.overview.mockResolvedValue(overview(null, []));
   await show();
-  for (const label of ["Round", "Pipeline", "SAFEs"]) {
-    expect(staticSkeletons(label).length).toBeGreaterThan(0);
-  }
-  expect(container.querySelector("[data-slot=skeleton]:not([data-static])")).toBeNull();
-  expect(container.textContent).not.toMatch(/No (prospects|SAFEs) yet/);
+  expect(container.querySelector("[data-slot=skeleton]")).toBeNull();
+  expect(container.textContent).toContain("No prospects yet");
+  expect(container.textContent).toContain("No SAFEs yet");
   // Add prospect lives in the header only.
   expect(
     [...container.querySelectorAll("button")].filter((b) => b.textContent === "Add prospect"),
   ).toHaveLength(1);
   expect(button("Start a round")).toBeDefined();
+});
+
+it("shows loading bars only while the overview is in flight", async () => {
+  rpcMock.overview.mockReturnValue(new Promise(() => undefined));
+  await show();
+  expect(container.querySelector('[aria-busy="true"] [data-slot=skeleton]')).not.toBeNull();
 });
 
 const committed = prospect("p1", "Harbor Angels", {

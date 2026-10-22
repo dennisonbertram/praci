@@ -201,3 +201,8 @@ export const NotSetUpForMember: Story = {
 export const LoadError: Story = {
   args: { data: mockIntegrations({ catalog: [], catalogFailed: true }) },
 };
+
+/** First frame before anything has loaded: search and categories are already there; only the grid waits. */
+export const Loading: Story = {
+  args: { data: mockIntegrations({ loaded: false }) },
+};
