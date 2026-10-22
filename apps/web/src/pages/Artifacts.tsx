@@ -1115,13 +1115,13 @@ function PreviewPane({
           <>
             {state.artifact.mimeType === "text/html" ? (
               <Tip label={t`Isolated preview — no access to your account`}>
-                <span
-                  role="img"
+                <button
+                  type="button"
                   aria-label={t`Isolated preview — no access to your account`}
-                  className="grid h-8 w-8 shrink-0 place-items-center text-muted-foreground"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                  <Lock size={15} strokeWidth={1.9} />
-                </span>
+                  <Lock size={15} strokeWidth={1.9} aria-hidden="true" />
+                </button>
               </Tip>
             ) : null}
             <Button

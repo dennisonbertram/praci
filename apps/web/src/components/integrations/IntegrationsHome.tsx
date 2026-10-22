@@ -763,8 +763,8 @@ export function IntegrationsHome({
                       type="search"
                       className="h-9 ps-8"
                       value={query}
-                      placeholder={t`Search apps`}
-                      aria-label={t`Search apps`}
+                      placeholder={t`Search integrations`}
+                      aria-label={t`Search integrations`}
                       onChange={(event) => {
                         setQuery(event.target.value);
                         setVisible(CONNECTION_CATALOG_PAGE_SIZE);

@@ -17,7 +17,7 @@ import {
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
-import { dateText, isSettled, isStuck, sizeText, typeLabel } from "./format";
+import { dateText, isSettled, isStuck, isUnreadable, sizeText, typeLabel } from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu } from "./ItemMenu";
 import {
@@ -220,10 +220,12 @@ export function Preview({
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
-          <Button size="sm" onClick={() => onAction("retry", item)}>
-            <RotateCw aria-hidden="true" />
-            <Trans>Try again</Trans>
-          </Button>
+          {isUnreadable(item.error) ? null : (
+            <Button size="sm" onClick={() => onAction("retry", item)}>
+              <RotateCw aria-hidden="true" />
+              <Trans>Try again</Trans>
+            </Button>
+          )}
         </div>
       ) : !isSettled(item.status) ? (
         <p className="text-sm text-muted-foreground">

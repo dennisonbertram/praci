@@ -838,7 +838,7 @@ export function CustomConnectionDialog({
                 autoFocus
                 value={directoryQuery}
                 onChange={(event) => setDirectoryQuery(event.target.value)}
-                placeholder={view.publicCatalog ? t`Search apps` : "github.com"}
+                placeholder={view.publicCatalog ? t`Search integrations` : "github.com"}
                 aria-label={t`Search`}
               />
               <Button type="submit" disabled={busy || !directoryQuery.trim()}>

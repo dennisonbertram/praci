@@ -1000,7 +1000,6 @@ msgstr "Address or ENS"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr "Address or ENS"
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Advanced"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr "Advanced: connect an outside memory service"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -2181,6 +2176,10 @@ msgstr "Chat apps"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Chat apps, group channels, and agent connections."
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr "Chat display"
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -7495,6 +7494,10 @@ msgstr "Other ways to connect"
 msgid "Out"
 msgstr "Out"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr "Outside memory service"
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr "Owner"
@@ -8933,13 +8936,6 @@ msgstr "Search and follow Devin sessions. Read-only."
 msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "Search apps"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr "Search artifacts…"
@@ -8963,6 +8959,13 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
+msgstr "Search integrations"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
@@ -10836,6 +10839,10 @@ msgstr "Upload {statement} for {0}"
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr "Upload a skill file"
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr "Upload failed. Check your connection and try again."
@@ -10851,10 +10858,6 @@ msgstr "Upload files"
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use."
 msgstr "Upload files for bots to use."
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
-msgstr "Upload SKILL.md"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
@@ -11098,10 +11101,6 @@ msgstr "Wallet balances and allocation."
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
 msgstr "Wallet balances and history"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
-msgstr "Wallet balances and history · no key needed"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

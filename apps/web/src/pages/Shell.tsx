@@ -4236,6 +4236,7 @@ export function ShellPage() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: key and focus events bubble up from the row buttons inside */}
       <aside
         ref={sidebarRef}
+        data-sidebar=""
         aria-label={t`Sidebar`}
         onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
         onFocus={(event) => {
