@@ -378,3 +378,20 @@ it("rises above a composer it would cover", async () => {
   // innerHeight 768 - 600 + 8
   expect(viewport()?.style.getPropertyValue("--toast-lift")).toBe("176px");
 });
+
+it("sits left of an open side panel and drops the composer offset when there is no composer", async () => {
+  await mount();
+  const panel = document.createElement("aside");
+  panel.setAttribute("data-toast-panel", "");
+  panel.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 768, left: 640, right: 1024, height: 768, width: 384 }) as DOMRect;
+  document.body.append(panel);
+  await add(1);
+  // innerWidth 1024 - 640
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("384px");
+  expect(viewport()?.className).toContain("var(--toast-shift,0px)");
+  expect(viewport()?.className).toContain(
+    "max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem)",
+  );
+  panel.remove();
+});

@@ -132,6 +132,7 @@ function ToastBody({
 }
 
 const GAP_ABOVE_PX = 8;
+const MIN_TOAST_AREA_PX = 360;
 
 /** Hides the toasts while an open dialog, menu or navigation drawer would sit under them. */
 const COVERED_BY_OVERLAY =
@@ -153,6 +154,18 @@ function liftAbove(viewport: HTMLElement): number {
   return lift;
 }
 
+/**
+ * How far the toasts must sit in from the right edge to stay clear of an open side panel
+ * (`data-toast-panel`). Zero on a phone or when the panel would leave less than a toast's width.
+ */
+function shiftBeside(): number {
+  const panel = document.querySelector<HTMLElement>("[data-toast-panel]");
+  if (!panel || isPhone()) return 0;
+  const left = panel.getBoundingClientRect().left;
+  const shift = window.innerWidth - left;
+  return left >= MIN_TOAST_AREA_PX && left < window.innerWidth ? shift : 0;
+}
+
 function ToastList({
   onOpen,
   dismissLabel,
@@ -172,6 +185,7 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
+      viewport.style.setProperty("--toast-shift", `${shiftBeside()}px`);
     };
     place();
     // The composer grows with its text and the window resizes; a short poll covers both.
@@ -181,6 +195,7 @@ function ToastList({
       clearInterval(timer);
       window.removeEventListener("resize", place);
       viewport.style.removeProperty("--toast-lift");
+      viewport.style.removeProperty("--toast-shift");
     };
   }, [shownCount, viewportRef]);
   const [, tick] = useState(0);
@@ -348,7 +363,7 @@ export function NotificationToaster({
           // `data-toast-avoid` element it would cover, and is hidden while a dialog, menu or the
           // navigation drawer is open, since it would cover their content.
           className={cn(
-            "group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+5.5rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
+            "group/viewport pointer-events-none fixed right-[max(calc(1rem+var(--toast-shift,0px)),env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
             COVERED_BY_OVERLAY,
           )}
         >
