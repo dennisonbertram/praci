@@ -1,17 +1,19 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { BotPage, PageChart } from "@rakazo/contracts";
+import type { BotPage, GtmPageBlock, PageChart } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import type { NodeViewProps } from "@tiptap/react";
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
-import { X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { GtmBlock, GtmBlockContext } from "../../components/gtm/GtmBlock";
 import { isNewerRemote, resolveRemotePage } from "../../lib/page-sync";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { ChartCanvas } from "./message-cards";
 import { PageChartNode, usePageChartRows } from "./page-chart-extension";
 import { PAGE_EXTENSIONS } from "./page-extensions";
+import { PageGtmNode } from "./page-gtm-extension";
 
 const SAVE_DELAY_MS = 800;
 
@@ -56,6 +58,61 @@ const PageChartView = PageChartNode.extend({
   },
 });
 
+function GtmView({ node, deleteNode, editor, getPos }: NodeViewProps) {
+  const data = useContext(GtmBlockContext);
+  const move = (direction: -1 | 1) => {
+    const pos = getPos();
+    if (typeof pos !== "number") return;
+    const { doc, tr } = editor.state;
+    const neighbor = direction < 0 ? doc.resolve(pos).nodeBefore : doc.nodeAt(pos + node.nodeSize);
+    if (!neighbor) return;
+    const target = direction < 0 ? pos - neighbor.nodeSize : pos + neighbor.nodeSize;
+    editor.view.dispatch(
+      tr
+        .delete(pos, pos + node.nodeSize)
+        .insert(target, node)
+        .scrollIntoView(),
+    );
+  };
+  return (
+    <NodeViewWrapper
+      className="group relative my-3 min-w-0"
+      contentEditable={false}
+      data-gtm-block={node.attrs.block?.type}
+    >
+      {editor.isEditable ? (
+        <div className="mb-1 flex justify-end gap-1 text-muted-foreground">
+          <span data-drag-handle className="flex cursor-grab items-center px-1" aria-hidden="true">
+            <GripVertical size={14} />
+          </span>
+          <Button variant="ghost" size="icon-sm" aria-label={t`Move up`} onClick={() => move(-1)}>
+            <ArrowUp size={14} />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label={t`Move down`} onClick={() => move(1)}>
+            <ArrowDown size={14} />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label={t`Delete block`} onClick={deleteNode}>
+            <X size={14} />
+          </Button>
+        </div>
+      ) : null}
+      {data ? (
+        <GtmBlock
+          block={node.attrs.block as GtmPageBlock}
+          overview={data.overview}
+          onChange={data.onChange}
+        />
+      ) : null}
+    </NodeViewWrapper>
+  );
+}
+
+const PageGtmView = PageGtmNode.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(GtmView);
+  },
+});
+
 export type PageRemoteUpdate = { revision: number; updatedBy: "bot" | "user"; seq: number };
 
 export function BotPagePanel({
@@ -66,7 +123,7 @@ export function BotPagePanel({
   botId: string;
   /** The latest `page.updated` event for this bot. */
   remote: PageRemoteUpdate | null;
-  onPageChange?: (page: BotPage) => void;
+  onPageChange?: (page: BotPage | null) => void;
 }) {
   const reportPage = useRef(onPageChange);
   reportPage.current = onPageChange;
@@ -77,14 +134,18 @@ export function BotPagePanel({
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const saving = useRef(false);
   const stale = useRef(false);
-  const [loaded, setLoaded] = useState<BotPage | null>(null);
+  const [loaded, setLoaded] = useState<BotPage | null>();
   const [offerReload, setOfferReload] = useState(false);
   const [error, setError] = useState("");
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: PAGE_EXTENSIONS.map((extension) =>
-      extension === PageChartNode ? PageChartView : extension,
+      extension === PageChartNode
+        ? PageChartView
+        : extension === PageGtmNode
+          ? PageGtmView
+          : extension,
     ),
     editorProps: {
       attributes: {
@@ -109,6 +170,7 @@ export function BotPagePanel({
       stale.current = false;
       setOfferReload(false);
       setError("");
+      setLoaded(page);
       reportPage.current?.(page);
     },
     [editor],
@@ -119,7 +181,12 @@ export function BotPagePanel({
     if (!editor || editor.isDestroyed) return;
     const before = editor.getMarkdown();
     const page = await rpc.pages.get({ botId });
-    if (!page || editor.isDestroyed) return;
+    if (editor.isDestroyed) return;
+    if (!page) {
+      setLoaded(null);
+      reportPage.current?.(null);
+      return;
+    }
     if (editor.getMarkdown() !== before) {
       stale.current = true;
       setOfferReload(true);
@@ -169,9 +236,12 @@ export function BotPagePanel({
     void rpc.pages
       .get({ botId })
       .then((page) => {
-        if (!live || !page) return;
-        setLoaded(page);
-        show(page);
+        if (!live) return;
+        if (page) show(page);
+        else {
+          setLoaded(null);
+          reportPage.current?.(null);
+        }
       })
       .catch((cause) => live && setError(errorText(cause)));
     const onUpdate = () => {
@@ -190,11 +260,14 @@ export function BotPagePanel({
   }, [editor, botId, show, persist]);
 
   useEffect(() => {
-    if (!remote || !editor) return;
+    if (!remote || !editor || loaded === undefined) return;
     seenRevision.current = Math.max(seenRevision.current, remote.revision);
     // A save in flight decides what to do with newer revisions when it returns.
     if (saving.current) return;
-    if (!isNewerRemote({ loadedRevision: revision.current, remoteRevision: remote.revision }))
+    if (
+      loaded !== null &&
+      !isNewerRemote({ loadedRevision: revision.current, remoteRevision: remote.revision })
+    )
       return;
     if (resolveRemotePage({ dirty: editor.getMarkdown() !== baseline.current }) === "offer") {
       stale.current = true;

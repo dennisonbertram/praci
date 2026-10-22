@@ -291,7 +291,6 @@ import {
   listInvestorUpdates,
   listNotifications,
   listPushEndpoints,
-  listSafes,
   listShareContactIds,
   listSidebarPages,
   listSpaceBackupModels,
@@ -453,7 +452,7 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
-import { fundraisingOverview, fundraisingRefresh } from "./fundraising.js";
+import { fundraisingOverview, fundraisingRefresh, safesList } from "./fundraising.js";
 import type { GtmQueueReader } from "./gtm.js";
 import { gtmNeedsYouCount, gtmOverview, gtmPostingCapability, gtmQueue } from "./gtm.js";
 import { ensureGtmAgent, ensureGtmBot } from "./gtm-agent.js";
@@ -4221,6 +4220,7 @@ export function createRouter(deps: RouterDeps) {
               content: input.content,
               baseRevision: input.baseRevision,
               updatedBy: "user",
+              gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
             },
           );
           if (result.ok) return result;
@@ -7960,7 +7960,7 @@ export function createRouter(deps: RouterDeps) {
       },
       safes: {
         list: authed.fundraising.safes.list.handler(({ context }) =>
-          listSafes(deps.prisma, actorScope(context.actor)),
+          safesList(fundraisingDeps, context.actor),
         ),
         save: authed.fundraising.safes.save.handler(({ context, input }) =>
           saveSafe(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),

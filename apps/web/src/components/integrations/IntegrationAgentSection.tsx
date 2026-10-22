@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Label, Switch } from "@rakazo/ui-web";
+import { Button, Label, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Heading } from "./AppDetail";
@@ -77,9 +77,9 @@ export function IntegrationAgentSection({
       </Heading>
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-3.5 py-3">
         {agentHref ? (
-          <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
-            {agentName}
-          </Link>
+          <Button variant="outline" className="w-fit" render={<Link to={agentHref} />}>
+            <Trans>Open {agentName}</Trans>
+          </Button>
         ) : (
           <span className="w-fit text-sm font-medium">{agentName}</span>
         )}

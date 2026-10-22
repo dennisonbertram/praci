@@ -80,7 +80,11 @@ const openBots = new Set<string>();
 export function markApprovalChatOpen(botId: string) {
   openBots.add(botId);
   dismissApprovalToasts({ botId });
-  return () => void openBots.delete(botId);
+  // The panel closing with an approval unanswered must bring its toast back: ask for a rebuild.
+  return () => {
+    openBots.delete(botId);
+    window.dispatchEvent(new CustomEvent("rakazo:notifications-changed"));
+  };
 }
 
 export function enqueueApprovalToast(toast: NotificationToastInput, chat: ApprovalChat = {}) {
