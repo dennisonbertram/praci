@@ -253,7 +253,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     </span>
                   ) : (
                     <span className="text-success">
-                      <Trans>Uploaded</Trans>
+                      {state.folder ? t`Uploaded to ${state.folder}` : <Trans>Uploaded</Trans>}
                     </span>
                   )}
                   <Link

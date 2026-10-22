@@ -7539,6 +7539,7 @@ msgstr "Only if the server does not use sign-in"
 msgid "Only this bot"
 msgstr "Only this bot"
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -11188,6 +11189,10 @@ msgstr "Unpin"
 msgid "Unread"
 msgstr "Unread"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
+msgstr "Unreadable"
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
 msgstr "Unshare"
@@ -11382,6 +11387,11 @@ msgstr "Upload to All items"
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
 msgstr "Uploaded"
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
+msgstr "Uploaded to {0}"
 
 #: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx
