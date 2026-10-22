@@ -132,7 +132,7 @@ function ToastBody({
 }
 
 const GAP_ABOVE_PX = 8;
-const MIN_TOAST_AREA_PX = 360;
+const TOAST_GUTTER_PX = 16;
 
 /** Hides the toasts while an open dialog, menu or navigation drawer would sit under them. */
 const COVERED_BY_OVERLAY =
@@ -158,12 +158,13 @@ function liftAbove(viewport: HTMLElement): number {
  * How far the toasts must sit in from the right edge to stay clear of an open side panel
  * (`data-toast-panel`). Zero on a phone or when the panel would leave less than a toast's width.
  */
-function shiftBeside(): number {
+function shiftBeside(toastWidth: number): number {
   const panel = document.querySelector<HTMLElement>("[data-toast-panel]");
   if (!panel || isPhone()) return 0;
   const left = panel.getBoundingClientRect().left;
   const shift = window.innerWidth - left;
-  return left >= MIN_TOAST_AREA_PX && left < window.innerWidth ? shift : 0;
+  // The toast keeps a gutter on both sides of its own width, so its left edge stays on screen.
+  return left >= toastWidth + 2 * TOAST_GUTTER_PX && left < window.innerWidth ? shift : 0;
 }
 
 function ToastList({
@@ -185,7 +186,7 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
-      viewport.style.setProperty("--toast-shift", `${shiftBeside()}px`);
+      viewport.style.setProperty("--toast-shift", `${shiftBeside(viewport.offsetWidth)}px`);
     };
     place();
     // The composer grows with its text and the window resizes; a short poll covers both.
