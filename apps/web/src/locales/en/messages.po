@@ -7591,7 +7591,6 @@ msgstr "Only if the server does not use sign-in"
 msgid "Only this bot"
 msgstr "Only this bot"
 
-#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
