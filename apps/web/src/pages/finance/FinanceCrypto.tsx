@@ -108,7 +108,7 @@ function WalletRows({
                 </span>
                 {/* Which wallet this is: its ENS name, else its address, unless the name already is it. */}
                 {wallet.label ? (
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {wallet.ensName ?? shortAddress(wallet.address)}
                   </div>
                 ) : null}

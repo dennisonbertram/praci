@@ -63,3 +63,32 @@ it("says what each first-run focus covers until one is picked", async () => {
   );
   expect(el.textContent).not.toContain("Email, calendar and your company pages");
 });
+
+it("tells the two first-run focuses apart and keeps the chosen row at full contrast", async () => {
+  const el = document.createElement("div");
+  document.body.append(el);
+  const block = {
+    kind: "choice" as const,
+    question: "What do you want me on first?",
+    options: [
+      { id: "company", letter: "A", label: "Run my company" },
+      { id: "day", letter: "B", label: "Day-to-day work" },
+    ],
+  };
+  const root = createRoot(el);
+  await act(async () =>
+    root.render(<ChoiceCard botId="bot-1" block={block} onBotChanged={async () => {}} />),
+  );
+  expect(el.textContent).toContain("Slack and your calendar");
+  expect(el.textContent).not.toContain("Slack, calendar and email");
+  await act(async () =>
+    root.render(
+      <ChoiceCard
+        botId="bot-1"
+        block={{ ...block, answerId: "day" }}
+        onBotChanged={async () => {}}
+      />,
+    ),
+  );
+  expect(el.querySelector("button")?.className).not.toContain("opacity-60");
+});

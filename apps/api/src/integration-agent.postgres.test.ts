@@ -57,6 +57,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
   const orgId = id("org");
   const spaceId = id("space");
   const otherSpaceId = id("space2");
+  const capabilitySpaceId = id("capability-space");
   const userA = id("user-a");
   const userB = id("user-b");
   const actor = (userId: string, space = spaceId): Actor => ({
@@ -109,7 +110,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     await prisma.organization.create({
       data: { id: orgId, name: orgId, slug: orgId, createdAt: new Date() },
     });
-    for (const sid of [spaceId, otherSpaceId]) {
+    for (const sid of [spaceId, otherSpaceId, capabilitySpaceId]) {
       await prisma.space.create({
         data: { id: sid, organizationId: orgId, name: "General", isDefault: sid === spaceId },
       });
@@ -135,6 +136,16 @@ describePostgres("integration agents (PostgreSQL)", () => {
         createdAt: new Date(),
       },
     });
+    await prisma.spaceMember.create({
+      data: {
+        id: id("space-member-capability"),
+        spaceId: capabilitySpaceId,
+        organizationId: orgId,
+        userId: userA,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
     server = await mkServer(userA, "mercury", "https://mcp.mercury.com/mcp");
     plain = await mkServer(userA, "plain", "https://example.test/mcp");
     bServer = await mkServer(userB, "mercury-b", "https://mcp.mercury.com/mcp");
@@ -142,8 +153,9 @@ describePostgres("integration agents (PostgreSQL)", () => {
 
   afterAll(async () => {
     if (!prisma) return;
-    await prisma.mcpServer.deleteMany({ where: { spaceId: { in: [spaceId, otherSpaceId] } } });
-    await prisma.bot.deleteMany({ where: { spaceId: { in: [spaceId, otherSpaceId] } } });
+    const testSpaces = [spaceId, otherSpaceId, capabilitySpaceId];
+    await prisma.mcpServer.deleteMany({ where: { spaceId: { in: testSpaces } } });
+    await prisma.bot.deleteMany({ where: { spaceId: { in: testSpaces } } });
     await prisma.organization.deleteMany({ where: { id: orgId } });
     await prisma.user.deleteMany({ where: { id: { in: [userA, userB] } } });
     await close();
@@ -239,7 +251,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     });
     expect(bot.instructions).toContain("Mercury");
     expect(bot.instructions).toContain("Mercury may also hold it for its own approval");
-    expect(bot.description).toContain("Your Mercury account");
+    expect(bot.description).toBe("Reads your Mercury balances and transactions.");
     expect(bot.description).not.toContain("message_bot");
     expect(bot.instructions).toContain('turn on "Allow changes in Mercury"');
     // Changes on: the agent calls the tool so the approval card appears, never asks in chat.
@@ -980,7 +992,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
   });
 
   it("reports posting capability from actor-scoped encrypted static material", async () => {
-    const isolated = actor(userA, otherSpaceId);
+    const isolated = actor(userA, capabilitySpaceId);
     const isolatedClient = zernioClient(isolated);
     const missing = await isolatedClient.mcp.servers.create({
       transport: "streamable_http",

@@ -57,7 +57,6 @@ import {
   CardHead,
   IntegrationTile,
   OPEN_LINK,
-  PHONE_ROW,
   SectionTitle,
   StatusBadge,
 } from "./parts";
@@ -81,11 +80,9 @@ function hostOf(value: string | null) {
   }
 }
 
-function Card({ children, row }: { children: ReactNode; row?: boolean }) {
+function Card({ children }: { children: ReactNode }) {
   return (
-    <IntegrationTile
-      className={`relative transition-colors hover:bg-muted/40 ${row ? PHONE_ROW : ""}`}
-    >
+    <IntegrationTile className="relative transition-colors hover:bg-muted/40">
       {children}
     </IntegrationTile>
   );
@@ -102,12 +99,10 @@ function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
-function UsedBy({ bots, row }: { bots: ReturnType<typeof agentsFor>; row?: boolean }) {
+function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   if (bots.length === 0) return null;
   return (
-    <div
-      className={`flex items-center gap-2 text-[11px] text-muted-foreground ${row ? "max-sm:hidden" : ""}`}
-    >
+    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
       <Trans>Used by</Trans>
       <AgentStack bots={bots} />
     </div>
@@ -175,7 +170,7 @@ function McpCard({
   const keyStatus = data.meetings;
   const keyLine = granola && keyStatus ? granolaLine(keyStatus) : null;
   return (
-    <Card row={status === "connected"}>
+    <Card>
       <CardHead
         name={server.name}
         logo={known?.logo}
@@ -191,7 +186,7 @@ function McpCard({
         {keyLine && keyStatus ? (
           <GranolaStatusLine status={keyStatus} />
         ) : (
-          <StatusBadge status={status} quiet />
+          <StatusBadge status={status} />
         )}
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
@@ -212,10 +207,7 @@ function McpCard({
           {reconnect.error}
         </p>
       ) : null}
-      <UsedBy
-        bots={data.bots.filter((bot) => assigned.includes(bot.id))}
-        row={status === "connected"}
-      />
+      <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
@@ -263,7 +255,7 @@ function AppCard({
     (item) => item.connectorId === app.connectorId && item.slug === app.provider,
   )?.description;
   return (
-    <Card row={app.status === "connected"}>
+    <Card>
       <CardHead
         name={app.name}
         logo={app.logo}
@@ -271,7 +263,7 @@ function AppCard({
         to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
-        <StatusBadge status={app.status} quiet />
+        <StatusBadge status={app.status} />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
           <OpenPageLink to="/app/inbox">
             <Trans>Open Inbox</Trans>
@@ -306,10 +298,7 @@ function AppCard({
           <Trans>Waiting for you to finish signing in.</Trans>
         </p>
       ) : (
-        <UsedBy
-          bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)}
-          row={app.status === "connected"}
-        />
+        <UsedBy bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)} />
       )}
     </Card>
   );
@@ -622,6 +611,51 @@ export function IntegrationsHome({
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
         <div>
+          {/* Rendered before the data loads, so only the grid below waits. */}
+          {notSetUp ? null : (
+            <>
+              <div className="relative mb-3 max-w-[420px]">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
+                />
+                <Input
+                  type="search"
+                  className="h-9 ps-8"
+                  value={query}
+                  placeholder={t`Search integrations`}
+                  aria-label={t`Search integrations`}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                  }}
+                />
+              </div>
+              <fieldset
+                aria-label={t`Category`}
+                className="m-0 mb-4 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+              >
+                {chips.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={category === id}
+                    onClick={() => {
+                      setCategory(id);
+                      setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                    }}
+                    className={`rounded-full border px-3 py-1 text-xs ${
+                      category === id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {labels[id]}
+                  </button>
+                ))}
+              </fieldset>
+            </>
+          )}
           {/* Until everything has loaded, show placeholders, not tiles that read "Not connected". */}
           {!data.loaded ? (
             <div
@@ -642,51 +676,6 @@ export function IntegrationsHome({
           ) : null}
           {data.loaded ? (
             <>
-              {/* Above Connected, so filtering it never moves the input. */}
-              {notSetUp ? null : (
-                <>
-                  <div className="relative mb-3 max-w-[420px]">
-                    <Search
-                      aria-hidden="true"
-                      className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
-                    />
-                    <Input
-                      type="search"
-                      className="h-9 ps-8"
-                      value={query}
-                      placeholder={t`Search integrations`}
-                      aria-label={t`Search integrations`}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                      }}
-                    />
-                  </div>
-                  <fieldset
-                    aria-label={t`Category`}
-                    className="m-0 mb-4 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
-                  >
-                    {chips.map((id) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={category === id}
-                        onClick={() => {
-                          setCategory(id);
-                          setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                        }}
-                        className={`rounded-full border px-3 py-1 text-xs ${
-                          category === id
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {labels[id]}
-                      </button>
-                    ))}
-                  </fieldset>
-                </>
-              )}
               {(searching ? connectedApps.length > 0 : hasConnected) ? (
                 <>
                   <SectionTitle>

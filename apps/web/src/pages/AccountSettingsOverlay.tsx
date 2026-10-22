@@ -215,7 +215,7 @@ export function GeneralSettingsPanels({
                   disabled={avatarPending}
                   onPressedChange={() => void chooseAvatarStyle(style)}
                   data-testid={`avatar-style-${style}`}
-                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-foreground aria-pressed:ring-1 aria-pressed:ring-foreground"
+                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
                 >
                   <BotAvatar
                     color="#D9508A"

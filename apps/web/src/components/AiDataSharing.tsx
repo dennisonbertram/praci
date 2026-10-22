@@ -330,7 +330,7 @@ export function AiDataSharingSection() {
       {recipients && (recipients.length > 1 || documentsNeeded) ? (
         <details className="group mt-3" open={partlyAllowed}>
           <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-            <Trans>Advanced</Trans>
+            <Trans>Per model and documents</Trans>
             <ChevronRight
               aria-hidden="true"
               className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
