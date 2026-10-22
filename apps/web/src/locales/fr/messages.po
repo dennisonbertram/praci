@@ -1061,10 +1061,6 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr "Tous les bots"
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1110,10 +1106,6 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
 msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
-msgstr "Toute la période"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
@@ -4822,20 +4814,11 @@ msgstr ""
 msgid "Filter by {label}"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr "Filtrer par date"
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr "Filtres"
 
@@ -8928,6 +8911,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8953,7 +8937,7 @@ msgid "Search and read files and folders"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
+msgid "Search artifacts"
 msgstr "Rechercher des artefacts…"
 
 #: src/components/data-room/ImportFromDrive.tsx
