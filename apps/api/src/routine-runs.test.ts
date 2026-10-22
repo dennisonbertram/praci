@@ -121,6 +121,8 @@ describe("routine history", () => {
       .mockResolvedValueOnce([{ runId: "run-0", name: "Inbox agent" }]);
     const history = await listRoutineRuns(prisma, actor, "routine-1");
     expect(history.runs.map((row) => row.waitingOn)).toEqual(["Inbox agent", null]);
+    // A delegate that finished but whose reply is not delivered yet still counts as working.
+    expect(messages.mock.calls[1]?.[0]?.sql).toContain('"botOutcomeReturnedAt" IS NULL');
     expect(RoutineHistorySchema.parse(history)).toEqual(history);
   });
   it("pages all history using stable timestamp/id boundaries without including the lookahead row", async () => {

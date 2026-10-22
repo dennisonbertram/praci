@@ -13,15 +13,9 @@ export function delegateWaitTarget(messages: readonly { blocks: readonly Message
 
 /** The agents holding an approval for this chat's requests, once each, in the order they were asked. */
 export function pendingDelegateAgents(
-  messages: readonly { id: string; blocks: readonly MessageBlock[] }[],
-  pendingMessageIds: readonly string[] | undefined,
+  pending: readonly { id: string; name: string }[] | undefined,
 ) {
-  const agents = new Map<string, string>();
-  for (const message of messages) {
-    if (!pendingMessageIds?.includes(message.id)) continue;
-    for (const block of message.blocks) {
-      if (block.kind === "bot_message_sent") agents.set(block.toBotId, block.toBotName);
-    }
-  }
-  return [...agents].map(([id, name]) => ({ id, name }));
+  return [...new Map((pending ?? []).map((agent) => [agent.id, agent])).values()].map(
+    ({ id, name }) => ({ id, name }),
+  );
 }

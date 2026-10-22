@@ -4257,10 +4257,7 @@ export function ShellPage() {
               </Button>
             </div>
           ) : null}
-          {pendingDelegateAgents(
-            activeSnapshot?.messages ?? [],
-            activeSnapshot?.delegatePending,
-          ).map((agent) => (
+          {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
             <div key={agent.id} className="px-6 pb-2">
               <Button
                 variant="outline"
@@ -7446,8 +7443,8 @@ export function isRoutinesOnlyPanel(input: {
 }) {
   return (
     input.kind !== "desktop" &&
-    // A screen address with no running computer behind it shows nothing worth a heading.
-    !(input.hasScreen && input.state === "running") &&
+    // A stale screen address with the computer stopped shows nothing; asleep still offers Open.
+    !(input.hasScreen && input.state !== "stopped") &&
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint

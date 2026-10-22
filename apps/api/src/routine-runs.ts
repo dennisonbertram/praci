@@ -69,7 +69,7 @@ export async function listRoutineRuns(
       `)
     : [];
   const replyByRun = new Map(messages.map((message) => [message.runId, message]));
-  // A run that only asked another agent finishes at once; it stays "waiting" until that agent's run ends.
+  // A run that only asked another agent finishes at once; it stays "waiting" until that agent's run ends and its reply is delivered.
   const finished = runs.filter((run) => run.status === "completed").map((run) => run.id);
   const waiting = finished.length
     ? await prisma.$queryRaw<Array<{ runId: string; name: string }>>(Prisma.sql`
@@ -81,7 +81,11 @@ export async function listRoutineRuns(
         INNER JOIN bots b ON b.id = c."botId"
         WHERE o."runId" IN (${Prisma.join(finished)})
           AND c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
-          AND c.status IN ('queued', 'leased', 'running', 'waiting_input', 'waiting_takeover')
+          AND (
+            c.status IN ('queued', 'leased', 'running', 'waiting_input', 'waiting_takeover')
+            -- Finished, but its reply has not reached the asking agent yet (delivery is retried).
+            OR (c.status IN ('completed', 'failed') AND c."botOutcomeReturnedAt" IS NULL)
+          )
         ORDER BY o."runId", c."createdAt" DESC
       `)
     : [];
