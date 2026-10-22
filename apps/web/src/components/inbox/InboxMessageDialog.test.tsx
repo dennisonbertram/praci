@@ -277,6 +277,25 @@ it("archives with the button or e, and marks read or unread, when the page allow
   expect(onRead).toHaveBeenLastCalledWith(false);
 });
 
+it("offers Mark reply done only when the page passes it", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onReplyDone = vi.fn();
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="m2"
+        unread={false}
+        onRead={() => {}}
+        onReplyDone={onReplyDone}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Mark reply done"))?.click());
+  expect(onReplyDone).toHaveBeenCalledTimes(1);
+});
+
 it("Ask agent runs the page's action, and shows why it failed", async () => {
   get.mockImplementation(async ({ messageId }) => message(messageId));
   const onAskAgent = vi.fn().mockResolvedValue(undefined);

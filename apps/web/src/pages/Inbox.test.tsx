@@ -82,6 +82,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onArchive,
     onMoveToInbox,
     onAskAgentPanel,
+    onReplyDone,
     notice,
   }: {
     messageId: string | null;
@@ -89,6 +90,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onArchive?: () => void;
     onMoveToInbox?: () => void;
     onAskAgentPanel?: () => Promise<unknown>;
+    onReplyDone?: () => void;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -100,6 +102,11 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
         {onArchive ? (
           <button type="button" onClick={onArchive}>
             dialog archive
+          </button>
+        ) : null}
+        {onReplyDone ? (
+          <button type="button" onClick={onReplyDone}>
+            dialog reply done
           </button>
         ) : null}
         {onAskAgentPanel ? (
@@ -446,6 +453,41 @@ it("drops an undated reply to-do whose mail is listed under Needs reply, and kee
   expect(c.textContent).not.toContain("Reply to Morgan about section 9");
   expect(c.textContent).toContain("File the trademark form");
   expect(c.textContent).toContain("Reply to Morgan by Friday");
+});
+
+it("completes a hidden reply to-do from the open mail", async () => {
+  const hidden = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan about section 9",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+  rpcMock.todos.mockResolvedValue({ todos: [hidden] });
+  rpcMock.setDone.mockResolvedValue({ ...hidden, doneAt: new Date().toISOString() });
+  const c = await render();
+  expect(c.textContent).not.toContain("Reply to Morgan about section 9");
+  await click(c.querySelector('[data-row-id="a"]'));
+  await click(byText(document.body, "dialog reply done"));
+  expect(rpcMock.setDone).toHaveBeenCalledWith({ id: "t1", done: true });
+});
+
+it("does not show sorting when Allow is pressed on an already sorted mailbox", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")], blocked));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await click(byText(c, "Allow sorting"));
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  expect(c.querySelector("[aria-busy=true]")).toBeNull();
 });
 
 it("closes the Filter tooltip with its menu", async () => {

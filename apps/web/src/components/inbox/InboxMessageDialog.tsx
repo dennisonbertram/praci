@@ -61,6 +61,7 @@ export function InboxMessageDialog({
   onArchive,
   onMoveToInbox,
   onRead,
+  onReplyDone,
   onAskAgent,
   onAskAgentPanel,
   notice,
@@ -86,6 +87,8 @@ export function InboxMessageDialog({
   /** Offered while the message is archived, such as a search result. */
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  /** Adds Mark reply done, for a reply to-do the list page hides because this mail is under Needs reply. */
+  onReplyDone?: () => void;
   /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
   onAskAgent?: () => Promise<unknown>;
   /** Instead of `onAskAgent`: Ask agent opens this email's agent in a panel inside the dialog. */
@@ -139,6 +142,7 @@ export function InboxMessageDialog({
             onArchive={onArchive}
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
+            onReplyDone={onReplyDone}
             onAskAgent={onAskAgent}
             onAskAgentPanel={onAskAgentPanel}
             agentBot={agentBot}
@@ -167,6 +171,7 @@ function InboxMessage({
   onArchive,
   onMoveToInbox,
   onRead,
+  onReplyDone,
   onAskAgent,
   onAskAgentPanel,
   agentBot,
@@ -186,6 +191,7 @@ function InboxMessage({
   onArchive?: () => void;
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  onReplyDone?: () => void;
   onAskAgent?: () => Promise<unknown>;
   onAskAgentPanel?: () => Promise<AgentBot>;
   agentBot: AgentBot | null;
@@ -447,6 +453,12 @@ function InboxMessage({
                   <DropdownMenuItem onClick={() => onRead(shownUnread)}>
                     {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
                     {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
+                  </DropdownMenuItem>
+                ) : null}
+                {onReplyDone ? (
+                  <DropdownMenuItem onClick={onReplyDone}>
+                    <Check aria-hidden="true" />
+                    <Trans>Mark reply done</Trans>
                   </DropdownMenuItem>
                 ) : null}
               </DropdownMenuContent>

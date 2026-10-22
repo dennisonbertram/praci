@@ -6091,6 +6091,10 @@ msgstr "Mark noise: all mail from {0}"
 msgid "Mark read"
 msgstr "Mark read"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark reply done"
+msgstr "Mark reply done"
+
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
 msgid "Mark sent"

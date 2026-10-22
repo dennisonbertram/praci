@@ -983,7 +983,8 @@ function InboxListPage({
         onAllowed={() => {
           restartSortWatch();
           setJustAllowed(true);
-          setSorting(true);
+          // An already sorted mailbox has nothing to wait for; the clearing effects never rerun for it.
+          if (shown?.rows.every((row) => row.needsReply === null)) setSorting(true);
           setAttempt((n) => n + 1);
           setReload((n) => n + 1);
         }}
@@ -994,27 +995,30 @@ function InboxListPage({
   // "Reply to Morgan ..." with no date repeats its row under Needs reply: the row stays, the card drops it.
   // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
   const needsReplyIds = new Set(groups.needsReply.map((row) => row.id));
-  const cardTodos = todos?.filter(
-    (todo) =>
-      todo.doneAt !== null ||
-      todo.dueOn ||
-      !todo.messageId ||
-      !needsReplyIds.has(todo.messageId) ||
-      !/^(reply|respond|answer)\b/i.test(todo.text),
-  );
+  const repeatsRow = (todo: InboxTodo) =>
+    todo.doneAt === null &&
+    !todo.dueOn &&
+    Boolean(todo.messageId) &&
+    needsReplyIds.has(todo.messageId as string) &&
+    /^(reply|respond|answer)\b/i.test(todo.text);
+  const cardTodos = todos?.filter((todo) => !repeatsRow(todo));
+  // Its checkbox is gone from the card, so the open mail offers the completion instead.
+  const openReplyTodo = openId
+    ? todos?.find((todo) => todo.messageId === openId && repeatsRow(todo))
+    : undefined;
+  const changeTodo = (next: InboxTodo) => {
+    const swap = (items: InboxTodo[]) => items.map((item) => (item.id === next.id ? next : item));
+    // A held answer must not bring the old state back when it is applied.
+    if (heldTodos.current) heldTodos.current.todos = swap(heldTodos.current.todos);
+    setTodosByTab((all) => ({ ...all, [tabKey]: swap(all[tabKey] ?? []) }));
+  };
   const todoCard = cardTodos ? (
     <TodoCard
       todos={cardTodos}
       compact={phone}
       meetings={meetings ?? undefined}
       onOpen={openMessage}
-      onChange={(next) => {
-        const swap = (items: InboxTodo[]) =>
-          items.map((item) => (item.id === next.id ? next : item));
-        // A held answer must not bring the old state back when it is applied.
-        if (heldTodos.current) heldTodos.current.todos = swap(heldTodos.current.todos);
-        setTodosByTab((all) => ({ ...all, [tabKey]: swap(all[tabKey] ?? []) }));
-      }}
+      onChange={changeTodo}
     />
   ) : null;
   const closeMessage = () => {
@@ -1893,6 +1897,15 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          onReplyDone={
+            openReplyTodo
+              ? () =>
+                  rpc.inbox.todos
+                    .setDone({ id: openReplyTodo.id, done: true })
+                    .then(changeTodo)
+                    .catch((cause) => setError(errorText(cause)))
+              : undefined
+          }
           notice={openId ? toast : null}
         />
         <InboxShortcuts open={help} onClose={() => setHelp(false)} />
