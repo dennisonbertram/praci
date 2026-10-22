@@ -500,6 +500,10 @@ msgstr "{first} answers by default. Type @ and a name to ask one bot, or ask eve
 msgid "{folders, plural, one {# folder} other {# folders}}"
 msgstr "{folders, plural, one {# folder} other {# folders}}"
 
+#: src/pages/Inbox.tsx
+msgid "{found, plural, one {# message so far} other {# messages so far}}"
+msgstr "{found, plural, one {# message so far} other {# messages so far}}"
+
 #: src/pages/shell/transcript.tsx
 msgid "{from} handed off to {to}"
 msgstr "{from} handed off to {to}"

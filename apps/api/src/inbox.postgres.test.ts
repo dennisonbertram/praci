@@ -888,7 +888,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       seedMailboxes();
 
       const result = await inboxRefresh(deps, a, {});
-      expect(result).toMatchObject({ ok: true, syncing: false });
+      expect(result).toMatchObject({ ok: true, syncing: false, messageCount: 1 });
       expect(result.syncedAt).not.toBeNull();
       expect(queuedSyncs.map((job) => job.payload)).toEqual([
         { spaceId: spaceA, userId: userA, connectionId: connA },
@@ -944,7 +944,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const result = await inboxRefresh(deps, a, {});
 
       expect(Date.now() - started).toBeLessThan(1000);
-      expect(result).toEqual({ ok: true, syncing: true, syncedAt: null });
+      expect(result).toEqual({ ok: true, syncing: true, syncedAt: null, messageCount: 0 });
       expect(gmail.requests).toEqual([]);
       expect(queuedSyncs).toHaveLength(1);
       // A second refresh while the job waits reports the same and queues nothing more.

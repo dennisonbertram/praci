@@ -163,6 +163,8 @@ export const InboxRefreshOutputSchema = z.object({
   syncedAt: z.string().nullable().optional(),
   /** Accounts whose last sync failed. */
   failedAccounts: z.array(Id).optional(),
+  /** Inbox messages cached so far, so a first sync can show a count that grows. */
+  messageCount: z.number().int().min(0).optional(),
 });
 export type InboxRefreshOutput = z.infer<typeof InboxRefreshOutputSchema>;
 

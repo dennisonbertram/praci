@@ -926,18 +926,17 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
-it("shows the unsorted rows, dimmed, after 15 s of the first sort", async () => {
+it("keeps the grey bars, not the unsorted rows, however long the first sort runs", async () => {
   rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
   expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
   await dwell(16_000);
-  expect(c.querySelector("[aria-busy=true]")).toBeNull();
-  expect(c.textContent).toContain("noise a");
+  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
+  expect(c.textContent).not.toContain("noise a");
   expect(c.textContent).toContain("Sorting your mail…");
-  expect(c.querySelector(".opacity-60")).not.toBeNull();
 });
 
-it("starts the first-sort clock at Allow: sorting is said at once and the unsorted rows show after 15 s", async () => {
+it("says sorting at once after Allow and keeps the rows back until the sort lands", async () => {
   const blocked = {
     enabled: false,
     triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
@@ -952,8 +951,8 @@ it("starts the first-sort clock at Allow: sorting is said at once and the unsort
   expect(c.textContent).toContain("Sorting your mail…");
   expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
   await dwell(16_000);
-  expect(c.querySelector("[aria-busy=true]")).toBeNull();
-  expect(c.textContent).toContain("noise a");
+  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
+  expect(c.textContent).not.toContain("noise a");
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
@@ -1034,6 +1033,27 @@ it("says it is reading the mail during the first sync and asks the server a few 
       await vi.advanceTimersByTimeAsync(25_000);
     });
     expect(rpcMock.refresh.mock.calls.length).toBeLessThanOrEqual(6);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("shows how many messages the first sync has found so far", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(list([], { syncedAt: null }));
+    let found = 12;
+    rpcMock.refresh.mockImplementation(async () => ({ syncing: true, messageCount: found }));
+    const c = await render();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(c.textContent).toContain("First sync can take a minute · 12 messages so far");
+    found = 40;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(c.textContent).toContain("40 messages so far");
   } finally {
     vi.useRealTimers();
   }
@@ -1888,22 +1908,22 @@ describe("a list that holds still", () => {
   });
 });
 
-it("keeps the rows inert while a slow first sort is still running, so a tap cannot land on a moved row", async () => {
+it("shows no rows during a slow first sort, so none can move, until the stall notice", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
     const c = await render();
-    expect(c.querySelector("[inert]")).toBeNull();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(16_000);
     });
-    expect(c.querySelector("[inert]")).not.toBeNull();
+    expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
+    expect(c.textContent).not.toContain("noise a");
     for (let i = 0; i < 14; i++)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5_000);
       });
     expect(c.textContent).toContain("Sorting is taking longer than usual.");
-    expect(c.querySelector("[inert]")).toBeNull();
+    expect(c.textContent).toContain("noise a");
   } finally {
     vi.useRealTimers();
   }
