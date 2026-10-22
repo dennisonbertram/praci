@@ -238,6 +238,11 @@ msgstr ""
 msgid "{0} can use {appName}"
 msgstr ""
 
+#. placeholder {0}: usd(committedUsd)
+#: src/pages/Investors.tsx
+msgid "{0} committed"
+msgstr ""
+
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} connected"
@@ -1576,6 +1581,10 @@ msgid "Attachments"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+msgid "Attachments are not kept."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgstr ""
 
@@ -2785,10 +2794,6 @@ msgstr "MCP-Server „{name}“ verbinden"
 msgid "Connect Mercury"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them."
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Treg"
 msgstr "Treg verbinden"
@@ -3849,6 +3854,10 @@ msgstr ""
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Created when you allow changes"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -6819,6 +6828,10 @@ msgstr ""
 msgid "No contracts or deadlines found on {0}."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No contracts yet"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -7014,6 +7027,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "No updates yet"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -7521,6 +7538,10 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Out so far this month"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -8127,7 +8148,6 @@ msgid "Reading…"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
-#: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr ""
 
@@ -9746,10 +9766,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Spent so far this month"
 msgstr ""
 
 #: src/components/FinanceCards.tsx

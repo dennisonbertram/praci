@@ -379,7 +379,7 @@ function Overview({
       : period === "year"
         ? t`${year} so far`
         : period === "month"
-          ? t`Spent so far this month`
+          ? t`Out so far this month`
           : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
@@ -643,7 +643,7 @@ function Overview({
             title={
               <Link
                 to={financePath.burn()}
-                className="rk-tap inline-flex items-center hover:underline"
+                className="rk-tap inline-flex items-center py-1 hover:underline"
               >
                 <Trans>Burn</Trans>
                 <ChevronRight aria-hidden="true" className="size-3" />
@@ -679,7 +679,7 @@ function Overview({
             ) : null}
           </Section>
 
-          <div className="grid gap-3 @3xl:grid-cols-2">
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -838,7 +838,11 @@ function ShowAll({
 }) {
   if (total <= cap) return null;
   return (
-    <button type="button" className="hover:text-foreground hover:underline" onClick={onToggle}>
+    <button
+      type="button"
+      className="-my-1.5 py-1.5 hover:text-foreground hover:underline"
+      onClick={onToggle}
+    >
       {expanded ? <Trans>Show less</Trans> : <Trans>Show all {total}</Trans>}
     </button>
   );
@@ -887,9 +891,11 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
-          <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
-            {upcomingTag(item)}
-          </span>
+          {item.kind === "recurring" && !item.cardBill ? null : (
+            <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
+              {upcomingTag(item)}
+            </span>
+          )}
         </span>
       </span>
       <span className="text-end tabular-nums">

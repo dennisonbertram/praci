@@ -386,6 +386,13 @@ it("draws the Granola agent link once, under the key status, and names the route
   expect(container.querySelector("#server-shared")).toBeNull();
 });
 
+it("says the agent is created on allowing changes, not a name, before it exists", async () => {
+  await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
+  const agent = container.querySelector('section[aria-label="Agent"]');
+  expect(agent?.textContent).toContain("Created when you allow changes");
+  expect(agent?.textContent).not.toContain("Mercury agent");
+});
+
 it("lets a bank with no agent allow changes: confirming creates the agent and the switch reads on at once", async () => {
   let finish: (value: object) => void = () => {};
   create.mockResolvedValue({ server: {}, botId: "bot_new" });

@@ -168,7 +168,7 @@ export function ContactsPage({
               </div>
             ) : (
               <div>
-                <Table compact className="table-fixed">
+                <Table compact className="max-w-4xl table-fixed">
                   <TableHeader>
                     <TableHeadRow>
                       <TableHead className="ps-2">
@@ -198,12 +198,15 @@ export function ContactsPage({
                             type="button"
                             title={contact.name}
                             data-row-open
-                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline"
                           >
                             {contact.name}
                           </button>
                           {/* Without room for the Email column, the email (else the organization) shows here. */}
-                          <div className="truncate text-xs text-muted-foreground @md:hidden">
+                          <div
+                            className="truncate text-xs text-muted-foreground @md:hidden"
+                            title={contact.email ?? contact.organization ?? undefined}
+                          >
                             {contact.email ?? contact.organization}
                           </div>
                         </TableCell>
