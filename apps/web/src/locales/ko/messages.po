@@ -54,11 +54,6 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
-#. placeholder {0}: glance.legalDueSoon
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# due soon} other {# due soon}}"
-msgstr ""
-
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -97,6 +92,11 @@ msgstr "{0, plural, one {모델 #개} other {모델 #개}}"
 #. placeholder {0}: glance.devinNeedsYou
 #: src/pages/Shell.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
+msgstr ""
+
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
 msgstr ""
 
 #. placeholder {0}: rows.length

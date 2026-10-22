@@ -991,7 +991,7 @@ function SubscriptionsTable({
                 <HereLink
                   to={financePath.vendor(sub.key)}
                   aria-label={paidWith ? t`${name}, paid with ${paidWith}` : name}
-                  className="outline-none hover:underline focus-visible:underline"
+                  className="rk-tap outline-none hover:underline focus-visible:underline"
                 >
                   {sub.name}
                 </HereLink>
