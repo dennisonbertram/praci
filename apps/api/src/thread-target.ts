@@ -133,6 +133,10 @@ async function resolveOwnedConnectorDisplayNames(
   return connectionIds.map((id) => byId.get(id) ?? "connector");
 }
 
+function retryRunClientNonce(clientNonce: string) {
+  return `retry:${clientNonce}`;
+}
+
 function sendRunClientNonce(
   clientNonce: string | undefined,
   messageId: string,
@@ -171,7 +175,21 @@ async function replayExistingSend(
   clientNonce: string | undefined,
 ) {
   if (!clientNonce) return null;
-  const message = await findSendReceipt(deps.prisma, threadId, clientNonce);
+  let message = await findSendReceipt(deps.prisma, threadId, clientNonce);
+  if (!message) {
+    // A retry keeps the message's first nonce and records its own on the run it starts.
+    const retryRun = await deps.prisma.run.findFirst({
+      where: { threadId, clientNonce: retryRunClientNonce(clientNonce) },
+      select: { sourceMessageId: true },
+    });
+    const sourceId = retryRun?.sourceMessageId;
+    if (sourceId) {
+      message = await deps.prisma.message.findUnique({
+        where: { id: sourceId },
+        include: { sourceRuns: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
+      });
+    }
+  }
   if (!message) return null;
   const receiptEvent = await deps.prisma.event.findFirst({
     where: {
@@ -775,13 +793,6 @@ export async function sendThreadMessage(
         const retried = replyToMessageId
           ? null
           : await findRetriedUserMessage(tx, target.threadId, blocks);
-        // The retry's nonce replaces the old one so a repeated request finds this send.
-        if (retried && input.clientNonce && retried.clientNonce !== input.clientNonce) {
-          await tx.message.update({
-            where: { id: retried.id },
-            data: { clientNonce: input.clientNonce },
-          });
-        }
         const message =
           retried ??
           (await createThreadMessageInTransaction(tx, {
@@ -913,10 +924,10 @@ export async function sendThreadMessage(
             userId: actor.userId,
             status: "queued",
             trigger: "user",
-            // The run key derives from the message, so a message that was sent with a nonce already
-            // has a run holding it.
-            clientNonce: retried?.clientNonce
-              ? undefined
+            // The message keeps its first nonce; a retry's own nonce is recorded on its run so a
+            // repeat of either request replays this send.
+            clientNonce: retried
+              ? input.clientNonce && retryRunClientNonce(input.clientNonce)
               : sendRunClientNonce(input.clientNonce, message.id),
             sourceMessageId: message.id,
           },
