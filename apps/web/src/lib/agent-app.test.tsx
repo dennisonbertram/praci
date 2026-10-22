@@ -3,7 +3,12 @@ import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { clearAgentAppCache, INTEGRATIONS_CHANGED_EVENT, useAgentApp } from "./agent-app";
+import {
+  clearAgentAppCache,
+  INTEGRATIONS_CHANGED_EVENT,
+  lookupLoadedBot,
+  useAgentApp,
+} from "./agent-app";
 import { rpc } from "./rpc";
 
 vi.mock("./rpc", () => ({
@@ -90,4 +95,17 @@ it("marks a bank agent by its endpoint even after the connection is renamed", as
   await act(async () => root.render(<Probe spaces={["s1"]} />));
   await settle();
   expect(lookup("b1", "s1")?.bank).toBe(true);
+});
+
+it("finds a bot in the spaces the sidebar already loaded without listing bots again", async () => {
+  vi.mocked(rpc.bots.list).mockResolvedValue([
+    { id: "b1", spawnKey: null, color: "#111" },
+  ] as never);
+  await act(async () => root.render(<Probe spaces={["s1"]} />));
+  await settle();
+  expect(rpc.bots.list).toHaveBeenCalledTimes(1);
+  expect((await lookupLoadedBot("u1", "b1"))?.bot.color).toBe("#111");
+  expect(await lookupLoadedBot("u1", "missing")).toBeUndefined();
+  expect(await lookupLoadedBot("other", "b1")).toBeUndefined();
+  expect(rpc.bots.list).toHaveBeenCalledTimes(1);
 });

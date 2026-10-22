@@ -668,10 +668,6 @@ msgstr "{tbd} TBD left. Send anyway?"
 msgid "{title}, {label}"
 msgstr "{title}, {label}"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
-msgstr "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
 msgstr "{unpriced} unpriced"
@@ -7190,7 +7186,6 @@ msgstr "No mail matches this filter"
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-#: src/pages/shell/command-palette.tsx
 msgid "No matches"
 msgstr "No matches"
 

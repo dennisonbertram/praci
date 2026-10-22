@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { BookUser, FileText, MessageSquare, Search } from "lucide-react";
+import { BookUser, FileText, Mail, MessageSquare, Search } from "lucide-react";
 import { screen, userEvent } from "storybook/test";
 import { withPageBehind } from "../../stories/decorators";
 import { detailedBots } from "../../stories/fixtures";
@@ -26,6 +26,27 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+const pageIcon = <Mail size={15} strokeWidth={1.8} aria-hidden />;
+
+/** All eleven Pages fit in the first view, with Chats starting below them. */
+export const ElevenPages: Story = {
+  args: {
+    pages: [
+      "Inbox",
+      "Finance",
+      "Legal",
+      "GTM",
+      "Fundraising",
+      "Investors",
+      "Contacts",
+      "Data room",
+      "Artifacts",
+      "Calendar",
+      "Integrations",
+    ].map((label) => ({ id: label.toLowerCase(), label, icon: pageIcon })),
+  },
+};
 
 export const NoBots: Story = { args: { bots: [] } };
 
