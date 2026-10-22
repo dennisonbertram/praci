@@ -30,6 +30,7 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 
+import { LEGAL_CONSENT_GRANTED } from "../components/legal/ConsentPrompt";
 import { LegalGraphView, labelLines, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
@@ -444,6 +445,15 @@ it("re-reads the overview and consent when the window gets focus again", async (
   await act(async () => void window.dispatchEvent(new Event("focus")));
   expect(rpcMock.overview.mock.calls.length).toBe(before + 1);
   expect(rpcMock.consent.mock.calls.length).toBeGreaterThan(1);
+});
+
+it("scans and shows the error when Allow is clicked in the agent panel", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.scanNow.mockRejectedValue(new Error("scan down"));
+  await render(<LegalPage />);
+  await act(async () => void window.dispatchEvent(new Event(LEGAL_CONSENT_GRANTED)));
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+  expect(container.textContent).toContain("scan down");
 });
 
 it("offers Undo after Done and reopens the deadline", async () => {

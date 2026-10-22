@@ -1288,6 +1288,8 @@ describe("directoryDescription", () => {
     expect(integration).toContain("copied exactly");
     expect(NOT_CONNECTED_GUIDANCE).toContain("[Open Integrations](/app/integrations)");
     expect(NOT_CONNECTED_GUIDANCE).toContain("do not say no payment connection exists");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("If no bank is connected");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("If a bank is connected but has no agent yet");
     expect(NOT_CONNECTED_GUIDANCE).toContain("Allow changes");
     expect(PLAIN_CAPABILITY_GUIDANCE).toContain("never by its id");
     expect(integration).not.toContain("instead of messaging it");

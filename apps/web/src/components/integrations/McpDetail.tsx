@@ -264,7 +264,7 @@ export function McpDetail({
               <Trans>Disconnect sign-in</Trans>
             </Button>
           ) : null}
-          {!hasAgent && !bank ? (
+          {!hasAgent ? (
             <Button
               variant="outline"
               disabled={busy}

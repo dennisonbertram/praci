@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { ConsentCard } from "../AiDataSharing";
 
+/** Fired on window when the panel's Allow succeeds; the Legal page scans and re-reads its status. */
+export const LEGAL_CONSENT_GRANTED = "legal-consent-granted";
+
 /** Asks once before the Legal agent may read Data Room documents; grants exactly the shown key and version. */
 export function LegalConsentPrompt({
   consent,
@@ -35,7 +38,7 @@ export function LegalConsentPrompt({
 
 /**
  * The same Allow inside the Legal agent panel, above its disabled composer. It grants the one shared
- * permission, starts the first scan like the page's card, and nudges the page to re-read its status.
+ * permission and tells the Legal page, which starts the first scan like its own card does.
  */
 export function LegalPanelConsent() {
   const [status, setStatus] = useState<DataRoomConsentStatus | null>(null);
@@ -53,9 +56,8 @@ export function LegalPanelConsent() {
       onChange={(next) => {
         setStatus(next);
         if (!next.allowed) return;
-        void rpc.legal.scanNow().catch(() => undefined);
-        // The page re-reads its consent and overview when the window regains focus.
-        window.dispatchEvent(new Event("focus"));
+        // The Legal page starts the first scan, so it can show progress and errors.
+        window.dispatchEvent(new Event(LEGAL_CONSENT_GRANTED));
       }}
     />
   );

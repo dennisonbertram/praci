@@ -26,7 +26,7 @@ const legal = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { legal } }));
 
-import { LegalPanelConsent } from "./ConsentPrompt";
+import { LEGAL_CONSENT_GRANTED, LegalPanelConsent } from "./ConsentPrompt";
 
 const status = (over: Partial<DataRoomConsentStatus> = {}): DataRoomConsentStatus => ({
   key: "k1",
@@ -52,18 +52,18 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it("offers Allow in the agent panel, starts the first scan and tells the page to re-read", async () => {
+it("offers Allow in the agent panel, tells the page to scan", async () => {
   legal.consent.mockResolvedValue(status());
   legal.consentGrant.mockResolvedValue(status({ allowed: true }));
   legal.scanNow.mockResolvedValue({ runId: "r1", botId: "b1" });
   const refocus = vi.fn();
-  window.addEventListener("focus", refocus);
+  window.addEventListener(LEGAL_CONSENT_GRANTED, refocus);
   await act(async () => root.render(<LegalPanelConsent />));
   expect(container.textContent).toContain("Let Praci read your documents");
   await act(async () => container.querySelector("button")?.click());
-  window.removeEventListener("focus", refocus);
+  window.removeEventListener(LEGAL_CONSENT_GRANTED, refocus);
   expect(legal.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
-  expect(legal.scanNow).toHaveBeenCalledTimes(1);
+  expect(legal.scanNow).not.toHaveBeenCalled();
   expect(refocus).toHaveBeenCalledTimes(1);
   expect(container.textContent).toBe("");
 });
