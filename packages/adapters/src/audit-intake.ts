@@ -5,7 +5,7 @@ import type {
   MailProvider,
 } from "@rakazo/adapter-kit";
 import { auditIntakeJob, runContinueJob } from "@rakazo/adapter-kit";
-import type { Actor, MessageBlock } from "@rakazo/contracts";
+import type { Actor, MailSignals, MessageBlock } from "@rakazo/contracts";
 import { investorsAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import {
@@ -19,17 +19,18 @@ import {
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { fileMailAttachment } from "./data-room-tools.js";
-import {
-  AUTO_FILE_MAX_AGE_MS,
-  AUTO_FILE_MAX_PER_SYNC,
-  isAutoFileAttachment,
-} from "./mail-attachment-filing.js";
+import { AUTO_FILE_MAX_AGE_MS, isAutoFileAttachment } from "./mail-attachment-filing.js";
 
 type Scope = { spaceId: string; userId: string };
 
 /** Mail about an audit, a confirmation, a 409A or a DocuSign envelope. */
 const AUDIT_WORDS = /audit|confirmation|409a|docusign/i;
 const DOCUSIGN_SENDER = /@([a-z0-9-]+\.)*docusign\.(net|com)$/i;
+
+const isBulkMail = (signals: unknown) => {
+  const s = (signals ?? {}) as Partial<MailSignals>;
+  return Boolean(s.bulk || s.listUnsubscribe?.length || s.categories?.promotions);
+};
 
 export const matchesAuditMail = (row: { subject: string; snippet: string }) =>
   AUDIT_WORDS.test(`${row.subject}\n${row.snippet}`);
@@ -74,10 +75,8 @@ export async function enqueueAuditIntake(
         })
       ).map((row) => row.mailThreadId),
     );
-    // ponytail: the newest 20 per sync, like attachment filing; add a cursor if a burst matters.
-    for (const row of rows
-      .filter((r) => known.has(r.threadId) || matchesAuditMail(r))
-      .slice(0, AUTO_FILE_MAX_PER_SYNC)) {
+    // Only keyword matches in the 30-day window are queued, so a burst stays small and none is lost.
+    for (const row of rows.filter((r) => known.has(r.threadId) || matchesAuditMail(r))) {
       await deps.jobs.enqueue(auditIntakeJob(scope, row.providerMessageId));
     }
   } catch (error) {
@@ -86,6 +85,21 @@ export async function enqueueAuditIntake(
       reason: error instanceof Error ? error.name : "error",
     });
   }
+}
+
+/** The newest received message in the thread, so a manual draft reads the request and not the first message. */
+export async function latestAuditMessageId(
+  prisma: Pick<PrismaClient, "cachedMailMessage">,
+  scope: Scope,
+  mailThreadId: string | null,
+): Promise<string | undefined> {
+  if (!mailThreadId) return undefined;
+  const row = await prisma.cachedMailMessage.findFirst({
+    where: { ...scope, threadId: mailThreadId, fromSelf: false },
+    orderBy: { receivedAt: "desc" },
+    select: { providerMessageId: true },
+  });
+  return row?.providerMessageId;
 }
 
 export type AuditDraftInput = {
@@ -222,6 +236,7 @@ export async function runAuditIntake(
         subject: true,
         snippet: true,
         fromAddress: true,
+        signals: true,
         fromSelf: true,
         isSpam: true,
         receivedAt: true,
@@ -247,21 +262,30 @@ export async function runAuditIntake(
   if (!account) return;
   const message = known ? null : await deps.mail.getMessage(account, messageId, context);
   const documents = message?.attachments.filter(isAutoFileAttachment) ?? [];
-  if (!known && documents.length === 0 && !senderKnown && !DOCUSIGN_SENDER.test(from)) return;
+  const trusted = senderKnown || DOCUSIGN_SENDER.test(from);
+  // A document alone qualifies only when the mail is not bulk (a vendor receipt or a newsletter).
+  if (!known && !trusted && (documents.length === 0 || isBulkMail(row.signals))) return;
   const filedItemIds: string[] = [];
   if (message) {
     const actor: Actor = { ...scope, email: "", isDeploymentOwner: false };
     for (const part of documents) {
-      const filed = await fileMailAttachment(
-        { ...deps, scope },
-        actor,
-        context,
-        account,
-        messageId,
-        part.id,
-        message,
-      );
-      if (filed.kind === "filed" && filed.item) filedItemIds.push(filed.item.id);
+      // A file that cannot be stored must not hide the request: the row still appears on arrival.
+      try {
+        const filed = await fileMailAttachment(
+          { ...deps, scope },
+          actor,
+          context,
+          account,
+          messageId,
+          part.id,
+          message,
+        );
+        if (filed.kind === "filed" && filed.item) filedItemIds.push(filed.item.id);
+      } catch (error) {
+        getLogger().warn("audit attachment filing failed", {
+          reason: error instanceof Error ? error.name : "error",
+        });
+      }
     }
   }
   const request = await fileAuditRequestFromMail(deps.prisma, scope, {

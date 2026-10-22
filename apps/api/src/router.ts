@@ -94,6 +94,7 @@ import {
   isSandboxGoneError,
   kickModelCredentialRefresh,
   latestAccountExport,
+  latestAuditMessageId,
   listAvailablePiCatalog,
   listBotSecretMetadata,
   listPiCatalog,
@@ -7574,6 +7575,7 @@ export function createRouter(deps: RouterDeps) {
               bot,
               {
                 requestId: request.id,
+                messageId: await latestAuditMessageId(deps.prisma, scope, request.mailThreadId),
                 mailThreadId: request.mailThreadId,
                 filedItemIds: request.dataRoomItemId ? [request.dataRoomItemId] : [],
                 senderKnown: request.senderKnown,

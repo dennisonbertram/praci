@@ -16,7 +16,12 @@ vi.mock("@rakazo/db", async (importOriginal) => ({
 const filing = vi.hoisted(() => ({ fileMailAttachment: vi.fn() }));
 vi.mock("./data-room-tools.js", () => filing);
 
-import { enqueueAuditIntake, matchesAuditMail, runAuditIntake } from "./audit-intake.js";
+import {
+  enqueueAuditIntake,
+  latestAuditMessageId,
+  matchesAuditMail,
+  runAuditIntake,
+} from "./audit-intake.js";
 
 const scope = { spaceId: "space-1", userId: "user-1" };
 const payload = { ...scope, connectionId: "conn-1", messageId: "msg-1" };
@@ -34,6 +39,7 @@ type Cached = {
   subject: string;
   snippet: string;
   fromAddress: string;
+  signals?: unknown;
   fromSelf: boolean;
   isSpam: boolean;
   receivedAt: Date;
@@ -153,7 +159,57 @@ describe("enqueueAuditIntake", () => {
   });
 });
 
+describe("enqueueAuditIntake bursts", () => {
+  it("queues every matching message, not only the newest twenty", async () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      providerMessageId: `m${i}`,
+      threadId: `t${i}`,
+      subject: "Audit request",
+      snippet: "",
+    }));
+    const enqueue = vi.fn(async (_job: unknown) => undefined);
+    await enqueueAuditIntake(
+      {
+        prisma: {
+          cachedMailMessage: { findMany: async () => many },
+          auditRequest: { findMany: async () => [] },
+        },
+        jobs: { enqueue },
+      } as never,
+      { ...scope, connectionId: "conn-1" },
+      many.map((m) => m.providerMessageId),
+      new Date("2026-10-21T00:00:00Z"),
+    );
+    expect(enqueue).toHaveBeenCalledTimes(25);
+  });
+});
+
 describe("runAuditIntake", () => {
+  it("still creates the row when filing the attachment fails", async () => {
+    filing.fileMailAttachment.mockRejectedValue(new Error("storage down"));
+    const f = fixture({ auditor: true });
+    await runAuditIntake(f.deps, payload);
+    expect(db.fileAuditRequestFromMail).toHaveBeenCalledWith(
+      expect.anything(),
+      scope,
+      expect.objectContaining({ dataRoomItemId: null }),
+    );
+  });
+
+  it("ignores a bulk vendor message that only carries a document", async () => {
+    const bulk = { listUnsubscribe: ["https://v.example/u"], bulk: false, categories: {} };
+    const f = fixture({ row: cached({ fromAddress: "orders@vendor.example", signals: bulk }) });
+    await runAuditIntake(f.deps, payload);
+    expect(db.fileAuditRequestFromMail).not.toHaveBeenCalled();
+  });
+
+  it("keeps a bulk-looking message from a known Auditor", async () => {
+    const bulk = { listUnsubscribe: ["https://v.example/u"], bulk: true, categories: {} };
+    const f = fixture({ auditor: true, row: cached({ signals: bulk }) });
+    await runAuditIntake(f.deps, payload);
+    expect(db.fileAuditRequestFromMail).toHaveBeenCalledOnce();
+  });
+
   it("files the attachment, creates the row and starts one drafting run with the filed ids", async () => {
     const f = fixture({ auditor: true });
     await runAuditIntake(f.deps, payload);
@@ -249,5 +305,19 @@ describe("runAuditIntake", () => {
       await runAuditIntake(fixture({ row }).deps, payload);
     }
     expect(db.fileAuditRequestFromMail).not.toHaveBeenCalled();
+  });
+});
+
+describe("latestAuditMessageId", () => {
+  it("returns the newest received message of the thread, scoped to the owner", async () => {
+    const findFirst = vi.fn(async () => ({ providerMessageId: "msg-9" }));
+    const prisma = { cachedMailMessage: { findFirst } } as never;
+    expect(await latestAuditMessageId(prisma, scope, "thread-1")).toBe("msg-9");
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ...scope, threadId: "thread-1", fromSelf: false },
+        orderBy: { receivedAt: "desc" },
+      }),
+    );
   });
 });
