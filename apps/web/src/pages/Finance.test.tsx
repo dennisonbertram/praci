@@ -314,7 +314,10 @@ it("notes non-USD transactions only when some are left out", async () => {
   // The link's name starts with its visible text and adds the count after it.
   const sync = [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("non-USD"));
   expect(sync?.getAttribute("aria-label")).toBeNull();
-  expect(sync?.textContent).toMatch(/3 non-USD not counted$/);
+  expect(sync?.textContent).toMatch(/3 non-USD transactions not counted$/);
+  // The Cash tile's account count is a different unit, so it carries no "not counted" note.
+  const cash = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Cash");
+  expect(cash?.closest("a")?.textContent).not.toContain("not counted");
 });
 
 it("sends Reconnect to Integrations instead of connecting", async () => {
@@ -462,7 +465,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Out so far this month · Oct 1");
+  expect(container.textContent).toContain("Out so far this month, not over · Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });

@@ -11,6 +11,12 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+const direct = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/data-room", async (original) => ({
+  ...(await original<typeof import("../../lib/data-room")>()),
+  openDataRoomFileDirect: direct,
+}));
+
 import { FileViewer } from "./PreviewActions";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -24,12 +30,12 @@ afterEach(() => {
   container = undefined;
 });
 
-function render(node: DataRoomApiItem) {
+function render(node: DataRoomApiItem, url = "blob:file") {
   container = document.createElement("div");
   document.body.append(container);
   act(() =>
     createRoot(container as HTMLDivElement).render(
-      <FileViewer item={node} file={{ url: "blob:file", failed: false }} />,
+      <FileViewer item={node} file={{ url, failed: false }} />,
     ),
   );
   return container;
@@ -58,4 +64,20 @@ it("opens the PDF on a phone by going straight to the file, not a frame in a new
 it("leaves an image URL unchanged", () => {
   const image = render(item("receipt.png", "image/png")).querySelector("img");
   expect(image?.getAttribute("src")).toBe("blob:file");
+});
+
+it("shows a PDF's Open and Download at once, before the file has loaded", () => {
+  const view = render(item("agreement.pdf", "application/pdf"), "");
+  const labels = Array.from(view.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).toEqual(["Open", "Download"]);
+  expect(view.querySelector('[data-testid="preview-skeleton"]')?.className).toContain(
+    "max-sm:hidden",
+  );
+});
+
+it("before the file loads, Open goes straight to the file, not the frame helper", () => {
+  direct.mockResolvedValue(undefined);
+  const view = render(item("agreement.pdf", "application/pdf"), "");
+  act(() => view.querySelector("button")?.click());
+  expect(direct).toHaveBeenCalledTimes(1);
 });

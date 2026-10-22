@@ -185,7 +185,7 @@ export function RoutineSchedule({
   );
 
   return (
-    <div className="mt-2 rounded-xl border border-border p-3">
+    <div className="mt-2 rounded-xl border border-border p-3 pe-10">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <NativeSelect
           size="sm"

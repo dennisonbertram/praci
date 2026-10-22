@@ -215,7 +215,10 @@ export function MemorySettingsOverlay({
             </Button>
           </div>
         ) : registration ? (
-          <details data-testid="memory-provider-advanced" className="group">
+          <details
+            data-testid="memory-provider-advanced"
+            className="group rounded-xl border border-border px-4 py-3"
+          >
             <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13.5px] text-muted-foreground hover:text-foreground">
               <ChevronRight
                 aria-hidden="true"

@@ -4,6 +4,7 @@ import { expect, it, vi } from "vitest";
 import { naturalSort } from "../components/data-room/use-data-room-list";
 import {
   canPreviewImage,
+  openDataRoomFileDirect,
   openDataRoomItem,
   readDataRoomView,
   saveDataRoomView,
@@ -97,6 +98,18 @@ it("downloads a file the browser cannot show, and never opens a tab for it", asy
   await openDataRoomItem({ id: "i1", mimeType: "text/html", name: "page.html" });
   expect(open).not.toHaveBeenCalled();
   expect(click).toHaveBeenCalled();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+it("opens a file by sending the new tab straight to it, with no frame", async () => {
+  const tab = { location: { href: "" }, opener: window, close: vi.fn() } as unknown as Window;
+  vi.spyOn(window, "open").mockReturnValue(tab);
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(new Blob(["%PDF"]))));
+  URL.createObjectURL = vi.fn(() => "blob:http://x/direct");
+  await openDataRoomFileDirect({ id: "i1", mimeType: "application/pdf", name: "a.pdf" });
+  expect(tab.location.href).toBe("blob:http://x/direct");
+  expect(tab.opener).toBeNull();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
