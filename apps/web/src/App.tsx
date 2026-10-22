@@ -220,6 +220,7 @@ function SessionApp() {
             <Route path="/app/devin" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/investors/*" element={<ShellPage />} />
+            <Route path="/app/fundraising" element={<ShellPage />} />
             <Route path="/app/cap-table/*" element={<CapTableRedirect />} />
             <Route path="/app/contacts" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />

@@ -272,3 +272,28 @@ describe("contact tools", () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 });
+
+describe("fundraising_read", () => {
+  const offered = (flags: { fundraisingEnabled?: boolean; capTableEnabled?: boolean }) =>
+    selectBuiltinToolsForRun({
+      graphicalToolsAllowed: false,
+      pageBrowserAllowed: false,
+      groupId: null,
+      trigger: "message",
+      semanticMemoryEnabled: false,
+      messagingChannelRun: false,
+      ...flags,
+    }).map((tool) => tool.name);
+
+  it("is offered only with its own gate, which the cap table gate does not open", () => {
+    expect(offered({})).not.toContain("fundraising_read");
+    expect(offered({ capTableEnabled: true })).not.toContain("fundraising_read");
+    expect(offered({ fundraisingEnabled: true })).toContain("fundraising_read");
+  });
+
+  it("is in the Investors agent's fixed list and in no other agent's", () => {
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("fundraising_read");
+    for (const tools of [LEGAL_AGENT_BUILTIN_TOOLS, DATA_ROOM_AGENT_BUILTIN_TOOLS])
+      expect(tools).not.toContain("fundraising_read");
+  });
+});

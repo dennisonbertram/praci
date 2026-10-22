@@ -332,6 +332,11 @@ import {
   financeToolsAllowed,
   hasFinanceSource,
 } from "./finance-tools.js";
+import {
+  FUNDRAISING_TOOL_NAMES,
+  fundraisingToolFromTool,
+  fundraisingToolsAllowed,
+} from "./fundraising-tools.js";
 import { handoffToGroupBot, loadGroupContext } from "./group-handoff.js";
 import {
   COMPACTION_BATCH_SIZE,
@@ -597,6 +602,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "legal_query",
   "contacts_list",
   "cap_table_read",
+  "fundraising_read",
   "calendar_list_events",
   "calendar_get_event",
   "drive_search",
@@ -2689,6 +2695,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
+        const fundraisingEnabled = fundraisingToolsAllowed({
+          hasProvider: true,
+          groupId: thread.groupId,
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          botSpawnKey: bot.spawnKey,
+          trigger: run.trigger,
+          messagingChannelRun,
+        });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
         const investorsToolSet: ReadonlySet<string> = new Set(INVESTORS_AGENT_BUILTIN_TOOLS);
@@ -2713,6 +2728,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             contactsEnabled,
             capTableEnabled,
             investorsEnabled,
+            fundraisingEnabled,
             meetingsEnabled,
             messagingChannelRun,
             cartaAgent,
@@ -4901,6 +4917,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 },
                 args,
               ),
+            );
+          }
+          if (FUNDRAISING_TOOL_NAMES.has(name) && fundraisingEnabled) {
+            return finish(
+              await fundraisingToolFromTool(name, {
+                prisma: deps.prisma,
+                scope: { spaceId: run.spaceId, userId: bot.userId },
+              }),
             );
           }
           if (DRIVE_TOOL_NAMES.has(name) && deps.connectors && driveEnabled) {
@@ -7593,6 +7617,8 @@ export function selectBuiltinToolsForRun(options: {
   capTableEnabled?: boolean;
   /** The Investors agent on a run its owner started: investor_update_draft is offered. */
   investorsEnabled?: boolean;
+  /** The Investors agent on a run its owner started: the Fundraising read tool is offered. */
+  fundraisingEnabled?: boolean;
   /** A meeting-source agent on an owner-initiated run with AI data sharing allowed. */
   meetingsEnabled?: boolean;
   messagingChannelRun: boolean;
@@ -7661,6 +7687,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.contactsEnabled || !CONTACT_ONLY_TOOL_NAMES.has(tool.name)) &&
       (options.capTableEnabled || !CAP_TABLE_TOOL_NAMES.has(tool.name)) &&
       (options.investorsEnabled || !INVESTOR_UPDATE_TOOL_NAMES.has(tool.name)) &&
+      (options.fundraisingEnabled || !FUNDRAISING_TOOL_NAMES.has(tool.name)) &&
       (options.meetingsEnabled || !MEETING_TOOL_NAMES.has(tool.name)) &&
       (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
       !(

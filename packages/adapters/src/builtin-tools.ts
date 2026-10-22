@@ -1232,6 +1232,13 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
+    name: "fundraising_read",
+    description:
+      "The user's Fundraising page: the open round (or the latest closed one) with its target and post-money cap, the pending amount, and each prospect with stage, check size, next step and whether it counts in pending. Amounts are US dollars. Read this before answering round or pipeline questions. You cannot change a stage; point to the prospect's row on the Fundraising page.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
     name: "cap_table_update",
     description:
       "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta, or from the Google Sheet you were asked to read; never estimate, and use null for anything the source does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",

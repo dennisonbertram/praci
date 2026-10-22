@@ -15,6 +15,7 @@ export * from "./data-room-imports.js";
 export * from "./events.js";
 export * from "./expire-stuck-run.js";
 export * from "./external-conversations.js";
+export * from "./fundraising.js";
 export * from "./groups.js";
 export * from "./history-retrieval.js";
 export * from "./investor-updates.js";

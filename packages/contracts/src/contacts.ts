@@ -10,9 +10,21 @@ export const ContactKindSchema = z.enum([
   "partner",
   "advisor",
   "legal",
+  "prospect",
   "other",
 ]);
 export type ContactKind = z.infer<typeof ContactKindSchema>;
+
+/** A prospect's place in the pipeline, in order. */
+export const ContactStageSchema = z.enum([
+  "target",
+  "intro",
+  "meeting",
+  "diligence",
+  "committed",
+  "passed",
+]);
+export type ContactStage = z.infer<typeof ContactStageSchema>;
 
 export const ContactSchema = z.object({
   id: Id,
@@ -21,6 +33,12 @@ export const ContactSchema = z.object({
   organization: z.string().nullable(),
   kind: ContactKindSchema,
   notes: z.string().nullable(),
+  /** Pipeline fields; null on a contact that is not a prospect. */
+  stage: ContactStageSchema.nullish(),
+  checkSizeCents: z.number().int().nullish(),
+  nextStep: z.string().nullish(),
+  /** The round open when the stage was last saved as committed. */
+  roundId: Id.nullish(),
   /** The agent that added the contact; null for a contact added by hand. */
   addedBy: z.object({ id: Id, name: z.string() }).nullable(),
   createdAt: IsoDate,
@@ -39,6 +57,11 @@ export const ContactSaveInputSchema = z.object({
   organization: z.string().trim().max(200).nullish(),
   kind: ContactKindSchema.optional(),
   notes: z.string().trim().max(5000).nullish(),
+  stage: ContactStageSchema.nullish(),
+  checkSizeCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullish(),
+  nextStep: z.string().trim().max(500).nullish(),
+  /** Keeps a Committed prospect in this round (Undo of a delete) instead of the open one. */
+  roundId: Id.optional(),
 });
 export type ContactSaveInput = z.infer<typeof ContactSaveInputSchema>;
 
