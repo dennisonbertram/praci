@@ -101,10 +101,8 @@ export function FundraisingPage({
   useEffect(load, [load]);
   useEffect(() => {
     rpc.legal
-      .overview()
-      .then((legal) =>
-        setLegalSafes(legal.contracts.filter((c) => /\bsafe\b/i.test(c.contractType)).length),
-      )
+      .safeCount()
+      .then(({ count }) => setLegalSafes(count))
       .catch(() => undefined);
   }, []);
   const container = useRef<HTMLDivElement>(null);

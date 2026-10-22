@@ -135,6 +135,12 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
   };
 }
 
+/** SAFEs found in the Data room. Reads only; the agent and its scan routine are not created. */
+export async function legalSafeCount(deps: Pick<LegalDeps, "prisma">, actor: Actor) {
+  const contracts = await createLegalRepos(deps.prisma).listContracts(actor, { limit: 500 });
+  return { count: contracts.filter((c) => /\bsafe\b/i.test(c.contractType)).length };
+}
+
 /** What deleting this Data room item would also remove from Legal. Reads only; the agent is not created. */
 export async function legalItemLinks(
   deps: Pick<LegalDeps, "prisma">,
