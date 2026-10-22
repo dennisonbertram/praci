@@ -6932,11 +6932,8 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-msgid "No matches"
-msgstr ""
-
 #: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
+msgid "No matches"
 msgstr ""
 
 #: src/pages/shell/composer.tsx

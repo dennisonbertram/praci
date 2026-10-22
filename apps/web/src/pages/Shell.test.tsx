@@ -312,7 +312,6 @@ describe("Composer", () => {
       type(textarea, "@zz");
       const empty = container?.querySelector("[data-testid='mention-picker-empty']");
       expect(empty?.getAttribute("role")).toBe("status");
-      expect(textarea.getAttribute("aria-expanded")).toBe("true");
       expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
     });
 

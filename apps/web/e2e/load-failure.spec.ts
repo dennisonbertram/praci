@@ -50,7 +50,7 @@ for (const [failing, intact] of [
     await signup(page, `section-load-${stamp}@rakazo.test`, "password12", "Section Load");
     await completeOnboarding(page);
 
-    const composer = page.getByRole("combobox", { name: "Message Chief" });
+    const composer = page.getByRole("textbox", { name: "Message Chief" });
     await composer.fill("Keep this draft");
 
     await page.route(new RegExp(`/pages/${failing}\\.tsx`), (route) =>

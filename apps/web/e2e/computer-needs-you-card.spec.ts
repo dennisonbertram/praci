@@ -70,7 +70,7 @@ test("needs-you computer card opens a group member bot computer", async ({ page 
   await mockMemberComputerRpcs(page, writerId);
 
   await page.goto(`/app/g/${group.id}`);
-  await expect(page.getByRole("combobox", { name: /Message Needs you team/ })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /Message Needs you team/ })).toBeVisible();
 
   const card = page.getByTestId("computer-card");
   await expect(card).toBeVisible();

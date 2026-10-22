@@ -44,14 +44,13 @@ test("mention picker completes with Enter and Tab", async ({ page }, testInfo) =
   await page.getByRole("button", { name: "Create group", exact: true }).click();
   await page.waitForURL(/\/app\/g\/[^/]+$/);
 
-  const composer = page.getByRole("combobox", { name: "Message Mention keys team" });
+  const composer = page.getByRole("textbox", { name: "Message Mention keys team" });
   await expect(composer).toBeVisible();
 
   await composer.fill("@Res");
   const picker = page.getByTestId("mention-picker");
   await expect(picker).toBeVisible();
   await expect(picker.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
-  await expect(composer).toHaveAttribute("aria-expanded", "true");
   await captureScreenshot(page, testInfo, "mention-picker-keyboard-open");
 
   await composer.press("ArrowDown");
@@ -65,7 +64,6 @@ test("mention picker completes with Enter and Tab", async ({ page }, testInfo) =
     page.getByTestId("mention-chip").filter({ hasText: "Research Writer" }),
   ).toBeVisible();
   await expect(composer).toBeFocused();
-  await expect(composer).toHaveAttribute("aria-expanded", "false");
   await captureScreenshot(page, testInfo, "mention-picker-keyboard-completed");
 
   await page.getByRole("button", { name: "Remove mention Research Writer" }).click();

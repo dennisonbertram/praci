@@ -6932,12 +6932,9 @@ msgstr "No mail matches this filter"
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "No matches"
 msgstr "No matches"
-
-#: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
-msgstr "No matches in pages, documents, contacts"
 
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."

@@ -73,8 +73,8 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
 
   expect(container.textContent).toContain("Needs you");
   expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs you");
-  // Height stays bounded so the chat roster below remains visible, yet holds about five rows.
-  expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain("max-h-40");
+  // Height stays bounded so the chat roster below remains visible.
+  expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain("max-h-[45vh]");
   expect(container.textContent).not.toContain("Finished");
   const toggle = container.querySelector<HTMLButtonElement>(
     '[data-testid="activity-show-finished"]',
@@ -162,4 +162,26 @@ it("names a held approval and a held question the same, 'Needs your answer', on 
   expect(statusLine).toEqual(["Needs your answer", "Draft the update"]);
   // The group heading is for screen readers only; each row carries its own state.
   expect(container.querySelector("#activity-needs-heading")?.className).toBe("sr-only");
+});
+
+it("shows the active runs before the finished runs arrive, and reports their bots", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  let finish: (value: { runs: RunActivityRow[] }) => void = () => {};
+  api.runs.list.mockImplementation(({ filter }: { filter: string }) =>
+    filter === "active"
+      ? Promise.resolve({ runs: [run("a", "waiting_input")] })
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
+  );
+  const listed = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(<ActivityList onOpenRun={() => {}} onListedBots={listed} />),
+  );
+
+  expect(container.querySelector('button[aria-label$=", Needs your answer"]')).not.toBeNull();
+  expect(listed).toHaveBeenLastCalledWith(new Set(["bot-1"]));
+  await act(async () => finish({ runs: [] }));
 });

@@ -59,7 +59,7 @@ test("onboarding skips model connect when a default model is already available",
       spawnKey: "onboarding:first",
     },
   });
-  await expect(page.getByRole("combobox", { name: "Message Chief" })).toBeVisible({
+  await expect(page.getByRole("textbox", { name: "Message Chief" })).toBeVisible({
     timeout: 20_000,
   });
   await captureScreenshot(page, testInfo, "onboarding-model-auto-skip");
