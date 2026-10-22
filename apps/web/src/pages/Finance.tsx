@@ -1002,10 +1002,11 @@ function SubscriptionsTable({
                     {trendText(sub.trendCents)}
                   </span>
                 ) : null}
+                {similar ? " " : null}
                 {similar ? (
                   <span
                     title={similar}
-                    className="ms-1.5 inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-xs font-normal text-muted-foreground"
+                    className="inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-xs font-normal text-muted-foreground"
                   >
                     {similar}
                   </span>

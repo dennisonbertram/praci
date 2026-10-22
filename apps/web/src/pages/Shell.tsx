@@ -2717,14 +2717,9 @@ export function ShellPage() {
     });
   }, []);
 
-  useEffect(() => {
+  // Routine mentions need one list call per bot, so they load when the @ menu opens, not on every page load.
+  const loadMentionRoutines = useCallback(() => {
     const bots = botsForMentionsRef.current;
-    if (!initialBotsLoaded || bots.length === 0) {
-      setMentionRoutines([]);
-      setMentionConnectors([]);
-      return;
-    }
-    let cancelled = false;
     const botNameById = new Map(bots.map((bot) => [bot.id, bot.name]));
     void Promise.all(
       bots.map((bot) =>
@@ -2738,12 +2733,14 @@ export function ShellPage() {
           )
           .catch(() => [] as Array<Routine & { botName?: string }>),
       ),
-    ).then((lists) => {
-      if (!cancelled) setMentionRoutines(lists.flat());
-    });
-    return () => {
-      cancelled = true;
-    };
+    ).then((lists) => setMentionRoutines(lists.flat()));
+  }, []);
+
+  useEffect(() => {
+    if (!initialBotsLoaded || mentionBotsKey === "") {
+      setMentionRoutines([]);
+      setMentionConnectors([]);
+    }
   }, [initialBotsLoaded, mentionBotsKey]);
 
   useLayoutEffect(() => {
@@ -4379,7 +4376,10 @@ export function ShellPage() {
               replyTargetName={replyTargetName}
               onClearReply={clearReply}
               mentionTargets={composerMentionTargets}
-              onMentionOpen={loadMentionConnectors}
+              onMentionOpen={() => {
+                loadMentionConnectors();
+                loadMentionRoutines();
+              }}
               agentSkills={agentSkills}
               onSlashOpen={refreshAgentSkills}
               sentHistory={sentHistory}
@@ -6062,7 +6062,7 @@ export function ShellPage() {
           ) : artifactsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
               <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} bots={bots} />
               </Suspense>
             </ErrorBoundary>
           ) : boardMode ? (

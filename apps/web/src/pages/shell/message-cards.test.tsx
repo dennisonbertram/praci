@@ -40,7 +40,7 @@ it("says what each first-run focus covers until one is picked", async () => {
   document.body.append(el);
   const block = {
     kind: "choice" as const,
-    question: "What do you want me on first?",
+    question: "What should I work on first?",
     options: [
       { id: "company", letter: "A", label: "Run my company" },
       { id: "research", letter: "D", label: "Research & writing" },
@@ -69,7 +69,7 @@ it("tells the two first-run focuses apart and keeps the chosen row at full contr
   document.body.append(el);
   const block = {
     kind: "choice" as const,
-    question: "What do you want me on first?",
+    question: "What should I work on first?",
     options: [
       { id: "company", letter: "A", label: "Run my company" },
       { id: "day", letter: "B", label: "Day-to-day work" },

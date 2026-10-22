@@ -23,7 +23,7 @@ it("waits while any card is still waiting to be connected", () => {
 it("holds the tour only while the first question is unanswered and not dismissed", () => {
   const question = (answerId?: string): MessageBlock => ({
     kind: "choice",
-    question: "What do you want me on first?",
+    question: "What should I work on first?",
     options: [{ id: "company", letter: "A", label: "Run my company" }],
     ...(answerId ? { answerId } : {}),
   });

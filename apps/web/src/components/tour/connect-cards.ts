@@ -21,7 +21,7 @@ export function focusQuestionOpen(messages: readonly { blocks: readonly MessageB
     message.blocks.some(
       (block) =>
         block.kind === "choice" &&
-        block.question === "What do you want me on first?" &&
+        block.question === "What should I work on first?" &&
         !block.answerId,
     ),
   );

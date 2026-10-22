@@ -11738,10 +11738,6 @@ msgstr ""
 msgid "What did we spend last month?"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
-msgstr "Que voulez-vous que je fasse en premier ?"
-
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
@@ -11761,6 +11757,10 @@ msgstr "Quel résultat allez-vous démontrer ?"
 #: src/pages/Shell.tsx
 msgid "What should I do first this week?"
 msgstr ""
+
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
+msgstr "Que voulez-vous que je fasse en premier ?"
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
