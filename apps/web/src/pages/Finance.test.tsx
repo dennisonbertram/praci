@@ -315,6 +315,8 @@ it("notes non-USD transactions only when some are left out", async () => {
   const sync = [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("non-USD"));
   expect(sync?.getAttribute("aria-label")).toBeNull();
   expect(sync?.textContent).toMatch(/3 non-USD transactions not counted$/);
+  // A phone must see the omission too, so no part of the note is hidden below the sm breakpoint.
+  expect(sync?.innerHTML).not.toMatch(/max-sm:hidden"[^>]*>\s*·\s*\d+ non-USD/);
   // The Cash tile's account count is a different unit, so it carries no "not counted" note.
   const cash = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Cash");
   expect(cash?.closest("a")?.textContent).not.toContain("not counted");

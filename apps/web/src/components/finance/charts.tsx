@@ -737,7 +737,7 @@ export function BurnLines({
                   key={m.start}
                   data-testid="financing-clipped"
                   x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
-                  y={off ? top - 12 : y(m.financingCents) - 10}
+                  y={off ? top - 12 : Math.max(y(m.financingCents) - 10, 12)}
                   textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={12}

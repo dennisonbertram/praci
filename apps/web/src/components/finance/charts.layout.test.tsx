@@ -366,3 +366,19 @@ it("names the Financing ring on a quarter view", async () => {
   );
   done();
 });
+
+it("keeps a Financing label inside the chart when financing equals the scale top", async () => {
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[{ ...day(1, 1_000_000), outCents: 1_000_000 }]}
+      onOpen={() => {}}
+    />,
+  );
+  const text = el.querySelector("[data-testid=financing-clipped]") as SVGTextElement;
+  expect(Number(text.getAttribute("y"))).toBeGreaterThanOrEqual(12);
+  done();
+});

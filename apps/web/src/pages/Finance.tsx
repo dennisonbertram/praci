@@ -438,7 +438,7 @@ function Overview({
                     </span>
                   ) : null}
                   {data.excludedNonUsdCount > 0 ? (
-                    <span className="max-sm:hidden"> · {nonUsdNote}</span>
+                    <span> · {nonUsdNote}</span>
                   ) : null}
                 </Link>
                 <Tooltip>
