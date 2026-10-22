@@ -7591,6 +7591,7 @@ msgstr ""
 msgid "Only this bot"
 msgstr ""
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx

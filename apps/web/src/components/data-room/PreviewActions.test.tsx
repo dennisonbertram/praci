@@ -40,10 +40,19 @@ it("hides the browser PDF toolbar so only the app's Open and Download show", () 
   expect(frame?.getAttribute("src")).toBe("blob:file#toolbar=0");
 });
 
-it("shows no Open or Download buttons in the PDF body below sm; the header has them once", () => {
+it("gives a PDF Open and Download below sm, where the frame would be blank", () => {
   const view = render(item("agreement.pdf", "application/pdf"));
   expect(view.querySelector("iframe")?.className).toContain("max-sm:hidden");
-  expect(view.querySelectorAll("button")).toHaveLength(0);
+  const labels = Array.from(view.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).toEqual(["Open", "Download"]);
+});
+
+it("opens the PDF on a phone by going straight to the file, not a frame in a new tab", () => {
+  const open = vi.spyOn(window, "open").mockReturnValue(null);
+  const view = render(item("agreement.pdf", "application/pdf"));
+  act(() => view.querySelector("button")?.click());
+  expect(open).toHaveBeenCalledWith("blob:file", "_blank", "noopener");
+  open.mockRestore();
 });
 
 it("leaves an image URL unchanged", () => {
