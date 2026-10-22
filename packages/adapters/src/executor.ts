@@ -54,6 +54,7 @@ import {
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   disabledBuiltinToolSet,
   externalBotMayUseBuiltin,
+  financeProviderForEndpoint,
   GTM_AGENT_BUILTIN_TOOLS,
   GTM_CHANNELS,
   GTM_POST_TOOL,
@@ -411,6 +412,7 @@ import {
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
+import type { McpOAuthBroker } from "./mcp-oauth.js";
 import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
@@ -713,6 +715,8 @@ export interface ExecutorDeps {
   connectors?: { managed(id: string): ManagedConnectorProvider | undefined };
   /** Lists a server's tools so pins_write can check a pin source's annotations. */
   mcp?: Pick<McpConnector, "listServerTools">;
+  /** Sign-in state of an MCP server; without it the prompt carries no bank connection line. */
+  mcpOAuth?: Pick<McpOAuthBroker, "statusFor">;
   secrets: string[];
   secretStore: SecretStore;
   deploymentModelKey?: string;
@@ -4109,7 +4113,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if (current?.status === "waiting_input") return pauseForApproval();
             }
             return pauseForAsk(
-              buildConsentAskBlock(recorded.effect.id, recipient),
+              buildConsentAskBlock(recorded.effect.id),
               "Allow access to your mail",
             );
           };
@@ -6653,6 +6657,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 bot.audience === "external" ? bot.externalMessageTargets : undefined,
               );
 
+        // Bank facts come from the owner's private connections: never for external bots or chains.
+        const financeConnectionLine =
+          voiceAgent || restrictedContext
+            ? undefined
+            : await loadFinanceConnectionLine(deps.prisma, deps.mcpOAuth, run);
+
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
             (
@@ -6756,6 +6766,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     botDirectory,
                     pluginLine,
                     mailSearchGuidance: mailSkill.guidance,
+                    financeConnectionLine,
                     dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
                     agentSkillsLine: restrictedContext ? undefined : agentSkillsLine,
                     taughtSkillsLine: restrictedContext ? undefined : taughtSkillsLine,
@@ -8358,6 +8369,63 @@ export const PLAIN_CAPABILITY_GUIDANCE =
 export const NOT_CONNECTED_GUIDANCE =
   "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say so and that connecting one under Integrations comes first. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).";
 
+/**
+ * The user's connected banks as plain facts, so the model does not guess which branch of
+ * NOT_CONNECTED_GUIDANCE applies. A bank counts as connected only while its sign-in is valid.
+ */
+export function financeConnectionLineFor(
+  servers: readonly {
+    endpoint: string | null;
+    agentBotId: string | null;
+    login: "none" | "connected" | "reconnect";
+  }[],
+): string {
+  // Same rule as Finance: only a signed-in server is connected; "reconnect" is a separate state.
+  const banks = servers.flatMap((server) => {
+    const provider = financeProviderForEndpoint(server.endpoint);
+    return provider && server.login !== "none"
+      ? [
+          {
+            name: provider === "mercury" ? "Mercury" : "Brex",
+            hasAgent: Boolean(server.agentBotId),
+            reconnect: server.login === "reconnect",
+          },
+        ]
+      : [];
+  });
+  if (banks.length === 0) {
+    return "Facts: no bank (Mercury or Brex) is connected. For a bank request, say that connecting one under Integrations comes first.";
+  }
+  const list = banks
+    .map(
+      (bank) =>
+        `${bank.name} (${bank.reconnect ? "sign-in expired: tell the user to reconnect it under Integrations" : bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"})`,
+    )
+    .join(", ");
+  return `Facts: connected banks: ${list}. Never tell the user to connect a bank listed here, and never say no bank is connected.`;
+}
+
+export async function loadFinanceConnectionLine(
+  prisma: Pick<PrismaClient, "mcpServer">,
+  mcpOAuth: Pick<McpOAuthBroker, "statusFor"> | undefined,
+  actor: { spaceId: string; userId: string },
+): Promise<string | undefined> {
+  if (!mcpOAuth) return undefined;
+  const servers = await prisma.mcpServer.findMany({
+    where: { spaceId: actor.spaceId, userId: actor.userId, enabled: true },
+    select: { id: true, endpoint: true, secretId: true, agentBotId: true },
+  });
+  return financeConnectionLineFor(
+    await Promise.all(
+      servers.map(async (server) => ({
+        endpoint: server.endpoint,
+        agentBotId: server.agentBotId,
+        login: await mcpOAuth.statusFor(server, actor),
+      })),
+    ),
+  );
+}
+
 export function userTurnInstructions(parts: {
   botInstructions: string;
   voiceAgent?: boolean;
@@ -8376,6 +8444,8 @@ export function userTurnInstructions(parts: {
   botDirectory: string | undefined;
   pluginLine: string | undefined;
   mailSearchGuidance?: string | undefined;
+  /** The user's connected banks, from server state; see financeConnectionLine. */
+  financeConnectionLine?: string | undefined;
   /** add_to_data_room is offered in this run. */
   dataRoomEnabled?: boolean;
   agentSkillsLine: string | undefined;
@@ -8398,6 +8468,7 @@ export function userTurnInstructions(parts: {
     "A bot and a subagent are different. Never use both for the same request.",
     PLAIN_CAPABILITY_GUIDANCE,
     NOT_CONNECTED_GUIDANCE,
+    parts.financeConnectionLine,
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "create_space",

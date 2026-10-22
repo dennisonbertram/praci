@@ -327,3 +327,18 @@ it("reserves the peek of the rear sheets above the front toast", async () => {
   // jsdom measures no heights, so the front is 0px and two rear sheets reserve 2 x 16px.
   expect(stack.style.getPropertyValue("--stack")).toBe("32px");
 });
+
+it("sits at the bottom, clear of the page header and its buttons", async () => {
+  await mount();
+  const classes = viewport()?.className ?? "";
+  expect(classes).toContain("bottom-24");
+  expect(classes).not.toMatch(/(^|\s)(max-sm:)?top-/);
+});
+
+it("runs onClose when a toast is closed", async () => {
+  const onClose = vi.fn();
+  await mount();
+  await add(1, { onClose });
+  await act(async () => document.querySelector<HTMLElement>("[aria-label=Dismiss]")?.click());
+  expect(onClose).toHaveBeenCalledTimes(1);
+});

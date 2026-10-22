@@ -5,6 +5,7 @@ import { BotAvatar, Button } from "@rakazo/ui-web";
 import { ArrowLeft, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { dismissApprovalToasts } from "../../lib/approval-toasts";
 import { rpc } from "../../lib/rpc";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
@@ -196,7 +197,12 @@ export function EmailAgentPanel({
             scrollRequest={null}
             onScrollRequestHandled={noop}
             artifactTarget={artifactTarget}
-            messages={snapshot.messages}
+            // A run held on an approval is not working; its progress line would say it is.
+            messages={
+              running
+                ? snapshot.messages
+                : snapshot.messages.filter((message) => !message.id.startsWith("progress:"))
+            }
             // The lookups are the point of this panel, so they show whatever the chat setting says.
             showToolActivity
             olderCursor={snapshot.olderCursor}
@@ -215,6 +221,7 @@ export function EmailAgentPanel({
                 ...(username ? { username } : {}),
                 ...(mail ? { mail } : {}),
               });
+              dismissApprovalToasts(`/app/${bot.id}`);
               await load();
             }}
             onReply={noop}

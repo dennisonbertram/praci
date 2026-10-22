@@ -399,6 +399,7 @@ const TOOL_VERBS: Record<string, readonly [string, string]> = {
   upload: ["uploading", "uploaded"],
   remove: ["removing", "removed"],
   complete: ["completing", "completed"],
+  ask: ["asking", "asked"],
 };
 
 const MAIL_WRITE_PENDING: Record<string, string> = {
@@ -426,6 +427,11 @@ const PLAIN_TOOL_WORDS: Record<string, string> = {
   scratchpad_update: "update note",
   scratchpad_complete: "complete note",
   scratchpad_remove: "remove note",
+  task_catalog: "get open tasks",
+  legal_unreviewed_documents: "get unreviewed documents",
+  // Mercury asks for approval; nothing moves until the user allows it.
+  "request send money": "ask to send money",
+  "request transfer money": "ask to transfer money",
 };
 
 /** The plain lowercase words of any tool id: no `mcp__server__` prefix, no case or separator style. */
@@ -447,6 +453,8 @@ function toolWords(name: string, service?: string): string[] {
   // "Get card by id" is "Get card" to a person.
   if (words.length > 2 && words.at(-2) === "by" && words.at(-1) === "id")
     words = words.slice(0, -2);
+  const plainWords = PLAIN_TOOL_WORDS[words.join(" ")];
+  if (plainWords) return plainWords.split(" ");
   const own = new Set(
     (service ?? "")
       .toLowerCase()
