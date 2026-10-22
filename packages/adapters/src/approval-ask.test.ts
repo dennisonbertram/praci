@@ -65,6 +65,7 @@ describe("describeApprovalAction money and generic tools", () => {
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.text).toBe("Send $1,200.00 to Acme Supplies from Operating?");
     expect(block.text).not.toMatch(/rcp-9|chk-1|mcp__/);
+    expect(block.actions?.[0]).toEqual({ id: "allow", label: "Send $1,200.00" });
     // Details lists labelled rows, with no tool id and no raw JSON.
     expect(block.detailFolded).toBe(true);
     expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
@@ -413,7 +414,7 @@ describe("buildConsentAskBlock", () => {
       detail: "openai/gpt-6-luna, forwarded to its provider",
     });
     expect(block).toMatchObject({
-      text: "Allow your mail to be sent to GPT-6 Luna?",
+      text: "Share your chats and mail with GPT-6 Luna?",
     });
     expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });

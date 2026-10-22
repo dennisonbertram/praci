@@ -11,6 +11,7 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay, hiddenOr } from "../../lib/finance-format";
@@ -77,6 +78,26 @@ function Title({ contract, inline = false }: { contract: LegalContract; inline?:
   );
 }
 
+function Field({
+  label,
+  text,
+  nums = false,
+  children,
+}: {
+  label: ReactNode;
+  text: string;
+  nums?: boolean;
+  children?: ReactNode;
+}) {
+  if (!text || text === dash) return null;
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn(nums && "tabular-nums")}>{children ?? text}</dd>
+    </>
+  );
+}
+
 /** Active is the normal case and says nothing; only a contract that is not active gets a chip. */
 function Status({ status }: { status: LegalContractStatus }) {
   if (status === "active") return null;
@@ -107,29 +128,15 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
               </div>
               <Status status={contract.status} />
             </div>
-            <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
-              <dt className="text-muted-foreground">
-                <Trans>Parties</Trans>
-              </dt>
-              <dd>{contract.counterparties.join(", ") || dash}</dd>
-              <dt className="text-muted-foreground">
-                <Trans>Term</Trans>
-              </dt>
-              <dd className="tabular-nums">{term(contract)}</dd>
-              <dt className="text-muted-foreground">
-                <Trans>Renewal</Trans>
-              </dt>
-              <dd>{renewal(contract)}</dd>
-              <dt className="text-muted-foreground">
-                <Trans>Value</Trans>
-              </dt>
-              <dd className="tabular-nums">{value(contract)}</dd>
-              <dt className="text-muted-foreground">
-                <Trans>Next deadline</Trans>
-              </dt>
-              <dd className="tabular-nums">
+            <dl className="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-2 gap-y-1">
+              {/* A field the agent did not find is left out rather than drawn as a dash. */}
+              <Field label={<Trans>Parties</Trans>} text={contract.counterparties.join(", ")} />
+              <Field label={<Trans>Term</Trans>} text={term(contract)} nums />
+              <Field label={<Trans>Renewal</Trans>} text={renewal(contract)} />
+              <Field label={<Trans>Value</Trans>} text={value(contract)} nums />
+              <Field label={<Trans>Next deadline</Trans>} text={contract.nextDeadline ?? ""} nums>
                 <NextDeadline contract={contract} />
-              </dd>
+              </Field>
             </dl>
           </li>
         ))}
@@ -139,11 +146,11 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[20%]" : "w-[23%]"} />
-          <col className={showStatus ? "w-[14%]" : "w-[19%]"} />
-          {showStatus ? <col className="w-[8%]" /> : null}
-          <col className={showStatus ? "w-[20%]" : "w-[21%]"} />
-          <col className={showStatus ? "w-[17%]" : "w-[16%]"} />
+          <col className={showStatus ? "w-[25%]" : "w-[29%]"} />
+          <col className={showStatus ? "w-[14%]" : "w-[16%]"} />
+          {showStatus ? <col className="w-[7%]" /> : null}
+          <col className={showStatus ? "w-[18%]" : "w-[19%]"} />
+          <col className={showStatus ? "w-[15%]" : "w-[15%]"} />
           <col className="w-[9%]" />
           <col className="w-[12%]" />
         </colgroup>
@@ -177,7 +184,7 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
         <TableBody>
           {contracts.map((contract) => (
             <TableRow key={contract.id}>
-              <TableCell className="truncate">
+              <TableCell className="whitespace-normal" title={contract.title}>
                 <Title contract={contract} inline />
               </TableCell>
               <TableCell className="truncate" title={contract.counterparties.join(", ")}>
@@ -188,8 +195,10 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
                   <Status status={contract.status} />
                 </TableCell>
               ) : null}
-              <TableCell className="whitespace-nowrap tabular-nums">{term(contract)}</TableCell>
-              <TableCell className="truncate" title={renewal(contract)}>
+              <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>
+                {term(contract)}
+              </TableCell>
+              <TableCell className="whitespace-normal" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>

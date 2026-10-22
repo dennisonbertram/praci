@@ -18,3 +18,6 @@ export const CardPlaceholder: Story = {
     </div>
   ),
 };
+
+/** Static: no pulse, for an empty section that keeps its layout. */
+export const Static: Story = { args: { className: "h-4 w-48", static: true } };
