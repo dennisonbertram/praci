@@ -31,7 +31,8 @@ test("a GraphQL endpoint is added from the custom connection dialog's Advanced s
   await captureScreenshot(page, testInfo, "02-graphql-installed");
 
   // The new tool source can be removed from its card.
-  await page.getByRole("button", { name: "Remove Browser GraphQL", exact: true }).click();
+  await page.getByRole("button", { name: "More Browser GraphQL actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Remove", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.getByText(/GRAPHQL · graphql\.example\.test/)).toHaveCount(0);
 });
