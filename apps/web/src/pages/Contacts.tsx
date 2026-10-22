@@ -90,13 +90,7 @@ export function ContactsPage({
           // The space name is in the sidebar; on a phone it only adds a row under the title.
           className="max-sm:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Contacts</Trans>}
-          meta={
-            spaceName ? (
-              <span className="truncate" title={spaceName}>
-                {spaceName}
-              </span>
-            ) : null
-          }
+          spaceName={spaceName}
           actions={
             <>
               {contacts?.length === 0 ? null : (
@@ -183,7 +177,7 @@ export function ContactsPage({
                 </Button>
               </div>
             ) : (
-              <div className="max-w-4xl">
+              <div>
                 <Table compact className="table-fixed">
                   <TableHeader>
                     <TableHeadRow>

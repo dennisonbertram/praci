@@ -45,6 +45,7 @@ export function PageNavButton({ onBack }: { onBack?: () => void }) {
  */
 export function PageHeader({
   title,
+  spaceName,
   meta,
   actions,
   className,
@@ -52,6 +53,8 @@ export function PageHeader({
   onBack,
 }: {
   title: ReactNode;
+  /** The space's name, when the person has more than one: always the first thing after the title. */
+  spaceName?: string;
   /** A sub-page: on a phone the back arrow takes the navigation button's place. */
   onBack?: () => void;
   meta?: ReactNode;
@@ -74,7 +77,7 @@ export function PageHeader({
       >
         <span className="truncate">{title}</span>
       </h1>
-      {meta ? (
+      {meta || spaceName ? (
         <div
           data-page-header-meta
           className={cn(
@@ -84,6 +87,11 @@ export function PageHeader({
               : "@2xl/ph:order-2 @2xl/ph:basis-0 @2xl/ph:flex-1 @2xl/ph:flex-nowrap @2xl/ph:pb-0",
           )}
         >
+          {spaceName ? (
+            <span className="truncate" title={spaceName}>
+              {spaceName}
+            </span>
+          ) : null}
           {meta}
         </div>
       ) : null}

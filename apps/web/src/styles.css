@@ -2,6 +2,9 @@
 @import "@rakazo/ui-web/styles.css";
 @import "@fontsource-variable/geist/wght.css";
 
+/* Laptop screens 800 px high or lower: the sidebar scrolls as one column instead of three. */
+@custom-variant short (@media (max-height: 800px));
+
 @source "../../packages/ui-web/src/**/*.{ts,tsx}";
 @source "./src/**/*.{ts,tsx}";
 
