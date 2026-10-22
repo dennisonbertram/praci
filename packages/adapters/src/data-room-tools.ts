@@ -142,21 +142,19 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     limit: clampInt(args.limit, 1, MAX_RESULTS, DEFAULT_RESULTS),
     ...(await dataRoomQueryVector(deps.resolveAi, actor, query)),
   });
-  // A file still being read or indexed cannot match yet, so an empty answer is not final. Say so only
-  // then: results already found do not depend on it. A file quiet for minutes shows as failed, not pending.
-  const indexing = page.results.length
-    ? 0
-    : await deps.prisma.dataRoomItem.count({
-        where: {
-          ...eligibleWhere(actor, { excludeConnectionIds: filters.excludeConnectionIds }),
-          status: { in: ["pending", "extracting", "classifying", "indexing"] },
-          updatedAt: { gte: new Date(Date.now() - DATA_ROOM_STUCK_MS) },
-        },
-      });
+  // A file still being read or indexed cannot match yet, so any answer may be incomplete, even with
+  // hits (search has no relevance cutoff). A file quiet for minutes shows as failed, not pending.
+  const indexing = await deps.prisma.dataRoomItem.count({
+    where: {
+      ...eligibleWhere(actor, { excludeConnectionIds: filters.excludeConnectionIds }),
+      status: { in: ["pending", "extracting", "classifying", "indexing"] },
+      updatedAt: { gte: new Date(Date.now() - DATA_ROOM_STUCK_MS) },
+    },
+  });
   return {
     ...(indexing
       ? {
-          note: `${indexing} ${indexing === 1 ? "file is" : "files are"} still being indexed, so nothing may match yet. Tell the user and suggest asking again shortly.`,
+          note: `${indexing} ${indexing === 1 ? "file is" : "files are"} still being indexed, so the results may be incomplete. Tell the user and suggest asking again shortly.`,
         }
       : {}),
     results: page.results.map(({ item, snippet }) => ({

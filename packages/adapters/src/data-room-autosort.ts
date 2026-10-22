@@ -145,7 +145,8 @@ export function buildAutoSortPlan(input: {
     if (!roots.some((n) => folderKey(n.name) === first)) {
       const deeper = [...new Set(nodeOf.values())].filter((n) => folderKey(n.name) === first);
       const [only] = deeper;
-      if (only && deeper.length === 1) {
+      // Reuse only when the whole path still fits the three-level limit.
+      if (only && deeper.length === 1 && only.path.length + path.length - 1 <= 3) {
         out.push(...only.path);
         prefix = only.path.map((n) => `\0${folderKey(n)}`).join("");
         level = only.children;

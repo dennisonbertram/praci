@@ -517,8 +517,8 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
       results: { id: string; name: string; snippet: string }[];
     };
     expect(found.results.map((r) => r.id)).toEqual([mine.id]);
-    // The file has been read but is not tagged and indexed yet; the answer found does not depend on it.
-    expect(found).not.toHaveProperty("note");
+    // The file has been read but is not indexed yet, so even an answer with hits may be incomplete.
+    expect(found).toMatchObject({ note: expect.stringContaining("still being indexed") });
     // An empty answer while a file is still being indexed is not final, so the agent is told.
     const none = await call("search_data_room", { query: "unmatchedquokka" });
     expect(none).toMatchObject({ note: expect.stringContaining("still being indexed") });

@@ -101,6 +101,18 @@ describe("buildAutoSortPlan", () => {
     );
   });
 
+  it("keeps a plan within three levels when reusing a nested folder would exceed it", () => {
+    const plan = buildAutoSortPlan({
+      folders,
+      items,
+      proposal: { items: [{ id: "i-pdf", folderPath: ["Cap table", "2026", "Signed"] }] },
+    });
+    expect(AutoSortPlanSchema.safeParse(plan).success).toBe(true);
+    expect(plan.operations).toContainEqual(
+      expect.objectContaining({ itemId: "i-pdf", toPath: ["Cap table", "2026", "Signed"] }),
+    );
+  });
+
   it("does not rename a good name", () => {
     const plan = buildAutoSortPlan({
       folders,
