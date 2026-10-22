@@ -96,6 +96,9 @@ const button = (name: string) =>
 it("groups the changes as Merge, Move and Rename, each before and after, all ticked", async () => {
   autoSort.plan.mockResolvedValue(plan);
   await render();
+  // Only the loose file's move is new; the merge and rename wait behind Show all.
+  act(() => button("Show all").click());
+  act(() => boxes()[0]?.click());
   const headings = Array.from(document.querySelectorAll("h3")).map((h) => h.textContent);
   expect(headings).toEqual(["Merge", "Move", "Rename"]);
   const text = document.body.textContent ?? "";
@@ -115,6 +118,8 @@ it("applies only the ticked changes", async () => {
   autoSort.plan.mockResolvedValue(plan);
   autoSort.apply.mockResolvedValue({ batchId: "b1", items: 2, skipped: 0 });
   const { onApplied, onClose } = await render();
+  act(() => button("Show all").click());
+  act(() => boxes()[0]?.click());
   act(() => boxes()[3]?.click());
   act(() => button("Apply").click());
   await flush();
@@ -136,6 +141,7 @@ it("says Already tidy. when there is nothing to change, and shows an error with 
   expect(button("Retry")).toBeTruthy();
   act(() => button("Retry").click());
   await flush();
+  act(() => button("Show all").click());
   expect(boxes()).toHaveLength(4);
 });
 
@@ -277,4 +283,49 @@ it("says it is still looking after 10 seconds without a plan", async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("keeps old files' renames and folder merges out of the new-files view", async () => {
+  recentItems.mockResolvedValue({
+    items: [{ id: "i1", createdAt: new Date().toISOString() }],
+    nextCursor: null,
+  });
+  autoSort.plan.mockResolvedValue(plan);
+  await render();
+  expect(document.body.textContent).toContain("plan.pdf");
+  expect(document.body.textContent).not.toContain("Benefits (2)");
+  expect(document.body.textContent).not.toContain("Cap table");
+  expect(button("Apply").textContent).toBe("Apply 1 change");
+});
+
+it("ticks every move when all of them are for recent files", async () => {
+  recentItems.mockResolvedValue({
+    items: [{ id: "i3", createdAt: new Date().toISOString() }],
+    nextCursor: null,
+  });
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [{ ...plan.operations[1], key: "move:i3", itemId: "i3", fromFolderId: "f9" }],
+  });
+  await render();
+  expect(button("Apply").textContent).toBe("Apply 1 change");
+});
+
+it("finds recent files beyond the first page of 100", async () => {
+  const now = new Date().toISOString();
+  recentItems
+    .mockResolvedValueOnce({ items: [{ id: "x", createdAt: now }], nextCursor: "c1" })
+    .mockResolvedValueOnce({ items: [{ id: "i3", createdAt: now }], nextCursor: null });
+  const filed = { ...plan.operations[1], fromFolderId: "f9" };
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [
+      { ...filed, key: "move:i3", itemId: "i3", name: "new.pdf" },
+      { ...filed, key: "move:i4", itemId: "i4", name: "old.pdf" },
+    ],
+  });
+  await render();
+  expect(recentItems).toHaveBeenLastCalledWith({ limit: 100, cursor: "c1" });
+  expect(document.body.textContent).toContain("new.pdf");
+  expect(document.body.textContent).not.toContain("old.pdf");
 });

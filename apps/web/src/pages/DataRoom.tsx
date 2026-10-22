@@ -140,6 +140,13 @@ export function DataRoomPage({
     () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
     [otherFilters, urlFolder],
   );
+  // The sidebar badge links here while the page may already be open.
+  const urlFailed = params.get("status") === "failed";
+  useEffect(() => {
+    if (urlFailed) setOtherFilters((prev) => ({ ...prev, status: "failed" }));
+  }, [urlFailed]);
+  const statusParamRef = useRef(params.has("status"));
+  statusParamRef.current = params.has("status");
   const urlFolderRef = useRef(urlFolder);
   urlFolderRef.current = urlFolder;
   // setParams changes with every navigation; the callbacks below must not.
@@ -149,15 +156,18 @@ export function DataRoomPage({
   const setFilters = useCallback(
     ({ folderId, ...rest }: Filters, replace = false) => {
       setOtherFilters(rest);
-      if (folderId === urlFolderRef.current) return;
+      // A cleared failed-files filter must not come back on reload.
+      const dropStatus = rest.status !== "failed" && statusParamRef.current;
+      if (folderId === urlFolderRef.current && !dropStatus) return;
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
           if (folderId) next.set("folder", folderId);
           else next.delete("folder");
+          if (dropStatus) next.delete("status");
           return next;
         },
-        { replace },
+        { replace: replace || folderId === urlFolderRef.current },
       );
     },
     [setParams],

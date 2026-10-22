@@ -163,12 +163,22 @@ function GoToB() {
   );
 }
 
+function GoFailed() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="go-failed" onClick={() => navigate("/?status=failed")}>
+      failed
+    </button>
+  );
+}
+
 async function renderPage(entry = "/") {
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={[entry]}>
         <DataRoomPage />
         <GoToB />
+        <GoFailed />
       </MemoryRouter>,
     );
   });
@@ -1296,4 +1306,12 @@ it("lists only the new folder's items when it is opened with the preview open", 
   await settle();
   await settle();
   expect(names()).toEqual(["c.txt"]);
+});
+
+it("filters to failed files when the sidebar badge link is followed while the page is open", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-failed"]')?.click();
+  });
+  expect(rpcMock.list.mock.calls.at(-1)?.[0]).toMatchObject({ status: "failed" });
 });

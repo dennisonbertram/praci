@@ -19,9 +19,11 @@ import { LoadingState } from "../ai/primitives";
 type Group = { type: AutoSortOperation["type"]; title: string };
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
-/** Everything but moving a file that is already filed and was not added recently. */
+/** A change to a file added recently, or a move of a loose file. Folder merges touch older files. */
 const isNew = (recent: Set<string>) => (op: AutoSortOperation) =>
-  op.type !== "move_item" || op.fromFolderId === null || recent.has(op.itemId);
+  op.type === "merge_folder"
+    ? false
+    : recent.has(op.itemId) || (op.type === "move_item" && op.fromFolderId === null);
 
 function Row({
   checked,
@@ -81,21 +83,27 @@ export function AutoSortDialog({
     setShowAll(false);
     const since = Date.now() - RECENT_MS;
     // Without the list of new files the dialog just shows everything, as before.
-    const recentIds = Promise.resolve()
-      .then(() => rpc.dataRoom.items.list({ limit: 100 }))
-      .then(
-        ({ items }) =>
-          new Set(items.filter((i) => Date.parse(i.createdAt) >= since).map((i) => i.id)),
-      )
-      .catch(() => new Set<string>());
+    // Newest first, so page until a file older than a day appears. ponytail: 10 pages (1000 files) cap.
+    const findRecent = async () => {
+      const ids = new Set<string>();
+      let cursor: string | undefined;
+      for (let page = 0; page < 10; page++) {
+        const { items, nextCursor } = await rpc.dataRoom.items.list({ limit: 100, cursor });
+        for (const i of items) if (Date.parse(i.createdAt) >= since) ids.add(i.id);
+        if (!nextCursor || items.some((i) => Date.parse(i.createdAt) < since)) break;
+        cursor = nextCursor;
+      }
+      return ids;
+    };
+    const recentIds = findRecent().catch(() => new Set<string>());
     Promise.all([rpc.dataRoom.autoSort.plan(), recentIds])
       .then(([next, ids]: [AutoSortPlan, Set<string>]) => {
         if (request !== latest.current) return;
         setPlan(next);
         setRecent(ids);
         const fresh = new Set(next.operations.filter(isNew(ids)).map((op) => op.key));
-        // Only when some, but not all, changes are new does the dialog open on those alone.
-        const focus = fresh.size > 0 && fresh.size < next.operations.length;
+        // With any new change the dialog opens on those alone (all of them, if every one is new).
+        const focus = fresh.size > 0;
         // Otherwise files already in a folder are left alone unless ticked; loose ones are the point.
         setOff(
           new Set(
