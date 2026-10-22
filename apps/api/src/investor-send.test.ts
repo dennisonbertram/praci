@@ -3,7 +3,9 @@ import { getInvestorUpdate, SENDING_STALE_MS } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { InvestorSendDeps } from "./investor-send.js";
 import {
+  deliverPortalLinks,
   markdownToHtml,
+  postInvestorUpdate,
   startInvestorUpdateRetry,
   startInvestorUpdateSend,
 } from "./investor-send.js";
@@ -31,6 +33,7 @@ function fakePrisma() {
       if ("not" in c) return c.not === null ? value != null : value !== c.not;
       if ("lt" in c) return (value as Date) < (c.lt as Date);
     }
+    if (cond === null) return value == null;
     if (cond instanceof Date) return (value as Date)?.getTime() === cond.getTime();
     return value === cond;
   };
@@ -74,7 +77,7 @@ function setup(results: Record = {}) {
     ["bob", "bob@example.test"],
     ["cy", null],
   ] as const)
-    tables.contact.push({ id, name: id, email, ...scope });
+    tables.contact.push({ id, name: id, email, kind: "investor", ...scope });
   tables.investorUpdate.push({
     id: "upd1",
     ...scope,
@@ -108,6 +111,8 @@ function setup(results: Record = {}) {
     prisma: prisma as never,
     compose,
     gmailConnectionIds: async () => ["conn-1"],
+    portalLink: async (_actor, contactId) => `https://app.test/portal/open#tok-${contactId}`,
+    email: { send: vi.fn(async () => undefined) },
   };
   return { deps, tables, calls, compose, scope, prisma };
 }
@@ -221,5 +226,142 @@ describe("markdownToHtml", () => {
     ).toBe(
       '<p><strong>Highlights</strong></p><ul><li>one <strong>big</strong> win</li><li>&lt;b&gt;two&lt;/b&gt;</li></ul><p>See <a href="https://example.test">site</a></p>',
     );
+  });
+});
+
+describe("portal links in investor updates", () => {
+  it("gives each recipient their own link, as a text line and a button-style link", async () => {
+    const { deps, calls } = setup();
+    await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
+    expect(calls[0]?.body).toContain(
+      "View online and past updates: https://app.test/portal/open#tok-ann",
+    );
+    expect(calls[0]?.body).not.toContain("tok-bob");
+    expect(calls[1]?.body).toContain("#tok-bob");
+    expect(calls[0]?.html).toMatch(
+      /<a href="https:\/\/app\.test\/portal\/open#tok-ann"[^>]*>View online and past updates<\/a>/,
+    );
+    expect(calls[0]?.html).toContain("min-height:44px");
+  });
+
+  it("fails the recipient, rather than sending with no link, when a link cannot be made", async () => {
+    const { deps, calls } = setup();
+    deps.portalLink = async (_actor, contactId) => {
+      if (contactId === "ann") throw new Error("no link");
+      return `https://app.test/portal/open#tok-${contactId}`;
+    };
+    await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
+    expect(calls.map((c) => c.to)).toEqual(["bob@example.test"]);
+    const after = await getInvestorUpdate(deps.prisma, actor, "upd1");
+    expect(after.deliveries.map((d) => d.state)).toEqual(["failed", "sent"]);
+  });
+
+  it("never emails a revoked contact", async () => {
+    const { deps, calls, tables } = setup();
+    Object.assign(tables.contact[0] as Record, { portalBlockedAt: new Date() });
+    await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
+    expect(calls.map((c) => c.to)).toEqual(["bob@example.test"]);
+  });
+
+  it("gives a board update no link", async () => {
+    const { deps, calls, tables } = setup();
+    const portalLink = vi.fn(async () => "x");
+    deps.portalLink = portalLink;
+    tables.investorUpdate[0] = { ...tables.investorUpdate[0], audience: "board" };
+    await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
+    expect(portalLink).not.toHaveBeenCalled();
+    expect(calls[0]?.body).toBe("Hello **team**");
+  });
+});
+
+describe("postInvestorUpdate", () => {
+  it("posts the draft and sends each investor with an email a notice with a fresh link", async () => {
+    const { deps, compose, tables } = setup();
+    const result = await postInvestorUpdate(deps, actor, "upd1");
+    expect(result.update.status).toBe("posted");
+    expect(result.notified).toBe(2);
+    expect(compose).not.toHaveBeenCalled();
+    const sent = vi.mocked(deps.email!.send).mock.calls.map(([m]) => m);
+    expect(sent.map((m) => m.to)).toEqual(["ann@example.test", "bob@example.test"]);
+    expect(sent[0]?.text).toContain("https://app.test/portal/open#tok-ann");
+    expect(sent[0]?.text).not.toContain("tok-bob");
+    expect(tables.investorUpdate[0]?.status).toBe("posted");
+  });
+
+  it("notifies nobody it should not: revoked, no email, or other kinds", async () => {
+    const { deps, tables, scope } = setup();
+    Object.assign(tables.contact[0] as Record, { portalBlockedAt: new Date() });
+    tables.contact.push({
+      id: "dee",
+      name: "dee",
+      email: "dee@example.test",
+      kind: "board",
+      ...scope,
+    });
+    const result = await postInvestorUpdate(deps, actor, "upd1");
+    expect(result.notified).toBe(1);
+    expect(vi.mocked(deps.email!.send).mock.calls.map(([m]) => m.to)).toEqual(["bob@example.test"]);
+  });
+
+  it("counts only notices that went out and keeps going after one fails", async () => {
+    const { deps } = setup();
+    vi.mocked(deps.email!.send).mockRejectedValueOnce(new Error("smtp down"));
+    const result = await postInvestorUpdate(deps, actor, "upd1");
+    expect(result.update.status).toBe("posted");
+    expect(result.notified).toBe(1);
+  });
+
+  it("posts with nobody notified when no email provider is configured", async () => {
+    const { deps } = setup();
+    deps.email = undefined;
+    const result = await postInvestorUpdate(deps, actor, "upd1");
+    expect(result.update.status).toBe("posted");
+    expect(result.notified).toBe(0);
+  });
+
+  it("a second post changes nothing and sends nothing", async () => {
+    const { deps } = setup();
+    await postInvestorUpdate(deps, actor, "upd1");
+    const again = await postInvestorUpdate(deps, actor, "upd1");
+    expect(again.notified).toBe(0);
+    expect(deps.email?.send).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not post a board update", async () => {
+    const { deps, tables } = setup();
+    tables.investorUpdate[0] = { ...tables.investorUpdate[0], audience: "board" };
+    await expect(postInvestorUpdate(deps, actor, "upd1")).rejects.toThrow();
+    expect(tables.investorUpdate[0]?.status).toBe("draft");
+  });
+});
+
+describe("deliverPortalLinks", () => {
+  it("emails each contact a fresh link, with the company in the subject", async () => {
+    const { deps } = setup();
+    const result = await deliverPortalLinks(deps, actor, ["ann"], { copy: false });
+    expect(result.links).toEqual([]);
+    const [message] = vi.mocked(deps.email!.send).mock.calls[0] ?? [];
+    expect(message?.to).toBe("ann@example.test");
+    expect(message?.subject).toBe("Acme · your link");
+    expect(message?.text).toContain("#tok-ann");
+  });
+
+  it("returns the link instead when copying, with no email provider, or with no address", async () => {
+    const { deps } = setup();
+    const copied = await deliverPortalLinks(deps, actor, ["ann"], { copy: true });
+    expect(copied.links).toEqual([
+      { contactId: "ann", name: "ann", link: "https://app.test/portal/open#tok-ann" },
+    ]);
+    const noAddress = await deliverPortalLinks(deps, actor, ["cy"], { copy: false });
+    expect(noAddress.links.map((l) => l.contactId)).toEqual(["cy"]);
+    deps.email = undefined;
+    const noProvider = await deliverPortalLinks(deps, actor, ["bob"], { copy: false });
+    expect(noProvider.links.map((l) => l.contactId)).toEqual(["bob"]);
+  });
+
+  it("skips a contact that is not the owner's", async () => {
+    const { deps } = setup();
+    const result = await deliverPortalLinks(deps, actor, ["ghost"], { copy: true });
+    expect(result.links).toEqual([]);
   });
 });
