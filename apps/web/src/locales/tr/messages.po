@@ -8119,6 +8119,10 @@ msgstr ""
 msgid "Reading…"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Reads document text"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Ready"

@@ -8119,6 +8119,10 @@ msgstr "Reading your mail…"
 msgid "Reading…"
 msgstr "Reading…"
 
+#: src/components/AiDataSharing.tsx
+msgid "Reads document text"
+msgstr "Reads document text"
+
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Ready"

@@ -341,7 +341,12 @@ export function AiDataSharingSection() {
                   <span className="flex min-w-0 flex-col">
                     <span className="text-[14px] text-foreground/75">{model}</span>
                     <span className="text-[12.5px] text-muted-foreground">
-                      <Trans>Send chats and mail text</Trans>
+                      {/* The Data room's embedding model only ever reads document text. */}
+                      {documents?.recipients.some((r) => r.detail === recipient.detail) ? (
+                        <Trans>Reads document text</Trans>
+                      ) : (
+                        <Trans>Send chats and mail text</Trans>
+                      )}
                     </span>
                   </span>
                 </li>

@@ -226,6 +226,23 @@ it("shows a model slug as its display name under Advanced, so two models are tol
   expect(container.textContent).not.toContain("OpenRouter");
 });
 
+it("describes a document embedding model as reading document text", async () => {
+  consent.aiConsentStatus.mockResolvedValue(
+    statusOf([
+      { ...modelA, allowed: true },
+      { ...modelB, detail: "vendor/embed", allowed: true },
+    ]),
+  );
+  consent.documentConsent.mockResolvedValue({
+    ...documents(true, true),
+    recipients: [{ name: "OpenRouter", detail: "vendor/embed" }],
+  });
+  await render(<AiDataSharingSection />);
+  const lines = [...container.querySelectorAll("li")].map((r) => r.textContent);
+  expect(lines[0]).toContain("Send chats and mail text");
+  expect(lines[1]).toContain("Reads document text");
+});
+
 it("allows every model with the one switch and revokes every model when it is turned off", async () => {
   const list = (allowed: boolean) =>
     statusOf([
