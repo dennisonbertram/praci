@@ -200,14 +200,14 @@ const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
   return date && field !== "date" ? `${t`Added`} ${date}` : date;
 };
 
-/** Fixed widths, so columns never shift and a wide pane gives its extra width to the Name only. */
+/** Fixed widths so columns never shift; in a wide pane Parties takes 30% and the Name the rest. */
 function Columns() {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-40")} />
+      <col className={cn(MID_COLUMN, "w-28")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-44 @min-[1100px]/list:w-56 @min-[1500px]/list:w-72")} />
+      <col className={cn(PARTIES_COLUMN, "w-44 @min-[900px]/list:w-[30%]")} />
       <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>

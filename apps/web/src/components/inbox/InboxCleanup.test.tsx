@@ -144,6 +144,8 @@ describe("InboxCleanup", () => {
     rpcMock.list.mockResolvedValue(output([]));
     await render();
     expect(document.body.textContent).toContain("Nothing to clean up");
+    // The empty state names the rule, so it does not contradict a Newsletters list.
+    expect(document.body.textContent).toContain("Senders need 3 or more messages");
     expect(button(/^Archive/)).toBeUndefined();
   });
 

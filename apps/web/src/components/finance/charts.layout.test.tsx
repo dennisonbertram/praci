@@ -289,3 +289,58 @@ it("starts quarters at the first one with data and fills the plot width", async 
   expect(Number(rect.getAttribute("width"))).toBeGreaterThan(200);
   done();
 });
+
+const mk = (m: number, outCents: number, partial = false, financingCents = 0) => ({
+  start: `2026-${String(m).padStart(2, "0")}-01`,
+  end: `2026-${String(m).padStart(2, "0")}-01`,
+  outCents,
+  revenueCents: 0,
+  financingCents,
+  partial,
+});
+
+it("draws a single running period as a bar with no stray markers", async () => {
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      granularity="year"
+      series={[{ ...mk(10, 900_000, true, 250_000), start: "2026-01-01" }]}
+      onOpen={() => {}}
+    />,
+  );
+  expect(el.querySelector("[data-testid=burn-bar-out]")).not.toBeNull();
+  expect(el.querySelector("[data-testid=burn-out-end]")).toBeNull();
+  done();
+});
+
+it("never puts two markers within 8 px of each other", async () => {
+  const series = [mk(8, 300_000), mk(9, 320_000), mk(10, 310_000, true, 305_000)];
+  const { el, done } = await mount(
+    375,
+    <BurnLines label="Burn" series={series} onOpen={() => {}} />,
+  );
+  const pts = [...el.querySelectorAll("circle")].map((c) => [
+    Number(c.getAttribute("cx")),
+    Number(c.getAttribute("cy")),
+  ]);
+  for (const [i, a] of pts.entries())
+    for (const b of pts.slice(i + 1))
+      expect(
+        Math.hypot((a[0] ?? 0) - (b[0] ?? 0), (a[1] ?? 0) - (b[1] ?? 0)),
+      ).toBeGreaterThanOrEqual(8);
+  done();
+});
+
+it.each([300, 375])("keeps all 12 months reachable and 44 px wide at %i px on touch", async (w) => {
+  const saved = window.matchMedia;
+  window.matchMedia = ((q: string) => ({ matches: q.includes("coarse") })) as typeof matchMedia;
+  const series = Array.from({ length: 12 }, (_, i) => mk(i + 1, 300_000 + i));
+  const { el, done } = await mount(w, <BurnLines label="Burn" series={series} onOpen={() => {}} />);
+  const links = [...el.querySelectorAll("g[role=link] rect")];
+  expect(links).toHaveLength(12);
+  for (const r of links) expect(Number(r.getAttribute("width"))).toBeGreaterThanOrEqual(44);
+  expect(Number(el.querySelector("svg")?.getAttribute("width"))).toBeGreaterThan(w);
+  done();
+  window.matchMedia = saved;
+});

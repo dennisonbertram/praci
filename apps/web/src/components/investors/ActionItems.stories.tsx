@@ -82,6 +82,11 @@ export const AuditDrafting: Story = {
   args: { drafts: [], audits: [audit({ drafting: true })] },
 };
 
+/** The run ended with the request still open: the row says so and Draft reply is back. */
+export const AuditDraftEnded: Story = {
+  args: { drafts: [], audits: [audit({})], draftEnded: new Set(["a1"]) },
+};
+
 export const AuditAndUpdate: Story = {
   args: {
     drafts: [draft("u1", "Example Co · 2026-09 update", "2026-10-01T09:00:00.000Z")],

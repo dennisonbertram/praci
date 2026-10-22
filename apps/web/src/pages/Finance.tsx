@@ -539,10 +539,10 @@ function Overview({
               <Kpi
                 title={t`Cash`}
                 value={money(data.cash.cashCents)}
-                sub={cashSubtitle(
+                sub={`${cashSubtitle(
                   data.cash.cashAccountCount,
                   otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "none",
-                )}
+                )}${data.excludedNonUsdCount > 0 ? ` · ${t`${data.excludedNonUsdCount} not counted`}` : ""}`}
                 to={financePath.accounts()}
                 hover={
                   data.crypto ? (
