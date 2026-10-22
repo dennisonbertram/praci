@@ -33,7 +33,7 @@ import { SafeCoverSummary, SafeDialog } from "../components/fundraising/SafeDial
 import type { SafeStep } from "../components/fundraising/SafeList";
 import { AttentionStrip, MarkDateDialog, SafeList } from "../components/fundraising/SafeList";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
-import { isoFromDay } from "../lib/day-input";
+import { isoFromDay, todayDay } from "../lib/day-input";
 import { usdFigure } from "../lib/finance-format";
 import { rpc } from "../lib/rpc";
 import { useContactNotices } from "../lib/use-contact-notices";
@@ -252,7 +252,7 @@ export function FundraisingPage({
                   onMark={(safe, step) => setMarking({ safe, step })}
                   onCancel={(safe) =>
                     void run(
-                      () => mark(safe, "cancel", new Date().toISOString()),
+                      () => mark(safe, "cancel", isoFromDay(todayDay())),
                       t`Could not cancel`,
                     )
                   }
@@ -294,7 +294,7 @@ export function FundraisingPage({
             safe={overview?.safes.find((s) => s.id === cover.id) ?? cover}
             onClose={() => setCover(null)}
             onMarkSent={async () => {
-              await mark(cover, "sent", new Date().toISOString());
+              await mark(cover, "sent", isoFromDay(todayDay()));
               setCover(null);
             }}
           />
