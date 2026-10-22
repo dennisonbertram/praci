@@ -30,7 +30,7 @@ export function GtmPage({
   const overview = useFinanceQuery(() => rpc.gtm.overview(), [botId]);
   const [params, setParams] = useSearchParams();
   const calendar = params.get("view") === "calendar";
-  const [page, setPage] = useState<BotPage | null>(null);
+  const [page, setPage] = useState<BotPage | null | undefined>(undefined);
   const hadContent = useRef(false);
   if (page?.content.trim()) hadContent.current = true;
   const [editing, setEditing] = useState(false);
@@ -213,11 +213,11 @@ export function GtmPage({
             ) : (
               <>
                 {botId ? (
-                  // Hidden only once the page loaded empty and was never written; stays visible while
+                  // Hidden once the page loaded missing or empty and was never written; stays visible while
                   // loading, on load errors, and while the user edits or clears an existing page.
                   <section
                     className={
-                      page && !page.content.trim() && !hadContent.current
+                      page !== undefined && !page?.content.trim() && !hadContent.current
                         ? "hidden"
                         : "rounded-xl border border-border p-4"
                     }

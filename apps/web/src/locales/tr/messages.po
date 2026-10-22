@@ -4884,8 +4884,8 @@ msgstr "Her saat"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
-msgstr "Her ay"
+msgid "Every month on the 1st"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"
@@ -6150,6 +6150,10 @@ msgstr "Etkinlik yükleniyor…"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx

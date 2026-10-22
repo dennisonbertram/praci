@@ -30,7 +30,7 @@ function cronFreqLabel(freq: CronFreq): string {
     case "Every week":
       return t`Every week`;
     case "Every month":
-      return t`Every month`;
+      return t`Every month on the 1st`;
     case "Interval":
       return t`Interval`;
     case "Advanced":

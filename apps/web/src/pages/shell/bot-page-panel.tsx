@@ -66,7 +66,8 @@ export function BotPagePanel({
   botId: string;
   /** The latest `page.updated` event for this bot. */
   remote: PageRemoteUpdate | null;
-  onPageChange?: (page: BotPage) => void;
+  /** `null` means the bot has no page yet. */
+  onPageChange?: (page: BotPage | null) => void;
 }) {
   const reportPage = useRef(onPageChange);
   reportPage.current = onPageChange;
@@ -169,7 +170,11 @@ export function BotPagePanel({
     void rpc.pages
       .get({ botId })
       .then((page) => {
-        if (!live || !page) return;
+        if (!live) return;
+        if (!page) {
+          reportPage.current?.(null);
+          return;
+        }
         setLoaded(page);
         show(page);
       })

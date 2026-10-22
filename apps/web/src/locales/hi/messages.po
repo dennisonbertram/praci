@@ -4884,8 +4884,8 @@ msgstr "हर घंटे"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
-msgstr "हर महीने"
+msgid "Every month on the 1st"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"
@@ -6150,6 +6150,10 @@ msgstr "गतिविधि लोड हो रही है…"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx

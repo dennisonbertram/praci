@@ -398,6 +398,14 @@ export function IntegrationsHome({
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
   const [replacing, setReplacing] = useState<Connection | null>(null);
+  /** The page of an app that just finished connecting; its card takes focus once it appears. */
+  const focusAfterConnect = useRef<string | null>(null);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (data.loaded) return setSlow(false);
+    const timer = setTimeout(() => setSlow(true), 2000);
+    return () => clearTimeout(timer);
+  }, [data.loaded]);
   const [custom, setCustom] = useState<{
     url: string;
     /** The first-party service this dialog connects; titles the dialog. */
@@ -541,6 +549,18 @@ export function IntegrationsHome({
     financeRef.current?.scrollIntoView?.({ block: "start" });
   }, [data.loaded]);
 
+  // After Done, focus the new card (the Connect button it came from is gone).
+  useEffect(() => {
+    const path = focusAfterConnect.current;
+    if (!path || connecting) return;
+    const link = document.querySelector<HTMLElement>(`a[href="${CSS.escape(path)}"]`);
+    if (!link) return;
+    focusAfterConnect.current = null;
+    // Wait a frame so the dialog's own focus restore has finished.
+    const frame = requestAnimationFrame(() => link.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [connecting, connectedApps]);
+
   function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
     if (entry.id === "devin") return setDevinDialog("connect");
     // Granola has its own page: sign-in and the API key are both connected there.
@@ -669,6 +689,11 @@ export function IntegrationsHome({
                 <Skeleton key={n} className="h-28 w-full rounded-xl" />
               ))}
             </div>
+          ) : null}
+          {!data.loaded && slow ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <Trans>Loading integrations…</Trans>
+            </p>
           ) : null}
           {data.error || data.catalogFailed ? (
             <p role="alert" className="mb-4 text-sm text-destructive">
@@ -969,17 +994,16 @@ export function IntegrationsHome({
             setConnecting(null);
             setReplacing(null);
           }}
-          onConnected={
-            replacing
-              ? async () => {
-                  // The new sign-in takes the old account's place, so its mail is not listed twice.
-                  await rpc.connections
-                    .revoke({ connectionId: replacing.id })
-                    .catch(() => undefined);
-                  await data.refresh();
-                }
-              : undefined
-          }
+          onConnected={async () => {
+            focusAfterConnect.current = appPath({
+              connectorId: connecting.connectorId,
+              slug: connecting.slug,
+            });
+            if (!replacing) return;
+            // The new sign-in takes the old account's place, so its mail is not listed twice.
+            await rpc.connections.revoke({ connectionId: replacing.id }).catch(() => undefined);
+            await data.refresh();
+          }}
         />
       ) : null}
       {custom ? (

@@ -177,3 +177,16 @@ it("keeps the page section visible after an existing page is cleared, hides a ne
   await act(async () => report({ content: "" }));
   expect(container.querySelector("section.hidden")).toBeNull();
 });
+
+it("hides the page section when the bot has no page yet", async () => {
+  type P = { onPageChange: (p: null) => void };
+  let report!: P["onPageChange"];
+  mocks.panel.mockImplementation((props: unknown) => {
+    report = (props as P).onPageChange;
+    return null;
+  });
+  await render();
+  expect(container.querySelector("section.hidden")).toBeNull();
+  await act(async () => report(null));
+  expect(container.querySelector("section.hidden")).not.toBeNull();
+});
