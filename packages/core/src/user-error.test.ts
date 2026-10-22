@@ -85,6 +85,9 @@ describe("isTechnicalErrorMessage", () => {
       "VALIDATION_ERROR",
       "Response body exceeds 262144 bytes",
       "JSON Parse error: Unexpected character: <",
+      "Internal Server Error",
+      "Internal server error.",
+      "Bad Gateway",
     ]) {
       expect(isTechnicalErrorMessage(message), message).toBe(true);
     }
