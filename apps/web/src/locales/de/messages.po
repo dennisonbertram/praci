@@ -705,6 +705,10 @@ msgstr ""
 msgid "* So far"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "+{hiddenRows} more"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
@@ -4808,6 +4812,10 @@ msgid "Enter a Client ID to sign in."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
 msgstr ""
 
@@ -7167,10 +7175,6 @@ msgstr ""
 msgid "No draft made, see Ask"
 msgstr ""
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr ""
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr ""
@@ -7453,6 +7457,10 @@ msgstr ""
 msgid "Not now"
 msgstr "Jetzt nicht"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not read"
+msgstr ""
+
 #: src/components/data-room/upload-toasts.ts
 msgid "Not retried: the space changed"
 msgstr ""
@@ -7504,6 +7512,10 @@ msgstr ""
 msgid "Not tagged yet."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged. Praci can't read your documents."
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
 msgstr ""
@@ -7535,10 +7547,6 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "Noch nichts gemerkt"
-
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr ""
 
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
@@ -7587,6 +7595,10 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Off"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -7894,10 +7906,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Out so far this month, not over"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -8931,6 +8939,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
 msgstr "API-Schlüssel ersetzen"
+
+#: src/components/data-room/Preview.tsx
+msgid "Replace file"
+msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
@@ -10268,6 +10280,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -11924,6 +11940,14 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Won't ask again for this kind of action."
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Won't be searchable"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Won't be searchable. Praci can't read this kind of file."
 msgstr ""
 
 #: src/lib/ticket-status.ts

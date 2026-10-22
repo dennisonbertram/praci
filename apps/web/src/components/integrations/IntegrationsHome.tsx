@@ -631,12 +631,11 @@ export function IntegrationsHome({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
-        <div>
-          <PageHeader title={<Trans>Integrations</Trans>} className="mb-1" />
-        </div>
+      {/* The title stays put and the cards scroll under its line. */}
+      <div className={`${PAGE_GUTTER_X} border-b border-border pt-2 md:pt-5`}>
+        <PageHeader title={<Trans>Integrations</Trans>} className="mb-2" />
       </div>
-      <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
+      <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pt-4 pb-6`}>
         <div>
           {/* Rendered before the data loads, so only the grid below waits. */}
           {notSetUp ? null : (

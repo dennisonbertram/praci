@@ -309,13 +309,11 @@ export function IMessageSection({
       id: "photon" as const,
       name: t`iMessage`,
       sub: t`Send and receive iMessages`,
-      letter: "P",
     },
     {
       id: "bluebubbles" as const,
       name: t`iMessage on your Mac`,
       sub: t`Through BlueBubbles on your Mac`,
-      letter: "M",
     },
   ].filter((tile) => tile.name.toLowerCase().includes(query.trim().toLowerCase()));
   const shown = state?.canConfigure ? tiles.length : 0;
@@ -341,27 +339,35 @@ export function IMessageSection({
           const provider = providerOf(tile.id);
           if (!provider) return null;
           return (
-            <IntegrationTile key={tile.id}>
-              <CardHead name={tile.name} logo={null} sub={tile.sub} letter={tile.letter} />
-              <div className="mt-auto flex items-center gap-2">
-                {provider.active ? (
-                  <span className="text-xs font-semibold text-success">
-                    <Trans>Connected</Trans>
-                  </span>
-                ) : provider.configured ? (
-                  <span className="text-xs font-semibold text-warning">
-                    <Trans>Needs a server restart</Trans>
-                  </span>
-                ) : null}
-                {provider.active && onOpenMessaging ? (
-                  <Button size="sm" variant="ghost" onClick={onOpenMessaging}>
-                    <Trans>Link a chat app</Trans>
-                  </Button>
-                ) : null}
+            // On a phone Connect sits beside the name, as on the other tiles; status goes below.
+            <IntegrationTile
+              key={tile.id}
+              className="max-sm:flex-row max-sm:flex-wrap max-sm:items-center max-sm:p-3"
+            >
+              <div className="min-w-0 sm:contents max-sm:flex-1">
+                <CardHead name={tile.name} logo={null} sub={tile.sub} />
+              </div>
+              <div className="mt-auto flex items-center gap-2 max-sm:contents">
+                <div className="flex items-center gap-2 max-sm:order-3 max-sm:basis-full empty:hidden">
+                  {provider.active ? (
+                    <span className="text-xs font-semibold text-success">
+                      <Trans>Connected</Trans>
+                    </span>
+                  ) : provider.configured ? (
+                    <span className="text-xs font-semibold text-warning">
+                      <Trans>Needs a server restart</Trans>
+                    </span>
+                  ) : null}
+                  {provider.active && onOpenMessaging ? (
+                    <Button size="sm" variant="ghost" onClick={onOpenMessaging}>
+                      <Trans>Link a chat app</Trans>
+                    </Button>
+                  ) : null}
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="ms-auto"
+                  className="ms-auto max-sm:order-2 max-sm:shrink-0"
                   aria-label={`${provider.configured ? t`Edit` : t`Connect`} ${tile.name}`}
                   onClick={() => setEditing(tile.id)}
                 >

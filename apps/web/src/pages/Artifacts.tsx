@@ -254,6 +254,8 @@ export function ArtifactsPage({
   function setMode(mode: ViewMode) {
     setViewMode(mode);
     writeViewMode(mode);
+    // The split view always lists rows; picking a view leaves it for the full list.
+    if (artifactId) navigate("/app/artifacts");
   }
 
   async function confirmDelete() {
@@ -310,7 +312,7 @@ export function ArtifactsPage({
           spaceName={spaceName}
           actions={
             <>
-              {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}
+              {!nothingYet ? viewToggle("hidden md:flex") : null}
               {onAskAgent ? (
                 <AskBotButton botName="Chief" onClick={onAskAgent} />
               ) : (
@@ -543,7 +545,7 @@ function ArtifactTable({
   const navigate = useNavigate();
   const showBot = botsById.size > 0;
   return (
-    <div className={`${PAGE_GUTTER_X} max-w-[1100px]`}>
+    <div className={PAGE_GUTTER_X}>
       <Table>
         <colgroup>
           <col />
@@ -826,46 +828,41 @@ function ArtifactCard({
       <Link
         to={`/app/artifacts/${artifact.id}`}
         // h-full: cards in one grid row share a height, so the hover Delete stays inside each.
-        className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40 max-md:flex-row max-md:items-center max-md:gap-3 max-md:p-3"
+        className="flex h-full items-start gap-3 rounded-2xl border border-border bg-card p-3 text-foreground hover:bg-accent/40 max-md:items-center"
       >
-        <div className="flex items-center justify-between">
-          <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-accent-foreground">
-            <ArtifactMimeIcon mimeType={artifact.mimeType} />
-          </span>
-          <div className="flex items-center gap-1.5 max-md:hidden">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-accent text-accent-foreground">
+          <ArtifactMimeIcon mimeType={artifact.mimeType} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[15px] font-semibold">{title}</span>
             {artifact.versionCount > 1 ? (
-              <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
                 {`v${artifact.version}`}
               </span>
             ) : null}
-            <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
-              {kindLabel(artifact.mimeType)}
-            </span>
           </div>
-        </div>
-        <div className="min-w-0 max-md:flex-1">
-          <div className="truncate text-[15px] font-semibold">{displayName(artifact.name)}</div>
           {artifact.description ? (
-            <div className="mt-1 line-clamp-2 max-md:hidden text-[13px] leading-relaxed text-muted-foreground">
+            <div className="line-clamp-1 text-[13px] text-muted-foreground max-md:hidden">
               {artifact.description}
             </div>
           ) : null}
-        </div>
-        {/* The time ends at the type label's edge. Delete takes its place on hover; where it is always shown (touch, narrow) pe-8 keeps them apart. */}
-        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground max-md:mt-0 max-md:pe-8 pointer-coarse:pe-8">
-          {bot ? (
-            <span className="contents max-md:hidden">
-              <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />
-              <span className="min-w-0 flex-1 truncate">{bot.name}</span>
-            </span>
-          ) : (
-            <span className="flex-1 max-md:hidden" />
-          )}
-          {showTime ? (
-            <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
-              {formatRelativeTime(artifact.createdAt)}
-            </span>
-          ) : null}
+          {/* Delete takes the time's place on hover; where it is always shown (touch, narrow) the same pe-8 keeps them apart. */}
+          <div className="mt-1 flex items-center gap-2 pe-8 text-[12px] text-muted-foreground">
+            {bot ? (
+              <span className="contents max-md:hidden">
+                <BotAvatar color={bot.color} identity={bot.id} size={16} status={bot.status} />
+                <span className="min-w-0 flex-1 truncate">{bot.name}</span>
+              </span>
+            ) : (
+              <span className="flex-1 max-md:hidden" />
+            )}
+            {showTime ? (
+              <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
+                {formatRelativeTime(artifact.createdAt)}
+              </span>
+            ) : null}
+          </div>
         </div>
       </Link>
       <button
@@ -877,7 +874,7 @@ function ArtifactCard({
           event.stopPropagation();
           onRequestDelete(artifact);
         }}
-        className="absolute bottom-3 end-3 grid h-7 w-7 place-items-center rounded-lg bg-card max-md:bottom-auto max-md:top-1/2 max-md:-translate-y-1/2 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
+        className="absolute bottom-2 end-2 grid h-7 w-7 place-items-center rounded-lg bg-card max-md:bottom-auto max-md:top-1/2 max-md:-translate-y-1/2 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
       >
         <Trash2 size={14} strokeWidth={1.9} />
       </button>

@@ -30,36 +30,32 @@ export function GtmPlan({
   items,
   overview,
   onChange,
-  empty,
 }: {
   title: string;
   items: ScratchpadItem[];
   overview: GtmOverview;
   onChange: () => void;
-  empty?: string;
 }) {
+  // An empty group is left out: the page header already says "Up to date".
+  if (!items.length) return null;
   return (
     <section className="space-y-3">
       <h2 className="flex items-center gap-2 text-sm font-semibold">
         {title}
         <span className="text-xs font-normal text-muted-foreground">{items.length}</span>
       </h2>
-      {items.length ? (
-        items.map((item) =>
-          item.category === "outbound_email" && item.status !== "done" ? (
-            <EmailItemCard
-              key={item.id}
-              item={item}
-              accounts={overview.gmailAccounts}
-              onChange={onChange}
-            />
-          ) : (
-            <GtmItem key={item.id} item={item} overview={overview} onChange={onChange} />
-          ),
-        )
-      ) : empty ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : null}
+      {items.map((item) =>
+        item.category === "outbound_email" && item.status !== "done" ? (
+          <EmailItemCard
+            key={item.id}
+            item={item}
+            accounts={overview.gmailAccounts}
+            onChange={onChange}
+          />
+        ) : (
+          <GtmItem key={item.id} item={item} overview={overview} onChange={onChange} />
+        ),
+      )}
     </section>
   );
 }

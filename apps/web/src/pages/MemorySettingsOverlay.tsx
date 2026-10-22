@@ -175,13 +175,11 @@ export function MemorySettingsOverlay({
             <XIcon />
           </DialogClose>
         </div>
-      ) : (
-        <p className="px-6 text-[13.5px] text-muted-foreground/70 sm:px-8">
-          <Trans>What your bots remember between chats, and where they keep it.</Trans>
-        </p>
-      )}
+      ) : null}
 
-      <div className="rk-scroll min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+      <div
+        className={`rk-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 sm:px-8 ${embedded ? "pt-0" : "pt-6"}`}
+      >
         {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
 
         {config === undefined ? (

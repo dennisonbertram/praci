@@ -705,6 +705,10 @@ msgstr "* Month to date"
 msgid "* So far"
 msgstr "* So far"
 
+#: src/pages/Shell.tsx
+msgid "+{hiddenRows} more"
+msgstr "+{hiddenRows} more"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
@@ -4808,6 +4812,10 @@ msgid "Enter a Client ID to sign in."
 msgstr "Enter a Client ID to sign in."
 
 #: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name"
+msgstr "Enter a folder name"
+
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
 msgstr "Enter a folder name without slashes"
 
@@ -7167,10 +7175,6 @@ msgstr "No documents here name a party"
 msgid "No draft made, see Ask"
 msgstr "No draft made, see Ask"
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr "No drafts"
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr "no email"
@@ -7453,6 +7457,10 @@ msgstr "Not in runway"
 msgid "Not now"
 msgstr "Not now"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not read"
+msgstr "Not read"
+
 #: src/components/data-room/upload-toasts.ts
 msgid "Not retried: the space changed"
 msgstr "Not retried: the space changed"
@@ -7504,6 +7512,10 @@ msgstr "Not tagged"
 msgid "Not tagged yet."
 msgstr "Not tagged yet."
 
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged. Praci can't read your documents."
+msgstr "Not tagged. Praci can't read your documents."
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
 msgstr "Not waiting for approval"
@@ -7535,10 +7547,6 @@ msgstr "Nothing needs you right now."
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
-
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr "Nothing running"
 
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
@@ -7588,6 +7596,10 @@ msgstr "Obligation"
 #: src/pages/Investors.tsx
 msgid "Off"
 msgstr "Off"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
+msgstr "Off in Settings"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
@@ -7895,10 +7907,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/Finance.tsx
-msgid "Out so far this month, not over"
-msgstr "Out so far this month, not over"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"
@@ -8931,6 +8939,10 @@ msgstr "Replace"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
 msgstr "Replace API key"
+
+#: src/components/data-room/Preview.tsx
+msgid "Replace file"
+msgstr "Replace file"
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
@@ -10269,6 +10281,10 @@ msgstr "Spend, changes, and new or upcoming charges."
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
+
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr "Spent so far this month"
 
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
@@ -11925,6 +11941,14 @@ msgstr "Within 3 days"
 #: src/components/AskCard.tsx
 msgid "Won't ask again for this kind of action."
 msgstr "Won't ask again for this kind of action."
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Won't be searchable"
+msgstr "Won't be searchable"
+
+#: src/components/data-room/Preview.tsx
+msgid "Won't be searchable. Praci can't read this kind of file."
+msgstr "Won't be searchable. Praci can't read this kind of file."
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

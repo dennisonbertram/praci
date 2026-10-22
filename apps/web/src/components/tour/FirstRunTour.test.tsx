@@ -183,6 +183,8 @@ it("on a phone the card stays at the foot at every stop and the drawer is padded
     el.scrollIntoView = vi.fn();
   };
   const drawer = document.createElement("aside");
+  drawer.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 800, left: 0, right: 316, width: 316, height: 800 }) as DOMRect;
   document.body.append(drawer);
   drawer.append(...document.querySelectorAll("[data-tour]"));
   at("sidebar-inbox", 20);
@@ -190,6 +192,9 @@ it("on a phone the card stays at the foot at every stop and the drawer is padded
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
+  // The card stays inside the 316 px drawer, not the full screen width.
+  expect(card().style.left).toBe("14px");
+  expect(card().style.width).toBe("288px");
   // A target at the top of the screen and footer rows low down: the card never moves.
   for (let i = 0; i < 2; i++) {
     expect(card().style.bottom).toBe("16px");

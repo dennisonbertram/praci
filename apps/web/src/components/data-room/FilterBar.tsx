@@ -262,7 +262,7 @@ export function FilterBar({
   hasDates: boolean;
   /** Stats count by the filters only: search and sort order a list, so they are left out. */
   statsView?: boolean;
-  /** The view toggles: on a phone they wait behind Filters (in Stats, in the folder row). */
+  /** The view toggles: on a phone they sit in the folder row. */
   trailing?: ReactNode;
 }) {
   const labels = sortLabels();
@@ -305,7 +305,14 @@ export function FilterBar({
     <div
       className={`flex flex-wrap items-start gap-1.5 pb-1.5 @min-[640px]/bd:pb-2.5 ${PAGE_GUTTER_X}`}
     >
-      {statsView ? null : (
+      {statsView ? (
+        // Stats count by the filters only. This keeps the search box's room, so the Filters button
+        // and the pills stay where they are in the list and grid.
+        <div
+          aria-hidden="true"
+          className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
+        />
+      ) : (
         <SearchField
           className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
           value={query}
@@ -436,15 +443,14 @@ export function FilterBar({
           />
         ) : null}
         {/* On a phone Sort ends the filter row; alone it took a row of its own above the chips. */}
-        {pillsOpen ? (
+        {pillsOpen && !statsView ? (
           <div className="ms-auto flex items-center gap-0.5 @min-[640px]/bd:hidden">
-            {statsView ? null : sortControl}
-            {trailing}
+            {sortControl}
           </div>
         ) : null}
       </div>
-      {/* On a phone the view toggles wait behind Filters; in Stats they stay, so Stats can be left. */}
-      {trailing && statsView && !pillsOpen ? (
+      {/* On a phone the view toggles stay on the folder row in every view, not behind Filters. */}
+      {trailing ? (
         <div className="order-3 ms-auto flex h-8 items-center @min-[640px]/bd:hidden">
           {trailing}
         </div>

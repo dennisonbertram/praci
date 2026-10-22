@@ -420,7 +420,7 @@ export function InboxRow({
         {marks.length + actions.length ? (
           <>
             <div
-              className={`absolute end-22 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-muted pointer-coarse:hidden @max-md:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
+              className={`absolute end-22 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-linear-to-l from-muted from-75% to-transparent ps-6 pointer-coarse:hidden @max-md:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
               {actions
                 .filter((action) => !("menuOnly" in action))

@@ -616,14 +616,14 @@ it("gives a failed file one red reason and a visible Try again, with no pill, no
   const rows = asRows({
     ...item("scan", null),
     status: "failed",
-    error: "This file isn't a readable PDF.",
+    error: "Reading took too long.",
   });
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
   expect(buttons).toContain("Try again");
   expect(buttons).not.toContain("Delete");
   const reason = container.querySelector('[data-testid="data-room-error"]');
-  expect(reason?.textContent).toBe("This file isn't a readable PDF.");
+  expect(reason?.textContent).toBe("Reading took too long.");
   expect(reason?.className).not.toContain("hidden");
   expect(container.textContent).not.toContain("Unreadable");
   expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
@@ -731,12 +731,12 @@ it("closes the side preview on Escape from the shown row only", () => {
   expect(onClosePreview).toHaveBeenCalledTimes(1);
 });
 
-it("shows no dash in the Type cell and a dash in the Parties cell of a failed file", () => {
+it("says Not read in the Type cell and shows a dash in the Parties cell of a failed file", () => {
   act(() =>
     root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),
   );
   const row = container.querySelector("[data-row]");
-  expect(row?.children[1]?.textContent).toBe("");
+  expect(row?.children[1]?.textContent).toBe("Not read");
   expect(row?.children[3]?.textContent).toBe("—");
 });
 
@@ -747,4 +747,31 @@ it("makes the row checkbox a 44 px control on touch screens", () => {
   const box = container.querySelector('[aria-label^="Select"]')?.className ?? "";
   expect(box).toContain("pointer-coarse:size-11");
   expect(box).not.toContain("pointer-coarse:size-4.5");
+});
+
+it("keeps the preview open when Enter or Space is pressed on the shown row, and opens another row", () => {
+  const onToggle = vi.fn();
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "a", onToggle }} />));
+  const [first, second] = Array.from(container.querySelectorAll<HTMLElement>("[data-row]"));
+  for (const key of ["Enter", " "])
+    act(() => {
+      first?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    });
+  expect(onToggle).not.toHaveBeenCalled();
+  act(() => {
+    second?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  expect(onToggle).toHaveBeenCalledTimes(1);
+});
+
+it("reads 'Not read' in the Type cell of a failed file and offers no retry for an unreadable one", () => {
+  const failed = {
+    ...item("nda", null),
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  } as DataRoomApiItem;
+  act(() => root.render(<ListView rows={[{ item: failed, snippets: [] }]} o={o()} />));
+  expect(container.textContent).toContain("Not read");
+  expect(container.textContent).not.toContain("Try again");
 });

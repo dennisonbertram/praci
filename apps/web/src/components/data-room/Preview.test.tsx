@@ -22,9 +22,18 @@ vi.mock("../../lib/data-room", async (original) => ({
 }));
 
 const shares = vi.hoisted(() => vi.fn());
+const consent = vi.hoisted(() => vi.fn());
+const consentGrant = vi.hoisted(() => vi.fn());
+const itemDelete = vi.hoisted(() => vi.fn());
+const uploadFiles = vi.hoisted(() => vi.fn());
+vi.mock("./upload-toasts", async (original) => ({
+  ...(await original<typeof import("./upload-toasts")>()),
+  uploadFilesToDataRoom: uploadFiles,
+}));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     investors: { shares },
+    dataRoom: { consent, consentGrant, itemDelete },
     files: { spreadsheetPreview: () => Promise.reject(new Error("offline")) },
   },
 }));
@@ -65,6 +74,7 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   imageUrl.mockResolvedValue("blob:receipt");
   shares.mockResolvedValue([]);
+  consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -416,4 +426,105 @@ it("makes the From email link a 44 px target on touch screens", async () => {
   });
   const link = [...container.querySelectorAll("a")].find((a) => a.textContent === "From email");
   expect(link?.className).toContain("pointer-coarse:min-h-11");
+});
+
+it("offers Replace file, not Try again, in the menu and pane for an unreadable file", async () => {
+  const unreadable = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  };
+  await act(async () => {
+    root.render(
+      <Preview item={unreadable} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).toContain("Replace file");
+  expect(labels).not.toContain("Try again");
+});
+
+it("says a video won't be searchable instead of 'Not tagged yet'", async () => {
+  const video = { ...receipt, name: "demo.mp4", mimeType: "video/mp4", previewText: null };
+  await act(async () => {
+    root.render(
+      <Preview item={video} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  expect(container.textContent).toContain("Won't be searchable");
+  expect(container.textContent).not.toContain("Not tagged yet");
+});
+
+const untagged = { ...receipt, name: "notes.pdf", mimeType: "application/pdf" };
+const needsConsent = {
+  allowed: false,
+  recipients: [{ name: "OpenRouter", detail: "model" }],
+  key: "k1",
+  version: "v1",
+  spaceId: "space-a",
+};
+const clickButton = (label: string) =>
+  act(async () => {
+    [...container.querySelectorAll("button")]
+      .find((b) => b.textContent === label)
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+const renderUntagged = () =>
+  act(async () => {
+    root.render(
+      <Preview item={untagged} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+
+it("allows reading through the consent card with the reviewed key, version and space", async () => {
+  consent.mockResolvedValue(needsConsent);
+  consentGrant.mockResolvedValue({ ...needsConsent, allowed: true });
+  await renderUntagged();
+  expect(container.textContent).toContain("sent to the AI model");
+  await clickButton("Allow");
+  expect(consentGrant).toHaveBeenCalledWith({
+    key: "k1",
+    version: "v1",
+    spaceId: "space-a",
+    documentsOnly: true,
+  });
+});
+
+it("shows the error and reloads consent when the grant is rejected", async () => {
+  consent.mockResolvedValue(needsConsent);
+  consentGrant.mockRejectedValue(new Error("Providers changed"));
+  await renderUntagged();
+  consent.mockClear();
+  consent.mockResolvedValue({ ...needsConsent, key: "k2" });
+  await clickButton("Allow");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Providers changed");
+  expect(consent).toHaveBeenCalledTimes(1);
+});
+
+it("Replace file deletes the failed item once the new file is stored", async () => {
+  itemDelete.mockResolvedValue(undefined);
+  const unreadable = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  };
+  await act(async () => {
+    root.render(
+      <Preview item={unreadable} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+  const file = new File(["x"], "new.pdf");
+  Object.defineProperty(input, "files", { value: [file] });
+  await act(async () => {
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  const onUploaded = uploadFiles.mock.calls[0]?.[2] as (id: string) => void;
+  expect(itemDelete).not.toHaveBeenCalled();
+  onUploaded("r1"); // identical bytes resolve to the same item: keep it
+  expect(itemDelete).not.toHaveBeenCalled();
+  onUploaded("new-id");
+  expect(itemDelete).toHaveBeenCalledWith({ id: "r1" });
 });
