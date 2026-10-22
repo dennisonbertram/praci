@@ -34,3 +34,11 @@ export const WithBotsSidebar: Story = {
     children: <div className="p-4 text-sm">Leaves room for the bots sidebar.</div>,
   },
 };
+
+/** Below 1280 px the panel lies over the chat, so a scrim dims it; click the scrim or press Escape to close. */
+export const WithScrim: Story = {
+  args: {
+    onClose: () => undefined,
+    children: <div className="p-4 text-sm">Narrow the window below 1280 px to see the scrim.</div>,
+  },
+};

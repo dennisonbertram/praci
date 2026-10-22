@@ -4221,6 +4221,7 @@ export function createRouter(deps: RouterDeps) {
               content: input.content,
               baseRevision: input.baseRevision,
               updatedBy: "user",
+              gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
             },
           );
           if (result.ok) return result;

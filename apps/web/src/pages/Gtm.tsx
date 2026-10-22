@@ -1,10 +1,12 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { BotPage } from "@rakazo/contracts";
+import { splitPage } from "@rakazo/core";
 import { Button, Input, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useFinanceQuery } from "../components/finance/ui";
+import { GtmBlockContext } from "../components/gtm/GtmBlock";
 import { GtmCalendar } from "../components/gtm/GtmCalendar";
 import { PageHeader } from "../components/PageHeader";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -12,7 +14,7 @@ import { rpc } from "../lib/rpc";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { GtmChannels } from "./gtm/GtmChannels";
-import { GtmPlan } from "./gtm/GtmPlan";
+import { GtmPlan, isUncertain } from "./gtm/GtmPlan";
 import type { PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotPagePanel } from "./shell/bot-page-panel";
 
@@ -30,7 +32,7 @@ export function GtmPage({
   const overview = useFinanceQuery(() => rpc.gtm.overview(), [botId]);
   const [params, setParams] = useSearchParams();
   const calendar = params.get("view") === "calendar";
-  const [page, setPage] = useState<BotPage | null>(null);
+  const [page, setPage] = useState<BotPage | null>();
   const hadContent = useRef(false);
   if (page?.content.trim()) hadContent.current = true;
   const [editing, setEditing] = useState(false);
@@ -60,6 +62,17 @@ export function GtmPage({
     window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
   };
   const data = overview.data;
+  const agentLayout = splitPage(page?.content ?? "").some((segment) => segment.kind === "gtm");
+  const needsYou = data
+    ? [
+        ...new Map(
+          [
+            ...data.groups.needs_you,
+            ...(agentLayout ? Object.values(data.groups).flat().filter(isUncertain) : []),
+          ].map((item) => [item.id, item]),
+        ).values(),
+      ]
+    : [];
   const saveGoal = async () => {
     if (!botId || lock.current) return;
     lock.current = true;
@@ -88,9 +101,9 @@ export function GtmPage({
           meta={
             data ? (
               <>
-                <span className={data.counts.needs_you ? "text-warning" : "text-muted-foreground"}>
-                  {data.counts.needs_you
-                    ? plural(data.counts.needs_you, { one: "# needs you", other: "# need you" })
+                <span className={needsYou.length ? "text-warning" : "text-muted-foreground"}>
+                  {needsYou.length
+                    ? plural(needsYou.length, { one: "# needs you", other: "# need you" })
                     : t`Up to date`}
                 </span>
                 {minutes !== null ? (
@@ -190,11 +203,15 @@ export function GtmPage({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            {!data.zernioLinked ? (
-              <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-4">
+            {!data.zernioLinked ||
+            (agentLayout && data.postingCapability === "api_key_required") ? (
+              <section
+                data-testid="gtm-connection"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-4"
+              >
                 <div>
                   <h2 className="text-sm font-medium">
-                    <Trans>Connect Zernio</Trans>
+                    {data.zernioLinked ? t`API key required` : t`Connect Zernio`}
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
                     <Trans>Needed to post approved text</Trans>
@@ -202,7 +219,11 @@ export function GtmPage({
                 </div>
                 <Link
                   className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-                  to="/app/integrations?connect=zernio&returnTo=/app/gtm"
+                  to={
+                    data.zernioLinked
+                      ? "/app/integrations?q=Zernio"
+                      : "/app/integrations?connect=zernio&returnTo=/app/gtm"
+                  }
                 >
                   <Trans>Connect Zernio</Trans>
                 </Link>
@@ -212,62 +233,75 @@ export function GtmPage({
               <GtmCalendar overview={data} />
             ) : (
               <>
-                {botId ? (
-                  // Hidden only once the page loaded empty and was never written; stays visible while
-                  // loading, on load errors, and while the user edits or clears an existing page.
-                  <section
-                    className={
-                      page && !page.content.trim() && !hadContent.current
-                        ? "hidden"
-                        : "rounded-xl border border-border p-4"
-                    }
-                  >
-                    <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                      <span>
-                        <Trans>Written by GTM agent</Trans>
-                      </span>
-                      {page?.updatedAt ? (
-                        <span>
-                          <Trans>Updated {formatRelativeTime(page.updatedAt)}</Trans>
-                        </span>
-                      ) : null}
-                    </div>
-                    <BotPagePanel
-                      key={botId}
-                      botId={botId}
-                      remote={remote}
-                      onPageChange={setPage}
-                    />
-                  </section>
+                {agentLayout ? (
+                  <GtmPlan
+                    title={t`Needs you`}
+                    items={needsYou}
+                    overview={data}
+                    onChange={changed}
+                    empty={t`Up to date`}
+                  />
                 ) : null}
-                <GtmChannels overview={data} />
-                <GtmPlan
-                  title={t`Needs you`}
-                  items={data.groups.needs_you}
-                  overview={data}
-                  onChange={changed}
-                  empty={t`Up to date`}
-                />
-                <GtmPlan
-                  title={t`In progress`}
-                  items={data.groups.in_progress}
-                  overview={data}
-                  onChange={changed}
-                  empty={t`Nothing running`}
-                />
-                <GtmPlan
-                  title={t`Drafts for you`}
-                  items={data.groups.drafts}
-                  overview={data}
-                  onChange={changed}
-                  empty={t`No drafts`}
-                />
-                <GtmPlan
-                  title={t`Done`}
-                  items={data.groups.done}
-                  overview={data}
-                  onChange={changed}
-                />
+                {botId ? (
+                  <GtmBlockContext.Provider value={{ overview: data, onChange: changed }}>
+                    <section
+                      className={
+                        page !== undefined && !page?.content.trim() && !hadContent.current
+                          ? "hidden"
+                          : "rounded-xl border border-border p-4"
+                      }
+                    >
+                      <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                        <span>
+                          <Trans>Written by GTM agent</Trans>
+                        </span>
+                        {page?.updatedAt ? (
+                          <span>
+                            <Trans>Updated {formatRelativeTime(page.updatedAt)}</Trans>
+                          </span>
+                        ) : null}
+                      </div>
+                      <BotPagePanel
+                        key={botId}
+                        botId={botId}
+                        remote={remote}
+                        onPageChange={setPage}
+                      />
+                    </section>
+                  </GtmBlockContext.Provider>
+                ) : null}
+                {!agentLayout ? (
+                  <>
+                    <GtmChannels overview={data} />
+                    <GtmPlan
+                      title={t`Needs you`}
+                      items={data.groups.needs_you}
+                      overview={data}
+                      onChange={changed}
+                      empty={t`Up to date`}
+                    />
+                    <GtmPlan
+                      title={t`In progress`}
+                      items={data.groups.in_progress}
+                      overview={data}
+                      onChange={changed}
+                      empty={t`Nothing running`}
+                    />
+                    <GtmPlan
+                      title={t`Drafts for you`}
+                      items={data.groups.drafts}
+                      overview={data}
+                      onChange={changed}
+                      empty={t`No drafts`}
+                    />
+                    <GtmPlan
+                      title={t`Done`}
+                      items={data.groups.done}
+                      overview={data}
+                      onChange={changed}
+                    />
+                  </>
+                ) : null}
               </>
             )}
           </>

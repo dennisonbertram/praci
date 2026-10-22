@@ -20,4 +20,17 @@ describe("pageBlocks", () => {
     expect(blocks[1]).toMatchObject({ name: "a", svg: "<svg a/>" });
     expect(blocks[3]).toMatchObject({ name: "b", svg: "<svg b/>" });
   });
+
+  it("skips valid and invalid GTM blocks without shifting chart SVGs", () => {
+    const validGtm = '```gtm-plan\n{"group":"done"}\n```';
+    const invalidGtm = "```gtm-unknown\n{}\n```";
+    const blocks = pageBlocks([chart("a"), validGtm, invalidGtm, chart("b")].join("\n"), [
+      "<svg a/>",
+      "<svg b/>",
+    ]);
+    expect(blocks).toEqual([
+      { kind: "chart", name: "a", svg: "<svg a/>" },
+      { kind: "chart", name: "b", svg: "<svg b/>" },
+    ]);
+  });
 });
