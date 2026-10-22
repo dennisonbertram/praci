@@ -4,7 +4,12 @@ import type {
   CompanyReview,
   CompanyReviewCandidate,
 } from "@rakazo/contracts";
-import { companyFactIsVisible } from "@rakazo/contracts";
+import {
+  CompanyEdgeEditInputSchema,
+  CompanyEntityEditInputSchema,
+  CompanyEventEditInputSchema,
+  companyFactIsVisible,
+} from "@rakazo/contracts";
 import { companyDate, companyFactTitle } from "@rakazo/core";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
@@ -101,24 +106,43 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
   const hidden = useHideAmounts();
   const { busy, run } = useDecision();
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(companyFactTitle(fact));
+  const originalTitle =
+    fact.kind === "entity"
+      ? fact.record.displayName
+      : fact.kind === "event"
+        ? fact.record.title
+        : (fact.record.role ?? "");
+  const [title, setTitle] = useState(originalTitle);
   const record = fact.record;
+  const normalizedTitle = title.trim();
+  const unchanged = normalizedTitle === originalTitle.trim();
+  const editInput =
+    fact.kind === "entity"
+      ? CompanyEntityEditInputSchema.safeParse({
+          entityId: record.id,
+          kind: fact.record.kind,
+          displayName: normalizedTitle,
+        })
+      : fact.kind === "event"
+        ? CompanyEventEditInputSchema.safeParse({
+            eventId: record.id,
+            title: normalizedTitle,
+          })
+        : CompanyEdgeEditInputSchema.safeParse({
+            edgeId: record.id,
+            role: normalizedTitle || null,
+          });
+  const validEdit = editInput.success && !unchanged;
   const map = useCompanyQuery<CompanyPageData>("company/page");
   const relationships = (map.data?.edges ?? []).filter(
     (edge) => companyFactIsVisible(edge) && (edge.fromId === record.id || edge.toId === record.id),
   );
   const ref = { kind: fact.kind, id: record.id };
   function save() {
-    if (!title.trim()) return;
-    if (fact.kind === "entity")
-      void run("company/editEntity", {
-        entityId: record.id,
-        kind: fact.record.kind,
-        displayName: title.trim(),
-      });
-    else if (fact.kind === "event")
-      void run("company/editEvent", { eventId: record.id, title: title.trim() });
-    else void run("company/editEdge", { edgeId: record.id, role: title.trim() });
+    if (!validEdit || !editInput.success) return;
+    if (fact.kind === "entity") void run("company/editEntity", editInput.data);
+    else if (fact.kind === "event") void run("company/editEvent", editInput.data);
+    else void run("company/editEdge", editInput.data);
   }
   return (
     <>
@@ -169,11 +193,11 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
           {editing && !hidden ? (
             <View style={{ gap: 12 }}>
               <TextInput
-                accessibilityLabel={t("Name or title")}
+                accessibilityLabel={fact.kind === "edge" ? t("Role") : t("Name or title")}
                 value={title}
                 onChangeText={setTitle}
                 editable={!busy}
-                maxLength={240}
+                maxLength={200}
                 style={{
                   color: native.label,
                   backgroundColor: native.groupedCell,
@@ -185,7 +209,7 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
                 label={t("Save")}
                 onPress={save}
                 busy={busy}
-                disabled={!title.trim()}
+                disabled={!validEdit}
               />
             </View>
           ) : null}
