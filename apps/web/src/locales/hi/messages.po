@@ -1233,6 +1233,10 @@ msgstr ""
 msgid "Amounts"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Amounts hidden · Show"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "इस प्रोवाइडर के लिए API कुंजी संग्रहीत है, सब्सक्रिप्शन साइन-इन नहीं।"

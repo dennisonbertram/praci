@@ -138,7 +138,7 @@ it("on a phone the card sits on the half of the screen away from its target", as
   expect(card().style.top).toBe("16px");
 });
 
-it("on desktop the card stays inside the sidebar column, on the half away from its target", async () => {
+it("on desktop the card sits beside the sidebar, level with its target", async () => {
   const aside = document.createElement("aside");
   aside.getBoundingClientRect = () =>
     ({
@@ -156,9 +156,10 @@ it("on desktop the card stays inside the sidebar column, on the half away from i
     ({ top: 100, bottom: 140, left: 10, right: 300, width: 290, height: 40 }) as DOMRect;
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  expect(card.style.bottom).toBe("16px");
-  expect(card.style.left).toBe("8px");
-  expect(card.style.width).toBe("300px");
+  // Target centre y=120, clamped to at least 96; the card starts 8px right of the sidebar.
+  expect(card.style.top).toBe("120px");
+  expect(card.style.left).toBe("324px");
+  expect(card.style.width).toBe("288px");
 });
 
 it("does not tell anyone to connect Gmail, which may already be connected", async () => {
