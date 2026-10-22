@@ -45,6 +45,8 @@ export type RowInteraction = {
   /** An arrow key moved to this row: show it, as a click would, but never close the preview. */
   onSelect: (item: DataRoomApiItem) => void;
   onToggle: (item: DataRoomApiItem) => void;
+  /** Escape on the shown row closes the side preview (focus stays on the row after Enter). */
+  onClosePreview?: () => void;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
   folderPath: (id: string | null) => string;
   /** The folder the page shows; rows elsewhere (All items) name their folder. */
@@ -119,6 +121,8 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         moveFocus(event);
+      } else if (event.key === "Escape" && o.onClosePreview && o.shownId === item.id) {
+        o.onClosePreview();
       } else if (event.key === "x" && o.onCheck) {
         // The keyboard route to a tick, as in the inbox: the checkbox itself is not a Tab stop.
         o.onCheck(item);

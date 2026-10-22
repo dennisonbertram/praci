@@ -1580,6 +1580,10 @@ msgid "Attachments"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+msgid "Attachments are not kept."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgstr ""
 

@@ -17,6 +17,9 @@ type AuthMode = "in" | "up" | "forgot";
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-base md:text-base";
 export const submitClass = "mt-3 h-12 w-full rounded-xl text-base";
 
+// The submit button is disabled while a request runs, which drops focus; an error puts it back on the email field.
+const focusEmail = () => document.getElementById("email")?.focus();
+
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -119,6 +122,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           : await authClient.signIn.email({ email: trimmedEmail, password });
       if (result.error) {
         setError(authErrorText(result.error, t`Could not continue`));
+        focusEmail();
         return;
       }
       if (mode === "up" && signupRequiresEmailVerification(result.data)) {
@@ -129,6 +133,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       navigate(mode === "up" ? "/onboarding" : signInNext(searchParams.get("next")));
     } catch {
       setError(t`Could not reach the server`);
+      focusEmail();
     } finally {
       setPending(false);
     }

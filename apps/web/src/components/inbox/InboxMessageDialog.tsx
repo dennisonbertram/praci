@@ -119,12 +119,13 @@ export function InboxMessageDialog({
         tabIndex={-1}
         showCloseButton={false}
         className={cn(
-          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1",
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:transition-[left,width,transform] md:duration-200",
           // The email column never changes width. From 1280px (`xl`, which Tailwind emits after `md`, so
           // it overrides the width and position above) the panel sits beside the email in a 1152px
           // dialog centred on the page. Below that it overlays the email's right side.
+          // It slides to the right-most spot that fits, so the email moves as little as the screen allows.
           agentBot &&
-            "md:h-[85vh] xl:w-[1152px] xl:left-[calc(50%-576px)] xl:translate-x-0 xl:flex-row xl:gap-0",
+            "md:h-[85vh] xl:w-[1152px] xl:left-[max(0px,min(calc(50%-384px),calc(100vw-1168px)))] xl:translate-x-0 xl:flex-row xl:gap-0",
           composing && "invisible",
         )}
       >
@@ -291,7 +292,7 @@ function InboxMessage({
         <div className="flex items-start gap-2">
           <DialogTitle
             dir="auto"
-            className="min-w-0 flex-1 line-clamp-2 text-base leading-snug font-medium md:line-clamp-none md:text-xl"
+            className="min-w-0 flex-1 line-clamp-3 text-base leading-snug font-medium md:line-clamp-none md:text-xl"
           >
             {title}
           </DialogTitle>

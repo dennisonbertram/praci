@@ -705,6 +705,22 @@ it("keeps the Status column when no row has a status, so the columns never move"
   );
 });
 
+it("closes the side preview on Escape from the shown row only", () => {
+  const onClosePreview = vi.fn();
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "a", onClosePreview }} />));
+  const press = (id: string) =>
+    act(() => {
+      container
+        .querySelector(`[data-item-id="${id}"]`)
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+  press("b");
+  expect(onClosePreview).not.toHaveBeenCalled();
+  press("a");
+  expect(onClosePreview).toHaveBeenCalledTimes(1);
+});
+
 it("shows no dash in the Type and Parties cells of a failed file", () => {
   act(() =>
     root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),

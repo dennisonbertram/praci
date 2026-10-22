@@ -79,12 +79,23 @@ afterEach(() => {
 const icon = (label: string) =>
   container.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
 
-const render = () =>
+const render = (onClose: () => void = () => undefined) =>
   act(async () => {
     root.render(
-      <Preview item={receipt} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+      <Preview item={receipt} folderPath="" onAction={() => undefined} onClose={onClose} />,
     );
   });
+
+it("closes on Escape from a control inside the pane", async () => {
+  const onClose = vi.fn();
+  await render(onClose);
+  await act(async () => {
+    icon("Close preview")?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
 
 it("shows the picture of an image item", async () => {
   await render();
