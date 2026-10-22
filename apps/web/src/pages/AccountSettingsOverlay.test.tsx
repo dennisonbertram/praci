@@ -9,6 +9,7 @@ import { afterEach, expect, it, vi } from "vitest";
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: (strings: TemplateStringsArray) => strings.join("") }),
   Trans: ({ children }: { children: ReactNode }) => children,
+  Plural: ({ value, other }: { value: number; other: string }) => other.replace("#", String(value)),
 }));
 
 vi.mock("@rakazo/ui-web", async () => ({
@@ -105,11 +106,12 @@ vi.mock("../lib/ui-appearance", () => ({
   getUiAppearancePreference: () => "system",
   setUiAppearance: vi.fn(),
 }));
+vi.mock("../lib/rpc", () => ({ rpc: { models: { credentials: async () => [] } } }));
 vi.mock("react-router-dom", () => ({ Link: ({ children }: { children?: ReactNode }) => children }));
 
 import { getRemoteImagesEnabled } from "../lib/remote-images-preference";
 import { TOOL_ACTIVITY_STORAGE_KEY } from "../lib/tool-activity-preference";
-import { GeneralSettingsPanels } from "./AccountSettingsOverlay";
+import { GeneralSettingsPanels, UsageSettingsPanel } from "./AccountSettingsOverlay";
 
 afterEach(() => {
   localStorage.clear();
@@ -339,4 +341,18 @@ it("puts Delete account after every other setting", async () => {
     container.remove();
     vi.unstubAllGlobals();
   }
+});
+
+it("shows the Usage card only once bots have done a task", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const usage = (runs: number) => ({ runs, inputTokens: null, outputTokens: null });
+  await act(async () => root.render(<UsageSettingsPanel usage={usage(0)} />));
+  expect(container.querySelector('[data-testid="usage-settings"]')).toBeNull();
+  await act(async () => root.render(<UsageSettingsPanel usage={usage(3)} />));
+  expect(container.querySelector('[data-testid="usage-settings"]')?.textContent).toContain("3");
+  await act(async () => root.unmount());
+  vi.unstubAllGlobals();
 });

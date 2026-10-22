@@ -259,6 +259,7 @@ import {
   needsAnswerLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterPreviewText,
   rosterStatusChanged,
   rosterWorkStatusLabel,
   waitingForApprovalLabel,
@@ -358,7 +359,7 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./shell/roster-tab-stops";
-import { moreBarHeight, rowsBelow } from "./shell/rows-below";
+import { moreBarHeight, rowsBelow, scrollingList } from "./shell/rows-below";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import {
   activeSpaceFirst,
@@ -491,7 +492,7 @@ type SearchLink = { id: string; label: string; detail?: string };
 export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
-      rpc.dataRoom.search({ query, limit: 5 }),
+      rpc.dataRoom.search({ query, limit: 6 }),
       // Only for the folder line; a failure just leaves it off.
       rpc.dataRoom.folders().catch(() => []),
     ])
@@ -912,18 +913,21 @@ export function ShellPage() {
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
   // Keeps the chat list from ending on a half-cut row, as rows come and go and the window resizes.
   useEffect(() => {
-    const list = sidebarScrollRef.current;
-    if (!list) return;
+    // On a short screen or a phone the pages and the chats scroll together in the pane.
+    const lists = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
     const trim = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => endOnWholeRow(list));
+      frame = requestAnimationFrame(() => endOnWholeRow(lists));
     };
     trim();
     const resize = new ResizeObserver(trim);
-    resize.observe(list);
     const mutate = new MutationObserver(trim);
-    mutate.observe(list, { childList: true, subtree: true });
+    for (const el of lists) {
+      if (!el) continue;
+      resize.observe(el);
+      mutate.observe(el, { childList: true, subtree: true });
+    }
     return () => {
       cancelAnimationFrame(frame);
       resize.disconnect();
@@ -932,12 +936,17 @@ export function ShellPage() {
   }, [mobileSidebarOpen]);
   // "+N more" over the foot of the list while rows remain below the fold.
   const [hiddenRows, setHiddenRows] = useState(0);
+  // The list ends on a whole row; the bar fills the margin that leaves so "+N more" sits under it.
+  const [moreBarFill, setMoreBarFill] = useState(0);
   useEffect(() => {
     const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
     const measure = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setHiddenRows(rowsBelow(scrollers)));
+      frame = requestAnimationFrame(() => {
+        setHiddenRows(rowsBelow(scrollers));
+        setMoreBarFill(Number.parseFloat(scrollingList(scrollers)?.style.marginBottom ?? "") || 0);
+      });
     };
     measure();
     for (const el of scrollers) el?.addEventListener("scroll", measure, { passive: true });
@@ -1237,7 +1246,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   useEffect(() => {
-    setGtmAgentOpen(gtmMode && window.matchMedia("(min-width: 768px)").matches);
+    if (!gtmMode) setGtmAgentOpen(false);
   }, [gtmMode]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
@@ -2385,7 +2394,12 @@ export function ShellPage() {
         {
           heading: t`Documents`,
           icon: <FileText size={16} strokeWidth={1.75} />,
-          entries: found.documents.map((doc) => ({
+          // The search asks for one more than is listed, to know whether Data room holds more.
+          more:
+            found.documents.length > 5
+              ? { id: `/app/data-room?q=${encodeURIComponent(q)}`, label: t`See all in Data room` }
+              : undefined,
+          entries: found.documents.slice(0, 5).map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
             detail: doc.detail,
@@ -4600,7 +4614,7 @@ export function ShellPage() {
                   className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                     activityMode
                       ? "bg-sidebar-accent text-foreground"
-                      : "text-muted-foreground/70 hover:text-foreground/75"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
@@ -4608,7 +4622,7 @@ export function ShellPage() {
                 </button>
                 <button
                   type="button"
-                  className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 lg:inline-flex"
+                  className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground lg:inline-flex"
                   aria-label={t`Hide sidebar`}
                   title={t`Hide sidebar`}
                   data-testid="minimize-bots-sidebar"
@@ -4618,7 +4632,7 @@ export function ShellPage() {
                 </button>
                 <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                   <PopoverTrigger
-                    className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                    className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground hover:text-foreground"
                     title={t`Create`}
                     aria-label={t`Create`}
                     data-testid="create-menu-trigger"
@@ -4653,7 +4667,9 @@ export function ShellPage() {
                         setMobileSidebarOpen(false);
                         setPickerInfoTopic("group");
                       }}
-                      canCreateSpace={spaces.length > 1}
+                      canCreateSpace={
+                        spaces.length > 1 || (spaces.length === 1 && spaces[0]?.memberCount !== 1)
+                      }
                       onShowSpaceInfo={() => {
                         setCreateMenuOpen(false);
                         setMobileSidebarOpen(false);
@@ -4694,7 +4710,7 @@ export function ShellPage() {
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
         <div
           ref={sidebarPaneRef}
-          className="rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
         >
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
@@ -4930,7 +4946,7 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
-            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+            className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
               {activityMode && !rail ? (
@@ -5103,12 +5119,13 @@ export function ShellPage() {
                               type="button"
                               aria-current={group.current ? "true" : undefined}
                               data-roster-row={group.key}
+                              data-roster-head=""
                               data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                               onClick={() => {
                                 if (group.emptySpaceId) {
-                                  openSpaceChat(group.emptySpaceId, "/onboarding");
+                                  openSpaceChat(group.emptySpaceId, "/app");
                                   return;
                                 }
                                 toggleSidebarSection(group.key);
@@ -5286,9 +5303,9 @@ export function ShellPage() {
                               ? compactStatusLabel
                               : (workStatusLabel ??
                                 (item.kind === "bot"
-                                  ? maskCurrencyWhenHidden(item.chat.preview) ||
+                                  ? maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                     (item.chat.status !== "idle" ? item.chat.status : "")
-                                  : maskCurrencyWhenHidden(item.chat.preview) ||
+                                  : maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                     item.chat.members.map((member) => member.name).join(", ")));
                             const rowDragEnabled =
                               dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
@@ -5739,8 +5756,8 @@ export function ShellPage() {
             <button
               type="button"
               data-testid="sidebar-more-rows"
-              className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center bg-sidebar text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-              style={{ height: moreBarHeight() }}
+              className="absolute inset-x-0 bottom-0 z-10 flex items-start justify-center bg-sidebar pt-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              style={{ height: Math.max(moreBarHeight(), moreBarFill) }}
               onClick={() => {
                 const pane = sidebarPaneRef.current;
                 const list = sidebarScrollRef.current;
@@ -6496,11 +6513,19 @@ export function ShellPage() {
                         </button>
                       ) : null}
                     </div>
-                    <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                      {/s$/i.test(active.name.trim())
-                        ? t`${active.name}' computer`
-                        : t`${active.name}'s computer`}
-                    </p>
+                    {showsComputerCaption({
+                      kind: computer?.kind,
+                      state: computer?.state,
+                      hasScreen: Boolean(embeddedScreenUrl),
+                      hasError: Boolean(computerScreenError),
+                      open: computerOpen,
+                    }) ? (
+                      <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
+                        {/s$/i.test(active.name.trim())
+                          ? t`${active.name}' computer`
+                          : t`${active.name}'s computer`}
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -7584,6 +7609,23 @@ export function isRoutinesOnlyPanel(input: {
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint
+  );
+}
+
+/** The "<bot>'s computer" caption names a live screen; under a placeholder or hint it labels nothing. */
+export function showsComputerCaption(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  state?: ComputerStatus["state"];
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    input.state === "running" &&
+    input.hasScreen &&
+    !input.hasError &&
+    !input.open
   );
 }
 

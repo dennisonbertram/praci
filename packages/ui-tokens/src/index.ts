@@ -100,7 +100,7 @@ export const lightTokens = {
   chatUser: "#E2E2DC",
   chatUserForeground: "#1A1A1A",
   muted: "#F0F0ED",
-  mutedForeground: "#6C6C70",
+  mutedForeground: "#666669",
   accent: "#EAEAE6",
   accentForeground: "#1A1A1A",
   destructive: "#DC2626",

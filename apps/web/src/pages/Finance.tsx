@@ -114,7 +114,7 @@ export function FinancePage(chrome: FinanceChrome) {
   const route = parseFinanceRoute(location.pathname, location.search);
   return (
     <FinanceChromeProvider value={chrome}>
-      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7">
         <div className="mx-auto max-w-[1440px]">
           {route.page === "dashboard" ? (
             <Dashboard />
@@ -407,7 +407,7 @@ function Overview({
   return (
     <div>
       {/* Sticks like the Inbox header from md up: -top cancels the scroller's padding, so rows never show above it. A phone keeps the screen for the figures. */}
-      <div className="pb-4 md:sticky md:-top-5 md:z-20 md:-mx-7 md:-mt-5 md:bg-background md:px-7 md:pt-5">
+      <div className="pb-4 md:sticky md:-top-2 md:z-20 md:-mx-7 md:-mt-2 md:bg-background md:px-7 md:pt-2">
         <PageHeader
           className="mb-0"
           title={<Trans>Finance</Trans>}

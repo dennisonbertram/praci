@@ -2047,6 +2047,7 @@ msgstr ""
 msgid "Building graph…"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "内置"
@@ -2653,6 +2654,10 @@ msgstr "关闭语音设置"
 msgid "Closed {0} · funded {1}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Closed deadlines"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Cloud"
 msgstr "云端"
@@ -3004,7 +3009,7 @@ msgstr "已连接"
 msgid "Connected · {0}"
 msgstr "已连接 · {0}"
 
-#. placeholder {0}: new Date(row.createdAt).toLocaleDateString()
+#. placeholder {0}: new Date(row.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })
 #: src/components/integrations/AppDetail.tsx
 msgid "Connected {0}"
 msgstr ""
@@ -4042,6 +4047,10 @@ msgstr "已创建"
 msgid "Created {0}"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Creates a {service} agent that asks you before each change."
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr ""
@@ -4195,10 +4204,12 @@ msgid "Delete"
 msgstr "删除"
 
 #. placeholder {0}: deleting?.title ?? ""
-#. placeholder {0}: pendingDelete.name
 #: src/components/integrations/StoredMeetingsList.tsx
-#: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Delete \"{deleteTitle}\"?"
 msgstr ""
 
 #. placeholder {0}: bot.name
@@ -4460,6 +4471,10 @@ msgstr ""
 msgid "Dismiss error"
 msgstr "关闭错误"
 
+#: src/pages/Legal.tsx
+msgid "Dismissed"
+msgstr ""
+
 #. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
@@ -4528,10 +4543,6 @@ msgstr ""
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "完成"
-
-#: src/pages/Legal.tsx
-msgid "Done deadlines"
-msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
@@ -5112,6 +5123,10 @@ msgstr ""
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Find any page, chat or email."
+msgstr ""
+
 #: src/components/fundraising/SafeList.tsx
 msgid "Find in Finance"
 msgstr ""
@@ -5254,6 +5269,11 @@ msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
 msgid "from Mercury"
+msgstr ""
+
+#. placeholder {0}: message.routineName
+#: src/pages/shell/transcript.tsx
+msgid "From routine: {0}"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -6757,9 +6777,8 @@ msgstr ""
 msgid "More"
 msgstr ""
 
-#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
-#. placeholder {0}: server.name
+#. placeholder {0}: source.name
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
@@ -6792,10 +6811,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "More Granola actions"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -6914,6 +6929,7 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
@@ -7149,6 +7165,10 @@ msgstr ""
 msgid "No chat apps linked yet."
 msgstr "还没有关联聊天应用。"
 
+#: src/pages/Legal.tsx
+msgid "No closed deadlines."
+msgstr ""
+
 #: src/components/finance/StatementReviewCard.tsx
 msgid "No closing balance found to check against"
 msgstr ""
@@ -7169,10 +7189,6 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "No deadlines marked done."
 msgstr ""
 
 #: src/pages/Devin.tsx
@@ -7617,14 +7633,6 @@ msgstr ""
 msgid "Off in Settings"
 msgstr ""
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: other agents reach {service} only through this agent."
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr ""
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7633,14 +7641,6 @@ msgstr "正在与 {0} 通话"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "按计划"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: creates a {service} agent that can read and, after you approve, make changes."
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -7896,6 +7896,10 @@ msgstr "原消息不可用"
 msgid "Other"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents can read {service}; changes still go through this agent."
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Other connection types"
 msgstr ""
@@ -8149,6 +8153,10 @@ msgstr "播放中…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "插件"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
@@ -9083,6 +9091,7 @@ msgstr ""
 msgid "Restart to update"
 msgstr ""
 
+#: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Restore"
 msgstr "恢复"
@@ -9470,6 +9479,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9518,10 +9528,6 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Search finds any page, chat or email."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -9593,6 +9599,10 @@ msgstr ""
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Security"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "See all in Data room"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -9876,10 +9886,6 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Shared with your other bots"
-msgstr ""
-
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
@@ -9911,8 +9917,11 @@ msgstr ""
 msgid "Show all {total}"
 msgstr ""
 
-#: src/pages/Investors.tsx
 #: src/pages/Legal.tsx
+msgid "Show closed"
+msgstr ""
+
+#: src/pages/Investors.tsx
 msgid "Show done"
 msgstr ""
 
@@ -10664,6 +10673,10 @@ msgstr ""
 
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "The agent asks you before each change."
 msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
@@ -11445,6 +11458,14 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Updated: {list} and {more} more."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Updated: {list}."
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Investors.tsx
@@ -11711,6 +11732,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
+msgstr ""
+
+#: src/lib/roster-status.ts
+msgid "Waiting for AI to be allowed"
 msgstr ""
 
 #: src/lib/roster-status.ts
@@ -12133,6 +12158,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Yours"
 msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx

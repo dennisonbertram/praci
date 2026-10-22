@@ -196,6 +196,38 @@ describe("contact tools", () => {
     );
   });
 
+  it("cap_table_read gives each holder's ownership percent as the page shows it", async () => {
+    const findUnique = vi.fn(async () => ({
+      data: {
+        companyName: "Example Co",
+        asOf: "2026-01-31",
+        fullyDilutedShares: 1000,
+        optionPoolAvailable: 200,
+        shareClasses: [],
+        holders: [
+          { name: "Maya", security: "Common", shares: 500, amountUsd: null },
+          { name: "River", security: "Common", shares: 300, amountUsd: null },
+          { name: "Quill SAFE", security: "SAFE", shares: null, amountUsd: 250000 },
+        ],
+      },
+      source: "carta",
+      previous: null,
+      updatedAt: new Date("2026-02-01T00:00:00Z"),
+    }));
+    const prisma = {
+      capTableSnapshot: { findUnique },
+      safe: { findMany: async () => [] },
+    } as never;
+    const read = (await contactToolFromTool("cap_table_read", { prisma, scope }, {})) as {
+      capTable: { holders: { name: string; ownershipPercent: number | null }[] };
+    };
+    expect(read.capTable.holders.map((h) => [h.name, h.ownershipPercent])).toEqual([
+      ["Maya", 50],
+      ["River", 30],
+      ["Quill SAFE", null],
+    ]);
+  });
+
   it("cap_table_update validates, then saves for the run's owner", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const prisma = { capTableSnapshot: { updateMany } } as never;

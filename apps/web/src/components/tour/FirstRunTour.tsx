@@ -31,10 +31,9 @@ export function FirstRunTour({
     () => [
       {
         id: "search",
-        // The sentence names the control itself, so the card has no "Search:" label.
-        name: "",
+        name: t`Search`,
         anchor: '[data-tour="sidebar-search"]',
-        text: t`Search finds any page, chat or email.`,
+        text: t`Find any page, chat or email.`,
       },
       {
         id: "create",
