@@ -1,6 +1,6 @@
 import type { ConnectorRegistry } from "@rakazo/adapters";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
-import { featuredConnectorProvidersMatch } from "@rakazo/core";
+import { describeApp, featuredConnectorProvidersMatch } from "@rakazo/core";
 import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
   appendEventInTransaction,
@@ -58,7 +58,8 @@ const FOCUS_OPTIONS: FocusOption[] = [
 
 const APP_DESCRIPTIONS: Record<string, string> = {
   slack: "Search, read, and send messages.",
-  gmail: "Search, read, draft, and send email.",
+  // The one Gmail description, shared with the Integrations card.
+  gmail: describeApp("gmail")?.description ?? "",
   googlecalendar: "Search events and schedule meetings.",
   notion: "Search and edit pages and databases.",
   googledocs: "Draft and edit documents.",

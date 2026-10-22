@@ -622,11 +622,6 @@ export function IntegrationsHome({
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
         <div>
-          {data.loaded && anyConnected ? null : (
-            <p className="mb-5 max-w-[640px] text-muted-foreground">
-              <Trans>Connect the apps you use so your bots can read and act in them.</Trans>
-            </p>
-          )}
           {/* Until everything has loaded, show placeholders, not tiles that read "Not connected". */}
           {!data.loaded ? (
             <div

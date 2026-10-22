@@ -74,7 +74,6 @@ import {
   ContactRowPlaceholder,
   FiguresPlaceholder,
   OwnershipPlaceholder,
-  UpdateRowPlaceholder,
 } from "../components/investors/Placeholders";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
@@ -158,7 +157,13 @@ function Summary({
   // Nothing known to add up shows a dash, not $0. Table rows that are SAFEs are not counted: the
   // SAFE list is the record.
   const counted = countedSafes(safes);
-  const safeUsd = counted.reduce((sum, safe) => sum + safe.amountCents / 100, 0);
+  // Raised money is Funded only; Sent and Signed SAFEs are promises, shown apart as committed.
+  const sumUsd = (status: Safe["status"][]) =>
+    counted
+      .filter((safe) => status.includes(safe.status))
+      .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
+  const safeUsd = sumUsd(["funded"]);
+  const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
   const raised =
     !safesFailed &&
@@ -181,9 +186,11 @@ function Summary({
         title={t`Equity raised`}
         value={raised}
         hint={
-          counted.length > 0
-            ? plural(counted.length, { one: "# SAFE", other: "# SAFEs" })
-            : undefined
+          committedUsd > 0
+            ? t`${usd(committedUsd)} committed`
+            : counted.length > 0
+              ? plural(counted.length, { one: "# SAFE", other: "# SAFEs" })
+              : undefined
         }
       />
     </div>
@@ -408,10 +415,9 @@ function UpdatesSection({
       ) : updates === null ? (
         <Skeleton className="h-9 w-full" aria-busy="true" />
       ) : updates.length === 0 ? (
-        <ul>
-          <UpdateRowPlaceholder />
-          <UpdateRowPlaceholder />
-        </ul>
+        <p className="text-sm text-muted-foreground">
+          <Trans>No updates yet</Trans>
+        </p>
       ) : (
         <ul>
           {updates.map((update) => (
@@ -680,11 +686,19 @@ export function InvestorsPage({
         notify(errorText(cause, failure));
         loadUpdates();
       });
-  const startUpdate = (audience: "investors" | "board") =>
-    rpc.investors.updates
+  // Repeated clicks while a draft is being created must not create more drafts.
+  const startingUpdate = useRef(false);
+  const startUpdate = (audience: "investors" | "board") => {
+    if (startingUpdate.current) return Promise.resolve();
+    startingUpdate.current = true;
+    return rpc.investors.updates
       .save({ audience })
       .then((created) => navigate(`/app/investors/updates/${created.id}`))
-      .catch((cause) => notify(errorText(cause, t`Could not start an update`)));
+      .catch((cause) => notify(errorText(cause, t`Could not start an update`)))
+      .finally(() => {
+        startingUpdate.current = false;
+      });
+  };
   const retryUpdate = (update: InvestorUpdate) => {
     if (update.deliveries.some((d) => d.state === "unknown")) return setResending(update);
     void updateAction(() => rpc.investors.updates.retry({ id: update.id }), t`Could not retry`);
@@ -710,8 +724,10 @@ export function InvestorsPage({
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
     // The SAFE rows under the table are secondary: if they cannot load, the table still shows.
+    // One quiet retry, so a single dropped request does not show a dash.
     void rpc.fundraising.safes
       .list()
+      .catch(() => rpc.fundraising.safes.list())
       .then((rows) => {
         if (request !== latestCap.current) return;
         setSafes(rows ?? []);

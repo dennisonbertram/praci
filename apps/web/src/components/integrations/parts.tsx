@@ -137,15 +137,17 @@ export function CardHead({
   logo,
   sub,
   to,
+  letter,
 }: {
   name: string;
   logo?: string | null;
   sub?: string;
   to?: string;
+  letter?: string;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <AppLogo name={name} logo={logo} />
+      <AppLogo name={name} logo={logo} letter={letter} />
       <div className="min-w-0">
         {to ? (
           <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">
