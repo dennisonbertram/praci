@@ -1562,6 +1562,19 @@ it("Draft reply starts the draft; Mark done and Dismiss close the request", asyn
   expect(rpcMock.auditsUpdate).toHaveBeenLastCalledWith({ id: "a1", status: "dismissed" });
 });
 
+it("Draft reply opens the agent panel so the outcome is on screen; a second click is ignored", async () => {
+  rpcMock.auditsList.mockImplementation(async () => [
+    audit({ drafting: rpcMock.auditsDraft.mock.calls.length > 0 }),
+  ]);
+  rpcMock.auditsDraft.mockResolvedValue(audit({ drafting: true }));
+  const onShowAgent = vi.fn();
+  await show("/app/investors", { onShowAgent });
+  await click(button("Draft reply"));
+  expect(button("Draft reply")).toBeUndefined();
+  expect(rpcMock.auditsDraft).toHaveBeenCalledTimes(1);
+  expect(onShowAgent).toHaveBeenCalled();
+});
+
 it("shows a spinner and Drafting… instead of Draft reply while a drafting run is going", async () => {
   rpcMock.auditsList.mockResolvedValue([audit({ drafting: true })]);
   await show();
