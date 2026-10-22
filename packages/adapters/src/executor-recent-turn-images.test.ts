@@ -139,7 +139,19 @@ async function runWithModel(
       ),
     },
     secret: { findFirst: vi.fn(async () => null) },
-    userModelCredential: { findFirst: vi.fn(async () => null) },
+    // A connected provider, so a backup passes the chat-consent gate's credential lookup. Its
+    // secret row is absent, which keeps the deployment key and the missing-secret case intact.
+    userModelCredential: {
+      findFirst: vi.fn(async () => ({
+        id: "connected-credential",
+        userId: "user-1",
+        provider: "openrouter",
+        label: "Connected",
+        secretId: "connected-secret",
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      })),
+    },
     spaceBackupModel: {
       findMany: vi.fn(async () => {
         if (backupReadFails) throw new Error("Backup list unavailable");
@@ -150,6 +162,7 @@ async function runWithModel(
     },
 
     aiDataConsent: { findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })) },
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "openrouter",
@@ -194,6 +207,8 @@ async function runWithModel(
   expect(runtimeRun).toHaveBeenCalled();
   expect(finalizeRun).not.toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
   if (!request) throw new Error("runtime was not called");
+  // The run's own setup read the secret row; the tests count only the reads they trigger.
+  prisma.secret.findFirst.mockClear();
   return { request, get, prisma, run };
 }
 
