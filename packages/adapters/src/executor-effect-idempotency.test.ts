@@ -1,5 +1,5 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
-import { voiceAgentSpawnKey } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, voiceAgentSpawnKey } from "@rakazo/contracts";
 import {
   legacyScopedToolEffectIdempotencyKey,
   toolEffectIdempotencyKey,
@@ -188,6 +188,7 @@ function fixture(
     connection: { findMany: vi.fn(async () => options.connections ?? []) },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
+    aiDataConsent: { findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })) },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "scripted",

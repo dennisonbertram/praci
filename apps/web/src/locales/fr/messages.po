@@ -104,6 +104,11 @@ msgstr ""
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr ""
 
+#. placeholder {0}: counted.length
+#: src/pages/Investors.tsx
+msgid "{0, plural, one {# SAFE} other {# SAFEs}}"
+msgstr ""
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -414,6 +419,10 @@ msgstr ""
 msgid "{count} months"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} of {total} selected"
+msgstr ""
+
 #: src/pages/Fundraising.tsx
 msgid "{count} SAFEs are signed and unpaid."
 msgstr ""
@@ -600,19 +609,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} spend"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr ""
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{sourceNames}, {0} non-USD not counted"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1712,6 +1708,10 @@ msgstr ""
 msgid "Back to Investors"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "Retour à la connexion"
@@ -1913,10 +1913,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Brex bill, not paid yet"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
@@ -2672,12 +2668,13 @@ msgstr "Confirmez que l'URL est accessible depuis cette session du navigateur, p
 msgid "Connect"
 msgstr "Connecter"
 
+#. placeholder {0}: block.name
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
-#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
@@ -2784,7 +2781,7 @@ msgid "Connect Mercury"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
+msgid "Connect the apps you use so your bots can read and act in them."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -4413,6 +4410,7 @@ msgstr ""
 msgid "Drafted {0}"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr ""
@@ -6269,8 +6267,8 @@ msgid "Message {0}"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
-msgid "Message {activeName}"
-msgstr "Message à {activeName}"
+msgid "Message {placeholderName}"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
@@ -6428,7 +6426,6 @@ msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
-#: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
@@ -6442,7 +6439,9 @@ msgstr ""
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
+#. placeholder {0}: row.from
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr ""
@@ -6566,6 +6565,7 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
@@ -6683,10 +6683,6 @@ msgstr "Nouvel élément de travaux en cours"
 #: src/pages/Auth.tsx
 msgid "New password"
 msgstr "Nouveau mot de passe"
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "New skill"
-msgstr "Nouvelle compétence"
 
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
@@ -6837,6 +6833,7 @@ msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
 msgid "No folder"
 msgstr ""
 
@@ -7134,6 +7131,10 @@ msgstr ""
 msgid "Not supported here"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr ""
@@ -7176,6 +7177,10 @@ msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -8911,6 +8916,10 @@ msgid "Scan finished: nothing changed."
 msgstr ""
 
 #: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -9094,6 +9103,10 @@ msgstr "Sélectionnez un modèle connecté"
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
+msgstr ""
+
+#: src/components/data-room/SelectionBar.tsx
+msgid "Select all {total}"
 msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
@@ -9935,9 +9948,17 @@ msgstr ""
 msgid "Sync failed."
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -10653,10 +10674,6 @@ msgstr ""
 msgid "Unassign"
 msgstr ""
 
-#: src/pages/BotContextMenu.tsx
-msgid "Unassigned"
-msgstr "Non assigné"
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "Indisponible"
@@ -10890,16 +10907,16 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload a skill file"
-msgstr ""
-
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. The server could not save this file."
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload file"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx

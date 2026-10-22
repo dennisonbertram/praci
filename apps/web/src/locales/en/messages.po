@@ -104,6 +104,11 @@ msgstr "{0, plural, one {# needs you} other {# need you}}"
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr "{0, plural, one {# result} other {# results}}"
 
+#. placeholder {0}: counted.length
+#: src/pages/Investors.tsx
+msgid "{0, plural, one {# SAFE} other {# SAFEs}}"
+msgstr "{0, plural, one {# SAFE} other {# SAFEs}}"
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -414,6 +419,10 @@ msgstr "{count} days"
 msgid "{count} months"
 msgstr "{count} months"
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} of {total} selected"
+msgstr "{count} of {total} selected"
+
 #: src/pages/Fundraising.tsx
 msgid "{count} SAFEs are signed and unpaid."
 msgstr "{count} SAFEs are signed and unpaid."
@@ -601,19 +610,6 @@ msgstr "{sourceName} cash"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} spend"
 msgstr "{sourceName} spend"
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr "{sourceNames} · synced {updated}"
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr "{sourceNames} · syncing…"
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{sourceNames}, {0} non-USD not counted"
-msgstr "{sourceNames}, {0} non-USD not counted"
 
 #: src/pages/Finance.tsx
 msgid "{stablecoins} stablecoins in runway"
@@ -1712,6 +1708,10 @@ msgstr "Back to Inbox"
 msgid "Back to Investors"
 msgstr "Back to Investors"
 
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
+msgstr "Back to Legal"
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "Back to sign in"
@@ -1914,10 +1914,6 @@ msgstr "Breakdown"
 #: src/pages/Finance.tsx
 msgid "Brex bill, not paid yet"
 msgstr "Brex bill, not paid yet"
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Brex does not share it"
-msgstr "Brex does not share it"
 
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Browser"
@@ -2672,12 +2668,13 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 msgid "Connect"
 msgstr "Connect"
 
+#. placeholder {0}: block.name
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
-#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr "Connect {0}"
@@ -2784,8 +2781,8 @@ msgid "Connect Mercury"
 msgstr "Connect Mercury"
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
-msgstr "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
+msgid "Connect the apps you use so your bots can read and act in them."
+msgstr "Connect the apps you use so your bots can read and act in them."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Treg"
@@ -4413,6 +4410,7 @@ msgstr "Draft with agent"
 msgid "Drafted {0}"
 msgstr "Drafted {0}"
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr "Drafting…"
@@ -6269,8 +6267,8 @@ msgid "Message {0}"
 msgstr "Message {0}"
 
 #: src/pages/shell/composer.tsx
-msgid "Message {activeName}"
-msgstr "Message {activeName}"
+msgid "Message {placeholderName}"
+msgstr "Message {placeholderName}"
 
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
@@ -6428,7 +6426,6 @@ msgstr "Monthly spend · {0} – {1}"
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
-#: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
@@ -6442,7 +6439,9 @@ msgstr "More {0} actions"
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
+#. placeholder {0}: row.from
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr "More actions for {0}"
@@ -6566,6 +6565,7 @@ msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
 
@@ -6683,10 +6683,6 @@ msgstr "New open-work item"
 #: src/pages/Auth.tsx
 msgid "New password"
 msgstr "New password"
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "New skill"
-msgstr "New skill"
 
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
@@ -6837,6 +6833,7 @@ msgid "No files found"
 msgstr "No files found"
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
 msgid "No folder"
 msgstr "No folder"
 
@@ -7134,6 +7131,10 @@ msgstr "Not spam"
 msgid "Not supported here"
 msgstr "Not supported here"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
+msgstr "Not tagged"
+
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr "Not tagged yet."
@@ -7177,6 +7178,10 @@ msgstr "Nothing shared yet."
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
+msgstr "Notice deadlines are derived from the expiration date and the notice period."
 
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
@@ -8911,6 +8916,10 @@ msgid "Scan finished: nothing changed."
 msgstr "Scan finished: nothing changed."
 
 #: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr "Scan is still running. Check back shortly."
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr "Scan now"
 
@@ -9095,6 +9104,10 @@ msgstr "Select a connected model"
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
 msgstr "Select all"
+
+#: src/components/data-room/SelectionBar.tsx
+msgid "Select all {total}"
+msgstr "Select all {total}"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
@@ -9935,10 +9948,18 @@ msgstr "Sync failed"
 msgid "Sync failed."
 msgstr "Sync failed."
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr "synced {updated}"
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
 msgstr "Syncing"
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
+msgstr "syncing…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -10653,10 +10674,6 @@ msgstr "Unallocated pool"
 msgid "Unassign"
 msgstr "Unassign"
 
-#: src/pages/BotContextMenu.tsx
-msgid "Unassigned"
-msgstr "Unassigned"
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "Unavailable"
@@ -10890,10 +10907,6 @@ msgstr "Upload {statement} for {0}"
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload a skill file"
-msgstr "Upload a skill file"
-
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr "Upload failed. Check your connection and try again."
@@ -10901,6 +10914,10 @@ msgstr "Upload failed. Check your connection and try again."
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. The server could not save this file."
 msgstr "Upload failed. The server could not save this file."
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload file"
+msgstr "Upload file"
 
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Upload files"

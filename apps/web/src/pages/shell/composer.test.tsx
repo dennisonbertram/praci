@@ -128,3 +128,31 @@ it("Retry sends the edited text when the restored draft was changed", async () =
   await act(async () => retry?.click());
   expect(onSend.mock.calls[1]?.[0]).toBe("hello world");
 });
+
+it("ends a long agent name in the placeholder with an ellipsis", async () => {
+  await act(async () =>
+    root.render(
+      <Composer
+        activeName={"Quarterly investor relations planning assistant ".repeat(3)}
+        running={false}
+        pendingAttachments={[]}
+        attachmentNotice={null}
+        sendError={null}
+        runError={null}
+        runErrorId={null}
+        onRunErrorPresented={() => {}}
+        onDismissError={() => {}}
+        sending={false}
+        fileInputRef={createRef()}
+        onAttachmentPick={() => false}
+        onRemoveAttachment={() => {}}
+        onSend={vi.fn()}
+        onStop={async () => {}}
+        artifactTarget={{ botId: "b3" }}
+      />,
+    ),
+  );
+  const placeholder = (document.querySelector("textarea") as HTMLTextAreaElement).placeholder;
+  expect(placeholder.endsWith("…")).toBe(true);
+  expect(placeholder.length).toBeLessThan(45);
+});

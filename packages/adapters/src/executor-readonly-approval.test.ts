@@ -505,6 +505,9 @@ function fixture({
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     aiDataConsent: {
+      // The chat's own gate reads findUnique and is always consented here; findFirst is the
+      // tool-time check, which a test can withdraw after the run has started.
+      findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })),
       findFirst: vi.fn(async () => (triage.chatNeedsConsent ? null : { userId: "user-1" })),
     },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },

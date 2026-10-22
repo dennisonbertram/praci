@@ -1,5 +1,10 @@
 import type { AgentRunRequest, ConnectorTool } from "@rakazo/adapter-kit";
-import { GTM_AGENT_BUILTIN_TOOLS, gtmAgentSpawnKey, ZERNIO_READ_TOOLS } from "@rakazo/contracts";
+import {
+  AI_DISCLOSURE_VERSION,
+  GTM_AGENT_BUILTIN_TOOLS,
+  gtmAgentSpawnKey,
+  ZERNIO_READ_TOOLS,
+} from "@rakazo/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
@@ -485,7 +490,10 @@ function gtmFixture(options: FixtureOptions = {}) {
         defaultModelId: "openai/gpt-6-luna",
       })),
     },
-    aiDataConsent: { findFirst: vi.fn(async () => ({ userId: run.userId })) },
+    aiDataConsent: {
+      findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })),
+      findFirst: vi.fn(async () => ({ userId: run.userId })),
+    },
     user: { findUnique: vi.fn(async () => null) },
     taughtSkill: {
       findMany: vi.fn(async () => []),

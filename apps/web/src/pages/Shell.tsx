@@ -83,6 +83,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  Clock,
   CodeXml,
   Compass,
   Files,
@@ -4349,7 +4350,6 @@ export function ShellPage() {
                 {/* One search surface: the box opens the Cmd+K palette. */}
                 <InputGroupInput
                   readOnly
-                  data-drawer-focus
                   value=""
                   onClick={() => {
                     // The box keeps focus until the palette takes it, so closing returns here.
@@ -4364,7 +4364,7 @@ export function ShellPage() {
                   placeholder={t`Search`}
                   autoComplete="off"
                   name="sidebar-search"
-                  className="cursor-pointer"
+                  className="cursor-pointer placeholder:text-foreground/70"
                 />
               </InputGroup>
             )
@@ -4451,6 +4451,7 @@ export function ShellPage() {
                   aria-label={t`Close menu`}
                   title={t`Close menu`}
                   data-testid="close-mobile-sidebar"
+                  data-drawer-focus
                   onClick={() => setMobileSidebarOpen(false)}
                 >
                   <X size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -5576,7 +5577,7 @@ export function ShellPage() {
           data-testid="bots-sidebar-edge"
           aria-label={t`Resize sidebar`}
           tabIndex={-1}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:bg-ring focus-visible:outline-none lg:block ${
             botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
           onPointerDown={(event) => {
@@ -5781,7 +5782,11 @@ export function ShellPage() {
                   data-active={panel === "computer" ? "" : undefined}
                   className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  {noComputerScreen ? (
+                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  ) : (
+                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  )}
                 </button>
               ) : null}
             </div>
@@ -6551,14 +6556,14 @@ export function ShellPage() {
                 navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
               });
             }}
-            onClear={() => {
-              setClearTarget(
-                contextBot
-                  ? { kind: "bot", chat: contextBot }
-                  : { kind: "group", chat: contextGroup! },
-              );
-              setBotMenu(null);
-            }}
+            onClear={
+              contextBot
+                ? undefined
+                : () => {
+                    setClearTarget({ kind: "group", chat: contextGroup! });
+                    setBotMenu(null);
+                  }
+            }
             onArchive={() => {
               setBotMenu(null);
               const request = contextBot

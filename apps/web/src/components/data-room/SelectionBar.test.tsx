@@ -34,3 +34,20 @@ it("shows nothing until a row is ticked, then Download, Email, Send to agent and
   expect([onDownload, onSend, onClear].map((f) => f.mock.calls.length)).toEqual([1, 1, 1]);
   act(() => root.unmount());
 });
+
+it("says how many of the total are ticked, offers Select all N and does not take table space", () => {
+  const el = document.createElement("div");
+  const root = createRoot(el);
+  const onSelectAll = vi.fn();
+  const props = { onDownload: vi.fn(), onClear: vi.fn(), onSelectAll };
+  act(() => root.render(<SelectionBar count={50} total={69} {...props} />));
+  expect(el.querySelector('[role="toolbar"]')?.textContent).toContain("50 of 69 selected");
+  expect(el.firstElementChild?.className).toContain("absolute");
+  const all = [...el.querySelectorAll("button")].find((b) => b.textContent === "Select all 69");
+  act(() => all?.click());
+  expect(onSelectAll).toHaveBeenCalledTimes(1);
+  act(() => root.render(<SelectionBar count={69} total={69} {...props} />));
+  expect(el.textContent).toContain("69 selected");
+  expect(el.textContent).not.toContain("Select all");
+  act(() => root.unmount());
+});

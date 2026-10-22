@@ -53,7 +53,7 @@ export function useDrawerFocus(
   useEffect(() => {
     if (!open) return;
     opener.current = document.activeElement;
-    // The search box (read-only, so it raises no keyboard) is the way in; else the first control.
+    // The close button takes focus: the read-only search box showed a focus ring and invited a keyboard on phones.
     (
       drawer.current?.querySelector<HTMLElement>("[data-drawer-focus]") ??
       drawer.current?.querySelector<HTMLElement>("button, a[href]")

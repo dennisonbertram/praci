@@ -167,6 +167,10 @@ export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
         : FileText;
 
 const DASH = "—";
+/** The document type, or for a finished file without one the reason; empty while it is still being read. */
+const typeText = (item: DataRoomApiItem) =>
+  typeLabel(item.facets.docType) ||
+  (isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
 const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
 const MID_COL = "hidden @min-[640px]/list:table-cell";
@@ -189,14 +193,14 @@ const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
   return date && field !== "date" ? `${t`Added`} ${date}` : date;
 };
 
-/** Fixed widths, so a one-row list leaves no stretched empty area and columns never shift. */
+/** Fixed widths, so columns never shift and a wide pane gives its extra width to the Name only. */
 function Columns({ showStatus }: { showStatus: boolean }) {
   return (
     <colgroup>
       <col />
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-48 @min-[1100px]/list:w-auto")} />
+      <col className={cn(PARTIES_COLUMN, "w-48 @min-[1100px]/list:w-64")} />
       {showStatus ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
       <col className="w-7" />
     </colgroup>
@@ -307,7 +311,7 @@ function ItemRow({
       : "";
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   const parties = item.facets.parties.join(", ");
-  const type = typeLabel(item.facets.docType);
+  const type = typeText(item);
   const date = dateOf(item, sortField);
   const shown = o.shownId === item.id;
   return (
@@ -329,7 +333,11 @@ function ItemRow({
       <TableCell data-testid="data-room-name">
         <div className="flex min-w-0 items-center gap-2">
           {/* On touch the checkbox always shows, so the slot is a 44 px target. */}
-          <span className="relative inline-flex shrink-0 pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center">
+          <span className="relative inline-flex shrink-0 pointer-coarse:items-center">
+            {/* On touch the box has its own 44 px slot beside the icon, so it never reads as the icon. */}
+            {o.onCheck ? (
+              <span aria-hidden="true" className="hidden size-11 pointer-coarse:block" />
+            ) : null}
             <Marker item={item} />
             {o.onCheck ? (
               <Checkbox
@@ -339,7 +347,7 @@ function ItemRow({
                 onCheckedChange={() => o.onCheck?.(item)}
                 onClick={(event) => event.stopPropagation()}
                 // Over the icon: shown on hover, while ticked, and always on touch screens.
-                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-3.25 pointer-coarse:opacity-100 data-checked:opacity-100"
+                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-y-3.25 pointer-coarse:start-3.25 pointer-coarse:end-auto pointer-coarse:size-4.5 pointer-coarse:opacity-100 data-checked:opacity-100 dark:bg-background"
               />
             ) : null}
           </span>
@@ -728,7 +736,7 @@ export function GridView({
               </span>
             ) : (
               <>
-                <span>{typeLabel(item.facets.docType) || DASH}</span>
+                {typeText(item) ? <span>{typeText(item)}</span> : null}
                 <span>{datedLine(item, sortField)}</span>
               </>
             )}
@@ -748,15 +756,7 @@ function TypeAndDate({
   item: DataRoomApiItem;
   sortField: SortField | undefined;
 }) {
-  const type = typeLabel(item.facets.docType);
-  const date = datedLine(item, sortField);
-  return (
-    <>
-      {[type || (isSettled(item.status, !!item.previewText) ? DASH : ""), date]
-        .filter(Boolean)
-        .join(" · ")}
-    </>
-  );
+  return <>{[typeText(item), datedLine(item, sortField)].filter(Boolean).join(" · ")}</>;
 }
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */
