@@ -9783,6 +9783,7 @@ msgstr ""
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9914,6 +9915,7 @@ msgstr "Prendre le contrôle"
 msgid "Take the tour"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""
@@ -10499,6 +10501,7 @@ msgstr ""
 msgid "Try {name} again"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
