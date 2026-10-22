@@ -79,7 +79,7 @@ type ChoiceBlock = Extract<MessageBlock, { kind: "choice" }>;
 
 const choice: ChoiceBlock = {
   kind: "choice",
-  question: "What do you want me on first?",
+  question: "What should I work on first?",
   options: [
     { id: "day", letter: "A", label: "Day-to-day work" },
     { id: "inbox", letter: "B", label: "Inbox & email" },

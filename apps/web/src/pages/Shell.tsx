@@ -81,10 +81,10 @@ import {
 import {
   ArrowLeft,
   BookUser,
+  CalendarClock,
   ChartColumn,
   ChevronDown,
   CircleAlert,
-  Clock,
   CodeXml,
   Compass,
   Files,
@@ -102,7 +102,6 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
-  Monitor,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -974,7 +973,10 @@ export function ShellPage() {
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
   // Activity sits above the chats: show it from its top, not from the row the list had settled on.
   useEffect(() => {
-    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+    if (!activityMode) return;
+    // The list scrolls on a tall desktop; the pane around it scrolls on a phone and a short screen.
+    sidebarScrollRef.current?.scrollTo({ top: 0 });
+    sidebarPaneRef.current?.scrollTo({ top: 0 });
   }, [activityMode]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
@@ -2361,7 +2363,11 @@ export function ShellPage() {
             detail: doc.detail,
           })),
         },
-        { heading: t`Chats`, icon: <MessageSquare size={16} strokeWidth={1.75} />, entries: chats },
+        {
+          heading: t`Chats`,
+          icon: <MessageSquare size={16} strokeWidth={1.75} />,
+          entries: chats,
+        },
         {
           heading: t`Artifacts`,
           icon: <Files size={16} strokeWidth={1.75} />,
@@ -2717,14 +2723,9 @@ export function ShellPage() {
     });
   }, []);
 
-  useEffect(() => {
+  // Routine mentions need one list call per bot, so they load when the @ menu opens, not on every page load.
+  const loadMentionRoutines = useCallback(() => {
     const bots = botsForMentionsRef.current;
-    if (!initialBotsLoaded || bots.length === 0) {
-      setMentionRoutines([]);
-      setMentionConnectors([]);
-      return;
-    }
-    let cancelled = false;
     const botNameById = new Map(bots.map((bot) => [bot.id, bot.name]));
     void Promise.all(
       bots.map((bot) =>
@@ -2738,12 +2739,14 @@ export function ShellPage() {
           )
           .catch(() => [] as Array<Routine & { botName?: string }>),
       ),
-    ).then((lists) => {
-      if (!cancelled) setMentionRoutines(lists.flat());
-    });
-    return () => {
-      cancelled = true;
-    };
+    ).then((lists) => setMentionRoutines(lists.flat()));
+  }, []);
+
+  useEffect(() => {
+    if (!initialBotsLoaded || mentionBotsKey === "") {
+      setMentionRoutines([]);
+      setMentionConnectors([]);
+    }
   }, [initialBotsLoaded, mentionBotsKey]);
 
   useLayoutEffect(() => {
@@ -2788,13 +2791,15 @@ export function ShellPage() {
     active?.id === chiefId &&
     snapshot?.botId === chiefId &&
     connectCardsOpen(snapshot?.messages ?? []);
+  // Not before the account loads: the sidebar pages render only then, and the tour lists its stops once.
   const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false &&
-      !tourEnded &&
-      bots.length > 0 &&
-      !firstQuestionOpen &&
-      !connectCardsWaiting);
+    bootstrapMe !== undefined &&
+    (tourRestart ||
+      (bootstrapMe?.tourSeen === false &&
+        !tourEnded &&
+        bots.length > 0 &&
+        !firstQuestionOpen &&
+        !connectCardsWaiting));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
   // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
   // (for this session only; the saved preference is unchanged).
@@ -3909,10 +3914,13 @@ export function ShellPage() {
   useEffect(() => {
     if (!computerOpen) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setComputerOpen(false);
+      if (event.key !== "Escape") return;
+      // Capture phase plus preventDefault: the side panel underneath stays open.
+      event.preventDefault();
+      setComputerOpen(false);
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [computerOpen]);
 
   useEffect(() => {
@@ -4379,7 +4387,10 @@ export function ShellPage() {
               replyTargetName={replyTargetName}
               onClearReply={clearReply}
               mentionTargets={composerMentionTargets}
-              onMentionOpen={loadMentionConnectors}
+              onMentionOpen={() => {
+                loadMentionConnectors();
+                loadMentionRoutines();
+              }}
               agentSkills={agentSkills}
               onSlashOpen={refreshAgentSkills}
               sentHistory={sentHistory}
@@ -4650,14 +4661,14 @@ export function ShellPage() {
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
         <div
           ref={sidebarPaneRef}
-          className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents"
+          className="rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
         >
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
             // On a phone Activity takes its place until it is closed, so the chats stay in view.
             <div
-              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "max-lg:hidden" : ""}`}
             >
               <SidebarPagesGroup
                 title={t`Pages`}
@@ -4886,7 +4897,7 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
-            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
               {activityMode && !rail ? (
@@ -5465,7 +5476,7 @@ export function ShellPage() {
                                                     item.kind === "bot" ? "" : undefined
                                                   }
                                                   title={item.chat.name}
-                                                  className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                                  className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
                                                     item.chat.unread ? "font-medium" : ""
                                                   }`}
                                                 >
@@ -6028,11 +6039,8 @@ export function ShellPage() {
                   data-active={panel === "computer" ? "" : undefined}
                   className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  {noComputerScreen ? (
-                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
-                  ) : (
-                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
-                  )}
+                  {/* One icon whatever the computer state, so it does not change while the panel loads. */}
+                  <CalendarClock size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
               ) : null}
             </div>
@@ -6062,7 +6070,7 @@ export function ShellPage() {
           ) : artifactsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
               <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} bots={bots} />
               </Suspense>
             </ErrorBoundary>
           ) : boardMode ? (
@@ -6118,6 +6126,7 @@ export function ShellPage() {
             />
           ) : fundraisingMode ? (
             <FundraisingPage
+              spaceName={pageSpaceName}
               onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
               agentBusy={transcriptRunning}
             />
@@ -6185,6 +6194,7 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
+        onClose={agentPanel ? agentPanel.collapse : () => setPanel(null)}
         open={agentPanel ? agentPanel.open : Boolean(panel && (active || activeGroup))}
         panel={agentPanel ? agentPanel.name : (panel ?? "closed")}
       >
@@ -6303,7 +6313,7 @@ export function ShellPage() {
                       }}
                     />
                   ) : null}
-                  {/* The Monitor button in the chat header is the way back to the computer. */}
+                  {/* The Routines button in the chat header is the way back to the computer. */}
                   {active && panel !== "settings" ? (
                     <Button
                       variant="ghost"

@@ -321,7 +321,7 @@ export function SettingsOverlay({
               className={`min-h-0 flex-1 ${
                 section === "models" || section === "voice" || section === "memory"
                   ? "flex flex-col overflow-hidden pt-5"
-                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-3 pb-6 pt-5 sm:px-8 sm:pb-8"
+                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-6 pb-6 pt-5 sm:px-8 sm:pb-8"
               }`}
             >
               {section === "general" ? (

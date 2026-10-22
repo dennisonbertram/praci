@@ -94,7 +94,13 @@ function Page({ at = "/app/artifacts" }: { at?: string }) {
     <Routes>
       <Route
         path="/app/artifacts/:artifactId?"
-        element={<ArtifactsPage spaceName="Northwind Robotics" onAskAgent={() => {}} />}
+        element={
+          <ArtifactsPage
+            spaceName="Northwind Robotics"
+            onAskAgent={() => {}}
+            bots={bootstrap.bots}
+          />
+        }
       />
       <Route path="*" element={<Navigate to={at} replace />} />
     </Routes>

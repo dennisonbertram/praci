@@ -12,9 +12,6 @@ const api = vi.hoisted(() => ({
   getById: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { artifacts: api } }));
-vi.mock("../lib/bootstrap", () => ({
-  takeInitialBootstrap: vi.fn().mockResolvedValue({ bots: [] }),
-}));
 vi.mock("../lib/artifact-open", () => ({
   decodeArtifactBase64: vi.fn(),
   downloadArtifactBytes: vi.fn(),
@@ -55,7 +52,7 @@ function typeSearch(container: HTMLElement, value: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-async function renderArtifacts(path = "/app/artifacts") {
+async function renderArtifacts(path = "/app/artifacts", bots: never[] = []) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -63,8 +60,8 @@ async function renderArtifacts(path = "/app/artifacts") {
     root.render(
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/app/artifacts" element={<ArtifactsPage />} />
-          <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
+          <Route path="/app/artifacts" element={<ArtifactsPage bots={bots} />} />
+          <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage bots={bots} />} />
         </Routes>
       </MemoryRouter>,
     ),
@@ -326,11 +323,8 @@ it("offers only bots that own artifacts and shows the title without its extensio
     addEventListener: () => {},
     removeEventListener: () => {},
   }));
-  const { takeInitialBootstrap } = await import("../lib/bootstrap");
   const bot = (id: string, name: string) => ({ id, name, color: "", status: "idle" });
-  vi.mocked(takeInitialBootstrap).mockResolvedValueOnce({
-    bots: [bot("b1", "Chief"), bot("b2", "Scribe"), bot("b3", "Idle bot")],
-  } as never);
+  const bots = [bot("b1", "Chief"), bot("b2", "Scribe"), bot("b3", "Idle bot")] as never[];
   api.listSpace.mockResolvedValue({
     items: [
       { ...artifact("Board Deck.md", "a1"), botId: "b1" },
@@ -338,7 +332,7 @@ it("offers only bots that own artifacts and shows the title without its extensio
     ],
     nextCursor: null,
   });
-  const page = await renderArtifacts();
+  const page = await renderArtifacts("/app/artifacts", bots);
   try {
     await act(async () => button(page.container, "Bot")?.click());
     const options = [...document.querySelectorAll("[role=menuitemradio]")];

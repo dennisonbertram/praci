@@ -308,6 +308,11 @@ msgstr ""
 msgid "{0} non-USD not counted"
 msgstr ""
 
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{0} not counted"
+msgstr ""
+
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
 #: src/pages/finance/FinanceCrypto.tsx
@@ -2351,10 +2356,6 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "检查更新"
-
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
@@ -4902,8 +4903,8 @@ msgstr "每小时"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
-msgstr "每月"
+msgid "Every month on the 1st"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"
@@ -6171,6 +6172,10 @@ msgstr "正在加载动态…"
 msgid "Loading integrations"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "正在加载记忆设置…"
@@ -7133,6 +7138,10 @@ msgstr ""
 msgid "No documents here name a party"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+msgid "No draft made, see Ask"
+msgstr ""
+
 #: src/pages/Gtm.tsx
 msgid "No drafts"
 msgstr ""
@@ -7515,7 +7524,7 @@ msgid "Nothing shared yet."
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -7619,6 +7628,10 @@ msgstr "打开 {0}"
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Open {agentName}"
 msgstr ""
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
@@ -10077,6 +10090,10 @@ msgstr "跳过或使用部署密钥"
 msgid "Skip to content"
 msgstr ""
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to message box"
+msgstr ""
+
 #: src/components/tour/TourPopover.tsx
 msgid "Skip tour"
 msgstr ""
@@ -11774,10 +11791,6 @@ msgstr ""
 msgid "What did we spend last month?"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
-msgstr "你想让我先做什么？"
-
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
@@ -11797,6 +11810,10 @@ msgstr "你要示范什么结果？"
 #: src/pages/Shell.tsx
 msgid "What should I do first this week?"
 msgstr ""
+
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
+msgstr "你想让我先做什么？"
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"

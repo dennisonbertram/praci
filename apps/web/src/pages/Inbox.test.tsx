@@ -653,6 +653,8 @@ it("offers Undo after an archive, which restores the thread and reloads the list
   const toast = c.querySelector('[role="status"]');
   // It names the email, so the person knows which one Undo brings back.
   expect(toast?.textContent).toContain('Archived "Subject b"');
+  // The shared toasts rise above it, so a pending approval never hides Undo.
+  expect(toast?.querySelector("[data-toast-avoid]")).not.toBeNull();
   const lists = rpcMock.list.mock.calls.length;
   await click(byText(toast as HTMLElement, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "b" });
@@ -1037,7 +1039,7 @@ it("says it is reading the mail during the first sync and asks the server a few 
   }
 });
 
-it("says a first sync can take a minute after 5 s, and shows the consent prompt while it runs", async () => {
+it("shows the consent prompt without loading text while the first sync runs", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockResolvedValue(
@@ -1052,13 +1054,13 @@ it("says a first sync can take a minute after 5 s, and shows the consent prompt 
     );
     rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
     const c = await render();
-    expect(c.textContent).toContain("Reading your mail…");
-    expect(c.textContent).not.toContain("First sync can take a minute");
+    // The choice is the one thing to read before consent: no sync status beside it.
+    expect(c.textContent).not.toContain("Reading your mail");
     expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
-    expect(c.textContent).toContain("First sync can take a minute");
+    expect(c.textContent).not.toContain("First sync can take a minute");
   } finally {
     vi.useRealTimers();
   }
@@ -1143,6 +1145,31 @@ it("shows five Needs reply rows and the rest behind 'Show n more'", async () => 
   await click(byText(c, "Show 2 more"));
   expect(c.querySelectorAll("button[data-row-id]").length).toBe(7);
   expect(byText(c, "Show 2 more")).toBeUndefined();
+});
+
+it("keeps the To do card the same when 'Show n more' lists more Needs reply rows", async () => {
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  rpcMock.list.mockResolvedValue(list(ids.map((id) => row(id, { needsReply: true }))));
+  const todo = (id: string, messageId: string, text: string) => ({
+    id,
+    connectionId: "c1",
+    messageId,
+    text,
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  });
+  rpcMock.todos.mockResolvedValue({
+    todos: [todo("t1", "r1", "Reply about one"), todo("t7", "r7", "Reply about seven")],
+  });
+  const c = await render();
+  expect(c.textContent).not.toContain("Reply about one");
+  expect(c.textContent).toContain("Reply about seven");
+  await click(byText(c, "Show 2 more"));
+  expect(c.textContent).not.toContain("Reply about one");
+  expect(c.textContent).toContain("Reply about seven");
 });
 
 it("holds rows in their groups while triage is still running", async () => {

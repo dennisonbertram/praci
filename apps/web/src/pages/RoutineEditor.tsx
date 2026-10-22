@@ -448,7 +448,7 @@ export function RoutineEditor({
               >
                 <Trans>Test run</Trans>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom">
                 <Trans>Save the routine first</Trans>
               </TooltipContent>
             </Tooltip>
@@ -890,7 +890,7 @@ function schedulePresetLabel(freq: CronFreq): string {
     case "Every week":
       return t`Every week`;
     case "Every month":
-      return t`Every month`;
+      return t`Every month on the 1st`;
     case "Interval":
       return t`Interval`;
     case "Advanced":

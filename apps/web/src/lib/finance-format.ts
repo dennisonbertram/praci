@@ -135,7 +135,9 @@ export const monthFull = (month: string, locale?: string) =>
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
   if (getHideAmounts()) return null;
-  const rounded = Math.round(Math.abs(pct));
+  // Under 10% one decimal, so 0.5% is not shown as 1% while the agent says 0.5%.
+  const abs = Math.abs(pct);
+  const rounded = abs < 10 ? Math.round(abs * 10) / 10 : Math.round(abs);
   if (rounded === 0) return "0%";
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
 }

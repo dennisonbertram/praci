@@ -539,10 +539,10 @@ function Overview({
               <Kpi
                 title={t`Cash`}
                 value={money(data.cash.cashCents)}
-                sub={cashSubtitle(
+                sub={`${cashSubtitle(
                   data.cash.cashAccountCount,
                   otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "none",
-                )}
+                )}${data.excludedNonUsdCount > 0 ? ` · ${t`${data.excludedNonUsdCount} not counted`}` : ""}`}
                 to={financePath.accounts()}
                 hover={
                   data.crypto ? (
@@ -1002,10 +1002,11 @@ function SubscriptionsTable({
                     {trendText(sub.trendCents)}
                   </span>
                 ) : null}
+                {similar ? " " : null}
                 {similar ? (
                   <span
                     title={similar}
-                    className="ms-1.5 inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-xs font-normal text-muted-foreground"
+                    className="inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-xs font-normal text-muted-foreground"
                   >
                     {similar}
                   </span>

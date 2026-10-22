@@ -308,6 +308,11 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 msgid "{0} non-USD not counted"
 msgstr "{0} non-USD not counted"
 
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{0} not counted"
+msgstr "{0} not counted"
+
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
 #: src/pages/finance/FinanceCrypto.tsx
@@ -2351,10 +2356,6 @@ msgstr "Check for receipt"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Check for updates"
-
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr "Check now"
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
@@ -4902,8 +4903,8 @@ msgstr "Every hour"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
-msgstr "Every month"
+msgid "Every month on the 1st"
+msgstr "Every month on the 1st"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"
@@ -6171,6 +6172,10 @@ msgstr "Loading activity…"
 msgid "Loading integrations"
 msgstr "Loading integrations"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
+msgstr "Loading integrations…"
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Loading memory settings…"
@@ -7133,6 +7138,10 @@ msgstr "No documents here have a date yet."
 msgid "No documents here name a party"
 msgstr "No documents here name a party"
 
+#: src/components/investors/ActionItems.tsx
+msgid "No draft made, see Ask"
+msgstr "No draft made, see Ask"
+
 #: src/pages/Gtm.tsx
 msgid "No drafts"
 msgstr "No drafts"
@@ -7515,8 +7524,8 @@ msgid "Nothing shared yet."
 msgstr "Nothing shared yet."
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
-msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
+msgstr "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Notice deadlines are derived from the expiration date and the notice period."
@@ -7620,6 +7629,10 @@ msgstr "Open {0}"
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr "Open {0} full screen"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Open {agentName}"
+msgstr "Open {agentName}"
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10077,6 +10090,10 @@ msgstr "Skip or deploy key"
 msgid "Skip to content"
 msgstr "Skip to content"
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to message box"
+msgstr "Skip to message box"
+
 #: src/components/tour/TourPopover.tsx
 msgid "Skip tour"
 msgstr "Skip tour"
@@ -11774,10 +11791,6 @@ msgstr "What did Devin do this week?"
 msgid "What did we spend last month?"
 msgstr "What did we spend last month?"
 
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
-msgstr "What do you want me on first?"
-
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr "What is our runway?"
@@ -11797,6 +11810,10 @@ msgstr "What result will you demonstrate?"
 #: src/pages/Shell.tsx
 msgid "What should I do first this week?"
 msgstr "What should I do first this week?"
+
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
+msgstr "What should I work on first?"
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"

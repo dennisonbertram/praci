@@ -48,7 +48,6 @@ import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { artifactDisplayName as displayName } from "../lib/artifact-name";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
-import { takeInitialBootstrap } from "../lib/bootstrap";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { canPreviewSpreadsheet } from "../lib/spreadsheet";
@@ -108,14 +107,16 @@ function matchesCalendarDateFilter(iso: string, filter: DateFilter, now: Date): 
 export function ArtifactsPage({
   spaceName,
   onAskAgent,
+  bots = [],
 }: {
   spaceName?: string;
   onAskAgent?: () => void;
+  /** The shell's bots, so the page does not ask the server for them again. */
+  bots?: Bot[];
 }) {
   const { artifactId } = useParams<{ artifactId?: string }>();
   const navigate = useNavigate();
   const { t } = useLingui();
-  const [bots, setBots] = useState<Bot[]>([]);
   const [items, setItems] = useState<ArtifactSummary[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -132,10 +133,6 @@ export function ArtifactsPage({
   const [pendingDelete, setPendingDelete] = useState<ArtifactSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void takeInitialBootstrap().then((bootstrap) => setBots(bootstrap.bots));
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,13 +307,7 @@ export function ArtifactsPage({
           // The space name drops to a third row on a phone; the header stays one row there.
           className="max-md:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Artifacts</Trans>}
-          meta={
-            spaceName ? (
-              <span className="truncate" title={spaceName}>
-                {spaceName}
-              </span>
-            ) : null
-          }
+          spaceName={spaceName}
           actions={
             <>
               {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}
