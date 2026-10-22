@@ -208,7 +208,7 @@ export function LegalContracts({
               <TableCell className="truncate tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="whitespace-nowrap" title={renewal(contract)}>
+              <TableCell className="truncate" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
