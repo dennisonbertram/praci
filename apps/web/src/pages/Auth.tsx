@@ -177,7 +177,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           ) : null}
           <Link
             to="/sign-in"
-            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <Trans>Back to sign in</Trans>
           </Link>
@@ -299,7 +299,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <div className="text-right text-sm">
                       <Link
                         to="/forgot-password"
-                        className="inline-block py-2 font-medium text-foreground pointer-coarse:py-3"
+                        className="inline-block py-2 font-medium text-foreground pointer-coarse:py-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <Trans>Forgot password?</Trans>
                       </Link>
@@ -340,7 +340,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Don’t have an account?</Trans>{" "}
                     <Link
                       to="/sign-up"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <Trans>Sign up</Trans>
                     </Link>
@@ -350,7 +350,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Already have an account?</Trans>{" "}
                     <Link
                       to="/sign-in"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <Trans>Sign in</Trans>
                     </Link>
@@ -358,7 +358,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 ) : (
                   <Link
                     to="/sign-in"
-                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <Trans>Back to sign in</Trans>
                   </Link>
@@ -416,7 +416,10 @@ export function PasswordResetPage() {
     >
       {linkInvalid ? (
         <>
-          <Link to="/forgot-password" className="font-medium">
+          <Link
+            to="/forgot-password"
+            className="font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Request a new link</Trans>
           </Link>
         </>
@@ -425,7 +428,10 @@ export function PasswordResetPage() {
           <p className="text-lg">
             <Trans>Password updated</Trans>
           </p>
-          <Link to="/sign-in" className="mt-6 inline-block font-medium">
+          <Link
+            to="/sign-in"
+            className="mt-6 inline-block font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Sign in</Trans>
           </Link>
         </div>
@@ -452,7 +458,10 @@ export function PasswordResetPage() {
           <Button type="submit" size="lg" disabled={pending} className={submitClass}>
             {pending ? <Trans>Working…</Trans> : <Trans>Reset password</Trans>}
           </Button>
-          <Link to="/sign-in" className="mt-6 font-medium">
+          <Link
+            to="/sign-in"
+            className="mt-6 font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Back to sign in</Trans>
           </Link>
         </>

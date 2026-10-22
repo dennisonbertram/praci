@@ -1,4 +1,4 @@
-import { cartaAgentSpawnKey } from "@rakazo/contracts";
+import { cartaAgentSpawnKey, gtmAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildApprovalAskBlock,
@@ -88,6 +88,34 @@ describe("describeApprovalAction money and generic tools", () => {
     );
     expect(write.kind === "ask" && write.detailFolded).toBe(true);
     expect(mail.kind === "ask" && mail.detailFolded).toBeFalsy();
+  });
+});
+
+describe("integration-agent write classification", () => {
+  it("treats GTM Zernio connector writes as mandatory-defense actions", () => {
+    expect(
+      isIntegrationAgentWrite(
+        gtmAgentSpawnKey("user-1"),
+        {
+          connectorId: "mcp",
+          endpoint: "https://mcp.zernio.com/mcp",
+          toolName: "posts_create",
+        },
+        true,
+      ),
+    ).toBe(true);
+
+    expect(
+      isIntegrationAgentWrite(
+        gtmAgentSpawnKey("user-1"),
+        {
+          connectorId: "mcp",
+          endpoint: "https://mcp.zernio.com/mcp",
+          toolName: "posts_list",
+        },
+        true,
+      ),
+    ).toBe(false);
   });
 });
 

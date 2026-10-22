@@ -367,6 +367,9 @@ export function BurnLines({
   useHideAmounts();
   const gradient = useId();
   const [active, setActive] = useState<number | null>(null);
+  // A finger cannot hit 20 px columns, so on touch the whole plot is one target: a tap picks the
+  // nearest period (its figures show), a second tap in the same column opens it.
+  const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
   return (
     <Chart height={height} label={label}>
       {(width) => {
@@ -550,16 +553,21 @@ export function BurnLines({
                 // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be an <a> that the router can drive
                 <g
                   key={m.start}
+                  // Pointer events go to the touch target below; keyboard access to every period stays.
                   role="link"
                   tabIndex={0}
                   aria-label={`${granularity === "day" ? dayMonth(m.start) : name}: ${money(m.outCents)}`}
-                  className="cursor-pointer outline-none"
-                  onClick={open}
                   onKeyDown={keyActivate(open)}
-                  onMouseEnter={() => setActive(i)}
-                  onMouseLeave={() => setActive(null)}
                   onFocus={() => setActive(i)}
                   onBlur={() => setActive(null)}
+                  {...(touch
+                    ? {}
+                    : {
+                        onClick: open,
+                        onMouseEnter: () => setActive(i),
+                        onMouseLeave: () => setActive(null),
+                      })}
+                  className="cursor-pointer outline-none"
                 >
                   <rect
                     x={left + slot * i}
@@ -584,6 +592,28 @@ export function BurnLines({
                 </g>
               );
             })}
+            {touch ? (
+              // Pointer only: each period above is the keyboard and screen reader control.
+              // biome-ignore lint/a11y/noStaticElementInteractions: a tap overlay; the periods are the accessible controls
+              <rect
+                data-testid="burn-touch-target"
+                x={left}
+                y={top}
+                width={Math.max(width - left - right, 0)}
+                height={base - top}
+                className="fill-transparent outline-none"
+                onClick={(event) => {
+                  const box = event.currentTarget.getBoundingClientRect();
+                  const i = Math.floor(
+                    ((event.clientX - box.left) / box.width) * Math.max(series.length, MIN_SLOTS),
+                  );
+                  const point = series[i];
+                  if (!point) return;
+                  if (i === active) onOpen(point);
+                  else setActive(i);
+                }}
+              />
+            ) : null}
             {series.map((m, i) => {
               if (m.financingCents <= scale.top) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");

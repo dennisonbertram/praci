@@ -247,7 +247,16 @@ export const showDeletedToast = (name: string) => showShortToast(name, { kind: "
 /** A toast confirming a rename, under the new name. */
 export const showRenamedToast = (name: string) => showShortToast(name, { kind: "renamed" });
 /** A short message, such as a link to a folder that no longer exists. */
-export const showNoticeToast = (text: string) => showShortToast(text, { kind: "notice" });
+export const showNoticeToast = (text: string, since?: number) => {
+  sync();
+  // `since` is a uploadScopeToken() taken before a slow call; a changed user or space drops the toast.
+  if (since === undefined || since === epoch) showShortToast(text, { kind: "notice" });
+};
+/** Identifies the current user and space; pass it to showNoticeToast to drop a toast that outlives them. */
+export function uploadScopeToken() {
+  sync();
+  return epoch;
+}
 
 /** A toast saying how many items an Auto-sort touched, with Undo for that batch. */
 export function showSortedToast(count: number, batchId: string) {

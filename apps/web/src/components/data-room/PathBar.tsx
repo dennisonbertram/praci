@@ -54,7 +54,7 @@ export function PathBar({
   const link = ({ id, name }: Crumb) => (
     <BreadcrumbLink
       render={<button type="button" title={name} onClick={() => onSelect(id)} />}
-      className="block max-w-48 cursor-pointer truncate"
+      className="block max-w-48 cursor-pointer truncate py-1"
     >
       {name}
     </BreadcrumbLink>
