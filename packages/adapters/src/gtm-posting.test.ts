@@ -22,6 +22,7 @@ const post = (overrides: Record<string, unknown> = {}) => ({
   _id: "post-1",
   content: input.content,
   scheduledFor: input.scheduledFor,
+  status: "published",
   platforms: [
     {
       platform: input.platform,
@@ -179,12 +180,60 @@ describe("Zernio REST adapter", () => {
 
   it("keeps accepted scheduled posts open when public URL proof is absent", () => {
     const scheduled = post({
+      status: "scheduled",
       platforms: [{ platform: input.platform, accountId: input.accountId, status: "scheduled" }],
     });
     expect(parseZernioCreateResponse(201, { post: scheduled }, input)).toEqual({
       state: "queued",
       postId: "post-1",
     });
+  });
+
+  it("accepts the documented scheduled pending shape and populated account identity", () => {
+    const scheduled = post({
+      status: "scheduled",
+      platforms: [
+        {
+          platform: input.platform,
+          accountId: { _id: input.accountId, platform: input.platform },
+          status: "pending",
+        },
+      ],
+    });
+    expect(parseZernioCreateResponse(201, { post: scheduled }, input)).toEqual({
+      state: "queued",
+      postId: "post-1",
+    });
+
+    const published = post({
+      platforms: [
+        {
+          platform: input.platform,
+          accountId: { _id: input.accountId, platform: input.platform },
+          status: "published",
+          platformPostUrl: proofUrl,
+        },
+      ],
+    });
+    expect(parseZernioCreateResponse(201, { post: published }, input)).toEqual({
+      state: "completed",
+      postId: "post-1",
+      platformPostUrl: proofUrl,
+    });
+
+    const contradictoryAccount = post({
+      platforms: [
+        {
+          platform: input.platform,
+          accountId: { _id: input.accountId, platform: "linkedin" },
+          status: "published",
+          platformPostUrl: proofUrl,
+        },
+      ],
+    });
+    expect(parseZernioCreateResponse(201, { post: contradictoryAccount }, input).state).toBe(
+      "uncertain",
+    );
   });
 
   it("requires a well-formed URL and documented status, and rejects ambiguous bodies", () => {
@@ -227,6 +276,31 @@ describe("Zernio REST adapter", () => {
     ).toBe("uncertain");
   });
 
+  it("requires top-level status and rejects conflicting or ambiguous success metadata", () => {
+    for (const status of ["failed", "draft", "unknown"]) {
+      expect(parseZernioCreateResponse(201, { post: post({ status }) }, input).state).toBe(
+        "uncertain",
+      );
+    }
+    expect(
+      parseZernioCreateResponse(
+        201,
+        { post: post({ status: "scheduled", platforms: post().platforms }) },
+        input,
+      ).state,
+    ).toBe("uncertain");
+
+    expect(
+      parseZernioCreateResponse(201, { error: "provider detail", post: post() }, input).state,
+    ).toBe("uncertain");
+    expect(parseZernioCreateResponse(201, { error: "", post: post() }, input).state).toBe(
+      "uncertain",
+    );
+    expect(parseZernioCreateResponse(201, { success: false, post: post() }, input).state).toBe(
+      "uncertain",
+    );
+  });
+
   it.each([202, 409, 500, 502])("treats HTTP %s as uncertain", (status) => {
     expect(parseZernioCreateResponse(status, { error: "provider response" }, input).state).toBe(
       "uncertain",
@@ -237,6 +311,14 @@ describe("Zernio REST adapter", () => {
     expect(parseZernioCreateResponse(400, { error: "invalid request" }, input).state).toBe(
       "rejected",
     );
+    for (const error of ["", "   "]) {
+      expect(parseZernioCreateResponse(400, { error }, input).state).toBe("uncertain");
+    }
+    for (const identity of ["post", "postId", "existingPostId"]) {
+      expect(
+        parseZernioCreateResponse(400, { error: "duplicate", [identity]: null }, input).state,
+      ).toBe("uncertain");
+    }
     expect(
       parseZernioCreateResponse(400, { postId: "post-1", error: "duplicate" }, input).state,
     ).toBe("uncertain");
@@ -641,7 +723,9 @@ describe("approved GTM post dispatch", () => {
     );
     const first = state.run(dispatch);
     await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(1));
-    const second = state.run(dispatch, { effectKey: "run:gtm_post:different-effect-key" });
+    const second = state.run(dispatch, {
+      effectKey: `run-1:gtm_post:${"b".repeat(64)}`,
+    });
     release?.({ state: "completed", postId: "post-1", platformPostUrl: proofUrl });
 
     await Promise.all([first, second]);

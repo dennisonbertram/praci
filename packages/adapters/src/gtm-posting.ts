@@ -40,9 +40,12 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-function accountId(value: unknown): string | undefined {
+function accountId(value: unknown, expectedPlatform: string): string | undefined {
   if (typeof value === "string") return value;
   const object = record(value);
+  if (object && Object.hasOwn(object, "platform") && object.platform !== expectedPlatform) {
+    return undefined;
+  }
   return typeof object?._id === "string" ? object._id : undefined;
 }
 
@@ -64,24 +67,25 @@ export function parseZernioCreateResponse(
   expected: ZernioCreateInput,
 ): ZernioCreateResult {
   const root = record(body);
-  if (root && Object.hasOwn(root, "success") && Object.hasOwn(root, "error")) {
-    return { state: "uncertain" };
-  }
   if ([400, 401, 403, 429].includes(status)) {
     const error = root;
     if (
       error &&
       typeof error.error === "string" &&
-      !error.post &&
-      !error.postId &&
-      !error.existingPostId &&
-      !error.success
+      error.error.trim().length > 0 &&
+      !Object.hasOwn(error, "post") &&
+      !Object.hasOwn(error, "postId") &&
+      !Object.hasOwn(error, "existingPostId") &&
+      !Object.hasOwn(error, "success")
     ) {
       return { state: "rejected" };
     }
     return { state: "uncertain" };
   }
   if (status < 200 || status >= 300 || status === 202) return { state: "uncertain" };
+  if (root && (Object.hasOwn(root, "error") || root.success === false)) {
+    return { state: "uncertain" };
+  }
   const post = record(root?.post);
   if (
     !post ||
@@ -99,17 +103,21 @@ export function parseZernioCreateResponse(
   if (
     !target ||
     target.platform !== expected.platform ||
-    accountId(target.accountId) !== expected.accountId
+    accountId(target.accountId, expected.platform) !== expected.accountId
   ) {
     return { state: "uncertain" };
   }
   if (Object.hasOwn(target, "platformPostUrl")) {
-    if (target.status !== "published" || !validProofUrl(target.platformPostUrl)) {
+    if (
+      post.status !== "published" ||
+      target.status !== "published" ||
+      !validProofUrl(target.platformPostUrl)
+    ) {
       return { state: "uncertain" };
     }
     return { state: "completed", postId: post._id, platformPostUrl: target.platformPostUrl };
   }
-  if (target.status === "scheduled") {
+  if (post.status === "scheduled" && ["pending", "scheduled"].includes(String(target.status))) {
     return { state: "queued", postId: post._id };
   }
   return { state: "uncertain" };
