@@ -131,10 +131,10 @@ export const monthLabel = (month: string, locale?: string) =>
 export const monthFull = (month: string, locale?: string) =>
   monthFormat(month, { month: "long", year: "numeric" }, locale);
 
-/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. While amounts are hidden the direction is hidden too. */
+/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. While amounts are hidden there is no text: a percentage of a hidden amount would reveal it. */
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
-  if (getHideAmounts()) return `${MASK}%`;
+  if (getHideAmounts()) return null;
   const rounded = Math.round(Math.abs(pct));
   if (rounded === 0) return "0%";
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
@@ -150,10 +150,10 @@ export function trendText(values: readonly number[]): string | null {
   return Math.round(Math.abs(pct)) === 0 ? null : changeText(pct);
 }
 
-/** A part's share of a whole, as a whole percent (masked while amounts are hidden, since it follows from them); a small but real part reads "<1%", not "0%". */
+/** A part's share of a whole, as a whole percent (empty while amounts are hidden, since it follows from them); a small but real part reads "<1%", not "0%". */
 export function shareText(part: number, whole: number): string {
   if (whole <= 0) return "—";
-  if (getHideAmounts()) return `${MASK}%`;
+  if (getHideAmounts()) return "";
   const pct = Math.round((part / whole) * 100);
   return pct === 0 && part > 0 ? "<1%" : `${pct}%`;
 }
