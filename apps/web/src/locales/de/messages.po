@@ -2036,6 +2036,7 @@ msgstr ""
 msgid "Building graph…"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Integriert"
@@ -2989,7 +2990,7 @@ msgstr "Verbunden"
 msgid "Connected · {0}"
 msgstr "Verbunden · {0}"
 
-#. placeholder {0}: new Date(row.createdAt).toLocaleDateString()
+#. placeholder {0}: new Date(row.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })
 #: src/components/integrations/AppDetail.tsx
 msgid "Connected {0}"
 msgstr ""
@@ -4025,6 +4026,10 @@ msgstr ""
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Creates a {service} agent that asks you before each change."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -5245,6 +5250,11 @@ msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
 msgid "from Mercury"
+msgstr ""
+
+#. placeholder {0}: message.routineName
+#: src/pages/shell/transcript.tsx
+msgid "From routine: {0}"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -6748,9 +6758,8 @@ msgstr ""
 msgid "More"
 msgstr ""
 
-#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
-#. placeholder {0}: server.name
+#. placeholder {0}: source.name
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
@@ -6783,10 +6792,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "More Granola actions"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -6904,6 +6909,7 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
@@ -7607,14 +7613,6 @@ msgstr ""
 msgid "Off in Settings"
 msgstr ""
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: other agents reach {service} only through this agent."
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr ""
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7622,14 +7620,6 @@ msgstr "Im Gespräch mit {0}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: creates a {service} agent that can read and, after you approve, make changes."
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7886,6 +7876,10 @@ msgstr "Originalnachricht nicht verfügbar"
 msgid "Other"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents can read {service}; changes still go through this agent."
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Other connection types"
 msgstr ""
@@ -8139,6 +8133,10 @@ msgstr "Wiedergabe…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
@@ -9859,10 +9857,6 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Shared with your other bots"
-msgstr ""
-
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
@@ -10651,6 +10645,10 @@ msgstr ""
 
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "The agent asks you before each change."
 msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
@@ -11708,6 +11706,10 @@ msgid "Waiting {minutes}m"
 msgstr ""
 
 #: src/lib/roster-status.ts
+msgid "Waiting for AI to be allowed"
+msgstr ""
+
+#: src/lib/roster-status.ts
 msgid "Waiting for approval"
 msgstr ""
 
@@ -12127,6 +12129,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Yours"
 msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx

@@ -147,7 +147,7 @@ it("Carta links back to Investors, hides the MCP host and names who loses access
   const link = container.querySelector<HTMLAnchorElement>('a[href="/app/investors"]');
   expect(link?.textContent).toBe("Open Investors");
   expect(container.textContent).not.toContain("via MCP");
-  expect(container.textContent).toContain("asks you before each one");
+  expect(container.textContent).toContain("asks you before each change");
   await press("Remove Carta");
   expect(document.body.textContent).toContain("The Carta agent loses access to Carta.");
 });
@@ -390,7 +390,7 @@ it("titles the card as the service agent and says turning changes on creates it,
   await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
   const agent = container.querySelector('section[aria-label="Agent"]');
   expect(agent?.textContent).toContain("Carta agent");
-  expect(agent?.textContent).toContain("On: creates a Carta agent");
+  expect(agent?.textContent).toContain("Creates a Carta agent that asks you before each change.");
   expect(agent?.textContent).not.toContain("Created when you allow changes");
 });
 

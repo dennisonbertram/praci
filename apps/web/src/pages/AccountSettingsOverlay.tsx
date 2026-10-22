@@ -153,181 +153,174 @@ export function GeneralSettingsPanels({
         </section>
       ) : null}
 
-      {/* Two columns when the pane is wide, so General is not one long scroll. */}
-      <div className="grid items-start gap-5 @2xl:grid-cols-2 @2xl:grid-rows-[auto_1fr]">
-        <div className="min-w-0 space-y-5">
-          <section className="rounded-xl border border-border px-4 py-4">
-            <h3 className="text-[15px] font-medium text-foreground">
-              <Trans>Appearance</Trans>
-            </h3>
-            <span id={themeLabelId} className="mt-3 block text-[13px] text-foreground/75">
-              <Trans>Theme</Trans>
-            </span>
-            <AppearancePicker
-              labelledBy={themeLabelId}
-              value={appearance}
-              onChange={(next) => {
-                setAppearance(next);
-                setUiAppearance(next);
-              }}
-            />
-          </section>
+      {/* Two balanced columns when the pane is wide, so General is not one long scroll and an opened card never leaves an empty band. */}
+      <div className="@2xl:columns-2 @2xl:gap-5 [&>*]:mb-5 [&>*]:break-inside-avoid">
+        <section className="rounded-xl border border-border px-4 py-4">
+          <h3 className="text-[15px] font-medium text-foreground">
+            <Trans>Appearance</Trans>
+          </h3>
+          <span id={themeLabelId} className="mt-3 block text-[13px] text-foreground/75">
+            <Trans>Theme</Trans>
+          </span>
+          <AppearancePicker
+            labelledBy={themeLabelId}
+            value={appearance}
+            onChange={(next) => {
+              setAppearance(next);
+              setUiAppearance(next);
+            }}
+          />
+        </section>
 
-          <details
-            data-testid="advanced-settings"
-            className="group rounded-xl border border-border"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
-              <span className="block text-[15px] text-foreground">
-                <Trans>Chat display</Trans>
-              </span>
-              <ChevronRight
-                aria-hidden="true"
-                className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-                strokeWidth={1.75}
-              />
-            </summary>
-            <div className="border-t border-border px-4 pb-5">
-              {/* The sidebar is a drawer below 1024px, where density does nothing. */}
-              <div className="mt-5 hidden lg:block">
-                <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
-                  <Trans>Sidebar density</Trans>
-                </span>
-                <fieldset
-                  aria-labelledby={sidebarDensityLabelId}
-                  data-testid="bots-sidebar-density-select"
-                  className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
-                >
-                  <Toggle
-                    data-testid="bots-sidebar-density-comfortable"
-                    pressed={sidebarDensity === "comfortable"}
-                    onPressedChange={() => setBotsSidebarDensity("comfortable")}
-                    className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                  >
-                    <Trans>Comfortable</Trans>
-                  </Toggle>
-                  <Toggle
-                    data-testid="bots-sidebar-density-compact"
-                    pressed={sidebarDensity === "compact"}
-                    onPressedChange={() => setBotsSidebarDensity("compact")}
-                    className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                  >
-                    <Trans>Compact</Trans>
-                  </Toggle>
-                </fieldset>
-              </div>
-              <span id={avatarsLabelId} className="mt-5 block text-[13px] text-foreground/75">
-                <Trans>Avatars</Trans>
+        <details data-testid="advanced-settings" className="group rounded-xl border border-border">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
+            <span className="block text-[15px] text-foreground">
+              <Trans>Chat display</Trans>
+            </span>
+            <ChevronRight
+              aria-hidden="true"
+              className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+              strokeWidth={1.75}
+            />
+          </summary>
+          <div className="border-t border-border px-4 pb-5">
+            {/* The sidebar is a drawer below 1024px, where density does nothing. */}
+            <div className="mt-5 hidden lg:block">
+              <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
+                <Trans>Sidebar density</Trans>
               </span>
               <fieldset
-                aria-labelledby={avatarsLabelId}
-                data-testid="avatar-style-select"
-                className="mt-2 grid min-w-0 grid-cols-2 gap-3"
+                aria-labelledby={sidebarDensityLabelId}
+                data-testid="bots-sidebar-density-select"
+                className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
               >
-                {(["organic", "robot"] as const).map((style) => (
-                  <Toggle
-                    key={style}
-                    variant="outline"
-                    pressed={style === avatarStyle}
-                    disabled={avatarPending}
-                    onPressedChange={() => void chooseAvatarStyle(style)}
-                    data-testid={`avatar-style-${style}`}
-                    className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
-                  >
-                    <BotAvatar
-                      color="#D9508A"
-                      identity="avatar-style-preview"
-                      size={32}
-                      variant={style}
-                    />
-                    <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
-                  </Toggle>
-                ))}
+                <Toggle
+                  data-testid="bots-sidebar-density-comfortable"
+                  pressed={sidebarDensity === "comfortable"}
+                  onPressedChange={() => setBotsSidebarDensity("comfortable")}
+                  className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                >
+                  <Trans>Comfortable</Trans>
+                </Toggle>
+                <Toggle
+                  data-testid="bots-sidebar-density-compact"
+                  pressed={sidebarDensity === "compact"}
+                  onPressedChange={() => setBotsSidebarDensity("compact")}
+                  className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                >
+                  <Trans>Compact</Trans>
+                </Toggle>
               </fieldset>
-              {avatarError ? (
-                <p role="alert" className="mt-3 text-[12.5px] text-destructive">
-                  {avatarError}
-                </p>
-              ) : null}
-              <div className="mt-5 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
-                <Switch
-                  id={streamRepliesId}
-                  data-testid="response-streaming-toggle"
-                  className="mt-0.5"
-                  checked={streamReplies}
-                  onCheckedChange={(checked) => {
-                    setStreamReplies(checked);
-                    setResponseStreamingPreference(checked ? "on" : "off");
-                  }}
-                />
-                <Label
-                  htmlFor={streamRepliesId}
-                  className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
-                >
-                  <Trans>Stream replies</Trans>
-                </Label>
-              </div>
-              <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
-                <Switch
-                  id={showToolActivityId}
-                  data-testid="tool-activity-toggle"
-                  className="mt-0.5"
-                  checked={showToolActivity}
-                  onCheckedChange={(checked) => {
-                    setShowToolActivity(checked);
-                    setToolActivityPreference(checked ? "on" : "off");
-                  }}
-                />
-                <Label
-                  htmlFor={showToolActivityId}
-                  className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
-                >
-                  <Trans>Show tool activity</Trans>
-                </Label>
-              </div>
-              <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
-                <Switch
-                  id={loadRemoteImagesId}
-                  data-testid="remote-images-toggle"
-                  className="mt-0.5"
-                  checked={loadRemoteImages}
-                  onCheckedChange={(checked) => {
-                    setLoadRemoteImages(checked);
-                    setRemoteImagesPreference(checked ? "on" : "off");
-                  }}
-                />
-                <Label
-                  htmlFor={loadRemoteImagesId}
-                  className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
-                >
-                  <Trans>Load web images automatically</Trans>
-                </Label>
-              </div>
             </div>
-          </details>
-        </div>
-        <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
-          {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
-
-          <section className="rounded-xl border border-border px-4 py-4">
-            <h3 className="text-[15px] font-medium text-foreground">
-              {timezone && onTimezoneChange ? (
-                <Trans>Language and time zone</Trans>
-              ) : (
-                <Trans>Language</Trans>
-              )}
-            </h3>
-            <UiLocalePicker value={locale} onChange={chooseLocale} />
-            {timezone && onTimezoneChange ? (
-              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+            <span id={avatarsLabelId} className="mt-5 block text-[13px] text-foreground/75">
+              <Trans>Avatars</Trans>
+            </span>
+            <fieldset
+              aria-labelledby={avatarsLabelId}
+              data-testid="avatar-style-select"
+              className="mt-2 grid min-w-0 grid-cols-2 gap-3"
+            >
+              {(["organic", "robot"] as const).map((style) => (
+                <Toggle
+                  key={style}
+                  variant="outline"
+                  pressed={style === avatarStyle}
+                  disabled={avatarPending}
+                  onPressedChange={() => void chooseAvatarStyle(style)}
+                  data-testid={`avatar-style-${style}`}
+                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
+                >
+                  <BotAvatar
+                    color="#D9508A"
+                    identity="avatar-style-preview"
+                    size={32}
+                    variant={style}
+                  />
+                  <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
+                </Toggle>
+              ))}
+            </fieldset>
+            {avatarError ? (
+              <p role="alert" className="mt-3 text-[12.5px] text-destructive">
+                {avatarError}
+              </p>
             ) : null}
-          </section>
-          <NotificationSettingsSection />
-          {children}
-        </div>
+            <div className="mt-5 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <Switch
+                id={streamRepliesId}
+                data-testid="response-streaming-toggle"
+                className="mt-0.5"
+                checked={streamReplies}
+                onCheckedChange={(checked) => {
+                  setStreamReplies(checked);
+                  setResponseStreamingPreference(checked ? "on" : "off");
+                }}
+              />
+              <Label
+                htmlFor={streamRepliesId}
+                className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
+              >
+                <Trans>Stream replies</Trans>
+              </Label>
+            </div>
+            <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <Switch
+                id={showToolActivityId}
+                data-testid="tool-activity-toggle"
+                className="mt-0.5"
+                checked={showToolActivity}
+                onCheckedChange={(checked) => {
+                  setShowToolActivity(checked);
+                  setToolActivityPreference(checked ? "on" : "off");
+                }}
+              />
+              <Label
+                htmlFor={showToolActivityId}
+                className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
+              >
+                <Trans>Show tool activity</Trans>
+              </Label>
+            </div>
+            <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <Switch
+                id={loadRemoteImagesId}
+                data-testid="remote-images-toggle"
+                className="mt-0.5"
+                checked={loadRemoteImages}
+                onCheckedChange={(checked) => {
+                  setLoadRemoteImages(checked);
+                  setRemoteImagesPreference(checked ? "on" : "off");
+                }}
+              />
+              <Label
+                htmlFor={loadRemoteImagesId}
+                className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
+              >
+                <Trans>Load web images automatically</Trans>
+              </Label>
+            </div>
+          </div>
+        </details>
+        {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
+
+        <section className="rounded-xl border border-border px-4 py-4">
+          <h3 className="text-[15px] font-medium text-foreground">
+            {timezone && onTimezoneChange ? (
+              <Trans>Language and time zone</Trans>
+            ) : (
+              <Trans>Language</Trans>
+            )}
+          </h3>
+          <UiLocalePicker value={locale} onChange={chooseLocale} />
+          {timezone && onTimezoneChange ? (
+            <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+          ) : null}
+        </section>
+        <NotificationSettingsSection />
+        {children}
         {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
             Delete is last of all, so a destructive action is never the first thing on the page. */}
-        <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4 @2xl:col-start-1 @2xl:row-start-2">
+        <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4">
           <div className="py-3">
             <h3 className="text-[15px] font-medium text-foreground">
               <Trans>Account</Trans>
@@ -383,12 +376,14 @@ export function UsageSettingsPanel({
       .then((credentials) => setHasOwnKey(credentials.length > 0))
       .catch(() => undefined);
   }, []);
+  // Nothing to report before the first task, and no keys to mention.
+  if (!hasOwnKey && !usage?.runs) return null;
   return (
     <section data-testid="usage-settings" className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
         <Trans>Usage</Trans>
       </h3>
-      {usage ? (
+      {usage?.runs ? (
         <p className="mt-3 text-[14px] text-foreground/75">
           <Plural
             value={usage.runs}

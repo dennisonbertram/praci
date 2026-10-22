@@ -40,7 +40,7 @@ vi.mock("./shell/bot-page-panel", () => ({
   BotPagePanel: ({ onPageChange }: { onPageChange: (page: BotPage | null) => void }) => {
     mocks.panel({ onPageChange });
     useEffect(() => {
-      if (mocks.pageContent === undefined) return;
+      if (mocks.pageContent === undefined || mocks.pageContent === "load-error") return;
       onPageChange({
         botId: "bot_gtm",
         content: mocks.pageContent,
@@ -49,7 +49,11 @@ vi.mock("./shell/bot-page-panel", () => ({
         updatedAt: "2026-10-20T12:00:00.000Z",
       });
     }, [onPageChange]);
-    return <div data-testid="agent-page">Agent page</div>;
+    return mocks.pageContent === "load-error" ? (
+      <p role="alert">Could not load</p>
+    ) : (
+      <div data-testid="agent-page">Agent page</div>
+    );
   },
 }));
 
@@ -86,6 +90,13 @@ const click = (name: string) =>
     expect(button).toBeTruthy();
     button?.click();
   });
+
+it("keeps an agent page load error visible when the page is otherwise hidden", async () => {
+  mocks.pageContent = "load-error";
+  await render();
+  const alert = container.querySelector('[role="alert"]')!;
+  expect(alert.closest("section")?.className).toContain("has-[[role=alert]]:block");
+});
 
 it("Needs you stays first and complete when the agent page has blocks", async () => {
   mocks.pageContent = '```gtm-metric\n{"label":"Completed","count":"done"}\n```';
@@ -225,7 +236,6 @@ it("keeps the page section visible after an existing page is cleared, hides a ne
     return null;
   });
   await render();
-  expect(container.querySelector("section.hidden")).toBeNull();
   await act(async () => report(null));
   expect(container.querySelector("section.hidden")).not.toBeNull();
   expect(container.textContent).toContain(overview.goal!.title);
@@ -235,19 +245,13 @@ it("keeps the page section visible after an existing page is cleared, hides a ne
   await act(async () => report({ content: "" }));
   expect(container.querySelector("section.hidden")).not.toBeNull();
   await act(async () => report({ content: "Plan" }));
+  expect(container.querySelector("section.hidden")).toBeNull();
   await act(async () => report({ content: "" }));
   expect(container.querySelector("section.hidden")).toBeNull();
 });
 
-it("hides the page section when the bot has no page yet", async () => {
-  type P = { onPageChange: (p: null) => void };
-  let report!: P["onPageChange"];
-  mocks.panel.mockImplementation((props: unknown) => {
-    report = (props as P).onPageChange;
-    return null;
-  });
+it("shows no empty 'Written by' card before the page has loaded", async () => {
+  mocks.panel.mockImplementation(() => null);
   await render();
-  expect(container.querySelector("section.hidden")).toBeNull();
-  await act(async () => report(null));
-  expect(container.querySelector("section.hidden")).not.toBeNull();
+  expect(container.querySelector("section.hidden")?.textContent).toContain("Written by GTM agent");
 });

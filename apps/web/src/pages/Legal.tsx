@@ -75,7 +75,7 @@ export function LegalPage({
     <FinanceChromeProvider
       value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
     >
-      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7">
         <div className="mx-auto max-w-[1440px]">
           <Legal
             selfName={spaces?.find((space) => space.id === spaceId)?.name}

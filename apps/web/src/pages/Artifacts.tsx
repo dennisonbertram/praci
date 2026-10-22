@@ -306,7 +306,7 @@ export function ArtifactsPage({
   const nothingYet = items?.length === 0 && !nextCursor && !filterActive;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground/90">
-      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         <PageHeader
           // The space name drops to a third row on a phone; the header stays one row there.
           className="max-md:[&_[data-page-header-meta]]:hidden"

@@ -77,7 +77,7 @@ export function NotificationSettingsSection() {
             </Label>
           </div>
           {prefs && browserBlocked ? (
-            <span className="block text-[13px] text-muted-foreground">
+            <span className="mt-1 block ps-11 text-[13px] text-muted-foreground">
               {permission === undefined ? (
                 <Trans>Not supported here</Trans>
               ) : (

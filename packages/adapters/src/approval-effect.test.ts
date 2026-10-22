@@ -23,6 +23,7 @@ import {
   DENIED_ACTION_MESSAGE,
   isApprovalPausedResult,
   isToolPauseResult,
+  repeatsDeniedRequest,
   replaceCompletedExternalEffectResult,
   resolveDuplicateEffectGate,
   settleUncertainEffect,
@@ -602,5 +603,29 @@ describe("payment outcome wording for the model", () => {
   it("speaks to the person in the second person after a denial", () => {
     expect(DENIED_ACTION_MESSAGE).toContain("you denied");
     expect(DENIED_ACTION_MESSAGE).not.toMatch(/the user denied/i);
+  });
+});
+
+describe("repeatsDeniedRequest", () => {
+  it("treats a payment retried with a fresh idempotency key or reworded memo as the same request", () => {
+    const denied = [
+      "m",
+      "t",
+      { arguments: { amount: 450, recipientId: "r1", idempotencyKey: "a", note: "Invoice 7" } },
+    ];
+    const retry = [
+      "m",
+      "t",
+      {
+        arguments: { amount: 450, recipientId: "r1", idempotencyKey: "b", note: "invoice 7 again" },
+      },
+    ];
+    expect(repeatsDeniedRequest("connectors_execute_tool", denied, retry)).toBe(true);
+    const other = [
+      "m",
+      "t",
+      { arguments: { amount: 451, recipientId: "r1", idempotencyKey: "b" } },
+    ];
+    expect(repeatsDeniedRequest("connectors_execute_tool", denied, other)).toBe(false);
   });
 });
