@@ -2286,7 +2286,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // needs consent for that recipient too. Missing consent asks on a card in the chat; Not now
         // ends the run. Only a configured model counts: a runtime's own fallback sends nothing out.
         let chatRecipient: ReturnType<typeof aiRecipient> = null;
-        if (!legalOnly && run.trigger === "user" && selected.provider) {
+        const chatGated =
+          !legalOnly &&
+          (run.trigger === "user" || run.trigger === "follow_up") &&
+          selected.provider;
+        if (chatGated && selected.provider) {
           try {
             chatRecipient = aiRecipient({
               provider: selected.provider,
@@ -2342,6 +2346,34 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (!paused) throw new Error("Could not pause this run for consent; try sending again.");
           return;
         }
+        // Backup models and subagent model choices are other recipients: a chat run may use one only
+        // with consent on file for it. Unknown or failing lookups mean no.
+        const chatModelAllowed = async (provider: string, modelId: string): Promise<boolean> => {
+          if (!chatGated) return true;
+          try {
+            const model = await resolveConnectedModel(run, provider, modelId);
+            const recipient = aiRecipient({
+              provider,
+              modelId,
+              baseUrl: model.baseUrl,
+              use: "model",
+            });
+            if (!recipient) return true;
+            const row = await deps.prisma.aiDataConsent.findUnique({
+              where: {
+                userId_spaceId_recipientKey: {
+                  userId: bot.userId,
+                  spaceId: run.spaceId,
+                  recipientKey: recipient.key,
+                },
+              },
+              select: { version: true },
+            });
+            return row?.version === AI_DISCLOSURE_VERSION;
+          } catch {
+            return false;
+          }
+        };
         if (legalOnly) {
           // The Legal agent's history and tools carry document content, so the model that receives
           // them must be one the user allowed. Without that consent the run ends before any model call.
@@ -6783,6 +6815,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           } catch (error) {
             getLogger().warn("Backup models could not be loaded", { runId, error });
           }
+          const allowed = await Promise.all(
+            fallbackModels.map((candidate) =>
+              chatModelAllowed(candidate.provider, candidate.modelId),
+            ),
+          );
+          fallbackModels = fallbackModels.filter((_, index) => allowed[index]);
         }
         let meetingMarkedMidRun = false;
         const fallbackModelKeys = new Set(
@@ -6935,10 +6973,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               executeTool: scripted ? undefined : applyTool,
               resolveModel: scripted
                 ? undefined
-                : (provider, modelId) =>
-                    resolveConnectedModel(run, provider, modelId, (values) =>
+                : async (provider, modelId) => {
+                    if (!(await chatModelAllowed(provider, modelId)))
+                      throw new Error("Allow that model's provider to receive this chat first");
+                    return resolveConnectedModel(run, provider, modelId, (values) =>
                       runSecrets.push(...values),
-                    ),
+                    );
+                  },
               onToolCompleted: (completion) =>
                 appendToolCompletionAudit(
                   deps,

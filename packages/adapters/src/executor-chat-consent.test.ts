@@ -1,8 +1,12 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
+import { aiRecipient } from "./ai-consent.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
+
+const allowedKey = (modelId: string) =>
+  aiRecipient({ provider: "openrouter", modelId, use: "model" })?.key;
 
 vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
   ...(await importOriginal<typeof ComputerLifecycleModule>()),
@@ -26,7 +30,11 @@ function historyMessages() {
   ];
 }
 
-async function runChat(consented: boolean, effectStatus: string | null = null, trigger = "user") {
+async function runChat(
+  consented: boolean | string[],
+  effectStatus: string | null = null,
+  trigger = "user",
+) {
   const switchModel = { provider: "openrouter", modelId: "openai/gpt-4o" };
   const backupReadFails = false;
   const scripted = false;
@@ -107,7 +115,16 @@ async function runChat(consented: boolean, effectStatus: string | null = null, t
       ),
     },
     secret: { findFirst: vi.fn(async () => null) },
-    userModelCredential: { findFirst: vi.fn(async () => null) },
+    userModelCredential: {
+      findFirst: vi.fn(async () => ({
+        id: "cred-1",
+        userId: "user-1",
+        provider: "openrouter",
+        label: "OpenRouter",
+        secretId: "secret-1",
+        createdAt: new Date(0),
+      })),
+    },
     spaceBackupModel: {
       findMany: vi.fn(async () => {
         if (backupReadFails) throw new Error("Backup list unavailable");
@@ -124,7 +141,15 @@ async function runChat(consented: boolean, effectStatus: string | null = null, t
       })),
     },
     aiDataConsent: {
-      findUnique: vi.fn(async () => (consented ? { version: AI_DISCLOSURE_VERSION } : null)),
+      findUnique: vi.fn(
+        async (args: { where: { userId_spaceId_recipientKey: { recipientKey: string } } }) => {
+          const key = args.where.userId_spaceId_recipientKey.recipientKey;
+          const ok = Array.isArray(consented)
+            ? consented.some((modelId) => allowedKey(modelId) === key)
+            : consented;
+          return ok ? { version: AI_DISCLOSURE_VERSION } : null;
+        },
+      ),
     },
     user: { findUnique: vi.fn(async () => null) },
     taughtSkill: { findMany: vi.fn(async () => []) },
@@ -206,5 +231,26 @@ describe("Chat runs need AI consent for the model they use", () => {
   it("leaves background runs to their own checks", async () => {
     const { runtimeRun } = await runChat(false, null, "routine");
     expect(runtimeRun).toHaveBeenCalled();
+  });
+
+  it("pauses a follow-up message without consent", async () => {
+    const { runtimeRun, pauseRunForInput } = await runChat(false, null, "follow_up");
+    expect(runtimeRun).not.toHaveBeenCalled();
+    expect(pauseRunForInput).toHaveBeenCalled();
+  });
+
+  it("does not offer a backup model the user has not allowed", async () => {
+    const { request } = await runChat(["openai/gpt-6-luna"]);
+    expect(request?.fallbackModels ?? []).toEqual([]);
+  });
+
+  it("keeps an allowed backup model", async () => {
+    const { request } = await runChat(["openai/gpt-6-luna", "openai/gpt-4o"]);
+    expect(request?.fallbackModels).toEqual([{ provider: "openrouter", id: "openai/gpt-4o" }]);
+  });
+
+  it("refuses a subagent model the user has not allowed", async () => {
+    const { request } = await runChat(["openai/gpt-6-luna"]);
+    await expect(request?.resolveModel?.("openrouter", "openai/gpt-4o")).rejects.toThrow(/Allow/);
   });
 });
