@@ -5,7 +5,7 @@ import {
   isCartaAgentSpawnKey,
   isInvestorsAgentSpawnKey,
 } from "@rakazo/contracts";
-import { atCapPercent } from "@rakazo/core";
+import { atCapPercent, equityRaisedUsd } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   addContactIfNew,
@@ -90,7 +90,8 @@ export async function contactToolFromTool(
     if (name === "cap_table_read") {
       // What the Cap Table page shows, so the agent can answer from it without Carta.
       // SAFEs are never inside the table's 100%; Drafts are not on the Cap Table page at all.
-      const safes = (await listSafes(deps.prisma, deps.scope))
+      const allSafes = await listSafes(deps.prisma, deps.scope);
+      const safes = allSafes
         .filter((s) => s.status !== "draft")
         .map((s) => ({
           investor: s.investorName,
@@ -99,7 +100,16 @@ export async function contactToolFromTool(
           postMoneyCapUsd: s.capCents == null ? null : s.capCents / 100,
           atCapPercent: atCapPercent(s),
         }));
-      return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope), safes };
+      const snapshot = await getCapTableSnapshot(deps.prisma, deps.scope);
+      // The page's own figure replaces whatever amount raised the source stored.
+      return {
+        capTable: snapshot && {
+          ...snapshot,
+          amountRaisedUsd: equityRaisedUsd(snapshot.holders, allSafes),
+          amountRaisedSource: "Invested by holders in the table plus Funded SAFEs",
+        },
+        safes,
+      };
     }
     if (name === "cap_table_update") {
       // The writer comes from the agent, never from the model, so it cannot name another source.

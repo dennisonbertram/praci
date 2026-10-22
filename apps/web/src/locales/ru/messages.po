@@ -3979,10 +3979,6 @@ msgid "Created {0}"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Created when you allow changes"
-msgstr ""
-
-#: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr ""
 
@@ -4830,7 +4826,6 @@ msgstr ""
 msgid "Equity"
 msgstr ""
 
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr ""
@@ -5201,7 +5196,6 @@ msgstr "Полноэкранный"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr ""
@@ -7053,6 +7047,7 @@ msgid "No closing balance found to check against"
 msgstr ""
 
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "No contacts yet"
 msgstr ""
 
@@ -7195,6 +7190,10 @@ msgstr ""
 msgid "No open deadlines."
 msgstr ""
 
+#: src/components/fundraising/Pipeline.tsx
+msgid "No prospects yet"
+msgstr ""
+
 #: src/pages/gtm/GtmPlan.tsx
 msgid "No provider posts in this window"
 msgstr ""
@@ -7244,6 +7243,10 @@ msgstr "Запусков пока нет"
 
 #: src/components/EmailCards.tsx
 msgid "No rush"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "No SAFEs yet"
 msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx
@@ -7519,6 +7522,10 @@ msgstr "Звонок с {0}"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "По расписанию"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: creates a {service} agent that can read and, after you approve, make changes."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -11669,6 +11676,10 @@ msgstr ""
 msgid "What about its memories?"
 msgstr "Что делать с его памятью?"
 
+#: src/pages/Shell.tsx
+msgid "What are our account balances?"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What bots remember by default"
 msgstr ""
@@ -11720,6 +11731,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "Что вернуть"
+
+#: src/pages/Shell.tsx
+msgid "What were the biggest payments this month?"
+msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What your bots remember between chats, and where they keep it."
