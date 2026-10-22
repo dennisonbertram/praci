@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 273 of 273
-- Web and shared components: 722
+- Web and shared component files with stories: 277 of 277
+- Web and shared components: 726
 - Mobile components: 140 in 97 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -214,6 +214,15 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | RoundDialog, Segment, Figure, RoundCard | [apps/web/src/components/fundraising/RoundCard.tsx](../../apps/web/src/components/fundraising/RoundCard.tsx) | [RoundCard.stories.tsx](../../apps/web/src/components/fundraising/RoundCard.stories.tsx) | web |
 | SafeDialog, SafeCoverSummary | [apps/web/src/components/fundraising/SafeDialog.tsx](../../apps/web/src/components/fundraising/SafeDialog.tsx) | [SafeDialog.stories.tsx](../../apps/web/src/components/fundraising/SafeDialog.stories.tsx) | web |
 | MarkDateDialog, AttentionStrip, SafeRow, SafeList | [apps/web/src/components/fundraising/SafeList.tsx](../../apps/web/src/components/fundraising/SafeList.tsx) | [SafeList.stories.tsx](../../apps/web/src/components/fundraising/SafeList.stories.tsx) | web |
+
+## Web components/gtm
+
+| Component | File | Story file | Surface |
+| --- | --- | --- | --- |
+| EmailItemCard | [apps/web/src/components/gtm/EmailItemCard.tsx](../../apps/web/src/components/gtm/EmailItemCard.tsx) | [EmailItemCard.stories.tsx](../../apps/web/src/components/gtm/EmailItemCard.stories.tsx) | web |
+| GtmCalendar | [apps/web/src/components/gtm/GtmCalendar.tsx](../../apps/web/src/components/gtm/GtmCalendar.tsx) | [GtmCalendar.stories.tsx](../../apps/web/src/components/gtm/GtmCalendar.stories.tsx) | web |
+| LinkedInPostPreview | [apps/web/src/components/gtm/LinkedInPostPreview.tsx](../../apps/web/src/components/gtm/LinkedInPostPreview.tsx) | [LinkedInPostPreview.stories.tsx](../../apps/web/src/components/gtm/LinkedInPostPreview.stories.tsx) | web |
+| XPostPreview | [apps/web/src/components/gtm/XPostPreview.tsx](../../apps/web/src/components/gtm/XPostPreview.tsx) | [XPostPreview.stories.tsx](../../apps/web/src/components/gtm/XPostPreview.stories.tsx) | web |
 
 ## Web components/inbox
 

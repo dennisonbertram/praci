@@ -5,6 +5,9 @@ import { GTM_CHANNELS } from "@rakazo/contracts";
 import { Button, Input, Textarea } from "@rakazo/ui-web";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { EmailItemCard } from "../../components/gtm/EmailItemCard";
+import { LinkedInPostPreview } from "../../components/gtm/LinkedInPostPreview";
+import { XPostPreview } from "../../components/gtm/XPostPreview";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -42,9 +45,18 @@ export function GtmPlan({
         <span className="text-xs font-normal text-muted-foreground">{items.length}</span>
       </h2>
       {items.length ? (
-        items.map((item) => (
-          <GtmItem key={item.id} item={item} overview={overview} onChange={onChange} />
-        ))
+        items.map((item) =>
+          item.category === "outbound_email" && item.status !== "done" ? (
+            <EmailItemCard
+              key={item.id}
+              item={item}
+              accounts={overview.gmailAccounts}
+              onChange={onChange}
+            />
+          ) : (
+            <GtmItem key={item.id} item={item} overview={overview} onChange={onChange} />
+          ),
+        )
       ) : empty ? (
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : null}
@@ -211,7 +223,29 @@ export function GtmItem({
         </form>
       ) : (
         <>
-          {item.notes ? (
+          {post && item.channel === "x" ? (
+            <div className="mt-3">
+              <XPostPreview
+                text={item.notes}
+                accountLabel={
+                  overview.channels
+                    .find((channel) => channel.channel === item.channel)
+                    ?.accounts.find((account) => account.id === item.target)?.label
+                }
+              />
+            </div>
+          ) : post && item.channel === "linkedin" ? (
+            <div className="mt-3">
+              <LinkedInPostPreview
+                text={item.notes}
+                accountLabel={
+                  overview.channels
+                    .find((channel) => channel.channel === item.channel)
+                    ?.accounts.find((account) => account.id === item.target)?.label
+                }
+              />
+            </div>
+          ) : item.notes ? (
             <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">
               {item.notes}
             </p>
@@ -316,11 +350,6 @@ export function GtmItem({
             >
               {overview.zernioLinked ? t`Posting needs an API key` : t`Connect Zernio first`}
             </Link>
-          ) : null}
-          {email && item.status !== "done" ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              <Trans>Email approval requires a compliance preview.</Trans>
-            </p>
           ) : null}
           {uncertain && queueChecked ? (
             <div className="mt-3 space-y-2 rounded-lg bg-muted p-3 text-sm">
