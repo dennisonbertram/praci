@@ -20,7 +20,7 @@ export class ContactEmailTakenError extends Error {
 type Scope = { spaceId: string; userId: string };
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
-type Db = Pick<PrismaClient, "contact" | "fundraiseRound">;
+type Db = Pick<PrismaClient, "contact" | "fundraiseRound" | "safe">;
 type WriteDb = Db & Pick<PrismaClient, "$transaction">;
 
 const withBot = { bot: { select: { id: true, name: true } } } as const;
@@ -39,6 +39,7 @@ export const toContact = (row: Prisma.ContactGetPayload<{ include: typeof withBo
   portalLinkSentAt: row.portalLinkSentAt?.toISOString() ?? null,
   portalLastSeenAt: row.portalLastSeenAt?.toISOString() ?? null,
   portalBlockedAt: row.portalBlockedAt?.toISOString() ?? null,
+  mercurySentAt: row.mercurySentAt?.toISOString() ?? null,
   addedBy: row.bot,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
@@ -166,9 +167,16 @@ export async function linkedContact(
   };
 }
 
-export async function deleteContact(prisma: Db, actor: Scope, id: string): Promise<void> {
+export async function deleteContact(prisma: WriteDb, actor: Scope, id: string): Promise<void> {
   const scope = ownerOf(actor);
-  const { count } = await prisma.contact.deleteMany({ where: { id, ...scope } });
+  // A detached Mercury SAFE counts in no round (the foreign key clears contactId only).
+  const count = await prisma.$transaction(async (tx) => {
+    await tx.safe.updateMany({
+      where: { ...scope, contactId: id, source: "mercury" },
+      data: { roundId: null },
+    });
+    return (await tx.contact.deleteMany({ where: { id, ...scope } })).count;
+  });
   if (count === 0) throw new IsolationError("Contact not found");
 }
 

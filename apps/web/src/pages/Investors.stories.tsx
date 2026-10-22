@@ -17,7 +17,7 @@ const contact = (id: string, name: string, kind: Contact["kind"], organization: 
 
 const contacts = [
   contact("c1", "Ada Example", "investor", "Example Ventures"),
-  contact("c2", "Bo Sample", "auditor", "Sample & Co"),
+  contact("c2", "Bo Sample", "board", "Sample & Co"),
   contact("c3", "Cy Placeholder", "investor", null),
 ];
 const noUpdates = {
@@ -287,8 +287,8 @@ export const CartaNeedsSignIn: Story = {
 };
 
 /** A kind tab with no contacts of that kind names the kind and offers to add one. */
-export const NoAuditors: Story = {
-  parameters: { initialEntries: ["/app/investors?kind=auditor"] },
+export const NoBoardMembers: Story = {
+  parameters: { initialEntries: ["/app/investors?kind=board"] },
   beforeEach: () =>
     mockRpc({ "contacts.list": [contacts[0], contacts[2]], "mcp.servers.list": [cartaServer] }),
 };

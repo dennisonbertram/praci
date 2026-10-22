@@ -82,6 +82,14 @@ export const FINANCE_READ_TOOLS = {
   ],
 } as const satisfies Record<FinanceProvider, readonly string[]>;
 
+/**
+ * The only Mercury tools SAFE sync may call, through its own narrow caller. Read-only, and kept out
+ * of FINANCE_READ_TOOLS so Finance sync can never reach a SAFE.
+ */
+export const SAFE_READ_TOOLS = {
+  mercury: ["getSafeRequests", "getSafeRequest"],
+} as const;
+
 /** Money is whole cents in a JS number (safe to about 90 trillion dollars). */
 const Cents = z.number().int();
 /** YYYY-MM */
