@@ -9110,7 +9110,7 @@ msgid "See usage"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "See what bots can reach, and add more in Integrations."
+msgid "See what bots can reach and add more."
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
@@ -9181,6 +9181,10 @@ msgstr ""
 #. placeholder {0}: confirming[0]?.mailTo ?? ""
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Send an unsubscribe email to {0}?"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Send and receive iMessages"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -9660,13 +9664,13 @@ msgstr ""
 msgid "Slack"
 msgstr ""
 
+#: src/pages/shell/message-cards.tsx
+msgid "Slack and your calendar"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Slack 消息"
-
-#: src/pages/shell/message-cards.tsx
-msgid "Slack, calendar and email"
-msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Slack, Notion, GitHub and more, with one Composio API key"
@@ -10452,10 +10456,6 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Through a Photon project"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx

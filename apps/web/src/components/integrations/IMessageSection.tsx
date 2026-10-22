@@ -308,7 +308,7 @@ export function IMessageSection({
     {
       id: "photon" as const,
       name: t`iMessage`,
-      sub: t`Through a Photon project`,
+      sub: t`Send and receive iMessages`,
       letter: "P",
     },
     {
