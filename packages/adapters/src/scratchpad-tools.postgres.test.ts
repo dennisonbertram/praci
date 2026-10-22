@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addScratchpadItemFromTool,
   consumeApprovedPost,
@@ -278,6 +278,73 @@ describePostgres("scratchpad store (PostgreSQL)", () => {
     beforeEach(async () => {
       await prisma.scratchpadApproval.deleteMany({ where: scope });
       await prisma.scratchpadItem.deleteMany({ where: { ...scope, category: "create_account" } });
+    });
+
+    it("uses database time for grants and quota despite skewed process clocks without an injected now", async () => {
+      const [before] = await prisma.$queryRaw<
+        Array<{ now: Date }>
+      >`SELECT clock_timestamp() AS now`;
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
+        for (let i = 0; i < 3; i++) {
+          const item = await directory();
+          expect(
+            await updateScratchpadItemFromUser(
+              { prisma },
+              {
+                ...scope,
+                itemId: item.id,
+                status: "open",
+                updatedAt: item.updatedAt.toISOString(),
+              },
+            ),
+          ).toHaveProperty("item");
+        }
+        // A second host's slower clock must still include the preceding host's grants.
+        vi.setSystemTime(new Date("1999-12-31T23:59:00.000Z"));
+        for (let i = 0; i < 5; i++) {
+          const item = await directory();
+          expect(
+            await updateScratchpadItemFromTool(
+              { prisma },
+              {
+                ...scope,
+                itemId: item.id,
+                status: "open",
+              },
+            ),
+          ).toHaveProperty("item");
+        }
+        vi.setSystemTime(new Date("1999-12-31T23:58:00.000Z"));
+        const capped = await directory();
+        expect(
+          await updateScratchpadItemFromTool(
+            { prisma },
+            {
+              ...scope,
+              itemId: capped.id,
+              status: "open",
+            },
+          ),
+        ).toMatchObject({ error: expect.stringContaining("five openings") });
+        const [after] = await prisma.$queryRaw<
+          Array<{ now: Date }>
+        >`SELECT clock_timestamp() AS now`;
+        const events = await prisma.scratchpadApproval.findMany({ where: scope });
+        expect(events).toHaveLength(8);
+        for (const event of events) {
+          expect(event.approvedAt.getTime()).toBeGreaterThanOrEqual(before!.now.getTime());
+          expect(event.approvedAt.getTime()).toBeLessThanOrEqual(after!.now.getTime());
+          const item = await prisma.scratchpadItem.findUniqueOrThrow({
+            where: { id: event.itemId },
+          });
+          expect(item.approvedAt).toEqual(event.approvedAt);
+        }
+        expect(await history("policy")).toBe(5);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("requires distinct founder items and retains history across edits, reparking, discard and expiry", async () => {

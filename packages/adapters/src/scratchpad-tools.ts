@@ -592,7 +592,9 @@ async function approveDirectoryItem(
     ) {
       return { error: "Directory approval requires an unchanged parked item." };
     }
-    const now = deps.now?.() ?? new Date();
+    const now =
+      deps.now?.() ??
+      (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0]!.now;
     const scope = { ...scopeOf(input), category: "create_account", channel: "directory" };
     if (!founder) {
       const window = {

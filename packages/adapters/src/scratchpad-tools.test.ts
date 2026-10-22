@@ -43,6 +43,7 @@ function row(partial: Record<string, unknown> = {}) {
 
 function prismaWith(overrides: Record<string, unknown> = {}) {
   const executeRaw = vi.fn(async (_query: TemplateStringsArray, _lockKey: string) => 1);
+  const queryRaw = vi.fn(async (_query: TemplateStringsArray) => [{ now }]);
   const scratchpadItem = {
     findFirst: vi.fn(async () => row()),
     findMany: vi.fn(async () => []),
@@ -68,16 +69,62 @@ function prismaWith(overrides: Record<string, unknown> = {}) {
     count: vi.fn(async () => 0),
     create: vi.fn(async () => ({})),
   };
-  const tx = { scratchpadItem, scratchpadApproval, $executeRaw: executeRaw };
+  const tx = { scratchpadItem, scratchpadApproval, $executeRaw: executeRaw, $queryRaw: queryRaw };
   return {
     scratchpadItem,
     scratchpadApproval,
     executeRaw,
+    queryRaw,
     $transaction: vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx)),
   };
 }
 
 describe("scratchpad tools store", () => {
+  it("uses the Postgres clock after locking and reloading for the production approval window and grant", async () => {
+    const prisma = prismaWith({
+      findFirst: vi.fn(async () => row({ category: "create_account", channel: "directory" })),
+    });
+    const databaseNow = new Date("2000-01-02T03:04:05.000Z");
+    prisma.queryRaw.mockResolvedValue([{ now: databaseNow }]);
+    const result = await updateScratchpadItemFromTool(
+      { prisma: prisma as never },
+      { ...scope, itemId: "item-1", status: "open" },
+    );
+    expect(result).toMatchObject({ item: { approvedAt: databaseNow.toISOString() } });
+    expect(prisma.queryRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.queryRaw.mock.calls[0]?.[0].join("")).toBe("SELECT clock_timestamp() AS now");
+    const clockCall = prisma.queryRaw.mock.invocationCallOrder[0]!;
+    expect(prisma.executeRaw.mock.invocationCallOrder[0]).toBeLessThan(clockCall);
+    expect(prisma.scratchpadItem.findFirst.mock.invocationCallOrder[1]).toBeLessThan(clockCall);
+    expect(prisma.scratchpadApproval.findMany.mock.invocationCallOrder[0]).toBeGreaterThan(
+      clockCall,
+    );
+    expect(prisma.scratchpadApproval.count).toHaveBeenCalledWith({
+      where: {
+        ...scope,
+        category: "create_account",
+        channel: "directory",
+        approvedBy: "policy",
+        approvedAt: { gt: new Date(databaseNow.getTime() - 86_400_000), lte: databaseNow },
+      },
+    });
+    expect(prisma.scratchpadItem.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ approvedAt: databaseNow }),
+      }),
+    );
+    expect(prisma.scratchpadApproval.create).toHaveBeenCalledWith({
+      data: {
+        ...scope,
+        itemId: "item-1",
+        category: "create_account",
+        channel: "directory",
+        approvedBy: "policy",
+        approvedAt: databaseNow,
+      },
+    });
+  });
+
   it.each([
     [2, 0, false],
     [3, 4, true],
@@ -98,6 +145,7 @@ describe("scratchpad tools store", () => {
         { ...scope, itemId: "item-1", status: "open" },
       );
       expect("item" in result).toBe(opens);
+      expect(prisma.queryRaw).not.toHaveBeenCalled();
       expect(prisma.scratchpadApproval.create).toHaveBeenCalledTimes(opens ? 1 : 0);
       if (opens) {
         expect(result).toMatchObject({ item: { status: "open", approvedBy: "policy" } });
