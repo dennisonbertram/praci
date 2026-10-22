@@ -980,7 +980,10 @@ function parseSummary(data: unknown): MailMessageSummary | undefined {
     snippet: decodeEntities(typeof message.snippet === "string" ? message.snippet : ""),
     unread: labelIds.includes("UNREAD"),
     labelIds,
-    signals: parseMailSignals(allHeaders, labelIds),
+    signals: {
+      ...parseMailSignals(allHeaders, labelIds),
+      ...(asRecord(message.payload)?.mimeType === "multipart/mixed" ? { attachment: true } : {}),
+    },
   };
 }
 

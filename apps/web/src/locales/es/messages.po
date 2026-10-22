@@ -5193,6 +5193,7 @@ msgstr "Cuelga primero y luego ingresa el código en pantalla."
 msgid "Hang up, then enter the code on screen."
 msgstr "Cuelga y luego ingresa el código en pantalla."
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
 msgstr ""
@@ -9330,6 +9331,10 @@ msgstr ""
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Shell"
+
+#: src/pages/Inbox.tsx
+msgid "Show {hiddenReplies} more"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Show all {total}"

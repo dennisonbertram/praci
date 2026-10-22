@@ -1068,6 +1068,35 @@ it("calls today's group 'Other mail today' when Needs reply is above it", async 
   expect([...plain.querySelectorAll("h2")].map((h) => h.textContent)).toContain("Today");
 });
 
+it("shows five Needs reply rows and the rest behind 'Show n more'", async () => {
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  rpcMock.list.mockResolvedValue(list(ids.map((id) => row(id, { needsReply: true }))));
+  const c = await render();
+  expect(c.querySelectorAll("button[data-row-id]").length).toBe(5);
+  await click(byText(c, "Show 2 more"));
+  expect(c.querySelectorAll("button[data-row-id]").length).toBe(7);
+  expect(byText(c, "Show 2 more")).toBeUndefined();
+});
+
+it("holds rows in their groups while triage is still running", async () => {
+  // Each answer is pending; the poll after the first load classifies row b as well.
+  let calls = 0;
+  rpcMock.list.mockImplementation(async () => {
+    calls += 1;
+    const b = calls > 2 ? row("b", { needsReply: true }) : row("b");
+    return list([row("a", { needsReply: true }), b], { triagePending: true });
+  });
+  const c = await render();
+  await dwell(5_000);
+  expect(calls).toBeGreaterThan(2);
+  // Row b sits after the "Other mail today" heading until triage ends.
+  const other = [...c.querySelectorAll("h2")].find((h) => h.textContent === "Other mail today");
+  const b = c.querySelector('button[data-row-id="b"]');
+  expect(
+    other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
 it("looks for new mail once a minute while it is open", async () => {
   vi.useFakeTimers();
   try {

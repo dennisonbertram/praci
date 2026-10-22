@@ -55787,6 +55787,9 @@
                                     "type": "null"
                                   }
                                 ]
+                              },
+                              "hasAttachment": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
