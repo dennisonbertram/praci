@@ -166,10 +166,15 @@ function Legal({
     const deadlinesAdded = data.deadlines.filter(
       (d) => before.deadlines.get(d.id) !== deadlineKey(d),
     ).length;
-    setScanResult(
+    const suggested = data.deadlines.filter((d) => d.removalProposed).length;
+    const changes =
       contractsChanged + deadlinesAdded === 0
         ? t`Scan finished: nothing changed.`
-        : t`Scan finished: ${plural(contractsChanged, { one: "# contract", other: "# contracts" })} and ${plural(deadlinesAdded, { one: "# deadline", other: "# deadlines" })} added or updated.`,
+        : t`Scan finished: ${plural(contractsChanged, { one: "# contract", other: "# contracts" })} and ${plural(deadlinesAdded, { one: "# deadline", other: "# deadlines" })} added or updated.`;
+    setScanResult(
+      suggested === 0
+        ? changes
+        : `${changes} ${plural(suggested, { one: "# deadline may no longer apply: review it under Deadlines.", other: "# deadlines may no longer apply: review them under Deadlines." })}`,
     );
   }, [finishedWaiting, data, lastRun?.status]);
   // A key added in Settings, or a model changed in another tab, shows up when the user comes back.
@@ -300,12 +305,16 @@ function Legal({
   // A row, not a fifth tile. It sits below the tabs, so it going away after a scan never moves them.
   const uncheckedLine = (
     <>
-      {counts.unreviewedDocuments > 0 ? (
-        <p className="mb-4 text-sm text-muted-foreground">
+      {/* Hidden while scanning (the progress line says it) and until Legal may read documents. */}
+      {counts.unreviewedDocuments > 0 && !running && !setupMissing ? (
+        <p className="mb-4 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
           {plural(counts.unreviewedDocuments, {
             one: "# Data room document not yet checked by Legal",
             other: "# Data room documents not yet checked by Legal",
           })}
+          <Button size="sm" variant="outline" onClick={() => void scan()}>
+            <Trans>Check now</Trans>
+          </Button>
         </p>
       ) : null}
     </>
