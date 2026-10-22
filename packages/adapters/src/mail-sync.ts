@@ -11,6 +11,7 @@ import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { enqueueAuditIntake } from "./audit-intake.js";
 import { enqueueMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { applyPileRules } from "./mail-piles.js";
 import type { PriorContactResult } from "./mail-sender-stats.js";
@@ -528,6 +529,7 @@ export async function syncMailbox(
           newIds,
           now,
         );
+        await enqueueAuditIntake(deps, { spaceId, userId, connectionId: account.id }, newIds, now);
       }
       // Rows an incomplete sync stored are usable, so they are triaged too.
       if (outcome === "synced" || (outcome === "failed" && merged.size > 0)) {

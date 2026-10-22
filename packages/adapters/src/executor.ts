@@ -141,6 +141,7 @@ import {
 } from "@rakazo/core/node/approval-effect-key";
 import type { McpServer, NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  AUDIT_DRAFT_PROMPT_START,
   appendEventInTransaction,
   createSpaceForMember,
   createThreadMessageInTransaction,
@@ -359,6 +360,7 @@ import {
 } from "./imessage-tools.js";
 import { triageStatus } from "./inbox-triage.js";
 import {
+  auditRequestToolFromTool,
   INVESTOR_UPDATE_TOOL_NAMES,
   investorUpdateToolFromTool,
   investorUpdateToolsAllowed,
@@ -2684,8 +2686,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         // The Investors agent may overwrite the cap table only on the routine sheet read, so text in a
         // document or email cannot steer a chat turn into writing it.
+        // An audit drafting run reads untrusted email, so it never writes the cap table either.
         const capTableWriteBlocked =
-          isInvestorsAgentSpawnKey(bot.spawnKey) && run.trigger !== "routine";
+          isInvestorsAgentSpawnKey(bot.spawnKey) &&
+          (run.trigger !== "routine" || task.prompt.startsWith(AUDIT_DRAFT_PROMPT_START));
         const investorsEnabled = investorUpdateToolsAllowed({
           hasProvider: true,
           groupId: thread.groupId,
@@ -4909,14 +4913,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (INVESTOR_UPDATE_TOOL_NAMES.has(name) && investorsEnabled) {
+            const investorToolDeps = {
+              prisma: deps.prisma,
+              scope: { spaceId: run.spaceId, userId: bot.userId },
+            };
             return finish(
-              await investorUpdateToolFromTool(
-                {
-                  prisma: deps.prisma,
-                  scope: { spaceId: run.spaceId, userId: bot.userId },
-                },
-                args,
-              ),
+              name === "audit_request_upsert"
+                ? await auditRequestToolFromTool(investorToolDeps, args)
+                : await investorUpdateToolFromTool(investorToolDeps, args),
             );
           }
           if (FUNDRAISING_TOOL_NAMES.has(name) && fundraisingEnabled) {
@@ -7615,7 +7619,7 @@ export function selectBuiltinToolsForRun(options: {
   contactsEnabled?: boolean;
   /** The Carta agent on a run its owner started: the Cap Table tools are offered. */
   capTableEnabled?: boolean;
-  /** The Investors agent on a run its owner started: investor_update_draft is offered. */
+  /** The Investors agent on a run its owner started: investor_update_draft and audit_request_upsert are offered. */
   investorsEnabled?: boolean;
   /** The Investors agent on a run its owner started: the Fundraising read tool is offered. */
   fundraisingEnabled?: boolean;
@@ -8087,16 +8091,19 @@ export function directoryDescription(peer: {
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none.`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. Never link Finance in a reply about a payment or other change: Finance does not show the request.`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
   'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names.';
+
+export const NOT_CONNECTED_GUIDANCE =
+  "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations).";
 
 export function userTurnInstructions(parts: {
   botInstructions: string;
@@ -8137,6 +8144,7 @@ export function userTurnInstructions(parts: {
     parts.agentEnvironmentInstruction,
     "A bot and a subagent are different. Never use both for the same request.",
     PLAIN_CAPABILITY_GUIDANCE,
+    NOT_CONNECTED_GUIDANCE,
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "create_space",

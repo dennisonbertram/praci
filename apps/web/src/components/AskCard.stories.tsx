@@ -17,9 +17,9 @@ const approvalActions = [
 
 const consentAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
   ask({
-    text: "Allow your mail to be sent to Example Model 1 (via OpenRouter)?",
+    text: "Allow your mail to be sent to Example Model 1?",
     detail:
-      "Messages, chat history, bot instructions, memories, attachments, screenshots and connected-app content are sent to run your bots, including routines. This stays on until you turn it off in Account settings.",
+      "Messages, chat history, bot instructions, memories, attachments, screenshots and connected-app content are sent to run your bots, including routines. This stays on until you turn it off in Settings under Privacy and approvals.",
     approvalEffectId: "effect_demo",
     consent: { version: "2026-09-14" },
     actions: [

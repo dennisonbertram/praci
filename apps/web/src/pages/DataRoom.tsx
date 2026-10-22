@@ -493,7 +493,12 @@ export function DataRoomPage({
   /** Reads a failed file again; the list shows it as Reading until it settles. */
   function retry(item: DataRoomApiItem) {
     // The row reads as working at once; the server's answer and the next poll confirm it.
-    list.patchItem({ ...item, status: "pending", error: null });
+    list.patchItem({
+      ...item,
+      status: "pending",
+      error: null,
+      updatedAt: new Date().toISOString(),
+    });
     rpc.dataRoom
       .itemRetry({ id: item.id })
       .then((updated) => {
@@ -978,7 +983,7 @@ export function DataRoomPage({
       {notice ? (
         <p
           role="status"
-          className="fixed end-4 bottom-20 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md"
+          className="fixed end-4 top-16 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md"
         >
           {notice}
         </p>

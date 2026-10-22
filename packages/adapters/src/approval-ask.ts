@@ -133,14 +133,14 @@ export function buildConsentAskBlock(
   effectId: string,
   recipient: { name: string; detail?: string },
 ): MessageBlock {
-  // "GPT-6 Luna (via OpenRouter)", not the router's raw "openai/gpt-6-luna, forwarded to its provider".
+  // "GPT-6 Luna", as Settings names it, not the router's raw "openai/gpt-6-luna, forwarded to its provider".
   const model = modelLabel(recipient.detail ?? "");
   return {
     kind: "ask",
     approvalEffectId: effectId,
-    text: `Allow your mail to be sent to ${model ? `${model} (via ${recipient.name})` : recipient.name}?`,
+    text: `Allow your mail to be sent to ${model || recipient.name}?`,
     // The clause says the permission is standing, not for this one read.
-    detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Account settings.`,
+    detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Settings under Privacy and approvals.`,
     consent: { version: AI_DISCLOSURE_VERSION },
     status: "pending",
     actions: [

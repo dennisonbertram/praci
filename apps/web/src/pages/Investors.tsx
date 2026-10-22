@@ -2,6 +2,7 @@ import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
+  AuditRequest,
   CapTableSource,
   CapTableState,
   Contact,
@@ -10,6 +11,7 @@ import type {
   InvestorReminderCadence,
   InvestorUpdate,
   PortalLink,
+  Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
 import { capTableMath, isSafeSecurity } from "@rakazo/core";
@@ -53,6 +55,7 @@ import { CapTableEditor } from "../components/cap-table/CapTableEditor";
 import type { HoldingRow } from "../components/cap-table/HoldingsTable";
 import { HoldingsTable } from "../components/cap-table/HoldingsTable";
 import { OwnershipBar } from "../components/cap-table/OwnershipBar";
+import { SafeRows } from "../components/cap-table/SafeRows";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { DrivePicker } from "../components/data-room/ImportFromDrive";
 import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
@@ -287,6 +290,7 @@ function UpdatesSection({
   onDelete,
   onReminder,
   onReload,
+  doneToggle,
 }: {
   updates: InvestorUpdate[] | null;
   cadence: InvestorReminderCadence;
@@ -299,6 +303,8 @@ function UpdatesSection({
   onDelete: (update: InvestorUpdate) => void;
   onReminder: (cadence: InvestorReminderCadence) => void;
   onReload: () => void;
+  /** Present once a request has been closed as done, so the history stays reachable. */
+  doneToggle: { shown: boolean; onToggle: () => void } | null;
 }) {
   return (
     <section className="mb-5 max-w-5xl" aria-label={t`Updates`}>
@@ -306,6 +312,11 @@ function UpdatesSection({
         <h2 className="me-auto text-sm font-semibold">
           <Trans>Updates</Trans>
         </h2>
+        {doneToggle ? (
+          <Button variant="ghost" size="sm" onClick={doneToggle.onToggle}>
+            {doneToggle.shown ? <Trans>Hide done</Trans> : <Trans>Show done</Trans>}
+          </Button>
+        ) : null}
         <Button variant="outline" size="sm" onClick={onNew}>
           <Plus aria-hidden="true" />
           <Trans>New update</Trans>
@@ -587,6 +598,29 @@ export function InvestorsPage({
       .then((result) => setCadence(result.cadence))
       .catch(() => undefined);
   }, []);
+  const [audits, setAudits] = useState<AuditRequest[]>([]);
+  const [showDone, setShowDone] = useState(false);
+  const loadAudits = useCallback(() => {
+    rpc.investors.audits
+      .list({ includeDone: true })
+      .then((list) => setAudits(list ?? []))
+      // The list is an extra on this page: a failed load leaves the last one.
+      .catch(() => undefined);
+  }, []);
+  useEffect(loadAudits, [loadAudits]);
+  const anyDrafting = audits.some((a) => a.drafting);
+  useEffect(() => {
+    if (!anyDrafting) return;
+    const timer = setInterval(loadAudits, POLL_MS);
+    return () => clearInterval(timer);
+  }, [anyDrafting, loadAudits]);
+  const auditAction = (call: () => Promise<unknown>, failure: string) =>
+    call()
+      .then(loadAudits)
+      .catch((cause) => {
+        notify(errorText(cause, failure));
+        loadAudits();
+      });
   const anySending = updates?.some((u) => u.status === "sending") ?? false;
   useEffect(() => {
     if (!anySending) return;
@@ -623,9 +657,15 @@ export function InvestorsPage({
   };
 
   const [capFailed, setCapFailed] = useState(false);
+  const [safes, setSafes] = useState<Safe[]>([]);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
+    // The SAFE rows under the table are secondary: if they cannot load, the table still shows.
+    void rpc.fundraising.safes
+      .list()
+      .then((rows) => request === latestCap.current && setSafes(rows ?? []))
+      .catch(() => {});
     return rpc.investors
       .capTable()
       .then((state) => {
@@ -683,9 +723,10 @@ export function InvestorsPage({
       load();
       void loadCap();
       loadUpdates();
+      loadAudits();
     }
     wasBusy.current = agentBusy;
-  }, [agentBusy, load, loadCap, loadUpdates]);
+  }, [agentBusy, load, loadCap, loadUpdates, loadAudits]);
   const typedIn = cap?.snapshot?.source === "native";
   const sheetSource = cap?.snapshot?.source === "sheet";
   const watching = serversChecked && (cartaConnected || typedIn || sheetSource) && !capFailed;
@@ -1055,7 +1096,20 @@ export function InvestorsPage({
         ) : null}
         <ActionItems
           drafts={(updates ?? []).filter((u) => u.status === "draft")}
+          audits={audits.filter((a) => a.status !== "done" || showDone)}
           onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
+          onDraftAudit={(audit) =>
+            void auditAction(
+              () => rpc.investors.audits.draft({ id: audit.id }),
+              t`Could not start the draft`,
+            )
+          }
+          onCloseAudit={(audit, status) =>
+            void auditAction(
+              () => rpc.investors.audits.update({ id: audit.id, status }),
+              t`Could not update the request`,
+            )
+          }
         />
 
         {!serversChecked || (cap === null && !capFailed) ? (
@@ -1105,6 +1159,7 @@ export function InvestorsPage({
                       />
                     </div>
                   )}
+                  <SafeRows safes={safes} />
                 </Card>
               </div>
             ) : reading ? (
@@ -1177,6 +1232,11 @@ export function InvestorsPage({
               onDelete={setDeletingUpdate}
               onReminder={changeReminder}
               onReload={loadUpdates}
+              doneToggle={
+                audits.some((a) => a.status === "done")
+                  ? { shown: showDone, onToggle: () => setShowDone((v) => !v) }
+                  : null
+              }
             />
 
             <section className="mb-5 max-w-5xl" aria-label={t`Contacts`}>

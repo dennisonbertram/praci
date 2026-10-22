@@ -33,13 +33,10 @@ const api = vi.hoisted(() => ({
   list: vi.fn(),
   set: vi.fn(),
   remove: vi.fn(),
-  autoReview: vi.fn(),
-  setAutoReview: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     approvalRules: { list: api.list, set: api.set, remove: api.remove },
-    autoReview: { get: api.autoReview, set: api.setAutoReview },
   },
 }));
 
@@ -58,7 +55,6 @@ const email = () => container.querySelector<HTMLElement>("[data-testid=approval-
 
 async function mount(rules: unknown[]) {
   api.list.mockResolvedValue(rules);
-  api.autoReview.mockResolvedValue({ enabled: false, checkerAvailable: true });
   await act(async () => root.render(<ApprovalRulesSettings />));
   await act(async () => {});
 }
