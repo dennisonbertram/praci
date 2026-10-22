@@ -21,7 +21,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { BOTS_POLL_MS, Composer, chatIsOpening, Transcript } from "./Shell";
+import { BOTS_POLL_MS, Composer, chatIsOpening, retryAfterStop, Transcript } from "./Shell";
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
@@ -1151,5 +1151,33 @@ describe("chatIsOpening", () => {
 describe("sidebar list refresh", () => {
   it("polls spaces.list at most every 30 s (it ran every 3 s: about 96 calls in 5 minutes)", () => {
     expect(BOTS_POLL_MS).toBeGreaterThanOrEqual(30_000);
+  });
+});
+
+describe("retryAfterStop", () => {
+  it("resends after a successful stop in the same chat", async () => {
+    const resend = vi.fn();
+    await retryAfterStop({ stop: async () => true, destination: () => "bot-1", resend });
+    expect(resend).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resend when the stop failed", async () => {
+    const resend = vi.fn();
+    await retryAfterStop({ stop: async () => false, destination: () => "bot-1", resend });
+    expect(resend).not.toHaveBeenCalled();
+  });
+
+  it("does not resend into another chat when the person navigated during the stop", async () => {
+    const resend = vi.fn();
+    let current = "bot-1";
+    await retryAfterStop({
+      stop: async () => {
+        current = "group-9";
+        return true;
+      },
+      destination: () => current,
+      resend,
+    });
+    expect(resend).not.toHaveBeenCalled();
   });
 });
