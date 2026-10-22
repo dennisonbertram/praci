@@ -2889,6 +2889,8 @@ export function ShellPage() {
     [],
   );
   const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
+  // The Space the open composer was started in, kept for its save and send calls.
+  const [composerSpaceId, setComposerSpaceId] = useState<string | null>(null);
   // The From choices when a failed send named none: the composer shows a picker for them.
   const [composerAccounts, setComposerAccounts] = useState<
     Awaited<ReturnType<typeof rpc.inbox.list>>["accounts"] | null
@@ -2899,8 +2901,7 @@ export function ShellPage() {
     () => ({
       openComposer: (draft) => {
         setComposerAccounts(null);
-        if (draft.connectionId) return setComposerDraft(draft);
-        // The lookup is pinned to the Space of the thread the failed send is in, not the shared selection.
+        // Pinned to the Space of the thread the failed send is in, not the shared selection.
         const botId = activeBotId.current;
         const groupId = activeGroupId.current;
         const threadSpace = groupId
@@ -2909,15 +2910,19 @@ export function ShellPage() {
         const origin = {
           userId: composerScopeRef.current.userId,
           spaceId: composerScopeRef.current.spaceId,
+          selected: selectedSpaceId(),
         };
         const spaceId = threadSpace ?? origin.spaceId ?? null;
+        setComposerSpaceId(spaceId);
+        if (draft.connectionId) return setComposerDraft(draft);
         void recoverComposerDraft(
           draft,
           spaceId,
           (space) => rpc.inbox.list({}, { context: { spaceId: space } }),
           () =>
             composerScopeRef.current.userId === origin.userId &&
-            composerScopeRef.current.spaceId === origin.spaceId,
+            composerScopeRef.current.spaceId === origin.spaceId &&
+            selectedSpaceId() === origin.selected,
         ).then((recovered) => {
           if (!recovered) return;
           setComposerAccounts(recovered.accounts);
@@ -4247,6 +4252,7 @@ export function ShellPage() {
                 ]
               }
               connectionId={composerDraft.connectionId}
+              spaceId={composerSpaceId}
               restore={{
                 seed: NEW_MESSAGE,
                 clientId: crypto.randomUUID().replaceAll("-", ""),

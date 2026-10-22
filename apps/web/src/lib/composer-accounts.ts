@@ -16,10 +16,12 @@ export async function recoverComposerDraft<A extends Account>(
   let result: { accounts: A[] | null; draft: ComposerDraft };
   try {
     const { accounts } = await list(spaceId);
-    const from =
-      accounts.find(
-        (a) => a.address?.toLowerCase() === wanted || a.label.toLowerCase() === wanted,
-      ) ?? accounts[0];
+    // A named account that is gone is not swapped for another: the person picks the sender.
+    const from = wanted
+      ? accounts.find(
+          (a) => a.address?.toLowerCase() === wanted || a.label.toLowerCase() === wanted,
+        )
+      : accounts[0];
     result = {
       accounts,
       draft: { ...draft, connectionId: from?.connectionId ?? "", account: from?.label ?? "" },

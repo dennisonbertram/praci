@@ -2410,6 +2410,10 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Choose which account to send from."
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr ""

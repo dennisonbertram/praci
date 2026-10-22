@@ -34,3 +34,15 @@ it("keeps the draft when the lookup fails, unless the Space changed", async () =
   expect((await recoverComposerDraft(draft, "space-a", list, () => true))?.draft).toBe(draft);
   expect(await recoverComposerDraft(draft, "space-a", list, () => false)).toBeNull();
 });
+
+it("leaves From unselected when the named account is gone", async () => {
+  const list = vi.fn().mockResolvedValue({ accounts });
+  const out = await recoverComposerDraft(
+    { ...draft, account: "Sales" },
+    "space-a",
+    list,
+    () => true,
+  );
+  expect(out?.draft.connectionId).toBe("");
+  expect(out?.accounts).toHaveLength(1);
+});
