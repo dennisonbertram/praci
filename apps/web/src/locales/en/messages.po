@@ -304,6 +304,10 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
+msgid "{0} non-USD <0>transactions </0>not counted"
+msgstr "{0} non-USD <0>transactions </0>not counted"
+
+#. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD transactions not counted"
 msgstr "{0} non-USD transactions not counted"
@@ -723,6 +727,9 @@ msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
 
 #: src/pages/Finance.tsx
+msgid "1 non-USD <0>transaction </0>not counted"
+msgstr "1 non-USD <0>transaction </0>not counted"
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "1 non-USD transaction not counted"
 msgstr "1 non-USD transaction not counted"
@@ -1656,6 +1663,10 @@ msgstr "at {timeSelect}"
 msgid "At least 8 characters."
 msgstr "At least 8 characters."
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "At the current burn"
+msgstr "At the current burn"
+
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Attach file"
@@ -2206,6 +2217,10 @@ msgstr "Cash"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Cash accounts"
 msgstr "Cash accounts"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Cash divided by burn"
+msgstr "Cash divided by burn"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Cash out and cash in by month"
@@ -6890,6 +6905,7 @@ msgid "Needed to post approved text"
 msgstr "Needed to post approved text"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Needs a monthly burn"
 msgstr "Needs a monthly burn"
 
@@ -8619,6 +8635,10 @@ msgstr "Recipients"
 msgid "Reconnect"
 msgstr "Reconnect"
 
+#: src/pages/Finance.tsx
+msgid "Reconnect {lapsedNames}"
+msgstr "Reconnect {lapsedNames}"
+
 #: src/components/integrations/FinanceSection.tsx
 msgid "Reconnect {name}"
 msgstr "Reconnect {name}"
@@ -8634,6 +8654,10 @@ msgstr "Reconnect Gmail"
 #: src/components/gtm/EmailItemCard.tsx
 msgid "Reconnect Gmail in Inbox before sending."
 msgstr "Reconnect Gmail in Inbox before sending."
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Reconnect Mercury"
+msgstr "Reconnect Mercury"
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Reconnect needed"
@@ -10033,10 +10057,6 @@ msgstr "Sign-in did not finish."
 msgid "Sign-in failed"
 msgstr "Sign-in failed"
 
-#: src/pages/Finance.tsx
-msgid "Sign-in needed."
-msgstr "Sign-in needed."
-
 #: src/components/integrations/McpDetail.tsx
 msgid "Sign-in options"
 msgstr "Sign-in options"
@@ -11092,10 +11112,6 @@ msgstr "Tour"
 msgid "Transactions"
 msgstr "Transactions"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Transactions · {windowName}"
-msgstr "Transactions · {windowName}"
-
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Transactions are {0} off the closing balance"
@@ -11628,12 +11644,9 @@ msgid "Vendor"
 msgstr "Vendor"
 
 #: src/components/FinanceCards.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "Vendors"
 msgstr "Vendors"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Vendors · {windowName}"
-msgstr "Vendors · {windowName}"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Verify and add"

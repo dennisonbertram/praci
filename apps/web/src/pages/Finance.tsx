@@ -399,10 +399,8 @@ function Overview({
     : connected.some((source) => source.status === "needs_reconnect")
       ? "bg-warning"
       : "bg-success";
-  const nonUsdNote =
-    data.excludedNonUsdCount === 1
-      ? t`1 non-USD transaction not counted`
-      : t`${data.excludedNonUsdCount} non-USD transactions not counted`;
+  const lapsed = connected.filter((source) => source.status === "needs_reconnect");
+  const lapsedNames = lapsed.map((source) => providerName(source.provider)).join(", ");
   const showSkeleton = syncing && data.lastSyncedAt === null;
   const updated = data.lastSyncedAt ? formatRelativeTime(data.lastSyncedAt) : "";
 
@@ -417,7 +415,7 @@ function Overview({
             <>
               <CompanyMenu>
                 <Link
-                  to={financePath.accounts()}
+                  to={lapsed.length > 0 ? CONNECT_PATH : financePath.accounts()}
                   className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                 >
                   <span
@@ -425,19 +423,23 @@ function Overview({
                     className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                   />
                   <span className="truncate">
-                    {/* A phone has room for the time only; Accounts names the sources. */}
-                    <span className={updated || syncing ? "max-sm:hidden" : undefined}>
-                      {sourceNames}
-                      {updated || syncing ? " · " : ""}
-                    </span>
-                    {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                    {lapsed.length > 0 ? (
+                      // One status for a lapsed sign-in, the same words as Fundraising and Integrations.
+                      t`Reconnect ${lapsedNames}`
+                    ) : (
+                      <>
+                        {/* A phone has room for the time only; Accounts names the sources. */}
+                        <span className={updated || syncing ? "max-sm:hidden" : undefined}>
+                          {sourceNames}
+                          {updated || syncing ? " · " : ""}
+                        </span>
+                        {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                      </>
+                    )}
                   </span>
-                  {sourceDot !== "bg-success" ? (
-                    <span className="sr-only">
-                      {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
-                    </span>
+                  {sourceDot === "bg-destructive" ? (
+                    <span className="sr-only">{t`Sync failed.`}</span>
                   ) : null}
-                  {data.excludedNonUsdCount > 0 ? <span> · {nonUsdNote}</span> : null}
                 </Link>
                 <Tooltip>
                   <TooltipTrigger
@@ -463,6 +465,21 @@ function Overview({
                   </TooltipContent>
                 </Tooltip>
               </CompanyMenu>
+              {data.excludedNonUsdCount > 0 ? (
+                // Outside the status link so it never wraps inside it; a phone drops "transactions" to keep one line.
+                <span className="min-w-0 truncate">
+                  {data.excludedNonUsdCount === 1 ? (
+                    <Trans>
+                      1 non-USD <span className="max-sm:hidden">transaction </span>not counted
+                    </Trans>
+                  ) : (
+                    <Trans>
+                      {data.excludedNonUsdCount} non-USD{" "}
+                      <span className="max-sm:hidden">transactions </span>not counted
+                    </Trans>
+                  )}
+                </span>
+              ) : null}
               {missing.length > 0 ? (
                 // One way to connect: the same Add account dialog as the empty state.
                 <Button
@@ -672,7 +689,7 @@ function Overview({
             ) : null}
           </Section>
 
-          <div className="grid gap-3 @3xl:grid-cols-2">
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,

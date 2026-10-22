@@ -304,6 +304,10 @@ msgstr ""
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
+msgid "{0} non-USD <0>transactions </0>not counted"
+msgstr ""
+
+#. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD transactions not counted"
 msgstr ""
@@ -723,6 +727,9 @@ msgid "0x… or name.eth"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "1 non-USD <0>transaction </0>not counted"
+msgstr ""
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "1 non-USD transaction not counted"
 msgstr ""
@@ -1656,6 +1663,10 @@ msgstr "à {timeSelect}"
 msgid "At least 8 characters."
 msgstr ""
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "At the current burn"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Joindre un fichier"
@@ -2205,6 +2216,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Cash accounts"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Cash divided by burn"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -6890,6 +6905,7 @@ msgid "Needed to post approved text"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Needs a monthly burn"
 msgstr ""
 
@@ -8619,6 +8635,10 @@ msgstr ""
 msgid "Reconnect"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Reconnect {lapsedNames}"
+msgstr ""
+
 #: src/components/integrations/FinanceSection.tsx
 msgid "Reconnect {name}"
 msgstr ""
@@ -8633,6 +8653,10 @@ msgstr ""
 
 #: src/components/gtm/EmailItemCard.tsx
 msgid "Reconnect Gmail in Inbox before sending."
+msgstr ""
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Reconnect Mercury"
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
@@ -10033,10 +10057,6 @@ msgstr ""
 msgid "Sign-in failed"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "Sign-in needed."
-msgstr ""
-
 #: src/components/integrations/McpDetail.tsx
 msgid "Sign-in options"
 msgstr ""
@@ -11092,10 +11112,6 @@ msgstr ""
 msgid "Transactions"
 msgstr ""
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Transactions · {windowName}"
-msgstr ""
-
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Transactions are {0} off the closing balance"
@@ -11628,11 +11644,8 @@ msgid "Vendor"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
-msgid "Vendors"
-msgstr ""
-
 #: src/pages/finance/FinanceSpend.tsx
-msgid "Vendors · {windowName}"
+msgid "Vendors"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx

@@ -402,7 +402,11 @@ export function BurnLines({
   const right = 8;
   const bottom = 24;
   const clipped = series.some((m) => m.financingCents > scale.top);
-  const top = clipped ? 28 : 10;
+  // A quarter or year names its financing point in a label above the plot, so the label never sits on a bar.
+  const named = series.some(
+    (m) => m.financingCents > 0 && (granularity === "quarter" || granularity === "year"),
+  );
+  const top = clipped || named ? 28 : 10;
   // Each month is a control and must be 44 px wide on touch: a narrow phone scrolls the chart.
   const minWidth =
     touch && granularity === "month" ? left + right + Math.max(series.length, minSlots) * 44 : 0;
@@ -497,18 +501,6 @@ export function BurnLines({
             />
             {series.length > 1 ? (
               <>
-                {partial && drawn.length >= 1 ? (
-                  <line
-                    data-testid="burn-out-pending"
-                    x1={drawn.at(-1)?.[0]}
-                    y1={drawn.at(-1)?.[1]}
-                    x2={out.at(-1)?.[0]}
-                    y2={out.at(-1)?.[1]}
-                    className="stroke-foreground"
-                    strokeWidth={1.5}
-                    strokeDasharray="3 3"
-                  />
-                ) : null}
                 {hasRevenue && revDrawn.length > 1 ? (
                   <>
                     <path
@@ -721,11 +713,11 @@ export function BurnLines({
             {series.map((m, i) => {
               const off = m.financingCents > scale.top;
               // A quarter or year has few marks, so a bare ring beside the legend is named in place.
-              const named =
+              const inPlace =
                 !off &&
                 m.financingCents > 0 &&
                 (granularity === "quarter" || granularity === "year");
-              if (!off && !named) return null;
+              if (!off && !inPlace) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
               const text = `${t`Financing, ${when}`} ${off ? "↑ " : ""}${money(m.financingCents)}`;
               // About 6.5 px a character at 12 px; a centred label that would pass either edge hugs it.
@@ -737,7 +729,7 @@ export function BurnLines({
                   key={m.start}
                   data-testid="financing-clipped"
                   x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
-                  y={off ? top - 12 : Math.max(y(m.financingCents) - 10, 12)}
+                  y={top - 12}
                   textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={12}

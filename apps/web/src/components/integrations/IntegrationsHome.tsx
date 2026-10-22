@@ -707,6 +707,17 @@ export function IntegrationsHome({
           ) : null}
           {data.loaded ? (
             <>
+              {/* A lapsed connection is the one thing to fix, so it sits above Connected. */}
+              {!searching && (wholeList || category === "finance") ? (
+                <div className="mb-3 empty:hidden">
+                  <FinanceSection
+                    mode="lapsed"
+                    sources={data.financeSources}
+                    status={financeStatus}
+                    onChanged={() => void data.refresh()}
+                  />
+                </div>
+              ) : null}
               {(searching ? connectedApps.length > 0 : hasConnected) ? (
                 <>
                   <SectionTitle>
