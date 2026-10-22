@@ -13,10 +13,13 @@ export function FirstRunTour({
   open,
   onClose,
   onAsk,
+  onSkip,
 }: {
   open: boolean;
   /** The last step's "Ask Chief": finishes the tour, opens Chief and sends a sample question. */
   onAsk: () => void;
+  /** Skip tour or Escape: the shell keeps a one-tap "Ask Chief" in the composer. */
+  onSkip?: () => void;
   /** Called as soon as the tour ends; `byEscape` when the Escape key ended it. */
   onClose: (me: Me | null, byEscape?: boolean) => void;
 }) {
@@ -78,9 +81,10 @@ export function FirstRunTour({
       if (result === "empty") return onClose(null);
       // Close at once; the save runs behind it so the popover never lingers on the next page.
       rpc.preferences.update({ tourSeen: true }).catch(() => undefined);
+      if (result === "skip") onSkip?.();
       onClose(null, byEscape);
     },
-    [onClose],
+    [onClose, onSkip],
   );
   if (!open) return null;
   return (

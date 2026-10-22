@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Actor } from "@rakazo/contracts";
+import { DATA_ROOM_STUCK_MS } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import { IsolationError } from "./scope.js";
@@ -1117,11 +1118,22 @@ export function createDataRoomRepos(prisma: PrismaClient) {
 
     /**
      * Starts a stuck upload over: a `pending` or `failed` item goes back to `pending` with its
-     * failure count cleared. Returns false for any other status.
+     * failure count cleared. A file mid-read with no pipeline write for `DATA_ROOM_STUCK_MS` also
+     * starts over. Returns false for any other status.
      */
     async restartItem(actor: Actor, id: string): Promise<boolean> {
       const { count } = await prisma.dataRoomItem.updateMany({
-        where: { id, ...eligibleWhere(actor), status: { in: ["pending", "failed"] } },
+        where: {
+          id,
+          ...eligibleWhere(actor),
+          OR: [
+            { status: { in: ["pending", "failed"] } },
+            {
+              status: { in: ["extracting", "classifying", "indexing"] },
+              updatedAt: { lt: new Date(Date.now() - DATA_ROOM_STUCK_MS) },
+            },
+          ],
+        },
         data: { status: "pending", error: null, failures: 0, revision: { increment: 1 } },
       });
       return count === 1;

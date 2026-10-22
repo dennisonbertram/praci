@@ -176,6 +176,12 @@ export const Empty: Story = {
   beforeEach: () => mockRpc({ "inbox.list": { ...list, rows: [] } }),
 };
 
+/** No Gmail connection: Connect mail shows while the slow list is still loading. */
+export const NoMailBeforeListLoads: Story = {
+  beforeEach: () =>
+    mockRpc({ "connections.list": [], "inbox.list": () => new Promise(() => undefined) }),
+};
+
 export const NoMailAccount: Story = {
   args: { spaceName: "Empty space" },
   beforeEach: () => mockRpc({ "inbox.list": { ...list, accounts: [], rows: [] } }),
@@ -399,6 +405,34 @@ export const NewslettersGrouped: Story = {
 
 export const NewslettersDigest: Story = {
   parameters: { initialEntries: ["/?pile=newsletters&digest=1"] },
+  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+};
+
+/** The pile has mail, but all of it is older than the digest's 7 days. */
+export const NewslettersDigestOlderThanAWeek: Story = {
+  parameters: { initialEntries: ["/?pile=newsletters&digest=1"] },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": (input: unknown) => {
+        const out = byPile(input);
+        return {
+          ...out,
+          rows: out.rows.map((r) => ({ ...r, receivedAt: ago(9) })),
+        };
+      },
+      ...bulkMocks,
+    }),
+};
+
+/** A filter: the Filter button keeps its width (Cleanup does not move); the filter's name is in the results bar. */
+export const FilteredUnread: Story = {
+  parameters: { initialEntries: ["/?filter=unread"] },
+  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+};
+
+/** Search results: no pile tabs, one Clear (the X in the box). */
+export const SearchResults: Story = {
+  parameters: { initialEntries: ["/?q=invoice"] },
   beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
 };
 

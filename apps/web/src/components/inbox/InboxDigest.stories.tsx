@@ -49,7 +49,12 @@ const rows: MailRow[] = [
 const meta = {
   title: "Inbox/InboxDigest",
   component: InboxDigest,
-  args: { rows, onOpen: () => undefined, onArchiveAll: () => undefined },
+  args: {
+    rows,
+    onOpen: () => undefined,
+    onArchiveAll: () => undefined,
+    onShowPile: () => undefined,
+  },
   decorators: [
     (Story) => (
       <div className="@container w-[640px]">
@@ -95,3 +100,6 @@ export const LongText: Story = {
     ],
   },
 };
+
+/** The pile has mail, but none of it is from the last 7 days. */
+export const EmptyWindow: Story = { args: { rows: [] } };

@@ -1481,6 +1481,7 @@ msgid "Ask before sending external email"
 msgstr "Preguntar antes de enviar correo externo"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 
@@ -6787,7 +6788,6 @@ msgstr ""
 msgid "No longer active"
 msgstr "Ya no está activo"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6845,6 +6845,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -7062,10 +7066,6 @@ msgstr ""
 
 #: src/components/NotificationSettings.tsx
 msgid "Not supported here"
-msgstr ""
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -7397,6 +7397,7 @@ msgstr "Mensaje original no disponible"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7814,6 +7815,10 @@ msgid "Project secret"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
+msgid "Projected"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Projected cash"
 msgstr ""
 
@@ -7883,6 +7888,10 @@ msgstr "Reacciones"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Read"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Read and searchable"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -8909,10 +8918,6 @@ msgstr ""
 msgid "Search: {0}"
 msgstr ""
 
-#: src/components/data-room/DataRoomStats.tsx
-msgid "Searchable"
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
 msgstr ""
@@ -9236,6 +9241,10 @@ msgstr "Mostrar configuración"
 msgid "Show sidebar"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
 msgstr ""
@@ -9327,6 +9336,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Sign-in failed"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Sign-in needed."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -9661,6 +9674,10 @@ msgstr ""
 msgid "Still has access to: {0}"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Still looking. This can take a minute."
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9762,6 +9779,10 @@ msgstr ""
 msgid "Switching…"
 msgstr "Cambiando…"
 
+#: src/pages/Finance.tsx
+msgid "Sync failed."
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
@@ -9790,6 +9811,10 @@ msgstr "Tomar el control"
 
 #: src/pages/Shell.tsx
 msgid "Take the tour"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Taking longer than usual"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx

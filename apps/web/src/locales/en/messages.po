@@ -1481,6 +1481,7 @@ msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr "Ask Chief"
 
@@ -6787,7 +6788,6 @@ msgstr "No investors yet"
 msgid "No longer active"
 msgstr "No longer active"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr "No mail"
@@ -6846,6 +6846,10 @@ msgstr "No more results"
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
 msgstr "No net spend in the last 3 full months"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
+msgstr "No newsletters in the last 7 days"
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "No open deadlines."
@@ -7063,10 +7067,6 @@ msgstr "Not spam"
 #: src/components/NotificationSettings.tsx
 msgid "Not supported here"
 msgstr "Not supported here"
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Not tagged"
-msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
@@ -7397,6 +7397,7 @@ msgstr "Original message unavailable"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7814,6 +7815,10 @@ msgid "Project secret"
 msgstr "Project secret"
 
 #: src/pages/finance/FinanceBurn.tsx
+msgid "Projected"
+msgstr "Projected"
+
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Projected cash"
 msgstr "Projected cash"
 
@@ -7884,6 +7889,10 @@ msgstr "Reactions"
 #: src/components/integrations/AppDetail.tsx
 msgid "Read"
 msgstr "Read"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Read and searchable"
+msgstr "Read and searchable"
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -8909,10 +8918,6 @@ msgstr "Search the directory"
 msgid "Search: {0}"
 msgstr "Search: {0}"
 
-#: src/components/data-room/DataRoomStats.tsx
-msgid "Searchable"
-msgstr "Searchable"
-
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
 msgstr "Searching in {openFolderPath}"
@@ -9236,6 +9241,10 @@ msgstr "Show settings"
 msgid "Show sidebar"
 msgstr "Show sidebar"
 
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
+msgstr "Show the pile"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
 msgstr "Show tool activity"
@@ -9328,6 +9337,10 @@ msgstr "Sign-in did not finish."
 #: src/components/integrations/AppDetail.tsx
 msgid "Sign-in failed"
 msgstr "Sign-in failed"
+
+#: src/pages/Finance.tsx
+msgid "Sign-in needed."
+msgstr "Sign-in needed."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -9661,6 +9674,10 @@ msgstr "Steps to follow"
 msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Still looking. This can take a minute."
+msgstr "Still looking. This can take a minute."
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -9762,6 +9779,10 @@ msgstr "Suspicious"
 msgid "Switching…"
 msgstr "Switching…"
 
+#: src/pages/Finance.tsx
+msgid "Sync failed."
+msgstr "Sync failed."
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
@@ -9791,6 +9812,10 @@ msgstr "Take control"
 #: src/pages/Shell.tsx
 msgid "Take the tour"
 msgstr "Take the tour"
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Taking longer than usual"
+msgstr "Taking longer than usual"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Talks to people outside your company. Private tools are turned off."
