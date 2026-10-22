@@ -43,7 +43,6 @@ import {
   accountParts,
   dayAxisLabels,
   money,
-  moneyExact,
   monthAxisLabels,
   monthLabel,
   percentFigure,
@@ -473,14 +472,12 @@ export function FinanceAccountPage({ id }: { id: string }) {
                     <TableRow key={`${row.accountExternalId}:${row.month}`}>
                       <TableCell>{monthLabel(row.month)}</TableCell>
                       <TableCell className="text-end tabular-nums">
-                        {moneyExact(row.dividendsCents)}
+                        {money(row.dividendsCents)}
                       </TableCell>
                       <TableCell className="text-end tabular-nums text-muted-foreground">
-                        {moneyExact(row.feeCents)}
+                        {money(row.feeCents)}
                       </TableCell>
-                      <TableCell className="text-end tabular-nums">
-                        {moneyExact(row.netCents)}
-                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{money(row.netCents)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

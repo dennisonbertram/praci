@@ -23,12 +23,12 @@ const COLUMN_ORDER: LegalNodeKind[] = [
   "other",
 ];
 /** From one column's centre to the next: a box plus room for the edges between. */
-const COLUMN_W = 260;
+const COLUMN_W = 280;
 const ROW = 46;
 const PAD = 24;
-const NODE_W = 200;
-const NODE_H = 36;
-/** Characters per label line at 11px in a NODE_W box. */
+const NODE_W = 220;
+const NODE_H = 38;
+/** Characters per label line at 12px in a NODE_W box. */
 const LINE_CHARS = 30;
 
 const kindName = (kind: LegalNodeKind): string =>
@@ -194,7 +194,7 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
               x={head.x}
               y={PAD}
               textAnchor="middle"
-              className="fill-muted-foreground text-[11px]"
+              className="fill-muted-foreground text-xs"
             >
               {head.kind ? kindName(head.kind) : ""}
             </text>
@@ -253,13 +253,10 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
                 x={x}
                 y={y}
                 textAnchor="middle"
-                className={cn(
-                  "fill-foreground text-[11px]",
-                  node.kind === "contract" && "font-medium",
-                )}
+                className={cn("fill-foreground text-xs", node.kind === "contract" && "font-medium")}
               >
                 {labelLines(maskCurrencyWhenHidden(node.label)).map((line, i, lines) => (
-                  <tspan key={i} x={x} dy={i === 0 ? (lines.length === 1 ? 4 : -2) : 13}>
+                  <tspan key={i} x={x} dy={i === 0 ? (lines.length === 1 ? 4 : -3) : 14}>
                     {line}
                   </tspan>
                 ))}

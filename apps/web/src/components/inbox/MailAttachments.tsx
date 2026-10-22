@@ -283,6 +283,8 @@ function AttachmentPreviewDialog({
   const downloadRef = useRef<HTMLButtonElement>(null);
   const attachment = attachments[index];
   if (!attachment) return null;
+  // Tables and plain text are as tall as their rows; a PDF, page or picture needs the full height.
+  const compact = ["sheet", "text", "markdown"].includes(attachmentKind(attachment));
   const step = (by: number) => {
     const next = index + by;
     if (next >= 0 && next < attachments.length) onIndex(next);
@@ -299,7 +301,10 @@ function AttachmentPreviewDialog({
         onKeyDown={onKeyDown}
         // Enter downloads the file; filing it to the Data room takes a deliberate click.
         initialFocus={downloadRef}
-        className="flex h-dvh max-h-none w-full max-w-none flex-col gap-2 rounded-none sm:max-w-none md:h-[85vh] md:w-[min(960px,94vw)] md:rounded-xl"
+        className={cn(
+          "flex h-dvh max-h-none w-full max-w-none flex-col gap-2 rounded-none sm:max-w-none md:w-[min(960px,94vw)] md:rounded-xl",
+          compact ? "md:h-auto md:max-h-[85vh] md:min-h-[40vh]" : "md:h-[85vh]",
+        )}
       >
         <div className="flex items-center gap-1 pe-8">
           {attachments.length > 1 ? (
@@ -341,7 +346,12 @@ function AttachmentPreviewDialog({
             </span>
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-border">
+        <div
+          className={cn(
+            "min-h-0 flex-1 rounded-md border border-border",
+            compact ? "overflow-auto" : "overflow-hidden",
+          )}
+        >
           <AttachmentView key={attachment.id} messageId={messageId} attachment={attachment} />
         </div>
       </DialogContent>
