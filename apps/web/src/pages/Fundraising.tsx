@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   Button,
   Card,
+  enqueueNotificationToast,
   Skeleton,
 } from "@rakazo/ui-web";
 import { Plus } from "lucide-react";
@@ -113,13 +114,18 @@ export function FundraisingPage({
   async function mark(safe: Safe, action: SafeMarkInput["action"], at: string) {
     await rpc.fundraising.safes.mark({ id: safe.id, action, at });
     load();
-    notify(markDone()[action], {
-      label: t`Undo`,
-      onClick: () =>
-        void run(
-          () => rpc.fundraising.safes.mark({ id: safe.id, action, at: null }),
-          t`Could not undo`,
-        ),
+    // Undo clears the date again. It fades after the usual few seconds so it cannot cover the header.
+    enqueueNotificationToast({
+      id: `safe-${safe.id}-${action}-${Date.now()}`,
+      title: markDone()[action],
+      action: {
+        label: t`Undo`,
+        onClick: () =>
+          void run(
+            () => rpc.fundraising.safes.mark({ id: safe.id, action, at: null }),
+            t`Could not undo`,
+          ),
+      },
     });
   }
   const closeRound = () => {
