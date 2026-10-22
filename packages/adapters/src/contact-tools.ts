@@ -39,7 +39,7 @@ export function capTableToolsAllowed(
 }
 
 type ContactToolDeps = {
-  prisma: Pick<PrismaClient, "contact" | "capTableSnapshot" | "fundraiseRound">;
+  prisma: Pick<PrismaClient, "$transaction" | "contact" | "capTableSnapshot" | "fundraiseRound">;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
   /** The agent running the tool, from the run, never from model input. */
