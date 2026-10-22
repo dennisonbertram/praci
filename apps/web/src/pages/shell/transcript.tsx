@@ -792,6 +792,14 @@ export const Transcript = memo(function Transcript({
                 <TimeSeparator createdAt={message.createdAt} locale={i18n.locale || "en"} />
               ) : null}
               {showDividerId === message.id ? <UnreadDivider /> : null}
+              {message.routineName ? (
+                <p
+                  className="mb-1 truncate text-xs text-muted-foreground"
+                  data-testid="routine-label"
+                >
+                  {t`From routine: ${message.routineName}`}
+                </p>
+              ) : null}
               <div
                 data-message-id={message.id}
                 data-stored-message={isStoredMessage(message) ? "" : undefined}

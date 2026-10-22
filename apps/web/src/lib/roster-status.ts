@@ -72,3 +72,10 @@ export function compactRosterStatusLabel(status: string, phase?: RunPhase | null
       return null;
   }
 }
+
+/** The sidebar preview of a chat: the server's long "Chat is off ..." run error becomes one short line. */
+export function rosterPreviewText(preview: string): string {
+  return preview.includes("Chat is off until you allow AI models")
+    ? t`Waiting for AI to be allowed`
+    : preview;
+}

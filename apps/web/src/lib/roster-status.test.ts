@@ -3,6 +3,7 @@ import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterPreviewText,
   rosterStatusChanged,
   rosterWorkStatusLabel,
 } from "./roster-status";
@@ -93,4 +94,15 @@ describe("rosterStatusChanged", () => {
 it("names a delegate wait", async () => {
   const { waitingForApprovalLabel } = await import("./roster-status");
   expect(waitingForApprovalLabel()).toBe("Waiting for approval");
+});
+
+describe("rosterPreviewText", () => {
+  it("shortens the AI-off run error and leaves other previews alone", () => {
+    expect(
+      rosterPreviewText(
+        "Could not complete the delegated request: Chat is off until you allow AI models in Settings under Privacy and approvals.",
+      ),
+    ).toBe("Waiting for AI to be allowed");
+    expect(rosterPreviewText("Sent the update")).toBe("Sent the update");
+  });
 });
