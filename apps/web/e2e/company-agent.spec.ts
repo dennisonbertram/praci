@@ -17,10 +17,9 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   const again = await rpc<Bot>(page, "company/agent", {});
   expect(again.id).toBe(first.id);
   await captureScreenshot(page, testInfo, "company-agent-panel");
-  await historian.getByRole("button", { name: "Collapse Company agent" }).click();
+  await page.getByRole("link", { name: "Import", exact: true }).click();
   await expect(historian).toHaveCount(0);
-
-  await page.goto("/app/company/import");
+  await expect(page.getByTestId("company-importer-panel")).toHaveCount(0);
   await page.getByRole("button", { name: "Ask Company importer", exact: true }).click();
   const importer = page.getByTestId("company-importer-panel");
   await expect(
@@ -30,8 +29,9 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   expect(second.spawnKey).toMatch(/^company-importer:/);
   expect(second.id).not.toBe(first.id);
   await captureScreenshot(page, testInfo, "company-importer-panel");
-  await page.goto("/app/company");
+  await page.getByRole("link", { name: "Company", exact: true }).click();
   await expect(page.getByTestId("company-importer-panel")).toHaveCount(0);
+  await expect(historian).toHaveCount(0);
   await page.getByRole("button", { name: "Ask Company agent", exact: true }).click();
   await expect(
     historian.getByRole("button", { name: "Open Company agent full screen" }),

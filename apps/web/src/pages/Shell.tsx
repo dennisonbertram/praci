@@ -1168,9 +1168,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   useEffect(() => {
-    if (!companyMode) {
-      setCompanyAgentOpen(false);
-    }
+    setCompanyAgentOpen(false);
     setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
   }, [companyMode, companyRole]);
   useEffect(() => {
