@@ -3788,7 +3788,7 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Create a routine"
-msgstr ""
+msgstr "자동 실행 만들기"
 
 #: src/pages/Auth.tsx
 msgid "Create account"
