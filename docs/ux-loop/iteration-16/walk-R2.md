@@ -4,7 +4,7 @@ Demo stack 5381, 1440x900 unless noted. Screenshots in /tmp/uxloop16/R2/. Hide a
 
 ## Verdicts (actual steps / ideal)
 - C11 Legal table, phone cards, Reopen: PASS (6/5). Rows 48 px, cell text tops within 1 px (01-legal.png). Phone shows 7 contracts with no repeated labels; with Hide amounts on no Value line (06, 08). Done deadline has Reopen and returns to open (04, 05).
-- C12 Activity: PASS (3/3). With sidebar scrolled, Activity opens in view (11); bot rows already in Activity are not repeated in the list. No count shown, but only one item waits. 
+- C12 Activity: PASS (3/3). With sidebar scrolled, Activity opens in view (11); bot rows already in Activity are not repeated in the list. No count shown, but only one item waits.
 - C13 Legal scan: PASS with notes (4/3). Re-scan kept 9 deadlines; progress "Reading 0 of 3" then "Saving results..."; banner has "Check now" and it works (09, 10). Notes F-R2-01, F-R2-02.
 - C14 Bot-delegated payment: PARTIAL PASS (6/4). Known recipient: Mercury approval toast and composer "Waiting for approval" (26), Deny recorded (27). Unknown recipient: reply links to Integrations (F-R2-03). "Open Mercury agent" link in docked chat did not navigate once (unverified, F-R2-04).
 - C15 Toast vs docked chat: PASS (4/3). Legal agent asked a question while docked, no toast (19); a toast did show when Legal was not docked.

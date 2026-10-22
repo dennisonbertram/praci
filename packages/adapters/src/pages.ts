@@ -1,6 +1,6 @@
 import type { BotPage, PageAuthor, PageChart } from "@rakazo/contracts";
 import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS, PageChartInputSchema } from "@rakazo/contracts";
-import { splitPage } from "@rakazo/core";
+import { gtmPageContentError, splitPage } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { isUniqueViolation } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -21,6 +21,7 @@ export interface PageSaveInput {
   /** 0 creates the page. */
   baseRevision: number;
   updatedBy: PageAuthor;
+  gtmPage?: boolean;
   sourceRunId?: string;
 }
 
@@ -57,12 +58,14 @@ export async function renderPageChartSvg(chart: PageChart): Promise<string> {
 }
 
 /** Throws PageValidationError unless every chart fence parses and renders with the PlotSpec rules. */
-async function validatePageContent(content: string): Promise<void> {
+async function validatePageContent(content: string, gtmPage = false): Promise<void> {
   if (content.length > BOT_PAGE_MAX_CHARS) {
     throw new PageValidationError(
       `The page is ${content.length} characters; the limit is ${BOT_PAGE_MAX_CHARS}.`,
     );
   }
+  const gtmError = gtmPageContentError(content, gtmPage);
+  if (gtmError) throw new PageValidationError(gtmError);
   const charts: PageChart[] = [];
   for (const segment of splitPage(content)) {
     if (segment.kind === "invalid_chart") {
@@ -126,7 +129,7 @@ export async function getBotPage(
  * writes nothing and returns the current page. Shared by the pages RPC and the page tools.
  */
 export async function saveBotPage(deps: PageDeps, input: PageSaveInput): Promise<PageSaveResult> {
-  await validatePageContent(input.content);
+  await validatePageContent(input.content, input.gtmPage ?? false);
   const { prisma } = deps;
   const scope = { spaceId: input.spaceId, botId: input.botId };
   let saved: PageRow | null;
@@ -210,6 +213,7 @@ export interface PageToolScope {
   botId: string;
   userId: string;
   runId: string;
+  gtmPage?: boolean;
 }
 
 /** Run a page_* built-in tool. Scope comes from the run's bot, never from model input. */
