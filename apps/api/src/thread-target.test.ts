@@ -210,6 +210,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -276,6 +277,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -360,6 +362,7 @@ describe("threadSnapshot", () => {
               run: { findFirst: botRunFindFirst([waitingPeer, olderUser]) },
             }),
           ),
+          run: { findMany: vi.fn().mockResolvedValue([]) },
         } as unknown as PrismaClient,
       },
       {
@@ -406,6 +409,7 @@ describe("threadSnapshot", () => {
                 run: { findFirst: botRunFindFirst([waitingTicket]) },
               }),
             ),
+            run: { findMany: vi.fn().mockResolvedValue([]) },
           } as unknown as PrismaClient,
         },
         {
@@ -465,6 +469,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
@@ -501,6 +506,7 @@ describe("threadSnapshot", () => {
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      run: { findMany: vi.fn().mockResolvedValue([]) },
     } as unknown as PrismaClient;
     const target = {
       kind: "bot",
