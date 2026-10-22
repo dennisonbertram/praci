@@ -772,6 +772,7 @@ export function StackBar({
           // "Other" has no page of its own: it is named on hover and to screen readers, and opens nothing.
           if (segment.key === "")
             return (
+              // biome-ignore lint/a11y/noInteractiveElementToNoninteractiveRole: focusable so keyboard users can reach its name
               <rect key="other" {...shape} role="img" aria-label={segment.label} tabIndex={0}>
                 <title>{segment.label}</title>
               </rect>
