@@ -320,7 +320,7 @@ describe("messaging another bot", () => {
       bot_id: "bot-target",
       message: "email Priya",
     });
-    expect(sent.ok && sent.note).toContain("[Open Analyst](/app/bot-target)");
+    expect(sent.ok && sent.note).toContain("An Open Analyst button shows under your reply");
   });
 
   it("refuses a bot messaging itself", async () => {

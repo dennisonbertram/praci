@@ -1358,7 +1358,7 @@ describe("directoryDescription", () => {
       spawnKey: "integration-agent:server-1",
     });
     expect(line).toContain(
-      "approve it in the Mercury chat and end with [Open Mercury](/app/bot-9)",
+      "approve it in the Mercury chat; an Open Mercury button shows under your reply",
     );
   });
 

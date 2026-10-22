@@ -7482,8 +7482,8 @@ msgid "Nothing shared yet."
 msgstr "Nothing shared yet."
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
-msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
+msgstr "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Notice deadlines are derived from the expiration date and the notice period."
@@ -7587,6 +7587,10 @@ msgstr "Open {0}"
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr "Open {0} full screen"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Open {agentName}"
+msgstr "Open {agentName}"
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx

@@ -7482,7 +7482,7 @@ msgid "Nothing shared yet."
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -7586,6 +7586,10 @@ msgstr "打开 {0}"
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Open {agentName}"
 msgstr ""
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")

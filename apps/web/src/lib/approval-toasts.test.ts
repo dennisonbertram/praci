@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ApprovalToasts from "./approval-toasts";
 
@@ -123,6 +125,14 @@ describe("approval toasts", () => {
     );
     expect(titles()).toEqual(["Reply?"]);
     toasts.dismissApprovalToasts({ botId: "email-1" });
+  });
+
+  it("asks for a rebuild when the chat closes, so an unanswered approval comes back", () => {
+    const rebuild = vi.fn();
+    window.addEventListener("rakazo:notifications-changed", rebuild);
+    toasts.markApprovalChatOpen("email-2")();
+    window.removeEventListener("rakazo:notifications-changed", rebuild);
+    expect(rebuild).toHaveBeenCalledTimes(1);
   });
 
   it("drops an approval the server no longer lists, and does not bring back a dismissed one", () => {
