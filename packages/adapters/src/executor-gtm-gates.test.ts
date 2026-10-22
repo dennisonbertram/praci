@@ -44,7 +44,11 @@ vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
 type FixtureOptions = {
   trigger?: string;
   approvedSignup?: boolean;
+  approvedPost?: boolean;
+  apiKeyReady?: boolean;
   botUserId?: string;
+  groupId?: string | null;
+  audience?: string | null;
   tools?: ConnectorTool[];
   servers?: {
     id: string;
@@ -112,6 +116,18 @@ function gtmFixture(options: FixtureOptions = {}) {
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
+  const postItem = {
+    ...item,
+    id: "approved-post-1",
+    title: "Approved post",
+    notes: "Approved post",
+    category: "public_post",
+    channel: "x",
+    target: "account-1",
+    scheduledFor: new Date("2030-01-02T03:04:05.000Z"),
+    approvedAt: new Date("2029-12-30T00:00:00.000Z"),
+    approvedBy: "user",
+  };
   const routine = options.routine
     ? {
         id: "routine-1",
@@ -158,10 +174,23 @@ function gtmFixture(options: FixtureOptions = {}) {
         botId?: string;
         category?: string;
         status?: string;
+        proof?: string | null;
         approvedAt?: { not: null };
       };
     } = {}) => {
       if (where?.id === item.id) return { ...item };
+      if (
+        options.approvedPost &&
+        where?.category === "public_post" &&
+        where.status === "open" &&
+        where.approvedAt?.not === null &&
+        where.proof === null &&
+        where?.spaceId === run.spaceId &&
+        where.userId === run.userId &&
+        where.botId === run.botId
+      ) {
+        return { ...postItem };
+      }
       if (
         options.approvedSignup &&
         where?.category === "create_account" &&
@@ -464,6 +493,27 @@ describe("GTM executor gates", () => {
     ]) {
       expect(names).not.toContain(name);
     }
+  });
+
+  it("rejects a direct gtm_post call when the local tool was not offered", async () => {
+    const f = gtmFixture({
+      execute: {
+        name: "gtm_post",
+        args: {
+          content: "Approved post",
+          scheduledFor: "2030-01-02T03:04:05.000Z",
+          accountId: "account-1",
+        },
+      },
+    });
+
+    await f.executor.continueRun(f.run.id, "worker-1");
+
+    expect(f.directResult()).toMatchObject({
+      error: expect.stringMatching(/not available|unknown tool/),
+    });
+    expect(f.prisma.externalEffect.create).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
   });
 
   it("offers page-browser tools only for a requester-owned agent with an approved open signup", async () => {

@@ -4,6 +4,8 @@ import {
   botSecretDestinationSchema,
   ContactKindSchema,
   EmailUrgency,
+  GTM_POST_TOOL,
+  GtmPostInputSchema,
   MAX_EMAIL_CARDS,
   ScratchpadCategorySchema,
   ScratchpadChannelSchema,
@@ -2178,6 +2180,12 @@ export const builtinAgentTools: ConnectorTool[] = [
   ...voiceAgentTools,
   ...calendarToolDefinitions,
 ];
+
+export const gtmPostTool: ConnectorTool = {
+  name: GTM_POST_TOOL,
+  description: "Post the exact founder-approved text to its approved account and schedule.",
+  inputSchema: z.toJSONSchema(GtmPostInputSchema, { io: "input" }),
+};
 
 /** Agent-connection tools, exposed only when the messaging surface is enabled. */
 export const agentConnectionTools: ConnectorTool[] = [
