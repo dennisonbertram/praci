@@ -154,6 +154,7 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
+import { LegalPanelConsent } from "../components/legal/ConsentPrompt";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
@@ -4043,6 +4044,7 @@ export function ShellPage() {
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
             </div>
           ) : null}
+          {legalWaitsForConsent ? <LegalPanelConsent /> : null}
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}

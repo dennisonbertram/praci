@@ -1300,6 +1300,10 @@ msgid "API key"
 msgstr "API 키"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API 키 헤더"
 
@@ -2633,6 +2637,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "컴퓨터가 꺼져 있습니다. SANDBOX_PROVIDER=docker와 SANDBOX_SUPERVISOR_TOKEN을 설정하거나, SANDBOX_PROVIDER를 e2b, daytona, box 중 하나로 두고 해당 API 키를 넣으세요. .env 변경 후 스택을 다시 만드세요."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "삭제 확인"
@@ -2789,6 +2797,10 @@ msgstr "Treg 연결"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -5785,11 +5797,8 @@ msgstr ""
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let Praci read your contracts"
-msgstr ""
-
 #: src/components/data-room/ConsentPrompt.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -7194,6 +7203,10 @@ msgstr "OAuth 인증이 취소되었습니다."
 msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr ""
@@ -7773,12 +7786,30 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci can now read your documents."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -9197,6 +9228,10 @@ msgstr ""
 msgid "Set up app catalog"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Setting up the agent..."
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -10121,10 +10156,6 @@ msgstr ""
 msgid "The text is sent to the AI model that runs your bots."
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The text of your Data room documents is sent to the AI model that runs your bots."
-msgstr ""
-
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
 msgstr ""
@@ -10872,12 +10903,20 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "키를 확인하려면 연결을 사용하세요."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx

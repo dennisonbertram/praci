@@ -1,5 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomConsentStatus } from "@rakazo/contracts";
+import { useEffect, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { ConsentCard } from "../AiDataSharing";
 
@@ -7,7 +8,9 @@ import { ConsentCard } from "../AiDataSharing";
 export function LegalConsentPrompt({
   consent,
   onChange,
+  className = "mb-4",
 }: {
+  className?: string;
   consent: DataRoomConsentStatus;
   /** Called with the new status after a grant, or with the fresh one when the shown key was stale. */
   onChange: (status: DataRoomConsentStatus) => void;
@@ -15,13 +18,8 @@ export function LegalConsentPrompt({
   return (
     <ConsentCard
       id="legal-consent"
-      className="mb-4"
-      heading={<Trans>Let Praci read your contracts</Trans>}
-      sends={
-        <Trans>
-          The text of your Data room documents is sent to the AI model that runs your bots.
-        </Trans>
-      }
+      className={className}
+      heading={<Trans>Let Praci read your documents</Trans>}
       onAllow={async () => {
         try {
           onChange(await rpc.legal.consentGrant({ key: consent.key, version: consent.version }));
@@ -30,6 +28,34 @@ export function LegalConsentPrompt({
           if ((cause as { code?: string } | null)?.code !== "CONFLICT") throw cause;
           onChange(await rpc.legal.consent());
         }
+      }}
+    />
+  );
+}
+
+/**
+ * The same Allow inside the Legal agent panel, above its disabled composer. It grants the one shared
+ * permission, starts the first scan like the page's card, and nudges the page to re-read its status.
+ */
+export function LegalPanelConsent() {
+  const [status, setStatus] = useState<DataRoomConsentStatus | null>(null);
+  useEffect(() => {
+    rpc.legal
+      .consent()
+      .then(setStatus)
+      .catch(() => undefined);
+  }, []);
+  if (!status || status.allowed || status.recipients.length === 0) return null;
+  return (
+    <LegalConsentPrompt
+      className="mx-6 mb-2"
+      consent={status}
+      onChange={(next) => {
+        setStatus(next);
+        if (!next.allowed) return;
+        void rpc.legal.scanNow().catch(() => undefined);
+        // The page re-reads its consent and overview when the window regains focus.
+        window.dispatchEvent(new Event("focus"));
       }}
     />
   );

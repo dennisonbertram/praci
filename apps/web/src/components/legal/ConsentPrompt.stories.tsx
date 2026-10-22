@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { consentFixture } from "../../pages/legal/fixtures";
-import { LegalConsentPrompt } from "./ConsentPrompt";
+import { LegalConsentPrompt, LegalPanelConsent } from "./ConsentPrompt";
 
 const meta = {
   title: "Legal/ConsentPrompt",
@@ -16,4 +16,9 @@ export const Default: StoryObj<typeof meta> = {
 
 export const NoModel: StoryObj<typeof meta> = {
   args: { consent: { ...consentFixture, allowed: false, recipients: [] } },
+};
+
+export const InAgentPanel: StoryObj = {
+  beforeEach: () => mockRpc({ "legal.consent": { ...consentFixture, allowed: false } }),
+  render: () => <LegalPanelConsent />,
 };

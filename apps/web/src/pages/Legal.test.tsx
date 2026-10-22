@@ -134,15 +134,15 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   rpcMock.consentGrant.mockResolvedValue(consentFixture);
   rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("Let Praci read your contracts");
+  expect(container.textContent).toContain("Let Praci read your documents");
   // The card says what is sent, not just that an AI model is involved.
-  expect(container.textContent).toContain("The text of your Data room documents is sent");
+  expect(container.textContent).toContain("The text is sent");
   // The card's Allow is the one action: no dimmed Scan now, no zero tiles.
   expect(button("Scan now")).toBeUndefined();
   expect(container.querySelectorAll("h2")).toHaveLength(1);
   await click(button("Allow"));
   expect(rpcMock.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
-  expect(container.textContent).not.toContain("Let Praci read your contracts");
+  expect(container.textContent).not.toContain("Let Praci read your documents");
   // Allow is the one click: the first scan starts without a second.
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
 });
@@ -151,7 +151,7 @@ it("does not repeat the card's sentence on an empty page waiting for consent", a
   rpcMock.overview.mockResolvedValue(emptyOverview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("Let Praci read your contracts");
+  expect(container.textContent).toContain("Let Praci read your documents");
   expect(container.textContent).not.toContain("Allow access above");
   expect(container.textContent).not.toContain("Press Scan now");
 });

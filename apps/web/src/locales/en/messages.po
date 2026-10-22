@@ -1300,6 +1300,10 @@ msgid "API key"
 msgstr "API key"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr "API key configured (not verified)."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API key header"
 
@@ -2633,6 +2637,10 @@ msgstr "Computers are available. Reload or open a bot to continue."
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr "Configure API key"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
@@ -2790,6 +2798,10 @@ msgstr "Connect Treg"
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
 msgstr "Connect your apps"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
+msgstr "Connect Zernio to enable reads."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -5785,11 +5797,8 @@ msgstr "Let other agents use {service} directly"
 msgid "Let Praci read documents"
 msgstr "Let Praci read documents"
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let Praci read your contracts"
-msgstr "Let Praci read your contracts"
-
 #: src/components/data-room/ConsentPrompt.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr "Let Praci read your documents"
 
@@ -7194,6 +7203,10 @@ msgstr "OAuth authorization was cancelled."
 msgid "OAuth connection failed"
 msgstr "OAuth connection failed"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr "OAuth connects reads only. Posting requires an API key."
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr "Obligation"
@@ -7773,6 +7786,18 @@ msgstr "Posted · {0} notified"
 msgid "Posted {0}"
 msgstr "Posted {0}"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr "Posting needs an API key."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr "Posting readiness unavailable."
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci can now read your documents."
+msgstr "Praci can now read your documents."
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
@@ -7780,6 +7805,12 @@ msgstr "Praci doesn't tag new files."
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
 msgstr "Praci keeps your meetings and to-dos."
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
+msgstr "Pre-money cap {0}"
 
 #: src/components/ComposeEmail.tsx
 msgid "Preparing draft…"
@@ -9197,6 +9228,10 @@ msgstr "Set up {name}"
 msgid "Set up app catalog"
 msgstr "Set up app catalog"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Setting up the agent..."
+msgstr "Setting up the agent..."
+
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -10121,10 +10156,6 @@ msgstr "the statement through {0}"
 msgid "The text is sent to the AI model that runs your bots."
 msgstr "The text is sent to the AI model that runs your bots."
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The text of your Data room documents is sent to the AI model that runs your bots."
-msgstr "The text of your Data room documents is sent to the AI model that runs your bots."
-
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
 msgstr "The transactions read add up to the closing balance"
@@ -10872,6 +10903,10 @@ msgstr "Use a Google Sheet"
 msgid "Use an API key instead"
 msgstr "Use an API key instead"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr "Use API key"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Use Connect to verify the key."
@@ -10879,6 +10914,10 @@ msgstr "Use Connect to verify the key."
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Use default guidance"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
+msgstr "Use OAuth"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."

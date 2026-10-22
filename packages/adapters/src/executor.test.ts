@@ -1287,6 +1287,9 @@ describe("directoryDescription", () => {
     expect(integration).toContain("[Open Integrations](/app/integrations)");
     expect(integration).toContain("copied exactly");
     expect(NOT_CONNECTED_GUIDANCE).toContain("[Open Integrations](/app/integrations)");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("do not say no payment connection exists");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("Allow changes");
+    expect(PLAIN_CAPABILITY_GUIDANCE).toContain("never by its id");
     expect(integration).not.toContain("instead of messaging it");
   });
 
