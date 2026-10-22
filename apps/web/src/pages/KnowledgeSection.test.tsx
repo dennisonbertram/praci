@@ -75,7 +75,11 @@ it("shows one empty message, not an empty row beside real memories", async () =>
     document.body.append(container);
     const root = createRoot(container);
     await act(async () => root.render(<KnowledgeSection botId="bot-fixture" />));
-    return { text: container.textContent ?? "", done: () => root.unmount() };
+    return {
+      text: container.textContent ?? "",
+      hidden: container.querySelector("section")?.classList.contains("hidden"),
+      done: () => root.unmount(),
+    };
   };
   const mixed = await render([
     { id: "m1", path: "MEMORY.md", scope: "bot", content: "" },
@@ -84,6 +88,27 @@ it("shows one empty message, not an empty row beside real memories", async () =>
   expect(mixed.text).toContain("Prefers short replies");
   expect(mixed.text).not.toContain("Nothing remembered yet");
   const empty = await render([{ id: "m1", path: "MEMORY.md", scope: "bot", content: "" }]);
-  expect(empty.text.match(/Nothing remembered yet/g)).toHaveLength(1);
+  // A bot with nothing remembered shows no Memory heading or empty line in its settings.
+  expect(empty.text).not.toContain("Nothing remembered yet");
+  expect(empty.hidden).toBe(true);
+  expect(mixed.hidden).toBe(false);
   vi.unstubAllGlobals();
+});
+
+it("keeps the section visible when the memory list fails to load", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  memoryList.mockRejectedValueOnce(new Error("boom"));
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<KnowledgeSection botId="bot-fixture" />));
+    const section = container.querySelector('[data-testid="bot-knowledge"]');
+    expect(section?.className).not.toContain("hidden");
+    expect(container.textContent).toContain("Could not load");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
 });

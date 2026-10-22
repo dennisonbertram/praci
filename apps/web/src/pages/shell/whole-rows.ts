@@ -7,7 +7,10 @@ const MAX_GAP = 8;
  * more to see. Run after layout changes; it measures from the list's natural height, so repeated
  * calls settle on the same value.
  */
-export function endOnWholeRow(scroller: HTMLElement | null, rowSelector = "[data-roster-row]") {
+export function endOnWholeRow(
+  scroller: HTMLElement | null,
+  rowSelector = "[data-roster-row],[data-roster-fold]",
+) {
   if (!scroller) return;
   const margin = Number.parseFloat(scroller.style.marginBottom) || 0;
   const natural = scroller.clientHeight + margin;

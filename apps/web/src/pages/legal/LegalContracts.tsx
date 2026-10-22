@@ -66,14 +66,14 @@ function Title({ contract, inline = false }: { contract: LegalContract; inline?:
     <>
       <Link
         to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-        className="rk-tap font-medium hover:underline"
+        className={cn("rk-tap font-medium hover:underline", inline && "line-clamp-2")}
       >
         {contract.title}
       </Link>
-      {/* The wide table keeps a row to one line, so the type sits beside the title. */}
-      <span className={cn("text-xs text-muted-foreground", inline ? "ms-2" : "block")}>
-        {contract.contractType}
-      </span>
+      {/* The table has no room for the type: its rows are one fixed height, so the type is in the tooltip. */}
+      {inline ? null : (
+        <span className="block text-xs text-muted-foreground">{contract.contractType}</span>
+      )}
     </>
   );
 }
@@ -160,12 +160,12 @@ export function LegalContracts({
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[21%]" : "w-[23%]"} />
-          <col className={showStatus ? "w-[19%]" : "w-[21%]"} />
-          {showStatus ? <col className="w-[7%]" /> : null}
-          <col className={showStatus ? "w-[16%]" : "w-[18%]"} />
+          <col className={showStatus ? "w-[22%]" : "w-[25%]"} />
           <col className={showStatus ? "w-[14%]" : "w-[16%]"} />
-          <col className="w-[9%]" />
+          {showStatus ? <col className="w-[7%]" /> : null}
+          <col className={showStatus ? "w-[19%]" : "w-[20%]"} />
+          <col className={showStatus ? "w-[17%]" : "w-[17%]"} />
+          <col className="w-[8%]" />
           <col className="w-[13%]" />
         </colgroup>
         <TableHeader>
@@ -197,22 +197,25 @@ export function LegalContracts({
         </TableHeader>
         <TableBody>
           {contracts.map((contract) => (
-            <TableRow key={contract.id}>
-              <TableCell className="truncate" title={contract.title}>
+            <TableRow key={contract.id} className="group-data-[compact]/table:h-14">
+              <TableCell
+                className="whitespace-normal"
+                title={`${contract.title} (${contract.contractType})`}
+              >
                 <Title contract={contract} inline />
               </TableCell>
               <TableCell className="whitespace-normal" title={contract.counterparties.join(", ")}>
-                {contract.counterparties.join(", ") || dash}
+                <span className="line-clamp-2">{contract.counterparties.join(", ") || dash}</span>
               </TableCell>
               {showStatus ? (
                 <TableCell>
                   <Status status={contract.status} />
                 </TableCell>
               ) : null}
-              <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>
+              <TableCell className="truncate tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="whitespace-normal" title={renewal(contract)}>
+              <TableCell className="truncate" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>

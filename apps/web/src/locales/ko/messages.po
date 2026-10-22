@@ -1067,10 +1067,6 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr ""
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1115,10 +1111,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -1368,6 +1360,10 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Approved"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2597,7 +2593,6 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "컴퓨터"
@@ -2625,14 +2620,6 @@ msgstr "컴퓨터가 절전 상태입니다"
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
 msgstr "컴퓨터가 절전 상태입니다. 열어 깨우세요."
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Computer is starting"
@@ -2724,6 +2711,10 @@ msgstr "AI 모델 연결"
 
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
+msgstr ""
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4833,20 +4824,11 @@ msgstr ""
 msgid "Filter by {label}"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr ""
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
 
@@ -5215,10 +5197,6 @@ msgstr "전화를 끊은 다음 화면에 표시된 코드를 입력하세요."
 msgid "Has attachment"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "header"
@@ -5480,6 +5458,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In runway"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
@@ -6890,6 +6872,10 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
@@ -7240,6 +7226,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -7878,10 +7868,6 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "Bot 전용"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8896,6 +8882,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "예 또는 아니요로 답하거나 문장으로 답해 주세요."
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -8923,6 +8921,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8948,7 +8947,7 @@ msgid "Search and read files and folders"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
+msgid "Search artifacts"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -9294,13 +9293,13 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9983,10 +9982,6 @@ msgstr "작업 가르치기"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "작업을 가르치는 중입니다. 새 메시지를 보내려면 먼저 가르치기를 종료하세요."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "팀 공용"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -10980,10 +10975,6 @@ msgstr ""
 msgid "Use your own key"
 msgstr "내 키 사용"
 
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -11345,6 +11336,10 @@ msgstr "처리 중…"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx

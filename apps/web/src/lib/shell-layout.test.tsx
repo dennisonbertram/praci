@@ -63,6 +63,7 @@ describe("useDrawerFocus", () => {
           <button type="button" id="first">
             first
           </button>
+          <input readOnly id="search" data-drawer-focus />
         </aside>
       </div>
     );
@@ -75,7 +76,8 @@ describe("useDrawerFocus", () => {
     act(() => root.render(<Harness open={false} />));
     container.querySelector<HTMLElement>("#opener")?.focus();
     act(() => root.render(<Harness open />));
-    expect(document.activeElement?.id).toBe("first");
+    // The search box is the way in, even though a button comes before it.
+    expect(document.activeElement?.id).toBe("search");
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(close).toHaveBeenCalledTimes(1);
     act(() => root.render(<Harness open={false} />));

@@ -7393,6 +7393,9 @@
                                                 "detailFolded": {
                                                   "type": "boolean"
                                                 },
+                                                "waitsFor": {
+                                                  "type": "string"
+                                                },
                                                 "mail": {
                                                   "type": "object",
                                                   "properties": {
@@ -32444,6 +32447,9 @@
                                         "detailFolded": {
                                           "type": "boolean"
                                         },
+                                        "waitsFor": {
+                                          "type": "string"
+                                        },
                                         "mail": {
                                           "type": "object",
                                           "properties": {
@@ -48810,6 +48816,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
@@ -94021,6 +94030,9 @@
                                         "detailFolded": {
                                           "type": "boolean"
                                         },
+                                        "waitsFor": {
+                                          "type": "string"
+                                        },
                                         "mail": {
                                           "type": "object",
                                           "properties": {
@@ -96171,6 +96183,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",

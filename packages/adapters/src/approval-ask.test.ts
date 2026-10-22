@@ -71,6 +71,17 @@ describe("describeApprovalAction money and generic tools", () => {
     expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
   });
 
+  it("does not claim a wait on the service before the request was submitted", () => {
+    const block = buildApprovalAskBlock(
+      "e1",
+      "mcp__finance-mercury__requestSendMoney",
+      { amount: 5 },
+      [],
+      { serviceName: "Mercury" },
+    );
+    expect(block.kind === "ask" && block.waitsFor).toBeUndefined();
+  });
+
   it("keeps hand-written titles", () => {
     expect(describeApprovalAction("contacts_save", { name: "Ann" })).toBe("Save contact “Ann”");
   });
@@ -129,14 +140,14 @@ describe("buildApprovalAskBlock schedule card", () => {
       [],
       {
         schedule: {
-          summary: "creating the repeating schedule “Digest”",
-          detail: `repeats: Every day at 8:00 AM (America/New_York)\nprompt: ${prompt}`,
+          summary: "Every day at 8:00 AM, posts here",
+          detail: `time zone: America/New_York\nprompt: ${prompt}`,
         },
       },
     );
     if (block.kind !== "ask") throw new Error("expected an ask block");
-    expect(block.text).toBe("Review before creating the repeating schedule “Digest”");
-    expect(block.detail).toContain("repeats: Every day at 8:00 AM (America/New_York)");
+    expect(block.text).toBe("Every day at 8:00 AM, posts here");
+    expect(block.detailFolded).toBe(true);
     expect(block.detail).toContain(prompt);
     expect(block.actions?.map((action) => action.id)).toEqual(["allow", "always", "deny"]);
   });
@@ -325,7 +336,7 @@ describe("mail approval payload", () => {
     };
     expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
     expect(text("mcp__finance-mercury__requestTransferMoney")).toBe(
-      "Review before Request transfer money → Jana <jana@example.test>",
+      "Review before Ask to transfer money → Jana <jana@example.test>",
     );
     expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
   });
