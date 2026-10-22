@@ -68,7 +68,9 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
 
   // Remount ActivityList so the first poll sees the in-flight run (15s interval otherwise).
   await page.reload();
-  await expect(activityToggle).toHaveAttribute("aria-pressed", "true");
+  // Activity starts closed after a reload.
+  await expect(activityToggle).toHaveAttribute("aria-pressed", "false");
+  await activityToggle.click();
   await expect(activityToggle).toHaveAttribute("data-activity-mode", "on");
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible({
     timeout: 30_000,
@@ -83,7 +85,9 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 30_000 });
 
   await page.reload();
-  await expect(activityToggle).toHaveAttribute("aria-pressed", "true");
+  // Activity starts closed after a reload.
+  await expect(activityToggle).toHaveAttribute("aria-pressed", "false");
+  await activityToggle.click();
   await expect(activityToggle).toHaveAttribute("data-activity-mode", "on");
   await expect(aside.getByRole("status", { name: "Loading…" })).toBeHidden({ timeout: 20_000 });
   // Finished runs are folded away until asked for.

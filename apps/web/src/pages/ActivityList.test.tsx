@@ -8,7 +8,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ runs: { list: vi.fn() } }));
 vi.mock("../lib/rpc", () => ({ rpc: api }));
-vi.mock("../lib/relative-time", () => ({ formatRelativeTime: () => "just now" }));
+vi.mock("../lib/roster-time", () => ({ formatRosterTime: () => "9:00 AM" }));
 const join = vi.hoisted(
   () =>
     (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -70,7 +70,7 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
   document.body.append(container);
   await act(async () => createRoot(container).render(view()));
 
-  expect(container.textContent).toContain("Needs you");
+  expect(container.textContent).toContain("Needs your answer");
   expect(container.textContent).not.toContain("Finished");
   const toggle = container.querySelector<HTMLButtonElement>(
     '[data-testid="activity-show-finished"]',
