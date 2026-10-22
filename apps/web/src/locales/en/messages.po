@@ -9126,8 +9126,8 @@ msgid "See usage"
 msgstr "See usage"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "See what bots can reach, and add more in Integrations."
-msgstr "See what bots can reach, and add more in Integrations."
+msgid "See what bots can reach and add more."
+msgstr "See what bots can reach and add more."
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "See your cash, burn and runway, pulled from your bank."
@@ -9198,6 +9198,10 @@ msgstr "Send again"
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Send an unsubscribe email to {0}?"
 msgstr "Send an unsubscribe email to {0}?"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Send and receive iMessages"
+msgstr "Send and receive iMessages"
 
 #: src/components/AskCard.tsx
 msgid "Send answer"
@@ -9676,13 +9680,13 @@ msgstr "Skipping"
 msgid "Slack"
 msgstr "Slack"
 
+#: src/pages/shell/message-cards.tsx
+msgid "Slack and your calendar"
+msgstr "Slack and your calendar"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Slack message"
-
-#: src/pages/shell/message-cards.tsx
-msgid "Slack, calendar and email"
-msgstr "Slack, calendar and email"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Slack, Notion, GitHub and more, with one Composio API key"
@@ -10469,10 +10473,6 @@ msgstr "This zip is password-protected"
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Through a Photon project"
-msgstr "Through a Photon project"
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Through BlueBubbles on your Mac"
