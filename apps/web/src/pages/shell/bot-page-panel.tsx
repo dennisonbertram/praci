@@ -61,11 +61,15 @@ export type PageRemoteUpdate = { revision: number; updatedBy: "bot" | "user"; se
 export function BotPagePanel({
   botId,
   remote,
+  onPageChange,
 }: {
   botId: string;
   /** The latest `page.updated` event for this bot. */
   remote: PageRemoteUpdate | null;
+  onPageChange?: (page: BotPage) => void;
 }) {
+  const reportPage = useRef(onPageChange);
+  reportPage.current = onPageChange;
   const revision = useRef(0);
   const seenRevision = useRef(0);
   const baseline = useRef("");
@@ -105,6 +109,7 @@ export function BotPagePanel({
       stale.current = false;
       setOfferReload(false);
       setError("");
+      reportPage.current?.(page);
     },
     [editor],
   );
@@ -138,6 +143,7 @@ export function BotPagePanel({
         if (result.ok) {
           baseline.current = content;
           setError("");
+          reportPage.current?.(result.page);
         } else {
           stale.current = true;
           setOfferReload(true);

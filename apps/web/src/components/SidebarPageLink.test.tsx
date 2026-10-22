@@ -104,3 +104,27 @@ it("gives the badge its own button when it has an action, apart from the row", (
   act(() => row.click());
   expect(onOpen).toHaveBeenCalledTimes(1);
 });
+
+it("renders a real link that opens in the app on a plain click and is left to the browser on Cmd-click", () => {
+  const onOpen = vi.fn();
+  act(() => {
+    createRoot(container).render(
+      <SidebarPageLink
+        testId="a"
+        href="/app/inbox"
+        current={false}
+        icon={<Mail aria-hidden="true" />}
+        label="Inbox"
+        onOpen={onOpen}
+      />,
+    );
+  });
+  const link = container.querySelector("a") as HTMLAnchorElement;
+  expect(link.getAttribute("href")).toBe("/app/inbox");
+  act(() => link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+  expect(onOpen).toHaveBeenCalledTimes(1);
+  act(() =>
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true })),
+  );
+  expect(onOpen).toHaveBeenCalledTimes(1);
+});
