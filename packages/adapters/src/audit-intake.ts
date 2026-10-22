@@ -178,7 +178,13 @@ export async function startAuditDraftRun(
     });
     return run.id;
   });
-  await deps.enqueueRun(runId);
+  // The run row is committed and counted: a lost enqueue is picked up by the job reconciler, so it
+  // must not undo the claim.
+  await deps.enqueueRun(runId).catch((error: unknown) => {
+    getLogger().warn("audit draft enqueue failed", {
+      reason: error instanceof Error ? error.name : "error",
+    });
+  });
   return runId;
 }
 

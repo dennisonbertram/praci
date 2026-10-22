@@ -1,6 +1,7 @@
 import type { AuditRequest } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "./client.js";
+import { isUniqueViolation } from "./prisma-errors.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
@@ -171,6 +172,12 @@ export async function claimAuditDraft(
         id,
         ...ownerOf(scope),
         status: "open",
+        // The run is created after this claim commits; the guard covers that gap (ponytail: two
+        // minutes, so a failed run frees the button only after that).
+        OR: [
+          { draftStartedAt: null },
+          { draftStartedAt: { lt: new Date(now.getTime() - 120_000) } },
+        ],
       },
       data: { draftStartedAt: now },
     });
@@ -255,17 +262,32 @@ export async function upsertAuditRequest(
     },
   });
   if (same) return { request: auditRequestOut(same), created: false };
-  const row = await prisma.auditRequest.create({
-    data: {
-      ...ownerOf(scope),
-      ...fields,
-      fund,
-      fundKey: normalizeFund(fund),
-      lastMailAt: now,
-      ...(input.drafted ? { status: "drafted", draftedAt: now } : {}),
-    },
-  });
-  return { request: auditRequestOut(row), created: true };
+  try {
+    const row = await prisma.auditRequest.create({
+      data: {
+        ...ownerOf(scope),
+        ...fields,
+        fund,
+        fundKey: normalizeFund(fund),
+        lastMailAt: now,
+        ...(input.drafted ? { status: "drafted", draftedAt: now } : {}),
+      },
+    });
+    return { request: auditRequestOut(row), created: true };
+  } catch (error) {
+    // A concurrent equivalent request won the partial unique index: return it.
+    if (!isUniqueViolation(error)) throw error;
+    const winner = await prisma.auditRequest.findFirst({
+      where: {
+        ...ownerOf(scope),
+        fundKey: normalizeFund(fund),
+        asOf,
+        status: { in: ["open", "drafted"] },
+      },
+    });
+    if (!winner) throw error;
+    return { request: auditRequestOut(winner), created: false };
+  }
 }
 
 /** Mark done or Dismiss. Only an open or drafted row closes; a closed one is returned unchanged. */
