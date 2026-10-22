@@ -10,6 +10,7 @@ import {
 } from "@rakazo/ui-web";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { PageNavContext } from "../PageHeader";
 import {
   AskAgentButton,
   BreakdownRows,
@@ -157,6 +158,28 @@ export const DetailPageLoaded: Story = {
       title="Sample Cloud Co"
       subtitle="3 transactions since January"
       action={<Chip to="/finance">Software</Chip>}
+      loading={false}
+      error=""
+      onRetry={() => undefined}
+    >
+      <Section title="Summary">Body content</Section>
+    </DetailPage>
+  ),
+};
+
+/** Phone: the menu button, Back, title and Ask share one row. */
+export const DetailPagePhone: Story = {
+  decorators: [
+    (Story) => (
+      <PageNavContext.Provider value={{ open: () => undefined, claim: () => () => undefined }}>
+        <div className="w-[375px] px-4">{withAgent(Story)}</div>
+      </PageNavContext.Provider>
+    ),
+  ],
+  render: () => (
+    <DetailPage
+      crumbs={[{ label: "Finance", to: "/finance" }, { label: "Burn" }]}
+      title="Burn"
       loading={false}
       error=""
       onRetry={() => undefined}

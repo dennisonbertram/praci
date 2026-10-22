@@ -318,10 +318,8 @@ export function McpDetail({
             disabled={busy || writesPending}
             onWrites={isDevinEndpoint(server.endpoint) || granola || zernio ? undefined : setWrites}
             usedBy={usedBy}
-            onShared={
-              zernio ? undefined : hasAgent ? (shared) => void setShared(shared) : () => undefined
-            }
-            sharedLocked={!hasAgent}
+            onShared={zernio || !hasAgent ? undefined : (shared) => void setShared(shared)}
+            settingUp={writesPending}
           />
         ) : null}
 

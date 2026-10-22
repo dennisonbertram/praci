@@ -151,13 +151,9 @@ export function TourPopover({
 
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (!wide) {
-    // Next to the ring: below a target in the upper half, above one in the lower half.
-    const below = !ring || rect.top + rect.height / 2 < window.innerHeight / 2;
-    const place = !ring
-      ? { bottom: 16 }
-      : below
-        ? { top: rect.bottom + 10 }
-        : { bottom: window.innerHeight - rect.top + 10 };
+    // On the half of the screen away from the ring: the drawer's rows beside the target stay visible.
+    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
+    const place = targetAbove || !ring ? { bottom: 16 } : { top: 16 };
     return (
       <>
         {ring ? <Ring rect={rect} /> : null}

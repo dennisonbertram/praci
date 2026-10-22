@@ -48,6 +48,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
+import { PageNavButton } from "../PageHeader";
 import { MAX_SEGMENTS, shade } from "./charts";
 
 export type FinanceSpace = { id: string; name: string };
@@ -147,7 +148,7 @@ export function AskAgentButton() {
   if (!onAskAgent) return null;
   return (
     <div className="ms-auto">
-      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} compact />
+      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
     </div>
   );
 }
@@ -335,6 +336,7 @@ export function DetailHead({
           heading && back ? "min-h-10" : "mb-1.5 min-h-8",
         )}
       >
+        <PageNavButton />
         {/* Back names the page before, for every page up to two levels down; only a charge, four
       levels down, needs the trail's links. */}
         {back ? (
