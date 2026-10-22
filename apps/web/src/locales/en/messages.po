@@ -84,6 +84,11 @@ msgstr "{0, plural, one {# file failed} other {# files failed}}"
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr "{0, plural, one {# message} other {# messages}}"
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -123,6 +128,14 @@ msgstr "{0, plural, one {Added # file} other {Added # files}}"
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
 msgstr "{0, plural, one {Apply # change} other {Apply # changes}}"
+
+#. placeholder {0}: rows.length
+#. placeholder {1}: rows.length
+#. placeholder {2}: groups.length
+#. placeholder {3}: groups.length
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {Archive {1} message from {2} sender} other {Archive all # messages from {3, plural, one {# sender} other {# senders}}}}"
+msgstr "{0, plural, one {Archive {1} message from {2} sender} other {Archive all # messages from {3, plural, one {# sender} other {# senders}}}}"
 
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
@@ -260,11 +273,6 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
 msgstr "{0} handling"
-
-#. placeholder {0}: group.count
-#: src/components/inbox/InboxDigest.tsx
-msgid "{0} messages"
-msgstr "{0} messages"
 
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -1360,11 +1368,6 @@ msgstr "Archive"
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
 msgstr "Archive {0}"
-
-#. placeholder {0}: rows.length
-#: src/components/inbox/InboxDigest.tsx
-msgid "Archive all {0}"
-msgstr "Archive all {0}"
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Archive future mail"

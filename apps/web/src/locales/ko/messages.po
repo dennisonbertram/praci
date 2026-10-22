@@ -84,6 +84,11 @@ msgstr ""
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr ""
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -122,6 +127,14 @@ msgstr ""
 #. placeholder {0}: chosen.length
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr ""
+
+#. placeholder {0}: rows.length
+#. placeholder {1}: rows.length
+#. placeholder {2}: groups.length
+#. placeholder {3}: groups.length
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {Archive {1} message from {2} sender} other {Archive all # messages from {3, plural, one {# sender} other {# senders}}}}"
 msgstr ""
 
 #. placeholder {0}: picks.size
@@ -259,11 +272,6 @@ msgstr ""
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
-msgstr ""
-
-#. placeholder {0}: group.count
-#: src/components/inbox/InboxDigest.tsx
-msgid "{0} messages"
 msgstr ""
 
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
@@ -1359,11 +1367,6 @@ msgstr "보관"
 #. placeholder {0}: counts.archive
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
-msgstr ""
-
-#. placeholder {0}: rows.length
-#: src/components/inbox/InboxDigest.tsx
-msgid "Archive all {0}"
 msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx

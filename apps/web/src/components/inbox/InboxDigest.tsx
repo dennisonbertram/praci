@@ -1,4 +1,5 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 import type { MailRow } from "@rakazo/contracts";
 import { groupBySender, rowSummary } from "@rakazo/core";
 import { Button, Skeleton } from "@rakazo/ui-web";
@@ -29,7 +30,6 @@ export function InboxDigest({
   /** The focused card, as the keyboard leaves it. */
   selectedId?: string;
 }) {
-  const { t } = useLingui();
   useHideAmounts();
   if (loading)
     return (
@@ -56,7 +56,10 @@ export function InboxDigest({
       <div className="flex justify-end">
         <Button variant="ghost" size="sm" onClick={onArchiveAll}>
           <Archive aria-hidden="true" />
-          {t`Archive all ${rows.length}`}
+          {plural(rows.length, {
+            one: `Archive ${rows.length} message from ${groups.length} sender`,
+            other: `Archive all # messages from ${plural(groups.length, { one: "# sender", other: "# senders" })}`,
+          })}
         </Button>
       </div>
       {groups.map((group) => {
@@ -78,11 +81,9 @@ export function InboxDigest({
               <span dir="auto" className="truncate text-[15px] font-semibold">
                 {row.from}
               </span>
-              {group.count > 1 ? (
-                <span className="shrink-0 text-[13px] text-muted-foreground">
-                  {t`${group.count} messages`}
-                </span>
-              ) : null}
+              <span className="shrink-0 text-[13px] text-muted-foreground">
+                {plural(group.count, { one: "# message", other: "# messages" })}
+              </span>
               {group.unreadCount > 0 ? (
                 <span className="sr-only">
                   <Trans> (unread)</Trans>
@@ -98,7 +99,7 @@ export function InboxDigest({
                 <Trans>Open</Trans>
               </Button>
             </div>
-            <p dir="auto" className="truncate text-[15px]">
+            <p dir="auto" className="truncate ps-4 text-[15px]">
               {maskCurrencyWhenHidden(row.subject)}
               {summary && summary.trim() !== row.subject.trim() ? (
                 <span className="text-sm text-muted-foreground">

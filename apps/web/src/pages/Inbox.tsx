@@ -50,7 +50,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
@@ -88,6 +88,17 @@ import { errorText } from "../lib/user-error";
 type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
 
 const ALL = "all";
+
+const PHONE_QUERY = "(max-width: 767px)";
+function subscribePhone(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => undefined;
+  const media = window.matchMedia(PHONE_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+const isPhone = () =>
+  typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches;
+
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
 /** The wait doubles after each answer that still says syncing, up to this. */
@@ -617,6 +628,7 @@ function InboxListPage({
     // The To do card is waited for on the Important pile even before it is known to show (meetings
     // arrive with it), so it never pushes the loaded rows down.
     (pile === "important" && !paused && todos === undefined && !sorting);
+  const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   // Nothing to search in a mailbox with no mail in any pile.
   const mailboxEmpty =
     !loading &&
@@ -1114,6 +1126,69 @@ function InboxListPage({
     </div>
   ) : null;
 
+  const searchMeta = (
+    <>
+      {mailboxEmpty ? null : (
+        <form
+          ref={searchRef}
+          className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setParam("q", draft.trim());
+          }}
+        >
+          <InputGroup className="w-full max-w-sm">
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              name="inbox-search"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                setDraft("");
+                if (query) setParam("q", "");
+              }}
+              // Short enough to fit beside the agent panel; the hover title keeps the example.
+              placeholder={t`Search mail`}
+              title={t`Search mail, e.g. from:sam has:attachment`}
+              aria-label={t`Search mail`}
+              // Nothing to search or filter before mail is connected.
+              disabled={noAccounts}
+              maxLength={MAX_QUERY}
+              className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+              autoComplete="off"
+            />
+            {draft ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label={t`Clear`}
+                  onClick={() => {
+                    setDraft("");
+                    clearFilters();
+                    searchRef.current?.querySelector("input")?.focus();
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+        </form>
+      )}
+      {/* After the search box, which arrives first: the name loads later and must not push it. */}
+      {spaceName ? (
+        // The full name is in the hover title when the row is too short for it.
+        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
+          {spaceName}
+        </span>
+      ) : null}
+    </>
+  );
+
   // The bottom padding lets the last rows scroll clear of a toast.
   return (
     <div
@@ -1122,72 +1197,11 @@ function InboxListPage({
     >
       <div className="mx-auto max-w-[1440px]">
         {/* A sticky box sticks inside the scroller's padding, so -top cancels it: rows never show above the header. mb-2 keeps the cards below clear of it. */}
-        <div className="sticky -top-2 z-10 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
+        <div className="sticky -top-2 z-20 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
-            meta={
-              <>
-                {mailboxEmpty ? null : (
-                  <form
-                    ref={searchRef}
-                    className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      setParam("q", draft.trim());
-                    }}
-                  >
-                    <InputGroup className="w-full max-w-sm">
-                      <InputGroupAddon>
-                        <Search aria-hidden="true" />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        type="search"
-                        name="inbox-search"
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Escape") return;
-                          setDraft("");
-                          if (query) setParam("q", "");
-                        }}
-                        // Short enough to fit beside the agent panel; the hover title keeps the example.
-                        placeholder={t`Search mail`}
-                        title={t`Search mail, e.g. from:sam has:attachment`}
-                        aria-label={t`Search mail`}
-                        // Nothing to search or filter before mail is connected.
-                        disabled={noAccounts}
-                        maxLength={MAX_QUERY}
-                        className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                        autoComplete="off"
-                      />
-                      {draft ? (
-                        <InputGroupAddon align="inline-end">
-                          <InputGroupButton
-                            size="icon-xs"
-                            aria-label={t`Clear`}
-                            onClick={() => {
-                              setDraft("");
-                              setParam("q", "");
-                              searchRef.current?.querySelector("input")?.focus();
-                            }}
-                          >
-                            <X aria-hidden="true" />
-                          </InputGroupButton>
-                        </InputGroupAddon>
-                      ) : null}
-                    </InputGroup>
-                  </form>
-                )}
-                {/* After the search box, which arrives first: the name loads later and must not push it. */}
-                {spaceName ? (
-                  // The full name is in the hover title when the row is too short for it.
-                  <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-                    {spaceName}
-                  </span>
-                ) : null}
-              </>
-            }
+            meta={phone ? undefined : searchMeta}
             actions={
               <>
                 {tools ? (
@@ -1384,6 +1398,12 @@ function InboxListPage({
             </div>
           ) : null}
         </div>
+        {/* On a phone the search sits under the sticky title and tabs and scrolls away with the list. */}
+        {phone ? (
+          <div className="mb-3 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            {searchMeta}
+          </div>
+        ) : null}
 
         {failed && !failedEmpty ? (
           <div
@@ -1525,8 +1545,8 @@ function InboxListPage({
                     : plural(rows.length, { one: "# result", other: "# results" })}
                   {activeFilterLabel ? ` · ${activeFilterLabel}` : null}
                 </span>
-                {/* A search already has the X in its box; a filter or category has only this. */}
-                {query && draft && !filter && !category ? null : (
+                {/* A search has the X in its box, which clears the filter too; a filter alone has only this. */}
+                {query && draft ? null : (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     <Trans>Clear</Trans>
                   </Button>
