@@ -1237,6 +1237,10 @@ msgstr ""
 msgid "Amounts"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Amounts hidden · Show"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "이 서비스에는 구독 로그인이 아니라 API 키가 저장되어 있습니다."

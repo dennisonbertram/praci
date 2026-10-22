@@ -1237,6 +1237,10 @@ msgstr ""
 msgid "Amounts"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Amounts hidden · Show"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Для этого поставщика сохранен API-ключ, а не вход по подписке."
