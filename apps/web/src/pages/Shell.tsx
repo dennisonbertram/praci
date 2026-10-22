@@ -4341,7 +4341,6 @@ export function ShellPage() {
                 {/* One search surface: the box opens the Cmd+K palette. */}
                 <InputGroupInput
                   readOnly
-                  data-drawer-focus
                   value=""
                   onClick={() => {
                     // The box keeps focus until the palette takes it, so closing returns here.
@@ -4356,7 +4355,7 @@ export function ShellPage() {
                   placeholder={t`Search`}
                   autoComplete="off"
                   name="sidebar-search"
-                  className="cursor-pointer"
+                  className="cursor-pointer placeholder:text-foreground/70"
                 />
               </InputGroup>
             )
@@ -4443,6 +4442,7 @@ export function ShellPage() {
                   aria-label={t`Close menu`}
                   title={t`Close menu`}
                   data-testid="close-mobile-sidebar"
+                  data-drawer-focus
                   onClick={() => setMobileSidebarOpen(false)}
                 >
                   <X size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -5568,7 +5568,7 @@ export function ShellPage() {
           data-testid="bots-sidebar-edge"
           aria-label={t`Resize sidebar`}
           tabIndex={-1}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:bg-ring focus-visible:outline-none lg:block ${
             botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
           onPointerDown={(event) => {

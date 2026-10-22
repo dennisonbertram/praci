@@ -122,30 +122,29 @@ export function TourPopover({
       <p className="min-h-10 text-sm" aria-live="polite">
         {step.text}
       </p>
-      {/* Same slots at every stop: the left button is Skip tour, or Ask Chief on the last stop. */}
+      {last && lastAction ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => {
+            onFinish("done");
+            lastAction.run();
+          }}
+        >
+          {lastAction.label}
+        </Button>
+      ) : null}
+      {/* Same slots at every stop; Skip tour only hides on the last one. */}
       <div className="flex items-center gap-2">
-        {last && lastAction ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ms-2"
-            onClick={() => {
-              onFinish("done");
-              lastAction.run();
-            }}
-          >
-            {lastAction.label}
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`-ms-2 ${last ? "invisible" : ""}`}
-            onClick={() => onFinish("skip")}
-          >
-            <Trans>Skip tour</Trans>
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`-ms-2 ${last ? "invisible" : ""}`}
+          onClick={() => onFinish("skip")}
+        >
+          <Trans>Skip tour</Trans>
+        </Button>
         <span className="text-xs text-muted-foreground tabular-nums">
           {index + 1}/{present?.length}
         </span>
@@ -170,21 +169,15 @@ export function TourPopover({
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (card) {
     const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
-    // Beside the ringed row, in the page next to the sidebar, so the sidebar's own rows stay visible.
-    // Centred on the row and kept inside the window; a phone puts it on the half away from the ring.
-    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
-    // The composer, when it is on the page: a card for a low target stays above it.
+    // Beside the sidebar at the foot of the page (above the composer when there is one), the same
+    // spot at every stop: it never covers the page title or the first lines of the chat, and Next stays put.
     const composerTop = document
       .querySelector('[data-testid="composer-bar"]')
       ?.getBoundingClientRect().top;
+    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
     const place =
       column && ring
-        ? targetAbove || !composerTop
-          ? {
-              top: Math.min(Math.max(rect.top + rect.height / 2, 96), window.innerHeight - 96),
-              transform: "translateY(-50%)",
-            }
-          : { bottom: window.innerHeight - composerTop + 8 }
+        ? { bottom: composerTop ? window.innerHeight - composerTop + 8 : 16 }
         : // A phone: right beside the target, below a high one and above a low one.
           ring
           ? targetAbove
