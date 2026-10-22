@@ -6883,6 +6883,10 @@ msgstr ""
 msgid "No investors yet"
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "No longer active"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""

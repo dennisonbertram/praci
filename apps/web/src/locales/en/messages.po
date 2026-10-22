@@ -6883,6 +6883,10 @@ msgstr "No integrations match."
 msgid "No investors yet"
 msgstr "No investors yet"
 
+#: src/components/AskCard.tsx
+msgid "No longer active"
+msgstr "No longer active"
+
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr "No mail"

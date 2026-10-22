@@ -20,7 +20,6 @@ import {
   isHandOffOnly,
   latestBotRunSelection,
   previewFromBlocks,
-  sentToAgent,
   storedRunPhase,
 } from "./thread-listing.js";
 import { withTransactionRetry } from "./transaction-retry.js";
@@ -393,7 +392,6 @@ export function createRepos(prisma: PrismaClient) {
           // other server-built previews.
           if (
             bot.thread &&
-            sentToAgent(bot.thread.messages) &&
             (
               await delegatePendingIds(prisma, {
                 spaceId: actor.spaceId,

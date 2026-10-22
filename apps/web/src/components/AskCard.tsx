@@ -261,7 +261,7 @@ export function AskCard({
         })()
       ) : !canAnswer ? (
         <div className="mt-3.5 text-[13.5px] font-medium text-muted-foreground">
-          <Trans>Replaced by a newer request</Trans>
+          <Trans>No longer active</Trans>
         </div>
       ) : askActions?.length ? (
         <div className="mt-3.5 space-y-1.5">

@@ -67,19 +67,6 @@ export function isHandOffOnly(blocks: unknown): boolean {
   return steps.length > 0 && steps.every((step) => toolStepLabel(step.label) === "Message bot");
 }
 
-/** Whether any of these messages handed work to another agent (a "Message bot" step). */
-export function sentToAgent(messages: readonly { blocks: unknown }[]): boolean {
-  return messages.some(
-    (message) =>
-      Array.isArray(message.blocks) &&
-      (message.blocks as MessageBlock[]).some(
-        (block) =>
-          block?.kind === "steps" &&
-          block.steps.some((step) => toolStepLabel(step.label) === "Message bot"),
-      ),
-  );
-}
-
 /** The words of a message, else one line about its tool calls. Live tool activity never counts as words. */
 export function previewFromBlocks(blocks: unknown): string {
   const rows = Array.isArray(blocks) ? blocks : [];

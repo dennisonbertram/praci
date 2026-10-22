@@ -4412,11 +4412,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               select: { id: true, status: true, request: true, result: true },
             });
-            const repeated = denied.find(
-              (prior) =>
-                prior.id !== applied.effect.id &&
-                repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
-            );
+            const repeated =
+              denied.find(
+                (prior) =>
+                  prior.id !== applied.effect.id &&
+                  repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
+              ) ??
+              (await priorDenialAwaitingOwner(
+                deps.prisma,
+                run,
+                replayEffectToolName,
+                effectRequest,
+                applied.effect.id,
+              ));
             if (repeated) {
               const gate = resolveDuplicateEffectGate(repeated, name);
               const result =
@@ -8565,6 +8573,58 @@ async function loadBotDirectory(
         .join(" "),
     })),
   );
+}
+
+/**
+ * A delegate (bank) run asked again for a payment the owner already denied in an earlier run.
+ * The denial stands until the owner sends a new message in the requester's thread; an agent
+ * re-asking on its own gets the existing denial back instead of a new approval card.
+ */
+export async function priorDenialAwaitingOwner(
+  prisma: PrismaClient,
+  run: {
+    spaceId: string;
+    userId: string;
+    botId: string;
+    trigger: string;
+    sourceMessageId: string | null;
+  },
+  kind: string,
+  request: unknown,
+  currentEffectId: string,
+) {
+  if (run.trigger !== "bot_message" || !run.sourceMessageId) return undefined;
+  const source = await prisma.message.findUnique({
+    where: { id: run.sourceMessageId },
+    select: { blocks: true },
+  });
+  const returnTo = (Array.isArray(source?.blocks) ? (source.blocks as MessageBlock[]) : []).find(
+    (block) => block.kind === "bot_message_received" && block.returnToMessageId,
+  );
+  const sentId = returnTo?.kind === "bot_message_received" ? returnTo.returnToMessageId : undefined;
+  const sent = sentId
+    ? await prisma.message.findUnique({ where: { id: sentId }, select: { threadId: true } })
+    : null;
+  if (!sent) return undefined;
+  const denied = await prisma.externalEffect.findMany({
+    where: {
+      spaceId: run.spaceId,
+      kind,
+      status: "denied",
+      id: { not: currentEffectId },
+      run: { userId: run.userId, botId: run.botId, trigger: "bot_message" },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+    select: { id: true, status: true, request: true, result: true, updatedAt: true },
+  });
+  const prior = denied.find((effect) => repeatsDeniedRequest(kind, effect.request, request));
+  if (!prior) return undefined;
+  const ownerSince = await prisma.message.findFirst({
+    where: { threadId: sent.threadId, role: "user", createdAt: { gt: prior.updatedAt } },
+    select: { id: true },
+  });
+  return ownerSince ? undefined : prior;
 }
 
 /** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
