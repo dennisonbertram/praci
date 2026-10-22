@@ -41,6 +41,7 @@ import type {
   MessagingSettings,
   PiOAuthLogins,
   RemoteConnectorDependencies,
+  SafeSyncDeps,
   TicketChangeNotifier,
   TriageReadinessDeps,
 } from "@rakazo/adapters";
@@ -233,6 +234,7 @@ import {
   addSidebarFolder,
   addSidebarPage,
   appendEventInTransaction,
+  assignSafe,
   autoGroupSidebar,
   BotSectionNameConflictError,
   CannotDeleteDefaultSpaceError,
@@ -271,7 +273,6 @@ import {
   getAuditRequest,
   getCapTableSnapshot,
   getContact,
-  getFundraisingOverview,
   getInvestorUpdate,
   getNotificationPreferences,
   InvalidSpaceNameError,
@@ -298,14 +299,17 @@ import {
   markSafe,
   markSeen,
   markShown,
+  markWaiting,
   mintPortalTokenFor,
   moveSidebarFolder,
   moveSidebarItem,
   NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
+  notSent,
   PortalBlockedError,
   Prisma,
+  ProspectEmailRequiredError,
   PushSessionEndedError,
   parseComputerMode,
   pushSessionExpiresAt,
@@ -344,6 +348,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unassignSafe,
   unblockPortal,
   undoCapTableSource,
   unseenBotKinds,
@@ -446,6 +451,7 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
+import { fundraisingOverview, fundraisingRefresh } from "./fundraising.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -1002,6 +1008,8 @@ export interface RouterDeps {
   boxFetch?: typeof fetch;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Builds the Mercury SAFE read-tool caller for Fundraising; unset where MCP is off. */
+  safeCallToolFor?: SafeSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */
@@ -1111,7 +1119,7 @@ function fundraisingError(error: unknown): never {
   if (error instanceof SafeActiveError || error instanceof SafeStateError) {
     throw new ORPCError("CONFLICT", { message: error.message });
   }
-  if (error instanceof SafeCapRequiredError) {
+  if (error instanceof SafeCapRequiredError || error instanceof ProspectEmailRequiredError) {
     throw new ORPCError("BAD_REQUEST", { message: error.message });
   }
   if (error instanceof FundraiseRoundOpenError) {
@@ -1432,6 +1440,11 @@ export function createRouter(deps: RouterDeps) {
       throw new Error("MCP OAuth redirect URI is not allowed");
     }
     return mcpOAuth.begin(input);
+  };
+  const fundraisingDeps = {
+    prisma: deps.prisma,
+    mcpOAuth,
+    ...(deps.safeCallToolFor ? { safeCallToolFor: deps.safeCallToolFor } : {}),
   };
   const financeDeps = {
     prisma: deps.prisma,
@@ -7815,7 +7828,10 @@ export function createRouter(deps: RouterDeps) {
     },
     fundraising: {
       overview: authed.fundraising.overview.handler(({ context }) =>
-        getFundraisingOverview(deps.prisma, actorScope(context.actor)),
+        fundraisingOverview(fundraisingDeps, context.actor),
+      ),
+      refresh: authed.fundraising.refresh.handler(({ context, signal }) =>
+        fundraisingRefresh(fundraisingDeps, context.actor, signal),
       ),
       round: {
         save: authed.fundraising.round.save.handler(({ context, input }) =>
@@ -7832,6 +7848,12 @@ export function createRouter(deps: RouterDeps) {
         save: authed.fundraising.prospects.save.handler(({ context, input }) =>
           saveProspect(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
         ),
+        markWaiting: authed.fundraising.prospects.markWaiting.handler(({ context, input }) =>
+          markWaiting(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
+        notSent: authed.fundraising.prospects.notSent.handler(({ context, input }) =>
+          notSent(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
       },
       safes: {
         list: authed.fundraising.safes.list.handler(({ context }) =>
@@ -7842,6 +7864,14 @@ export function createRouter(deps: RouterDeps) {
         ),
         mark: authed.fundraising.safes.mark.handler(({ context, input }) =>
           markSafe(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+        assign: authed.fundraising.safes.assign.handler(({ context, input }) =>
+          assignSafe(deps.prisma, actorScope(context.actor), input.id, input.contactId).catch(
+            fundraisingError,
+          ),
+        ),
+        unassign: authed.fundraising.safes.unassign.handler(({ context, input }) =>
+          unassignSafe(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
         ),
         delete: authed.fundraising.safes.delete.handler(async ({ context, input }) => {
           await deleteSafe(deps.prisma, actorScope(context.actor), input.id).catch(

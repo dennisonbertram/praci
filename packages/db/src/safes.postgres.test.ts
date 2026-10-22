@@ -2,8 +2,17 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import { saveContact } from "./contacts.js";
-import { closeRound, getFundraisingOverview, saveRound } from "./fundraising.js";
 import {
+  closeRound,
+  getFundraisingOverview,
+  markWaiting,
+  notSent,
+  reopenRound,
+  saveRound,
+} from "./fundraising.js";
+import type { MercurySafeInput } from "./safes.js";
+import {
+  assignSafe,
   deleteSafe,
   listSafes,
   markSafe,
@@ -11,6 +20,8 @@ import {
   SafeCapRequiredError,
   SafeStateError,
   saveSafe,
+  syncMercurySafes,
+  unassignSafe,
 } from "./safes.js";
 import { IsolationError } from "./scope.js";
 
@@ -224,5 +235,222 @@ describePostgres("safes (PostgreSQL)", () => {
       SafeStateError,
     );
     await expect(deleteSafe(prisma, mine, row.id)).rejects.toBeInstanceOf(SafeStateError);
+  });
+
+  describe("Mercury SAFEs", () => {
+    // An earlier test closed the round; Pending counts only the open round's commitments.
+    beforeAll(async () => {
+      const round = (await getFundraisingOverview(prisma, mine)).round;
+      if (round?.closedAt) await reopenRound(prisma, mine, round.id);
+    });
+    const mercury = (
+      externalId: string,
+      over: Partial<MercurySafeInput> = {},
+    ): MercurySafeInput => ({
+      externalId,
+      investorName: "Mercury Fund",
+      investorEmail: null,
+      amountCents: 5_000_000,
+      valuationType: "post_money_cap",
+      capCents: 1_000_000_000,
+      discountPercent: null,
+      mfn: false,
+      proRata: false,
+      governingState: null,
+      investmentDate: null,
+      expiresAt: new Date("2099-01-01T00:00:00Z"),
+      canceledAt: null,
+      signedByOwnerAt: null,
+      signedByInvestorAt: null,
+      paidAt: null,
+      documentUrl: null,
+      ...over,
+    });
+    const sync = (...rows: MercurySafeInput[]) => syncMercurySafes(prisma, mine, rows);
+    const safeOf = async (externalId: string, scope: typeof mine = mine) =>
+      prisma.safe.findFirstOrThrow({ where: { ...scope, source: "mercury", externalId } });
+    const contactRow = (id: string) => prisma.contact.findUniqueOrThrow({ where: { id } });
+    const pipeline = async () =>
+      (await getFundraisingOverview(prisma, mine)).prospects.map((p) => p.id);
+    const pending = async () => (await getFundraisingOverview(prisma, mine)).pendingCents;
+
+    it("attaches by email, ignoring case and spaces, and takes the check size out of Pending", async () => {
+      const before = await pending();
+      const p = await person("Match.Me@Example.test", "prospect", { checkSizeCents: 3_000_000 });
+      const withCheck = await pending();
+      expect(withCheck - before).toBe(3_000_000);
+      await sync(
+        mercury("m-match", { investorEmail: "match.me@example.test", amountCents: 3_000_000 }),
+      );
+      const row = await safeOf("m-match");
+      expect(row.contactId).toBe(p.id);
+      expect(await pipeline()).not.toContain(p.id);
+      // The SAFE now counts by its Mercury status (Sent) at its amount, once.
+      expect(await pending()).toBe(withCheck);
+    });
+
+    it("lists an unmatched SAFE outside every round bar until Assign attaches it", async () => {
+      const p = await person("assign-me@example.test", "prospect", { checkSizeCents: 2_000_000 });
+      const before = await pending();
+      await sync(
+        mercury("m-loose", { investorEmail: "someone-else@example.test", amountCents: 2_000_000 }),
+      );
+      const loose = (await getFundraisingOverview(prisma, mine)).safes.find(
+        (s) => s.investorEmail === "someone-else@example.test",
+      );
+      expect(loose).toMatchObject({ contactId: null, roundId: null, source: "mercury" });
+      expect(await pending()).toBe(before);
+      const assigned = await assignSafe(prisma, mine, loose!.id, p.id);
+      expect(assigned.contactId).toBe(p.id);
+      expect(await pipeline()).not.toContain(p.id);
+      // Assigning twice, or a native SAFE, is refused.
+      await expect(assignSafe(prisma, mine, loose!.id, p.id)).rejects.toBeInstanceOf(
+        SafeStateError,
+      );
+    });
+
+    it("keeps one row per owner for the same Mercury id and one row per id across syncs", async () => {
+      await sync(mercury("m-shared"));
+      await sync(mercury("m-shared", { amountCents: 6_000_000 }));
+      await syncMercurySafes(prisma, sameSpace, [mercury("m-shared")]);
+      await syncMercurySafes(prisma, otherSpace, [mercury("m-shared")]);
+      const rows = await prisma.safe.findMany({
+        where: { source: "mercury", externalId: "m-shared" },
+      });
+      expect(rows).toHaveLength(3);
+      expect(Number((await safeOf("m-shared")).amountCents)).toBe(6_000_000);
+      expect(
+        (await listSafes(prisma, sameSpace)).filter((s) => s.source === "mercury"),
+      ).toHaveLength(1);
+    });
+
+    it("restores the prospect row with Not sent, and Waiting keeps counting at the check size", async () => {
+      const before = await pending();
+      const p = await person("waiting@example.test", "prospect", { checkSizeCents: 1_000_000 });
+      const waiting = await markWaiting(prisma, mine, p.id);
+      expect(waiting.mercurySentAt).toBeTruthy();
+      expect(await pipeline()).toContain(p.id);
+      expect(await pending()).toBe(before + 1_000_000);
+      const restored = await notSent(prisma, mine, p.id);
+      expect(restored.mercurySentAt).toBeNull();
+      await expect(markWaiting(prisma, sameSpace, p.id)).rejects.toBeInstanceOf(IsolationError);
+    });
+
+    it("needs an email to wait, and attaching clears Waiting", async () => {
+      const bare = await saveContact(prisma, mine, {
+        name: "No Email",
+        kind: "prospect",
+        stage: "committed",
+      });
+      await expect(markWaiting(prisma, mine, bare.id)).rejects.toThrow(/email/i);
+      const p = await person("clears@example.test");
+      await markWaiting(prisma, mine, p.id);
+      await sync(mercury("m-clears", { investorEmail: "clears@example.test" }));
+      expect((await contactRow(p.id)).mercurySentAt).toBeNull();
+    });
+
+    it("counts a canceled or expired Mercury SAFE as zero and returns the prospect to the pipeline", async () => {
+      const p = await person("canceled@example.test");
+      await sync(mercury("m-cancel", { investorEmail: "canceled@example.test" }));
+      expect(await pipeline()).not.toContain(p.id);
+      await sync(
+        mercury("m-cancel", {
+          investorEmail: "canceled@example.test",
+          canceledAt: new Date("2026-10-02T00:00:00Z"),
+        }),
+      );
+      expect(await pipeline()).toContain(p.id);
+      // An Expired SAFE does not block Send SAFE.
+      const q = await person("expired@example.test");
+      await sync(
+        mercury("m-expired", {
+          investorEmail: "expired@example.test",
+          expiresAt: new Date("2020-01-01T00:00:00Z"),
+        }),
+      );
+      expect(
+        (await listSafes(prisma, mine)).find((s) => s.investorEmail === "expired@example.test")
+          ?.status,
+      ).toBe("expired");
+      await expect(markWaiting(prisma, mine, q.id)).resolves.toBeTruthy();
+    });
+
+    it("refuses Send SAFE while an active SAFE is attached", async () => {
+      const p = await person("active@example.test");
+      await sync(mercury("m-active", { investorEmail: "active@example.test" }));
+      await expect(markWaiting(prisma, mine, p.id)).rejects.toBeInstanceOf(SafeActiveError);
+    });
+
+    it("fixes a wrong assign with Unassign then Assign, counting the SAFE once", async () => {
+      const wrong = await person("wrong@example.test", "prospect", { checkSizeCents: 4_000_000 });
+      const right = await person("right@example.test", "prospect", { checkSizeCents: 4_000_000 });
+      await sync(
+        mercury("m-fix", { investorEmail: "nobody@example.test", amountCents: 4_000_000 }),
+      );
+      const safe = await safeOf("m-fix");
+      await assignSafe(prisma, mine, safe.id, wrong.id);
+      // Unassign restores the prospect's check size and leaves its kind.
+      const unassigned = await unassignSafe(prisma, mine, safe.id);
+      expect(unassigned.contactId).toBeNull();
+      expect(await pipeline()).toContain(wrong.id);
+      expect((await contactRow(wrong.id)).kind).toBe("prospect");
+      await assignSafe(prisma, mine, safe.id, right.id);
+      expect(await pipeline()).toContain(wrong.id);
+      expect(await pipeline()).not.toContain(right.id);
+      await expect(unassignSafe(prisma, sameSpace, safe.id)).rejects.toBeInstanceOf(IsolationError);
+    });
+
+    it("links the one matching Finance deposit and none when two have the same amount", async () => {
+      const paidAt = new Date("2026-10-10T00:00:00Z");
+      const deposit = (externalId: string, amount: bigint, over: Record<string, unknown> = {}) =>
+        prisma.financeTransaction.create({
+          data: {
+            ...mine,
+            provider: "mercury",
+            externalId,
+            accountExternalId: "acct",
+            postedAt: new Date("2026-10-11T00:00:00Z"),
+            amountCents: amount,
+            currency: "USD",
+            counterparty: "Wire",
+            vendorKey: "wire",
+            status: "posted",
+            kind: "other",
+            classification: "financing",
+            ...over,
+          },
+        });
+      const one = await deposit(`dep-one-${suffix}`, 7_100_000n);
+      await sync(mercury("m-dep-one", { amountCents: 7_100_000, paidAt }));
+      expect((await safeOf("m-dep-one")).financeTransactionId).toBe(one.id);
+      await deposit(`dep-a-${suffix}`, 7_200_000n);
+      await deposit(`dep-b-${suffix}`, 7_200_000n);
+      await sync(mercury("m-dep-two", { amountCents: 7_200_000, paidAt }));
+      expect((await safeOf("m-dep-two")).financeTransactionId).toBeNull();
+      // A transaction already linked to a SAFE is never used again.
+      await sync(mercury("m-dep-again", { amountCents: 7_100_000, paidAt }));
+      expect((await safeOf("m-dep-again")).financeTransactionId).toBeNull();
+    });
+
+    it("keeps the rows when the Mercury server is removed and refreshes the same rows on re-add", async () => {
+      const server = await prisma.mcpServer.create({
+        data: {
+          ...mine,
+          slug: `mercury-${suffix}`,
+          name: "Mercury",
+          transport: "http",
+          endpoint: "https://mcp.mercury.com/mcp",
+        },
+      });
+      const p = await person("server@example.test");
+      await markWaiting(prisma, mine, p.id);
+      await sync(mercury("m-server", { investorEmail: "nobody-server@example.test" }));
+      const before = (await listSafes(prisma, mine)).length;
+      await prisma.mcpServer.delete({ where: { id: server.id } });
+      expect((await listSafes(prisma, mine)).length).toBe(before);
+      expect((await contactRow(p.id)).mercurySentAt).not.toBeNull();
+      await sync(mercury("m-server", { investorEmail: "nobody-server@example.test" }));
+      expect((await listSafes(prisma, mine)).length).toBe(before);
+    });
   });
 });

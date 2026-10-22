@@ -628,6 +628,10 @@ msgstr ""
 msgid "{unread} unread"
 msgstr ""
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "{unreadable} SAFEs could not be read"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} работает"
@@ -656,6 +660,10 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
+msgstr ""
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "1 SAFE could not be read"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1510,6 +1518,15 @@ msgstr ""
 msgid "Asset"
 msgstr ""
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Assign"
+msgstr ""
+
+#: src/components/fundraising/MercuryDialogs.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Assign to contact"
+msgstr ""
+
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "в {timeSelect}"
@@ -1968,6 +1985,7 @@ msgstr "Не удаётся связаться с сервером."
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/RoundCard.tsx
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
@@ -2760,6 +2778,10 @@ msgstr ""
 msgid "Connect MCP server “{name}”"
 msgstr "Подключите MCP-сервер «{name}»"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Connect Mercury"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
@@ -2840,6 +2862,10 @@ msgstr "Тест соединения не удался."
 
 #: src/components/integrations/DevinConnectDialog.tsx
 msgid "Connects Devin for everyone in this space. Read-only."
+msgstr ""
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Contact"
 msgstr ""
 
 #: src/pages/Contacts.tsx
@@ -3010,6 +3036,10 @@ msgstr "Не удалось подключиться"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not connect {0}"
 msgstr "Не удалось подключить {0}"
+
+#: src/pages/Fundraising.tsx
+msgid "Could not connect Mercury"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not connect this provider"
@@ -3305,6 +3335,11 @@ msgstr ""
 msgid "Could not load voice settings"
 msgstr "Не удалось загрузить голосовые настройки."
 
+#. placeholder {0}: prospect.name
+#: src/pages/Fundraising.tsx
+msgid "Could not mark {0} waiting"
+msgstr ""
+
 #: src/pages/Investors.tsx
 msgid "Could not mark delivered"
 msgstr ""
@@ -3374,6 +3409,10 @@ msgstr ""
 
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Could not refresh"
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -3447,6 +3486,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "Не удалось запустить задачу"
 
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
@@ -3575,8 +3615,16 @@ msgid "Could not take control"
 msgstr "Не смог взять под контроль"
 
 #: src/pages/Fundraising.tsx
+msgid "Could not unassign"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Could not undo"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Could not undo Send SAFE"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4038,6 +4086,10 @@ msgstr "Отклонено"
 #: src/components/AskCard.tsx
 msgid "Deny"
 msgstr "Запретить"
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Deposit in Finance"
+msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -5509,6 +5561,10 @@ msgstr ""
 msgid "Investor document"
 msgstr ""
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Investor email"
+msgstr ""
+
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Investors"
@@ -6167,6 +6223,14 @@ msgstr "Только упоминания"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Merchant"
+msgstr ""
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Mercury"
+msgstr ""
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Mercury · {synced}"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -7040,6 +7104,7 @@ msgstr ""
 msgid "Not searchable"
 msgstr ""
 
+#: src/components/fundraising/Pipeline.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr ""
@@ -7286,6 +7351,10 @@ msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
+msgstr ""
+
+#: src/components/fundraising/Pipeline.tsx
+msgid "Open Mercury"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -8038,6 +8107,7 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/fundraising/MercuryLine.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8134,6 +8204,7 @@ msgstr ""
 
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
+#: src/components/fundraising/MercuryLine.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -9014,6 +9085,7 @@ msgstr "Отправить"
 msgid "Send reset link"
 msgstr "Отправить ссылку для сброса"
 
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/Pipeline.tsx
 #: src/components/fundraising/SafeDialog.tsx
 msgid "Send SAFE"
@@ -9759,6 +9831,10 @@ msgstr ""
 msgid "Switching…"
 msgstr "Переключение…"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Sync failed"
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
@@ -10459,6 +10535,10 @@ msgstr ""
 msgid "Unallocated pool"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Unassign"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Unassigned"
 msgstr "Без раздела"
@@ -10900,6 +10980,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
+msgstr ""
+
+#: src/components/fundraising/Pipeline.tsx
+msgid "Waiting for Mercury · {waiting}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx

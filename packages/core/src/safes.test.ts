@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { atCapPercent, atCapSum, isActiveSafe, needsAttention, safeStatus } from "./safes.js";
+import type { DepositCandidate } from "./safes.js";
+import {
+  atCapPercent,
+  atCapSum,
+  isActiveSafe,
+  matchDeposit,
+  needsAttention,
+  safeStatus,
+} from "./safes.js";
 
 const base = {
   source: "native" as const,
@@ -79,5 +87,38 @@ describe("at-cap math", () => {
   it("rounds only the total, so many small SAFEs are not summed as zero", () => {
     const small = { ...base, amountCents: 4_000_000, capCents: 10_000_000_000 };
     expect(atCapSum(Array.from({ length: 10 }, () => small))).toBe(0.4);
+  });
+});
+
+describe("matchDeposit", () => {
+  const safe = { amountCents: 5_000_000, paidAt: "2026-10-10T00:00:00.000Z" };
+  const tx = (id: string, extra: Partial<DepositCandidate> = {}): DepositCandidate => ({
+    id,
+    amountCents: 5_000_000,
+    currency: "USD",
+    classification: "financing",
+    postedAt: "2026-10-11T00:00:00.000Z",
+    linkedSafeId: null,
+    ...extra,
+  });
+
+  it("links the one qualifying deposit", () => {
+    expect(matchDeposit(safe, [tx("a"), tx("b", { amountCents: 1 })])).toBe("a");
+  });
+  it("links nothing when two deposits have the same amount", () => {
+    expect(matchDeposit(safe, [tx("a"), tx("b")])).toBeNull();
+  });
+  it("never matches a non-USD, linked, other-class, outside-window or outgoing transaction", () => {
+    expect(matchDeposit(safe, [tx("a", { currency: "EUR" })])).toBeNull();
+    expect(matchDeposit(safe, [tx("a", { linkedSafeId: "s2" })])).toBeNull();
+    expect(matchDeposit(safe, [tx("a", { classification: "revenue" })])).toBeNull();
+    expect(matchDeposit(safe, [tx("a", { postedAt: "2026-10-16T00:00:00.000Z" })])).toBeNull();
+    expect(matchDeposit(safe, [tx("a", { amountCents: -5_000_000 })])).toBeNull();
+  });
+  it("ignores a linked duplicate when one unlinked deposit remains", () => {
+    expect(matchDeposit(safe, [tx("a", { linkedSafeId: "s2" }), tx("b")])).toBe("b");
+  });
+  it("links nothing for a SAFE that is not paid", () => {
+    expect(matchDeposit({ ...safe, paidAt: null }, [tx("a")])).toBeNull();
   });
 });

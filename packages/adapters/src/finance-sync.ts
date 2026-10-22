@@ -459,7 +459,7 @@ async function reclassify(prisma: PrismaClient, scope: Scope, brexConnected: boo
 }
 
 /** A short reason for the page: never a vendor payload, credential or URL. */
-function failureReason(error: unknown): { message: string; reconnect: boolean } {
+export function failureReason(error: unknown): { message: string; reconnect: boolean } {
   if (error instanceof FinanceShapeError) return { message: error.message, reconnect: false };
   const text = error instanceof Error ? error.message : "";
   if (/authorization expired|unauthori[sz]ed|reauthori[sz]|\b401\b/i.test(text))

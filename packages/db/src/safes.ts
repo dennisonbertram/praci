@@ -1,10 +1,11 @@
 import type { Safe, SafeMarkInput, SafeSaveInput } from "@rakazo/contracts";
-import { isActiveSafe, safeStatus } from "@rakazo/core";
+import { isActiveSafe, matchDeposit, safeStatus } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "./client.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
 type Db = Pick<PrismaClient, "safe" | "contact" | "fundraiseRound" | "$transaction">;
+type SyncDb = Db & Pick<PrismaClient, "financeTransaction">;
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
 
@@ -70,6 +71,7 @@ export function toSafe(row: Prisma.SafeGetPayload<object>, now = new Date()): Sa
     signedByInvestorAt: iso(row.signedByInvestorAt),
     paidAt: iso(row.paidAt),
     documentUrl: row.documentUrl,
+    financeTransactionId: row.financeTransactionId,
     status: safeStatus(facts, now),
     createdAt: row.createdAt.toISOString(),
   };
@@ -204,4 +206,165 @@ export async function deleteSafe(db: Pick<PrismaClient, "safe">, actor: Scope, i
   if (!row) throw new IsolationError("SAFE not found");
   if (row.source !== "native") throw new SafeStateError("A Mercury SAFE is changed in Mercury.");
   await db.safe.deleteMany({ where: { id, ...scope } });
+}
+
+/** One Mercury SAFE request as the sync maps it. Dates are already parsed; money is whole cents. */
+export type MercurySafeInput = {
+  externalId: string;
+  investorName: string;
+  /** Trimmed and lower-cased. */
+  investorEmail: string | null;
+  amountCents: number;
+  valuationType: string;
+  capCents: number | null;
+  discountPercent: number | null;
+  mfn: boolean;
+  proRata: boolean;
+  governingState: string | null;
+  investmentDate: Date | null;
+  expiresAt: Date | null;
+  canceledAt: Date | null;
+  signedByOwnerAt: Date | null;
+  signedByInvestorAt: Date | null;
+  paidAt: Date | null;
+  documentUrl: string | null;
+};
+
+/**
+ * Writes Mercury's SAFEs as read-only cache rows, owned by the user. A known row (by source and
+ * externalId) has its Mercury fields overwritten and keeps its contact and round. A new row attaches
+ * to the prospect whose email equals the investor's (case and surrounding spaces ignored), takes that
+ * prospect's round and ends its Waiting for Mercury. Then each paid, unlinked SAFE gets its Finance
+ * deposit when exactly one transaction fits.
+ */
+export const syncMercurySafes = (db: SyncDb, actor: Scope, rows: readonly MercurySafeInput[]) =>
+  db.$transaction((tx) => writeMercurySafes(tx, actor, rows));
+
+/** The writes of `syncMercurySafes`, for a caller that already holds a transaction. */
+export async function writeMercurySafes(
+  tx: Prisma.TransactionClient,
+  actor: Scope,
+  rows: readonly MercurySafeInput[],
+): Promise<void> {
+  const scope = ownerOf(actor);
+  {
+    for (const { externalId, ...fields } of rows) {
+      const existing = await tx.safe.findFirst({
+        where: { ...scope, source: "mercury", externalId },
+        select: { id: true },
+      });
+      const data = {
+        ...fields,
+        amountCents: BigInt(fields.amountCents),
+        capCents: fields.capCents == null ? null : BigInt(fields.capCents),
+      };
+      if (existing) {
+        await tx.safe.updateMany({ where: { id: existing.id, ...scope }, data });
+        continue;
+      }
+      const match = fields.investorEmail
+        ? (
+            await tx.$queryRaw<{ id: string; roundId: string | null }[]>`
+              SELECT id, "roundId" FROM contacts
+              WHERE "spaceId" = ${scope.spaceId} AND "userId" = ${scope.userId}
+                AND kind = 'prospect' AND lower(btrim(email)) = ${fields.investorEmail}
+              LIMIT 1`
+          )[0]
+        : undefined;
+      await tx.safe.create({
+        data: {
+          ...scope,
+          ...data,
+          source: "mercury",
+          externalId,
+          contactId: match?.id ?? null,
+          roundId: match?.roundId ?? null,
+        },
+      });
+      if (match)
+        await tx.contact.updateMany({
+          where: { id: match.id, ...scope },
+          data: { mercurySentAt: null },
+        });
+    }
+    const paid = await tx.safe.findMany({
+      where: { ...scope, source: "mercury", paidAt: { not: null }, financeTransactionId: null },
+    });
+    for (const safe of paid) {
+      const candidates = await tx.financeTransaction.findMany({
+        where: {
+          ...scope,
+          classification: "financing",
+          currency: "USD",
+          amountCents: safe.amountCents,
+        },
+        include: { safe: { select: { id: true } } },
+      });
+      const id = matchDeposit(
+        { amountCents: Number(safe.amountCents), paidAt: safe.paidAt },
+        candidates.map((c) => ({
+          id: c.id,
+          amountCents: Number(c.amountCents),
+          currency: c.currency,
+          classification: c.classification,
+          postedAt: c.postedAt,
+          linkedSafeId: c.safe?.id ?? null,
+        })),
+      );
+      if (id)
+        await tx.safe.updateMany({
+          where: { id: safe.id, ...scope },
+          data: { financeTransactionId: id },
+        });
+    }
+  }
+}
+
+/**
+ * Attaches a Mercury SAFE that has no contact to a prospect or investor of the user, taking that
+ * contact's round and ending its Waiting for Mercury. Throws IsolationError for a SAFE or contact that
+ * is not the user's, SafeStateError for a native SAFE, one that already has a contact, or a contact
+ * of another kind.
+ */
+export async function assignSafe(
+  db: Db,
+  actor: Scope,
+  id: string,
+  contactId: string,
+): Promise<Safe> {
+  const scope = ownerOf(actor);
+  await db.$transaction(async (tx) => {
+    const safe = await tx.safe.findFirst({ where: { id, ...scope } });
+    if (!safe) throw new IsolationError("SAFE not found");
+    if (safe.source !== "mercury") throw new SafeStateError("Only a Mercury SAFE is assigned.");
+    if (safe.contactId) throw new SafeStateError("This SAFE already has a contact.");
+    const contact = await lockContact(tx, scope, contactId);
+    if (!contact) throw new IsolationError("Contact not found");
+    const full = await tx.contact.findFirstOrThrow({ where: { id: contactId, ...scope } });
+    if (full.kind !== "prospect" && full.kind !== "investor")
+      throw new SafeStateError("Choose a prospect or an investor.");
+    await tx.safe.updateMany({
+      where: { id, ...scope, contactId: null },
+      data: { contactId, roundId: full.roundId },
+    });
+    await tx.contact.updateMany({
+      where: { id: contactId, ...scope },
+      data: { mercurySentAt: null },
+    });
+  });
+  return toSafe(await db.safe.findFirstOrThrow({ where: { id, ...scope } }));
+}
+
+/**
+ * Detaches a Mercury SAFE from its contact, to fix a wrong match. The contact keeps its kind and stage,
+ * so a Committed prospect's check size counts again. Throws IsolationError for another user's SAFE and
+ * SafeStateError for a native one.
+ */
+export async function unassignSafe(db: Db, actor: Scope, id: string): Promise<Safe> {
+  const scope = ownerOf(actor);
+  const row = await db.safe.findFirst({ where: { id, ...scope } });
+  if (!row) throw new IsolationError("SAFE not found");
+  if (row.source !== "mercury") throw new SafeStateError("Only a Mercury SAFE is unassigned.");
+  await db.safe.updateMany({ where: { id, ...scope }, data: { contactId: null, roundId: null } });
+  return toSafe(await db.safe.findFirstOrThrow({ where: { id, ...scope } }));
 }

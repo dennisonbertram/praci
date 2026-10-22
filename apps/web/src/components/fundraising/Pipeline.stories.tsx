@@ -60,3 +60,21 @@ export const Empty: Story = {};
 export const WithSendSafe: Story = {
   args: { ...Grouped.args, filledSend: true, onSendSafe: () => {} },
 };
+
+/** Waiting for Mercury: no Send SAFE, the date in the sub-line, and a menu of Open Mercury, Not sent, Passed and Edit prospect. */
+export const WaitingForMercury: Story = {
+  args: {
+    filledSend: true,
+    onSendSafe: () => {},
+    onOpenMercury: () => {},
+    onNotSent: () => {},
+    prospects: [
+      prospect("p1", "Example Ventures", {
+        stage: "committed",
+        checkSizeCents: 25_000_000,
+        mercurySentAt: "2026-10-20T00:00:00.000Z",
+      }),
+      prospect("p2", "Sample Capital", { stage: "committed", checkSizeCents: 10_000_000 }),
+    ],
+  },
+};

@@ -99,6 +99,7 @@ export * from "./fake-web.js";
 export * from "./favicon.js";
 export * from "./finance-call-tool.js";
 export * from "./finance-sync.js";
+export * from "./safe-sync.js";
 export * from "./finance-tools.js";
 export * from "./fish-audio-voice.js";
 export * from "./github-webhook-emulator.js";

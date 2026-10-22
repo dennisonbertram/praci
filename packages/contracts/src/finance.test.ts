@@ -4,6 +4,8 @@ import {
   CRYPTO_MCP_ENDPOINT,
   CRYPTO_READ_TOOLS,
   CryptoHoldingSchema,
+  FINANCE_READ_TOOLS,
+  SAFE_READ_TOOLS,
   FINANCE_MCP_ENDPOINTS,
   FinanceWalletAddInputSchema,
   financeAgentSpawnKey,
@@ -80,5 +82,17 @@ describe("crypto contracts", () => {
   });
   it("tracks the five owner-approved chains", () => {
     expect(CRYPTO_CHAINS.map((c) => c.id)).toEqual([1, 8453, 42161, 10, 137]);
+  });
+});
+
+describe("SAFE_READ_TOOLS", () => {
+  it("lists only Mercury read tools, none of them a write", () => {
+    expect(SAFE_READ_TOOLS.mercury).toEqual(["getSafeRequests", "getSafeRequest"]);
+    for (const name of SAFE_READ_TOOLS.mercury) expect(name).toMatch(/^get/);
+  });
+  it("keeps SAFE tools out of the finance list", () => {
+    for (const tools of Object.values(FINANCE_READ_TOOLS))
+      for (const name of SAFE_READ_TOOLS.mercury)
+        expect(tools as readonly string[]).not.toContain(name);
   });
 });

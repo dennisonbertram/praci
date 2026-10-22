@@ -37,6 +37,8 @@ export const SafeSchema = z.object({
   signedByInvestorAt: IsoDate.nullable(),
   paidAt: IsoDate.nullable(),
   documentUrl: z.string().nullable(),
+  /** The matched Finance deposit (Mercury SAFEs only). */
+  financeTransactionId: Id.nullish(),
   /** Derived from the dates, never stored. */
   status: SafeStatusSchema,
   createdAt: IsoDate,
@@ -57,7 +59,16 @@ export type FundraiseRound = z.infer<typeof FundraiseRoundSchema>;
  * The Fundraising page: the open round, else the latest closed one, and the prospect pipeline.
  * `pendingCents` is the check size of the open round's Committed prospects (zero with no open round).
  */
+export const MercurySafeStateSchema = z.object({
+  status: z.enum(["not_connected", "ok", "error", "needs_reconnect"]),
+  lastSyncedAt: IsoDate.nullable(),
+  /** Rows in Mercury's last answer that could not be read; none were written. */
+  unreadable: z.number().int().min(0),
+});
+export type MercurySafeState = z.infer<typeof MercurySafeStateSchema>;
+
 export const FundraisingOverviewSchema = z.object({
+  mercury: MercurySafeStateSchema,
   round: FundraiseRoundSchema.nullable(),
   /** The round's Committed prospects without a SAFE (check size) plus its Sent and Draft SAFEs. */
   pendingCents: z.number().int(),
@@ -115,3 +126,7 @@ export const SafeMarkInputSchema = z.object({
   at: IsoDate.nullable(),
 });
 export type SafeMarkInput = z.infer<typeof SafeMarkInputSchema>;
+
+/** Attaches an unattached Mercury SAFE to a prospect or investor contact. */
+export const SafeAssignInputSchema = z.object({ id: Id, contactId: Id });
+export type SafeAssignInput = z.infer<typeof SafeAssignInputSchema>;

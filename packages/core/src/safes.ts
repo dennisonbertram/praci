@@ -59,3 +59,37 @@ export function atCapPercent(safe: Pick<SafeFacts, "amountCents" | "capCents">):
 export function atCapSum(safes: readonly Pick<SafeFacts, "amountCents" | "capCents">[]): number {
   return Math.round(safes.reduce((sum, safe) => sum + (atCapRatio(safe) ?? 0), 0) * 1000) / 10;
 }
+
+/** A Finance transaction that could be a SAFE's deposit. `linkedSafeId` is the SAFE already using it. */
+export type DepositCandidate = {
+  id: string;
+  amountCents: number;
+  currency: string;
+  classification: string;
+  postedAt: Date | string;
+  linkedSafeId: string | null;
+};
+
+const DEPOSIT_WINDOW_MS = 5 * DAY_MS;
+
+/**
+ * Best-effort deposit for a paid Mercury SAFE: a USD financing deposit of exactly the SAFE amount,
+ * posted within 5 days of `paidAt`, not already linked to another SAFE. Returns its id only when
+ * exactly one qualifies; with none or several it links nothing and never picks among equal amounts.
+ */
+export function matchDeposit(
+  safe: { amountCents: number; paidAt: Date | string | null },
+  candidates: readonly DepositCandidate[],
+): string | null {
+  if (!safe.paidAt) return null;
+  const paid = time(safe.paidAt);
+  const fits = candidates.filter(
+    (c) =>
+      c.currency === "USD" &&
+      c.classification === "financing" &&
+      c.linkedSafeId === null &&
+      c.amountCents === safe.amountCents &&
+      Math.abs(time(c.postedAt) - paid) <= DEPOSIT_WINDOW_MS,
+  );
+  return fits.length === 1 ? (fits[0]?.id ?? null) : null;
+}

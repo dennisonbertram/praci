@@ -39,6 +39,7 @@ export const toContact = (row: Prisma.ContactGetPayload<{ include: typeof withBo
   portalLinkSentAt: row.portalLinkSentAt?.toISOString() ?? null,
   portalLastSeenAt: row.portalLastSeenAt?.toISOString() ?? null,
   portalBlockedAt: row.portalBlockedAt?.toISOString() ?? null,
+  mercurySentAt: row.mercurySentAt?.toISOString() ?? null,
   addedBy: row.bot,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),

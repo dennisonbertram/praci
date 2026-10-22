@@ -207,6 +207,8 @@ function SafeRow({
   onMark,
   onCancel,
   onDelete,
+  onAssign,
+  onUnassign,
 }: {
   safe: Safe;
   round: FundraiseRound | null;
@@ -214,6 +216,8 @@ function SafeRow({
   onMark: (step: SafeStep) => void;
   onCancel: () => void;
   onDelete: () => void;
+  onAssign?: () => void;
+  onUnassign?: () => void;
 }) {
   const names = statusNames();
   const next = safe.source === "native" ? NEXT[safe.status] : undefined;
@@ -230,18 +234,42 @@ function SafeRow({
       data-safe-id={safe.id}
       className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0"
     >
-      <button
-        type="button"
-        className="min-w-0 flex-1 rounded-sm py-1.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={onOpen}
-      >
-        <span className="block truncate text-sm font-medium" title={safe.investorName}>
-          {safe.investorName}
-        </span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {[day(statusDate(safe)), ...notes].join(" · ")}
-        </span>
-      </button>
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          className="block w-full min-w-0 rounded-sm py-1.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onOpen}
+        >
+          <span className="block truncate text-sm font-medium" title={safe.investorName}>
+            {safe.investorName}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {[day(statusDate(safe)), ...notes].join(" · ")}
+          </span>
+        </button>
+        {(!native && !safe.contactId && onAssign) || safe.financeTransactionId ? (
+          <div className="flex flex-wrap items-center gap-x-3 pb-1">
+            {!native && !safe.contactId && onAssign ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-ms-2 h-6 text-xs underline underline-offset-4 pointer-coarse:h-11"
+                onClick={onAssign}
+              >
+                <Trans>Assign to contact</Trans>
+              </Button>
+            ) : null}
+            {safe.financeTransactionId ? (
+              <Link
+                to="/app/finance"
+                className="inline-flex min-h-6 items-center text-xs underline underline-offset-4 pointer-coarse:min-h-11"
+              >
+                <Trans>Deposit in Finance</Trans>
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       <span
         className={`w-24 shrink-0 text-end text-sm tabular-nums ${safe.status === "draft" ? "text-muted-foreground" : ""}`}
         data-testid="safe-amount"
@@ -275,6 +303,16 @@ function SafeRow({
               <Trans>Cancel SAFE</Trans>
             </DropdownMenuItem>
           ) : null}
+          {!native && !safe.contactId && onAssign ? (
+            <DropdownMenuItem onClick={onAssign}>
+              <Trans>Assign to contact</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {!native && safe.contactId && onUnassign ? (
+            <DropdownMenuItem onClick={onUnassign}>
+              <Trans>Unassign</Trans>
+            </DropdownMenuItem>
+          ) : null}
           {native ? (
             <DropdownMenuItem onClick={onDelete}>
               <Trans>Delete</Trans>
@@ -294,6 +332,8 @@ export function SafeList({
   onMark,
   onCancel,
   onDelete,
+  onAssign,
+  onUnassign,
 }: {
   safes: readonly Safe[];
   round: FundraiseRound | null;
@@ -301,6 +341,9 @@ export function SafeList({
   onMark: (safe: Safe, step: SafeStep) => void;
   onCancel: (safe: Safe) => void;
   onDelete: (safe: Safe) => void;
+  /** Mercury rows only: attach a SAFE that has no contact, or detach one with a contact. */
+  onAssign?: (safe: Safe) => void;
+  onUnassign?: (safe: Safe) => void;
 }) {
   useHideAmounts();
   const sorted = [...safes].sort(
@@ -319,6 +362,8 @@ export function SafeList({
           onMark={(step) => onMark(safe, step)}
           onCancel={() => onCancel(safe)}
           onDelete={() => onDelete(safe)}
+          onAssign={onAssign && (() => onAssign(safe))}
+          onUnassign={onUnassign && (() => onUnassign(safe))}
         />
       ))}
     </ul>
