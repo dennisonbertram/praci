@@ -170,6 +170,7 @@ function fixture(
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     thread: {
+      findUnique: vi.fn(async () => ({ meetingTaintedAt: null })),
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.threadId,
         groupId: null,
@@ -189,6 +190,7 @@ function fixture(
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
     aiDataConsent: { findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })) },
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "scripted",
