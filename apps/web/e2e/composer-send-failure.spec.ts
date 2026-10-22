@@ -13,7 +13,7 @@ import {
 async function openComposer(page: Page, prefix: string) {
   await signup(page, `${prefix}-${Date.now()}@rakazo.test`, "password12", "Draft Keeper");
   await completeOnboarding(page);
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   await expect(composer).toBeVisible();
   return composer;
 }

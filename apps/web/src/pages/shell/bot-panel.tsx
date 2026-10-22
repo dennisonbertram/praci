@@ -527,10 +527,7 @@ export function BotSettings({
               >
                 <Trans>Notifications</Trans>
               </div>
-              <div
-                id={`${ids}-notify-finish-desc`}
-                className="text-[12px] text-muted-foreground/70"
-              >
+              <div id={`${ids}-notify-finish-desc`} className="text-[12px] text-muted-foreground">
                 <Trans>Get notified when this bot finishes or needs input</Trans>
               </div>
             </div>
@@ -570,14 +567,14 @@ export function BotSettings({
               </div>
               {audience === "external" ? (
                 <>
-                  <p className="mt-2 text-[12px] text-muted-foreground/70">
+                  <p className="mt-2 text-[12px] text-muted-foreground">
                     <Trans>
                       Talks to people outside your company. Anything private it would share waits
                       for your approval. Private tools are turned off.
                     </Trans>
                   </p>
                   {grantedConnections.length ? (
-                    <p className="mt-1.5 text-[12px] text-muted-foreground/70">
+                    <p className="mt-1.5 text-[12px] text-muted-foreground">
                       {t`Still has access to: ${grantedConnections.join(", ")}`}
                     </p>
                   ) : null}
