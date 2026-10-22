@@ -35,7 +35,8 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
 }
 
 const DRAFT_REQUEST = "Draft a reply";
-const asksForDraft = (text: string) => /\b(draft|write)\b.*\breply\b/i.test(text);
+const asksForDraft = (text: string) =>
+  /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
 /**
  * The text of the newest agent answer when it replies to a request to draft or write a reply, for
@@ -44,10 +45,13 @@ const asksForDraft = (text: string) => /\b(draft|write)\b.*\breply\b/i.test(text
 export function latestTextDraft(messages: readonly ThreadMessage[]): string | undefined {
   const last = messages.at(-1);
   if (last?.role !== "bot") return undefined;
-  const asked = messages.at(-2);
-  const request = asked?.role === "user" ? textOf(asked) : "";
+  // The agent may post interim bot messages, so the request is the newest user message before it.
+  const asked = [...messages].reverse().find((m) => m.role === "user");
   const answer = textOf(last);
-  return asksForDraft(request) && answer ? answer : undefined;
+  // An answer ending in a question is the agent asking for more, not a draft.
+  return asked && asksForDraft(textOf(asked)) && answer && !answer.endsWith("?")
+    ? answer
+    : undefined;
 }
 
 const textOf = (message: ThreadMessage) =>
@@ -75,12 +79,22 @@ export function EmailAgentPanel({
   const { t } = useLingui();
   const navigate = useNavigate();
   const [snapshot, setSnapshot] = useState<ThreadSnapshot | null>(null);
+  // True from a send until a fresh snapshot arrives: the draft button would offer an old answer.
+  const [stale, setStale] = useState(false);
+  const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentHere = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const load = useCallback(
-    () => rpc.threads.get({ botId: bot.id }).then(setSnapshot, () => undefined),
+    () =>
+      rpc.threads.get({ botId: bot.id }).then(
+        (next) => {
+          setSnapshot(next);
+          setStale(false);
+        },
+        () => undefined,
+      ),
     [bot.id],
   );
   useEffect(() => {
@@ -126,6 +140,8 @@ export function EmailAgentPanel({
   const draft =
     latestPendingDraft(snapshot?.messages ?? []) ?? latestTextDraft(snapshot?.messages ?? []);
   const send = async (text: string, clientNonce?: string) => {
+    setStale(true);
+    setSending(true);
     try {
       sentHere.current = true;
       await rpc.threads.send({ botId: bot.id, clientNonce: clientNonce || newClientId(), text });
@@ -134,6 +150,8 @@ export function EmailAgentPanel({
     } catch (cause) {
       setSendError(cause instanceof Error ? cause.message : String(cause));
       return false;
+    } finally {
+      setSending(false);
     }
   };
   const artifactTarget = { botId: bot.id };
@@ -209,12 +227,17 @@ export function EmailAgentPanel({
       )}
       {snapshot && snapshot.messages.length === 0 ? (
         <div className="shrink-0 px-7 pb-2">
-          <Button variant="outline" size="sm" onClick={() => void send(DRAFT_REQUEST)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={sending}
+            onClick={() => void send(DRAFT_REQUEST)}
+          >
             <Trans>Draft a reply</Trans>
           </Button>
         </div>
       ) : null}
-      {draft && !running ? (
+      {draft && !running && !stale ? (
         <div className="shrink-0 px-7 pb-2">
           <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
             <Trans>Reply with draft</Trans>

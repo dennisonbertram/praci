@@ -17,7 +17,15 @@ vi.mock("../../pages/shell/transcript", () => ({
     <div data-testid="transcript">{messages.length}</div>
   ),
 }));
-vi.mock("../../pages/shell/composer", () => ({ Composer: () => <div data-testid="composer" /> }));
+vi.mock("../../pages/shell/composer", () => ({
+  Composer: ({
+    onSend,
+  }: {
+    onSend: (text: string, mentions: unknown[], nonce: string) => void;
+  }) => (
+    <button type="button" data-testid="composer" onClick={() => onSend("follow up", [], "n")} />
+  ),
+}));
 const get = vi.fn();
 const navigate = vi.fn();
 const send = vi.fn();
@@ -57,6 +65,7 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.useFakeTimers();
   get.mockReset();
+  send.mockReset();
   window.matchMedia = (() => ({
     matches: false,
     addEventListener: () => {},
@@ -211,4 +220,55 @@ it("offers a Draft a reply chip in the empty panel that sends the request", asyn
   expect(send).toHaveBeenCalledWith(
     expect.objectContaining({ botId: "bot-1", text: "Draft a reply" }),
   );
+});
+
+it("does not treat a question, a negated request or a different request as a draft", () => {
+  expect(
+    latestTextDraft([turn(1, "user", "Draft a reply"), turn(2, "bot", "Accept or decline?")]),
+  ).toBeUndefined();
+  expect(
+    latestTextDraft([turn(1, "user", "Do not write a reply, summarize"), turn(2, "bot", "Rent")]),
+  ).toBeUndefined();
+});
+
+it("finds the draft request past interim bot messages", () => {
+  expect(
+    latestTextDraft([
+      turn(1, "user", "Draft a reply"),
+      turn(2, "bot", "Checking the thread"),
+      turn(3, "bot", "Hi Sam"),
+    ]),
+  ).toBe("Hi Sam");
+});
+
+it("hides Reply with draft after a send until a fresh snapshot, and disables the chip while sending", async () => {
+  get.mockResolvedValue(snapshot([turn(1, "user", "Draft a reply"), turn(2, "bot", "Hi Sam")]));
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  expect(button("Reply with draft")).toBeDefined();
+  send.mockResolvedValue({});
+  get.mockRejectedValue(new Error("offline"));
+  await act(async () =>
+    (document.querySelector('[data-testid="composer"]') as HTMLElement).click(),
+  );
+  await flush();
+  expect(button("Reply with draft")).toBeUndefined();
+  send.mockReset();
+  let finish: (v: unknown) => void = () => {};
+  send.mockReturnValue(new Promise((r) => (finish = r)));
+  get.mockResolvedValue(snapshot([]));
+  act(() =>
+    root.render(
+      <EmailAgentPanel bot={{ ...bot, id: "b3" }} onClose={() => {}} onReplyWithDraft={() => {}} />,
+    ),
+  );
+  await flush();
+  act(() => button("Draft a reply")?.click());
+  act(() => button("Draft a reply")?.click());
+  expect(send).toHaveBeenCalledTimes(1);
+  expect((button("Draft a reply") as HTMLButtonElement).disabled).toBe(true);
+  finish({});
+  await flush();
 });
