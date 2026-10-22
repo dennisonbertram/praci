@@ -380,3 +380,12 @@ it("shows the routine name on each run row", async () => {
     await view.close();
   }
 });
+
+it("shows a finished run that only asked another agent as waiting on that agent", async () => {
+  api.history.mockResolvedValue(page([{ ...run, waitingOn: "Inbox agent" }]));
+  const view = await mounted();
+  const row = view.container.querySelector('[data-testid="routine-run-row"]');
+  expect(row?.textContent).toContain("Waiting on Inbox agent");
+  expect(row?.textContent).not.toContain("Done");
+  await view.close();
+});

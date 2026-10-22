@@ -48,6 +48,18 @@ export const Expanded: Story = {
   play: expand,
 };
 
+/** A run that only asked another agent stays "Waiting on" it until that agent answers. */
+export const WaitingOnAgent: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "routines.history": {
+        ...history,
+        runs: [{ ...run(4, "completed"), waitingOn: "Inbox agent" }, ...history.runs.slice(1)],
+      },
+    }),
+  play: expand,
+};
+
 export const WithOlderRuns: Story = {
   beforeEach: () =>
     mockRpc({

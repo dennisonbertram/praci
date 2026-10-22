@@ -31,6 +31,8 @@ export const RoutineRunSchema = z.object({
   messageId: Id.nullable(),
   /** First line of the run's reply, when it has text. */
   preview: z.string().nullable().optional(),
+  /** Name of the agent this finished run asked and that is still working on it. */
+  waitingOn: z.string().nullable().optional(),
 });
 export type RoutineRun = z.infer<typeof RoutineRunSchema>;
 

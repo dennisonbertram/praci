@@ -10,6 +10,7 @@ import {
 } from "./messages.js";
 import {
   closeApprovalCardsInTransaction,
+  delegatePendingAgents,
   delegatePendingIds,
   expireDelegatedApprovalsInTransaction,
 } from "./run-pauses.js";
@@ -146,18 +147,20 @@ async function finalizeRunOnce(
         }
       }
       if (delegateRunIds.length > 0) {
+        const pendingInput = {
+          spaceId: input.spaceId,
+          userId,
+          fromBotId: input.botId,
+          threadId: input.threadId,
+        };
         await appendEventInTransaction(tx, {
           spaceId: input.spaceId,
           threadId: input.threadId,
           botId: input.botId,
           type: "thread.delegate_pending",
           payload: {
-            pending: await delegatePendingIds(tx, {
-              spaceId: input.spaceId,
-              userId,
-              fromBotId: input.botId,
-              threadId: input.threadId,
-            }),
+            pending: await delegatePendingIds(tx, pendingInput),
+            agents: await delegatePendingAgents(tx, pendingInput),
           },
         });
       }

@@ -1,6 +1,6 @@
 import type { MessageBlock } from "@rakazo/contracts";
 import { expect, it } from "vitest";
-import { delegateWaitTarget } from "./delegate-wait";
+import { delegateWaitTarget, pendingDelegateAgents } from "./delegate-wait";
 
 const sent = { kind: "bot_message_sent", toBotId: "b2", toBotName: "Mercury agent", text: "x" };
 const received = {
@@ -18,4 +18,18 @@ it("names the agent a message went to while no answer has come back", () => {
 it("names nobody once the answer arrived, or when nothing was sent", () => {
   expect(delegateWaitTarget([msg(sent), msg(received)])).toBeNull();
   expect(delegateWaitTarget([msg({ kind: "text", text: "hi" })])).toBeNull();
+});
+
+it("lists each agent holding an approval once, in the order asked", () => {
+  expect(
+    pendingDelegateAgents([
+      { id: "b2", name: "Mercury agent" },
+      { id: "b2", name: "Mercury agent" },
+      { id: "b3", name: "Inbox agent" },
+    ]),
+  ).toEqual([
+    { id: "b2", name: "Mercury agent" },
+    { id: "b3", name: "Inbox agent" },
+  ]);
+  expect(pendingDelegateAgents(undefined)).toEqual([]);
 });

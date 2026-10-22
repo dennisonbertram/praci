@@ -1174,6 +1174,10 @@ export const ThreadSnapshotSchema = z.object({
   activeRuns: z.array(RunSchema).optional(),
   /** Messages of this thread whose agent waits for the owner's approval; empty or absent when none. */
   delegatePending: z.array(z.string()).optional(),
+  /** The agents behind delegatePending, named by the server so they do not depend on loaded messages. */
+  delegatePendingAgents: z
+    .array(z.object({ messageId: z.string(), id: Id, name: z.string() }))
+    .optional(),
   computer: ComputerStatusSchema.optional(),
 });
 export type ThreadSnapshot = z.infer<typeof ThreadSnapshotSchema>;
