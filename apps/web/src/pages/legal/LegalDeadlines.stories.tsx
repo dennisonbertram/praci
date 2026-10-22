@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ComponentProps } from "react";
+import { useState } from "react";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { deadlines } from "./fixtures";
 import { LegalDeadlines } from "./LegalDeadlines";
@@ -23,3 +25,14 @@ export const OnlyOverdue: Story = { args: { onlyOverdue: true, onShowAll: () => 
 
 /** The page offers the Legal agent: each row gets Ask agent with the row as the question. */
 export const WithAskAgent: Story = { args: { onAsk: () => {} } };
+
+function ReloadingDeadlines(args: ComponentProps<typeof LegalDeadlines>) {
+  const [rows, setRows] = useState(args.deadlines);
+  // Like the page: a reload lists open deadlines only, and an Undo brings the row back.
+  const onChanged = () =>
+    setRows((now) => (now.length === args.deadlines.length ? now.slice(1) : args.deadlines));
+  return <LegalDeadlines {...args} deadlines={rows} onChanged={onChanged} />;
+}
+
+/** The page reloads after Done and the list no longer holds the row: its place shows the Undo line. */
+export const DoneWithReload: Story = { render: (args) => <ReloadingDeadlines {...args} /> };

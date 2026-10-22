@@ -82,9 +82,9 @@ function ComputerModePicker({
   return (
     <div className="mt-4">
       <div className="text-[13.5px] font-medium text-foreground">
-        <Trans>Computer</Trans>
+        <Trans>Workspace</Trans>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 grid grid-cols-1 gap-2">
         {(["team", "dedicated"] as const).map((mode) => (
           <Toggle
             key={mode}
@@ -94,19 +94,16 @@ function ComputerModePicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(mode);
             }}
-            className={`capitalize ${SELECTED_SEGMENT}`}
+            className={SELECTED_SEGMENT}
           >
-            {mode === "team" ? <Trans>Team</Trans> : <Trans>Private</Trans>}
+            {mode === "team" ? (
+              <Trans>Shared with your other bots</Trans>
+            ) : (
+              <Trans>Only this bot</Trans>
+            )}
           </Toggle>
         ))}
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground/70">
-        {value === "team" ? (
-          <Trans>Shares one computer with your other bots.</Trans>
-        ) : (
-          <Trans>Has its own computer.</Trans>
-        )}
-      </p>
     </div>
   );
 }
@@ -635,7 +632,7 @@ export function BotSettings({
           />
           <details
             data-testid="bot-settings-advanced"
-            className="group mt-5 open:rounded-xl open:border open:border-border/40 open:px-3 open:pb-3"
+            className="group mt-5 open:pb-3"
             onToggle={(event) => {
               if (!event.currentTarget.open) return;
               setAdvancedOpened(true);
@@ -831,17 +828,17 @@ export function BotSettings({
             {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
           </details>
           {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col">
             <Button
               variant="ghost"
-              className={`${FOOTER_ROW} h-auto justify-start p-0 font-normal text-muted-foreground underline underline-offset-4 hover:bg-transparent hover:text-foreground`}
+              className={`${FOOTER_ROW} h-9 justify-start px-0 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground`}
               onClick={() => void onExport()}
             >
               <Trans>Export</Trans>
             </Button>
             <Button
               variant="ghost"
-              className={`${FOOTER_ROW} h-auto p-0 font-normal text-destructive hover:bg-transparent hover:text-destructive`}
+              className={`${FOOTER_ROW} h-9 justify-start px-0 font-normal text-destructive hover:bg-transparent hover:text-destructive`}
               onClick={onClear}
             >
               <Trans>Clear conversation</Trans>

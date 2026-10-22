@@ -6024,7 +6024,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen || computerScreenError ? null : (
+                    computerScreenError ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -7230,11 +7230,11 @@ function computerPlaceholder(
 
 /** Panel heading for the bot computer, in words rather than the raw state slug. */
 function computerStateLabel(state: ComputerStatus["state"] | undefined) {
-  if (state === "running") return t`Computer is on`;
+  // The "Routines" heading below is the title; the header names the computer only when it needs attention.
+  if (state === "running" || state === "stopped" || !state) return null;
   if (state === "booting") return t`Computer is starting`;
   if (state === "suspended") return t`Computer is asleep`;
-  if (state === "error") return t`Computer could not start`;
-  return t`Computer is off`;
+  return t`Computer could not start`;
 }
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {
