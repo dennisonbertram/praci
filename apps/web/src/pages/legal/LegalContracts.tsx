@@ -160,12 +160,12 @@ export function LegalContracts({
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className="w-[26%]" />
-          <col className="w-[17%]" />
+          <col className="w-[28%]" />
           <col className="w-[19%]" />
           <col className="w-[16%]" />
-          <col className="w-[9%]" />
-          <col className="w-[13%]" />
+          <col className="w-[17%]" />
+          <col className="w-[8%]" />
+          <col className="w-[12%]" />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
