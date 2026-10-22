@@ -24,7 +24,7 @@ name: Onboarding
 - hideKeyboard
 - tapOn: "Create"
 - extendedWaitUntil:
-    visible: "What do you want me on first\\?"
+    visible: "What should I work on first\\?"
     timeout: 30000
 - takeScreenshot: 04-choice-card
 - tapOn: "Day-to-day work"

@@ -257,7 +257,7 @@ it("opens on the recently added files, all ticked, and Show all adds the rest un
   autoSort.plan.mockResolvedValue({
     mode: "ai",
     operations: [
-      { ...filed, key: "move:i3", itemId: "i3", name: "new.pdf" },
+      { ...filed, key: "move:i3", itemId: "i3", name: "new.pdf", fromFolderId: null },
       { ...filed, key: "move:i4", itemId: "i4", name: "old.pdf" },
     ],
   });
@@ -298,7 +298,7 @@ it("keeps old files' renames and folder merges out of the new-files view", async
   expect(button("Apply").textContent).toBe("Apply 1 change");
 });
 
-it("ticks every move when all of them are for recent files", async () => {
+it("leaves a recent file that is already in a folder unticked", async () => {
   recentItems.mockResolvedValue({
     items: [{ id: "i3", createdAt: new Date().toISOString() }],
     nextCursor: null,
@@ -308,7 +308,7 @@ it("ticks every move when all of them are for recent files", async () => {
     operations: [{ ...plan.operations[1], key: "move:i3", itemId: "i3", fromFolderId: "f9" }],
   });
   await render();
-  expect(button("Apply").textContent).toBe("Apply 1 change");
+  expect(button("Apply").textContent).toBe("Apply");
 });
 
 it("finds recent files beyond the first page of 100", async () => {
@@ -320,7 +320,7 @@ it("finds recent files beyond the first page of 100", async () => {
   autoSort.plan.mockResolvedValue({
     mode: "ai",
     operations: [
-      { ...filed, key: "move:i3", itemId: "i3", name: "new.pdf" },
+      { ...filed, key: "move:i3", itemId: "i3", name: "new.pdf", fromFolderId: null },
       { ...filed, key: "move:i4", itemId: "i4", name: "old.pdf" },
     ],
   });

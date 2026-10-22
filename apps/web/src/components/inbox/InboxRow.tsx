@@ -317,7 +317,7 @@ export function InboxRow({
           <span
             aria-hidden="true"
             data-unread-dot={row.unread ? "" : undefined}
-            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible pointer-coarse:invisible") : ""}`}
+            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible pointer-coarse:visible pointer-coarse:translate-x-2.5 pointer-coarse:-translate-y-3 pointer-coarse:ring-2 pointer-coarse:ring-background") : ""} `}
           />
           <span
             dir="auto"

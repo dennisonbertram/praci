@@ -386,7 +386,14 @@ export function CommandPalette({
       })}
     </CommandGroup>
   );
-  const shownLinks = linkGroups.filter((group) => group.entries.length > 0);
+  // A chat of a bot already listed under Bots is not listed twice.
+  const shownBotPaths = new Set(filteredBots.map((bot) => `/app/${bot.id}`));
+  const shownLinks = linkGroups
+    .map((group) => ({
+      ...group,
+      entries: group.entries.filter((entry) => !shownBotPaths.has(entry.id)),
+    }))
+    .filter((group) => group.entries.length > 0);
   const fallbackLinks = shownLinks.filter((group) => group.fallback);
   // A title match outranks text found only in a body: a group with an exact title comes first, then
   // one with a partial title match, and a group keeps at most 3 body-only rows after its title matches.

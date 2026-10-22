@@ -145,6 +145,13 @@ export function AppToaster() {
       window.removeEventListener(NOTIFICATION_SETTINGS_CHANGED, reload);
     };
   }, []);
+  // Leaving a chat with an approval still waiting raises its toast again; the 2 s poll stopped once
+  // the open chat hid the last toast, so nothing else would.
+  const previousBotId = useRef(openBotId);
+  useEffect(() => {
+    if (previousBotId.current && previousBotId.current !== openBotId) announceChange();
+    previousBotId.current = openBotId;
+  }, [openBotId]);
   return (
     <NotificationToaster
       onOpen={openLink}
