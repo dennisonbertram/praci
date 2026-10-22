@@ -437,9 +437,7 @@ function Overview({
                       {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
                     </span>
                   ) : null}
-                  {data.excludedNonUsdCount > 0 ? (
-                    <span> · {nonUsdNote}</span>
-                  ) : null}
+                  {data.excludedNonUsdCount > 0 ? <span> · {nonUsdNote}</span> : null}
                 </Link>
                 <Tooltip>
                   <TooltipTrigger
