@@ -28,7 +28,6 @@ import {
   dateText,
   isSettled,
   isStuck,
-  readingAge,
   stageLabel,
   statusLabel,
   typeLabel,
@@ -205,13 +204,14 @@ const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
 };
 
 /** Fixed widths so columns never shift (Type fits "Investor document"); in a wide pane Parties takes 30% and the Name the rest. */
-function Columns({ status }: { status: boolean }) {
+function Columns({ status, snippets }: { status: boolean; snippets: boolean }) {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-40")} />
+      <col className={cn(MID_COLUMN, snippets ? "w-28" : "w-40")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-56 @min-[900px]/list:w-[30%]")} />
+      {/* Search results carry snippets under the name, so Type and Parties give the Name the room. */}
+      <col className={cn(PARTIES_COLUMN, snippets ? "w-40" : "w-56 @min-[900px]/list:w-[30%]")} />
       {status ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
       <col className="w-7" />
     </colgroup>
@@ -309,12 +309,7 @@ function ItemRow({
 }) {
   const label = statusLabel(item.status, !!item.previewText);
   const stuck = isStuck(item);
-  const age =
-    label && item.status !== "failed"
-      ? stuck
-        ? t`Taking longer than usual`
-        : readingAge(item.updatedAt)
-      : "";
+  const age = label && item.status !== "failed" && stuck ? t`Taking longer than usual` : "";
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   const parties = item.facets.parties.join(", ");
   const type = typeText(item);
@@ -561,7 +556,7 @@ export function ListView({
   return (
     <div className={LIST_PAD}>
       <Table>
-        <Columns status={status} />
+        <Columns status={status} snippets={rows.some((row) => row.snippets.length > 0)} />
         <ListHead sortField={sortField} rows={rows} o={o} status={status} />
         {lead?.(status)}
         <TableBody aria-label={t`Items`} data-rows>
@@ -744,7 +739,7 @@ export function GridView({
               <span>
                 {isStuck(item)
                   ? t`Taking longer than usual`
-                  : readingAge(item.updatedAt) || statusLabel(item.status, !!item.previewText)}
+                  : statusLabel(item.status, !!item.previewText)}
               </span>
             ) : (
               <>

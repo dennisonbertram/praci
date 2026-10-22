@@ -2,7 +2,7 @@ import { i18n } from "@lingui/core";
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiStats } from "@rakazo/contracts";
-import { Button, Skeleton } from "@rakazo/ui-web";
+import { Button, cn, Skeleton } from "@rakazo/ui-web";
 import { MASK } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { niceScale } from "../finance/charts";
@@ -56,16 +56,32 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Card({ label, value, onPick }: { label: string; value: string; onPick?: () => void }) {
+function Card({
+  label,
+  value,
+  onPick,
+  alert = false,
+}: {
+  label: string;
+  value: string;
+  onPick?: () => void;
+  alert?: boolean;
+}) {
   const body = (
     <>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-xl font-semibold tabular-nums">{value}</p>
+      <p className={cn("mt-0.5 text-xl font-semibold tabular-nums", alert && "text-destructive")}>
+        {value}
+      </p>
     </>
   );
   const box = "rounded-lg border border-border bg-card p-3";
   return onPick ? (
-    <button type="button" onClick={onPick} className={`${box} text-start hover:bg-muted`}>
+    <button
+      type="button"
+      onClick={onPick}
+      className={`${box} cursor-pointer text-start hover:bg-muted`}
+    >
       {body}
     </button>
   ) : (
@@ -103,7 +119,7 @@ function BarRows({
               <button
                 type="button"
                 onClick={row.onPick}
-                className={`${cls} rounded-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring`}
+                className={`${cls} cursor-pointer rounded-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring`}
               >
                 {body}
               </button>
@@ -136,7 +152,7 @@ function OverTime({
               type="button"
               aria-label={`${bucketLabel(bucket.key)}: ${bucket.count}`}
               onClick={() => onPick(bucket.key)}
-              className="group flex min-w-0 flex-1 flex-col items-center justify-end focus-visible:outline-2 focus-visible:outline-ring"
+              className="group flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-end focus-visible:outline-2 focus-visible:outline-ring"
             >
               {/* A few buckets would otherwise stretch to bars as wide as the page. */}
               <span
@@ -256,6 +272,7 @@ export function DataRoomStats({
         <Card
           label={t`Failed`}
           value={String(stats.status.failed)}
+          alert={stats.status.failed > 0}
           onPick={stats.status.failed > 0 ? () => onPick({ status: "failed" }) : undefined}
         />
       </div>

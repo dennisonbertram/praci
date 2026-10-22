@@ -2,15 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
 
-import {
-  dateText,
-  isNoiseImage,
-  isStuck,
-  readingAge,
-  sizeText,
-  statusLabel,
-  typeLabel,
-} from "./format";
+import { dateText, isNoiseImage, isStuck, sizeText, statusLabel, typeLabel } from "./format";
 
 it("calls every working step Reading, never Filing, since filing waits for consent", () => {
   expect(["pending", "extracting", "classifying"].map((s) => statusLabel(s))).toEqual([
@@ -70,14 +62,12 @@ it("shows when something happened as the viewer's day and a document date as wri
   }
 });
 
-describe("readingAge and isStuck", () => {
+describe("isStuck", () => {
   const now = Date.parse("2026-03-04T12:00:00.000Z");
   const ago = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
-  it("counts from the last write and flags a file quiet for over 3 minutes", () => {
-    expect(readingAge(ago(1), now)).toBe("");
-    expect(readingAge(ago(5), now)).toMatch(/^Reading for/);
-    expect(isStuck({ status: "extracting", updatedAt: ago(2) }, now)).toBe(false);
-    expect(isStuck({ status: "extracting", updatedAt: ago(4) }, now)).toBe(true);
+  it("flags a file quiet for over a minute", () => {
+    expect(isStuck({ status: "extracting", updatedAt: ago(0.5) }, now)).toBe(false);
+    expect(isStuck({ status: "extracting", updatedAt: ago(2) }, now)).toBe(true);
     expect(isStuck({ status: "ready", updatedAt: ago(60) }, now)).toBe(false);
     expect(isStuck({ status: "failed", updatedAt: ago(60) }, now)).toBe(false);
   });

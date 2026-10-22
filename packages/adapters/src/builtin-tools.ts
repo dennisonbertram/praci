@@ -1381,11 +1381,14 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "search_data_room",
     description:
-      "Search the user's Data room, their private store of documents. Returns id, name, doc type, date and a short snippet for each match. Use read_data_room_item for the full text.",
+      "Search the user's Data room, their private store of documents. Returns id, name, doc type, date and a short snippet for each match. Leave query out to list the room instead (newest first, with each file's folder), the way to check whether a document exists. Use read_data_room_item for the full text.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Words to find in names and content." },
+        query: {
+          type: "string",
+          description: "Words to find in names and content. Omit to list files.",
+        },
         filters: {
           type: "object",
           description: "Optional narrowing.",
@@ -1403,9 +1406,12 @@ export const builtinAgentTools: ConnectorTool[] = [
             source: { type: "string", description: "upload, gmail, drive, box, chat or finance." },
           },
         },
-        limit: { type: "number", description: "Default 10, max 20." },
+        limit: { type: "number", description: "Default 10, max 20 (a list: 100)." },
+        cursor: {
+          type: "string",
+          description: "A list only: the nextCursor from the previous page, with the same filters.",
+        },
       },
-      required: ["query"],
     },
     readOnly: true,
   },

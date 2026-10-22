@@ -74,7 +74,12 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   imageUrl.mockResolvedValue("blob:receipt");
   shares.mockResolvedValue([]);
-  consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
+  consent.mockResolvedValue({
+    allowed: true,
+    recipients: [{ name: "Model", detail: "" }],
+    key: "k",
+    version: "1",
+  });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -183,7 +188,7 @@ it("keeps showing the summary while a renamed file is re-indexed", async () => {
   expect(container.textContent).not.toContain("Reading");
 });
 
-it("opens a readable PDF in the browser, and says an untagged file is not tagged yet", async () => {
+it("opens a readable PDF in the browser, and says an untagged file has no type yet", async () => {
   openItem.mockResolvedValue(undefined);
   const pdf = { ...receipt, name: "nda.pdf", mimeType: "application/pdf" };
   await act(async () => {
@@ -191,9 +196,38 @@ it("opens a readable PDF in the browser, and says an untagged file is not tagged
       <Preview item={pdf} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
     );
   });
-  expect(container.textContent).toContain("Not tagged yet");
+  expect(container.textContent).toContain("couldn't tell what kind of document it is");
   act(() => icon("Open in new tab").click());
   expect(openItem).toHaveBeenCalledWith(pdf);
+});
+
+it("says nothing about the type while the file is still being tagged", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, status: "classifying", previewText: "Some text" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
+});
+
+it("gives no reason for an untagged file when no model is set up, since classification never ran", async () => {
+  consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, name: "nda.pdf", mimeType: "application/pdf" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
 });
 
 it("says a file too large to read is not searchable inside, instead of not tagged yet", async () => {
