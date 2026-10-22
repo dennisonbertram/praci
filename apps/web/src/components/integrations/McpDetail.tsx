@@ -6,8 +6,16 @@ import {
   isGranolaEndpoint,
   isZernioEndpoint,
 } from "@rakazo/contracts";
-import { Button, Input, Skeleton } from "@rakazo/ui-web";
-import { ArrowLeft } from "lucide-react";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Skeleton,
+} from "@rakazo/ui-web";
+import { ArrowLeft, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -167,6 +175,7 @@ export function McpDetail({
   const bothRoutes =
     Boolean(keyRoute && keyRoute.status !== "disconnected") && server.oauthStatus === "connected";
   const hasAgent = server.agentBotId !== null;
+  const signedIn = server.oauthStatus === "connected";
   const setWrites = (on: boolean) =>
     on
       ? setConfirmingWrites(true)
@@ -240,31 +249,45 @@ export function McpDetail({
               <Trans>Open Investors</Trans>
             </Button>
           ) : null}
-          {server.transport !== "stdio" ? (
-            <Button
-              variant={status === "reconnect" ? "default" : "outline"}
-              disabled={reconnect.busy || busy}
-              onClick={() => void reconnect.run()}
-            >
+          {/* While healthy, signing in again or out is rare: it waits in a menu. */}
+          {status === "reconnect" && server.transport !== "stdio" ? (
+            <Button disabled={reconnect.busy || busy} onClick={() => void reconnect.run()}>
               <Trans>Reconnect</Trans>
             </Button>
           ) : null}
-          {/* Only a live sign-in can be disconnected; afterwards the badge reads "needs sign-in". */}
-          {server.oauthStatus === "connected" ? (
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void run(
-                  () => rpc.mcp.oauth.disconnect({ serverId: server.id }).then(() => undefined),
-                  t`Could not disconnect`,
-                )
-              }
-            >
-              <Trans>Disconnect sign-in</Trans>
-            </Button>
+          {status !== "reconnect" && (server.transport !== "stdio" || signedIn) ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="icon" aria-label={t`Sign-in options`} />}
+                disabled={reconnect.busy || busy}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {server.transport !== "stdio" ? (
+                  <DropdownMenuItem onClick={() => void reconnect.run()}>
+                    <Trans>Reconnect</Trans>
+                  </DropdownMenuItem>
+                ) : null}
+                {/* Only a live sign-in can be disconnected; afterwards the badge reads "needs sign-in". */}
+                {signedIn ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      void run(
+                        () =>
+                          rpc.mcp.oauth.disconnect({ serverId: server.id }).then(() => undefined),
+                        t`Could not disconnect`,
+                      )
+                    }
+                  >
+                    <Trans>Disconnect sign-in</Trans>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : null}
-          {!hasAgent ? (
+          {/* A bank gets its agent from the Allow changes switch below, so it has one setup control. */}
+          {!hasAgent && !bank ? (
             <Button
               variant="outline"
               disabled={busy}

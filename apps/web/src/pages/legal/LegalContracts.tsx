@@ -146,13 +146,13 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[25%]" : "w-[29%]"} />
-          <col className={showStatus ? "w-[14%]" : "w-[16%]"} />
+          <col className={showStatus ? "w-[21%]" : "w-[24%]"} />
+          <col className={showStatus ? "w-[19%]" : "w-[21%]"} />
           {showStatus ? <col className="w-[7%]" /> : null}
-          <col className={showStatus ? "w-[18%]" : "w-[19%]"} />
-          <col className={showStatus ? "w-[15%]" : "w-[15%]"} />
-          <col className="w-[9%]" />
-          <col className="w-[12%]" />
+          <col className={showStatus ? "w-[17%]" : "w-[18%]"} />
+          <col className={showStatus ? "w-[17%]" : "w-[17%]"} />
+          <col className={showStatus ? "w-[8%]" : "w-[9%]"} />
+          <col className={showStatus ? "w-[11%]" : "w-[11%]"} />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
@@ -184,7 +184,7 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
         <TableBody>
           {contracts.map((contract) => (
             <TableRow key={contract.id}>
-              <TableCell className="whitespace-normal" title={contract.title}>
+              <TableCell className="truncate" title={contract.title}>
                 <Title contract={contract} inline />
               </TableCell>
               <TableCell className="truncate" title={contract.counterparties.join(", ")}>
@@ -195,10 +195,10 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
                   <Status status={contract.status} />
                 </TableCell>
               ) : null}
-              <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>
+              <TableCell className="truncate tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="whitespace-normal" title={renewal(contract)}>
+              <TableCell className="truncate" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
