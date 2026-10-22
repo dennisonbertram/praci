@@ -24,11 +24,13 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   remove: vi.fn(),
   queue: vi.fn(),
+  send: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     gtm: { overview: mocks.overview, queue: mocks.queue },
     scratchpad: { update: mocks.update, remove: mocks.remove },
+    inbox: { compose: { send: mocks.send } },
   },
 }));
 vi.mock("./shell/bot-page-panel", () => ({ BotPagePanel: () => null }));
@@ -116,4 +118,45 @@ it("discards a task through the founder RPC", async () => {
   await render();
   await click("Discard");
   expect(mocks.remove).toHaveBeenCalledWith({ itemId: item.id });
+});
+
+it("mounts post previews and the email compliance editor under Needs you", async () => {
+  mocks.overview.mockResolvedValue({
+    ...overview,
+    groups: {
+      ...overview.groups,
+      needs_you: [
+        item,
+        { ...item, id: "linkedin_demo", channel: "linkedin" },
+        {
+          ...item,
+          id: "email_demo",
+          category: "outbound_email",
+          channel: "email",
+          target: "prospect@example.test",
+          notes: "Join our beta.",
+        },
+      ],
+    },
+  });
+  await render();
+  expect(container.textContent).toContain(" / 280");
+  expect(container.textContent).toContain(" / 3,000");
+  const email = container.querySelector('[data-item-id="email_demo"]')!;
+  expect(email.textContent).toContain("Add unsubscribe instructions");
+  expect(email.textContent).toContain("Add a postal address");
+  expect(
+    [...email.querySelectorAll("button")].find((button) => button.textContent === "Approve")
+      ?.disabled,
+  ).toBe(true);
+  expect(mocks.send).not.toHaveBeenCalled();
+});
+
+it("opens the real Calendar and exposes an incomplete provider queue", async () => {
+  mocks.queue.mockResolvedValue({ status: "ready", complete: false, posts: [] });
+  await render();
+  await click("Calendar");
+  expect(container.querySelector('[data-testid="gtm-calendar-grid"]')).not.toBeNull();
+  expect(container.textContent).toContain("Zernio queue incomplete");
+  expect(mocks.queue).toHaveBeenCalledTimes(1);
 });
