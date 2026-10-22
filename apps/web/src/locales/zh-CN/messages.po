@@ -2305,6 +2305,10 @@ msgstr ""
 msgid "Check for updates"
 msgstr "检查更新"
 
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr ""
+
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
 msgstr ""
@@ -4573,6 +4577,7 @@ msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr ""
 
@@ -8744,6 +8749,7 @@ msgid "Renews {day}"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "重新打开"
@@ -8927,10 +8933,6 @@ msgstr "返回 Praci"
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Review"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -9170,6 +9172,10 @@ msgstr "已保存。轮换后可查看。"
 
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
