@@ -297,6 +297,34 @@ function Legal({
         {scanResult}
       </p>
     ) : null;
+  // A row, not a fifth tile. It sits below the tabs, so it going away after a scan never moves them.
+  const uncheckedLine = (
+    <>
+      {counts.unreviewedDocuments > 0 ? (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-2 text-sm">
+          <p className="min-w-0 text-muted-foreground">
+            {plural(counts.unreviewedDocuments, {
+              one: "# Data room document not yet checked by Legal",
+              other: "# Data room documents not yet checked by Legal",
+            })}
+          </p>
+          {/* Before Allow the card above is the one action. */}
+          {needsConsent ? null : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              disabled={scanDisabled}
+              onClick={() => void scan()}
+            >
+              <Trans>Check now</Trans>
+            </Button>
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <div>
       <PageHeader
@@ -388,29 +416,6 @@ function Legal({
           </button>
         </div>
       ) : null}
-      {/* A row, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
-      {counts.unreviewedDocuments > 0 ? (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-2 text-sm">
-          <p className="min-w-0 text-muted-foreground">
-            {plural(counts.unreviewedDocuments, {
-              one: "# Data room document not yet checked by Legal",
-              other: "# Data room documents not yet checked by Legal",
-            })}
-          </p>
-          {/* Before Allow the card above is the one action. */}
-          {needsConsent ? null : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="shrink-0"
-              disabled={scanDisabled}
-              onClick={() => void scan()}
-            >
-              <Trans>Check now</Trans>
-            </Button>
-          )}
-        </div>
-      ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
       {noDocuments ? (
         <PageEmptyState
@@ -428,6 +433,7 @@ function Legal({
         data.counts.doneDeadlines === 0 ? (
         <>
           {resultLine}
+          {uncheckedLine}
           <PageEmptyState
             icon={<Scale className="size-8" strokeWidth={1.6} aria-hidden="true" />}
             title={<Trans>No contracts yet</Trans>}
@@ -471,6 +477,7 @@ function Legal({
             </TabsList>
           </Tabs>
           {resultLine}
+          {uncheckedLine}
           {view === "contracts" ? (
             <LegalContracts contracts={data.contracts} selfName={selfName} />
           ) : null}
