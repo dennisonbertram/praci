@@ -35,9 +35,24 @@ function Bar({
       folderId={filters.folderId}
       onFolder={(folderId) => setFilters({ ...filters, folderId })}
       onNewFolder={() => undefined}
+      onAutoSort={() => undefined}
+      trailing={
+        <fieldset className="m-0 flex gap-0.5 border-0 p-0">
+          {[0, 1, 2].map((n) => (
+            <span key={n} className="inline-block size-7 rounded-md border border-border" />
+          ))}
+        </fieldset>
+      }
     />
   );
 }
+
+/** The page body is a `@container/bd`; these are its widths at a 1024 and a 375 window. */
+const inBody = (width: number) => (
+  <div className="@container/bd" style={{ width }}>
+    <Bar />
+  </div>
+);
 
 const meta = { title: "DataRoom/FilterBar" } satisfies Meta;
 export default meta;
@@ -48,3 +63,5 @@ export const WithFilters: Story = {
   render: () => <Bar text="agreement" initial={{ docType: "Contract", party: "Example Co" }} />,
 };
 export const NothingToFilter: Story = { render: () => <Bar facets={false} /> };
+export const Body784: Story = { render: () => inBody(784) };
+export const Body343: Story = { render: () => inBody(375) };

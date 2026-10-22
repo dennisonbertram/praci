@@ -24,7 +24,7 @@ import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
-import { AgentToggleList, SourceBadge, StatusBadge } from "./parts";
+import { AgentToggleList, StatusBadge } from "./parts";
 import type { ConnectionAccess, IntegrationsData } from "./useIntegrations";
 
 type Tool = { name: string; description: string };
@@ -434,7 +434,6 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               <h1 className="text-xl font-semibold">{name}</h1>
               <div className="flex flex-wrap items-center gap-2.5 text-muted-foreground">
                 {status ? <StatusBadge status={status} /> : null}
-                <SourceBadge connectorId={connectorId} />
               </div>
             </div>
           </div>
@@ -558,14 +557,13 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                 </>
               ) : null}
 
-              <Heading>
-                {tools ? <Trans>Tools · {tools.length}</Trans> : <Trans>Tools</Trans>}
-              </Heading>
-              {tools && tools.length === 0 ? (
-                <p className="text-muted-foreground">
-                  <Trans>No tools available.</Trans>
-                </p>
-              ) : tools ? (
+              {/* An app with no tools to list shows no Tools section at all. */}
+              {tools?.length === 0 ? null : (
+                <Heading>
+                  {tools ? <Trans>Tools · {tools.length}</Trans> : <Trans>Tools</Trans>}
+                </Heading>
+              )}
+              {tools?.length === 0 ? null : tools ? (
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {(
                     [

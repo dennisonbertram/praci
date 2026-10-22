@@ -309,7 +309,7 @@ export function FilterBar({
         />
       ) : (
         <SearchField
-          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80 @min-[640px]/bd:flex-none"
+          className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
           value={query}
           onChange={onQuery}
           placeholder={t`Search names and text`}

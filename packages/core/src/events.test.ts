@@ -597,6 +597,11 @@ describe("humanizeToolName", () => {
     for (const id of [
       "task_catalog",
       "legal_unreviewed_documents",
+      "legal_upsert_node",
+      "legal_upsert_contract",
+      "legal_upsert_deadline",
+      "legal_link",
+      "legal_query",
       "mcp__finance-mercury__requestSendMoney",
       "mcp__finance-mercury__requestTransferMoney",
     ]) {
@@ -605,6 +610,7 @@ describe("humanizeToolName", () => {
       }
     }
     expect(toolPhrase("task_catalog", "activity")).toBe("Checking open tasks");
+    expect(toolPhrase("legal_upsert_node", "activity")).toBe("Updating legal records");
     expect(toolPhrase("legal_unreviewed_documents", "done")).toBe("Checked unreviewed documents");
     expect(toolPhrase("mcp__finance-mercury__requestSendMoney", "activity")).toBe(
       "Asking to send money",

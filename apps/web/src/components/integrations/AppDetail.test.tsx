@@ -555,23 +555,11 @@ it("offers Remove account per row only when there is more than one account", asy
   expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
 });
 
-it("labels the header of a Composio or Pipedream app with its provider, and a direct app with none", async () => {
+it("names no connector vendor on an app page, and shows no Tools section when there are no tools", async () => {
   await show(APP_PAGE, data({ connections: [appConnection()] }));
-  expect(container.querySelector("h1 + div")?.textContent).toContain("via Composio");
-  act(() => root.unmount());
-  container.remove();
-  await show(
-    "/app/integrations/app/pipedream/notion",
-    data({ connections: [appConnection({ connectorId: "pipedream" })] }),
-  );
-  expect(container.querySelector("h1 + div")?.textContent).toContain("via Pipedream");
-  act(() => root.unmount());
-  container.remove();
-  await show(
-    PAGE,
-    data({ connections: [appConnection({ connectorId: "google", provider: "gmail" })] }),
-  );
-  expect(container.textContent).not.toContain("via ");
+  expect(container.textContent).not.toMatch(/via |Composio|Pipedream/);
+  expect(container.textContent).not.toContain("Tools");
+  expect(container.textContent).not.toContain("No tools available");
 });
 
 it("hides the account name when it only repeats the app name", async () => {

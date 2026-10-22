@@ -13,13 +13,19 @@ import {
 } from "./format";
 
 it("calls every working step Reading, never Filing, since filing waits for consent", () => {
-  expect(["pending", "extracting", "classifying"].map(statusLabel)).toEqual([
+  expect(["pending", "extracting", "classifying"].map((s) => statusLabel(s))).toEqual([
     "Reading",
     "Reading",
     "Reading",
   ]);
   expect(statusLabel("failed")).toBe("Failed");
   expect(statusLabel("ready")).toBe("");
+});
+
+it("never calls a file Reading once its text is stored", () => {
+  expect(statusLabel("classifying", true)).toBe("");
+  expect(statusLabel("extracting", false)).toBe("Reading");
+  expect(statusLabel("failed", true)).toBe("Failed");
 });
 
 it("shows a file being re-indexed (after a rename or move) as done, not Reading again", () => {
@@ -67,11 +73,11 @@ it("shows when something happened as the viewer's day and a document date as wri
 describe("readingAge and isStuck", () => {
   const now = Date.parse("2026-03-04T12:00:00.000Z");
   const ago = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
-  it("counts from the last write and flags a file quiet for over 10 minutes", () => {
+  it("counts from the last write and flags a file quiet for over 3 minutes", () => {
     expect(readingAge(ago(1), now)).toBe("");
     expect(readingAge(ago(5), now)).toMatch(/^Reading for/);
-    expect(isStuck({ status: "extracting", updatedAt: ago(9) }, now)).toBe(false);
-    expect(isStuck({ status: "extracting", updatedAt: ago(11) }, now)).toBe(true);
+    expect(isStuck({ status: "extracting", updatedAt: ago(2) }, now)).toBe(false);
+    expect(isStuck({ status: "extracting", updatedAt: ago(4) }, now)).toBe(true);
     expect(isStuck({ status: "ready", updatedAt: ago(60) }, now)).toBe(false);
     expect(isStuck({ status: "failed", updatedAt: ago(60) }, now)).toBe(false);
   });

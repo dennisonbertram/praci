@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { Routine } from "@rakazo/contracts";
+import type { AgentSkillCatalogEntry, Routine } from "@rakazo/contracts";
 import { presetFromCron } from "@rakazo/core";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -154,6 +154,52 @@ it("labels the routine list's create button in words, visible without hovering",
   const root = createRoot(el);
   await act(async () => root.render(<RoutineListHeader onCreate={() => undefined} />));
   expect(el.querySelector("button")?.textContent).toBe("Create a routine");
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});
+
+it("adds the chosen skill to the instruction as an @mention", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  const noop = () => undefined;
+  const onChange = vi.fn();
+  const skills = [
+    { id: "s1", name: "Weekly cash check", description: "", source: "user", readOnly: false },
+  ] as AgentSkillCatalogEntry[];
+  await act(async () =>
+    root.render(
+      <RoutineEditor
+        draft={{ ...emptyRoutineDraft(), prompt: "Every Monday." }}
+        onChange={onChange}
+        editing={null}
+        timezone="America/New_York"
+        webhook={{ path: "/hook", secret: null, configured: false }}
+        githubPath="/gh"
+        messageProviders={[]}
+        skills={skills}
+        saving={false}
+        running={false}
+        error={null}
+        onBack={noop}
+        onClose={noop}
+        onSave={noop}
+        onTestRun={noop}
+        onDelete={noop}
+        onEnsureWebhook={async () => undefined}
+      />,
+    ),
+  );
+  const select = el.querySelector('select[aria-label="Add a skill"]') as HTMLSelectElement;
+  expect(select).not.toBeNull();
+  await act(async () => {
+    select.value = "Weekly cash check";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(onChange).toHaveBeenCalledWith(
+    expect.objectContaining({ prompt: "Every Monday. @Weekly cash check" }),
+  );
   await act(async () => root.unmount());
   el.remove();
   vi.unstubAllGlobals();

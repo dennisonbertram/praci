@@ -20,6 +20,14 @@ vi.mock("../../lib/data-room", async (original) => ({
   saveDataRoomItem: saveItem,
 }));
 
+const shares = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/rpc", () => ({
+  rpc: {
+    investors: { shares },
+    files: { spreadsheetPreview: () => Promise.reject(new Error("offline")) },
+  },
+}));
+
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { Preview } from "./Preview";
 
@@ -55,6 +63,7 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   imageUrl.mockResolvedValue("blob:receipt");
+  shares.mockResolvedValue([]);
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -315,7 +324,7 @@ it("offers Send to agent in the preview's More actions menu when there are agent
   const names = Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
     e.textContent?.trim(),
   );
-  expect(names).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
+  expect(names).toEqual(["Send to agent", "Share", "Move", "Rename", "Delete"]);
 });
 
 it("downloads from the header icon", async () => {
@@ -354,4 +363,32 @@ it("offers no Try again for a PDF that cannot be read, since it fails the same w
   const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
   expect(labels).not.toContain("Try again");
   expect(labels).toContain("Delete");
+});
+
+it("says how many investors have the file, and nothing when none do", async () => {
+  await render();
+  expect(container.textContent).not.toContain("Shared");
+  shares.mockResolvedValue(["c1", "c2"]);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render();
+  expect(container.textContent).toContain("SharedWith");
+});
+
+it("does not show the previous file's sharing count while the next file loads", async () => {
+  shares.mockResolvedValue(["c1", "c2"]);
+  await render();
+  expect(container.textContent).toContain("SharedWith");
+  shares.mockReturnValue(new Promise(() => undefined));
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, id: "other" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("Shared");
 });
