@@ -26,7 +26,9 @@ import {
   setOpenDataRoomFolder,
   setUploadScope,
   showDeletedToast,
+  showNoticeToast,
   uploadFilesToDataRoom,
+  uploadScopeToken,
 } from "./upload-toasts";
 
 const names = () => getUploadToasts().map((toast) => toast.name);
@@ -248,4 +250,14 @@ it("says a deleted folder is gone and offers to upload the same file to the top 
   expect(hoisted.upload).toHaveBeenLastCalledWith(deck, undefined, expect.any(Function));
   expect(getUploadToasts().map((t) => t.state.kind)).toEqual(["uploaded"]);
   window.removeEventListener(DATA_ROOM_CHANGED, changed);
+});
+
+it("drops a notice whose user changed before it was shown", () => {
+  setUploadScope("u1");
+  const since = uploadScopeToken();
+  setUploadScope("u2");
+  showNoticeToast("Shared secret.pdf", since);
+  expect(names()).toEqual([]);
+  showNoticeToast("Shared ok.pdf", uploadScopeToken());
+  expect(names()).toEqual(["Shared ok.pdf"]);
 });

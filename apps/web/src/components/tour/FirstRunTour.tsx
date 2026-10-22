@@ -65,7 +65,7 @@ export function FirstRunTour({
       {
         id: "apps",
         anchor: '[data-tour="sidebar-integrations"]',
-        text: t`Connect Gmail, Calendar and more in Integrations so bots can read your mail and files.`,
+        text: t`See what bots can reach, and add more in Integrations.`,
       },
       {
         id: "account",

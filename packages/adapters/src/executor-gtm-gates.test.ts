@@ -1,8 +1,32 @@
 import type { AgentRunRequest, ConnectorTool } from "@rakazo/adapter-kit";
 import { GTM_AGENT_BUILTIN_TOOLS, gtmAgentSpawnKey, ZERNIO_READ_TOOLS } from "@rakazo/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
+import type * as GroupHandoffModule from "./group-handoff.js";
+import { EncryptedSecretStore } from "./secrets.js";
+
+const zernioCreatePost = vi.hoisted(() =>
+  vi.fn(async () => ({
+    state: "completed" as const,
+    postId: "zernio-post-1",
+    platformPostUrl: "https://social.example/post/1",
+  })),
+);
+
+afterEach(() => {
+  zernioCreatePost.mockReset();
+  zernioCreatePost.mockResolvedValue({
+    state: "completed",
+    postId: "zernio-post-1",
+    platformPostUrl: "https://social.example/post/1",
+  });
+});
+
+vi.mock("./gtm-posting.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./gtm-posting.js")>()),
+  createZernioRestAdapter: () => ({ createPost: zernioCreatePost }),
+}));
 
 const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
 const pageBrowserToolCases = [
@@ -41,10 +65,27 @@ vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
   provisionComputer: async () => ({ id: "computer-1", kind: "fake" }),
 }));
 
+vi.mock("./group-handoff.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof GroupHandoffModule>()),
+  loadGroupContext: async () => undefined,
+}));
+
 type FixtureOptions = {
   trigger?: string;
   approvedSignup?: boolean;
+  approvedPost?: boolean;
+  apiKeyReady?: boolean;
   botUserId?: string;
+  groupId?: string | null;
+  audience?: string | null;
+  gtmAgent?: boolean;
+  secretCiphertext?: string;
+  secretStore?: { load: (ciphertext: string, context: string) => Promise<string> };
+  consumedPost?: boolean;
+  parkedPost?: boolean;
+  autoReview?: boolean;
+  failEffectCreateOnce?: boolean;
+  executeAgain?: boolean;
   tools?: ConnectorTool[];
   servers?: {
     id: string;
@@ -112,6 +153,20 @@ function gtmFixture(options: FixtureOptions = {}) {
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
+  const postItem = {
+    ...item,
+    id: "approved-post-1",
+    title: "Approved post",
+    notes: "Approved post",
+    category: "public_post",
+    channel: "x",
+    target: "account-1",
+    scheduledFor: new Date("2030-01-02T03:04:05.000Z"),
+    approvedAt: new Date("2029-12-30T00:00:00.000Z"),
+    approvedBy: "user",
+    proof: options.consumedPost ? "run:gtm_post:consumed" : null,
+    ...(options.parkedPost ? { approvedAt: null, approvedBy: null } : {}),
+  };
   const routine = options.routine
     ? {
         id: "routine-1",
@@ -137,6 +192,13 @@ function gtmFixture(options: FixtureOptions = {}) {
     Object.assign(run, data);
     return run;
   });
+  const agentBot = {
+    id: run.botId,
+    spaceId: run.spaceId,
+    userId: options.botUserId ?? run.userId,
+    spawnKey: options.gtmAgent === false ? null : gtmAgentSpawnKey(options.botUserId ?? run.userId),
+    archivedAt: null,
+  };
   const serverRows = options.servers ?? [
     {
       id: "server-1",
@@ -145,6 +207,10 @@ function gtmFixture(options: FixtureOptions = {}) {
       agentBotId: run.botId,
       endpoint: "https://mcp.zernio.com/mcp",
       enabled: true,
+      agentExclusive: options.apiKeyReady === true,
+      writesEnabled: false,
+      secretId: options.apiKeyReady ? "secret-1" : null,
+      agentBot,
     },
   ];
   const scratchpadFindFirst = vi.fn(
@@ -158,10 +224,36 @@ function gtmFixture(options: FixtureOptions = {}) {
         botId?: string;
         category?: string;
         status?: string;
+        proof?: string | null;
+        OR?: { proof: string | null }[];
         approvedAt?: { not: null };
+        notes?: string;
+        scheduledFor?: Date;
+        target?: string;
+        channel?: { in?: string[] };
       };
     } = {}) => {
       if (where?.id === item.id) return { ...item };
+      if (
+        options.approvedPost &&
+        postItem.approvedAt !== null &&
+        where?.category === "public_post" &&
+        where.status === "open" &&
+        where.approvedAt?.not === null &&
+        (where.notes === undefined || where.notes === postItem.notes) &&
+        (where.scheduledFor === undefined ||
+          where.scheduledFor.getTime() === postItem.scheduledFor?.getTime()) &&
+        (where.target === undefined || where.target === postItem.target) &&
+        (where.channel === undefined || where.channel.in?.includes(postItem.channel) === true) &&
+        (where.proof === postItem.proof ||
+          where.OR?.some((clause) => clause.proof === postItem.proof) ||
+          (postItem.proof === null && where.proof === undefined && !where.OR)) &&
+        where?.spaceId === run.spaceId &&
+        where.userId === run.userId &&
+        where.botId === run.botId
+      ) {
+        return { ...postItem };
+      }
       if (
         options.approvedSignup &&
         where?.category === "create_account" &&
@@ -176,8 +268,50 @@ function gtmFixture(options: FixtureOptions = {}) {
       return null;
     },
   );
-  const scratchpadUpdateMany = vi.fn(async () => ({ count: 1 }));
-  const scratchpadFindMany = vi.fn(async () => options.routine?.items ?? []);
+  const scratchpadUpdateMany = vi.fn(
+    async ({ where, data }: { where?: { id?: string }; data?: Record<string, unknown> } = {}) => {
+      if (where?.id === postItem.id && data) Object.assign(postItem, data);
+      return { count: 1 };
+    },
+  );
+  const scratchpadFindMany = vi.fn(
+    async ({
+      where,
+    }: {
+      where?: {
+        spaceId?: string;
+        userId?: string;
+        botId?: string;
+        category?: string;
+        status?: string;
+        approvedAt?: { not: null };
+        notes?: string;
+        scheduledFor?: Date;
+        target?: string;
+        proof?: string | null;
+        OR?: { proof: string | null }[];
+        channel?: { in?: string[] };
+      };
+    } = {}) =>
+      where?.category === "public_post" &&
+      options.approvedPost &&
+      postItem.approvedAt !== null &&
+      where.status === "open" &&
+      where.approvedAt?.not === null &&
+      where.notes === postItem.notes &&
+      where.scheduledFor?.getTime() === postItem.scheduledFor?.getTime() &&
+      where.target === postItem.target &&
+      (where.channel === undefined || where.channel.in?.includes(postItem.channel) === true) &&
+      (where.proof === postItem.proof ||
+        where.OR?.some((clause) => clause.proof === postItem.proof)) &&
+      where.spaceId === run.spaceId &&
+      where.userId === run.userId &&
+      where.botId === run.botId
+        ? [{ ...postItem }]
+        : where?.category === "public_post"
+          ? []
+          : (options.routine?.items ?? []),
+  );
   const execute = vi.fn(async () => ({ ok: true }));
   const browserNavigate = vi.fn(async () => ({
     url: "https://example.test",
@@ -201,6 +335,7 @@ function gtmFixture(options: FixtureOptions = {}) {
     act: browserAct,
   };
   const externalEffects: Record<string, unknown>[] = [];
+  let effectCreateFailed = false;
   const pauseRunForInput = vi.fn(async () => true);
   const externalEffect = {
     findMany: vi.fn(async () => externalEffects),
@@ -211,6 +346,10 @@ function gtmFixture(options: FixtureOptions = {}) {
         ) ?? null,
     ),
     create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+      if (options.failEffectCreateOnce && !effectCreateFailed) {
+        effectCreateFailed = true;
+        throw new Error("synthetic effect persistence failure");
+      }
       const effect = { ...data, id: `effect-${externalEffects.length + 1}` };
       externalEffects.push(effect);
       return effect;
@@ -249,18 +388,28 @@ function gtmFixture(options: FixtureOptions = {}) {
       }),
     },
     bot: {
+      findFirst: vi.fn(async () => ({
+        id: run.botId,
+        userId: options.botUserId ?? run.userId,
+        spawnKey:
+          options.gtmAgent === false ? null : gtmAgentSpawnKey(options.botUserId ?? run.userId),
+        archivedAt: null,
+      })),
       findUnique: vi.fn(async () => ({
         id: run.botId,
         userId: options.botUserId ?? run.userId,
-        spawnKey: gtmAgentSpawnKey(options.botUserId ?? run.userId),
+        spawnKey:
+          options.gtmAgent === false ? null : gtmAgentSpawnKey(options.botUserId ?? run.userId),
         archivedAt: null,
+        audience: options.audience ?? "private",
         thread: { id: run.threadId },
       })),
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.botId,
         name: "GTM agent",
         userId: options.botUserId ?? run.userId,
-        spawnKey: gtmAgentSpawnKey(options.botUserId ?? run.userId),
+        spawnKey:
+          options.gtmAgent === false ? null : gtmAgentSpawnKey(options.botUserId ?? run.userId),
         title: "Assistant",
         description: "Test assistant",
         modelProvider: null,
@@ -269,7 +418,9 @@ function gtmFixture(options: FixtureOptions = {}) {
         computerId: "computer-1",
         computerSwitching: false,
         memoryScope: null,
+        archivedAt: null,
         computer: { id: "computer-1", scope: "dedicated", state: "running" },
+        audience: options.audience ?? "private",
       })),
       findMany: vi.fn(async () => []),
     },
@@ -282,7 +433,7 @@ function gtmFixture(options: FixtureOptions = {}) {
       findUnique: vi.fn(async () => ({ meetingTaintedAt: null })),
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.threadId,
-        groupId: null,
+        groupId: options.groupId ?? null,
         historyCompactionSummary: null,
         historyCompactedUpToSeq: null,
         nextMessageSeq: 3,
@@ -295,8 +446,12 @@ function gtmFixture(options: FixtureOptions = {}) {
     task: { findUniqueOrThrow: vi.fn(async () => task) },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
     connection: { findMany: vi.fn(async () => []) },
-    actionApprovalRule: { findMany: vi.fn(async () => []) },
-    actionAutoReviewPreference: { findUnique: vi.fn(async () => ({ enabled: false })) },
+    actionApprovalRule: {
+      findMany: vi.fn(async () => (options.autoReview ? [{ pattern: "*", policy: "allow" }] : [])),
+    },
+    actionAutoReviewPreference: {
+      findUnique: vi.fn(async () => ({ enabled: options.autoReview === true })),
+    },
     mcpServer: {
       findMany: vi.fn(async ({ where = {} }: { where?: Record<string, unknown> } = {}) =>
         serverRows.filter((server) => {
@@ -309,7 +464,19 @@ function gtmFixture(options: FixtureOptions = {}) {
       ),
     },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
-    secret: { findFirst: vi.fn(async () => null) },
+    secret: {
+      findFirst: vi.fn(async () =>
+        options.apiKeyReady
+          ? {
+              id: "secret-1",
+              spaceId: run.spaceId,
+              userId: run.userId,
+              kind: "mcp",
+              ciphertext: options.secretCiphertext ?? "encrypted",
+            }
+          : null,
+      ),
+    },
     userModelCredential: { findFirst: vi.fn(async () => null) },
     spaceBackupModel: { findMany: vi.fn(async () => []) },
     deploymentSettings: {
@@ -334,6 +501,7 @@ function gtmFixture(options: FixtureOptions = {}) {
       updateMany: scratchpadUpdateMany,
     },
     externalEffect,
+    approval: { create: vi.fn(async () => ({ id: "approval-1" })) },
     artifact: { findMany: vi.fn(async () => []) },
     routine: {
       findUnique: vi.fn(async () => routine),
@@ -350,7 +518,12 @@ function gtmFixture(options: FixtureOptions = {}) {
         },
         run: { findFirst: routineRunFindFirst, create: runCreate },
         task: { create: taskCreate },
-        scratchpadItem: { findMany: scratchpadFindMany },
+        $executeRaw: vi.fn(async () => 1),
+        scratchpadItem: {
+          findMany: scratchpadFindMany,
+          findFirst: scratchpadFindFirst,
+          updateMany: scratchpadUpdateMany,
+        },
       }),
     ),
   };
@@ -366,6 +539,13 @@ function gtmFixture(options: FixtureOptions = {}) {
         );
       } catch (error) {
         directResult = error;
+      }
+      if (options.executeAgain) {
+        directResult = await next.executeTool?.(
+          options.execute.name,
+          options.execute.args ?? {},
+          "tool-call-2",
+        );
       }
     }
     if (options.completeRoutineItem) {
@@ -409,6 +589,9 @@ function gtmFixture(options: FixtureOptions = {}) {
     },
     jobs: { enqueue },
     secrets: [],
+    secretStore: options.secretStore ?? {
+      load: vi.fn(async () => JSON.stringify({ secret: "offline-key" })),
+    },
     connector: {
       discoverTools: async (context: unknown) => {
         connectorContext.push(context);
@@ -425,6 +608,8 @@ function gtmFixture(options: FixtureOptions = {}) {
     prisma,
     executor,
     request: () => request,
+    postItem,
+    approval: prisma.approval,
     directResult: () => directResult,
     completionResult: () => completionResult,
     connectorContext,
@@ -464,6 +649,188 @@ describe("GTM executor gates", () => {
     ]) {
       expect(names).not.toContain(name);
     }
+  });
+
+  it("rejects a direct gtm_post call when the local tool was not offered", async () => {
+    const f = gtmFixture({
+      execute: {
+        name: "gtm_post",
+        args: {
+          content: "Approved post",
+          scheduledFor: "2030-01-02T03:04:05.000Z",
+          accountId: "account-1",
+        },
+      },
+    });
+
+    await f.executor.continueRun(f.run.id, "worker-1");
+
+    expect(f.directResult()).toMatchObject({
+      error: expect.stringMatching(/not available|unknown tool/),
+    });
+    expect(f.prisma.externalEffect.create).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("offers and locally dispatches the exact approved post with no approval card or connector write", async () => {
+    zernioCreatePost.mockClear();
+    zernioCreatePost.mockResolvedValue({
+      state: "completed",
+      postId: "zernio-post-1",
+      platformPostUrl: "https://social.example/post/1",
+    });
+    const secretStore = new EncryptedSecretStore("synthetic-demo-encryption-key");
+    const record = await secretStore.put(
+      JSON.stringify({ secret: "offline-zernio-key" }),
+      {
+        operationId: "test",
+        traceId: "test",
+        spaceId: "space-1",
+        userId: "user-1",
+        signal: new AbortController().signal,
+      },
+      { recordId: "secret-1" },
+    );
+    const f = gtmFixture({
+      approvedPost: true,
+      apiKeyReady: true,
+      secretCiphertext: record.ciphertext,
+      secretStore,
+      execute: {
+        name: "gtm_post",
+        args: {
+          content: "Approved post",
+          scheduledFor: "2030-01-02T03:04:05.000Z",
+          accountId: "account-1",
+        },
+      },
+      autoReview: true,
+    });
+    zernioCreatePost.mockImplementation(async () => {
+      expect(f.postItem.proof).toMatch(/^run-1:gtm_post:/);
+      return {
+        state: "completed",
+        postId: "zernio-post-1",
+        platformPostUrl: "https://social.example/post/1",
+      };
+    });
+
+    await f.executor.continueRun(f.run.id, "worker-1");
+
+    expect((f.request()?.tools ?? []).map((tool) => tool.name)).toContain("gtm_post");
+    expect(f.directResult()).toMatchObject({ ok: true, postId: "zernio-post-1" });
+    expect(zernioCreatePost).toHaveBeenCalledWith({
+      apiKey: "offline-zernio-key",
+      input: {
+        content: "Approved post",
+        scheduledFor: "2030-01-02T03:04:05.000Z",
+        accountId: "account-1",
+        platform: "twitter",
+      },
+      signal: expect.any(AbortSignal),
+    });
+    expect(f.postItem.proof).toBe("https://social.example/post/1");
+    expect(f.postItem.status).toBe("done");
+    expect(f.prisma.externalEffect.create).toHaveBeenCalledTimes(1);
+    expect(f.prisma.externalEffect.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "completed",
+          result: {
+            ok: true,
+            postId: "zernio-post-1",
+            platformPostUrl: "https://social.example/post/1",
+          },
+        }),
+      }),
+    );
+    expect(f.prisma.scratchpadItem.updateMany).toHaveBeenCalled();
+    expect(f.approval.create).not.toHaveBeenCalled();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("refuses a mismatched post before effect creation or network dispatch despite allow policy", async () => {
+    zernioCreatePost.mockClear();
+    const f = gtmFixture({
+      approvedPost: true,
+      apiKeyReady: true,
+      execute: {
+        name: "gtm_post",
+        args: {
+          content: "Not approved",
+          scheduledFor: "2030-01-02T03:04:05.000Z",
+          accountId: "account-1",
+        },
+      },
+      autoReview: true,
+    });
+    await f.executor.continueRun(f.run.id, "worker-1");
+    expect((f.request()?.tools ?? []).map((tool) => tool.name)).toContain("gtm_post");
+    expect(f.prisma.externalEffect.create).not.toHaveBeenCalled();
+    expect(zernioCreatePost).not.toHaveBeenCalled();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("resumes its own pre-dispatch stamp inside the already-offered run", async () => {
+    zernioCreatePost.mockClear();
+    const store = new EncryptedSecretStore("synthetic-demo-encryption-key");
+    const record = await store.put(
+      JSON.stringify({ secret: "offline-zernio-key" }),
+      {
+        operationId: "test",
+        traceId: "test",
+        spaceId: "space-1",
+        userId: "user-1",
+        signal: new AbortController().signal,
+      },
+      { recordId: "secret-1" },
+    );
+    const f = gtmFixture({
+      approvedPost: true,
+      apiKeyReady: true,
+      secretCiphertext: record.ciphertext,
+      secretStore: store,
+      executeAgain: true,
+      failEffectCreateOnce: true,
+      execute: {
+        name: "gtm_post",
+        args: {
+          content: "Approved post",
+          scheduledFor: "2030-01-02T03:04:05.000Z",
+          accountId: "account-1",
+        },
+      },
+    });
+    zernioCreatePost.mockImplementation(async () => {
+      expect(f.postItem.proof).toMatch(/^run-1:gtm_post:/);
+      return {
+        state: "completed",
+        postId: "zernio-post-1",
+        platformPostUrl: "https://social.example/post/1",
+      };
+    });
+
+    await f.executor.continueRun(f.run.id, "worker-1");
+
+    expect(zernioCreatePost).toHaveBeenCalledTimes(1);
+    expect(f.postItem.proof).toBe("https://social.example/post/1");
+    expect(f.prisma.externalEffect.create).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["missing key", { approvedPost: true }],
+    ["parked approval", { approvedPost: true, parkedPost: true, apiKeyReady: true }],
+    ["consumed approval", { approvedPost: true, consumedPost: true, apiKeyReady: true }],
+    ["cross-owner bot", { approvedPost: true, apiKeyReady: true, botUserId: "other-user" }],
+    ["group thread", { approvedPost: true, apiKeyReady: true, groupId: "group-1" }],
+    ["external audience", { approvedPost: true, apiKeyReady: true, audience: "external" }],
+    ["non-GTM bot", { approvedPost: true, apiKeyReady: true, gtmAgent: false }],
+  ] as const)("does not expose gtm_post for %s", async (_name, options) => {
+    const f = gtmFixture(options);
+    await f.executor.continueRun(f.run.id, "worker-1");
+    expect((f.request()?.tools ?? []).map((tool) => tool.name)).not.toContain("gtm_post");
   });
 
   it("offers page-browser tools only for a requester-owned agent with an approved open signup", async () => {
