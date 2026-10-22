@@ -175,14 +175,17 @@ export function TourPopover({
     const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
     // One fixed spot at every stop, so Next stays put and no row below the target is hidden.
     // Desktop: inside the sidebar column, just above its footer links (the chat stays clear).
-    // Phone: the foot of the drawer. A target that sits under that spot (the last stops) moves the
-    // card to the top of the screen instead of covering it.
+    // Phone: the top of the drawer, which leaves the footer rows (Integrations, Account) visible.
+    // Only a target under that spot (the first stops) moves the card to the bottom.
     const footerTop = document
       .querySelector('[data-tour="sidebar-integrations"]')
       ?.getBoundingClientRect().top;
     const floor = column && footerTop ? footerTop - 8 : window.innerHeight - 16;
-    const covered = ring && rect.bottom > floor - CARD_HEIGHT && rect.top < floor;
-    const place = covered ? { top: 16 } : { bottom: column ? window.innerHeight - floor : 16 };
+    const place = column
+      ? { bottom: window.innerHeight - floor }
+      : ring && rect.top < 16 + CARD_HEIGHT && rect.bottom > 16
+        ? { bottom: 16 }
+        : { top: 16 };
     const span = column
       ? { left: column.left + 14, width: Math.min(288, column.width - 28) }
       : undefined;
