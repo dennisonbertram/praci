@@ -405,7 +405,7 @@ export function BurnLines({
           series.map((m, i): [number, number] => [cx(i), y(Math.min(pick(m), scale.top))]);
         const out = line((m) => m.outCents);
         const last = series.length - 1;
-        const partial = series[last]?.partial === true && last > 0;
+        const partial = series[last]?.partial === true;
         // A bucket still running is a hollow dot only: a line to it would read as spend falling.
         const drawn = partial ? out.slice(0, -1) : out;
         const rev = line((m) => m.revenueCents);
@@ -510,6 +510,15 @@ export function BurnLines({
                   </>
                 ) : null}
               </>
+            ) : null}
+            {hasRevenue && revDrawn.length === 1 ? (
+              <circle
+                data-testid="burn-revenue-point"
+                cx={revDrawn[0]?.[0]}
+                cy={revDrawn[0]?.[1]}
+                r={3}
+                className="fill-muted-foreground"
+              />
             ) : null}
             {partial && series[last]?.revenueCents ? (
               <circle

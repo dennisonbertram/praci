@@ -191,3 +191,28 @@ it("labels a flat balance's gridlines evenly, with the balance on the middle one
   done();
   expect(labels).toEqual(["$950k", "$1.15M", "$1.35M"]);
 });
+
+it("shows revenue when trimming leaves one month, or one full month plus the current one", async () => {
+  const one = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      series={[month(10, 20_000, 10_000, true)]}
+      onOpen={() => {}}
+    />,
+  );
+  expect(one.el.querySelector("[data-testid=burn-revenue-end]")).not.toBeNull();
+  one.done();
+  const two = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      series={[month(9, 100_000, 50_000), month(10, 20_000, 0, true)]}
+      onOpen={() => {}}
+    />,
+  );
+  expect(two.el.querySelector("[data-testid=burn-revenue-point]")).not.toBeNull();
+  two.done();
+});
