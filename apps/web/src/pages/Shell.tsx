@@ -5847,7 +5847,11 @@ export function ShellPage() {
                 setFocusComposerBotId(bot.id);
                 openBot(bot.id);
               }}
-              onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+              onConnectMail={() =>
+                navigate("/app/integrations?connect=gmail&returnTo=/app/inbox", {
+                  state: { connectNow: true },
+                })
+              }
               onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
               onAllowMailRules={(connectionId) =>
                 navigate(

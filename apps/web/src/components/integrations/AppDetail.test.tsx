@@ -113,24 +113,22 @@ function Where() {
     </>
   );
 }
+const tree = (url: string, value: IntegrationsData, state?: unknown) => (
+  <MemoryRouter
+    initialEntries={[{ pathname: url.split("?")[0], search: `?${url.split("?")[1] ?? ""}`, state }]}
+  >
+    <Where />
+    <Routes>
+      <Route path="/app/integrations/app/:connectorId/:slug" element={<AppDetail data={value} />} />
+      <Route path="*" element={null} />
+    </Routes>
+  </MemoryRouter>
+);
 async function show(url: string, value: IntegrationsData) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  await act(async () =>
-    root.render(
-      <MemoryRouter initialEntries={[url]}>
-        <Where />
-        <Routes>
-          <Route
-            path="/app/integrations/app/:connectorId/:slug"
-            element={<AppDetail data={value} />}
-          />
-          <Route path="*" element={null} />
-        </Routes>
-      </MemoryRouter>,
-    ),
-  );
+  await act(async () => root.render(tree(url, value)));
 }
 afterEach(() => {
   act(() => root.unmount());
@@ -369,6 +367,28 @@ it("opens the connect dialog on arrival with ?connect=1 and returns to ?next= wh
   expect(dialog()?.getAttribute("data-confirm-first")).toBe("true");
   await act(async () => (dialog() as HTMLButtonElement).click());
   expect(where()).toBe("/app/data-room");
+});
+
+it("keeps the same dialog open when the first account lands and the page switches to the connected view", async () => {
+  const url = `${PAGE}?connect=1&next=%2Fapp%2Fdata-room`;
+  await show(url, data());
+  const before = dialog();
+  expect(before).not.toBeNull();
+  const connected: Connection = {
+    ...appConnection({ connectorId: "google", provider: "gmail", displayName: "Gmail" }),
+  };
+  await act(async () => root.render(tree(url, data({ connections: [connected] }))));
+  expect(dialog()).toBe(before);
+});
+
+it("starts the sign-in without a second question when the app's own button sent the person", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () =>
+    root.render(tree(`${PAGE}?connect=1&next=%2Fapp%2Finbox`, data(), { connectNow: true })),
+  );
+  expect(dialog()?.getAttribute("data-confirm-first")).toBe("false");
 });
 
 it("ignores an external ?next= and stays put after connecting", async () => {
