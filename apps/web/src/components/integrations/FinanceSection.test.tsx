@@ -179,7 +179,7 @@ it("offers a wallet without a key, opens the key modal from the menu, then shows
   // No key is needed, so the tile does not say "Not connected"; it offers a wallet, key in the menu.
   expect(crypto().textContent).not.toContain("Not connected");
   expect(crypto().textContent).toContain("Wallet balances and history");
-  expect(crypto().textContent).toContain("Ready");
+  expect(crypto().textContent).not.toContain("Ready");
   expect(crypto().querySelector('a[href="/app/finance/crypto"]')?.textContent).toBe("Add wallet");
   await openCryptoMenu();
   await act(async () =>

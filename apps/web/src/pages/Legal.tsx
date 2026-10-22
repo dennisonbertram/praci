@@ -3,7 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import type { LegalDeadline } from "@rakazo/contracts";
 import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
-import { X } from "lucide-react";
+import { Scale, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { FinanceSpace } from "../components/finance/ui";
@@ -16,6 +16,7 @@ import {
 } from "../components/finance/ui";
 import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
@@ -266,6 +267,12 @@ function Legal({
     !running &&
     Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
+  // Below the tabs, so the result appearing never moves them.
+  const resultLine = scanResult ? (
+    <p role="status" className="mb-3 text-sm text-muted-foreground">
+      {scanResult}
+    </p>
+  ) : null;
   return (
     <div>
       <PageHeader
@@ -310,11 +317,6 @@ function Legal({
       {scanError ? (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {scanError}
-        </p>
-      ) : null}
-      {scanResult ? (
-        <p role="status" className="mb-3 text-sm text-muted-foreground">
-          {scanResult}
         </p>
       ) : null}
       {!noDocuments && status && !status.allowed && status.recipients.length > 0 ? (
@@ -378,31 +380,37 @@ function Legal({
       ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
       {noDocuments ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="max-w-sm text-sm text-muted-foreground">
-            <Trans>Add contracts to your Data room and Legal reads them.</Trans>
-          </p>
+        <PageEmptyState
+          icon={<Scale className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+          title={<Trans>No contracts yet</Trans>}
+          description={<Trans>Add contracts to your Data room and Legal reads them.</Trans>}
+        >
           <Button variant="outline" render={<Link to={DATA_ROOM_PATH} />}>
             <Trans>Add files</Trans>
           </Button>
-        </div>
+        </PageEmptyState>
       ) : !needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {running ? (
-              <Trans>Reading your Data room…</Trans>
-            ) : data.agent.lastScanAt ? (
-              <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
-            ) : data.agent.dailyScanActive ? (
-              <Trans>
-                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
-                every day.
-              </Trans>
-            ) : (
-              <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
-            )}
-          </p>
-        </div>
+        <>
+          {resultLine}
+          <PageEmptyState
+            icon={<Scale className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+            title={<Trans>No contracts yet</Trans>}
+            description={
+              running ? (
+                <Trans>Reading your Data room…</Trans>
+              ) : data.agent.lastScanAt ? (
+                <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
+              ) : data.agent.dailyScanActive ? (
+                <Trans>
+                  Press Scan now to read your Data room for contracts and deadlines. Legal also
+                  scans every day.
+                </Trans>
+              ) : (
+                <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
+              )
+            }
+          />
+        </>
       ) : (
         <>
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
@@ -426,6 +434,7 @@ function Legal({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          {resultLine}
           {view === "contracts" ? (
             <LegalContracts contracts={data.contracts} selfName={selfName} />
           ) : null}
