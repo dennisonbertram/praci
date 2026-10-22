@@ -218,7 +218,9 @@ export function SettingsOverlay({
 
   function leaveSettings(next: () => void) {
     if (panelBusy) return;
-    void refreshVoiceStatus().finally(next);
+    // Leave now; the refresh can take seconds and must not hold the dialog open.
+    next();
+    void refreshVoiceStatus();
   }
 
   function requestClose() {

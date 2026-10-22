@@ -520,6 +520,7 @@ import {
   legalGraph,
   legalItemLinks,
   legalOverview,
+  legalSafeCount,
   legalScanNow,
   legalUpdateDeadline,
 } from "./legal.js";
@@ -7654,6 +7655,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       overview: authed.legal.overview.handler(({ context }) =>
         legalOverview(legalDeps, context.actor),
+      ),
+      safeCount: authed.legal.safeCount.handler(({ context }) =>
+        legalSafeCount(legalDeps, context.actor),
       ),
       graph: authed.legal.graph.handler(({ context }) => legalGraph(legalDeps, context.actor)),
       doneDeadlines: authed.legal.doneDeadlines.handler(({ context }) =>

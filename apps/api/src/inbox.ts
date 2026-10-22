@@ -12,6 +12,7 @@ import type { TriageReadinessDeps } from "@rakazo/adapters";
 import {
   isMailConnection,
   mailSyncStatus,
+  replyAllDiffers,
   requestMailSync,
   senderRulesState,
   triageReadiness,
@@ -696,6 +697,10 @@ export async function inboxGet(
       ...(row.fromSelf ? { fromSelf: true } : {}),
       to: message.to.map(formatAddress).join(", "),
       cc: message.cc.map(formatAddress).join(", "),
+      replyAllDiffers: replyAllDiffers(message, [
+        ...(account.address ? [account.address] : []),
+        ...(row.fromSelf ? [row.fromAddress] : []),
+      ]),
       date: message.date,
       subject: message.subject,
       html:

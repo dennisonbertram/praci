@@ -71,12 +71,18 @@ export const Unknown: Story = {
     mail: { ...mail, connectionId: "connection_1", outcome: "unknown" },
   },
 };
-/** The agent's own send failed after approval: the card says why. */
+/** The agent's send failed with no account chosen: the card says why and always offers the composer. */
 export const AgentSendFailed: Story = {
   args: {
     status: "answered",
     answer: "allow",
-    mail: { ...mail, outcome: "failed", error: "No connected mail account sales@example.test" },
+    mail: {
+      ...mail,
+      account: undefined,
+      outcome: "failed",
+      error: "Choose which mail account to use: me@example.test or sales@example.test.",
+    },
+    onOpenComposer: () => {},
   },
 };
 export const NotWaiting: Story = { args: { canAnswer: false } };

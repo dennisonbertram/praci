@@ -307,6 +307,8 @@ function InboxMessage({
   // The caller's row is newer than the loaded copy after an archive or a move.
   const inInbox = inInboxProp ?? message?.inInbox !== false;
   const canArchive = onArchive && inInbox ? onArchive : undefined;
+  // The server compares the recipients of Reply and Reply all; an older server says nothing.
+  const canReplyAll = message?.replyAllDiffers !== false;
   useEffect(() => {
     if (!onNavigate || composing) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -320,11 +322,12 @@ function InboxMessage({
       if (step) {
         if (allowStep(event)) onNavigate(step);
       } else if (event.key === "e" && canArchive) canArchive();
-      else if (message && event.key in COMPOSE_KEYS) setComposing(COMPOSE_KEYS[event.key] ?? null);
+      else if (message && event.key in COMPOSE_KEYS && (event.key !== "a" || canReplyAll))
+        setComposing(COMPOSE_KEYS[event.key] ?? null);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onNavigate, composing, setComposing, nextId, previousId, message, canArchive]);
+  }, [onNavigate, composing, setComposing, nextId, previousId, message, canArchive, canReplyAll]);
 
   const title = gone
     ? t`Email not found`
@@ -498,10 +501,12 @@ function InboxMessage({
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setComposing("replyAll")}>
-                  <ReplyAll aria-hidden="true" />
-                  <Trans>Reply all</Trans>
-                </DropdownMenuItem>
+                {canReplyAll ? (
+                  <DropdownMenuItem onClick={() => setComposing("replyAll")}>
+                    <ReplyAll aria-hidden="true" />
+                    <Trans>Reply all</Trans>
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={() => setComposing("forward")}>
                   <Forward aria-hidden="true" />
                   <Trans>Forward</Trans>

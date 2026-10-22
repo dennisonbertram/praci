@@ -111,7 +111,6 @@ export function EmailAgentPanel({
       editableBotName: (id: string | undefined) => outer?.editableBotName(id),
       disableTool: async (id: string, tool: string) => outer?.disableTool(id, tool),
       openComposer: (failed: ComposerDraft) => onReplyWithDraft(failed.body, failed),
-      accountFromThread: true,
     }),
     [outer, onReplyWithDraft],
   );
@@ -273,7 +272,7 @@ export function EmailAgentPanel({
         <div className="min-h-0 flex-1" />
       )}
       {snapshot && !snapshot.messages.some(isOwnerMessage) ? (
-        <div data-toast-avoid="" className="shrink-0 px-7 pb-2">
+        <div data-toast-avoid="" className="shrink-0 px-4 pb-2">
           <Button
             variant="outline"
             size="sm"
@@ -285,7 +284,7 @@ export function EmailAgentPanel({
         </div>
       ) : null}
       {draft && !running && !stale ? (
-        <div data-toast-avoid="" className="shrink-0 px-7 pb-2">
+        <div data-toast-avoid="" className="shrink-0 px-4 pb-2">
           <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
             <Trans>Reply with draft</Trans>
           </Button>

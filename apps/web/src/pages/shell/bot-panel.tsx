@@ -647,198 +647,200 @@ export function BotSettings({
                 className="size-4 transition-transform group-open:rotate-90"
               />
             </summary>
-            <ComputerModePicker
-              value={computerMode}
-              onChange={(value) => saveOnChange(() => setComputerMode(value))}
-            />
-            {hostComputer ? (
-              <div className="mt-4">
-                <div className="text-[13.5px] font-medium text-foreground">
-                  <Trans>Runs on</Trans>
+            <div className="ms-2 border-s border-border ps-4">
+              <ComputerModePicker
+                value={computerMode}
+                onChange={(value) => saveOnChange(() => setComputerMode(value))}
+              />
+              {hostComputer ? (
+                <div className="mt-4">
+                  <div className="text-[13.5px] font-medium text-foreground">
+                    <Trans>Runs on</Trans>
+                  </div>
+                  <RunsOnPicker
+                    value={runsOn}
+                    onChange={(value) => saveOnChange(() => setRunsOn(value))}
+                  />
                 </div>
-                <RunsOnPicker
-                  value={runsOn}
-                  onChange={(value) => saveOnChange(() => setRunsOn(value))}
-                />
-              </div>
-            ) : null}
-            <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={null}>
-                <ScratchpadSection botId={bot.id} />
-              </Suspense>
-            </ErrorBoundary>
-            {advancedOpened ? (
+              ) : null}
               <ErrorBoundary fallback={<SectionLoadFailed />}>
                 <Suspense fallback={null}>
-                  <KnowledgeSection botId={bot.id} />
+                  <ScratchpadSection botId={bot.id} />
                 </Suspense>
               </ErrorBoundary>
-            ) : null}
-            <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
-              <Trans>Model</Trans>
-              <ModelPicker
-                id={`${ids}-model`}
-                className="mt-2 w-full"
-                label={t`Model`}
-                searchLabel={t`Search models`}
-                emptyLabel={t`No matching models`}
-                loadingLabel={t`Loading models…`}
-                loading={!modelMetaReady}
-                value={selectedModelKey}
-                options={[
-                  {
-                    value: "",
-                    label:
-                      t`System model` +
-                      (me?.defaultModel
-                        ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
-                        : ""),
-                  },
-                  ...(selectedModelKey &&
-                  !connectedOptions.some((option) => option.key === selectedModelKey)
-                    ? [
-                        {
-                          value: selectedModelKey,
-                          label: unavailableModel ?? selectedModel?.modelId ?? selectedModelKey,
-                          provider: selectedModel?.provider,
-                        },
-                      ]
-                    : []),
-                  ...connectedOptions.map((option) => ({
-                    ...option,
-                    value: option.key,
-                    id: option.modelId,
-                    providerName: catalog.find((entry) => entry.provider === option.provider)
-                      ?.providerName,
-                  })),
-                ]}
-                onChange={(value) => {
-                  saveOnChange(() => {
-                    setModelKey(value);
-                    setThinkingLevel("");
-                  });
-                }}
-              />
-              {unavailableModel ? (
-                <span className="mt-1.5 block text-[12.5px] font-normal text-muted-foreground">
-                  {t`Using the system model: ${unavailableModel} isn't available`}
-                </span>
+              {advancedOpened ? (
+                <ErrorBoundary fallback={<SectionLoadFailed />}>
+                  <Suspense fallback={null}>
+                    <KnowledgeSection botId={bot.id} />
+                  </Suspense>
+                </ErrorBoundary>
               ) : null}
-            </label>
-            {thinkingOptions.length ? (
-              <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
-                <Trans>Thinking</Trans>
-                <NativeSelect
-                  id={`${ids}-thinking`}
+              <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
+                <Trans>Model</Trans>
+                <ModelPicker
+                  id={`${ids}-model`}
                   className="mt-2 w-full"
-                  value={thinkingLevel}
-                  onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
-                >
-                  <NativeSelectOption value="">
-                    {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
-                  </NativeSelectOption>
-                  {thinkingOptions.map((level) => (
-                    <NativeSelectOption key={level} value={level}>
-                      {thinkingLevelLabel(level)}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              </label>
-            ) : null}
-            {memoryProviderConfigured ? (
-              <div className="mt-4 text-[13.5px] font-medium text-foreground">
-                <Trans>Memory scope</Trans>
-                <div className="mt-2 flex gap-2">
-                  {(
-                    [
-                      { value: null, label: t`Inherit default` },
-                      { value: "isolated" as const, label: t`Isolated` },
-                      { value: "shared" as const, label: t`Shared` },
-                    ] satisfies Array<{ value: "isolated" | "shared" | null; label: string }>
-                  ).map((option) => (
-                    <Toggle
-                      key={option.label}
-                      variant="outline"
-                      size="sm"
-                      pressed={memoryScope === option.value}
-                      onPressedChange={(pressed) => {
-                        if (pressed) saveOnChange(() => setMemoryScope(option.value));
-                      }}
-                      className={`flex-1 ${SELECTED_SEGMENT}`}
-                    >
-                      {option.label}
-                    </Toggle>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <label
-              htmlFor={`${ids}-auto-speak`}
-              className="mt-5 flex cursor-pointer items-center justify-between gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
-            >
-              <Trans>Read replies aloud</Trans>
-              <Switch
-                id={`${ids}-auto-speak`}
-                checked={autoSpeak}
-                onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
-              />
-            </label>
-            {voices.length ? (
-              <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
-                <Trans>Voice</Trans>
-                <NativeSelect
-                  id={`${ids}-voice`}
-                  className="mt-2 w-full"
-                  value={voiceId}
-                  onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
-                >
-                  <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
-                  {voices.map((voice) => (
-                    <NativeSelectOption key={voice.id} value={voice.id}>
-                      {voice.label}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              </label>
-            ) : null}
-            <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
-              <Trans>Disabled tools</Trans>
-              <NativeSelect
-                id={`${ids}-disabled-tools`}
-                className="mt-1.5 w-full"
-                value=""
-                onChange={(event) => disableBuiltinTool(event.target.value)}
-              >
-                <NativeSelectOption value="">{t`Turn off a tool`}</NativeSelectOption>
-                {BUILTIN_TOOL_NAMES.filter((name) => !disabledBuiltinTools.includes(name)).map(
-                  (name) => (
-                    <NativeSelectOption key={name} value={name}>
-                      {toolLabel(name)}
-                    </NativeSelectOption>
-                  ),
-                )}
-              </NativeSelect>
-            </label>
-            {disabledBuiltinTools.map((toolName) => (
-              <label
-                key={toolName}
-                htmlFor={`${ids}-disabled-${toolName}`}
-                className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
-              >
-                <span>{toolLabel(toolName)}</span>
-                <Switch
-                  id={`${ids}-disabled-${toolName}`}
-                  checked
-                  onCheckedChange={(checked) => {
-                    if (checked) return;
-                    const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
-                    setDisabledBuiltinTools(next);
-                    void enqueueSave({ disabledBuiltinTools: next });
+                  label={t`Model`}
+                  searchLabel={t`Search models`}
+                  emptyLabel={t`No matching models`}
+                  loadingLabel={t`Loading models…`}
+                  loading={!modelMetaReady}
+                  value={selectedModelKey}
+                  options={[
+                    {
+                      value: "",
+                      label:
+                        t`System model` +
+                        (me?.defaultModel
+                          ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
+                          : ""),
+                    },
+                    ...(selectedModelKey &&
+                    !connectedOptions.some((option) => option.key === selectedModelKey)
+                      ? [
+                          {
+                            value: selectedModelKey,
+                            label: unavailableModel ?? selectedModel?.modelId ?? selectedModelKey,
+                            provider: selectedModel?.provider,
+                          },
+                        ]
+                      : []),
+                    ...connectedOptions.map((option) => ({
+                      ...option,
+                      value: option.key,
+                      id: option.modelId,
+                      providerName: catalog.find((entry) => entry.provider === option.provider)
+                        ?.providerName,
+                    })),
+                  ]}
+                  onChange={(value) => {
+                    saveOnChange(() => {
+                      setModelKey(value);
+                      setThinkingLevel("");
+                    });
                   }}
                 />
+                {unavailableModel ? (
+                  <span className="mt-1.5 block text-[12.5px] font-normal text-muted-foreground">
+                    {t`Using the system model: ${unavailableModel} isn't available`}
+                  </span>
+                ) : null}
               </label>
-            ))}
-            {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
+              {thinkingOptions.length ? (
+                <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
+                  <Trans>Thinking</Trans>
+                  <NativeSelect
+                    id={`${ids}-thinking`}
+                    className="mt-2 w-full"
+                    value={thinkingLevel}
+                    onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
+                  >
+                    <NativeSelectOption value="">
+                      {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
+                    </NativeSelectOption>
+                    {thinkingOptions.map((level) => (
+                      <NativeSelectOption key={level} value={level}>
+                        {thinkingLevelLabel(level)}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </label>
+              ) : null}
+              {memoryProviderConfigured ? (
+                <div className="mt-4 text-[13.5px] font-medium text-foreground">
+                  <Trans>Memory scope</Trans>
+                  <div className="mt-2 flex gap-2">
+                    {(
+                      [
+                        { value: null, label: t`Inherit default` },
+                        { value: "isolated" as const, label: t`Isolated` },
+                        { value: "shared" as const, label: t`Shared` },
+                      ] satisfies Array<{ value: "isolated" | "shared" | null; label: string }>
+                    ).map((option) => (
+                      <Toggle
+                        key={option.label}
+                        variant="outline"
+                        size="sm"
+                        pressed={memoryScope === option.value}
+                        onPressedChange={(pressed) => {
+                          if (pressed) saveOnChange(() => setMemoryScope(option.value));
+                        }}
+                        className={`flex-1 ${SELECTED_SEGMENT}`}
+                      >
+                        {option.label}
+                      </Toggle>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <label
+                htmlFor={`${ids}-auto-speak`}
+                className="mt-5 flex cursor-pointer items-center justify-between gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
+              >
+                <Trans>Read replies aloud</Trans>
+                <Switch
+                  id={`${ids}-auto-speak`}
+                  checked={autoSpeak}
+                  onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
+                />
+              </label>
+              {voices.length ? (
+                <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
+                  <Trans>Voice</Trans>
+                  <NativeSelect
+                    id={`${ids}-voice`}
+                    className="mt-2 w-full"
+                    value={voiceId}
+                    onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
+                  >
+                    <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
+                    {voices.map((voice) => (
+                      <NativeSelectOption key={voice.id} value={voice.id}>
+                        {voice.label}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </label>
+              ) : null}
+              <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
+                <Trans>Disabled tools</Trans>
+                <NativeSelect
+                  id={`${ids}-disabled-tools`}
+                  className="mt-1.5 w-full"
+                  value=""
+                  onChange={(event) => disableBuiltinTool(event.target.value)}
+                >
+                  <NativeSelectOption value="">{t`Turn off a tool`}</NativeSelectOption>
+                  {BUILTIN_TOOL_NAMES.filter((name) => !disabledBuiltinTools.includes(name)).map(
+                    (name) => (
+                      <NativeSelectOption key={name} value={name}>
+                        {toolLabel(name)}
+                      </NativeSelectOption>
+                    ),
+                  )}
+                </NativeSelect>
+              </label>
+              {disabledBuiltinTools.map((toolName) => (
+                <label
+                  key={toolName}
+                  htmlFor={`${ids}-disabled-${toolName}`}
+                  className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
+                >
+                  <span>{toolLabel(toolName)}</span>
+                  <Switch
+                    id={`${ids}-disabled-${toolName}`}
+                    checked
+                    onCheckedChange={(checked) => {
+                      if (checked) return;
+                      const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
+                      setDisabledBuiltinTools(next);
+                      void enqueueSave({ disabledBuiltinTools: next });
+                    }}
+                  />
+                </label>
+              ))}
+              {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
+            </div>
           </details>
           {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
           <div className="mt-3 flex flex-col">

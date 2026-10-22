@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 278 of 278
-- Web and shared components: 725
+- Web and shared components: 727
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -184,7 +184,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | PathBar | [apps/web/src/components/data-room/PathBar.tsx](../../apps/web/src/components/data-room/PathBar.tsx) | [PathBar.stories.tsx](../../apps/web/src/components/data-room/PathBar.stories.tsx) | web |
 | Field, Tag, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
-| FileViewer, IconAction, PreviewActions, FullScreenPreview | [apps/web/src/components/data-room/PreviewActions.tsx](../../apps/web/src/components/data-room/PreviewActions.tsx) | [PreviewActions.stories.tsx](../../apps/web/src/components/data-room/PreviewActions.stories.tsx) | web |
+| FileViewer, PdfPhoneFallback, IconAction, PreviewActions, FullScreenPreview | [apps/web/src/components/data-room/PreviewActions.tsx](../../apps/web/src/components/data-room/PreviewActions.tsx) | [PreviewActions.stories.tsx](../../apps/web/src/components/data-room/PreviewActions.stories.tsx) | web |
 | ProcessingStrip | [apps/web/src/components/data-room/ProcessingStrip.tsx](../../apps/web/src/components/data-room/ProcessingStrip.tsx) | [ProcessingStrip.stories.tsx](../../apps/web/src/components/data-room/ProcessingStrip.stories.tsx) | web |
 | ResizableFolders | [apps/web/src/components/data-room/ResizableFolders.tsx](../../apps/web/src/components/data-room/ResizableFolders.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |
 | SelectionBar | [apps/web/src/components/data-room/SelectionBar.tsx](../../apps/web/src/components/data-room/SelectionBar.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx), [SelectionBar.stories.tsx](../../apps/web/src/components/data-room/SelectionBar.stories.tsx) | web |
@@ -344,7 +344,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | Figure, Summary, ConnectCartaDialog, UpdateRow, UpdatesSection, ContactRow, InvestorsPage | [apps/web/src/pages/Investors.tsx](../../apps/web/src/pages/Investors.tsx) | [Investors.stories.tsx](../../apps/web/src/pages/Investors.stories.tsx) | web |
 | UpdateEditor | [apps/web/src/pages/investors/UpdateEditor.tsx](../../apps/web/src/pages/investors/UpdateEditor.tsx) | [UpdateEditor.stories.tsx](../../apps/web/src/pages/investors/UpdateEditor.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
-| LegalPage, Legal, DoneDeadlines, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
+| LegalPage, Legal, DoneDeadlines, GraphTab, BuildingGraph, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
 | NextDeadline, Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
 | LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
 | LocalSettingsPage | [apps/web/src/pages/LocalSettings.tsx](../../apps/web/src/pages/LocalSettings.tsx) | [LocalSettings.stories.tsx](../../apps/web/src/pages/LocalSettings.stories.tsx) | web |
