@@ -32,6 +32,7 @@ function Standalone(props: {
   sources: FinanceSource[];
   onChanged: () => void;
   extras?: Parameters<typeof FinanceSection>[0]["extras"];
+  mode?: Parameters<typeof FinanceSection>[0]["mode"];
 }) {
   return <FinanceSection {...props} status={useFinanceStatus()} />;
 }
@@ -51,6 +52,7 @@ async function show(
   sources: FinanceSource[],
   onChanged = vi.fn(),
   extras?: Parameters<typeof FinanceSection>[0]["extras"],
+  mode?: Parameters<typeof FinanceSection>[0]["mode"],
 ) {
   container = document.createElement("div");
   document.body.append(container);
@@ -58,7 +60,7 @@ async function show(
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <Standalone sources={sources} onChanged={onChanged} extras={extras} />
+        <Standalone sources={sources} onChanged={onChanged} extras={extras} mode={mode} />
       </MemoryRouter>,
     ),
   );
@@ -111,6 +113,19 @@ it("shows a connected bank's extra line (its agents) like the other connected ti
   expect(tile("mercury")?.textContent).toContain("Used by Finance agent");
   // A tile that is not connected has no agents to show.
   expect(tile("brex")?.textContent).not.toContain("Used by");
+});
+
+it("puts a lapsed source in its own list, not under Connected or Available", async () => {
+  const sources = [source("mercury", "needs_reconnect"), source("brex", "ok")];
+  await show(sources, vi.fn(), undefined, "lapsed");
+  expect(tile("mercury")).not.toBeNull();
+  expect(tile("brex")).toBeNull();
+});
+
+it("leaves a lapsed source out of the available tiles", async () => {
+  await show([source("mercury", "needs_reconnect")], vi.fn(), undefined, "available");
+  expect(tile("mercury")).toBeNull();
+  expect(tile("brex")).not.toBeNull();
 });
 
 it("reconnects a source that needs it and reports a cancelled sign-in", async () => {

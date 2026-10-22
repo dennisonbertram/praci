@@ -161,7 +161,7 @@ describe("text contrast", () => {
         ).toBeGreaterThanOrEqual(4.5);
       }
       // Muted text is the dimmest text rows use (inbox previews), including on a hovered or selected row.
-      for (const surface of ["background", "card", "muted"] as const) {
+      for (const surface of ["background", "card", "muted", "sidebar"] as const) {
         expect(
           contrast(palette.mutedForeground, palette[surface]),
           `muted on ${surface}`,

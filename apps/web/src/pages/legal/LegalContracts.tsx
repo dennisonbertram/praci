@@ -66,7 +66,7 @@ function Title({ contract }: { contract: LegalContract }) {
     <Link
       to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
       state={{ from: "legal" }}
-      className="rk-tap min-w-0 font-medium hover:underline"
+      className="rk-tap min-w-0 truncate font-medium hover:underline"
     >
       {contract.title}
     </Link>
@@ -187,21 +187,25 @@ export function LegalContracts({
             <TableRow
               key={contract.id}
               onClick={open(contract)}
-              className="cursor-pointer group-data-[compact]/table:h-12"
+              className="cursor-pointer group-data-[compact]/table:h-10"
             >
               <TableCell title={`${contract.title} (${contract.contractType})`}>
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-72 items-center gap-2">
                   <Title contract={contract} />
                   <Status status={contract.status} />
                 </div>
               </TableCell>
               <TableCell title={contract.counterparties.join(", ")}>
-                {contract.counterparties.join(", ") || dash}
+                <span className="block max-w-56 truncate">
+                  {contract.counterparties.join(", ") || dash}
+                </span>
               </TableCell>
               <TableCell className="whitespace-nowrap tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell title={renewal(contract)}>{renewal(contract)}</TableCell>
+              <TableCell className="whitespace-nowrap" title={renewal(contract)}>
+                {renewal(contract)}
+              </TableCell>
               <TableCell className="whitespace-nowrap text-end tabular-nums">
                 {value(contract)}
               </TableCell>

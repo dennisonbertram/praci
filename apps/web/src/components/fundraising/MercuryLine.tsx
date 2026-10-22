@@ -40,7 +40,14 @@ export function MercuryLine({
     );
   const failed = state.status !== "ok";
   const synced = state.lastSyncedAt ? formatRelativeTime(state.lastSyncedAt) : null;
-  const label = failed ? t`Sync failed` : synced ? t`Mercury · ${synced}` : t`Mercury`;
+  const label =
+    state.status === "needs_reconnect"
+      ? t`Reconnect Mercury`
+      : failed
+        ? t`Sync failed`
+        : synced
+          ? t`Mercury · ${synced}`
+          : t`Mercury`;
   const unreadable = state.unreadable;
   return (
     <div className="flex items-center gap-2">

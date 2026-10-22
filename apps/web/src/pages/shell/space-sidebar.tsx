@@ -88,6 +88,7 @@ import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterPreviewText,
   rosterWorkStatusLabel,
 } from "../../lib/roster-status";
 import { formatRosterTime } from "../../lib/roster-time";
@@ -98,7 +99,7 @@ import type { ContextMenuPosition } from "../BotContextMenu";
 import type { SettingsSection } from "../SettingsOverlay";
 import { BotCreatePicker, pickerInitialFocus } from "./bot-picker";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./roster-tab-stops";
-import { moreBarHeight, rowsBelow } from "./rows-below";
+import { moreBarHeight, rowsBelow, scrollingList } from "./rows-below";
 import { SidebarHeaderRow } from "./sidebar-header-row";
 import { endOnWholeRow } from "./whole-rows";
 
@@ -555,18 +556,20 @@ export function SpaceSidebar({
   const rosterStopId = useRef<string | null>(null);
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
   useEffect(() => {
-    const list = sidebarScrollRef.current;
-    if (!list) return;
+    const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
     const trim = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => endOnWholeRow(list));
+      frame = requestAnimationFrame(() => endOnWholeRow(scrollers));
     };
     trim();
     const resize = new ResizeObserver(trim);
-    resize.observe(list);
     const mutate = new MutationObserver(trim);
-    mutate.observe(list, { childList: true, subtree: true });
+    for (const el of scrollers) {
+      if (!el) continue;
+      resize.observe(el);
+      mutate.observe(el, { childList: true, subtree: true });
+    }
     return () => {
       cancelAnimationFrame(frame);
       resize.disconnect();
@@ -575,12 +578,17 @@ export function SpaceSidebar({
   }, [mobileSidebarOpen]);
   // "+N more" over the foot of the list while rows remain below the fold.
   const [hiddenRows, setHiddenRows] = useState(0);
+  // The bar fills the margin left below the last whole row.
+  const [moreBarFill, setMoreBarFill] = useState(0);
   useEffect(() => {
     const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
     const measure = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setHiddenRows(rowsBelow(scrollers)));
+      frame = requestAnimationFrame(() => {
+        setHiddenRows(rowsBelow(scrollers));
+        setMoreBarFill(Number.parseFloat(scrollingList(scrollers)?.style.marginBottom ?? "") || 0);
+      });
     };
     measure();
     for (const el of scrollers) el?.addEventListener("scroll", measure, { passive: true });
@@ -681,7 +689,7 @@ export function SpaceSidebar({
                 className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                   activityMode
                     ? "bg-sidebar-accent text-foreground"
-                    : "text-muted-foreground/70 hover:text-foreground/75"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
@@ -689,7 +697,7 @@ export function SpaceSidebar({
               </button>
               <button
                 type="button"
-                className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 lg:inline-flex"
+                className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground lg:inline-flex"
                 aria-label={t`Hide sidebar`}
                 title={t`Hide sidebar`}
                 data-testid="minimize-bots-sidebar"
@@ -699,7 +707,7 @@ export function SpaceSidebar({
               </button>
               <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                 <PopoverTrigger
-                  className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                  className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground hover:text-foreground"
                   title={t`Create`}
                   aria-label={t`Create`}
                   data-testid="create-menu-trigger"
@@ -772,7 +780,7 @@ export function SpaceSidebar({
       ) : null}
       <div
         ref={sidebarPaneRef}
-        className="rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
+        className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
       >
         {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
@@ -1004,7 +1012,7 @@ export function SpaceSidebar({
         )}
         <div
           ref={sidebarScrollRef}
-          className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+          className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
         >
           {activityMode && !rail ? (
             <ActivityList
@@ -1169,12 +1177,13 @@ export function SpaceSidebar({
                           type="button"
                           aria-current={group.current ? "true" : undefined}
                           data-roster-row={group.key}
+                          data-roster-head=""
                           data-sidebar-current={group.current ? "" : undefined}
                           title={group.relabeled ? group.spaceName : undefined}
                           className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                           onClick={() => {
                             if (group.emptySpaceId) {
-                              openSpaceChat(group.emptySpaceId, "/onboarding");
+                              openSpaceChat(group.emptySpaceId, "/app");
                               return;
                             }
                             toggleSidebarSection(group.key);
@@ -1341,9 +1350,9 @@ export function SpaceSidebar({
                           ? compactStatusLabel
                           : (workStatusLabel ??
                             (item.kind === "bot"
-                              ? maskCurrencyWhenHidden(item.chat.preview) ||
+                              ? maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                 (item.chat.status !== "idle" ? item.chat.status : "")
-                              : maskCurrencyWhenHidden(item.chat.preview) ||
+                              : maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                 item.chat.members.map((member) => member.name).join(", ")));
                         const rowDragEnabled =
                           dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
@@ -1778,8 +1787,8 @@ export function SpaceSidebar({
           <button
             type="button"
             data-testid="sidebar-more-rows"
-            className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center bg-sidebar text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-            style={{ height: moreBarHeight() }}
+            className="absolute inset-x-0 bottom-0 z-10 flex items-start justify-center bg-sidebar pt-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            style={{ height: Math.max(moreBarHeight(), moreBarFill) }}
             onClick={() => {
               const pane = sidebarPaneRef.current;
               const list = sidebarScrollRef.current;

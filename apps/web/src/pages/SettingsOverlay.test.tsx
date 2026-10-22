@@ -141,6 +141,10 @@ it("keeps one dialog height for every section and locks the app behind it while 
   const general = panel()?.className;
   expect(general).toContain("h-[min(760px");
   expect(app.hasAttribute("inert")).toBe(true);
+  const advanced = document.querySelector<HTMLElement>("nav button[aria-expanded=false]");
+  expect(document.querySelector("[data-testid=settings-nav-memory]")).toBeNull();
+  await act(async () => advanced?.click());
+  expect(advanced?.getAttribute("aria-expanded")).toBe("true");
   await act(async () =>
     (document.querySelector("[data-testid=settings-nav-memory]") as HTMLElement).click(),
   );

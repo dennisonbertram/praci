@@ -80,7 +80,7 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
 
 const CLIP_BEFORE = 24;
 
-/** The typed text inside a result, underlined so a result shows why it matched. */
+/** The typed text inside a result, marked (as in Data room search) so a result shows why it matched. */
 function Highlight({ text, needle, clip }: { text: string; needle: string; clip?: boolean }) {
   const at = needle ? text.toLowerCase().indexOf(needle) : -1;
   if (at < 0) return <>{text}</>;
@@ -90,7 +90,7 @@ function Highlight({ text, needle, clip }: { text: string; needle: string; clip?
     <>
       {from ? "…" : ""}
       {text.slice(from, at)}
-      <mark className="bg-transparent text-inherit underline decoration-2 underline-offset-2">
+      <mark className="rounded-sm bg-warning/25 px-0.5 text-inherit">
         {text.slice(at, at + needle.length)}
       </mark>
       {text.slice(at + needle.length)}
@@ -119,6 +119,8 @@ export type PaletteLinkGroup = {
   entries: PaletteEntry[];
   icon?: ReactNode;
   fallback?: boolean;
+  /** Last row of the group, for results beyond the ones listed. */
+  more?: PaletteEntry;
 };
 
 export function CommandPalette({
@@ -385,6 +387,18 @@ export function CommandPalette({
           </CommandItem>
         );
       })}
+      {group.more ? (
+        <CommandItem
+          value={`link:${group.more.id}`}
+          onSelect={() => {
+            onOpenPath(group.more?.id ?? "");
+            onOpenChange(false);
+          }}
+          className={`items-center gap-3 rounded-xl! py-2 pe-2.5 ps-13.5 text-muted-foreground ${SELECTED_ROW}`}
+        >
+          {group.more.label}
+        </CommandItem>
+      ) : null}
     </CommandGroup>
   );
   // A chat of a bot already listed under Bots is not listed twice.

@@ -367,6 +367,39 @@ it("names the Financing ring on a quarter view", async () => {
   done();
 });
 
+it("puts neighbouring quarters' Financing labels on separate rows", async () => {
+  const q = (start: string, financingCents: number) => ({
+    start,
+    end: start,
+    outCents: 900_000,
+    revenueCents: 0,
+    financingCents,
+    partial: false,
+  });
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[
+        q("2025-01-01", 150_000),
+        q("2025-04-01", 200_000),
+        q("2025-07-01", 250_000),
+        q("2025-10-01", 350_000),
+      ]}
+      onOpen={() => {}}
+    />,
+  );
+  const ys = [...el.querySelectorAll("[data-testid=financing-clipped]")].map((n) =>
+    n.getAttribute("y"),
+  );
+  expect(new Set(ys).size).toBeGreaterThan(1);
+  expect(ys[0]).not.toBe(ys[1]);
+  expect(ys.every((y) => Number(y) >= 12)).toBe(true);
+  done();
+});
+
 it("keeps a Financing label inside the chart when financing equals the scale top", async () => {
   const { el, done } = await mount(
     600,

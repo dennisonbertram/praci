@@ -311,12 +311,13 @@ it("notes non-USD transactions only when some are left out", async () => {
   root = createRoot(container);
   await show("/app/finance");
   await flush();
-  // The link's name starts with its visible text and adds the count after it.
-  const sync = [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("non-USD"));
-  expect(sync?.getAttribute("aria-label")).toBeNull();
-  expect(sync?.textContent).toMatch(/3 non-USD transactions not counted$/);
-  // A phone must see the omission too, so no part of the note is hidden below the sm breakpoint.
-  expect(sync?.innerHTML).not.toMatch(/max-sm:hidden"[^>]*>\s*·\s*\d+ non-USD/);
+  // The note is its own element, not part of the status link, so it never wraps inside it.
+  const note = [...container.querySelectorAll("span")].find(
+    (n) => n.textContent === "3 non-USD transactions not counted",
+  );
+  expect(note).toBeDefined();
+  expect(note?.closest("a")).toBeNull();
+  expect(note?.className).toContain("truncate");
   // The Cash tile's account count is a different unit, so it carries no "not counted" note.
   const cash = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Cash");
   expect(cash?.closest("a")?.textContent).not.toContain("not counted");
@@ -382,18 +383,19 @@ it("shows Ask in the header of the empty Finance page", async () => {
   expect(ask).toHaveBeenCalledTimes(1);
 });
 
-it("says in words when the status dot is not green", async () => {
+it("shows one status when a sign-in lapsed: Reconnect Mercury, never a sync line", async () => {
   const base = connectedOverview();
   rpcMock.overview.mockResolvedValue({
     ...base,
-    sources: base.sources.map((s) => ({ ...s, status: "needs_reconnect" as const, serverId: "s" })),
+    sources: base.sources.map((s) =>
+      s.provider === "mercury" ? { ...s, status: "needs_reconnect" as const, serverId: "s" } : s,
+    ),
   });
   await show("/app/finance");
   await flush();
-  const status = [...container.querySelectorAll('a[href="/app/finance/accounts"]')].find((a) =>
-    a.textContent?.includes("Mercury"),
-  );
-  expect(status?.querySelector(".sr-only")?.textContent).toBe("Sign-in needed.");
+  const status = container.querySelector('a[href="/app/integrations?category=finance"]');
+  expect(status?.textContent).toBe("Reconnect Mercury");
+  expect(container.textContent).not.toMatch(/synced|syncing/);
 });
 
 it("shows the connected sources and the sync time as one link to Accounts", async () => {

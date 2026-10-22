@@ -10,12 +10,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
-import { FolderInput, MoreHorizontal, Pencil, RotateCw, Share2, Trash2 } from "lucide-react";
+import {
+  FolderInput,
+  MoreHorizontal,
+  Pencil,
+  RotateCw,
+  Share2,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import type { ElementType } from "react";
 import type { SendTarget } from "./SendToAgent";
 import { SendToAgentMenu } from "./SendToAgent";
 
-export type ItemAction = "move" | "rename" | "delete" | "retry" | "share";
+export type ItemAction = "move" | "rename" | "delete" | "retry" | "replace" | "share";
 
 const PARTS = {
   dropdown: { Item: DropdownMenuItem, Separator: DropdownMenuSeparator },
@@ -50,14 +58,19 @@ export function ItemMenuItems<T extends { name: string }>({
             <RotateCw aria-hidden="true" />
             <Trans>Try again</Trans>
           </Item>
+          <Item onClick={() => onAction("replace", item)}>
+            <Upload aria-hidden="true" />
+            <Trans>Replace file</Trans>
+          </Item>
           <Separator />
         </>
-      ) : null}
-      <SendToAgentMenu
-        menu={menu}
-        agents={onSendToAgent ? agents : undefined}
-        onPick={(agent) => onSendToAgent?.(item, agent)}
-      />
+      ) : (
+        <SendToAgentMenu
+          menu={menu}
+          agents={onSendToAgent ? agents : undefined}
+          onPick={(agent) => onSendToAgent?.(item, agent)}
+        />
+      )}
       {/* Folders carry `parentId`; only a document can be shared with investors. */}
       {"parentId" in item ? null : (
         <Item onClick={() => onAction("share", item)}>

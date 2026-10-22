@@ -62,6 +62,7 @@ import {
   findDocumentsAndArtifacts,
   isRoutinesOnlyPanel,
   retryAfterStop,
+  showsComputerCaption,
   Transcript,
 } from "./Shell";
 
@@ -1242,5 +1243,23 @@ describe("isRoutinesOnlyPanel", () => {
     expect(isRoutinesOnlyPanel({ ...withScreen, state: "stopped" })).toBe(true);
     expect(isRoutinesOnlyPanel({ ...withScreen, state: "suspended" })).toBe(false);
     expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasError: true })).toBe(false);
+  });
+});
+
+describe("showsComputerCaption", () => {
+  it("names the computer only above a live screen", () => {
+    const live = {
+      kind: undefined,
+      state: "running" as const,
+      hasScreen: true,
+      hasError: false,
+      open: false,
+    };
+    expect(showsComputerCaption(live)).toBe(true);
+    expect(showsComputerCaption({ ...live, state: "suspended" })).toBe(false);
+    expect(showsComputerCaption({ ...live, hasScreen: false })).toBe(false);
+    expect(showsComputerCaption({ ...live, open: true })).toBe(false);
+    expect(showsComputerCaption({ ...live, hasError: true })).toBe(false);
+    expect(showsComputerCaption({ ...live, kind: "desktop" })).toBe(false);
   });
 });

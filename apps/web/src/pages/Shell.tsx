@@ -449,7 +449,7 @@ const maskOptional = (text: string | null) => (text ? maskCurrencyWhenHidden(tex
 export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
-      rpc.dataRoom.search({ query, limit: 5 }),
+      rpc.dataRoom.search({ query, limit: 6 }),
       // Only for the folder line; a failure just leaves it off.
       rpc.dataRoom.folders().catch(() => []),
     ])
@@ -1137,7 +1137,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   useEffect(() => {
-    setGtmAgentOpen(gtmMode && window.matchMedia("(min-width: 768px)").matches);
+    if (!gtmMode) setGtmAgentOpen(false);
   }, [gtmMode]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
@@ -2285,7 +2285,12 @@ export function ShellPage() {
         {
           heading: t`Documents`,
           icon: <FileText size={16} strokeWidth={1.75} />,
-          entries: found.documents.map((doc) => ({
+          // The search asks for one more than is listed, to know whether Data room holds more.
+          more:
+            found.documents.length > 5
+              ? { id: `/app/data-room?q=${encodeURIComponent(q)}`, label: t`See all in Data room` }
+              : undefined,
+          entries: found.documents.slice(0, 5).map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
             detail: doc.detail,
@@ -4438,7 +4443,7 @@ export function ShellPage() {
         navigate={navigate}
         setPanel={setPanel}
         setNewSpaceOpen={setNewSpaceOpen}
-        canCreateSpace={spaces.length > 1}
+        canCreateSpace={spaces.length > 1 || (spaces.length === 1 && spaces[0]?.memberCount !== 1)}
         setPickerInfoTopic={setPickerInfoTopic}
         sidebarScrollRef={sidebarScrollRef}
         collapsedSidebarSections={collapsedSidebarSections}
@@ -4847,6 +4852,7 @@ export function ShellPage() {
                   : undefined
               }
               onRefreshed={refreshInboxUnread}
+              consentScope={userId && activeSpaceId ? `${userId}:${activeSpaceId}` : undefined}
               onOpenAgent={async (bot) => {
                 await refreshBots();
                 setFocusComposerBotId(bot.id);
@@ -5139,11 +5145,19 @@ export function ShellPage() {
                         </button>
                       ) : null}
                     </div>
-                    <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                      {/s$/i.test(active.name.trim())
-                        ? t`${active.name}' computer`
-                        : t`${active.name}'s computer`}
-                    </p>
+                    {showsComputerCaption({
+                      kind: computer?.kind,
+                      state: computer?.state,
+                      hasScreen: Boolean(embeddedScreenUrl),
+                      hasError: Boolean(computerScreenError),
+                      open: computerOpen,
+                    }) ? (
+                      <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
+                        {/s$/i.test(active.name.trim())
+                          ? t`${active.name}' computer`
+                          : t`${active.name}'s computer`}
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -6227,6 +6241,23 @@ export function isRoutinesOnlyPanel(input: {
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint
+  );
+}
+
+/** The "<bot>'s computer" caption names a live screen; under a placeholder or hint it labels nothing. */
+export function showsComputerCaption(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  state?: ComputerStatus["state"];
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    input.state === "running" &&
+    input.hasScreen &&
+    !input.hasError &&
+    !input.open
   );
 }
 
