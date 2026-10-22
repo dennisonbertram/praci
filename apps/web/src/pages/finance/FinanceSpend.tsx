@@ -213,7 +213,7 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
           ) : null}
           {/* One vendor repeats the total and the transaction rows below. */}
           {data.vendors.length === 1 ? null : (
-            <Section title={t`Vendors · ${windowName}`}>
+            <Section title={t`Vendors`}>
               <Table compact>
                 <TableBody>
                   {data.vendors.map((vendor) => (
@@ -238,7 +238,8 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
               </Table>
             </Section>
           )}
-          <TransactionsSection title={t`Transactions · ${windowName}`} rows={data.recent} />
+          {/* The headline card above already names the window. */}
+          <TransactionsSection rows={data.recent} />
         </>
       ) : null}
     </DetailPage>

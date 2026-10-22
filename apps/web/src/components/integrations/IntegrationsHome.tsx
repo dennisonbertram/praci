@@ -380,6 +380,7 @@ export function IntegrationsHome({
     params.get("category") === "finance" ? "finance" : "all",
   );
   const financeRef = useRef<HTMLDivElement>(null);
+  const lapsedRef = useRef<HTMLDivElement>(null);
   const jumpToFinance = useRef(params.get("category") === "finance");
   // /app/integrations?connect=carta opens that first-party tile's sign-in once the page has loaded.
   const connectOnLoad = useRef(params.get("connect"));
@@ -453,9 +454,10 @@ export function IntegrationsHome({
   const financeStatus = useFinanceStatus();
   const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
+  const financeMatches = financeNames.some((name) => name.includes(query.trim().toLowerCase()));
   const showFinance =
     (category === "all" || category === "finance") &&
-    financeNames.some((name) => name.includes(query.trim().toLowerCase())) &&
+    financeMatches &&
     connectedKeys.size < FINANCE_TILE_COUNT;
   const granolaKey =
     data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
@@ -543,7 +545,9 @@ export function IntegrationsHome({
   useEffect(() => {
     if (!jumpToFinance.current || !data.loaded) return;
     jumpToFinance.current = false;
-    financeRef.current?.scrollIntoView?.({ block: "start" });
+    // A lapsed bank's reconnect tile sits above the finance section, so land on it first.
+    const target = lapsedRef.current?.firstChild ? lapsedRef.current : financeRef.current;
+    target?.scrollIntoView?.({ block: "start" });
   }, [data.loaded]);
 
   // After Done, focus the new card (the Connect button it came from is gone).
@@ -698,6 +702,17 @@ export function IntegrationsHome({
           ) : null}
           {data.loaded ? (
             <>
+              {/* A lapsed connection is the one thing to fix, so it sits above Connected. */}
+              {(wholeList || category === "finance") && financeMatches ? (
+                <div ref={lapsedRef} className="mb-3 scroll-mt-4 empty:hidden">
+                  <FinanceSection
+                    mode="lapsed"
+                    sources={data.financeSources}
+                    status={financeStatus}
+                    onChanged={() => void data.refresh()}
+                  />
+                </div>
+              ) : null}
               {(searching ? connectedApps.length > 0 : hasConnected) ? (
                 <>
                   <SectionTitle>
