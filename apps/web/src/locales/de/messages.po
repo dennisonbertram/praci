@@ -1028,7 +1028,6 @@ msgstr ""
 msgid "Address or ENS"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1285,6 +1284,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Any time"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -1694,6 +1697,7 @@ msgstr ""
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -2409,6 +2413,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Schließen"
@@ -5603,6 +5608,10 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Investors, equity and cap table"
 msgstr ""
@@ -7477,6 +7486,10 @@ msgstr "Optional"
 msgid "Optional faster balance reads"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Oder einen API-Schlüssel verbinden"
@@ -7701,6 +7714,10 @@ msgstr ""
 #: src/components/fundraising/RoundCard.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Per model and documents"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -9110,7 +9127,7 @@ msgid "See usage"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "See what bots can reach, and add more in Integrations."
+msgid "See what bots can reach and add more."
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
@@ -9181,6 +9198,10 @@ msgstr ""
 #. placeholder {0}: confirming[0]?.mailTo ?? ""
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Send an unsubscribe email to {0}?"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Send and receive iMessages"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -9660,12 +9681,12 @@ msgstr ""
 msgid "Slack"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "Slack message"
+#: src/pages/shell/message-cards.tsx
+msgid "Slack and your calendar"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "Slack, calendar and email"
+#: src/pages/RoutineEditor.tsx
+msgid "Slack message"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -10452,10 +10473,6 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Through a Photon project"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx

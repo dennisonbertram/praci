@@ -267,15 +267,18 @@ function SafeRow({
           </div>
         ) : null}
       </div>
-      <span
-        className={`w-24 shrink-0 text-end text-sm tabular-nums ${safe.status === "draft" ? "text-muted-foreground" : ""}`}
-        data-testid="safe-amount"
-      >
-        {usd(safe.amountCents)}
-      </span>
-      <Badge variant="secondary" className="w-16 shrink-0">
-        {names[safe.status]}
-      </Badge>
+      {/* On a phone the status sits under the amount so the investor name keeps its width. */}
+      <div className="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+        <span
+          className={`text-end text-sm tabular-nums sm:w-24 ${safe.status === "draft" ? "text-muted-foreground" : ""}`}
+          data-testid="safe-amount"
+        >
+          {usd(safe.amountCents)}
+        </span>
+        <Badge variant="secondary" className="w-16">
+          {names[safe.status]}
+        </Badge>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger
           render={

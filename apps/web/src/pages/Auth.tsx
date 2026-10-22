@@ -524,7 +524,7 @@ export function AuthFrame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
+    <div className="flex min-h-full items-start justify-center bg-background px-6 pb-16 pt-16 md:pt-[12vh] text-foreground">
       <form
         noValidate={noValidate}
         onSubmit={onSubmit}
