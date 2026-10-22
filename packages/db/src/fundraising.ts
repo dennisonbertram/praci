@@ -9,7 +9,7 @@ import { isActiveSafe } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "./client.js";
 import { roundIdForStage, toContact } from "./contacts.js";
 import { isUniqueViolation } from "./prisma-errors.js";
-import { toSafe } from "./safes.js";
+import { SafeActiveError, toSafe } from "./safes.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
@@ -36,7 +36,7 @@ const toRound = (row: Prisma.FundraiseRoundGetPayload<object>): FundraiseRound =
 export async function getFundraisingOverview(
   prisma: Db,
   actor: Scope,
-): Promise<FundraisingOverview> {
+): Promise<Omit<FundraisingOverview, "mercury">> {
   const scope = ownerOf(actor);
   const row =
     (await prisma.fundraiseRound.findFirst({ where: { ...scope, closedAt: null } })) ??
@@ -118,6 +118,46 @@ async function setClosedAt(
   });
   if (count === 0) throw new IsolationError("Round not found");
   return toRound(await prisma.fundraiseRound.findUniqueOrThrow({ where: { id } }));
+}
+
+/** Send SAFE through Mercury needs the prospect's email: it is how the next sync attaches the SAFE. */
+export class ProspectEmailRequiredError extends Error {
+  constructor() {
+    super("Add the investor's email first.");
+    this.name = "ProspectEmailRequiredError";
+  }
+}
+
+async function prospectOf(prisma: Db, scope: Scope, id: string) {
+  const row = await prisma.contact.findFirst({
+    where: { id, ...scope, kind: "prospect" },
+    include: { bot: { select: { id: true, name: true } } },
+  });
+  if (!row) throw new IsolationError("Contact not found");
+  return row;
+}
+
+/**
+ * Send SAFE with Mercury: the prospect is Waiting for Mercury until a SAFE attaches or Not sent.
+ * Throws IsolationError for any other contact, ProspectEmailRequiredError without an email and
+ * SafeActiveError while the prospect has an active SAFE (Canceled and Expired ones do not block).
+ */
+export async function markWaiting(prisma: Db, actor: Scope, id: string): Promise<Contact> {
+  const scope = ownerOf(actor);
+  const prospect = await prospectOf(prisma, scope, id);
+  if (!prospect.email?.trim()) throw new ProspectEmailRequiredError();
+  const safes = await prisma.safe.findMany({ where: { ...scope, contactId: id } });
+  if (safes.some((safe) => isActiveSafe(toSafe(safe).status))) throw new SafeActiveError();
+  await prisma.contact.updateMany({ where: { id, ...scope }, data: { mercurySentAt: new Date() } });
+  return toContact(await prospectOf(prisma, scope, id));
+}
+
+/** Not sent: restores the normal prospect row. */
+export async function notSent(prisma: Db, actor: Scope, id: string): Promise<Contact> {
+  const scope = ownerOf(actor);
+  await prospectOf(prisma, scope, id);
+  await prisma.contact.updateMany({ where: { id, ...scope }, data: { mercurySentAt: null } });
+  return toContact(await prospectOf(prisma, scope, id));
 }
 
 export const closeRound = (prisma: Db, actor: Scope, id: string) =>

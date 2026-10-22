@@ -15,7 +15,7 @@ import {
 } from "@rakazo/ui-web";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
-import { usdFigure } from "../../lib/finance-format";
+import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { SAVED_ROW_CLASS } from "../../lib/use-contact-notices";
 import { contactStageNames } from "../ContactDialog";
@@ -27,6 +27,8 @@ function ProspectRow({
   onEdit,
   onMove,
   onSendSafe,
+  onOpenMercury,
+  onNotSent,
 }: {
   prospect: Contact;
   saved: boolean;
@@ -34,8 +36,14 @@ function ProspectRow({
   onEdit: () => void;
   onMove: (stage: ContactStage) => void;
   onSendSafe?: () => void;
+  onOpenMercury?: () => void;
+  onNotSent?: () => void;
 }) {
   const stageNames = contactStageNames();
+  // Waiting for Mercury: the prospect stays here at its check size until a SAFE attaches or Not sent.
+  const waiting = prospect.mercurySentAt
+    ? shortDay(prospect.mercurySentAt.slice(0, 10), new Date(), i18n.locale || "en")
+    : null;
   return (
     <li
       data-contact-id={prospect.id}
@@ -50,7 +58,11 @@ function ProspectRow({
         <span className="block truncate text-sm font-medium" title={prospect.name}>
           {prospect.name}
         </span>
-        {prospect.nextStep ? (
+        {waiting ? (
+          <span className="block truncate text-xs text-muted-foreground">
+            {t`Waiting for Mercury · ${waiting}`}
+          </span>
+        ) : prospect.nextStep ? (
           <span className="block truncate text-xs text-muted-foreground">{prospect.nextStep}</span>
         ) : null}
       </button>
@@ -65,7 +77,7 @@ function ProspectRow({
       {onSendSafe ? (
         // The button has its own slot after the amount, so amounts and menus line up in every row.
         <span className="flex w-24 shrink-0 justify-end">
-          {prospect.stage === "committed" ? (
+          {prospect.stage === "committed" && !waiting ? (
             <Button
               variant={filledSend ? "default" : "outline"}
               size="sm"
@@ -86,20 +98,34 @@ function ProspectRow({
           <MoreHorizontal aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Trans>Move to</Trans>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {ContactStageSchema.options
-                .filter((stage) => stage !== prospect.stage)
-                .map((stage) => (
-                  <DropdownMenuItem key={stage} onClick={() => onMove(stage)}>
-                    {stageNames[stage]}
-                  </DropdownMenuItem>
-                ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          {waiting ? (
+            <>
+              <DropdownMenuItem onClick={onOpenMercury}>
+                <Trans>Open Mercury</Trans>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onNotSent}>
+                <Trans>Not sent</Trans>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onMove("passed")}>
+                {stageNames.passed}
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Trans>Move to</Trans>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {ContactStageSchema.options
+                  .filter((stage) => stage !== prospect.stage)
+                  .map((stage) => (
+                    <DropdownMenuItem key={stage} onClick={() => onMove(stage)}>
+                      {stageNames[stage]}
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
           <DropdownMenuItem onClick={onEdit}>
             <Trans>Edit prospect</Trans>
           </DropdownMenuItem>
@@ -117,6 +143,8 @@ export function Pipeline({
   onEdit,
   onMove,
   onSendSafe,
+  onOpenMercury,
+  onNotSent,
 }: {
   prospects: readonly Contact[];
   /** The prospect just saved, whose row stands out. */
@@ -127,6 +155,10 @@ export function Pipeline({
   onMove: (prospect: Contact, stage: ContactStage) => void;
   /** Shows Send SAFE on Committed rows. */
   onSendSafe?: (prospect: Contact) => void;
+  /** Reopens Mercury's SAFE page for a prospect Waiting for Mercury. */
+  onOpenMercury?: () => void;
+  /** Clears Waiting for Mercury. */
+  onNotSent?: (prospect: Contact) => void;
 }) {
   useHideAmounts();
   const [showPassed, setShowPassed] = useState(false);
@@ -142,6 +174,8 @@ export function Pipeline({
       onEdit={() => onEdit(prospect)}
       onMove={(stage) => onMove(prospect, stage)}
       onSendSafe={onSendSafe && (() => onSendSafe(prospect))}
+      onOpenMercury={onOpenMercury}
+      onNotSent={onNotSent && (() => onNotSent(prospect))}
     />
   );
   return (

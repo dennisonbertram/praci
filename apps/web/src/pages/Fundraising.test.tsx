@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -35,15 +35,33 @@ const rpcMock = vi.hoisted(() => ({
   safeSave: vi.fn(),
   safeMark: vi.fn(),
   safeDelete: vi.fn(),
+  safeAssign: vi.fn(),
+  safeUnassign: vi.fn(),
+  markWaiting: vi.fn(),
+  notSent: vi.fn(),
+  refresh: vi.fn(),
+  connect: vi.fn(),
 }));
+vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     contacts: { list: rpcMock.contacts, save: rpcMock.contactSave, delete: rpcMock.contactDelete },
     fundraising: {
       overview: rpcMock.overview,
+      refresh: rpcMock.refresh,
       round: { save: rpcMock.roundSave, close: rpcMock.roundClose, reopen: rpcMock.roundReopen },
-      prospects: { save: rpcMock.prospectSave },
-      safes: { save: rpcMock.safeSave, mark: rpcMock.safeMark, delete: rpcMock.safeDelete },
+      prospects: {
+        save: rpcMock.prospectSave,
+        markWaiting: rpcMock.markWaiting,
+        notSent: rpcMock.notSent,
+      },
+      safes: {
+        save: rpcMock.safeSave,
+        mark: rpcMock.safeMark,
+        delete: rpcMock.safeDelete,
+        assign: rpcMock.safeAssign,
+        unassign: rpcMock.safeUnassign,
+      },
     },
   },
 }));
@@ -114,7 +132,13 @@ const overview = (
   prospects: Contact[],
   pendingCents = 0,
   safes: Safe[] = [],
+  mercury: FundraisingOverview["mercury"] = {
+    status: "not_connected",
+    lastSyncedAt: null,
+    unreadable: 0,
+  },
 ): FundraisingOverview => ({
+  mercury,
   round,
   pendingCents,
   signedCents: safes.filter((s) => s.status === "signed").reduce((n, s) => n + s.amountCents, 0),
@@ -502,4 +526,186 @@ it("closes at once when every SAFE is paid or unsigned", async () => {
   rpcMock.roundClose.mockResolvedValue(closedRound);
   await click(menuItem("Close round"));
   expect(rpcMock.roundClose).toHaveBeenCalledWith({ id: "r1" });
+});
+
+describe("Mercury", () => {
+  const connected = {
+    status: "ok",
+    lastSyncedAt: new Date().toISOString(),
+    unreadable: 0,
+  } as const;
+  const mercurySafe = (id: string, extra: Partial<Safe> = {}) =>
+    safe(id, { source: "mercury", status: "sent", investorName: "Quill Fund", ...extra });
+  let opened: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    opened = vi.fn();
+    vi.stubGlobal("open", opened);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("offers Connect Mercury, and signs in then refreshes", async () => {
+    rpcMock.overview.mockResolvedValue(overview(openRound, []));
+    await show();
+    rpcMock.connect.mockResolvedValue("connected");
+    rpcMock.refresh.mockResolvedValue({ ok: true });
+    await click(button("Connect Mercury"));
+    expect(rpcMock.connect).toHaveBeenCalledWith("mercury", false);
+    expect(rpcMock.refresh).toHaveBeenCalled();
+  });
+
+  it("shows the sync age with Refresh, and Sync failed with Refresh and Reconnect", async () => {
+    rpcMock.overview.mockResolvedValue(overview(openRound, [], 0, [], connected));
+    await show();
+    expect(button("Mercury · just now")).toBeDefined();
+    await click(button("Mercury · just now"));
+    expect([...document.querySelectorAll("[role=menuitem]")].map((i) => i.textContent)).toEqual([
+      "Refresh",
+    ]);
+    await click(document.body);
+    rpcMock.overview.mockResolvedValue(
+      overview(openRound, [], 0, [], { ...connected, status: "error", unreadable: 2 }),
+    );
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await show();
+    expect(container.textContent).toContain("2 SAFEs could not be read");
+    await click(button("Sync failed"));
+    expect([...document.querySelectorAll("[role=menuitem]")].map((i) => i.textContent)).toEqual([
+      "Refresh",
+      "Reconnect",
+    ]);
+    rpcMock.connect.mockResolvedValue("connected");
+    rpcMock.refresh.mockResolvedValue({ ok: true });
+    await click(menuItem("Reconnect"));
+    expect(rpcMock.connect).toHaveBeenCalledWith("mercury", true);
+  });
+
+  it("Send SAFE opens Mercury and marks the prospect waiting, with no new SAFE row", async () => {
+    const ada = prospect("p1", "Ada Fund", { stage: "committed" });
+    rpcMock.overview.mockResolvedValue(overview(openRound, [ada], 0, [], connected));
+    await show();
+    rpcMock.markWaiting.mockResolvedValue(ada);
+    rpcMock.overview.mockResolvedValue(
+      overview(
+        openRound,
+        [{ ...ada, mercurySentAt: "2026-10-21T00:00:00.000Z" }],
+        0,
+        [],
+        connected,
+      ),
+    );
+    await click(button("Send SAFE"));
+    await flush();
+    expect(opened).toHaveBeenCalledWith("https://app.mercury.com", "_blank", "noopener");
+    expect(rpcMock.markWaiting).toHaveBeenCalledWith({ id: "p1" });
+    expect(rpcMock.safeSave).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Waiting for Mercury");
+    expect(button("Send SAFE")).toBeUndefined();
+    expect(container.querySelector("[data-safe-id]")).toBeNull();
+    await click(container.querySelector('[aria-label="Actions for Ada Fund"]'));
+    expect([...document.querySelectorAll("[role=menuitem]")].map((i) => i.textContent)).toEqual([
+      "Open Mercury",
+      "Not sent",
+      "Passed",
+      "Edit prospect",
+    ]);
+    rpcMock.notSent.mockResolvedValue(ada);
+    await click(menuItem("Not sent"));
+    expect(rpcMock.notSent).toHaveBeenCalledWith({ id: "p1" });
+  });
+
+  it("asks for the investor email first when the prospect has none", async () => {
+    const bare = prospect("p1", "Ada Fund", { stage: "committed", email: null });
+    rpcMock.overview.mockResolvedValue(overview(openRound, [bare], 0, [], connected));
+    await show();
+    await click(button("Send SAFE"));
+    expect(rpcMock.markWaiting).not.toHaveBeenCalled();
+    expect(document.getElementById("investor-email")).not.toBeNull();
+    await typeInto("investor-email", "ada@example.test");
+    rpcMock.contactSave.mockResolvedValue(bare);
+    rpcMock.markWaiting.mockResolvedValue(bare);
+    await click(dialogButton("Send SAFE"));
+    expect(rpcMock.contactSave).toHaveBeenCalledWith({
+      id: "p1",
+      name: "Ada Fund",
+      email: "ada@example.test",
+    });
+    expect(rpcMock.markWaiting).toHaveBeenCalledWith({ id: "p1" });
+  });
+
+  it("offers Assign to contact only on a Mercury row with no contact, listing prospects and investors", async () => {
+    const investor = prospect("c1", "Priya Investor", { kind: "investor", stage: null });
+    const customer = prospect("c2", "Cy Customer", { kind: "customer", stage: null });
+    const ada = prospect("p1", "Ada Fund", { stage: "target" });
+    rpcMock.contacts.mockResolvedValue([investor, customer, ada]);
+    rpcMock.overview.mockResolvedValue(
+      overview(
+        openRound,
+        [ada],
+        0,
+        [mercurySafe("m1"), mercurySafe("m2", { contactId: "c1" }), safe("n1")],
+        connected,
+      ),
+    );
+    await show();
+    const row = (id: string) => container.querySelector(`[data-safe-id=${id}]`);
+    expect(row("m1")?.textContent).toContain("Assign to contact");
+    expect(row("m2")?.textContent).not.toContain("Assign to contact");
+    expect(row("n1")?.textContent).not.toContain("Assign to contact");
+    await click(
+      [...(row("m1")?.querySelectorAll("button") ?? [])].find(
+        (b) => b.textContent === "Assign to contact",
+      ),
+    );
+    const options = [...document.querySelectorAll("#assign-contact option")].map(
+      (o) => o.textContent,
+    );
+    expect(options).toEqual(["", "Priya Investor", "Ada Fund"]);
+    const select = document.getElementById("assign-contact") as HTMLSelectElement;
+    await act(async () => {
+      select.value = "p1";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    rpcMock.safeAssign.mockResolvedValue(mercurySafe("m1", { contactId: "p1" }));
+    await click(dialogButton("Assign"));
+    expect(rpcMock.safeAssign).toHaveBeenCalledWith({ id: "m1", contactId: "p1" });
+  });
+
+  it("offers Unassign only on an attached Mercury row, and no Mark action on a Funded one", async () => {
+    rpcMock.overview.mockResolvedValue(
+      overview(
+        openRound,
+        [],
+        0,
+        [
+          mercurySafe("m1", {
+            contactId: "c1",
+            status: "funded",
+            paidAt: "2026-10-10T00:00:00.000Z",
+          }),
+          mercurySafe("m2"),
+        ],
+        connected,
+      ),
+    );
+    await show();
+    await click(container.querySelector('[aria-label="Actions for Quill Fund SAFE"]'));
+    const items = [...document.querySelectorAll("[role=menuitem]")].map((i) => i.textContent);
+    expect(items).toContain("Unassign");
+    expect(items.some((i) => i?.startsWith("Mark"))).toBe(false);
+    rpcMock.safeUnassign.mockResolvedValue(mercurySafe("m1"));
+    await click(menuItem("Unassign"));
+    expect(rpcMock.safeUnassign).toHaveBeenCalledWith({ id: "m1" });
+  });
+
+  it("links a matched deposit to Finance", async () => {
+    rpcMock.overview.mockResolvedValue(
+      overview(openRound, [], 0, [mercurySafe("m1", { financeTransactionId: "tx1" })], connected),
+    );
+    await show();
+    const link = [...container.querySelectorAll("a")].find(
+      (a) => a.textContent === "Deposit in Finance",
+    );
+    expect(link?.getAttribute("href")).toBe("/app/finance");
+  });
 });

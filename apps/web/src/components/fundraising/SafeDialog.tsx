@@ -232,7 +232,14 @@ export function SafeCoverSummary({
   const rows = [
     [t`Investor`, safe.investorName],
     [t`Amount`, usd(safe.amountCents)],
-    [t`Valuation`, safe.capCents == null ? "—" : t`Post-money cap ${usd(safe.capCents)}`],
+    [
+      t`Valuation`,
+      safe.capCents == null
+        ? "—"
+        : safe.valuationType === "pre_money_cap"
+          ? t`Pre-money cap ${usd(safe.capCents)}`
+          : t`Post-money cap ${usd(safe.capCents)}`,
+    ],
     // A native SAFE has neither; they show only for terms that arrived from Mercury.
     ...(safe.discountPercent == null ? [] : [[t`Discount`, `${safe.discountPercent}%`] as const]),
     ...(safe.mfn ? [[t`MFN`, t`Yes`] as const] : []),

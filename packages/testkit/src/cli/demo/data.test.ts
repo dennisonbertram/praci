@@ -6,6 +6,7 @@ import {
   fetchPrices,
   McpSession,
   parseStatement,
+  readSafeRequests,
   ThirdPartyConnectorEmulator,
 } from "@rakazo/adapters";
 import {
@@ -447,6 +448,15 @@ describe("mock demo data", () => {
       { fetch },
     );
     expect(new Set(coinbase.map((b) => b.code))).toEqual(new Set(["USD", "BTC", "USDC"]));
+  });
+
+  it("serves invented SAFE requests that the SAFE reader accepts", async () => {
+    const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
+    const mercury = await callToolFor({ id: "s", provider: "mercury", endpoint: "" } as never);
+    const { rows, unreadable } = await readSafeRequests(mercury);
+    expect(unreadable).toBe(0);
+    expect(rows.map((r) => r.externalId)).toEqual(["mock-safe-quill", "mock-safe-harbor"]);
+    expect(rows.every((r) => /\(Mock\)$/.test(r.investorName))).toBe(true);
   });
 
   it("serves about three months of mock finance history", async () => {

@@ -916,6 +916,59 @@ export function demoStatementCsv(now = new Date()): { fileName: string; body: st
 }
 
 /**
+ * Mercury's SAFE requests, shaped like its documented response; every name, email and amount is
+ * invented. The first is paid a day before the canned $250,000 wire, so deposit matching finds it;
+ * the second is sent and unsigned, for attaching to a prospect with the same email.
+ */
+function demoSafeRequests(now: Date, wireAt: Date) {
+  const request = (id: string, name: string, email: string, amount: number, over: object) => ({
+    id,
+    documentUrl: `https://docs.example.test/safes/${id}.pdf`,
+    expiresAt: new Date(now.getTime() + 60 * DAY_MS).toISOString(),
+    includesMostFavoredNationClause: false,
+    includesProRataRightsLetter: false,
+    investmentAmount: amount,
+    investmentDate: new Date(now.getTime() - 20 * DAY_MS).toISOString().slice(0, 10),
+    valuationType: "PostMoney",
+    investor: {
+      signatoryName: "Placeholder Signatory",
+      signatoryEmail: email,
+      legalEntityName: name,
+      investorType: "SafeRequestInvestorTypeVentureFund",
+    },
+    organization: {
+      legalEntityName: DEMO_COMPANY,
+      signatoryName: "Maya Chen (Mock)",
+      signatoryTitle: "CEO",
+      signatoryEmail: DEMO_EMAIL,
+    },
+    canceledAt: null,
+    discountRate: null,
+    governingState: "DE",
+    paidAt: null,
+    signedByInvestorAt: null,
+    signedByOwnerAt: null,
+    valuationCap: 12_000_000,
+    ...over,
+  });
+  const signedAt = new Date(wireAt.getTime() - 3 * DAY_MS).toISOString();
+  return [
+    request(
+      "mock-safe-quill",
+      "Quill Capital (Mock)",
+      "priya@quill-capital.example.test",
+      250_000,
+      {
+        signedByInvestorAt: signedAt,
+        signedByOwnerAt: signedAt,
+        paidAt: new Date(wireAt.getTime() - DAY_MS).toISOString(),
+      },
+    ),
+    request("mock-safe-harbor", "Harbor Angels (Mock)", "harbor@angel.example.test", 50_000, {}),
+  ];
+}
+
+/**
  * Canned Mercury and Brex tool callers holding about three months of invented history, built on the
  * repo's finance fakes. Pass `callToolFor` to `createApp` and to `syncFinanceForUser`.
  */
@@ -1129,11 +1182,13 @@ export function demoFinance(now = new Date()) {
     },
   ];
   const brex = fakeBrex({ expenses, bills });
+  const mercuryCallTool: typeof mercury.callTool = async (name, args) =>
+    name === "getSafeRequests" ? demoSafeRequests(now, safeAt) : mercury.callTool(name, args);
   const brexCallTool: typeof brex.callTool = async (name, args) =>
     name === "list_business_accounts" ? brexAccounts : brex.callTool(name, args);
   return {
     callToolFor: async (server: { provider: string }) =>
-      server.provider === "mercury" ? mercury.callTool : brexCallTool,
+      server.provider === "mercury" ? mercuryCallTool : brexCallTool,
   };
 }
 
@@ -1152,6 +1207,7 @@ const DEMO_FINANCE_TOOLS = {
     // Read by the approval card to name the payee and account behind a send-money request.
     getRecipient: obj({ recipientId: str }, ["recipientId"]),
     getAccount: obj({ accountId: str }, ["accountId"]),
+    getSafeRequests: obj({}),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },

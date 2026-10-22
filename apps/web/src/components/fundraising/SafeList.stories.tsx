@@ -110,3 +110,21 @@ export const Attention: StoryObj<typeof AttentionStrip> = {
 export const MarkDate: StoryObj<typeof MarkDateDialog> = {
   render: () => <MarkDateDialog step="funded" onClose={() => {}} onSave={async () => {}} />,
 };
+
+/** A Mercury SAFE with no contact offers Assign to contact; an attached one offers Unassign; a deposit links to Finance. */
+export const MercuryRows: Story = {
+  args: {
+    onAssign: () => {},
+    onUnassign: () => {},
+    safes: [
+      safe("m1", "Quill Capital", {
+        source: "mercury",
+        status: "funded",
+        paidAt: "2026-10-12T00:00:00.000Z",
+        contactId: "c1",
+        financeTransactionId: "tx1",
+      }),
+      safe("m2", "Harbor Angels", { source: "mercury", status: "sent", roundId: null }),
+    ],
+  },
+};
