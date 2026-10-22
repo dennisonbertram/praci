@@ -251,7 +251,7 @@ export function GtmPage({
                     <section
                       className={
                         !page?.content.trim() && !hadContent.current
-                          ? "hidden"
+                          ? "hidden has-[[role=alert]]:block"
                           : "rounded-xl border border-border p-4"
                       }
                     >

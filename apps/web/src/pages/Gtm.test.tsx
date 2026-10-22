@@ -40,7 +40,7 @@ vi.mock("./shell/bot-page-panel", () => ({
   BotPagePanel: ({ onPageChange }: { onPageChange: (page: BotPage | null) => void }) => {
     mocks.panel({ onPageChange });
     useEffect(() => {
-      if (mocks.pageContent === undefined) return;
+      if (mocks.pageContent === undefined || mocks.pageContent === "load-error") return;
       onPageChange({
         botId: "bot_gtm",
         content: mocks.pageContent,
@@ -49,7 +49,11 @@ vi.mock("./shell/bot-page-panel", () => ({
         updatedAt: "2026-10-20T12:00:00.000Z",
       });
     }, [onPageChange]);
-    return <div data-testid="agent-page">Agent page</div>;
+    return mocks.pageContent === "load-error" ? (
+      <p role="alert">Could not load</p>
+    ) : (
+      <div data-testid="agent-page">Agent page</div>
+    );
   },
 }));
 
@@ -86,6 +90,13 @@ const click = (name: string) =>
     expect(button).toBeTruthy();
     button?.click();
   });
+
+it("keeps an agent page load error visible when the page is otherwise hidden", async () => {
+  mocks.pageContent = "load-error";
+  await render();
+  const alert = container.querySelector('[role="alert"]')!;
+  expect(alert.closest("section")?.className).toContain("has-[[role=alert]]:block");
+});
 
 it("Needs you stays first and complete when the agent page has blocks", async () => {
   mocks.pageContent = '```gtm-metric\n{"label":"Completed","count":"done"}\n```';
