@@ -203,6 +203,27 @@ export const BurnYears: Story = {
   ),
 };
 
+/** One year of data: a single bar (hollow while the year runs), not two stray dots. */
+export const BurnYearOne: Story = {
+  render: () => (
+    <BurnLines
+      granularity="year"
+      label="Cash out by year"
+      onOpen={() => undefined}
+      series={[
+        {
+          start: "2026-01-01",
+          end: "2026-12-31",
+          outCents: 9_000_000,
+          revenueCents: 2_000_000,
+          financingCents: 0,
+          partial: true,
+        },
+      ]}
+    />
+  ),
+};
+
 /** A new account: three weeks of history stay at the left edge instead of spreading across the chart. */
 export const BurnFewPoints: Story = {
   render: () => (

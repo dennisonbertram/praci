@@ -34,3 +34,26 @@ it("moves keyboard focus past the sidebar to the page, without changing the URL"
   expect(window.location.href).toBe(before);
   act(() => root.unmount());
 });
+
+it("offers a way past a long chat to the message box, only when there is one", async () => {
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  await act(async () => root.render(<SkipToContent />));
+  const first = el.querySelector("a") as HTMLAnchorElement;
+  await act(async () => first.focus());
+  expect(el.querySelectorAll("a")).toHaveLength(1);
+  const composer = document.createElement("textarea");
+  composer.setAttribute("data-composer-input", "");
+  document.body.append(composer);
+  await act(async () => {
+    first.blur();
+    first.focus();
+  });
+  const links = el.querySelectorAll("a");
+  expect(links).toHaveLength(2);
+  await act(async () => links[1]?.click());
+  expect(document.activeElement).toBe(composer);
+  composer.remove();
+  act(() => root.unmount());
+});

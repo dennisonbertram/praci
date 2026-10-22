@@ -308,18 +308,6 @@ function Legal({
               other: "# Data room documents not yet checked by Legal",
             })}
           </p>
-          {/* Before Allow the card above is the one action. */}
-          {needsConsent ? null : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="shrink-0"
-              disabled={scanDisabled}
-              onClick={() => void scan()}
-            >
-              <Trans>Check now</Trans>
-            </Button>
-          )}
         </div>
       ) : null}
     </>

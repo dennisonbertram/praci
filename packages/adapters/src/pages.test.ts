@@ -1,4 +1,5 @@
 import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS, MAX_CHART_DATA_ROWS } from "@rakazo/contracts";
+import { pageGtmFence } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { pageToolFromTool, renderPageChartSvg, saveBotPage } from "./pages.js";
@@ -52,8 +53,16 @@ const chart = (
 function setup() {
   const fake = fakePagePrisma();
   const events = { append: vi.fn(async () => ({}) as never) };
-  const save = (content: string, baseRevision: number, updatedBy: "bot" | "user" = "user") =>
-    saveBotPage({ prisma: fake.prisma, events }, { ...scope, content, baseRevision, updatedBy });
+  const save = (
+    content: string,
+    baseRevision: number,
+    updatedBy: "bot" | "user" = "user",
+    gtmPage = false,
+  ) =>
+    saveBotPage(
+      { prisma: fake.prisma, events },
+      { ...scope, content, baseRevision, updatedBy, gtmPage },
+    );
   return { ...fake, events, save };
 }
 
@@ -135,6 +144,37 @@ describe("saveBotPage", () => {
       ),
     ).rejects.toThrow(/charts; the limit/);
   });
+
+  it.each([
+    ["unknown query keys", '```gtm-plan\n{"group":"done","other":true}\n```'],
+    ["needs-you plan group", '```gtm-plan\n{"group":"needs_you"}\n```'],
+    [
+      "41-character metric label",
+      `\`\`\`gtm-metric\n${JSON.stringify({ label: "x".repeat(41), count: "done" })}\n\`\`\``,
+    ],
+    [
+      "the thirteenth GTM block",
+      Array.from({ length: 13 }, () => "```gtm-channels\n{}\n```").join("\n"),
+    ],
+  ])("rejects %s before persisting a GTM page", async (_case, content) => {
+    const { save, pages, revisions, raw } = setup();
+    await expect(save(content, 0, "user", true)).rejects.toThrow();
+    expect(pages).toHaveLength(0);
+    expect(revisions).toHaveLength(0);
+    expect(raw.botPage.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts valid GTM page blocks when scoped as a GTM page", async () => {
+    const { save, pages } = setup();
+    const result = await save(
+      pageGtmFence({ type: "gtm-plan", query: { group: "done" } }),
+      0,
+      "user",
+      true,
+    );
+    expect(result).toMatchObject({ ok: true, page: { revision: 1 } });
+    expect(pages).toHaveLength(1);
+  });
 });
 
 describe("renderPageChartSvg", () => {
@@ -155,11 +195,12 @@ describe("page tools", () => {
     name: "page_read" | "page_write" | "page_edit",
     args: Record<string, unknown>,
     t: ReturnType<typeof setup>,
+    gtmPage = false,
   ) =>
     pageToolFromTool(
       name,
       { prisma: t.prisma, events: t.events },
-      { ...scope, runId: "run-1" },
+      { ...scope, runId: "run-1", gtmPage },
       args,
     );
 
@@ -208,6 +249,19 @@ describe("page tools", () => {
     ).toMatchObject({
       error: expect.stringContaining("Invalid chart block"),
     });
+  });
+
+  it("forwards GTM scope to page tool validation", async () => {
+    const t = setup();
+    expect(
+      await run(
+        "page_write",
+        { content: "[not allowed](https://example.test)", baseRevision: 0 },
+        t,
+        true,
+      ),
+    ).toMatchObject({ error: expect.any(String) });
+    expect(t.pages).toHaveLength(0);
   });
 
   it("keeps the saved page when the event append fails", async () => {
