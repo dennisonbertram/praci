@@ -698,9 +698,10 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
   it("counts SAFEs read-only, without creating the Legal agent or its routine", async () => {
     const c = await makeActor("safe");
     extra.push(c);
-    const item = await addItem(c, "SAFE.pdf", "Simple Agreement for Future Equity");
-    const mk = (title: string, contractType: string) =>
-      prisma.legalContract.create({
+    // A Data room item has at most one contract, so each contract gets its own item.
+    const mk = async (title: string, contractType: string) => {
+      const item = await addItem(c, `${title}.pdf`, title);
+      return prisma.legalContract.create({
         data: {
           spaceId: c.spaceId,
           userId: c.userId,
@@ -712,11 +713,41 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
           analyzedAt: new Date(),
         },
       });
+    };
     await mk("Ada SAFE", "SAFE");
     await mk("Safety policy", "Safety policy");
     expect(await legalSafeCount({ prisma }, c)).toEqual({ count: 1 });
     expect(await prisma.bot.count({ where: { spaceId: c.spaceId } })).toBe(0);
     expect(await prisma.routine.count({ where: { spaceId: c.spaceId } })).toBe(0);
+  });
+
+  it("leaves a deadline the founder closed unchanged when an agent upserts it", async () => {
+    const c = await makeActor("closed");
+    extra.push(c);
+    const made = await legal(c, "legal_upsert_deadline", {
+      title: "Renewal notice",
+      kind: "renewal",
+      dueDate: "2027-03-01",
+      notes: "original",
+    });
+    for (const closed of ["done", "dismissed"] as const) {
+      await prisma.legalDeadline.update({
+        where: { id: made.deadline.id },
+        data: { status: closed },
+      });
+      const res = await legal(c, "legal_upsert_deadline", {
+        id: made.deadline.id,
+        title: "Changed",
+        kind: "renewal",
+        dueDate: "2028-01-01",
+        status: "open",
+        notes: "overwritten",
+      });
+      expect(res.note).toMatch(/closed by the founder/i);
+      expect(
+        await prisma.legalDeadline.findUniqueOrThrow({ where: { id: made.deadline.id } }),
+      ).toMatchObject({ status: closed, title: "Renewal notice", notes: "original" });
+    }
   });
 
   it("lists recently done deadlines so a recurring one can get its next occurrence", async () => {
@@ -1187,7 +1218,12 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(
       queued.filter((j) => j.name === "dataroom.classify").map((j) => j.payload.itemId),
     ).toEqual([waiting.id]);
-    expect(await prisma.aiDataConsent.count({ where: { userId: c.userId } })).toBe(1);
+    // The grant records the Data room key and, as the product intends, one consent per model.
+    expect(
+      (await prisma.aiDataConsent.findMany({ where: { userId: c.userId } }))
+        .map((r) => r.recipientKey)
+        .sort(),
+    ).toEqual([ai.consentKey, "r"].sort());
     // A stale key is refused and nothing more is queued.
     queued.length = 0;
     await expect(
