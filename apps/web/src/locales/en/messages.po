@@ -89,9 +89,9 @@ msgstr "{0, plural, one {# message} other {# messages}}"
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# model} other {# models}}"
 
-#. placeholder {0}: data.counts.needs_you
 #. placeholder {0}: glance.devinNeedsYou
 #. placeholder {0}: glance.gtmNeedsYou
+#. placeholder {0}: needsYou.length
 #: src/pages/Gtm.tsx
 #: src/pages/Shell.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
@@ -546,6 +546,10 @@ msgstr "{minutes}m ago"
 #: src/pages/Finance.tsx
 msgid "{monthlyTotal}/mo"
 msgstr "{monthlyTotal}/mo"
+
+#: src/components/gtm/GtmBlock.tsx
+msgid "{n} of {goal}"
+msgstr "{n} of {goal}"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} agent"
@@ -1372,6 +1376,10 @@ msgstr "API key header"
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "API key name"
 msgstr "API key name"
+
+#: src/pages/Gtm.tsx
+msgid "API key required"
+msgstr "API key required"
 
 #: src/components/gtm/GtmCalendar.tsx
 msgid "API key required for Zernio queue"
@@ -4167,6 +4175,10 @@ msgid "Delete account"
 msgstr "Delete account"
 
 #: src/pages/shell/bot-page-panel.tsx
+msgid "Delete block"
+msgstr "Delete block"
+
+#: src/pages/shell/bot-page-panel.tsx
 msgid "Delete chart"
 msgstr "Delete chart"
 
@@ -4448,6 +4460,7 @@ msgstr "Don't share"
 
 #: src/components/CopyLinkDialog.tsx
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/gtm/GtmBlock.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -4583,6 +4596,7 @@ msgstr "Drafts a reply from your cap table."
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
 msgstr "Drafts are off for {botName}. Turn them back on in its tools."
 
+#: src/components/gtm/GtmBlock.tsx
 #: src/pages/Gtm.tsx
 msgid "Drafts for you"
 msgstr "Drafts for you"
@@ -5660,6 +5674,7 @@ msgstr "In"
 msgid "In Data room"
 msgstr "In Data room"
 
+#: src/components/gtm/GtmBlock.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/Gtm.tsx
 msgid "In progress"
@@ -6726,6 +6741,10 @@ msgstr "Move {full} down"
 msgid "Move {full} up"
 msgstr "Move {full} up"
 
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Move down"
+msgstr "Move down"
+
 #: src/components/sidebar-folders/SidebarDnd.tsx
 msgid "Move of {item} cancelled."
 msgstr "Move of {item} cancelled."
@@ -6746,6 +6765,10 @@ msgstr "Move to"
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Move to Inbox"
 msgstr "Move to Inbox"
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Move up"
+msgstr "Move up"
 
 #. placeholder {0}: maskCurrencyWhenHidden(status.subject)
 #: src/pages/Inbox.tsx

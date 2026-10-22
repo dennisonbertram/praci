@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import type { BotPage } from "@rakazo/contracts";
 import type { ReactNode } from "react";
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   queue: vi.fn(),
   send: vi.fn(),
+  pageContent: "",
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -33,7 +35,20 @@ vi.mock("../lib/rpc", () => ({
     inbox: { compose: { send: mocks.send } },
   },
 }));
-vi.mock("./shell/bot-page-panel", () => ({ BotPagePanel: () => null }));
+vi.mock("./shell/bot-page-panel", () => ({
+  BotPagePanel: ({ onPageChange }: { onPageChange: (page: BotPage) => void }) => {
+    useEffect(() => {
+      onPageChange({
+        botId: "bot_gtm",
+        content: mocks.pageContent,
+        revision: 1,
+        updatedBy: "bot",
+        updatedAt: "2026-10-20T12:00:00.000Z",
+      });
+    }, [onPageChange]);
+    return <div data-testid="agent-page">Agent page</div>;
+  },
+}));
 
 import { GtmPage } from "./Gtm";
 import { item, overview } from "./gtm/fixtures";
@@ -47,6 +62,7 @@ beforeEach(() => {
   root = createRoot(container);
   mocks.overview.mockResolvedValue(overview);
   mocks.update.mockResolvedValue(item);
+  mocks.pageContent = "";
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -67,6 +83,43 @@ const click = (name: string) =>
     expect(button).toBeTruthy();
     button?.click();
   });
+
+it("Needs you stays first and complete when the agent page has blocks", async () => {
+  mocks.pageContent = '```gtm-metric\n{"label":"Completed","count":"done"}\n```';
+  mocks.overview.mockResolvedValue({
+    ...overview,
+    postingCapability: "api_key_required",
+    groups: {
+      ...overview.groups,
+      in_progress: [
+        { ...item, id: "uncertain", status: "open", proof: `post:demo:${"a".repeat(64)}` },
+      ],
+    },
+  });
+  await render();
+  const headings = [...container.querySelectorAll("h2")].map((node) => node.textContent);
+  expect(headings).toContain("Needs you3");
+  expect(headings).not.toContain("In progress1");
+  expect(container.querySelectorAll('[data-item-id="uncertain"]')).toHaveLength(1);
+  expect(container.textContent).toContain("Posting may have failed");
+  const page = container.querySelector('[data-testid="agent-page"]')!;
+  const uncertain = container.querySelector('[data-item-id="uncertain"]')!;
+  expect(uncertain.compareDocumentPosition(page) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const setup = container.querySelector('[data-testid="gtm-connection"]')!;
+  expect(setup.querySelector('a[href="/app/integrations?q=Zernio"]')).not.toBeNull();
+  expect(setup.compareDocumentPosition(uncertain) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("keeps layout C without live blocks", async () => {
+  await render();
+  const headings = [...container.querySelectorAll("h2")].map((node) => node.textContent);
+  expect(headings).toContain("In progress1");
+  const agentPage = container.querySelector('[data-testid="agent-page"]')!;
+  const firstItem = container.querySelector("[data-item-id]")!;
+  expect(
+    agentPage.compareDocumentPosition(firstItem) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
 
 it("Approve sends the rendered updatedAt and shows Changed, review again when it lost", async () => {
   mocks.update.mockRejectedValue({ code: "CONFLICT" });

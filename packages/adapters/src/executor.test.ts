@@ -8,6 +8,7 @@ import {
 } from "@rakazo/contracts";
 import {
   expandSkillReferencesInPrompt,
+  GTM_PAGE_INSTRUCTIONS,
   ONCE_ROUTINE_CRON,
   ownsLine,
   renderBotDirectory,
@@ -50,6 +51,18 @@ import { UnavailableModelForAuthError } from "./model-selection.js";
 import { RetiredModelCredentialError, serializeModelSecret } from "./pi-oauth.js";
 
 const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
+
+it("adds live page guidance to existing GTM agents without duplicating it on new ones", () => {
+  const bot = { name: "GTM", title: "", description: "", instructions: "Existing instructions." };
+  const prompt = runIdentityInstruction(bot, "user", "gtm-agent:demo");
+  expect(prompt).toContain(GTM_PAGE_INSTRUCTIONS);
+  expect(
+    runIdentityInstruction({ ...bot, instructions: prompt }, "routine", "gtm-agent:demo"),
+  ).toBe(prompt);
+  expect(runIdentityInstruction(bot, "user", "other-agent:demo")).not.toContain(
+    GTM_PAGE_INSTRUCTIONS,
+  );
+});
 
 describe("bot tool permissions", () => {
   it("never lets self-edit change disabled tools alongside an allowed field", () => {

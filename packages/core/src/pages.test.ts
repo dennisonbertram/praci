@@ -112,18 +112,43 @@ describe("gtmPageContentError", () => {
     expect(gtmPageContentError("[normal](https://example.test)", false)).toBeNull();
   });
 
-  it("allows standard GTM fences on GTM pages only", () => {
-    const standard = '```gtm-plan\n{"group":"done"}\n```';
-    expect(gtmPageContentError(standard, false)).toEqual(expect.any(String));
-    expect(gtmPageContentError(standard, true)).toBeNull();
+  it("allows supported standard GTM fences on GTM pages only", () => {
+    for (const block of gtmBlocks) {
+      const standard = pageGtmFence(block);
+      expect(gtmPageContentError(standard, false)).toEqual(expect.any(String));
+      expect(gtmPageContentError(standard, true)).toBeNull();
+    }
+  });
+
+  it("does not treat unrelated gtmish code languages as GTM blocks", () => {
+    const content = "```gtmish\n{}\n```";
+    expect(splitPage(content)).toEqual([{ kind: "markdown", text: content }]);
+    expect(gtmPageContentError(content, false)).toBeNull();
+    expect(gtmPageContentError(content, true)).toBeNull();
   });
 
   it.each([
     '~~~gtm-plan\n{"group":"done"}\n~~~',
     '````gtm-plan\n{"group":"done"}\n````',
+    '  ```gtm-plan\n{"group":"done"}\n  ```',
+    '```gtm-plan extra\n{"group":"done"}\n```',
     '> ```gtm-plan\n> {"group":"done"}\n> ```',
   ])("rejects unsupported GTM fences on non-GTM and GTM pages", (content) => {
     expect(gtmPageContentError(content, false)).toEqual(expect.any(String));
+    expect(gtmPageContentError(content, true)).toEqual(expect.any(String));
+  });
+
+  it("rejects a nested semantic GTM block that coincides with a lexical literal block", () => {
+    const content = [
+      "  ~~~text",
+      "```gtm-plan",
+      '{"group":"done"}',
+      "```",
+      "  ~~~",
+      "> ```gtm-channels",
+      "> {}",
+      "> ```",
+    ].join("\n");
     expect(gtmPageContentError(content, true)).toEqual(expect.any(String));
   });
 });

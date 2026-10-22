@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { GtmPage } from "./Gtm";
-import { emptyOverview, item, overview, page } from "./gtm/fixtures";
+import { agentPageContent, emptyOverview, item, overview, page } from "./gtm/fixtures";
 
 const meta = {
   title: "GTM/Page",
@@ -13,6 +13,38 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   beforeEach: () => mockRpc({ "gtm.overview": overview, "pages.get": page }),
+};
+export const AgentArranged: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "gtm.overview": overview,
+      "pages.get": { ...page, content: agentPageContent },
+      "pages.save": (input: { content: string; baseRevision: number }) => ({
+        ok: true,
+        page: { ...page, content: input.content, revision: input.baseRevision + 1 },
+      }),
+    }),
+};
+export const AgentArrangedUncertain: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "gtm.overview": {
+        ...overview,
+        postingCapability: "api_key_required",
+        groups: {
+          ...overview.groups,
+          in_progress: [
+            { ...item, id: "uncertain_demo", status: "open", proof: `post:demo:${"a".repeat(64)}` },
+          ],
+        },
+      },
+      "pages.get": { ...page, content: agentPageContent },
+      "pages.save": (input: { content: string; baseRevision: number }) => ({
+        ok: true,
+        page: { ...page, content: input.content, revision: input.baseRevision + 1 },
+      }),
+      "gtm.queue": { status: "ready", complete: true, posts: [] },
+    }),
 };
 export const Empty: Story = {
   beforeEach: () =>
