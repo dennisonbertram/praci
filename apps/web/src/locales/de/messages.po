@@ -4725,6 +4725,7 @@ msgstr ""
 msgid "Expected"
 msgstr ""
 
+#: src/components/AskCard.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Expired"
@@ -11121,6 +11122,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Waiting for approval"
 msgstr ""
 
 #: src/components/fundraising/Pipeline.tsx

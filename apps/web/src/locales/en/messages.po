@@ -4725,6 +4725,7 @@ msgstr "Expand {title}"
 msgid "Expected"
 msgstr "Expected"
 
+#: src/components/AskCard.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Expired"
@@ -11122,6 +11123,10 @@ msgstr "Waiting {hours}h"
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
 msgstr "Waiting {minutes}m"
+
+#: src/pages/Shell.tsx
+msgid "Waiting for approval"
+msgstr "Waiting for approval"
 
 #: src/components/fundraising/Pipeline.tsx
 msgid "Waiting for Mercury · {waiting}"
