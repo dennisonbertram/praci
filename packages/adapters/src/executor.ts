@@ -8606,25 +8606,52 @@ export async function priorDenialAwaitingOwner(
     ? await prisma.message.findUnique({ where: { id: sentId }, select: { threadId: true } })
     : null;
   if (!sent) return undefined;
-  const denied = await prisma.externalEffect.findMany({
-    where: {
-      spaceId: run.spaceId,
-      kind,
-      status: "denied",
-      id: { not: currentEffectId },
-      run: { userId: run.userId, botId: run.botId, trigger: "bot_message" },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 20,
-    select: { id: true, status: true, request: true, result: true, updatedAt: true },
-  });
-  const prior = denied.find((effect) => repeatsDeniedRequest(kind, effect.request, request));
+  // Page through the denials until one matches: an old matching denial still applies.
+  let prior:
+    | { id: string; status: string; request: unknown; result: unknown; updatedAt: Date }
+    | undefined;
+  for (let skip = 0; !prior; skip += 50) {
+    const page = await prisma.externalEffect.findMany({
+      where: {
+        spaceId: run.spaceId,
+        kind,
+        status: "denied",
+        id: { not: currentEffectId },
+        run: { userId: run.userId, botId: run.botId, trigger: "bot_message" },
+      },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: 50,
+      select: { id: true, status: true, request: true, result: true, updatedAt: true },
+    });
+    prior = page.find((effect) => repeatsDeniedRequest(kind, effect.request, request));
+    if (page.length < 50) break;
+  }
   if (!prior) return undefined;
-  const ownerSince = await prisma.message.findFirst({
-    where: { threadId: sent.threadId, role: "user", createdAt: { gt: prior.updatedAt } },
-    select: { id: true },
-  });
-  return ownerSince ? undefined : prior;
+  // Only words the owner typed reset the guard: bot-to-bot deliveries are also stored as user-role
+  // messages, but they carry a bot author or a bot_message_received block.
+  for (let skip = 0; ; skip += 50) {
+    const page = await prisma.message.findMany({
+      where: {
+        threadId: sent.threadId,
+        role: "user",
+        botId: null,
+        createdAt: { gt: prior.updatedAt },
+      },
+      orderBy: { createdAt: "asc" },
+      skip,
+      take: 50,
+      select: { blocks: true },
+    });
+    const human = page.some(
+      (message) =>
+        !(Array.isArray(message.blocks) ? (message.blocks as MessageBlock[]) : []).some(
+          (block) => block.kind === "bot_message_received",
+        ),
+    );
+    if (human) return undefined;
+    if (page.length < 50) return prior;
+  }
 }
 
 /** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
