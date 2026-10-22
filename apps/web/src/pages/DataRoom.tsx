@@ -701,7 +701,7 @@ export function DataRoomPage({
       ) : (
         <>
           <div className={`${PAGE_GUTTER_X} pb-2.5 empty:hidden`}>
-            <DataRoomConsentPrompt onAllowed={reload} />
+            {showStats ? null : <DataRoomConsentPrompt onAllowed={reload} />}
           </div>
           <FilterBar
             query={queryInput}
