@@ -138,3 +138,8 @@ it("marks the focused card", async () => {
   expect(document.querySelector('[data-row-id="b"]')?.getAttribute("aria-current")).toBe("true");
   expect(document.querySelector('[data-row-id="a"]')?.getAttribute("aria-current")).toBeNull();
 });
+
+it("names its window", async () => {
+  await show({ rows: [row("a")] });
+  expect(document.body.textContent).toContain("Last 7 days");
+});

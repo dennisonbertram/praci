@@ -55,6 +55,9 @@ import {
   disabledBuiltinToolSet,
   externalBotMayUseBuiltin,
   GTM_AGENT_BUILTIN_TOOLS,
+  GTM_CHANNELS,
+  GTM_POST_TOOL,
+  GtmPostInputSchema,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   INVESTORS_AGENT_BUILTIN_TOOLS,
@@ -250,7 +253,12 @@ import {
   browserSnapshotFromTool,
 } from "./browser-tools.js";
 import { INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
-import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
+import {
+  agentConnectionTools,
+  builtinAgentTools,
+  gtmPostTool,
+  sharedMemorySaveError,
+} from "./builtin-tools.js";
 import type { CalendarAccount } from "./calendar-tools.js";
 import {
   CALENDAR_TOOL_NAMES,
@@ -345,6 +353,11 @@ import {
   fundraisingToolsAllowed,
 } from "./fundraising-tools.js";
 import { handoffToGroupBot, loadGroupContext } from "./group-handoff.js";
+import {
+  createZernioRestAdapter,
+  executeApprovedGtmPost,
+  resolveZernioApiKey,
+} from "./gtm-posting.js";
 import {
   COMPACTION_BATCH_SIZE,
   formatCompactedSummary,
@@ -491,6 +504,7 @@ import {
   addScratchpadItemFromTool,
   completeScratchpadItemFromTool,
   findWorkableOpenItem,
+  hasApprovedOpenPost,
   hasApprovedOpenSignup,
   listScratchpadItemsFromTool,
   removeScratchpadItemFromTool,
@@ -2916,6 +2930,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
             ? (peerDiscovered ?? discovered).filter(
                 (tool) =>
+                  tool.name !== GTM_POST_TOOL &&
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
                   (!integrationPeerRun ||
                     (tool.route?.connectorId === "mcp" &&
@@ -2956,12 +2971,34 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The intro turn confirms how a bot read its own role before anyone hands it
         // real work — it must not be able to act on that reading (shell, computer,
         // scheduling, spawning another bot, ...) before the user has assigned any task.
-        const tools =
+        const baseTools =
           run.trigger === "created"
             ? []
             : voiceAgent
               ? builtins
               : [...builtins, ...exposedConnectorTools];
+        const gtmPostEligible =
+          run.trigger !== "created" &&
+          ["user", "follow_up", "routine"].includes(run.trigger) &&
+          gtmAgent &&
+          bot.userId === run.userId &&
+          bot.archivedAt === null &&
+          bot.audience !== "external" &&
+          !thread.groupId &&
+          !disabledBuiltinTools.has(GTM_POST_TOOL) &&
+          (await hasApprovedOpenPost(deps, {
+            spaceId: run.spaceId,
+            userId: run.userId,
+            botId: bot.id,
+          })) &&
+          Boolean(
+            await resolveZernioApiKey({
+              prisma: deps.prisma,
+              secretStore: deps.secretStore,
+              scope: { spaceId: run.spaceId, userId: run.userId, botId: bot.id },
+            }),
+          );
+        const tools = [...baseTools, ...(gtmPostEligible ? [gtmPostTool] : [])];
         const offeredToolNames = new Set(tools.map((tool) => tool.name));
         const taskCatalogInstruction = tools.some((tool) => tool.name === "task_catalog")
           ? TASK_CATALOG_GUIDANCE
@@ -3222,6 +3259,117 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (disabledBuiltinTools.has(name)) {
             return { error: "This tool is disabled for this bot." };
+          }
+          if (name === GTM_POST_TOOL) {
+            if (!offeredToolNames.has(name)) {
+              return { error: `Tool ${name} is not available to this bot.` };
+            }
+            const parsed = GtmPostInputSchema.safeParse(args);
+            if (!parsed.success) return { error: "Invalid approved-post input." };
+            if (
+              !gtmAgent ||
+              bot.userId !== run.userId ||
+              bot.archivedAt !== null ||
+              bot.audience === "external" ||
+              thread.groupId ||
+              !["user", "follow_up", "routine"].includes(run.trigger)
+            ) {
+              return { error: "GTM posting is unavailable for this run." };
+            }
+            const liveBot = await deps.prisma.bot.findFirst({
+              where: {
+                id: bot.id,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                archivedAt: null,
+              },
+              select: { id: true, userId: true, spawnKey: true },
+            });
+            if (!liveBot || liveBot.spawnKey !== bot.spawnKey) {
+              return { error: "The GTM agent is no longer owned by this actor." };
+            }
+            const apiKey = await resolveZernioApiKey({
+              prisma: deps.prisma,
+              secretStore: deps.secretStore,
+              scope: { spaceId: run.spaceId, userId: run.userId, botId: bot.id },
+            });
+            if (!apiKey) return { error: "A ready Zernio API key is required." };
+            runSecrets.push(apiKey);
+            const effectKey = approvalEffectKey(runId, GTM_POST_TOOL, parsed.data);
+            const previous = await deps.prisma.externalEffect.findUnique({
+              where: { idempotencyKey: effectKey },
+            });
+            if (
+              previous &&
+              (previous.runId !== run.id ||
+                previous.spaceId !== run.spaceId ||
+                previous.kind !== GTM_POST_TOOL ||
+                stableJsonValue(previous.request) !== stableJsonValue(parsed.data))
+            ) {
+              return { error: "The stored post effect does not match this request." };
+            }
+            if (previous?.status === "completed") return previous.result;
+            if (previous?.status === "executing") {
+              return settleUncertainEffect(deps.prisma, previous.id, GTM_POST_TOOL);
+            }
+            if (previous?.status === "uncertain") {
+              return previous.result ?? uncertainEffectResult(GTM_POST_TOOL);
+            }
+            if (previous && previous.status !== "intended") {
+              return { error: "The previous post attempt cannot be resumed." };
+            }
+            const selectedPosts = await deps.prisma.scratchpadItem.findMany({
+              where: {
+                spaceId: run.spaceId,
+                userId: run.userId,
+                botId: bot.id,
+                category: "public_post",
+                status: "open",
+                approvedAt: { not: null },
+                notes: parsed.data.content,
+                scheduledFor: new Date(parsed.data.scheduledFor),
+                target: parsed.data.accountId,
+                OR: previous ? [{ proof: effectKey }] : [{ proof: null }, { proof: effectKey }],
+              },
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            });
+            const channels = new Set(selectedPosts.map((item) => item.channel));
+            if (!selectedPosts.length || channels.size !== 1) {
+              return { error: "No unique matching approved post is available." };
+            }
+            const selectedChannel =
+              GTM_CHANNELS[selectedPosts[0]!.channel as keyof typeof GTM_CHANNELS];
+            if (!selectedChannel || !("platform" in selectedChannel)) {
+              return { error: "The approved post channel is unsupported." };
+            }
+            return executeApprovedGtmPost({
+              prisma: deps.prisma,
+              scope: {
+                runId,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                botId: bot.id,
+              },
+              input: parsed.data,
+              platform: selectedChannel.platform,
+              effectKey,
+              createEffect: () =>
+                recordEffect(
+                  deps,
+                  run,
+                  GTM_POST_TOOL,
+                  effectKey,
+                  parsed.data,
+                  executionId,
+                  consumedEffectIds,
+                ),
+              dispatch: (postInput) =>
+                createZernioRestAdapter().createPost({
+                  apiKey,
+                  input: postInput,
+                  signal: context.signal,
+                }),
+            });
           }
           // A model can call a built-in it was never offered; the offer is the run's tool list.
           if (BUILTIN_AGENT_TOOL_NAMES.has(name) && !offeredToolNames.has(name)) {

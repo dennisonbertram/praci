@@ -195,6 +195,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
             >
               <Trans>Connect</Trans>
             </Button>
+            <MenuSlot />
           </>
         )}
       </div>
@@ -261,6 +262,7 @@ function ExchangeTile({
             >
               <Trans>Connect</Trans>
             </Button>
+            <MenuSlot />
           </>
         )}
       </div>
@@ -475,6 +477,7 @@ export function FinanceSection({
                     )}
                   </Button>
                 )}
+                {connected ? null : <MenuSlot />}
               </div>
               {error ? (
                 <p role="alert" className="text-xs text-destructive">

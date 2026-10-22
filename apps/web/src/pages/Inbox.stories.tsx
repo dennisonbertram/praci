@@ -153,6 +153,26 @@ export const NeedsConsent: Story = {
     }),
 };
 
+/** The first sort after Allow: no rows until it lands, so nothing moves afterwards. */
+export const SortingFirstTime: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        enabled: true,
+        triageBlocked: null,
+        triagePending: true,
+        rows: rows.map((r) => ({
+          ...r,
+          needsReply: null,
+          priority: null,
+          category: null,
+          reason: null,
+        })),
+      },
+    }),
+};
+
 export const TwoAccounts: Story = {
   beforeEach: () =>
     mockRpc({

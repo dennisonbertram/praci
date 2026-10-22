@@ -157,6 +157,28 @@ it("does not repeat the card's sentence on an empty page waiting for consent", a
   expect(container.textContent).not.toContain("Press Scan now");
 });
 
+it("shows the empty Contracts and Deadlines tabs under the consent card", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(tab("Contracts")).toBeDefined();
+  expect(tab("Deadlines")).toBeDefined();
+});
+
+it("does not say Not scanned yet while the first scan runs", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview,
+    agent: {
+      ...emptyOverview.agent,
+      lastScanAt: null,
+      lastScanRun: { id: id(7), status: "running" as const, error: null },
+    },
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Scanning…");
+  expect(container.textContent).not.toContain("Not scanned yet");
+});
+
 it("says No deadlines found with the date after a scan of an empty Data room", async () => {
   rpcMock.overview.mockResolvedValue({
     ...emptyOverview,

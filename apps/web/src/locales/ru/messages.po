@@ -2172,7 +2172,6 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr ""
 
@@ -2190,14 +2189,6 @@ msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2767,10 +2758,6 @@ msgstr ""
 
 #: src/pages/DataRoom.tsx
 msgid "Connect Gmail to send files"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -3790,6 +3777,10 @@ msgstr ""
 msgid "Create a read-only key"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Create a routine"
+msgstr "Создать задачу"
+
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Зарегистрироваться"
@@ -3831,10 +3822,6 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Create Legal agent"
 msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Create Routine"
-msgstr "Создать задачу"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
@@ -4140,10 +4127,6 @@ msgstr "Обновление настольного приложения"
 msgid "Details"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Developer"
-msgstr ""
-
 #: src/pages/Devin.tsx
 #: src/pages/Shell.tsx
 msgid "Devin"
@@ -4289,10 +4272,6 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -4531,10 +4510,6 @@ msgstr ""
 msgid "Email"
 msgstr "Электронная почта"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Email & calendar"
-msgstr ""
-
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Email agent"
 msgstr ""
@@ -4543,8 +4518,13 @@ msgstr ""
 msgid "Email and calendar"
 msgstr ""
 
+#: src/components/integrations/parts.tsx
 #: src/pages/Shell.tsx
 msgid "Email chats"
+msgstr ""
+
+#: src/components/integrations/parts.tsx
+msgid "Email chats can use {appName}"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -5699,6 +5679,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "last"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Last 7 days"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -7969,6 +7953,10 @@ msgstr ""
 msgid "Quote"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Rarely read, and you never wrote to them"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "React"
 msgstr ""
@@ -8775,10 +8763,6 @@ msgstr ""
 msgid "SAFEs, if converted at cap"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Sales & CRM"
-msgstr ""
-
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr ""
@@ -9039,6 +9023,10 @@ msgid "See usage"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
+msgid "See what bots can reach, and add more in Integrations."
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr ""
 
@@ -9270,6 +9258,11 @@ msgstr ""
 msgid "Shared"
 msgstr "Общий"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr ""
@@ -9449,6 +9442,10 @@ msgstr ""
 msgid "Sign-in needed."
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in options"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9577,6 +9574,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Обновление программного обеспечения"
+
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr ""
 
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
@@ -10338,8 +10339,12 @@ msgstr ""
 msgid "This zip is too large to unpack"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through a Photon project"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through BlueBubbles on your Mac"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -10414,6 +10419,10 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "Too large to search inside"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Tool name"
 msgstr ""
 
 #: src/lib/run-phase.ts
@@ -11121,10 +11130,6 @@ msgstr ""
 msgid "Web"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Web search"
-msgstr ""
-
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"
 msgstr ""
@@ -11392,6 +11397,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "Вы управляете"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "You read most of these"
+msgstr ""
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx

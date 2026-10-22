@@ -40,6 +40,7 @@ import { CopyLinkDialog } from "../CopyLinkDialog";
 import type { FolderNode } from "./folders";
 import { folderContents } from "./folders";
 import type { ItemAction } from "./ItemMenu";
+import { showNoticeToast, uploadScopeToken } from "./upload-toasts";
 
 /** The Move select's value for "put it in a new folder", which no folder id can equal. */
 const NEW_FOLDER = "__new__";
@@ -398,6 +399,7 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
   const share = async () => {
     setBusy(true);
     setError("");
+    const since = uploadScopeToken();
     try {
       const result = await rpc.investors.share({
         itemId: item.id,
@@ -405,7 +407,10 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
         emailLink,
       });
       if (result.links.length > 0) setLinks(result.links);
-      else onClose();
+      else {
+        showNoticeToast(t`Shared ${item.name}`, since);
+        onClose();
+      }
     } catch (cause) {
       setError(errorText(cause, t`Could not share`));
       setBusy(false);
