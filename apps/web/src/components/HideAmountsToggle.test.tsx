@@ -22,7 +22,7 @@ afterEach(() => {
   resetHideAmountsMemory();
 });
 
-it("names the current action in one line, with no repeated explanation", () => {
+it("keeps one label and lets the checked state say whether amounts are hidden", () => {
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -31,7 +31,9 @@ it("names the current action in one line, with no repeated explanation", () => {
   expect(row.textContent).toContain("Hide amounts");
   expect(row.textContent).toBe("Hide amounts");
 
+  expect(row.getAttribute("aria-checked")).toBe("false");
   act(() => setHideAmounts(true));
-  expect(row.textContent).toBe("Show amounts");
+  expect(row.textContent).toBe("Hide amounts");
+  expect(row.getAttribute("aria-checked")).toBe("true");
   act(() => root.unmount());
 });

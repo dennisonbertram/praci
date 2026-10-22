@@ -31,7 +31,9 @@ model User {
   investorShares              InvestorShare[]
   investorPortalTokens        InvestorPortalToken[]
   portalSessions              PortalSession[]
+  auditRequests               AuditRequest[]
   fundraiseRounds             FundraiseRound[]
+  safes                       Safe[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
@@ -279,7 +281,9 @@ model Space {
   investorShares              InvestorShare[]
   investorPortalTokens        InvestorPortalToken[]
   portalSessions              PortalSession[]
+  auditRequests               AuditRequest[]
   fundraiseRounds             FundraiseRound[]
+  safes                       Safe[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
@@ -2504,6 +2508,7 @@ model Contact {
   shares           InvestorShare[]
   portalTokens     InvestorPortalToken[]
   portalSessions   PortalSession[]
+  safes            Safe[]
   /// The agent that added the contact, set by the server; null for a contact added by hand or after the agent was deleted.
   botId            String?
   bot              Bot?                  @relation(fields: [botId], references: [id], onDelete: SetNull)
@@ -2599,6 +2604,48 @@ model InvestorUpdate {
   @@map("investor_updates")
 }
 
+/// An auditor, 409A or DocuSign request. Created by the mail intake job the moment the mail arrives
+/// (so it shows even if drafting never starts), or by the Investors agent for a request that did not
+/// arrive by mail. Only the founder closes it (done or dismissed); a dismissed row keeps its thread.
+/// audit_requests_agent_open_key is raw SQL, a partial unique index over the agent-added rows.
+model AuditRequest {
+  id              String    @id @default(cuid())
+  spaceId         String
+  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The subject line until the agent corrects it.
+  fund            String
+  /// Lower case, single spaces: how the agent's upsert finds the same request again.
+  fundKey         String
+  asOf            DateTime? @db.Date
+  /// False when the statement had to use current holdings.
+  asOfMatched     Boolean   @default(true)
+  dueDate         DateTime? @db.Date
+  /// "open" | "drafted" | "done" | "dismissed"
+  status          String    @default("open")
+  dataRoomItemId  String?
+  mailThreadId    String?
+  connectionId    String?
+  /// Gmail draft id.
+  draftRef        String?
+  /// The sender is an Auditor contact.
+  senderKnown     Boolean   @default(false)
+  notes           String    @default("")
+  draftStartedAt  DateTime?
+  draftedAt       DateTime?
+  doneAt          DateTime?
+  /// The newest mail in the thread; later than draftedAt means New mail.
+  lastMailAt      DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([spaceId, userId, mailThreadId])
+  @@index([spaceId, userId, status])
+  @@index([spaceId, userId, draftStartedAt])
+  @@map("audit_requests")
+}
+
 /// A fundraising round. Open while closedAt is null; at most one open round per space and user
 /// (fundraise_rounds_open_key is raw SQL, a partial unique index).
 model FundraiseRound {
@@ -2614,9 +2661,54 @@ model FundraiseRound {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   contacts    Contact[]
+  safes       Safe[]
 
   @@index([spaceId, userId])
   @@map("fundraise_rounds")
+}
+
+/// A SAFE. A native row is the founder's own record of a YC post-money cap SAFE they send themselves;
+/// its status is derived from the dates (packages/core/src/safes.ts), never stored.
+model Safe {
+  id                 String          @id @default(cuid())
+  spaceId            String
+  space              Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "native" | "mercury"
+  source             String          @default("native")
+  /// Mercury's id; null on a native row.
+  externalId         String?
+  contactId          String?
+  contact            Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  roundId            String?
+  round              FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  investorName       String
+  investorEmail      String?
+  amountCents        BigInt
+  /// "post_money_cap" on every native row.
+  valuationType      String          @default("post_money_cap")
+  capCents           BigInt?
+  discountPercent    Float?
+  mfn                Boolean         @default(false)
+  proRata            Boolean         @default(false)
+  governingState     String?
+  investmentDate     DateTime?
+  expiresAt          DateTime?
+  canceledAt         DateTime?
+  sentAt             DateTime?
+  signedByOwnerAt    DateTime?
+  signedByInvestorAt DateTime?
+  paidAt             DateTime?
+  documentUrl        String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@unique([spaceId, userId, source, externalId])
+  @@index([spaceId, userId])
+  @@index([contactId])
+  @@index([roundId])
+  @@map("safes")
 }
 
 /// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.

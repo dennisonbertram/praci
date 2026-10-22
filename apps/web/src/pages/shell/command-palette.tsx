@@ -84,7 +84,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
 }
 
 /** The row Enter opens: data-selected's bg-muted barely shows on the popover, so mark it. */
-const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_var(--ring)]";
+const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_currentColor]";
 
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
 export type PaletteEntry = {
@@ -96,6 +96,14 @@ export type PaletteEntry = {
   detail?: string;
   /** Short date shown at the end of the row. */
   date?: string;
+};
+
+/** A group of search results. `icon` marks every row of the group; `first` lists it above the pages. */
+export type PaletteLinkGroup = {
+  heading: string;
+  entries: PaletteEntry[];
+  icon?: ReactNode;
+  first?: boolean;
 };
 
 export function CommandPalette({
@@ -119,7 +127,7 @@ export function CommandPalette({
   onSelectPage?: (id: string) => void;
   onSelectGroup?: (id: string) => void;
   /** Documents and artifacts matching the text; entry ids are the routes they open. */
-  searchLinks?: (query: string) => Promise<{ heading: string; entries: PaletteEntry[] }[]>;
+  searchLinks?: (query: string) => Promise<PaletteLinkGroup[]>;
   onOpenPath?: (path: string) => void;
 }) {
   useHideAmounts();
@@ -135,7 +143,9 @@ export function CommandPalette({
   }, [open]);
 
   const needle = search.trim().toLowerCase();
-  const [linkGroups, setLinkGroups] = useState<{ heading: string; entries: PaletteEntry[] }[]>([]);
+  const [linkGroups, setLinkGroups] = useState<PaletteLinkGroup[]>([]);
+  // The query the shown results belong to: while it differs from the typed one, a search is pending.
+  const [answered, setAnswered] = useState("");
   useEffect(() => {
     if (!needle || !searchLinks) {
       setLinkGroups([]);
@@ -144,8 +154,16 @@ export function CommandPalette({
     let stale = false;
     const timer = window.setTimeout(() => {
       searchLinks(needle)
-        .then((groups) => !stale && setLinkGroups(groups))
-        .catch(() => !stale && setLinkGroups([]));
+        .then((groups) => {
+          if (stale) return;
+          setLinkGroups(groups);
+          setAnswered(needle);
+        })
+        .catch(() => {
+          if (stale) return;
+          setLinkGroups([]);
+          setAnswered(needle);
+        });
     }, 200);
     return () => {
       stale = true;
@@ -298,11 +316,13 @@ export function CommandPalette({
     </CommandGroup>
   ) : null;
 
-  const linksGroups = linkGroups
-    .filter((group) => group.entries.length > 0)
-    .map((group) => (
-      <CommandGroup key={group.heading} heading={group.heading}>
-        {group.entries.map((entry) => (
+  const linkGroup = (group: PaletteLinkGroup) => (
+    <CommandGroup key={group.heading} heading={group.heading}>
+      {group.entries.map((entry) => {
+        const icon = entry.icon ?? group.icon;
+        // A snippet that only repeats the query adds nothing.
+        const detail = entry.detail && entry.detail.toLowerCase() !== needle ? entry.detail : null;
+        return (
           <CommandItem
             key={entry.id}
             value={`link:${entry.id}`}
@@ -312,13 +332,18 @@ export function CommandPalette({
             }}
             className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
           >
+            {icon ? (
+              <span className="grid size-8 shrink-0 place-items-center text-muted-foreground">
+                {icon}
+              </span>
+            ) : null}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-foreground" dir="auto">
                 <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} />
               </span>
-              {entry.detail ? (
+              {detail ? (
                 <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
-                  <Highlight text={entry.detail} needle={needle} />
+                  <Highlight text={detail} needle={needle} />
                 </span>
               ) : null}
             </span>
@@ -326,9 +351,26 @@ export function CommandPalette({
               <span className="shrink-0 text-xs text-muted-foreground">{entry.date}</span>
             ) : null}
           </CommandItem>
-        ))}
-      </CommandGroup>
-    ));
+        );
+      })}
+    </CommandGroup>
+  );
+  const shownLinks = linkGroups.filter((group) => group.entries.length > 0);
+  const leadingLinks = shownLinks.filter((group) => group.first).map(linkGroup);
+  const linksGroups = shownLinks.filter((group) => !group.first).map(linkGroup);
+  const searching = Boolean(needle && searchLinks && answered !== needle);
+
+  // The mail action leads the list, but Enter still opens the best match: select it by value.
+  const bestValue = (() => {
+    if (!needle) return "";
+    const first = sectionOrder[0];
+    if (first === "bots") return filteredBots[0]?.id ?? "";
+    if (first === "groups") return shownGroups[0] ? `group:${shownGroups[0].id}` : "";
+    return shownPages[0] ? `page:${shownPages[0].id}` : "";
+  })();
+  const [picked, setPicked] = useState("");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: restart from the best match when the query changes
+  useEffect(() => setPicked(bestValue), [needle, bestValue, leadingLinks.length]);
 
   return (
     <CommandDialog
@@ -340,6 +382,8 @@ export function CommandPalette({
     >
       <Command
         shouldFilter={false}
+        value={picked || undefined}
+        onValueChange={setPicked}
         className="rounded-xl! bg-popover"
         data-testid="command-palette"
       >
@@ -356,9 +400,12 @@ export function CommandPalette({
           className="max-h-[min(24rem,60vh)]"
           data-testid="command-palette-list"
         >
-          <CommandEmpty>
-            <Trans>No results</Trans>
-          </CommandEmpty>
+          {searching ? null : (
+            <CommandEmpty>
+              <Trans>No results</Trans>
+            </CommandEmpty>
+          )}
+          {leadingLinks}
           {sectionOrder.map((section) => (
             <Fragment key={section}>
               {section === "bots" ? botsGroup : section === "groups" ? groupsGroup : pagesGroup}

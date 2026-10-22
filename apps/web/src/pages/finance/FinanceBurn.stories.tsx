@@ -5,6 +5,7 @@ import type {
   FinanceTransaction,
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { FinanceChromeProvider } from "../../components/finance/ui";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { FinanceBurnPage, FinanceMonthPage, FinanceRunwayPage } from "./FinanceBurn";
 
@@ -198,6 +199,25 @@ export const MonthError: Story = {
 
 export const Runway: Story = {
   render: () => <FinanceRunwayPage />,
+  beforeEach: () => mockRpc({ "finance.runway": runway }),
+};
+/** The header a phone shows: Back, the title, the company and Ask on one row. */
+export const RunwayWithChrome: Story = {
+  render: () => (
+    <FinanceChromeProvider
+      value={{
+        onAskAgent: () => undefined,
+        spaceId: "s1",
+        spaces: [
+          { id: "s1", name: "Northwind Robotics" },
+          { id: "s2", name: "Northwind Labs" },
+        ],
+        onSwitchSpace: () => undefined,
+      }}
+    >
+      <FinanceRunwayPage />
+    </FinanceChromeProvider>
+  ),
   beforeEach: () => mockRpc({ "finance.runway": runway }),
 };
 export const RunwayBankOnly: Story = {

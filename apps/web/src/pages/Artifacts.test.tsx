@@ -21,7 +21,8 @@ vi.mock("../lib/artifact-open", () => ({
 }));
 vi.mock("../lib/relative-time", () => ({ formatRelativeTime: () => "just now" }));
 vi.mock("@lingui/react/macro", () => {
-  const t = (parts: TemplateStringsArray) => parts.join("");
+  const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
+    parts.reduce((text, part, index) => text + part + String(values[index] ?? ""), "");
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 vi.mock("@rakazo/chat-ui/web", () => ({
@@ -393,6 +394,22 @@ it("offers Ask Chief in the header when Chief is available", async () => {
   } finally {
     await act(async () => root.unmount());
     container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("names the delete button after the title, without the file extension", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Fundraising Plan.md", "artifact-1")],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts("/app/artifacts");
+  try {
+    const del = page.container.querySelector("button[aria-label^='Delete']");
+    expect(del?.getAttribute("aria-label")).toBe("Delete Fundraising Plan");
+  } finally {
+    await page.cleanup();
     vi.unstubAllGlobals();
   }
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Contact, InvestorUpdate } from "@rakazo/contracts";
+import type { AuditRequest, Contact, InvestorUpdate } from "@rakazo/contracts";
 import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -50,6 +50,9 @@ const rpcMock = vi.hoisted(() => ({
   updatesDuplicate: vi.fn(),
   updatesDelete: vi.fn(),
   reminder: vi.fn(),
+  auditsList: vi.fn(),
+  auditsUpdate: vi.fn(),
+  auditsDraft: vi.fn(),
   folders: vi.fn(),
   folderCreate: vi.fn(),
   items: vi.fn(),
@@ -57,6 +60,7 @@ const rpcMock = vi.hoisted(() => ({
   catalog: vi.fn(),
   driveList: vi.fn(),
   importDrive: vi.fn(),
+  safesList: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -86,7 +90,13 @@ vi.mock("../lib/rpc", () => ({
         delete: rpcMock.updatesDelete,
       },
       reminder: rpcMock.reminder,
+      audits: {
+        list: rpcMock.auditsList,
+        update: rpcMock.auditsUpdate,
+        draft: rpcMock.auditsDraft,
+      },
     },
+    fundraising: { safes: { list: rpcMock.safesList } },
     connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     dataRoom: {
       folders: rpcMock.folders,
@@ -198,11 +208,10 @@ beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  rpcMock.list.mockResolvedValue([
-    contact("c1", "Ada", "investor"),
-    contact("c2", "Bo", "auditor"),
-  ]);
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor"), contact("c2", "Bo", "board")]);
+  rpcMock.safesList.mockResolvedValue([]);
   rpcMock.updatesList.mockResolvedValue([]);
+  rpcMock.auditsList.mockResolvedValue([]);
   rpcMock.reminder.mockResolvedValue({ cadence: "monthly" });
   rpcMock.servers.mockResolvedValue([cartaServer]);
   rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
@@ -271,13 +280,13 @@ const state = (snapshot: object | null, syncing = false) => ({ snapshot, syncing
 
 // ---- contacts ----
 
-it("lists investors and auditors in tabs", async () => {
+it("lists investors and board members in tabs", async () => {
   await show();
   expect(container.querySelectorAll("h1")).toHaveLength(1);
   expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(container.textContent).toContain("Ada");
   expect(container.textContent).not.toContain("bo@example.test");
-  await click(button("Auditors"));
+  await click(button("Board"));
   expect(container.textContent).not.toContain("Ada");
   expect(container.textContent).toContain("bo@example.test");
   // Customers, vendors and the other kinds stay on the Contacts page.
@@ -296,14 +305,12 @@ it("keeps contacts of other kinds off this page", async () => {
 
 it("adds a contact of the open tab's kind and shows a server error", async () => {
   rpcMock.save.mockRejectedValueOnce(new Error("Email already used"));
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(button("Add contact"));
-  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("auditor");
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("board");
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
-  expect(rpcMock.save).toHaveBeenCalledWith(
-    expect.objectContaining({ name: "Cy", kind: "auditor" }),
-  );
+  expect(rpcMock.save).toHaveBeenCalledWith(expect.objectContaining({ name: "Cy", kind: "board" }));
   expect(document.body.textContent).toContain("Email already used");
   rpcMock.save.mockResolvedValue({});
   await click(button("Save"));
@@ -358,8 +365,8 @@ it("shows each investor's portal state: none, invited, opened, revoked, unblocke
   expect(portalCell("c6")).toBe("Invited Oct 15");
 });
 
-it("has no Portal column for the board and auditors", async () => {
-  await show("/app/investors?kind=auditor");
+it("has no Portal column for the board", async () => {
+  await show("/app/investors?kind=board");
   expect(container.querySelector("[data-portal-state]")).toBeNull();
   await click(rowActions("Bo"));
   expect(menuItem("Resend link")).toBeUndefined();
@@ -503,7 +510,7 @@ it("offers to open the contact that already has the email when adding a duplicat
 it("deletes a contact with an Undo that restores it", async () => {
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockResolvedValue({});
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(openRow("c2"));
   await click(button("Delete"));
   expect(rpcMock.remove).toHaveBeenCalledWith({ id: "c2" });
@@ -513,17 +520,17 @@ it("deletes a contact with an Undo that restores it", async () => {
     name: "Bo",
     email: "bo@example.test",
     organization: null,
-    kind: "auditor",
+    kind: "board",
     notes: null,
   });
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
 it("drops a deleted row and focuses the restored name after Undo, like Contacts", async () => {
-  const bo = contact("c2", "Bo", "auditor");
+  const bo = contact("c2", "Bo", "board");
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockResolvedValue({ ...bo, id: "c9" });
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(openRow("c2"));
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
   await click(button("Delete"));
@@ -538,7 +545,7 @@ it("drops a deleted row and focuses the restored name after Undo, like Contacts"
 it("keeps the contact restorable when Undo fails, and restores it on Try again", async () => {
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockRejectedValueOnce(new Error("offline")).mockResolvedValue({});
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(openRow("c2"));
   await click(button("Delete"));
   await click(button("Undo"));
@@ -568,11 +575,11 @@ it("confirms a save with a toast and highlights the saved row", async () => {
 
 it("reads the tab from the URL and names the kind when it is empty", async () => {
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
-  await show("/app/investors?kind=auditor");
-  expect(button("Auditors")?.getAttribute("aria-selected")).toBe("true");
-  expect(container.textContent).toContain("No auditors yet");
-  await click(button("Add auditor"));
-  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("auditor");
+  await show("/app/investors?kind=board");
+  expect(button("Board")?.getAttribute("aria-selected")).toBe("true");
+  expect(container.textContent).toContain("No board members yet");
+  await click(button("Add board member"));
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("board");
 });
 
 // ---- empty view and Carta ----
@@ -737,6 +744,27 @@ it("shows the figures, source line and holdings of a Carta table; SAFEs sit outs
   expect(safe).toContain("$250,000");
   expect(safe).toContain("—");
   expect(safe).not.toContain("%");
+  // The total row shows the percentages adding up to 100%.
+  expect(rows.find((r) => r.startsWith("Total")) ?? "").toContain("100.0%");
+});
+
+it("has only the SAFEs and funds and Board tabs, and opens a holder's contact from its name", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.list.mockResolvedValue([
+    { ...contact("c1", "Ada", "investor"), name: "Ada Example", email: "ada@example.test" },
+  ]);
+  await show("/app/investors?kind=auditor");
+  const tabs = [...container.querySelectorAll("[role=tab]")].map((tab) => tab.textContent);
+  expect(tabs).toEqual(["SAFEs and funds", "Board"]);
+  expect(button("SAFEs and funds")?.getAttribute("aria-selected")).toBe("true");
+  // A holder that is not a contact is plain text: clicking never opens a form.
+  const founder = [...container.querySelectorAll("table tbody td span")].find(
+    (el) => el.textContent === "Founder Example",
+  ) as HTMLElement;
+  await click(founder);
+  expect(document.getElementById("contact-name")).toBeNull();
+  await click(container.querySelector("table tbody button[title='Ada Example']") as HTMLElement);
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Ada Example");
 });
 
 it("shows a dash for Equity raised when only SAFEs have amounts", async () => {
@@ -1205,6 +1233,7 @@ it("starts an investors update with New update", async () => {
 
 it("starts a board update from the Board tab once a board contact exists", async () => {
   rpcMock.updatesSave.mockResolvedValue(update({ id: "b1", audience: "board" }));
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
   await show("/app/investors?kind=board");
   expect(button("Message the board")).toBeUndefined();
   rpcMock.list.mockResolvedValue([contact("c9", "Bea", "board")]);
@@ -1301,4 +1330,158 @@ it("changes the Reminder from the Updates menu, with the current one ticked", as
   ).toBe("true");
   await click(quarterly);
   expect(rpcMock.reminder).toHaveBeenCalledWith({ cadence: "quarterly" });
+});
+
+const safeRow = (
+  id: string,
+  name: string,
+  status: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  id,
+  source: "native",
+  contactId: null,
+  roundId: null,
+  investorName: name,
+  investorEmail: null,
+  amountCents: 5_000_000,
+  valuationType: "post_money_cap",
+  capCents: 100_000_000,
+  discountPercent: null,
+  mfn: false,
+  proRata: false,
+  governingState: null,
+  investmentDate: null,
+  expiresAt: null,
+  canceledAt: null,
+  sentAt: null,
+  signedByOwnerAt: null,
+  signedByInvestorAt: null,
+  paidAt: null,
+  documentUrl: null,
+  status,
+  createdAt: "2026-10-01T00:00:00.000Z",
+  ...extra,
+});
+
+it("lists sent SAFEs under one group row at cap, outside the table, and hides Drafts", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s1", "Sent Fund", "sent"),
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+    safeRow("s3", "Draft Fund", "draft"),
+    safeRow("s4", "Discount Fund", "sent", { source: "mercury", capCents: null }),
+    safeRow("s5", "Canceled Fund", "canceled"),
+  ]);
+  await show();
+  const group = container.querySelector("[aria-label='SAFEs, if converted at cap']");
+  expect(group).not.toBeNull();
+  // 5.0% + 2.5% at cap; the discount-only SAFE shows a dash and adds nothing.
+  expect(group?.querySelector("[data-testid=safe-sum]")?.textContent).toBe("7.5%");
+  const names = [...group!.querySelectorAll("li")].map((li) => li.textContent);
+  expect(names).toEqual([
+    expect.stringContaining("Sent Fund"),
+    expect.stringContaining("Funded Fund"),
+    expect.stringMatching(/Discount Fund.*—/),
+  ]);
+  expect(group?.textContent).not.toContain("Draft Fund");
+  expect(group?.textContent).not.toContain("Canceled Fund");
+  expect(group?.querySelector("a")?.getAttribute("href")).toBe("/app/fundraising");
+});
+
+it("shows no SAFE group when there are none to convert", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList.mockResolvedValue([safeRow("s3", "Draft Fund", "draft")]);
+  await show();
+  expect(container.querySelector("[aria-label='SAFEs, if converted at cap']")).toBeNull();
+});
+
+const audit = (over: Partial<AuditRequest> = {}): AuditRequest => ({
+  id: "a1",
+  fund: "Example Audit LLP",
+  asOf: "2026-09-30",
+  asOfMatched: true,
+  dueDate: "2026-11-15",
+  status: "open",
+  mailThreadId: "t1",
+  connectionId: "k1",
+  draftRef: null,
+  senderKnown: true,
+  notes: "",
+  dataRoomItemId: null,
+  drafting: false,
+  newMail: false,
+  createdAt: "2026-10-20T10:00:00.000Z",
+  ...over,
+});
+const items = () => container.querySelector("[aria-label='Action items']");
+
+it("lists audit requests as the server ordered them, with their chips and warnings, before an update draft", async () => {
+  rpcMock.updatesList.mockResolvedValue([update()]);
+  rpcMock.auditsList.mockResolvedValue([
+    audit({ id: "a1", fund: "Soon Fund", dueDate: "2026-11-01" }),
+    audit({
+      id: "a2",
+      fund: "Drafted Fund",
+      dueDate: "2026-11-20",
+      status: "drafted",
+      newMail: true,
+      senderKnown: false,
+      asOfMatched: false,
+    }),
+    audit({ id: "a3", fund: "Undated Fund", dueDate: null }),
+  ]);
+  await show();
+  const rows = [...(items()?.querySelectorAll("li") ?? [])].map((li) => li.textContent ?? "");
+  expect(rows).toHaveLength(4);
+  expect(rows[0]).toContain("Audit request · Soon Fund");
+  expect(rows[0]).toContain("due Nov 1");
+  expect(rows[0]).toContain("New");
+  expect(rows[0]).toContain("Draft reply");
+  expect(rows[1]).toContain("Draft ready");
+  expect(rows[1]).toContain("New mail");
+  expect(rows[1]).toContain("Sender not in Auditors");
+  expect(rows[1]).toContain("Holdings as of today, not Sep 30");
+  expect(rows[1]).not.toContain("Draft reply");
+  expect(rows[2]).toContain("Undated Fund");
+  expect(rows[3]).toContain("Example Co · 2026-09 update");
+});
+
+it("Draft reply starts the draft; Mark done and Dismiss close the request", async () => {
+  rpcMock.auditsList.mockResolvedValue([audit()]);
+  rpcMock.auditsDraft.mockResolvedValue(audit({ drafting: true }));
+  rpcMock.auditsUpdate.mockResolvedValue(audit({ status: "done" }));
+  await show();
+  await click(button("Draft reply"));
+  expect(rpcMock.auditsDraft).toHaveBeenCalledWith({ id: "a1" });
+  await click(rowActions("Example Audit LLP"));
+  await click(menuItem("Mark done"));
+  expect(rpcMock.auditsUpdate).toHaveBeenCalledWith({ id: "a1", status: "done" });
+  await click(rowActions("Example Audit LLP"));
+  await click(menuItem("Dismiss"));
+  expect(rpcMock.auditsUpdate).toHaveBeenLastCalledWith({ id: "a1", status: "dismissed" });
+});
+
+it("disables Draft reply while a drafting run is going", async () => {
+  rpcMock.auditsList.mockResolvedValue([audit({ drafting: true })]);
+  await show();
+  expect((button("Draft reply") as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("keeps Show done reachable after the last open request closes", async () => {
+  rpcMock.auditsList.mockResolvedValue([audit({ status: "done" })]);
+  await show();
+  expect(items()).toBeNull();
+  await click(button("Show done"));
+  expect(items()?.textContent).toContain("Audit request · Example Audit LLP");
+  expect(items()?.textContent).toContain("Done");
+  expect(items()?.textContent).not.toContain("Draft reply");
+  await click(button("Hide done"));
+  expect(items()).toBeNull();
+});
+
+it("shows no Show done button before any request is done", async () => {
+  rpcMock.auditsList.mockResolvedValue([audit()]);
+  await show();
+  expect(button("Show done")).toBeUndefined();
 });

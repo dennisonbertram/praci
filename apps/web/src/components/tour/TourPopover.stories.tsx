@@ -7,6 +7,14 @@ function FakeSidebar({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-[560px] w-full bg-background">
       <aside className="flex h-full w-[316px] flex-col gap-1 border-e border-sidebar-border bg-sidebar p-3">
+        <div className="mb-2 flex items-center gap-1">
+          <div data-tour="sidebar-search" className="flex-1 rounded-xl bg-card p-2 text-sm">
+            Search
+          </div>
+          <button type="button" data-tour="create-menu" className="rounded-xl bg-card px-3 py-2">
+            +
+          </button>
+        </div>
         <div data-sidebar-group="main" className="mb-2 rounded-xl bg-card p-2 text-sm">
           Chief
         </div>
@@ -30,6 +38,8 @@ function FakeSidebar({ children }: { children: React.ReactNode }) {
 }
 
 const steps: TourStep[] = [
+  { id: "search", anchor: '[data-tour="sidebar-search"]', text: "Type here to find anything." },
+  { id: "create", anchor: '[data-tour="create-menu"]', text: "Press + to create a bot." },
   { id: "chat", anchor: "[data-sidebar-group]", text: "Chat with Chief here." },
   { id: "inbox", anchor: '[data-tour="sidebar-inbox"]', text: "Inbox sorts your mail." },
   { id: "gone", anchor: '[data-tour="sidebar-missing"]', text: "Never shown." },
@@ -59,3 +69,13 @@ export const Phone: StoryObj<typeof meta> = {
   globals: { viewport: { value: "mobile1" } },
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
+
+/** The last stop at the bottom of a phone: the card sits just above the account button. */
+export const PhoneLastStop: StoryObj<typeof meta> = {
+  args: { steps: steps.slice(-1) },
+  globals: { viewport: { value: "mobile1" } },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+
+/** Desktop: the card sits beside the sidebar at one x, never over another row. */
+export const DesktopCreateStop: StoryObj<typeof meta> = { args: { steps: steps.slice(1, 2) } };

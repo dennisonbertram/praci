@@ -92,10 +92,14 @@ it("asks a login for a username as well", async () => {
   expect(onAnswer).toHaveBeenCalledWith("example-pass", "ada");
 });
 
-it("shows the site once when the question already names it", async () => {
-  const named = { ...block({ type: "bearer" }), text: "API key for api.example.com" };
-  const { container } = await setup(named);
-  expect(container.textContent?.match(/api\.example\.com/g)).toHaveLength(1);
-  const plain = await setup(block({ type: "bearer" }));
-  expect(plain.container.textContent).toContain("https://api.example.com");
+it("opens with focus in the field to type into, not on the line toggle", async () => {
+  await setup(block({ type: "bearer" }));
+  await act(async () => byText("Provide secret")?.click());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(document.activeElement).toBe(document.querySelector('input[type="password"]'));
+  document.body.innerHTML = "";
+  await setup(block({ type: "login" }));
+  await act(async () => byText("Provide secret")?.click());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(document.activeElement).toBe(document.querySelector("input"));
 });

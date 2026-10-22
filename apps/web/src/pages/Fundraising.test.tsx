@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Contact, FundraiseRound, FundraisingOverview } from "@rakazo/contracts";
+import type { Contact, FundraiseRound, FundraisingOverview, Safe } from "@rakazo/contracts";
 import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -32,6 +32,9 @@ const rpcMock = vi.hoisted(() => ({
   roundClose: vi.fn(),
   roundReopen: vi.fn(),
   prospectSave: vi.fn(),
+  safeSave: vi.fn(),
+  safeMark: vi.fn(),
+  safeDelete: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -40,6 +43,7 @@ vi.mock("../lib/rpc", () => ({
       overview: rpcMock.overview,
       round: { save: rpcMock.roundSave, close: rpcMock.roundClose, reopen: rpcMock.roundReopen },
       prospects: { save: rpcMock.prospectSave },
+      safes: { save: rpcMock.safeSave, mark: rpcMock.safeMark, delete: rpcMock.safeDelete },
     },
   },
 }));
@@ -72,11 +76,52 @@ const openRound: FundraiseRound = {
   closedAt: null,
 };
 const closedRound: FundraiseRound = { ...openRound, closedAt: "2026-10-20T00:00:00.000Z" };
+const safe = (id: string, extra: Partial<Safe> = {}): Safe => ({
+  id,
+  source: "native",
+  contactId: null,
+  roundId: "r1",
+  investorName: "Harbor Angels",
+  investorEmail: null,
+  amountCents: 5_000_000,
+  valuationType: "post_money_cap",
+  capCents: 1_000_000_000,
+  discountPercent: null,
+  mfn: false,
+  proRata: false,
+  governingState: null,
+  investmentDate: null,
+  expiresAt: null,
+  canceledAt: null,
+  sentAt: null,
+  signedByOwnerAt: null,
+  signedByInvestorAt: null,
+  paidAt: null,
+  documentUrl: null,
+  status: "draft",
+  createdAt: "2026-10-20T00:00:00.000Z",
+  ...extra,
+});
+const signedUnpaid = (id: string) =>
+  safe(id, {
+    status: "signed",
+    sentAt: "2026-10-01T00:00:00.000Z",
+    signedByOwnerAt: "2026-10-05T00:00:00.000Z",
+    signedByInvestorAt: "2026-10-05T00:00:00.000Z",
+  });
 const overview = (
   round: FundraiseRound | null,
   prospects: Contact[],
   pendingCents = 0,
-): FundraisingOverview => ({ round, pendingCents, prospects });
+  safes: Safe[] = [],
+): FundraisingOverview => ({
+  round,
+  pendingCents,
+  signedCents: safes.filter((s) => s.status === "signed").reduce((n, s) => n + s.amountCents, 0),
+  fundedCents: 0,
+  prospects,
+  safes,
+});
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -304,4 +349,157 @@ it("shows an error with Try again when the page cannot load", async () => {
   rpcMock.overview.mockResolvedValue(overview(null, []));
   await click(button("Try again"));
   expect(container.textContent).toContain("No prospects yet");
+});
+
+const committed = prospect("p1", "Harbor Angels", {
+  stage: "committed",
+  checkSizeCents: 5_000_000,
+  roundId: "r1",
+});
+const dialogButton = (label: string) =>
+  [
+    ...document.querySelectorAll<HTMLElement>("[role=dialog] button, [role=alertdialog] button"),
+  ].find((b) => b.textContent?.trim() === label);
+const pendingFigure = () =>
+  [...container.querySelectorAll("div")].find((d) => d.textContent === "Pending")
+    ?.nextElementSibling?.textContent;
+
+it("opens Send SAFE prefilled from the prospect and the round, with the cap as the only term", async () => {
+  rpcMock.overview.mockResolvedValue(overview(openRound, [committed], 5_000_000));
+  await show();
+  expect(button("Send SAFE")).toBeDefined();
+  await click(button("Send SAFE"));
+  expect((document.getElementById("safe-investor") as HTMLInputElement).value).toBe(
+    "Harbor Angels",
+  );
+  expect((document.getElementById("safe-amount") as HTMLInputElement).value).toBe("50000");
+  // The round's cap shows as a line; the terms open on request and have no discount or MFN.
+  expect(document.body.textContent).toContain("Post-money cap $10,000,000");
+  expect(document.getElementById("safe-cap")).toBeNull();
+  await click(dialogButton("Different terms"));
+  expect((document.getElementById("safe-cap") as HTMLInputElement).value).toBe("10000000");
+  expect(document.body.textContent).toContain("Pro rata side letter");
+  expect(document.body.textContent).not.toMatch(/discount|MFN/i);
+  expect(dialogButton("Send SAFE")).toBeDefined();
+});
+
+it("opens the terms by default with no round", async () => {
+  rpcMock.overview.mockResolvedValue(overview(null, [{ ...committed, roundId: null }]));
+  await show();
+  await click(button("Send SAFE"));
+  expect((document.getElementById("safe-cap") as HTMLInputElement).value).toBe("");
+});
+
+it("saves a Draft SAFE and shows its cover summary, where Mark sent records it", async () => {
+  rpcMock.overview.mockResolvedValue(overview(openRound, [committed], 5_000_000));
+  await show();
+  await click(button("Send SAFE"));
+  const draft = safe("s1", { contactId: "p1" });
+  rpcMock.safeSave.mockResolvedValue(draft);
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 5_000_000, [draft]));
+  await click(dialogButton("Send SAFE"));
+  await flush();
+  expect(rpcMock.safeSave).toHaveBeenCalledWith(
+    expect.objectContaining({
+      contactId: "p1",
+      investorName: "Harbor Angels",
+      amountCents: 5_000_000,
+      capCents: 1_000_000_000,
+      proRata: false,
+    }),
+  );
+  // The prospect left the pipeline, and the round bar did not move.
+  expect(container.querySelector("[data-contact-id]")).toBeNull();
+  expect(pendingFigure()).toBe("$50,000");
+  expect(document.body.textContent).toContain("YC documents");
+  expect(dialogButton("Print")).toBeDefined();
+  rpcMock.safeMark.mockResolvedValue({ ...draft, status: "sent" });
+  await click(dialogButton("Mark sent"));
+  expect(rpcMock.safeMark).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "s1", action: "sent", at: expect.any(String) }),
+  );
+});
+
+it("hides Send SAFE once a SAFE exists and brings the prospect back when it is deleted", async () => {
+  const draft = safe("s1", { contactId: "p1" });
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 5_000_000, [draft]));
+  await show();
+  expect(button("Send SAFE")).toBeUndefined();
+  expect(container.querySelector("[data-safe-id=s1]")).not.toBeNull();
+  await click(container.querySelector('[aria-label="Actions for Harbor Angels SAFE"]'));
+  rpcMock.overview.mockResolvedValue(overview(openRound, [committed], 5_000_000));
+  rpcMock.safeDelete.mockResolvedValue({ ok: true });
+  await click(menuItem("Delete"));
+  await click(dialogButton("Delete"));
+  await flush();
+  expect(rpcMock.safeDelete).toHaveBeenCalledWith({ id: "s1" });
+  expect(button("Send SAFE")).toBeDefined();
+});
+
+it("offers only the next Mark action, asks for the date and offers Undo", async () => {
+  const sent = safe("s1", { status: "sent", sentAt: "2026-10-20T00:00:00.000Z" });
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 5_000_000, [sent]));
+  await show();
+  await click(container.querySelector('[aria-label="Actions for Harbor Angels SAFE"]'));
+  const items = [...document.querySelectorAll("[role=menuitem]")].map((i) => i.textContent);
+  expect(items).toEqual(["Open", "Mark signed", "Cancel SAFE", "Delete"]);
+  rpcMock.safeMark.mockResolvedValue({ ...sent, status: "signed" });
+  await click(menuItem("Mark signed"));
+  await typeInto("mark-date", "2026-10-21");
+  await click(dialogButton("Mark signed"));
+  await flush();
+  expect(rpcMock.safeMark).toHaveBeenCalledWith({
+    id: "s1",
+    action: "signed",
+    at: "2026-10-21T12:00:00.000Z",
+  });
+  await click(button("Undo"));
+  expect(rpcMock.safeMark).toHaveBeenLastCalledWith({ id: "s1", action: "signed", at: null });
+});
+
+it("lists a signed, unpaid SAFE in Attention with Mark funded", async () => {
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 0, [signedUnpaid("s1")]));
+  await show();
+  const strip = container.querySelector("[aria-label=Attention]");
+  expect(strip?.textContent).toContain("Awaiting deposit");
+  expect(strip?.textContent).toContain("Find in Finance");
+  rpcMock.safeMark.mockResolvedValue(signedUnpaid("s1"));
+  await click([...strip!.querySelectorAll("button")].find((b) => b.textContent === "Mark funded"));
+  await click(dialogButton("Mark funded"));
+  expect(rpcMock.safeMark).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "s1", action: "funded" }),
+  );
+});
+
+it("has no Attention block when nothing needs it", async () => {
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 0, [safe("s1")]));
+  await show();
+  expect(container.querySelector("[aria-label=Attention]")).toBeNull();
+});
+
+it("confirms Close round only while a SAFE is signed and unpaid, and keeps the SAFEs", async () => {
+  const unpaid = signedUnpaid("s1");
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 0, [unpaid]));
+  await show();
+  await click(container.querySelector('[aria-label="Round actions"]'));
+  await click(menuItem("Close round"));
+  expect(rpcMock.roundClose).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("Harbor Angels' $50,000 SAFE is signed and unpaid.");
+  rpcMock.roundClose.mockResolvedValue(closedRound);
+  rpcMock.overview.mockResolvedValue(overview(closedRound, [], 0, [unpaid]));
+  await click(dialogButton("Close round"));
+  await flush();
+  expect(rpcMock.roundClose).toHaveBeenCalledWith({ id: "r1" });
+  // The SAFE and its Attention row stay on the closed round.
+  expect(container.querySelector("[data-safe-id=s1]")).not.toBeNull();
+  expect(container.querySelector("[aria-label=Attention]")).not.toBeNull();
+});
+
+it("closes at once when every SAFE is paid or unsigned", async () => {
+  rpcMock.overview.mockResolvedValue(overview(openRound, [], 0, [safe("s1")]));
+  await show();
+  await click(container.querySelector('[aria-label="Round actions"]'));
+  rpcMock.roundClose.mockResolvedValue(closedRound);
+  await click(menuItem("Close round"));
+  expect(rpcMock.roundClose).toHaveBeenCalledWith({ id: "r1" });
 });

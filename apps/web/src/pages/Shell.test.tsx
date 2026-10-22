@@ -1013,6 +1013,40 @@ describe("Transcript unread divider and new-message pill", () => {
     });
   });
 
+  describe("opening on unread messages", () => {
+    // The usual snap to the end leaves the divider 500 px above the top of the scroller.
+    const openedScrollTop = (extra: Partial<ComponentProps<typeof Transcript>>) => {
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+        cb(0);
+        return 1;
+      });
+      const { render } = mount();
+      const original = Element.prototype.getBoundingClientRect;
+      Element.prototype.getBoundingClientRect = function (this: Element) {
+        return (
+          this.hasAttribute("data-unread-divider")
+            ? { top: -500, bottom: -480 }
+            : { top: 0, bottom: 300 }
+        ) as DOMRect;
+      };
+      try {
+        render(thread, { lastReadSeq: 1, ...extra });
+      } finally {
+        Element.prototype.getBoundingClientRect = original;
+      }
+      return container?.querySelector<HTMLElement>('[data-testid="transcript"]')?.scrollTop;
+    };
+    afterEach(() => vi.restoreAllMocks());
+
+    it("scrolls to the divider in the user's own thread", () => {
+      expect(openedScrollTop({})).toBeLessThan(0);
+    });
+
+    it("stays at the end in a docked page-agent panel", () => {
+      expect(openedScrollTop({ anchorToUnread: false })).toBe(0);
+    });
+  });
+
   describe("marking read", () => {
     afterEach(() => {
       vi.useRealTimers();

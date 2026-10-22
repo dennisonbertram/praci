@@ -60,7 +60,7 @@ function NextDeadline({ contract }: { contract: LegalContract }) {
   );
 }
 
-function Title({ contract }: { contract: LegalContract }) {
+function Title({ contract, inline = false }: { contract: LegalContract; inline?: boolean }) {
   return (
     <>
       <Link
@@ -69,7 +69,10 @@ function Title({ contract }: { contract: LegalContract }) {
       >
         {contract.title}
       </Link>
-      <div className="text-xs text-muted-foreground">{contract.contractType}</div>
+      {/* The wide table keeps a row to one line, so the type sits beside the title. */}
+      <span className={cn("text-xs text-muted-foreground", inline ? "ms-2" : "block")}>
+        {contract.contractType}
+      </span>
     </>
   );
 }
@@ -131,16 +134,16 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           </li>
         ))}
       </ul>
-      <Table className="hidden @4xl:table">
+      <Table compact className="hidden table-fixed @4xl:table">
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[20%]" : "w-[22%]"} />
-          <col className={showStatus ? "w-[14%]" : "w-[18%]"} />
+          <col className={showStatus ? "w-[20%]" : "w-[23%]"} />
+          <col className={showStatus ? "w-[14%]" : "w-[19%]"} />
           {showStatus ? <col className="w-[8%]" /> : null}
-          <col className={showStatus ? "w-[20%]" : "w-[22%]"} />
-          <col className="w-[17%]" />
+          <col className={showStatus ? "w-[20%]" : "w-[21%]"} />
+          <col className={showStatus ? "w-[17%]" : "w-[16%]"} />
           <col className="w-[9%]" />
           <col className="w-[12%]" />
         </colgroup>
@@ -173,18 +176,22 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
         </TableHeader>
         <TableBody>
           {contracts.map((contract) => (
-            <TableRow key={contract.id} className="align-top">
-              <TableCell>
-                <Title contract={contract} />
+            <TableRow key={contract.id}>
+              <TableCell className="truncate">
+                <Title contract={contract} inline />
               </TableCell>
-              <TableCell>{contract.counterparties.join(", ") || dash}</TableCell>
+              <TableCell className="truncate" title={contract.counterparties.join(", ")}>
+                {contract.counterparties.join(", ") || dash}
+              </TableCell>
               {showStatus ? (
                 <TableCell>
                   <Status status={contract.status} />
                 </TableCell>
               ) : null}
               <TableCell className="whitespace-nowrap tabular-nums">{term(contract)}</TableCell>
-              <TableCell className="whitespace-nowrap">{renewal(contract)}</TableCell>
+              <TableCell className="truncate" title={renewal(contract)}>
+                {renewal(contract)}
+              </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
               <TableCell className="ps-6 whitespace-nowrap tabular-nums">
                 <NextDeadline contract={contract} />

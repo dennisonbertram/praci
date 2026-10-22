@@ -13,12 +13,18 @@ import { NOTIFICATIONS_CHANGED_EVENT } from "../../lib/use-sidebar-glance";
 import { errorText } from "../../lib/user-error";
 
 /** How long the Undo stays after Done or Dismiss. */
-const UNDO_MS = 8_000;
+const UNDO_MS = 30_000;
 /** Deadlines closer than this get a "due in N days" line. */
 const SOON_DAYS = 30;
 
 const rowHeight = (event: React.MouseEvent<HTMLElement>) =>
   event.currentTarget.closest("li")?.getBoundingClientRect().height ?? 0;
+
+/** The title as the row shows it: the contract is part of it, so no two rows read alike. */
+const fullTitle = (deadline: LegalDeadline) =>
+  maskCurrencyWhenHidden(
+    deadline.contractTitle ? `${deadline.title}: ${deadline.contractTitle}` : deadline.title,
+  );
 
 /** Open deadlines, soonest first. Done and Dismiss close one; `onChanged` reloads the page's numbers. */
 export function LegalDeadlines({
@@ -109,9 +115,9 @@ export function LegalDeadlines({
   const undoLine = undo ? (
     <>
       {undo.status === "done" ? (
-        <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
+        <Trans>Marked {fullTitle(undo.deadline)} done.</Trans>
       ) : (
-        <Trans>Dismissed {maskCurrencyWhenHidden(undo.deadline.title)}.</Trans>
+        <Trans>Dismissed {fullTitle(undo.deadline)}.</Trans>
       )}
       <Button size="sm" variant="ghost" onClick={() => void reopen()}>
         <Trans>Undo</Trans>
@@ -160,11 +166,7 @@ export function LegalDeadlines({
           const overdue = days < 0;
           const late = -days;
           // The visible title includes the contract, so the button names do too.
-          const name = maskCurrencyWhenHidden(
-            deadline.contractTitle
-              ? `${deadline.title}: ${deadline.contractTitle}`
-              : deadline.title,
-          );
+          const name = fullTitle(deadline);
           return (
             <li
               key={deadline.id}

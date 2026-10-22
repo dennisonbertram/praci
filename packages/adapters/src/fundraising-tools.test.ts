@@ -35,9 +35,27 @@ describe("fundraising_read", () => {
       row({}),
       row({ id: "d", name: "Old Fund", roundId: "r0", checkSizeCents: null, stage: "committed" }),
     ]);
+    const safeFind = vi.fn(async () => [
+      {
+        id: "s1",
+        source: "native",
+        contactId: null,
+        roundId: "r1",
+        investorName: "Lakeside Fund",
+        amountCents: 2_500_000n,
+        capCents: 1_000_000_000n,
+        valuationType: "post_money_cap",
+        mfn: false,
+        proRata: false,
+        sentAt: new Date("2026-02-01T00:00:00Z"),
+        paidAt: null,
+        createdAt: new Date("2026-02-01T00:00:00Z"),
+      },
+    ]);
     const prisma = {
       fundraiseRound: { findFirst: roundFind },
       contact: { findMany: contactFind },
+      safe: { findMany: safeFind },
     } as never;
     const result = await fundraisingToolFromTool("fundraising_read", { prisma, scope });
     expect(result).toEqual({
@@ -48,7 +66,21 @@ describe("fundraising_read", () => {
         postMoneyCapUsd: 10_000_000,
         closedAt: null,
       },
-      pendingUsd: 50_000,
+      pendingUsd: 75_000,
+      signedUsd: 0,
+      fundedUsd: 0,
+      safes: [
+        {
+          investor: "Lakeside Fund",
+          source: "native",
+          status: "sent",
+          amountUsd: 25_000,
+          postMoneyCapUsd: 10_000_000,
+          sentAt: "2026-02-01T00:00:00.000Z",
+          paidAt: null,
+          inShownRound: true,
+        },
+      ],
       prospects: [
         expect.objectContaining({
           name: "Harbor Angels",
@@ -59,6 +91,7 @@ describe("fundraising_read", () => {
       ],
     });
     expect(roundFind).toHaveBeenCalledWith({ where: { ...scope, closedAt: null } });
+    expect(safeFind).toHaveBeenCalledWith(expect.objectContaining({ where: scope }));
     expect(contactFind).toHaveBeenCalledWith(
       expect.objectContaining({ where: { ...scope, kind: "prospect" } }),
     );
@@ -70,6 +103,7 @@ describe("fundraising_read", () => {
     const prisma = {
       fundraiseRound: { findFirst: find },
       contact: { findMany: async () => [row({})] },
+      safe: { findMany: async () => [] },
     } as never;
     expect(await fundraisingToolFromTool("fundraising_read", { prisma, scope })).toMatchObject({
       round: { status: "closed", closedAt: closedAt.toISOString() },
@@ -79,10 +113,14 @@ describe("fundraising_read", () => {
     const empty = {
       fundraiseRound: { findFirst: async () => null },
       contact: { findMany: async () => [] },
+      safe: { findMany: async () => [] },
     } as never;
     expect(await fundraisingToolFromTool("fundraising_read", { prisma: empty, scope })).toEqual({
       round: null,
       pendingUsd: 0,
+      signedUsd: 0,
+      fundedUsd: 0,
+      safes: [],
       prospects: [],
     });
   });
@@ -91,6 +129,7 @@ describe("fundraising_read", () => {
     const prisma = {
       fundraiseRound: { findFirst: async () => null },
       contact: { findMany: async () => [row({ stage: null, checkSizeCents: null })] },
+      safe: { findMany: async () => [] },
     } as never;
     expect(await fundraisingToolFromTool("fundraising_read", { prisma, scope })).toMatchObject({
       prospects: [{ stage: "target" }],
