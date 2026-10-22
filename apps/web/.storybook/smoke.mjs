@@ -37,7 +37,14 @@ async function check(entry) {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (msg) => msg.type() === "error" && errors.push(msg.text()));
-  await page.goto(`${base}/iframe.html?id=${entry.id}&viewMode=story`);
+  try {
+    await page.goto(`${base}/iframe.html?id=${entry.id}&viewMode=story`);
+  } catch (error) {
+    // One slow navigation is one failed story, not an aborted run.
+    failures.push({ id: entry.id, file: entry.importPath, errors: [String(error.message)] });
+    await page.close();
+    return;
+  }
   // Wait until the story renders or Storybook shows its error, then give late async work a moment.
   await page
     .waitForFunction(
