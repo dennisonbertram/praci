@@ -305,13 +305,8 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
-msgid "{0} non-USD not counted"
-msgstr "{0} non-USD not counted"
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{0} not counted"
-msgstr "{0} not counted"
+msgid "{0} non-USD transactions not counted"
+msgstr "{0} non-USD transactions not counted"
 
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
@@ -352,6 +347,11 @@ msgstr "{0} transactions"
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions · {period}"
 msgstr "{0} transactions · {period}"
+
+#. placeholder {0}: parts.unpricedTokenCount
+#: src/pages/finance/FinanceBurn.tsx
+msgid "{0} unpriced."
+msgstr "{0} unpriced."
 
 #. placeholder {0}: monthShort(data.monthly.at(-1)?.month ?? "")
 #. placeholder {1}: monthShort(data.changeFromMonth)
@@ -668,10 +668,6 @@ msgstr "{tbd} TBD left. Send anyway?"
 msgid "{title}, {label}"
 msgstr "{title}, {label}"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
-msgstr "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
 msgstr "{unpriced} unpriced"
@@ -717,6 +713,11 @@ msgstr "+{unnamed} more"
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "1 non-USD transaction not counted"
+msgstr "1 non-USD transaction not counted"
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
@@ -2046,10 +2047,6 @@ msgstr "Bulleted list"
 msgid "Burn"
 msgstr "Burn"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Burn by category"
-msgstr "Burn by category"
-
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Business plan"
 msgstr "Business plan"
@@ -2410,6 +2407,14 @@ msgstr "Choose a Google Sheet"
 #: src/pages/Auth.tsx
 msgid "Choose a new password"
 msgstr "Choose a new password"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Choose a tool"
+msgstr "Choose a tool"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account"
+msgstr "Choose an account"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
@@ -4152,7 +4157,6 @@ msgstr "Default ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
@@ -6298,6 +6302,7 @@ msgstr "Mail from {0} is now marked important"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
+#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
@@ -6720,10 +6725,17 @@ msgstr "Monthly spend · {0} – {1}"
 msgid "More"
 msgstr "More"
 
+#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
+#. placeholder {0}: server.name
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
 msgstr "More {0} actions"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
+msgstr "More {name} actions"
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
@@ -6749,6 +6761,10 @@ msgstr "More computer actions"
 #: src/pages/ActivityList.tsx
 msgid "More filters"
 msgstr "More filters"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "More Granola actions"
+msgstr "More Granola actions"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "More settings"
@@ -7197,7 +7213,6 @@ msgstr "No mail matches this filter"
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-#: src/pages/shell/command-palette.tsx
 msgid "No matches"
 msgstr "No matches"
 
@@ -7589,6 +7604,10 @@ msgstr "On a schedule"
 msgid "On: creates a {service} agent that can read and, after you approve, make changes."
 msgstr "On: creates a {service} agent that can read and, after you approve, make changes."
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
+msgstr "On: other agents can read {service}. Changes still go through this agent and ask first."
+
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -7836,7 +7855,6 @@ msgstr "Original message unavailable"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
-#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7873,8 +7891,8 @@ msgid "Out"
 msgstr "Out"
 
 #: src/pages/Finance.tsx
-msgid "Out so far this month"
-msgstr "Out so far this month"
+msgid "Out so far this month, not over"
+msgstr "Out so far this month, not over"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"
@@ -8751,7 +8769,6 @@ msgstr "Remove"
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/shell/composer.tsx
 msgid "Remove {0}"
@@ -9049,6 +9066,7 @@ msgstr "Restoring your workspace"
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/DropZone.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
@@ -10348,6 +10366,10 @@ msgstr "Steps to follow"
 msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Still loading…"
+msgstr "Still loading…"
+
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Still looking. This can take a minute."
 msgstr "Still looking. This can take a minute."
@@ -11131,10 +11153,6 @@ msgstr "Try the test again."
 msgid "Turn off"
 msgstr "Turn off"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Turn off a tool"
-msgstr "Turn off a tool"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off drafts for {botName}?"
 msgstr "Turn off drafts for {botName}?"
@@ -11268,10 +11286,6 @@ msgstr "Unpin"
 #: src/pages/Inbox.tsx
 msgid "Unread"
 msgstr "Unread"
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Unreadable"
-msgstr "Unreadable"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"

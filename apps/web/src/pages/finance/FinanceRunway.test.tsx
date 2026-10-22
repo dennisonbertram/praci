@@ -110,3 +110,33 @@ it("does not end with a glossary of terms the page already shows", async () => {
   expect(container.textContent).not.toContain("Subtracted from burn");
   expect(container.textContent).not.toContain("not counted as burn");
 });
+
+it("repeats the dashboard's unpriced caveat next to the crypto line", async () => {
+  rpcMock.runway.mockResolvedValue(
+    runway({
+      breakdown: {
+        bankCents: 100_000_00,
+        stablecoinCents: 25_000_00,
+        otherCryptoCents: 30_000_00,
+        unpricedTokenCount: 1,
+      },
+    }),
+  );
+  await show();
+  expect(container.textContent).toContain("1 unpriced");
+});
+
+it("keeps the unpriced caveat when every holding is unpriced", async () => {
+  rpcMock.runway.mockResolvedValue(
+    runway({
+      breakdown: {
+        bankCents: 100_000_00,
+        stablecoinCents: 0,
+        otherCryptoCents: 0,
+        unpricedTokenCount: 2,
+      },
+    }),
+  );
+  await show();
+  expect(container.textContent).toContain("2 unpriced");
+});

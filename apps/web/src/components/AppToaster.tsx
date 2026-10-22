@@ -1,13 +1,14 @@
 import type { NotificationDto } from "@rakazo/contracts";
 import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
-import { useMatch, useNavigate } from "react-router-dom";
+import { useLocation, useMatch, useNavigate } from "react-router-dom";
 import { lookupAgentApp } from "../lib/agent-app";
 import { hasApprovalToasts } from "../lib/approval-toasts";
 import { authClient } from "../lib/auth";
 import { openChatBotId } from "../lib/docked-agent";
 import { i18n } from "../lib/i18n";
 import {
+  approvalInOpenChat,
   attentionFromDto,
   deliverNotification,
   NOTIFICATION_SETTINGS_CHANGED,
@@ -38,15 +39,24 @@ const markOpened = (n: NotificationDto) =>
     )
     .then(announceChange, () => undefined);
 
+/** X on an approval toast: it stays closed, also after a reload, until the person asks again. */
+const dismissApproval = (n: NotificationDto) => () =>
+  void rpc.notifications.dismiss({ id: n.id }).catch(() => undefined);
+
 const APPROVAL_POLL_MS = 2000;
 
 /** Lets the toasts follow the approvals still waiting for an answer, however long ago they were sent. */
-async function followUnansweredApprovals(openBotId: () => string | undefined) {
+async function followUnansweredApprovals(
+  openBotId: () => string | undefined,
+  openPath: () => string,
+) {
   const { notifications } = await rpc.notifications.pendingApprovals();
   syncApprovalToasts(notifications, {
     complete: true,
     onSeen: (n) => () => void markOpened(n),
-    skip: (n) => Boolean(n.botId) && n.botId === openBotId(),
+    onDismiss: dismissApproval,
+    // A bot chat or a group chat that is open already shows its own approval card.
+    skip: (n) => approvalInOpenChat(n, openBotId(), openPath()),
   });
 }
 
@@ -74,6 +84,9 @@ export function AppToaster() {
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
   const openBotId = useMatch("/app/:botId")?.params.botId;
+  const { pathname } = useLocation();
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
   const openBotIdRef = useRef(openBotId);
   openBotIdRef.current = openBotId;
   useEffect(() => {
@@ -108,6 +121,7 @@ export function AppToaster() {
                   ...attentionFromDto(n),
                   avatar: await avatarFor(n, userIdRef.current),
                   onSeen: () => void markOpened(n),
+                  onDismiss: dismissApproval(n),
                 },
                 {
                   open: openLink,
@@ -129,9 +143,10 @@ export function AppToaster() {
     // the toasts are rebuilt from the server on load, on every change, and every 2 s while shown.
     const syncApprovals = () => {
       if (document.visibilityState !== "visible") return;
-      void followUnansweredApprovals(() => openChatBotId(openBotIdRef.current)).catch(
-        () => undefined,
-      );
+      void followUnansweredApprovals(
+        () => openChatBotId(openBotIdRef.current),
+        () => pathRef.current,
+      ).catch(() => undefined);
     };
     syncApprovals();
     window.addEventListener("rakazo:notifications-changed", syncApprovals);
@@ -147,11 +162,13 @@ export function AppToaster() {
   }, []);
   // Leaving a chat with an approval still waiting raises its toast again; the 2 s poll stopped once
   // the open chat hid the last toast, so nothing else would.
-  const previousBotId = useRef(openBotId);
+  const previousChat = useRef(pathname);
   useEffect(() => {
-    if (previousBotId.current && previousBotId.current !== openBotId) announceChange();
-    previousBotId.current = openBotId;
-  }, [openBotId]);
+    if (previousChat.current !== pathname && /^\/app\/(g\/)?[^/]+$/.test(previousChat.current)) {
+      announceChange();
+    }
+    previousChat.current = pathname;
+  }, [pathname]);
   return (
     <NotificationToaster
       onOpen={openLink}

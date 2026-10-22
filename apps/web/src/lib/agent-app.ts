@@ -44,7 +44,7 @@ export function agentApp(
   return undefined;
 }
 
-type SpaceData = AgentAppData & { bots: { id: string; spawnKey: string | null }[] };
+type SpaceData = AgentAppData & { bots: Awaited<ReturnType<typeof rpc.bots.list>> };
 
 /** The app behind one integration agent, or undefined for an ordinary bot. */
 export async function lookupAgentApp(

@@ -171,67 +171,6 @@ export function GeneralSettingsPanels({
                 setUiAppearance(next);
               }}
             />
-            {/* The sidebar is a drawer below 1024px, where density does nothing. */}
-            <div className="mt-4 hidden lg:block">
-              <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
-                <Trans>Sidebar density</Trans>
-              </span>
-              <fieldset
-                aria-labelledby={sidebarDensityLabelId}
-                data-testid="bots-sidebar-density-select"
-                className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
-              >
-                <Toggle
-                  data-testid="bots-sidebar-density-comfortable"
-                  pressed={sidebarDensity === "comfortable"}
-                  onPressedChange={() => setBotsSidebarDensity("comfortable")}
-                  className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                >
-                  <Trans>Comfortable</Trans>
-                </Toggle>
-                <Toggle
-                  data-testid="bots-sidebar-density-compact"
-                  pressed={sidebarDensity === "compact"}
-                  onPressedChange={() => setBotsSidebarDensity("compact")}
-                  className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                >
-                  <Trans>Compact</Trans>
-                </Toggle>
-              </fieldset>
-            </div>
-            <span id={avatarsLabelId} className="mt-4 block text-[13px] text-foreground/75">
-              <Trans>Avatars</Trans>
-            </span>
-            <fieldset
-              aria-labelledby={avatarsLabelId}
-              data-testid="avatar-style-select"
-              className="mt-2 grid min-w-0 grid-cols-2 gap-3"
-            >
-              {(["organic", "robot"] as const).map((style) => (
-                <Toggle
-                  key={style}
-                  variant="outline"
-                  pressed={style === avatarStyle}
-                  disabled={avatarPending}
-                  onPressedChange={() => void chooseAvatarStyle(style)}
-                  data-testid={`avatar-style-${style}`}
-                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
-                >
-                  <BotAvatar
-                    color="#D9508A"
-                    identity="avatar-style-preview"
-                    size={32}
-                    variant={style}
-                  />
-                  <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
-                </Toggle>
-              ))}
-            </fieldset>
-            {avatarError ? (
-              <p role="alert" className="mt-3 text-[12.5px] text-destructive">
-                {avatarError}
-              </p>
-            ) : null}
           </section>
         </div>
         <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
@@ -252,6 +191,67 @@ export function GeneralSettingsPanels({
               />
             </summary>
             <div className="border-t border-border px-4 pb-5">
+              {/* The sidebar is a drawer below 1024px, where density does nothing. */}
+              <div className="mt-5 hidden lg:block">
+                <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
+                  <Trans>Sidebar density</Trans>
+                </span>
+                <fieldset
+                  aria-labelledby={sidebarDensityLabelId}
+                  data-testid="bots-sidebar-density-select"
+                  className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+                >
+                  <Toggle
+                    data-testid="bots-sidebar-density-comfortable"
+                    pressed={sidebarDensity === "comfortable"}
+                    onPressedChange={() => setBotsSidebarDensity("comfortable")}
+                    className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                  >
+                    <Trans>Comfortable</Trans>
+                  </Toggle>
+                  <Toggle
+                    data-testid="bots-sidebar-density-compact"
+                    pressed={sidebarDensity === "compact"}
+                    onPressedChange={() => setBotsSidebarDensity("compact")}
+                    className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                  >
+                    <Trans>Compact</Trans>
+                  </Toggle>
+                </fieldset>
+              </div>
+              <span id={avatarsLabelId} className="mt-5 block text-[13px] text-foreground/75">
+                <Trans>Avatars</Trans>
+              </span>
+              <fieldset
+                aria-labelledby={avatarsLabelId}
+                data-testid="avatar-style-select"
+                className="mt-2 grid min-w-0 grid-cols-2 gap-3"
+              >
+                {(["organic", "robot"] as const).map((style) => (
+                  <Toggle
+                    key={style}
+                    variant="outline"
+                    pressed={style === avatarStyle}
+                    disabled={avatarPending}
+                    onPressedChange={() => void chooseAvatarStyle(style)}
+                    data-testid={`avatar-style-${style}`}
+                    className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
+                  >
+                    <BotAvatar
+                      color="#D9508A"
+                      identity="avatar-style-preview"
+                      size={32}
+                      variant={style}
+                    />
+                    <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
+                  </Toggle>
+                ))}
+              </fieldset>
+              {avatarError ? (
+                <p role="alert" className="mt-3 text-[12.5px] text-destructive">
+                  {avatarError}
+                </p>
+              ) : null}
               <div className="mt-5 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={streamRepliesId}
@@ -375,7 +375,6 @@ export function UsageSettingsPanel({
     totalTokens?: number | null;
   } | null;
 }) {
-  const tokens = usage?.totalTokens;
   // Provider keys only matter to someone who added their own; the system model needs none.
   const [hasOwnKey, setHasOwnKey] = useState(false);
   useEffect(() => {
@@ -396,12 +395,6 @@ export function UsageSettingsPanel({
             one="# task done by your bots"
             other="# tasks done by your bots"
           />
-          {tokens == null ? null : (
-            <>
-              {" · "}
-              <Plural value={tokens} one="# token of AI text" other="# tokens of AI text" />
-            </>
-          )}
         </p>
       ) : null}
       {hasOwnKey ? (

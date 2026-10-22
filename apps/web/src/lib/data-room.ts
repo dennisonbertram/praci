@@ -232,6 +232,21 @@ export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeT
   }
 }
 
+/** Like openDataRoomItem, but the tab goes straight to the file: phone browsers draw a framed PDF as an empty box. */
+export async function openDataRoomFileDirect(
+  item: Pick<DataRoomApiItem, "id" | "mimeType" | "name">,
+) {
+  const tab = window.open("", "_blank");
+  if (!tab) return saveDataRoomItem(item);
+  tab.opener = null;
+  try {
+    tab.location.href = await dataRoomFileUrl(item);
+  } catch (error) {
+    tab.close();
+    throw error;
+  }
+}
+
 function showInTab(tab: Window, name: string, url: string) {
   const doc = tab.document;
   doc.title = name;

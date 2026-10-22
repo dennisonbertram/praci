@@ -9,7 +9,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { BurnLines, LineChart, StackBar } from "./charts";
+import { BurnLines, LineChart } from "./charts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -65,24 +65,6 @@ it.each([375, 600, 1000])("keeps the Financing label inside the chart at %i px",
     expect(to).toBeLessThanOrEqual(width);
     done();
   }
-});
-
-it("folds a long category list into five segments plus Other, each named", async () => {
-  const segments = Array.from({ length: 10 }, (_, i) => ({
-    key: `k${i}`,
-    label: `Category ${i}`,
-    cents: 1000 - i * 10,
-  }));
-  const { el, done } = await mount(
-    400,
-    <StackBar label="Burn" onOpen={() => {}} segments={segments} />,
-  );
-  const rects = [...el.querySelectorAll("rect")];
-  expect(rects).toHaveLength(6);
-  expect(rects.map((r) => r.querySelector("title")?.textContent).at(-1)).toBe("Other");
-  expect(rects.every((r) => r.querySelector("title")?.textContent)).toBe(true);
-  expect(rects.every((r) => r.getAttribute("tabindex") === "0")).toBe(true);
-  done();
 });
 
 it("names the dashed part of the projection", async () => {
@@ -150,7 +132,7 @@ it("starts the monthly chart at the first month with money and ends both lines o
     month(3, 100_000, 50_000),
     month(4, 120_000, 60_000),
     month(5, 130_000, 70_000),
-    month(6, 20_000, 10_000, true),
+    month(6, 60_000, 10_000, true),
   ];
   const { el, done } = await mount(
     600,
@@ -172,6 +154,21 @@ it("starts the monthly chart at the first month with money and ends both lines o
     );
   const outEnd = lastX(el.querySelector("[data-testid=burn-out-line]")?.getAttribute("d"));
   expect(outEnd).toBeLessThan(endX("burn-out-end"));
+  done();
+});
+
+it("draws one end marker when the Out and Revenue dots of the running month would touch", async () => {
+  const series = [
+    month(4, 120_000, 60_000),
+    month(5, 130_000, 70_000),
+    month(6, 40_000, 36_000, true),
+  ];
+  const { el, done } = await mount(
+    600,
+    <BurnLines label="Burn" height={200} series={series} onOpen={() => {}} />,
+  );
+  expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
+  expect(el.querySelector("[data-testid=burn-revenue-end]")).toBeNull();
   done();
 });
 

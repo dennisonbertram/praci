@@ -232,7 +232,7 @@ export const Breakdown: Story = {
   name: "Breakdown rows",
   render: () => (
     <Section title="By category">
-      <BreakdownRows rows={rows} to={(row) => `/finance/category/${row.key}`} swatches />
+      <BreakdownRows rows={rows} to={(row) => `/finance/category/${row.key}`} />
     </Section>
   ),
 };

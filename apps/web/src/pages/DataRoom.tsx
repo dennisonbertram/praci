@@ -613,8 +613,9 @@ export function DataRoomPage({
       hasDates: facetValues.hasDates || shown.hasDates,
     };
   }, [rows, facetValues]);
-  const subfolderList = () => (
+  const subfolderList = (status?: boolean) => (
     <SubfolderList
+      status={status}
       tiles={view === "grid"}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
@@ -1021,12 +1022,11 @@ export function DataRoomPage({
           onClose={() => setAction(null)}
           onDone={(kind, updated) => {
             if (kind === "delete") {
-              // Deleting the previewed item shows its neighbour, so the pane stays and the list
-              // does not jump. The last item closes it.
-              if (pinned?.id === action.item.id) {
-                const at = rows.findIndex((row) => row.item.id === action.item.id);
-                setPinned(narrow ? null : ((rows[at + 1] ?? rows[at - 1])?.item ?? null));
-              }
+              // Deleting the previewed item closes the preview: opening the next file unasked
+              // read as if Maya had chosen it.
+              if (pinned?.id === action.item.id) setPinned(null);
+              // The sidebar's failed count follows the list.
+              window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
               showDeletedToast(action.item.name);
               // The open folder is gone: show the one it was in.
               if (isFolder(action.item) && action.item.id === filters.folderId) {

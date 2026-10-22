@@ -120,6 +120,7 @@ describe("listPendingApprovalNotifications", () => {
     )[0].where;
     expect(where).toMatchObject({ runId: { in: ["r1"] } });
     expect(where).not.toHaveProperty("seenAt");
+    expect(where).toMatchObject({ dismissedAt: null });
     expect(where).not.toHaveProperty("createdAt");
   });
 

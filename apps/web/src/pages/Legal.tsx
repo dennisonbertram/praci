@@ -301,14 +301,12 @@ function Legal({
   const uncheckedLine = (
     <>
       {counts.unreviewedDocuments > 0 ? (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-2 text-sm">
-          <p className="min-w-0 text-muted-foreground">
-            {plural(counts.unreviewedDocuments, {
-              one: "# Data room document not yet checked by Legal",
-              other: "# Data room documents not yet checked by Legal",
-            })}
-          </p>
-        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {plural(counts.unreviewedDocuments, {
+            one: "# Data room document not yet checked by Legal",
+            other: "# Data room documents not yet checked by Legal",
+          })}
+        </p>
       ) : null}
     </>
   );

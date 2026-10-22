@@ -8563,6 +8563,18 @@ export function createRouter(deps: RouterDeps) {
           threadId: input.threadId,
         }),
       })),
+      dismiss: authed.notifications.dismiss.handler(async ({ context, input }) => {
+        const { count } = await deps.prisma.notification.updateMany({
+          where: {
+            id: input.id,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            dismissedAt: null,
+          },
+          data: { dismissedAt: new Date() },
+        });
+        return { ok: count > 0 };
+      }),
       markShown: authed.notifications.markShown.handler(async ({ context, input }) => ({
         ok: await markShown(deps.prisma, context.actor, input.id),
       })),

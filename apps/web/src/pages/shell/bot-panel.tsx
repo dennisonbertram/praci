@@ -810,7 +810,7 @@ export function BotSettings({
                   value=""
                   onChange={(event) => disableBuiltinTool(event.target.value)}
                 >
-                  <NativeSelectOption value="">{t`Turn off a tool`}</NativeSelectOption>
+                  <NativeSelectOption value="">{t`Choose a tool`}</NativeSelectOption>
                   {BUILTIN_TOOL_NAMES.filter((name) => !disabledBuiltinTools.includes(name)).map(
                     (name) => (
                       <NativeSelectOption key={name} value={name}>

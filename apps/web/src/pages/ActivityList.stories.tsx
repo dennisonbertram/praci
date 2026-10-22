@@ -159,3 +159,31 @@ export const ManyRuns: Story = {
     ),
   ],
 };
+
+const approvals = Array.from({ length: 4 }, (_, index) =>
+  row({
+    runId: `run_approval_${index}`,
+    botName: `Bot ${index + 1}`,
+    status: "waiting_input",
+    needsApproval: true,
+    promptSnippet: `Approve sample ${index + 1}`,
+  }),
+);
+
+/** Four approvals plus one running: every "Needs you" row shows without an inner scroll. */
+export const FourApprovals: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "runs.list": (input: unknown) =>
+        (input as { filter: string }).filter === "active"
+          ? { runs: [...approvals, ...busy.slice(2)] }
+          : { runs: [] },
+    }),
+  decorators: [
+    (Story) => (
+      <div className="flex h-[393px] w-72 flex-col overflow-y-auto border border-border">
+        <Story />
+      </div>
+    ),
+  ],
+};
