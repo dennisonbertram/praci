@@ -162,7 +162,12 @@ export function companyToolsForRun(deps: {
   readAllowed: boolean;
 }): ConnectorTool[] {
   if (deps.importer) return deps.ownerRun ? companyImporterTools : [];
-  if (deps.companyAgent) return deps.ownerRun ? companyAgentTools : [];
+  if (deps.companyAgent) {
+    if (!deps.ownerRun) return deps.readAllowed ? companyReadTools : [];
+    return deps.readAllowed
+      ? companyAgentTools
+      : companyAgentTools.filter((tool) => !COMPANY_READ_TOOL_NAMES.has(tool.name));
+  }
   return deps.readAllowed ? companyReadTools : [];
 }
 

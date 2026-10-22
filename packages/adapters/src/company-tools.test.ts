@@ -1,6 +1,7 @@
 import type { Actor } from "@rakazo/contracts";
 import {
   CalendarQueryInputSchema,
+  COMPANY_READ_TOOLS,
   CompanyFactUpsertInputSchema,
   CompanyGetInputSchema,
   CompanyImportStartInputSchema,
@@ -586,8 +587,8 @@ describe("Company tools", () => {
         companyAgent: true,
         importer: false,
         readAllowed: true,
-      }),
-    ).toEqual([]);
+      }).map((tool) => tool.name),
+    ).toEqual(["company_search", "company_get", "timeline_query", "calendar_query"]);
     expect(
       companyToolsForRun({
         ownerRun: false,
@@ -612,6 +613,19 @@ describe("Company tools", () => {
         readAllowed: true,
       }).map((tool) => tool.name),
     ).toContain("company_fact_upsert");
+    const foregroundCompanyToolsWithoutRead = companyToolsForRun({
+      ownerRun: true,
+      companyAgent: true,
+      importer: false,
+      readAllowed: false,
+    }).map((tool) => tool.name);
+    expect(
+      foregroundCompanyToolsWithoutRead.filter((name) =>
+        COMPANY_READ_TOOLS.includes(name as never),
+      ),
+    ).toEqual([]);
+    expect(foregroundCompanyToolsWithoutRead).toContain("company_review_next");
+    expect(foregroundCompanyToolsWithoutRead).toContain("company_fact_upsert");
     expect(
       companyToolsForRun({
         ownerRun: true,

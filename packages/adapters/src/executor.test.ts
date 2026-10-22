@@ -717,46 +717,57 @@ describe("Company identity executor boundaries", () => {
     ).toBe(false);
   });
 
-  it("offers and dispatches Company reads for an eligible owner routine without upsert", async () => {
-    setCompanySearchStore();
-    const { request, toolResults } = await runIdentityExecutor({
-      spawnKey: null,
-      trigger: "routine",
-      calls: [
-        { name: "company_search", args: { text: "Synthetic Example" } },
-        {
-          name: "company_fact_upsert",
-          args: {
-            operation: "create",
-            kind: "entity",
-            fact: {
-              kind: "person",
-              displayName: "Synthetic Example",
-              attrs: {},
-              confidence: 0.8,
+  it.each([
+    ["ordinary bot", null],
+    ["Company agent", companyAgentSpawnKey("user-1")],
+  ])(
+    "%s offers and dispatches Company reads for an eligible owner routine without upsert",
+    async (_label, spawnKey) => {
+      setCompanySearchStore();
+      const { request, toolResults } = await runIdentityExecutor({
+        spawnKey,
+        trigger: "routine",
+        calls: [
+          { name: "company_search", args: { text: "Synthetic Example" } },
+          {
+            name: "company_fact_upsert",
+            args: {
+              operation: "create",
+              kind: "entity",
+              fact: {
+                kind: "person",
+                displayName: "Synthetic Example",
+                attrs: {},
+                confidence: 0.8,
+              },
+              provenance: "Synthetic owner correction",
             },
-            provenance: "Synthetic owner correction",
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    expect(request?.tools.map(({ name }) => name)).toEqual(
-      expect.arrayContaining([...COMPANY_READ_TOOLS]),
-    );
-    expect(request?.tools.map(({ name }) => name)).not.toContain("company_fact_upsert");
-    expect(toolResults[0]?.result).toMatchObject({
-      untrusted: true,
-      facts: [
-        expect.objectContaining({
-          record: expect.objectContaining({ id: "company-person-1" }),
-        }),
-      ],
-    });
-    expect(toolResults[1]?.result).toMatchObject({
-      error: expect.stringMatching(/not available/i),
-    });
-  });
+      const exposedCompanyTools =
+        request?.tools
+          .map(({ name }) => name)
+          .filter(
+            (name) => name.startsWith("company_") || COMPANY_READ_TOOLS.includes(name as never),
+          )
+          .sort() ?? [];
+      expect(exposedCompanyTools).toEqual([...COMPANY_READ_TOOLS].sort());
+      expect(request?.tools.map(({ name }) => name)).not.toContain("company_fact_upsert");
+      expect(toolResults[0]?.result).toMatchObject({
+        untrusted: true,
+        facts: [
+          expect.objectContaining({
+            record: expect.objectContaining({ id: "company-person-1" }),
+          }),
+        ],
+      });
+      expect(toolResults[1]?.result).toMatchObject({
+        error: expect.stringMatching(/not available/i),
+      });
+    },
+  );
 
   it.each([
     {
@@ -1016,7 +1027,7 @@ describe("Company identity executor boundaries", () => {
       call: { name: "company_search", args: { text: "Synthetic Example" } },
       error: /not available/i,
     },
-  ])("denies $label", async ({ spawnKey, trigger, groupId, call, error }) => {
+  ])("denies $label", async ({ label, spawnKey, trigger, groupId, call, error }) => {
     const { request, toolResults, pauseRunForInput } = await runIdentityExecutor({
       spawnKey,
       trigger,
@@ -1027,6 +1038,16 @@ describe("Company identity executor boundaries", () => {
     expect(pauseRunForInput).not.toHaveBeenCalled();
     if (groupId) {
       expect(request?.tools.map(({ name }) => name)).not.toContain(call.name);
+    }
+    if (label === "unattended Company mutation") {
+      const exposedCompanyTools =
+        request?.tools
+          .map(({ name }) => name)
+          .filter(
+            (name) => name.startsWith("company_") || COMPANY_READ_TOOLS.includes(name as never),
+          )
+          .sort() ?? [];
+      expect(exposedCompanyTools).toEqual([...COMPANY_READ_TOOLS].sort());
     }
   });
 
