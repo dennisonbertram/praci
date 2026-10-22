@@ -1300,6 +1300,10 @@ msgid "API key"
 msgstr "API-ключ"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "Заголовок ключа API"
 
@@ -1610,14 +1614,6 @@ msgstr "Авторизовать"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so bots can use its tools. A popup opens."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-group"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-grouped"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -2202,6 +2198,10 @@ msgstr ""
 msgid "Chats"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Chats grouped into folders"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Check again"
 msgstr ""
@@ -2633,6 +2633,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Компьютеры выключены. Установите SANDBOX_PROVIDER=docker с помощью SANDBOX_SUPERVISOR_TOKEN или установите для SANDBOX_PROVIDER значение e2b, Daytona или Box с его ключом API. Воссоздайте стек после изменения .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Подтвердить удаление"
@@ -2789,6 +2793,10 @@ msgstr "Подключить Treg"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -5152,6 +5160,10 @@ msgstr ""
 msgid "Group"
 msgstr "Группа"
 
+#: src/pages/Shell.tsx
+msgid "Group chats into folders"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/GroupPanel.tsx
 msgid "Group settings"
@@ -5627,10 +5639,6 @@ msgstr ""
 msgid "just now"
 msgstr "только что"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Investors."
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
 msgstr ""
@@ -5643,6 +5651,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "Сохранить память"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Keep your contracts here and see which are due soon."
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
@@ -7194,6 +7206,10 @@ msgstr "Авторизация OAuth отменена."
 msgid "OAuth connection failed"
 msgstr "Соединение OAuth не удалось"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr ""
@@ -7773,12 +7789,26 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -10810,7 +10840,11 @@ msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
-msgid "Upload failed"
+msgid "Upload failed. Check your connection and try again."
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed. The server could not save this file."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -10818,7 +10852,7 @@ msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for bots to use. Artifacts holds what bots make."
+msgid "Upload files for bots to use."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -10872,6 +10906,10 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Используйте «Подключить», чтобы проверить ключ."
@@ -10879,6 +10917,10 @@ msgstr "Используйте «Подключить», чтобы провер
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Использовать рекомендации по умолчанию"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
+msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."

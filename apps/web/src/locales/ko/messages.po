@@ -1300,6 +1300,10 @@ msgid "API key"
 msgstr "API 키"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API 키 헤더"
 
@@ -1610,14 +1614,6 @@ msgstr "인증하기"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so bots can use its tools. A popup opens."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-group"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-grouped"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -2202,6 +2198,10 @@ msgstr ""
 msgid "Chats"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Chats grouped into folders"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Check again"
 msgstr ""
@@ -2633,6 +2633,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "컴퓨터가 꺼져 있습니다. SANDBOX_PROVIDER=docker와 SANDBOX_SUPERVISOR_TOKEN을 설정하거나, SANDBOX_PROVIDER를 e2b, daytona, box 중 하나로 두고 해당 API 키를 넣으세요. .env 변경 후 스택을 다시 만드세요."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "삭제 확인"
@@ -2789,6 +2793,10 @@ msgstr "Treg 연결"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -5152,6 +5160,10 @@ msgstr ""
 msgid "Group"
 msgstr "그룹"
 
+#: src/pages/Shell.tsx
+msgid "Group chats into folders"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/GroupPanel.tsx
 msgid "Group settings"
@@ -5627,10 +5639,6 @@ msgstr ""
 msgid "just now"
 msgstr "방금"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Investors."
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
 msgstr ""
@@ -5643,6 +5651,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "기억은 유지"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Keep your contracts here and see which are due soon."
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
@@ -7194,6 +7206,10 @@ msgstr "OAuth 인증이 취소되었습니다."
 msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr ""
@@ -7773,12 +7789,26 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -10810,7 +10840,11 @@ msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
-msgid "Upload failed"
+msgid "Upload failed. Check your connection and try again."
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed. The server could not save this file."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -10818,7 +10852,7 @@ msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for bots to use. Artifacts holds what bots make."
+msgid "Upload files for bots to use."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -10872,12 +10906,20 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "키를 확인하려면 연결을 사용하세요."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
