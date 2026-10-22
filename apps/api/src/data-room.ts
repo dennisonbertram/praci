@@ -48,6 +48,7 @@ import {
   AI_DISCLOSURE_VERSION,
   DATA_ROOM_DISCLOSURE,
   DATA_ROOM_DISCLOSURE_VERSION,
+  DATA_ROOM_STUCK_MS,
   DataRoomApiName,
 } from "@rakazo/contracts";
 import { KEY_REJECTED_PATTERN } from "@rakazo/core";
@@ -130,6 +131,7 @@ const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
     summary: item.summary,
   },
   createdAt: item.createdAt.toISOString(),
+  updatedAt: item.updatedAt.toISOString(),
   hasThumbnail: item.thumbnailKey !== null,
   previewText: item.previewText,
 });
@@ -406,11 +408,14 @@ export function createDataRoomService(deps: DataRoomDeps) {
         await repo.deleteItem(actor, id);
         return { ok: true as const };
       }),
-    /** A failed item starts over from reading its text; any other status is a conflict. */
+    /** A failed or stuck item starts over from reading its text; any other status is a conflict. */
     retryItem: (actor: Actor, id: string) =>
       dataRoomCall(async () => {
         const item = await repo.getItem(actor, id);
-        if (item.status !== "failed" || !(await repo.restartItem(actor, id))) {
+        // A file just queued is not stuck; failed and long-stalled files restart.
+        const queued =
+          item.status === "pending" && Date.now() - item.updatedAt.getTime() < DATA_ROOM_STUCK_MS;
+        if (queued || !(await repo.restartItem(actor, id))) {
           throw new ORPCError("CONFLICT", { message: "This file is already being read." });
         }
         await deps.jobs.enqueue(dataRoomStepJob("dataroom.ingest", actor, id));

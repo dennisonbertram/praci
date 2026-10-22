@@ -3,6 +3,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES, modelLabel } from "@rakazo/contracts";
 import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
+import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
@@ -144,8 +145,11 @@ export function AiDataSharingSection() {
       }
       return status ?? aiConsentStatus();
     });
-  // On while any model is allowed (for example the one a Legal Allow granted); Advanced shows which.
-  const anyAllowed = recipients?.some((recipient) => recipient.allowed) ?? false;
+  // On only when every model is allowed, so it matches what works; a partial grant (for example the
+  // one a Legal Allow made) reads off and Advanced opens to show which models are allowed.
+  const allAllowed = recipients?.every((recipient) => recipient.allowed) ?? false;
+  const partlyAllowed =
+    !allAllowed && (recipients?.some((recipient) => recipient.allowed) ?? false);
   return (
     <section className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
@@ -164,7 +168,7 @@ export function AiDataSharingSection() {
         <div className="mt-3 flex items-center gap-3 pointer-coarse:min-h-11">
           <Switch
             aria-label={t`Allow AI models`}
-            checked={anyAllowed}
+            checked={allAllowed}
             disabled={pending}
             onCheckedChange={setAll}
           />
@@ -178,10 +182,15 @@ export function AiDataSharingSection() {
           </span>
         </div>
       )}
-      {recipients && recipients.length > 0 ? (
-        <details className="group mt-3">
-          <summary className="cursor-pointer list-none text-[13px] text-muted-foreground">
+      {/* With one model the switch above already is that model. */}
+      {recipients && recipients.length > 1 ? (
+        <details className="group mt-3" open={partlyAllowed}>
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
             <Trans>Advanced</Trans>
+            <ChevronRight
+              aria-hidden="true"
+              className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+            />
           </summary>
           <ul className="mt-3 flex flex-col gap-3">
             {recipients.map((recipient) => {

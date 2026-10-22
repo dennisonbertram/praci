@@ -201,6 +201,9 @@ import {
   FundraiseRoundSchema,
   FundraisingOverviewSchema,
   ProspectSaveInputSchema,
+  SafeMarkInputSchema,
+  SafeSaveInputSchema,
+  SafeSchema,
 } from "./fundraising.js";
 import { Id, IsoDate } from "./ids.js";
 import {
@@ -241,6 +244,9 @@ import {
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
 import {
+  AuditRequestListInputSchema,
+  AuditRequestSchema,
+  AuditRequestUpdateInputSchema,
   InvestorPostResultSchema,
   InvestorReminderCadenceSchema,
   InvestorShareInputSchema,
@@ -1593,6 +1599,14 @@ export const appContract = {
     portalResend: oc.input(PortalResendInputSchema).output(PortalResendResultSchema),
     portalRevoke: oc.input(z.object({ contactId: Id })).output(ContactSchema),
     portalUnblock: oc.input(z.object({ contactId: Id })).output(ContactSchema),
+    audits: {
+      /** Open and drafted requests; with `includeDone`, closed ones too (history). */
+      list: oc.input(AuditRequestListInputSchema).output(z.array(AuditRequestSchema)),
+      /** Mark done or Dismiss; a closed request is never reopened. */
+      update: oc.input(AuditRequestUpdateInputSchema).output(AuditRequestSchema),
+      /** Starts the Investors agent's drafting run for a request still waiting for one. */
+      draft: oc.input(z.object({ id: Id })).output(AuditRequestSchema),
+    },
     /** Reads the update reminder; with `cadence` it changes the monthly routine first. */
     reminder: oc
       .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
@@ -1609,6 +1623,14 @@ export const appContract = {
     },
     prospects: {
       save: oc.input(ProspectSaveInputSchema).output(ContactSchema),
+    },
+    safes: {
+      list: oc.output(z.array(SafeSchema)),
+      /** Adds a native Draft; CONFLICT when the contact already has a SAFE, BAD_REQUEST without a cap. */
+      save: oc.input(SafeSaveInputSchema).output(SafeSchema),
+      /** Native SAFEs only; CONFLICT for a Mercury SAFE or canceling a Funded one. */
+      mark: oc.input(SafeMarkInputSchema).output(SafeSchema),
+      delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     },
   },
   carta: {

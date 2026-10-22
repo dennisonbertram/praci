@@ -253,7 +253,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   <Label htmlFor={passwordFieldId} className="text-muted-foreground">
                     <Trans>Password</Trans>
                   </Label>
-                  <div className="relative">
+                  <div className="relative mt-2">
                     <Input
                       id={passwordFieldId}
                       name="password"
@@ -265,7 +265,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       required
                       minLength={8}
                       aria-invalid={error ? true : undefined}
-                      className={`${fieldClass} pr-12`}
+                      className={`${fieldClass} mt-0 pr-12`}
                     />
                     <Button
                       type="button"
