@@ -5731,6 +5731,7 @@ export function ShellPage() {
               {!inGroup && !pageMode && active ? (
                 <button
                   type="button"
+                  data-testid="computer-routines-button"
                   title={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   aria-label={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   onClick={() => {
