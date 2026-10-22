@@ -2172,7 +2172,6 @@ msgstr "Chart hidden while amounts are hidden"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr "Chat"
 
@@ -2191,14 +2190,6 @@ msgstr "Chat display"
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr "Chat settings"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage"
-msgstr "Chat with your agents over iMessage"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage from your Mac"
-msgstr "Chat with your agents over iMessage from your Mac"
 
 #: src/pages/Shell.tsx
 msgid "Chats"
@@ -3782,6 +3773,10 @@ msgstr "Create a key with only Query Funds"
 msgid "Create a read-only key"
 msgstr "Create a read-only key"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Create a routine"
+msgstr "Create a routine"
+
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Create account"
@@ -3823,10 +3818,6 @@ msgstr "Create Inbox agent"
 #: src/pages/Shell.tsx
 msgid "Create Legal agent"
 msgstr "Create Legal agent"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Create Routine"
-msgstr "Create Routine"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
@@ -4132,10 +4123,6 @@ msgstr "Desktop update"
 msgid "Details"
 msgstr "Details"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Developer"
-msgstr "Developer"
-
 #: src/pages/Devin.tsx
 #: src/pages/Shell.tsx
 msgid "Devin"
@@ -4282,10 +4269,6 @@ msgstr "Doc"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Docs & files"
-msgstr "Docs & files"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -4523,10 +4506,6 @@ msgstr "Edit wallet"
 msgid "Email"
 msgstr "Email"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Email & calendar"
-msgstr "Email & calendar"
-
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Email agent"
 msgstr "Email agent"
@@ -4535,9 +4514,14 @@ msgstr "Email agent"
 msgid "Email and calendar"
 msgstr "Email and calendar"
 
+#: src/components/integrations/parts.tsx
 #: src/pages/Shell.tsx
 msgid "Email chats"
 msgstr "Email chats"
+
+#: src/components/integrations/parts.tsx
+msgid "Email chats can use {appName}"
+msgstr "Email chats can use {appName}"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -8777,10 +8761,6 @@ msgstr "SAFEs and funds"
 msgid "SAFEs, if converted at cap"
 msgstr "SAFEs, if converted at cap"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Sales & CRM"
-msgstr "Sales & CRM"
-
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr "Sandbox"
@@ -9276,6 +9256,11 @@ msgstr "Share with investors"
 msgid "Shared"
 msgstr "Shared"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr "Shared {0}"
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr "Shared by all bots"
@@ -9455,6 +9440,10 @@ msgstr "Sign-in failed"
 msgid "Sign-in needed."
 msgstr "Sign-in needed."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in options"
+msgstr "Sign-in options"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9583,6 +9572,10 @@ msgstr "Social"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Software update"
+
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr "Some"
 
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
@@ -10344,9 +10337,13 @@ msgstr "This zip is password-protected"
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
-msgstr "Tick a change to apply it."
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through a Photon project"
+msgstr "Through a Photon project"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through BlueBubbles on your Mac"
+msgstr "Through BlueBubbles on your Mac"
 
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
@@ -10421,6 +10418,10 @@ msgstr "Too large to preview ({0})"
 #: src/components/data-room/Preview.tsx
 msgid "Too large to search inside"
 msgstr "Too large to search inside"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Tool name"
+msgstr "Tool name"
 
 #: src/lib/run-phase.ts
 msgid "tools"
@@ -11122,10 +11123,6 @@ msgstr "Wallets"
 #: src/lib/devin-format.ts
 msgid "Web"
 msgstr "Web"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Web search"
-msgstr "Web search"
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"

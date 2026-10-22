@@ -330,11 +330,13 @@ export function FilterBar({
         {activeFilters > 0 ? <span className="tabular-nums">{activeFilters}</span> : null}
       </Button>
       {/* Where the folder tree is hidden, this picks the folder; it sits with Sort, not the pills. */}
-      <div className="order-2 flex h-8 items-center gap-1 @min-[800px]/bd:hidden">
+      <div className="order-2 flex h-8 min-w-0 items-center gap-1 @min-[800px]/bd:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="data-room-folder-picker"
-            render={<Button variant="outline" size="sm" className="max-w-44 rounded-full" />}
+            render={
+              <Button variant="outline" size="sm" className="max-w-36 min-w-0 rounded-full" />
+            }
             title={openFolder?.path}
           >
             <Folder aria-hidden="true" />

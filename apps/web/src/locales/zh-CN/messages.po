@@ -2172,7 +2172,6 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr ""
 
@@ -2190,14 +2189,6 @@ msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3782,6 +3773,10 @@ msgstr ""
 msgid "Create a read-only key"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Create a routine"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "创建账户"
@@ -3822,10 +3817,6 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Create Legal agent"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Create Routine"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -4132,10 +4123,6 @@ msgstr ""
 msgid "Details"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Developer"
-msgstr ""
-
 #: src/pages/Devin.tsx
 #: src/pages/Shell.tsx
 msgid "Devin"
@@ -4281,10 +4268,6 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -4523,10 +4506,6 @@ msgstr ""
 msgid "Email"
 msgstr "邮箱"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Email & calendar"
-msgstr ""
-
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Email agent"
 msgstr ""
@@ -4535,8 +4514,13 @@ msgstr ""
 msgid "Email and calendar"
 msgstr ""
 
+#: src/components/integrations/parts.tsx
 #: src/pages/Shell.tsx
 msgid "Email chats"
+msgstr ""
+
+#: src/components/integrations/parts.tsx
+msgid "Email chats can use {appName}"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -8777,10 +8761,6 @@ msgstr ""
 msgid "SAFEs, if converted at cap"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Sales & CRM"
-msgstr ""
-
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr ""
@@ -9276,6 +9256,11 @@ msgstr ""
 msgid "Shared"
 msgstr "共享"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr ""
@@ -9455,6 +9440,10 @@ msgstr ""
 msgid "Sign-in needed."
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in options"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9583,6 +9572,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "软件更新"
+
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr ""
 
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
@@ -10344,8 +10337,12 @@ msgstr ""
 msgid "This zip is too large to unpack"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through a Photon project"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through BlueBubbles on your Mac"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -10420,6 +10417,10 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "Too large to search inside"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Tool name"
 msgstr ""
 
 #: src/lib/run-phase.ts
@@ -11121,10 +11122,6 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Web"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Web search"
 msgstr ""
 
 #: src/pages/Paywall.tsx
