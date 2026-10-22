@@ -112,7 +112,7 @@ export const ListWithStatus: Story = {
           ...(index === 0
             ? {
                 status: "processing" as const,
-                createdAt: new Date(Date.now() - 6 * 60_000).toISOString(),
+                updatedAt: new Date(Date.now() - 6 * 60_000).toISOString(),
               }
             : {}),
           ...(index === 1
@@ -120,6 +120,13 @@ export const ListWithStatus: Story = {
             : {}),
           ...(index === 2
             ? { status: "failed" as const, error: "TimeoutError: the step timed out" }
+            : {}),
+          // Quiet for over 10 minutes: "Taking longer than usual" with Try again.
+          ...(index === 3
+            ? {
+                status: "extracting" as const,
+                updatedAt: new Date(Date.now() - 14 * 60_000).toISOString(),
+              }
             : {}),
         },
       }))}

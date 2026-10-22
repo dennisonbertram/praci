@@ -174,6 +174,7 @@ export const Transcript = memo(function Transcript({
   onOpenComputer,
   lastReadSeq,
   onRead,
+  anchorToUnread = true,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
   /** Set by the composer while its own message is on the way in. */
@@ -221,6 +222,8 @@ export const Transcript = memo(function Transcript({
   lastReadSeq?: number;
   /** Called, debounced, once the reader is attending to messages up to `upTo`; `toEnd` when at the latest. */
   onRead?: (messageId: string, toEnd: boolean) => Promise<void> | void;
+  /** Open on the "New" divider. A docked page-agent panel opens on the latest message instead. */
+  anchorToUnread?: boolean;
 }) {
   const { t } = useLingui();
   const [atEnd, setAtEnd] = useState(true);
@@ -552,7 +555,7 @@ export const Transcript = memo(function Transcript({
       const row = element?.querySelector("[data-unread-divider]");
       const offset =
         element && row ? row.getBoundingClientRect().top - element.getBoundingClientRect().top : 0;
-      if (element && offset < 0) {
+      if (element && offset < 0 && anchorToUnread) {
         following.current = false;
         autoScrolling.current = false;
         element.scrollTop += offset - 24;
@@ -581,7 +584,14 @@ export const Transcript = memo(function Transcript({
       setDividerSettled(true);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [showDividerId, dividerSettled, scrollRef, measureView, answerableAskMessageId]);
+  }, [
+    showDividerId,
+    dividerSettled,
+    scrollRef,
+    measureView,
+    answerableAskMessageId,
+    anchorToUnread,
+  ]);
 
   useEffect(() => {
     if (atEnd) setDismissedCount(0);

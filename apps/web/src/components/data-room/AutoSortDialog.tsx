@@ -11,7 +11,7 @@ import {
   DialogTitle,
   Label,
 } from "@rakazo/ui-web";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { LoadingState } from "../ai/primitives";
@@ -61,13 +61,19 @@ export function AutoSortDialog({
   const [error, setError] = useState("");
   const [off, setOff] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
+  // Only the latest request may fill the list: an older answer arriving later would swap the proposal on screen.
+  const latest = useRef(0);
 
   const load = useCallback(() => {
+    const request = ++latest.current;
     setPlan(null);
     setError("");
+    setSlow(false);
     rpc.dataRoom.autoSort
       .plan()
       .then((next: AutoSortPlan) => {
+        if (request !== latest.current) return;
         setPlan(next);
         // Files already in a folder are left alone unless ticked; loose ones are the point.
         setOff(
@@ -78,9 +84,14 @@ export function AutoSortDialog({
           ),
         );
       })
-      .catch((cause: unknown) => setError(errorText(cause)));
+      .catch((cause: unknown) => request === latest.current && setError(errorText(cause)));
   }, []);
   useEffect(load, [load]);
+  useEffect(() => {
+    if (plan || error) return;
+    const timer = setTimeout(() => setSlow(true), 10_000);
+    return () => clearTimeout(timer);
+  }, [plan, error]);
 
   const groups: Group[] = [
     { type: "merge_folder", title: t`Merge` },
@@ -144,7 +155,9 @@ export function AutoSortDialog({
             </div>
           ) : !plan ? (
             <div className="flex flex-col gap-2">
-              <LoadingState label={t`Looking for changes`} />
+              <LoadingState
+                label={slow ? t`Still looking. This can take a minute.` : t`Looking for changes`}
+              />
             </div>
           ) : plan.operations.length === 0 && !reasonText ? (
             <p className="text-muted-foreground">

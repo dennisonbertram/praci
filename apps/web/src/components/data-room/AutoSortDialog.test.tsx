@@ -219,3 +219,16 @@ it("leaves files already in a folder unticked and groups moves by destination", 
   expect(document.querySelectorAll("h4")).toHaveLength(1);
   expect(button("Apply").textContent).toBe("Apply 1 change");
 });
+
+it("says it is still looking after 10 seconds without a plan", async () => {
+  vi.useFakeTimers();
+  try {
+    autoSort.plan.mockReturnValue(new Promise(() => undefined));
+    await render();
+    expect(document.body.textContent).toContain("Looking for changes");
+    await act(async () => void vi.advanceTimersByTime(10_000));
+    expect(document.body.textContent).toContain("Still looking. This can take a minute.");
+  } finally {
+    vi.useRealTimers();
+  }
+});

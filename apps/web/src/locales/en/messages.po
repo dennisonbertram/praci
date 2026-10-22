@@ -1489,6 +1489,7 @@ msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr "Ask Chief"
 
@@ -1581,10 +1582,6 @@ msgstr "Audit request · {0}"
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr "Auditor"
-
-#: src/pages/Investors.tsx
-msgid "Auditors"
-msgstr "Auditors"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Auth header"
@@ -3995,9 +3992,8 @@ msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
 
 #. placeholder {0}: bot.name
-#. placeholder {0}: displayName(artifact.name)
 #. placeholder {0}: group.name
-#: src/pages/Artifacts.tsx
+#. placeholder {0}: item.text
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
@@ -4011,6 +4007,10 @@ msgstr "Delete {0}"
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "Delete {0}?"
+
+#: src/pages/Artifacts.tsx
+msgid "Delete {title}"
+msgstr "Delete {title}"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
@@ -4244,7 +4244,7 @@ msgstr "Dismiss {name}"
 msgid "Dismiss error"
 msgstr "Dismiss error"
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
 msgstr "Dismissed {0}."
@@ -6095,7 +6095,7 @@ msgstr "Marked {0} as not spam"
 msgid "Marked {0} as spam"
 msgstr "Marked {0} as spam"
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
 msgstr "Marked {0} done."
@@ -6750,10 +6750,6 @@ msgstr "No artifacts match these filters."
 msgid "No artifacts yet"
 msgstr "No artifacts yet"
 
-#: src/pages/Investors.tsx
-msgid "No auditors yet"
-msgstr "No auditors yet"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "No authentication"
@@ -6848,7 +6844,6 @@ msgstr "No investors yet"
 msgid "No longer active"
 msgstr "No longer active"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr "No mail"
@@ -6907,6 +6902,10 @@ msgstr "No more results"
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
 msgstr "No net spend in the last 3 full months"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
+msgstr "No newsletters in the last 7 days"
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "No open deadlines."
@@ -7125,10 +7124,6 @@ msgstr "Not spam"
 #: src/components/NotificationSettings.tsx
 msgid "Not supported here"
 msgstr "Not supported here"
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Not tagged"
-msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
@@ -7463,6 +7458,7 @@ msgstr "Original message unavailable"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7880,6 +7876,10 @@ msgid "Project secret"
 msgstr "Project secret"
 
 #: src/pages/finance/FinanceBurn.tsx
+msgid "Projected"
+msgstr "Projected"
+
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Projected cash"
 msgstr "Projected cash"
 
@@ -7950,6 +7950,10 @@ msgstr "Reactions"
 #: src/components/integrations/AppDetail.tsx
 msgid "Read"
 msgstr "Read"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Read and searchable"
+msgstr "Read and searchable"
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -8729,6 +8733,10 @@ msgstr "safe, round, raise"
 msgid "SAFEs"
 msgstr "SAFEs"
 
+#: src/pages/Investors.tsx
+msgid "SAFEs and funds"
+msgstr "SAFEs and funds"
+
 #: src/components/cap-table/SafeRows.tsx
 msgid "SAFEs, if converted at cap"
 msgstr "SAFEs, if converted at cap"
@@ -8840,6 +8848,7 @@ msgstr "Saving..."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Saving…"
 msgstr "Saving…"
@@ -8976,10 +8985,6 @@ msgstr "Search the directory"
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr "Search: {0}"
-
-#: src/components/data-room/DataRoomStats.tsx
-msgid "Searchable"
-msgstr "Searchable"
 
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
@@ -9305,6 +9310,10 @@ msgstr "Show settings"
 msgid "Show sidebar"
 msgstr "Show sidebar"
 
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
+msgstr "Show the pile"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
 msgstr "Show tool activity"
@@ -9397,6 +9406,10 @@ msgstr "Sign-in did not finish."
 #: src/components/integrations/AppDetail.tsx
 msgid "Sign-in failed"
 msgstr "Sign-in failed"
+
+#: src/pages/Finance.tsx
+msgid "Sign-in needed."
+msgstr "Sign-in needed."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -9730,6 +9743,10 @@ msgstr "Steps to follow"
 msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Still looking. This can take a minute."
+msgstr "Still looking. This can take a minute."
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -9835,6 +9852,10 @@ msgstr "Switching…"
 msgid "Sync failed"
 msgstr "Sync failed"
 
+#: src/pages/Finance.tsx
+msgid "Sync failed."
+msgstr "Sync failed."
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
@@ -9864,6 +9885,10 @@ msgstr "Take control"
 #: src/pages/Shell.tsx
 msgid "Take the tour"
 msgstr "Take the tour"
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Taking longer than usual"
+msgstr "Taking longer than usual"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Talks to people outside your company. Private tools are turned off."
@@ -10377,6 +10402,8 @@ msgstr "Tools from an Executor server you run"
 msgid "Top parties"
 msgstr "Top parties"
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Total"
 msgstr "Total"
@@ -10501,6 +10528,7 @@ msgstr "Turn on a model and allow AI access to sort files."
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
 msgstr "Type"
@@ -11043,6 +11071,10 @@ msgstr "Wallets"
 #: src/lib/devin-format.ts
 msgid "Web"
 msgstr "Web"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Web search"
+msgstr "Web search"
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"

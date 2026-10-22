@@ -48,7 +48,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
-import { shade } from "./charts";
+import { MAX_SEGMENTS, shade } from "./charts";
 
 export type FinanceSpace = { id: string; name: string };
 
@@ -147,7 +147,7 @@ export function AskAgentButton() {
   if (!onAskAgent) return null;
   return (
     <div className="ms-auto">
-      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
+      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} compact />
     </div>
   );
 }
@@ -384,7 +384,8 @@ export function DetailHead({
           </nav>
         )}
         {back ? heading : null}
-        <CompanyMenu />
+        {/* On a phone the company takes what the row has left, so Ask stays beside the title. */}
+        <CompanyMenu className="max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16" />
         {back ? end : null}
       </div>
       {heading && !back ? (
@@ -401,11 +402,16 @@ export function DetailHead({
  * The company menu, right after the page's title or way back, in the same place
  * on every Finance page. On a phone the company name truncates first.
  */
-export function CompanyMenu({ children }: { children?: ReactNode }) {
+export function CompanyMenu({ children, className }: { children?: ReactNode; className?: string }) {
   return (
     // A switcher button is pulled back by its padding so its text lines up with the title. The pull
     // is on this wrapper: on the button it narrowed the wrapper and cut the name short.
-    <span className="flex min-w-[min(100%,9rem)] shrink items-center gap-0.5 has-[button]:-ms-2">
+    <span
+      className={cn(
+        "flex min-w-[min(100%,9rem)] shrink items-center gap-0.5 has-[button]:-ms-2",
+        className,
+      )}
+    >
       <SpaceName />
       <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
         {children}
@@ -630,7 +636,7 @@ export function BreakdownRows({
             {swatches ? (
               <i
                 className="me-1.5 inline-block size-2 rounded-xs"
-                style={{ background: shade(i) }}
+                style={{ background: shade(Math.min(i, MAX_SEGMENTS - 1)) }}
                 aria-hidden="true"
               />
             ) : null}

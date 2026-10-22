@@ -156,6 +156,13 @@ export function SheetPreview({
 
   const { page, rows } = state;
   const empty = page.header.length === 0 && rows.length === 0;
+  // A header sits at the same edge as its numbers.
+  const numericColumns = new Set<number>();
+  for (const entry of rows) {
+    entry.cells.forEach((cell, index) => {
+      if (isNumericSheetCell(flat ? csvCell(cell) : cell)) numericColumns.add(index);
+    });
+  }
   return (
     <div className={cn("flex h-full min-h-0 flex-col bg-background", className)}>
       {page.sheets.length > 1 ? (
@@ -187,7 +194,10 @@ export function SheetPreview({
                   page.header.map((label, index) => (
                     <TableHead
                       key={index}
-                      className="sticky top-0 z-10 h-8 border-b border-border bg-muted px-2 py-0 text-start"
+                      className={cn(
+                        "sticky top-0 z-10 h-8 border-b border-border bg-muted px-2 py-0",
+                        numericColumns.has(index) ? "text-end" : "text-start",
+                      )}
                     >
                       {typeof label === "string" ? humanise(label) : formatCell(label, hidden)}
                     </TableHead>
@@ -209,7 +219,13 @@ export function SheetPreview({
             </TableHeader>
             <TableBody>
               {!flat && page.headerRow !== null ? (
-                <SheetRow row={page.headerRow} cells={page.header} hidden={hidden} head />
+                <SheetRow
+                  row={page.headerRow}
+                  cells={page.header}
+                  hidden={hidden}
+                  numericColumns={numericColumns}
+                  head
+                />
               ) : null}
               {rows.map((entry) => (
                 <SheetRow
@@ -246,12 +262,14 @@ function SheetRow({
   hidden,
   head = false,
   flat = false,
+  numericColumns,
 }: {
   row: number;
   cells: Cell[];
   hidden: boolean;
   head?: boolean;
   flat?: boolean;
+  numericColumns?: Set<number>;
 }) {
   return (
     <TableRow className={head ? "font-medium" : undefined}>
@@ -274,7 +292,8 @@ function SheetRow({
             className={cn(
               "max-w-[28ch] truncate border-b border-border px-2 py-1",
               head && "sticky top-7 z-10 bg-background",
-              isNumericSheetCell(cell) && "text-end font-mono tabular-nums",
+              (head ? numericColumns?.has(index) : isNumericSheetCell(cell)) &&
+                "text-end font-mono tabular-nums",
             )}
           >
             {text}

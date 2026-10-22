@@ -50,6 +50,8 @@ export const DataRoomApiItemSchema = z.object({
   notIndexed: z.boolean(),
   facets: DataRoomApiFacetsSchema,
   createdAt: z.string().datetime(),
+  /** Last pipeline write; a retried file starts again from here, so its Reading age does too. */
+  updatedAt: z.string().datetime(),
   /** A thumbnail can be fetched from `/api/data-room/items/:id/thumbnail`. */
   hasThumbnail: z.boolean(),
   /** The first ~400 characters of the extracted text, for the grid; null when there is none. */
@@ -142,6 +144,9 @@ export const DataRoomApiSearchInputSchema = z.object({
   cursor: Id.optional(),
 });
 /** The ordinal of the chunk that holds an item's name, folder and facets; text chunks start at 0. */
+/** A file still being read after this long (no pipeline write) is stuck and offers Try again. */
+export const DATA_ROOM_STUCK_MS = 10 * 60_000;
+
 export const DATA_ROOM_METADATA_ORDINAL = -1;
 
 export const DataRoomApiSearchResultSchema = z.object({
