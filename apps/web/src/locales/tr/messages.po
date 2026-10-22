@@ -2413,6 +2413,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Kapat"

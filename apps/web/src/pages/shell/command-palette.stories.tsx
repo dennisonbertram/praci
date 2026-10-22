@@ -128,3 +128,31 @@ export const SearchFindsContactsAndChats: Story = {
     await userEvent.type(await screen.findByTestId("command-palette-search"), "halcyon");
   },
 };
+
+export const SearchTitleBeforeBody: Story = {
+  name: "A title match comes before body-only hits",
+  args: {
+    searchLinks: async () => [
+      {
+        heading: "Documents",
+        icon: <FileText size={16} strokeWidth={1.75} />,
+        entries: [
+          {
+            id: "/app/data-room?item=d1",
+            label: "Monthly Update",
+            detail: "Runway is $1,620,000; hiring plan on track",
+          },
+          { id: "/app/data-room?item=d2", label: "Board Update", detail: "Hiring plan approved" },
+        ],
+      },
+      {
+        heading: "Artifacts",
+        icon: <FileText size={16} strokeWidth={1.75} />,
+        entries: [{ id: "/app/artifacts/a1", label: "Hiring Plan - Q4" }],
+      },
+    ],
+  },
+  play: async () => {
+    await userEvent.type(await screen.findByTestId("command-palette-search"), "Hiring Plan");
+  },
+};
