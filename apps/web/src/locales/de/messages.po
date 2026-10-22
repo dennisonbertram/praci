@@ -748,12 +748,13 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
+#. placeholder {0}: audit.fund
 #. placeholder {0}: bot.name
 #. placeholder {0}: contact.name
-#. placeholder {0}: group.spaceName
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/components/fundraising/Pipeline.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
@@ -1534,6 +1535,11 @@ msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Audience"
+msgstr ""
+
+#. placeholder {0}: audit.fund
+#: src/components/investors/ActionItems.tsx
+msgid "Audit request · {0}"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
@@ -3500,6 +3506,10 @@ msgstr ""
 msgid "Could not start the call"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Could not start the draft"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Could not submit this answer"
@@ -3547,6 +3557,10 @@ msgstr ""
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "Standardbereich für Erinnerungen konnte nicht aktualisiert werden"
+
+#: src/pages/Investors.tsx
+msgid "Could not update the request"
+msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not upload file"
@@ -4083,6 +4097,7 @@ msgstr "Verbindung wird getrennt…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -4163,6 +4178,7 @@ msgstr ""
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/sidebar-glance.tsx
 #: src/components/tour/TourPopover.tsx
@@ -4235,6 +4251,14 @@ msgstr ""
 msgid "Draft not saved"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+msgid "Draft ready"
+msgstr ""
+
+#: src/components/investors/ActionItems.tsx
+msgid "Draft reply"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
@@ -4248,8 +4272,8 @@ msgstr "Skill-Entwurf"
 msgid "Draft with agent"
 msgstr ""
 
+#. placeholder {0}: day(draft.createdAt)
 #. placeholder {0}: day(update.createdAt)
-#. placeholder {0}: shortDay(draft.createdAt.slice(0, 10), new Date(), i18n.locale || "en")
 #: src/components/investors/ActionItems.tsx
 #: src/pages/Investors.tsx
 msgid "Drafted {0}"
@@ -4261,6 +4285,10 @@ msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Drafts"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Drafts a reply from your cap table."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -4289,6 +4317,11 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Due"
+msgstr ""
+
+#. placeholder {0}: day(audit.dueDate)
+#: src/components/investors/ActionItems.tsx
+msgid "due {0}"
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -5058,6 +5091,10 @@ msgstr ""
 msgid "Hide amounts"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Hide done"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Hide password"
 msgstr ""
@@ -5095,6 +5132,16 @@ msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
+msgstr ""
+
+#. placeholder {0}: day(audit.asOf)
+#: src/components/investors/ActionItems.tsx
+msgid "Holdings as of {0}"
+msgstr ""
+
+#. placeholder {0}: day(audit.asOf)
+#: src/components/investors/ActionItems.tsx
+msgid "Holdings as of today, not {0}"
 msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
@@ -5846,6 +5893,10 @@ msgstr ""
 msgid "Mark delivered"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+msgid "Mark done"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
@@ -6374,6 +6425,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
@@ -6413,6 +6465,10 @@ msgstr ""
 #: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "Neue Gruppe"
+
+#: src/components/investors/ActionItems.tsx
+msgid "New mail"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "New message"
@@ -8815,6 +8871,10 @@ msgstr ""
 msgid "Send to agent"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+msgid "Sender not in Auditors"
+msgstr ""
+
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Sending"
@@ -8968,6 +9028,10 @@ msgstr ""
 
 #: src/components/HideAmountsToggle.tsx
 msgid "Show amounts"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Show done"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -10573,10 +10637,6 @@ msgstr ""
 #: src/components/SecretRequestDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
-msgstr ""
-
-#: src/lib/slash-skills.ts
-msgid "Uses Carta figures and asks before sending."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx

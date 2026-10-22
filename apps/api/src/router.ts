@@ -83,6 +83,7 @@ import {
   ensureComputerWorkspaceLayout,
   expireComputerControl,
   findBotShareEffect,
+  findInvestorsAgent,
   forgetBotSecret,
   getBotPage,
   getBotPins,
@@ -94,6 +95,7 @@ import {
   isSandboxGoneError,
   kickModelCredentialRefresh,
   latestAccountExport,
+  latestAuditMessageId,
   listAvailablePiCatalog,
   listBotSecretMetadata,
   listPiCatalog,
@@ -138,6 +140,7 @@ import {
   scriptedCatalogEntry,
   selectDefaultCredentialId,
   serializeModelSecret,
+  startAuditDraftRun,
   stopMailWatch,
   storeBotSecret,
   takeoverLeaseMs,
@@ -240,7 +243,9 @@ import {
   ComputerLimitError,
   ContactEmailTakenError,
   changeCapTableSource,
+  claimAuditDraft,
   claimEmptySpaceDeletionForMember,
+  closeAuditRequest,
   closeRound,
   createExternalConversationRepos,
   createGroupRepos,
@@ -262,6 +267,7 @@ import {
   findSpaceMemoryConfig,
   findTicket,
   formatMessagingLinkCode,
+  getAuditRequest,
   getCapTableSnapshot,
   getContact,
   getFundraisingOverview,
@@ -275,6 +281,7 @@ import {
   isUniqueViolation,
   linkedContact,
   linkedImessageIdentities,
+  listAuditRequests,
   listBoards,
   listContacts,
   listInvestorUpdates,
@@ -299,6 +306,7 @@ import {
   PushSessionEndedError,
   parseComputerMode,
   pushSessionExpiresAt,
+  releaseAuditDraft,
   releaseSpaceDeletionClaim,
   removeSidebarFolder,
   removeSidebarPage,
@@ -7552,6 +7560,58 @@ export function createRouter(deps: RouterDeps) {
           },
         ),
       ),
+      audits: {
+        list: authed.investors.audits.list.handler(({ context, input }) =>
+          listAuditRequests(deps.prisma, context.actor, input.includeDone),
+        ),
+        update: authed.investors.audits.update.handler(({ context, input }) =>
+          closeAuditRequest(deps.prisma, context.actor, input.id, input.status).catch(
+            contactNotFound,
+          ),
+        ),
+        draft: authed.investors.audits.draft.handler(async ({ context, input }) => {
+          const actor = context.actor;
+          const scope = actorScope(actor);
+          const request = await getAuditRequest(deps.prisma, scope, input.id).catch(
+            contactNotFound,
+          );
+          if (request.status !== "open")
+            throw new ORPCError("BAD_REQUEST", { message: "This request is already drafted" });
+          if (!(await cartaSyncDeps.hasModel(actor)))
+            throw new ORPCError("BAD_REQUEST", { message: "Add a model before drafting" });
+          // The button is not capped; the agent is created here if Investors was never opened.
+          const created = await ensureInvestorsAgent(
+            { prisma: deps.prisma, jobs: deps.jobs, repos },
+            actor,
+          ).catch((error: unknown) => {
+            throw mapSpaceLifecycleError(error);
+          });
+          const bot = (await findInvestorsAgent(deps.prisma, scope)) ?? {
+            id: created.id,
+            threadId: created.threadId,
+          };
+          if (!(await claimAuditDraft(deps.prisma, scope, input.id, null)))
+            return getAuditRequest(deps.prisma, scope, input.id);
+          try {
+            await startAuditDraftRun(
+              { prisma: deps.prisma, enqueueRun: cartaSyncDeps.enqueueRun },
+              scope,
+              bot,
+              {
+                requestId: request.id,
+                messageId: await latestAuditMessageId(deps.prisma, scope, request.mailThreadId),
+                mailThreadId: request.mailThreadId,
+                filedItemIds: request.dataRoomItemId ? [request.dataRoomItemId] : [],
+                senderKnown: request.senderKnown,
+              },
+            );
+          } catch (error) {
+            await releaseAuditDraft(deps.prisma, scope, input.id);
+            throw mapSpaceLifecycleError(error);
+          }
+          return getAuditRequest(deps.prisma, scope, input.id);
+        }),
+      },
       updates: {
         list: authed.investors.updates.list.handler(({ context }) =>
           listInvestorUpdates(deps.prisma, context.actor),
