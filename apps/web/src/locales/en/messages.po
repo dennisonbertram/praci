@@ -753,6 +753,7 @@ msgstr "About spaces"
 msgid "Access token"
 msgstr "Access token"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Inbox.tsx
 msgid "Account"
@@ -2271,6 +2272,10 @@ msgstr "Checking…"
 msgid "Checkout has local changes. Clean it before updating."
 msgstr "Checkout has local changes. Clean it before updating."
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Chief"
+msgstr "Chief"
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose a bot shape, color, or upload an image"
 msgstr "Choose a bot shape, color, or upload an image"
@@ -3767,6 +3772,7 @@ msgid "Counterparty"
 msgstr "Counterparty"
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3927,6 +3933,7 @@ msgstr "Cut costs"
 msgid "Dark"
 msgstr "Dark"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Data room"
@@ -4844,6 +4851,7 @@ msgstr "Filters"
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5477,6 +5485,7 @@ msgstr "In use"
 msgid "Inactive"
 msgstr "Inactive"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Inbox"
@@ -5541,6 +5550,7 @@ msgstr "Integration sign-in"
 #: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr "Integrations"
@@ -5787,6 +5797,7 @@ msgstr "Leave"
 
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -8967,6 +8978,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx

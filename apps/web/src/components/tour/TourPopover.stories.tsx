@@ -38,13 +38,33 @@ function FakeSidebar({ children }: { children: React.ReactNode }) {
 }
 
 const steps: TourStep[] = [
-  { id: "search", anchor: '[data-tour="sidebar-search"]', text: "Type here to find anything." },
-  { id: "create", anchor: '[data-tour="create-menu"]', text: "Press + to create a bot." },
-  { id: "chat", anchor: "[data-sidebar-group]", text: "Chat with Chief here." },
-  { id: "inbox", anchor: '[data-tour="sidebar-inbox"]', text: "Inbox sorts your mail." },
-  { id: "gone", anchor: '[data-tour="sidebar-missing"]', text: "Never shown." },
-  { id: "finance", anchor: '[data-tour="sidebar-finance"]', text: "Finance shows runway." },
-  { id: "account", anchor: '[data-tour="user-menu"]', text: "Settings are here." },
+  {
+    id: "search",
+    name: "Search",
+    anchor: '[data-tour="sidebar-search"]',
+    text: "Type here to find anything.",
+  },
+  {
+    id: "create",
+    name: "Create",
+    anchor: '[data-tour="create-menu"]',
+    text: "Press + to create a bot.",
+  },
+  { id: "chat", name: "Chief", anchor: "[data-sidebar-group]", text: "Chat with Chief here." },
+  {
+    id: "inbox",
+    name: "Inbox",
+    anchor: '[data-tour="sidebar-inbox"]',
+    text: "Inbox sorts your mail.",
+  },
+  { id: "gone", name: "Gone", anchor: '[data-tour="sidebar-missing"]', text: "Never shown." },
+  {
+    id: "finance",
+    name: "Finance",
+    anchor: '[data-tour="sidebar-finance"]',
+    text: "Finance shows runway.",
+  },
+  { id: "account", name: "Account", anchor: '[data-tour="user-menu"]', text: "Settings are here." },
 ];
 
 const meta = {
