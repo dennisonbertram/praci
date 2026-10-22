@@ -5472,7 +5472,8 @@ export function ShellPage() {
                       size={26}
                     />
                   ) : active ? (
-                    <BotAvatar
+                    <AgentAvatar
+                      app={agentAppFor(active.id, active.spaceId)}
                       color={active.color}
                       identity={active.id}
                       size={26}
@@ -5706,7 +5707,8 @@ export function ShellPage() {
                     onClick={() => openBot(active.id)}
                     className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                   >
-                    <BotAvatar
+                    <AgentAvatar
+                      app={agentAppFor(active.id, active.spaceId)}
                       color={active.color}
                       identity={active.id}
                       size={22}
