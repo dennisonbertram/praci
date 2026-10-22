@@ -16,6 +16,7 @@ test("Fundraising: add a prospect, start a round, commit, close and reopen", asy
   await expect(main.getByRole("button", { name: "Start a round" })).toBeVisible();
   await expect(main.getByRole("heading", { name: "Pipeline" })).toBeVisible();
   await expect(main.getByRole("heading", { name: "SAFEs" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "fundraising-empty");
 
   // Add prospect works with no round.
   await main.getByRole("button", { name: "Add prospect" }).first().click();
@@ -49,7 +50,7 @@ test("Fundraising: add a prospect, start a round, commit, close and reopen", asy
   await safe.getByRole("button", { name: "Send SAFE" }).click();
   await expect(page.getByRole("link", { name: "YC documents ›" })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Mark sent" }).click();
-  const safes = main.getByRole("heading", { name: "SAFEs" }).locator("..");
+  const safes = main.getByRole("region", { name: "SAFEs" });
   await expect(safes.getByText("Example Ventures")).toBeVisible();
   await expect(safes.getByText("Sent", { exact: true })).toBeVisible();
   await expect(main.getByRole("button", { name: "Send SAFE" })).toHaveCount(0);
