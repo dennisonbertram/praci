@@ -155,7 +155,12 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        <Button size="sm" className="min-w-16" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
+        <Button
+          size="sm"
+          className="min-w-16"
+          autoFocus
+          onClick={() => (last ? onFinish("done") : setIndex(index + 1))}
+        >
           {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
       </div>

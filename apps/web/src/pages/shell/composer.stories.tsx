@@ -123,7 +123,8 @@ export const ComposerVoiceAgent: Story = {
 };
 /** After Skip tour: one suggested question, one tap. */
 export const ComposerQuickAsk: Story = {
-  render: () => composer({ quickAsk: { label: "What should I do first this week?", onAsk: () => undefined } }),
+  render: () =>
+    composer({ quickAsk: { label: "What should I do first this week?", onAsk: () => undefined } }),
   beforeEach: loaded,
 };
 export const ComposerRunning: Story = {
