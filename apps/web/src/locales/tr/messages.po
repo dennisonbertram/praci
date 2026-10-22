@@ -5495,6 +5495,10 @@ msgstr ""
 msgid "Inbox & email"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Included"
+msgstr ""
+
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Indexing"
 msgstr ""
@@ -8147,6 +8151,10 @@ msgstr ""
 msgid "Reading…"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Reads document text"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Ready"
 msgstr ""
@@ -9182,9 +9190,21 @@ msgstr "Yanıtı gönder"
 msgid "Send anyway"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Send chats and mail text"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Send chats, mail and document text"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
 msgstr "Silme kodu gönder"
+
+#: src/components/AiDataSharing.tsx
+msgid "Send files and contracts"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Send it"
@@ -11538,17 +11558,9 @@ msgstr ""
 msgid "Your data in {name} is not deleted."
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "Your email address"
-msgstr "E-posta adresin"
-
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "Your name"
-msgstr "Adın"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"
