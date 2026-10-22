@@ -7547,6 +7547,7 @@ msgstr ""
 msgid "Only this bot"
 msgstr ""
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -10247,7 +10248,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/gtm/GtmChannels.tsx
-#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -11197,6 +11197,10 @@ msgstr "Sabitlemeyi kaldır"
 msgid "Unread"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
+msgstr ""
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
 msgstr ""
@@ -11390,6 +11394,11 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
+msgstr ""
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx

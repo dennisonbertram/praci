@@ -28,8 +28,8 @@ const ROW = 46;
 const PAD = 24;
 const NODE_W = 220;
 const NODE_H = 38;
-/** The smallest the drawing is shrunk to; narrower panels scroll sideways instead. */
-const MIN_SCALE = 0.7;
+/** The smallest the drawing is shrunk to (12px labels stay at 11px or more); narrower panels scroll sideways instead. */
+const MIN_SCALE = 0.92;
 /** Characters per label line at 12px in a NODE_W box. */
 const LINE_CHARS = 30;
 

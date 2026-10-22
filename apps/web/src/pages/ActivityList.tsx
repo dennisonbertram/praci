@@ -176,7 +176,7 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[45vh] shrink-0 snap-start flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[45vh] shrink-0 lg:max-h-[40%] snap-start flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">

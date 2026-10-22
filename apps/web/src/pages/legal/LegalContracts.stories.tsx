@@ -48,7 +48,7 @@ export const Wide: StoryObj<typeof meta> = {
   ],
 };
 
-/** Every contract is active: no Status column. */
+/** Every contract is active: no chips. */
 export const AllActive: StoryObj<typeof meta> = {
   args: { contracts: contracts.filter((contract) => contract.status === "active") },
   decorators: [
