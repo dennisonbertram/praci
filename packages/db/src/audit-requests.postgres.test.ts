@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  AUDIT_DRAFT_PROMPT_START,
   AUDIT_DRAFTS_PER_DAY,
   claimAuditDraft,
   closeAuditRequest,
@@ -124,10 +125,40 @@ describePostgres("audit requests (PostgreSQL)", () => {
     expect(await claimAuditDraft(prisma, user, waiting, null)).toBe(true);
   });
 
-  it("a row is claimed once while its run is going", async () => {
+  it("a row cannot be drafted twice while its drafting run is going, and the button works again after", async () => {
     const { id } = await fileAuditRequestFromMail(prisma, mine, mail());
+    const bot = await prisma.bot.create({
+      data: { ...mine, name: "Investors agent", color: "#3EC5A8" },
+    });
+    const thread = await prisma.thread.create({
+      data: { spaceId: mine.spaceId, userId: mine.userId, botId: bot.id },
+    });
+    const task = await prisma.task.create({
+      data: {
+        ...mine,
+        botId: bot.id,
+        threadId: thread.id,
+        prompt: `${AUDIT_DRAFT_PROMPT_START}${id} with the audit-response skill.`,
+        status: "queued",
+      },
+    });
     expect(await claimAuditDraft(prisma, mine, id, null)).toBe(true);
+    const run = await prisma.run.create({
+      data: {
+        ...mine,
+        botId: bot.id,
+        threadId: thread.id,
+        taskId: task.id,
+        status: "running",
+        trigger: "routine",
+      },
+    });
     expect(await claimAuditDraft(prisma, mine, id, null)).toBe(false);
+    expect((await listAuditRequests(prisma, mine)).find((r) => r.id === id)?.drafting).toBe(true);
+    // The run ended without drafting: the row is New again with Draft reply.
+    await prisma.run.update({ where: { id: run.id }, data: { status: "completed" } });
+    expect((await listAuditRequests(prisma, mine)).find((r) => r.id === id)?.drafting).toBe(false);
+    expect(await claimAuditDraft(prisma, mine, id, null)).toBe(true);
   });
 
   it("the agent's upsert returns the open row with the same fund and as-of date", async () => {

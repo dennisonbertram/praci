@@ -1,17 +1,18 @@
 import type { AuditRequest } from "@rakazo/contracts";
+import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "./client.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
-type Db = Pick<PrismaClient, "auditRequest" | "$transaction">;
+type Db = Pick<PrismaClient, "auditRequest" | "run" | "$transaction">;
 type Row = Prisma.AuditRequestGetPayload<object>;
 
 /** Drafting runs the intake job may start per user per day; the Draft reply button is not capped. */
 export const AUDIT_DRAFTS_PER_DAY = 10;
-/** A drafting run that started this recently is still going, so Draft reply is hidden. */
-export const AUDIT_DRAFTING_MS = 10 * 60_000;
+/** How a drafting run's task starts; the request id follows, so the row's active run can be found. */
+export const AUDIT_DRAFT_PROMPT_START = "Answer audit request ";
 
 /** How the agent's upsert finds the same request again: case and spacing do not matter. */
 export const normalizeFund = (fund: string) => fund.trim().replace(/\s+/g, " ").toLowerCase();
@@ -20,7 +21,7 @@ const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const toDate = (value: string | null | undefined) =>
   value === undefined ? undefined : value === null ? null : new Date(`${value}T00:00:00.000Z`);
 
-export function auditRequestOut(row: Row, now = new Date()): AuditRequest {
+export function auditRequestOut(row: Row, drafting = false): AuditRequest {
   return {
     id: row.id,
     fund: row.fund,
@@ -34,13 +35,33 @@ export function auditRequestOut(row: Row, now = new Date()): AuditRequest {
     senderKnown: row.senderKnown,
     notes: row.notes,
     dataRoomItemId: row.dataRoomItemId,
-    drafting:
-      row.status === "open" &&
-      row.draftStartedAt !== null &&
-      now.getTime() - row.draftStartedAt.getTime() < AUDIT_DRAFTING_MS,
+    drafting: row.status === "open" && drafting,
     newMail: row.draftedAt !== null && row.lastMailAt > row.draftedAt,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/** Ids of the requests whose drafting run is queued or running. */
+async function draftingIds(
+  prisma: Pick<PrismaClient, "run">,
+  scope: Scope,
+  id?: string,
+): Promise<Set<string>> {
+  const runs = await prisma.run.findMany({
+    where: {
+      ...ownerOf(scope),
+      trigger: "routine",
+      status: { in: [...ACTIVE_RUN_STATUSES] },
+      task: { prompt: { startsWith: `${AUDIT_DRAFT_PROMPT_START}${id ?? ""}` } },
+    },
+    select: { task: { select: { prompt: true } } },
+  });
+  return new Set(
+    runs.flatMap((run) => {
+      const found = run.task?.prompt.slice(AUDIT_DRAFT_PROMPT_START.length).split(" ")[0];
+      return found ? [found] : [];
+    }),
+  );
 }
 
 /** Due date first (rows without one last), then newest. */
@@ -53,10 +74,9 @@ function byDueThenNewest(a: Row, b: Row): number {
 
 /** Open and drafted requests; `includeDone` adds the done ones. Dismissed rows are never listed. */
 export async function listAuditRequests(
-  prisma: Pick<PrismaClient, "auditRequest">,
+  prisma: Pick<PrismaClient, "auditRequest" | "run">,
   scope: Scope,
   includeDone = false,
-  now = new Date(),
 ): Promise<AuditRequest[]> {
   const rows = await prisma.auditRequest.findMany({
     where: {
@@ -64,7 +84,8 @@ export async function listAuditRequests(
       status: { in: includeDone ? ["open", "drafted", "done"] : ["open", "drafted"] },
     },
   });
-  return rows.sort(byDueThenNewest).map((row) => auditRequestOut(row, now));
+  const drafting = await draftingIds(prisma, scope);
+  return rows.sort(byDueThenNewest).map((row) => auditRequestOut(row, drafting.has(row.id)));
 }
 
 export type AuditMailInput = {
@@ -124,7 +145,7 @@ export async function fileAuditRequestFromMail(
 /**
  * Takes the right to start one drafting run for an open row, under a per-user lock so concurrent
  * intakes cannot pass `dailyLimit`. `dailyLimit` null means no cap (the Draft reply button).
- * False when the row is not open, a run is still going, or the day's limit is used.
+ * False when the row is not open, its drafting run is still going, or the day's limit is used.
  * ponytail: the day is the UTC day; use the account time zone if that matters.
  */
 export async function claimAuditDraft(
@@ -136,6 +157,7 @@ export async function claimAuditDraft(
 ): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('audit-draft'), hashtext(${`${scope.spaceId}:${scope.userId}`}))`;
+    if ((await draftingIds(tx, scope, id)).has(id)) return false;
     if (dailyLimit !== null) {
       const startOfDay = new Date(now);
       startOfDay.setUTCHours(0, 0, 0, 0);
@@ -149,10 +171,6 @@ export async function claimAuditDraft(
         id,
         ...ownerOf(scope),
         status: "open",
-        OR: [
-          { draftStartedAt: null },
-          { draftStartedAt: { lt: new Date(now.getTime() - AUDIT_DRAFTING_MS) } },
-        ],
       },
       data: { draftStartedAt: now },
     });
@@ -173,13 +191,13 @@ export async function releaseAuditDraft(
 }
 
 export async function getAuditRequest(
-  prisma: Pick<PrismaClient, "auditRequest">,
+  prisma: Pick<PrismaClient, "auditRequest" | "run">,
   scope: Scope,
   id: string,
 ): Promise<AuditRequest> {
   const row = await prisma.auditRequest.findFirst({ where: { id, ...ownerOf(scope) } });
   if (!row) throw new IsolationError("Audit request not found");
-  return auditRequestOut(row);
+  return auditRequestOut(row, (await draftingIds(prisma, scope, id)).has(id));
 }
 
 export type AuditUpsertInput = {
@@ -201,7 +219,7 @@ export type AuditUpsertInput = {
  * for a request that did not arrive by mail.
  */
 export async function upsertAuditRequest(
-  prisma: Pick<PrismaClient, "auditRequest">,
+  prisma: Pick<PrismaClient, "auditRequest" | "run">,
   scope: Scope,
   input: AuditUpsertInput,
   now = new Date(),
@@ -236,7 +254,7 @@ export async function upsertAuditRequest(
       status: { in: ["open", "drafted"] },
     },
   });
-  if (same) return { request: auditRequestOut(same, now), created: false };
+  if (same) return { request: auditRequestOut(same), created: false };
   const row = await prisma.auditRequest.create({
     data: {
       ...ownerOf(scope),
@@ -247,12 +265,12 @@ export async function upsertAuditRequest(
       ...(input.drafted ? { status: "drafted", draftedAt: now } : {}),
     },
   });
-  return { request: auditRequestOut(row, now), created: true };
+  return { request: auditRequestOut(row), created: true };
 }
 
 /** Mark done or Dismiss. Only an open or drafted row closes; a closed one is returned unchanged. */
 export async function closeAuditRequest(
-  prisma: Pick<PrismaClient, "auditRequest">,
+  prisma: Pick<PrismaClient, "auditRequest" | "run">,
   scope: Scope,
   id: string,
   status: "done" | "dismissed",

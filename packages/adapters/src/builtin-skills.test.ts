@@ -46,6 +46,8 @@ it("the audit-response skill drafts in the thread, saves the row, notifies once 
     "asOfMatched false",
     "drafted true",
     "Audit request from <fund>",
+    "under 200 characters",
+    "Make one draft",
   ])
     expect(text).toContain(used);
   for (const banned of ["mail_send", "Carta", "drive_search"]) expect(text).not.toContain(banned);
