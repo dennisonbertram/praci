@@ -336,15 +336,10 @@ export async function legalToolFromTool(
   }
 }
 
-/** Policies and hiring letters are not contracts to track, whatever the model calls them. */
-const NOT_A_CONTRACT = /\b(handbook|offer letter)\b/i;
-
 async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>) {
   const parsed = ContractArgs.safeParse(args);
   if (!parsed.success) return { error: issues(parsed.error) };
   const input = parsed.data;
-  if (NOT_A_CONTRACT.test(`${input.title ?? ""} ${input.contractType ?? ""}`))
-    input.notLegal = true;
   const actor = actorOf(deps.scope);
   // The analysis and the deadlines derived from it commit together, so a failure never leaves a
   // contract marked reviewed with its deadlines missing.
