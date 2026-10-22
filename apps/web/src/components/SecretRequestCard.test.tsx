@@ -91,3 +91,11 @@ it("asks a login for a username as well", async () => {
   await act(async () => (byText("Submit") as HTMLButtonElement).click());
   expect(onAnswer).toHaveBeenCalledWith("example-pass", "ada");
 });
+
+it("shows the site once when the question already names it", async () => {
+  const named = { ...block({ type: "bearer" }), text: "API key for api.example.com" };
+  const { container } = await setup(named);
+  expect(container.textContent?.match(/api\.example\.com/g)).toHaveLength(1);
+  const plain = await setup(block({ type: "bearer" }));
+  expect(plain.container.textContent).toContain("https://api.example.com");
+});

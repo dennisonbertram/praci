@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { runErrorText } from "../../lib/user-error";
-import { ComposerError } from "./composer-error";
+import { ComposerError, isStalePendingAskError } from "./composer-error";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -115,4 +115,13 @@ it("has no Retry for other errors", async () => {
     root.render(<ComposerError message="Network down" onDismiss={() => {}} onRetry={() => {}} />),
   );
   expect(pageButton("Retry")).toBeUndefined();
+});
+
+it("treats the pending-ask error as stale once every question is answered", () => {
+  const error = "Answer the pending ask first.";
+  const open = [{ blocks: [{ kind: "ask", status: "pending" }] }];
+  const done = [{ blocks: [{ kind: "text" }, { kind: "ask", status: "answered" }] }];
+  expect(isStalePendingAskError(error, open)).toBe(false);
+  expect(isStalePendingAskError(error, done)).toBe(true);
+  expect(isStalePendingAskError("Failed to send message", done)).toBe(false);
 });

@@ -60,7 +60,7 @@ export function ChoiceCard({
 
   return (
     <div className="flex justify-start">
-      <div className="relative w-[420px] max-w-full rounded-[20px] border border-border bg-card px-[18px] py-[14px]">
+      <div className="relative w-160 max-w-full rounded-2xl border border-border bg-card px-5 py-4">
         {!block.answerId ? (
           <Button
             variant="ghost"

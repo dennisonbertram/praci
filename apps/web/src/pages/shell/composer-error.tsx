@@ -16,6 +16,22 @@ function modelSettingsFor(message: string): { provider: string } | null {
   return message === runErrorText("401") ? { provider: "" } : null;
 }
 
+/** The API's refusal of a send while an agent's question is still open. */
+const PENDING_ASK_ERROR = "Answer the pending ask first.";
+
+/** True when the error says a question is open but every question in the thread is answered. */
+export function isStalePendingAskError(
+  message: string | null,
+  messages: ReadonlyArray<{ blocks: ReadonlyArray<{ kind: string; status?: string }> }>,
+): boolean {
+  return (
+    message === PENDING_ASK_ERROR &&
+    !messages.some((entry) =>
+      entry.blocks.some((block) => block.kind === "ask" && block.status !== "answered"),
+    )
+  );
+}
+
 /** A send or run error above the composer; a model-setup error also offers the settings that fix it. */
 export function ComposerError({
   ref,

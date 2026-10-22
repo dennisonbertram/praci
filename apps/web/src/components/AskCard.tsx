@@ -159,7 +159,9 @@ export function AskCard({
       <div id={questionId} className="text-[15.5px] leading-[1.5] text-foreground">
         <ChatMarkdown>{block.text}</ChatMarkdown>
       </div>
-      {secretInput && block.credential ? (
+      {secretInput &&
+      block.credential &&
+      !questionNamesDestination(block.text, block.credential) ? (
         <div
           data-testid="secret-ask-destination"
           className="mt-2 break-all text-[13px] text-muted-foreground"
@@ -327,4 +329,14 @@ export function AskCard({
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
     </div>
   );
+}
+
+/** The agent's own question often names the site already; the destination line would repeat it. */
+function questionNamesDestination(
+  text: string,
+  credential: { origin: string; auth: { type: string } },
+): boolean {
+  if (credential.auth.type === "command") return false;
+  const host = credential.origin.replace(/^[a-z]+:\/\//i, "").replace(/\/.*$/, "");
+  return host.length > 0 && text.includes(host);
 }

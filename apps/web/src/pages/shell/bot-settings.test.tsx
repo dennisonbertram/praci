@@ -320,7 +320,7 @@ describe("BotSettings disabled tools", () => {
     await submitToolName(input, "web_search");
 
     expect(container.textContent).toContain("Network failed");
-    expect(container.textContent).toContain("remember");
+    expect(container.textContent).toContain("Remember");
     expect(container.querySelector('[id$="-disabled-web_search"]')).toBeNull();
 
     fail = false;
