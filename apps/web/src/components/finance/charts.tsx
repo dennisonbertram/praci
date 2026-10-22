@@ -41,6 +41,11 @@ export function niceRange(min: number, max: number): { step: number; top: number
  * its axis starts at the nearest step below the lowest value. Other lines keep `niceRange`.
  */
 function lineRange(min: number, max: number) {
+  // A constant balance gets room on both sides so the line sits mid-chart.
+  if (min === max && min > 0) {
+    const step = Math.max(Math.round(min / 10), 100);
+    return { step, floor: min - step, top: min + step };
+  }
   if (min > 0 && max - min < max / 2) {
     const { step } = niceScale(max - min);
     const floor = Math.floor(min / step) * step;
