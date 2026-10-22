@@ -164,6 +164,50 @@ export const WithAuditRequests: Story = {
     }),
 };
 
+/** The Portal column: never invited, invited, opened, revoked, and unblocked with no new link yet. */
+export const PortalStates: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [
+        contact("c1", "Ada Example", "investor", "Example Ventures"),
+        {
+          ...contact("c2", "Bo Sample", "investor", null),
+          portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+        },
+        {
+          ...contact("c3", "Cy Placeholder", "investor", null),
+          portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+          portalLastSeenAt: "2026-10-13T10:00:00.000Z",
+        },
+        {
+          ...contact("c4", "Di Fund", "investor", "Fund IV"),
+          portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+          portalBlockedAt: "2026-10-14T10:00:00.000Z",
+        },
+        {
+          ...contact("c5", "Ed Sample", "investor", null),
+          portalLastSeenAt: "2026-10-13T10:00:00.000Z",
+        },
+      ],
+      "mcp.servers.list": [cartaServer],
+      ...noUpdates,
+    }),
+};
+
+/** A Posted update in the list, alongside a sent one. */
+export const WithPostedUpdate: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "investors.reminder": { cadence: "monthly" },
+      "investors.updates.list": [
+        update({ id: "u5", status: "posted", sentAt: "2026-10-03T09:00:00.000Z" }),
+        update({ id: "u4", status: "sent", sentAt: "2026-09-02T09:00:00.000Z" }),
+      ],
+    }),
+};
+
 /** A draft waiting in Action items, a Sending row, a Partly sent row with Retry, and a sent update. */
 export const WithUpdates: Story = {
   beforeEach: () =>

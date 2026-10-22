@@ -367,6 +367,10 @@ msgstr "{count, plural, one {# message} other {# messages}}"
 msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr "{count, plural, one {# transaction} other {# transactions}}"
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "{count, plural, one {access to # shared document} other {access to # shared documents}}"
+msgstr "{count, plural, one {access to # shared document} other {access to # shared documents}}"
+
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
@@ -1202,6 +1206,10 @@ msgstr "Amounts"
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "An API key is stored for this provider, not a subscription sign-in."
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "and"
+msgstr "and"
+
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Answer"
@@ -1924,6 +1932,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -1981,10 +1990,6 @@ msgstr "Cancelled"
 #: src/pages/Investors.tsx
 msgid "Cap table"
 msgstr "Cap table"
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Cap table, equity and investors"
-msgstr "Cap table, equity and investors"
 
 #: src/pages/Shell.tsx
 msgid "cap table, equity, ownership, Carta"
@@ -2681,6 +2686,10 @@ msgstr "Connect Devin to see its sessions here."
 msgid "Connect Executor"
 msgstr "Connect Executor"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Connect Gmail"
+msgstr "Connect Gmail"
+
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr "Connect Gmail to read, sort and answer your mail here."
@@ -2841,6 +2850,7 @@ msgid "contracts, NDA, deadlines"
 msgstr "contracts, NDA, deadlines"
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2848,6 +2858,7 @@ msgstr "contracts, NDA, deadlines"
 msgid "Copied"
 msgstr "Copied"
 
+#: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2859,6 +2870,10 @@ msgstr "Copy"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Copy .env example"
 msgstr "Copy .env example"
+
+#: src/pages/Investors.tsx
+msgid "Copy link"
+msgstr "Copy link"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not add"
@@ -2879,6 +2894,11 @@ msgstr "Could not approve this server"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not authorize this app"
 msgstr "Could not authorize this app"
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not change access for {0}"
+msgstr "Could not change access for {0}"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Could not change password"
@@ -3165,6 +3185,10 @@ msgstr "Could not load fundraising"
 msgid "Could not load integrations"
 msgstr "Could not load integrations"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not load investors"
+msgstr "Could not load investors"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not load model settings"
 msgstr "Could not load model settings"
@@ -3210,6 +3234,10 @@ msgstr "Could not load this chat."
 #: src/components/SheetPreview.tsx
 msgid "Could not load this file."
 msgstr "Could not load this file."
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Could not load this page"
+msgstr "Could not load this page"
 
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Could not load this update"
@@ -3445,6 +3473,11 @@ msgstr "Could not save time zone"
 msgid "Could not search"
 msgstr "Could not search"
 
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not send a link to {0}"
+msgstr "Could not send a link to {0}"
+
 #: src/pages/Auth.tsx
 msgid "Could not send reset email"
 msgstr "Could not send reset email"
@@ -3452,6 +3485,10 @@ msgstr "Could not send reset email"
 #: src/lib/call-session.ts
 msgid "Could not send that"
 msgstr "Could not send that"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not share"
+msgstr "Could not share"
 
 #: src/pages/Investors.tsx
 msgid "Could not start an update"
@@ -3485,6 +3522,10 @@ msgstr "Could not take control"
 #: src/pages/Investors.tsx
 msgid "Could not undo"
 msgstr "Could not undo"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not unshare"
+msgstr "Could not unshare"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not update"
@@ -3821,6 +3862,7 @@ msgstr "Default ({0})"
 msgid "Default ({0})"
 msgstr "Default ({0})"
 
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
@@ -3854,7 +3896,9 @@ msgid "Delete {0}"
 msgstr "Delete {0}"
 
 #. placeholder {0}: bot.name
+#. placeholder {0}: contact.name
 #. placeholder {0}: item.name
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
@@ -3904,6 +3948,11 @@ msgstr "deleted"
 #: src/components/data-room/DropZone.tsx
 msgid "Deleted"
 msgstr "Deleted"
+
+#. placeholder {0}: gone.name
+#: src/lib/use-contact-notices.ts
+msgid "Deleted {0}"
+msgstr "Deleted {0}"
 
 #: src/lib/use-contact-notices.ts
 msgid "Deleted {name}"
@@ -4107,6 +4156,7 @@ msgstr "Document date"
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/portal/PortalHome.tsx
 #: src/pages/Shell.tsx
 msgid "Documents"
 msgstr "Documents"
@@ -4123,6 +4173,7 @@ msgstr "Don’t have an account?"
 msgid "Don't share"
 msgstr "Don't share"
 
+#: src/components/CopyLinkDialog.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -4145,6 +4196,7 @@ msgstr "Done"
 #: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/portal/PortalHome.tsx
 msgid "Download"
 msgstr "Download"
 
@@ -4182,6 +4234,10 @@ msgstr "Downloading…"
 #: src/pages/legal/LegalContracts.tsx
 msgid "Draft"
 msgstr "Draft"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Draft a reply"
+msgstr "Draft a reply"
 
 #: src/components/MailOutbox.tsx
 msgid "Draft discarded"
@@ -4290,6 +4346,10 @@ msgstr "Each bot keeps its own"
 msgid "Earlier"
 msgstr "Earlier"
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Earlier updates"
+msgstr "Earlier updates"
+
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -4347,6 +4407,10 @@ msgstr "Email is not allowed to register"
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
 msgstr "Email not found"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Email them a link"
+msgstr "Email them a link"
 
 #: src/components/MailThreadCard.tsx
 msgid "Email thread"
@@ -5361,6 +5425,15 @@ msgstr "Investor document"
 msgid "Investors"
 msgstr "Investors"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Investors, equity and cap table"
+msgstr "Investors, equity and cap table"
+
+#. placeholder {0}: day(sent)
+#: src/pages/Investors.tsx
+msgid "Invited {0}"
+msgstr "Invited {0}"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
 msgstr "Isolated"
@@ -5410,8 +5483,8 @@ msgid "just now"
 msgstr "just now"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Cap table."
-msgstr "Keep contracts here, and see who owns what in Cap table."
+msgid "Keep contracts here, and see who owns what in Investors."
+msgstr "Keep contracts here, and see who owns what in Investors."
 
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
@@ -5528,6 +5601,10 @@ msgstr "Later statements for this account keep this name."
 msgid "Latest {0} of {1}"
 msgstr "Latest {0} of {1}"
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Latest update"
+msgstr "Latest update"
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr "Launched {app}"
@@ -5595,6 +5672,16 @@ msgstr "Link a chat app"
 #: src/components/compose/RichTextEditor.tsx
 msgid "Link address"
 msgstr "Link address"
+
+#. placeholder {0}: link.name
+#: src/components/CopyLinkDialog.tsx
+msgid "Link for {0}"
+msgstr "Link for {0}"
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Link sent to {0}"
+msgstr "Link sent to {0}"
 
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
@@ -6560,6 +6647,7 @@ msgstr "No follow-ups from meetings yet"
 msgid "No group chats yet."
 msgstr "No group chats yet."
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
@@ -6886,6 +6974,10 @@ msgstr "Nothing needs you right now."
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Nothing shared yet."
+msgstr "Nothing shared yet."
+
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
@@ -6954,6 +7046,7 @@ msgstr "Only if the server does not use sign-in"
 #: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/portal/PortalOpen.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7105,6 +7198,11 @@ msgstr "Open work"
 #: src/pages/Onboarding.tsx
 msgid "OpenAI-compatible server URL"
 msgstr "OpenAI-compatible server URL"
+
+#. placeholder {0}: day(seen)
+#: src/pages/Investors.tsx
+msgid "Opened {0}"
+msgstr "Opened {0}"
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Opened {path}"
@@ -7436,6 +7534,10 @@ msgstr "Popular apps through Composio"
 msgid "Popular apps through Pipedream"
 msgstr "Popular apps through Pipedream"
 
+#: src/components/CopyLinkDialog.tsx
+msgid "Portal link"
+msgstr "Portal link"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Post and schedule to social accounts"
 msgstr "Post and schedule to social accounts"
@@ -7443,6 +7545,10 @@ msgstr "Post and schedule to social accounts"
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
 msgstr "POST to"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Post to portal"
+msgstr "Post to portal"
 
 #: src/components/fundraising/RoundCard.tsx
 msgid "Post-money cap"
@@ -7455,8 +7561,20 @@ msgstr "Post-money cap {0}"
 
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Posted"
 msgstr "Posted"
+
+#. placeholder {0}: result.notified
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Posted · {0} notified"
+msgstr "Posted · {0} notified"
+
+#. placeholder {0}: day(update.sentAt)
+#: src/pages/Investors.tsx
+msgid "Posted {0}"
+msgstr "Posted {0}"
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
@@ -8153,6 +8271,10 @@ msgstr "Request new export"
 msgid "Research & writing"
 msgstr "Research & writing"
 
+#: src/pages/Investors.tsx
+msgid "Resend link"
+msgstr "Resend link"
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Reset"
@@ -8253,10 +8375,6 @@ msgstr "Retry screen"
 msgid "Retrying"
 msgstr "Retrying"
 
-#: src/lib/run-phase.ts
-msgid "Retrying: {name}"
-msgstr "Retrying: {name}"
-
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Praci"
@@ -8271,9 +8389,18 @@ msgstr "Revenue"
 msgid "Review provider settings and test again."
 msgstr "Review provider settings and test again."
 
+#: src/pages/Investors.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Revoke"
 msgstr "Revoke"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "revoked"
+msgstr "revoked"
+
+#: src/pages/Investors.tsx
+msgid "Revoked"
+msgstr "Revoked"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Right"
@@ -8847,8 +8974,18 @@ msgid "Shape"
 msgstr "Shape"
 
 #: src/components/AskCard.tsx
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Share"
 msgstr "Share"
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Share {0}"
+msgstr "Share {0}"
+
+#: src/components/data-room/ItemMenu.tsx
+msgid "Share with investors"
+msgstr "Share with investors"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -9003,6 +9140,10 @@ msgstr "Sign in with OpenRouter"
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "Sign in with the subscription, or test the API key instead."
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Sign out"
+msgstr "Sign out"
 
 #: src/pages/Auth.tsx
 #: src/pages/Welcome.tsx
@@ -9160,6 +9301,7 @@ msgstr "Some sessions could not be read."
 
 #: src/App.tsx
 #: src/lib/user-error.ts
+#: src/pages/portal/PortalOpen.tsx
 msgid "Something went wrong. Try again."
 msgstr "Something went wrong. Try again."
 
@@ -9734,6 +9876,10 @@ msgstr "The usual charge scaled to a month, or for usage-based vendors the avera
 msgid "The web, notes and docs"
 msgstr "The web, notes and docs"
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "their portal access"
+msgstr "their portal access"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr "These saved settings can't be read. Remove it and add it again."
@@ -9749,6 +9895,11 @@ msgstr "Thinking"
 #: src/components/AgentPanelIntro.tsx
 msgid "This agent needs a model before it can answer. Add one in Settings, Models."
 msgstr "This agent needs a model before it can answer. Add one in Settings, Models."
+
+#. placeholder {0}: removes(linked)
+#: src/components/ContactDeleteConfirm.tsx
+msgid "This also removes {0}."
+msgstr "This also removes {0}."
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "This also removes the Legal contract {contractTitle} and its links in the Legal graph. This can't be undone."
@@ -9807,6 +9958,10 @@ msgstr "This folder no longer exists"
 #: src/pages/NotFound.tsx
 msgid "This link is wrong or the page is no longer available."
 msgstr "This link is wrong or the page is no longer available."
+
+#: src/pages/portal/PortalDead.tsx
+msgid "This link no longer works."
+msgstr "This link no longer works."
 
 #: src/components/RunsOnPicker.tsx
 msgid "This Mac"
@@ -10076,6 +10231,7 @@ msgstr "Try {name} again"
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/portal/PortalHome.tsx
 #: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "Try again"
@@ -10151,6 +10307,14 @@ msgstr "Unassigned"
 msgid "Unavailable"
 msgstr "Unavailable"
 
+#: src/pages/Investors.tsx
+msgid "Unblock"
+msgstr "Unblock"
+
+#: src/pages/Investors.tsx
+msgid "Unblocked · send a link"
+msgstr "Unblocked · send a link"
+
 #: src/components/finance/ui.tsx
 msgid "Uncategorized"
 msgstr "Uncategorized"
@@ -10224,6 +10388,10 @@ msgstr "Unpin"
 msgid "Unread"
 msgstr "Unread"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Unshare"
+msgstr "Unshare"
+
 #. placeholder {0}: counts.unsubscribe
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Unsubscribe {0}"
@@ -10245,6 +10413,10 @@ msgstr "Unsupported file name"
 #: src/pages/Shell.tsx
 msgid "Unsupported file type: {0}"
 msgstr "Unsupported file type: {0}"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Unticked investors still see this on the portal."
+msgstr "Unticked investors still see this on the portal."
 
 #. placeholder {0}: shortDay(card.to)
 #: src/components/FinanceCards.tsx

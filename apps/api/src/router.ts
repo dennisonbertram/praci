@@ -11,6 +11,7 @@ import type {
   MemoryStore,
   SandboxProvider,
   SecretStore,
+  TransactionalEmailProvider,
   UsageOperationKind,
 } from "@rakazo/adapter-kit";
 import {
@@ -268,6 +269,7 @@ import {
   formatMessagingLinkCode,
   getAuditRequest,
   getCapTableSnapshot,
+  getContact,
   getFundraisingOverview,
   getInvestorUpdate,
   getNotificationPreferences,
@@ -277,6 +279,7 @@ import {
   isRecordNotFound,
   issueMessagingLinkCode,
   isUniqueViolation,
+  linkedContact,
   linkedImessageIdentities,
   listAuditRequests,
   listBoards,
@@ -284,6 +287,7 @@ import {
   listInvestorUpdates,
   listNotifications,
   listPushEndpoints,
+  listShareContactIds,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
@@ -291,11 +295,13 @@ import {
   markInvestorUpdateDelivered,
   markSeen,
   markShown,
+  mintPortalTokenFor,
   moveSidebarFolder,
   moveSidebarItem,
   NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
+  PortalBlockedError,
   Prisma,
   PushSessionEndedError,
   parseComputerMode,
@@ -310,6 +316,7 @@ import {
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
   restoreSidebar,
+  revokePortal,
   SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
@@ -325,13 +332,16 @@ import {
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   setSidebarFolderCollapsed,
+  shareDocument,
   toBoardDto,
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unblockPortal,
   undoCapTableSource,
   unseenBotKinds,
   unseenCounts,
+  unshareDocument,
   updateNotificationPreferences,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -470,7 +480,12 @@ import {
   setIntegrationExclusive,
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
-import { startInvestorUpdateRetry, startInvestorUpdateSend } from "./investor-send.js";
+import {
+  deliverPortalLinks,
+  postInvestorUpdate,
+  startInvestorUpdateRetry,
+  startInvestorUpdateSend,
+} from "./investor-send.js";
 import {
   cadenceOf,
   ensureInvestorsAgent,
@@ -937,6 +952,8 @@ function toNotificationDto(row: Notification): NotificationDto {
 }
 
 export interface RouterDeps {
+  /** Transactional email for portal links; absent when the deployment has none. */
+  email?: TransactionalEmailProvider;
   /** Sends one-click unsubscribe POSTs; without it a one-click sender degrades to its link. */
   unsubscriber?: MailUnsubscriber;
   /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */
@@ -1076,6 +1093,8 @@ function sidebarPageError(error: unknown): never {
 
 function investorUpdateError(error: unknown): never {
   if (error instanceof InvestorUpdateLockedError)
+    throw new ORPCError("CONFLICT", { message: error.message });
+  if (error instanceof PortalBlockedError)
     throw new ORPCError("CONFLICT", { message: error.message });
   return contactNotFound(error);
 }
@@ -1425,6 +1444,11 @@ export function createRouter(deps: RouterDeps) {
           mailContext(actor, "investors.updates.send"),
         )
       ).map((account) => account.id),
+    email: deps.email,
+    portalLink: async (actor: Actor, contactId: string) => {
+      const { token, email } = await mintPortalTokenFor(deps.prisma, actor, contactId);
+      return { link: `${deps.env.webOrigin}/portal/open#${token}`, email };
+    },
   };
   const legalDeps = {
     prisma: deps.prisma,
@@ -7636,7 +7660,51 @@ export function createRouter(deps: RouterDeps) {
           );
           return { ok: true as const };
         }),
+        post: authed.investors.updates.post.handler(({ context, input }) =>
+          postInvestorUpdate(investorSendDeps, context.actor, input.id).catch(investorUpdateError),
+        ),
       },
+      shares: authed.investors.shares.handler(({ context, input }) =>
+        listShareContactIds(deps.prisma, context.actor, input.itemId),
+      ),
+      share: authed.investors.share.handler(async ({ context, input }) => {
+        const added = await shareDocument(
+          deps.prisma,
+          context.actor,
+          input.itemId,
+          input.contactIds,
+        ).catch(investorUpdateError);
+        // Without "Email them a link" nothing is minted: Copy link on the contact makes one later.
+        if (!input.emailLink) return { links: [] };
+        return deliverPortalLinks(investorSendDeps, context.actor, added, { copy: false }).catch(
+          investorUpdateError,
+        );
+      }),
+      unshare: authed.investors.unshare.handler(async ({ context, input }) => {
+        await unshareDocument(deps.prisma, context.actor, input.itemId, input.contactId);
+        return { ok: true as const };
+      }),
+      portalResend: authed.investors.portalResend.handler(async ({ context, input }) => {
+        const { links } = await deliverPortalLinks(
+          investorSendDeps,
+          context.actor,
+          [input.contactId],
+          { copy: input.copy === true, strict: true },
+        ).catch(investorUpdateError);
+        if (links.length === 0 && !investorSendDeps.email)
+          throw new ORPCError("NOT_FOUND", { message: "Contact not found" });
+        return { link: links[0]?.link ?? null };
+      }),
+      portalRevoke: authed.investors.portalRevoke.handler(async ({ context, input }) => {
+        const scope = actorScope(context.actor);
+        await revokePortal(deps.prisma, scope, input.contactId).catch(contactNotFound);
+        return getContact(deps.prisma, scope, input.contactId).catch(contactNotFound);
+      }),
+      portalUnblock: authed.investors.portalUnblock.handler(async ({ context, input }) => {
+        const scope = actorScope(context.actor);
+        await unblockPortal(deps.prisma, scope, input.contactId).catch(contactNotFound);
+        return getContact(deps.prisma, scope, input.contactId).catch(contactNotFound);
+      }),
       reminder: authed.investors.reminder.handler(async ({ context, input }) => {
         const bot = await ensureInvestorsAgent(
           { prisma: deps.prisma, jobs: deps.jobs, repos },
@@ -7786,6 +7854,9 @@ export function createRouter(deps: RouterDeps) {
         );
         return { ok: true as const };
       }),
+      linked: authed.contacts.linked.handler(({ context, input }) =>
+        linkedContact(deps.prisma, actorScope(context.actor), input.id).catch(contactNotFound),
+      ),
     },
     finance: {
       agent: authed.finance.agent.handler(({ context }) =>

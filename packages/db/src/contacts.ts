@@ -1,5 +1,12 @@
-import type { Contact, ContactKind, ContactSaveInput, ContactStage } from "@rakazo/contracts";
+import type {
+  Contact,
+  ContactKind,
+  ContactLinked,
+  ContactSaveInput,
+  ContactStage,
+} from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "./client.js";
+import { endPortalAccess } from "./investor-portal.js";
 import { isUniqueViolation } from "./prisma-errors.js";
 import { IsolationError } from "./scope.js";
 
@@ -14,6 +21,7 @@ type Scope = { spaceId: string; userId: string };
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
 type Db = Pick<PrismaClient, "contact" | "fundraiseRound">;
+type WriteDb = Db & Pick<PrismaClient, "$transaction">;
 
 const withBot = { bot: { select: { id: true, name: true } } } as const;
 
@@ -28,6 +36,9 @@ export const toContact = (row: Prisma.ContactGetPayload<{ include: typeof withBo
   checkSizeCents: row.checkSizeCents == null ? null : Number(row.checkSizeCents),
   nextStep: row.nextStep,
   roundId: row.roundId,
+  portalLinkSentAt: row.portalLinkSentAt?.toISOString() ?? null,
+  portalLastSeenAt: row.portalLastSeenAt?.toISOString() ?? null,
+  portalBlockedAt: row.portalBlockedAt?.toISOString() ?? null,
   addedBy: row.bot,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
@@ -80,7 +91,11 @@ export async function roundIdForStage(
  * Updates the contact with `id`, keeping omitted fields; without `id`, creates one.
  * Throws IsolationError for an `id` that is not the user's.
  */
-async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): Promise<Contact> {
+async function writeContact(
+  prisma: WriteDb,
+  actor: Scope,
+  input: ContactSaveInput,
+): Promise<Contact> {
   const scope = ownerOf(actor);
   const { id, roundId: keepRound, ...fields } = input;
   let roundId = await roundIdForStage(prisma, scope, fields.stage);
@@ -97,9 +112,58 @@ async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): 
     return toContact(
       await prisma.contact.create({ data: { ...scope, ...data }, include: withBot }),
     );
-  const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data });
-  if (count === 0) throw new IsolationError("Contact not found");
-  return toContact(await prisma.contact.findUniqueOrThrow({ where: { id }, include: withBot }));
+  // The contact row is locked first, so portal exchanges and link mints queue behind a change of
+  // email or kind and cannot leave a session that outlives it.
+  return prisma.$transaction(async (tx) => {
+    const [before] = await tx.$queryRaw<{ email: string | null; kind: string }[]>`
+      SELECT "email", "kind" FROM "contacts"
+      WHERE "id" = ${id} AND "spaceId" = ${scope.spaceId} AND "userId" = ${scope.userId}
+      FOR UPDATE`;
+    if (!before) throw new IsolationError("Contact not found");
+    await tx.contact.update({ where: { id }, data });
+    const emailChanged = fields.email !== undefined && fields.email !== before.email;
+    const leftInvestors =
+      before.kind === "investor" && fields.kind !== undefined && fields.kind !== "investor";
+    if (emailChanged || leftInvestors) {
+      await endPortalAccess(tx, id);
+      await tx.contact.update({
+        where: { id },
+        data: { portalLinkSentAt: null, portalLastSeenAt: null },
+      });
+    }
+    if (leftInvestors) await tx.investorShare.deleteMany({ where: { contactId: id } });
+    return toContact(await tx.contact.findUniqueOrThrow({ where: { id }, include: withBot }));
+  });
+}
+
+/** One of the user's contacts; IsolationError when it is not theirs. */
+export async function getContact(prisma: Db, actor: Scope, id: string): Promise<Contact> {
+  const row = await prisma.contact.findFirst({
+    where: { id, ...ownerOf(actor) },
+    include: withBot,
+  });
+  if (!row) throw new IsolationError("Contact not found");
+  return toContact(row);
+}
+
+/** What deleting the contact removes besides its own fields; later slices add their links here. */
+export async function linkedContact(
+  prisma: Pick<PrismaClient, "contact">,
+  actor: Scope,
+  id: string,
+): Promise<ContactLinked> {
+  const row = await prisma.contact.findFirst({
+    where: { id, ...ownerOf(actor) },
+    select: {
+      _count: { select: { portalTokens: true, portalSessions: true } },
+      shares: { select: { dataRoomItem: { select: { name: true } } } },
+    },
+  });
+  if (!row) throw new IsolationError("Contact not found");
+  return {
+    portal: row._count.portalTokens + row._count.portalSessions > 0,
+    documents: row.shares.map((share) => share.dataRoomItem.name).sort(),
+  };
 }
 
 export async function deleteContact(prisma: Db, actor: Scope, id: string): Promise<void> {
@@ -163,7 +227,7 @@ export async function addContactIfNew(
 }
 
 /** Creates or updates a contact. Throws ContactEmailTakenError when another contact has the email. */
-export const saveContact = (prisma: Db, actor: Scope, input: ContactSaveInput) =>
+export const saveContact = (prisma: WriteDb, actor: Scope, input: ContactSaveInput) =>
   writeContact(prisma, actor, input).catch((error: unknown) => {
     throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
   });

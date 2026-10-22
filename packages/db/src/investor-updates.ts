@@ -52,7 +52,7 @@ export function deliveryStates(
   now: Date,
 ): Map<string, InvestorDeliveryState> {
   const states = new Map<string, InvestorDeliveryState>();
-  if (row.status === "draft") return states;
+  if (row.status === "draft" || row.status === "posted") return states;
   const live = row.status === "sending" && !isStale(row, now);
   const deliveries = deliveriesOf(row);
   for (const contactId of row.recipientContactIds) {
@@ -81,7 +81,7 @@ export function statusOf(
   states: ReadonlyMap<string, InvestorDeliveryState>,
   now: Date,
 ): InvestorUpdateStatus {
-  if (row.status === "draft") return "draft";
+  if (row.status === "draft" || row.status === "posted") return row.status;
   if (row.status === "sending" && !isStale(row, now)) return "sending";
   const values = [...states.values()];
   return values.some((s) => s === "failed" || s === "unknown" || s === "sending")
@@ -95,7 +95,7 @@ async function composeStatesFor(
   rows: readonly Row[],
 ): Promise<Map<string, string>> {
   const keys = rows.flatMap((row) =>
-    row.status === "draft"
+    row.status === "draft" || row.status === "posted"
       ? []
       : Object.entries(deliveriesOf(row)).flatMap(([contactId, attempts]) =>
           attempts.map((a) => attemptKey(row.id, contactId, a.n)),
@@ -455,4 +455,25 @@ export async function markInvestorUpdateDelivered(
     },
   });
   return getInvestorUpdate(prisma, scope, id, now);
+}
+
+/**
+ * Post to portal: an investors draft becomes Posted, visible to every investor contact with portal
+ * access, with no email. Returns null when the update is not a draft (a second call changes nothing).
+ */
+export async function claimInvestorUpdatePost(
+  prisma: Db,
+  actor: Scope,
+  id: string,
+  now = new Date(),
+): Promise<InvestorUpdate | null> {
+  const scope = ownerOf(actor);
+  const row = await ownRow(prisma, scope, id);
+  if (row.audience !== "investors")
+    throw new InvestorUpdateLockedError("Only investor updates can be posted.");
+  const { count } = await prisma.investorUpdate.updateMany({
+    where: { id, ...scope, audience: "investors", status: "draft" },
+    data: { status: "posted", sentAt: now },
+  });
+  return count === 0 ? null : getInvestorUpdate(prisma, scope, id, now);
 }
