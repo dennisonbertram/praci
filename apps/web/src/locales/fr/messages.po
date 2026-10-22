@@ -1300,6 +1300,10 @@ msgid "API key"
 msgstr "Clé API"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "En-tête de clé API"
 
@@ -2633,6 +2637,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Les ordinateurs sont désactivés. Définissez SANDBOX_PROVIDER=docker avec SANDBOX_SUPERVISOR_TOKEN, ou définissez SANDBOX_PROVIDER sur e2b, daytona ou box avec sa clé API. Recréez la pile après avoir modifié .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirmer la suppression"
@@ -2789,6 +2797,10 @@ msgstr "Connecter Treg"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -4639,6 +4651,7 @@ msgstr ""
 msgid "Equity"
 msgstr ""
 
+#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr ""
@@ -5011,6 +5024,7 @@ msgstr "Plein écran"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
+#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr ""
@@ -6773,7 +6787,6 @@ msgstr ""
 msgid "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 msgstr ""
 
-#: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No board members yet"
 msgstr ""
@@ -6842,7 +6855,6 @@ msgid "No group chats yet."
 msgstr "Aucune conversation de groupe pour le moment."
 
 #: src/components/data-room/ItemDialogs.tsx
-#: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
 msgstr ""
@@ -6921,10 +6933,6 @@ msgstr ""
 msgid "No open deadlines."
 msgstr ""
 
-#: src/pages/Fundraising.tsx
-msgid "No prospects yet"
-msgstr ""
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "Aucun fournisseur trouvé."
@@ -6972,10 +6980,6 @@ msgstr "Aucune exécution pour le moment"
 msgid "No rush"
 msgstr ""
 
-#: src/pages/Fundraising.tsx
-msgid "No SAFEs yet"
-msgstr ""
-
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
 msgstr ""
@@ -7007,10 +7011,6 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "Aucun déclencheur"
-
-#: src/pages/Investors.tsx
-msgid "No updates yet"
-msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
@@ -7203,6 +7203,10 @@ msgstr "L'autorisation OAuth a été annulée."
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "Échec de la connexion OAuth"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
@@ -7717,6 +7721,7 @@ msgstr "Lecture en cours…"
 msgid "Plugin"
 msgstr "Plugin"
 
+#: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
 msgid "Pool"
 msgstr ""
@@ -7783,12 +7788,26 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -8646,6 +8665,10 @@ msgstr "Guide de la salle"
 #: src/pages/RoutineEditor.tsx
 msgid "Rotate key"
 msgstr "Tourner la clé"
+
+#: src/components/fundraising/RoundCard.tsx
+msgid "Round"
+msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
 msgid "Round actions"
@@ -10885,6 +10908,10 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Utilisez Connecter pour vérifier la clé."
@@ -10892,6 +10919,10 @@ msgstr "Utilisez Connecter pour vérifier la clé."
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Utiliser les instructions par défaut"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
+msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
