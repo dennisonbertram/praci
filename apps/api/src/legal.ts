@@ -158,7 +158,7 @@ export async function legalGraph(deps: LegalDeps, actor: Actor): Promise<LegalGr
 export async function legalDoneDeadlines(deps: LegalDeps, actor: Actor) {
   const repo = createLegalRepos(deps.prisma);
   const [rows, contracts] = await Promise.all([
-    repo.listDeadlines(actor, { status: "done", limit: 200 }),
+    repo.listDeadlines(actor, { status: "done", limit: 200, newestFirst: true }),
     repo.listContracts(actor, { limit: 500 }),
   ]);
   const titles = new Map(contracts.map((c) => [c.id, c.title]));

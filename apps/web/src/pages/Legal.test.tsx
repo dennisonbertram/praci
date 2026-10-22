@@ -1109,6 +1109,19 @@ it("shows Reading n of N while a scan runs, from the falling unchecked count", a
   }
 });
 
+it("keeps Show done reachable when only done deadlines remain", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview,
+    counts: { ...emptyOverview.counts, doneDeadlines: 1 },
+    agent: { ...emptyOverview.agent, lastScanAt: "2026-10-20T10:00:00.000Z" },
+  });
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show done"));
+  expect(container.querySelector('ul[aria-label="Done deadlines"]')).not.toBeNull();
+});
+
 it("lists the deadlines marked done", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);

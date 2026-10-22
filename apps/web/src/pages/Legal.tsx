@@ -253,7 +253,11 @@ function Legal({
   if (!data) return <LegalSkeleton />;
   // Nothing in the Data room yet: one sentence and Add files, not a consent card or empty tabs.
   const noDocuments =
-    data.counts.contracts + data.counts.openDeadlines + data.counts.unreviewedDocuments === 0 &&
+    data.counts.contracts +
+      data.counts.openDeadlines +
+      data.counts.doneDeadlines +
+      data.counts.unreviewedDocuments ===
+      0 &&
     !data.agent.lastScanAt &&
     !running;
   const needsConsent = status?.allowed === false;
@@ -408,7 +412,10 @@ function Legal({
             <Trans>Add files</Trans>
           </Button>
         </PageEmptyState>
-      ) : !needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
+      ) : !needsConsent &&
+        data.contracts.length === 0 &&
+        data.deadlines.length === 0 &&
+        data.counts.doneDeadlines === 0 ? (
         <>
           {resultLine}
           <PageEmptyState
