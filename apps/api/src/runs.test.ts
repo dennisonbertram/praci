@@ -3,6 +3,7 @@ import {
   activityNotificationsEnabled,
   activityPromptSnippet,
   listPendingApprovalNotifications,
+  pendingAskIsApproval,
   pendingAskSnippet,
 } from "./runs.js";
 
@@ -79,6 +80,15 @@ it("previews the pending question on a held run and skips answered cards", () =>
   );
   expect(pendingAskSnippet([ask("Done", "answered")])).toBeUndefined();
   expect(pendingAskSnippet([{ blocks: [{ kind: "text", text: "hi" }] }])).toBeUndefined();
+});
+
+it("tells a pending approval card from a pending question", () => {
+  const card = (extra: object, status?: "answered") => ({
+    blocks: [{ kind: "ask", text: "Send $250?", status, ...extra }],
+  });
+  expect(pendingAskIsApproval([card({ approvalEffectId: "effect-1" })])).toBe(true);
+  expect(pendingAskIsApproval([card({})])).toBe(false);
+  expect(pendingAskIsApproval([card({ approvalEffectId: "effect-1" }, "answered")])).toBe(false);
 });
 
 describe("listPendingApprovalNotifications", () => {

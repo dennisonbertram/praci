@@ -104,6 +104,11 @@ msgstr "{0, plural, one {# needs you} other {# need you}}"
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr "{0, plural, one {# result} other {# results}}"
 
+#. placeholder {0}: counted.length
+#: src/pages/Investors.tsx
+msgid "{0, plural, one {# SAFE} other {# SAFEs}}"
+msgstr "{0, plural, one {# SAFE} other {# SAFEs}}"
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -605,19 +610,6 @@ msgstr "{sourceName} cash"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} spend"
 msgstr "{sourceName} spend"
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr "{sourceNames} · synced {updated}"
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr "{sourceNames} · syncing…"
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{sourceNames}, {0} non-USD not counted"
-msgstr "{sourceNames}, {0} non-USD not counted"
 
 #: src/pages/Finance.tsx
 msgid "{stablecoins} stablecoins in runway"
@@ -1716,6 +1708,10 @@ msgstr "Back to Inbox"
 msgid "Back to Investors"
 msgstr "Back to Investors"
 
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
+msgstr "Back to Legal"
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "Back to sign in"
@@ -2676,12 +2672,13 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 msgid "Connect"
 msgstr "Connect"
 
+#. placeholder {0}: block.name
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
-#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr "Connect {0}"
@@ -4417,6 +4414,7 @@ msgstr "Draft with agent"
 msgid "Drafted {0}"
 msgstr "Drafted {0}"
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr "Drafting…"
@@ -6431,7 +6429,6 @@ msgstr "Monthly spend · {0} – {1}"
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
-#: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
@@ -6445,7 +6442,9 @@ msgstr "More {0} actions"
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
+#. placeholder {0}: row.from
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr "More actions for {0}"
@@ -6569,6 +6568,7 @@ msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
 
@@ -7184,6 +7184,10 @@ msgstr "Nothing shared yet."
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
+msgstr "Notice deadlines are derived from the expiration date and the notice period."
 
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
@@ -8918,6 +8922,10 @@ msgid "Scan finished: nothing changed."
 msgstr "Scan finished: nothing changed."
 
 #: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr "Scan is still running. Check back shortly."
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr "Scan now"
 
@@ -9946,10 +9954,18 @@ msgstr "Sync failed"
 msgid "Sync failed."
 msgstr "Sync failed."
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr "synced {updated}"
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
 msgstr "Syncing"
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
+msgstr "syncing…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"

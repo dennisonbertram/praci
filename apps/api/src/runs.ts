@@ -51,6 +51,20 @@ export function pendingAskSnippet(messages: readonly { blocks: unknown }[]): str
   return undefined;
 }
 
+/** The pending card on a held run asks to allow an action (as the "needs approval" notification does), not a question. */
+export function pendingAskIsApproval(messages: readonly { blocks: unknown }[]): boolean {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const parsed = MessageBlock.array().safeParse(messages[index]?.blocks);
+    if (!parsed.success) continue;
+    for (const block of parsed.data) {
+      if (block.kind === "ask" && block.status !== "answered") {
+        return Boolean(block.approvalEffectId || block.mail);
+      }
+    }
+  }
+  return false;
+}
+
 export function activityNotificationsEnabled(
   groupId: string | null,
   notifyOnFinish: boolean,
@@ -103,6 +117,9 @@ export async function listSpaceRuns(
     : [];
 
   return rows.map((row) => ({
+    needsApproval:
+      row.status === "waiting_input" &&
+      pendingAskIsApproval(askMessages.filter((message) => message.runId === row.id)),
     runId: row.id,
     botId: row.botId,
     botName: row.bot.name,

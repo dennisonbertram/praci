@@ -85799,6 +85799,9 @@
                               "promptSnippet": {
                                 "type": "string"
                               },
+                              "needsApproval": {
+                                "type": "boolean"
+                              },
                               "updatedAt": {
                                 "type": "string"
                               }

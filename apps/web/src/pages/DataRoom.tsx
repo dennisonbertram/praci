@@ -7,9 +7,9 @@ import type {
   DataRoomApiStats,
 } from "@rakazo/contracts";
 import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
-import { ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
+import { ArrowLeft, ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import type { ComposeRestore } from "../components/ComposeEmail";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
@@ -111,6 +111,12 @@ export function DataRoomPage({
   onSendToAgent?: (items: DataRoomApiItem[], agent: SendTarget) => void;
 } = {}) {
   const [params, setParams] = useSearchParams();
+  // A contract opened from Legal's list keeps a way back to it. Read once: choosing a folder
+  // replaces the entry and drops its state.
+  const location = useLocation();
+  const [fromLegal] = useState(
+    () => (location.state as { from?: string } | null)?.from === "legal",
+  );
   const linkedItem = params.get("item");
   const urlFolder = params.get("folder") ?? undefined;
   // View and sort are remembered for this browser.
@@ -642,6 +648,15 @@ export function DataRoomPage({
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+        {fromLegal ? (
+          <Link
+            to="/app/legal"
+            className="rk-tap mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <Trans>Back to Legal</Trans>
+          </Link>
+        ) : null}
         <PageHeader
           title={<Trans>Data room</Trans>}
           meta={
