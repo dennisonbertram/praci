@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 272 of 272
-- Web and shared components: 725
+- Web and shared component files with stories: 275 of 275
+- Web and shared components: 729
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -327,6 +327,9 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | FundraisingPage | [apps/web/src/pages/Fundraising.tsx](../../apps/web/src/pages/Fundraising.tsx) | [Fundraising.stories.tsx](../../apps/web/src/pages/Fundraising.stories.tsx) | web |
 | GoogleOAuthCallbackPage | [apps/web/src/pages/GoogleOAuthCallback.tsx](../../apps/web/src/pages/GoogleOAuthCallback.tsx) | [GoogleOAuthCallback.stories.tsx](../../apps/web/src/pages/GoogleOAuthCallback.stories.tsx) | web |
 | MemberPicker, CreateGroupForm, GroupSettings | [apps/web/src/pages/GroupPanel.tsx](../../apps/web/src/pages/GroupPanel.tsx) | [GroupPanel.stories.tsx](../../apps/web/src/pages/GroupPanel.stories.tsx) | web |
+| GtmPage | [apps/web/src/pages/Gtm.tsx](../../apps/web/src/pages/Gtm.tsx) | [Gtm.stories.tsx](../../apps/web/src/pages/Gtm.stories.tsx) | web |
+| GtmChannels | [apps/web/src/pages/gtm/GtmChannels.tsx](../../apps/web/src/pages/gtm/GtmChannels.tsx) | [GtmChannels.stories.tsx](../../apps/web/src/pages/gtm/GtmChannels.stories.tsx) | web |
+| GtmPlan, GtmItem | [apps/web/src/pages/gtm/GtmPlan.tsx](../../apps/web/src/pages/gtm/GtmPlan.tsx) | [GtmPlan.stories.tsx](../../apps/web/src/pages/gtm/GtmPlan.stories.tsx) | web |
 | InboxPage, InboxListPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
