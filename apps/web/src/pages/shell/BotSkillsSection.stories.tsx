@@ -96,7 +96,7 @@ export const AgentDrafts: Story = {
     }),
 };
 
-export const AddSkillMenu: Story = {
+export const AddSkill: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add skill" }));
   },
@@ -106,7 +106,7 @@ export const FromUrl: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole("button", { name: "Add skill" }));
-    await userEvent.click(await within(document.body).findByRole("menuitem", { name: "From URL" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "From URL" }));
     await userEvent.type(
       await canvas.findByRole("textbox", { name: "From URL" }),
       "https://github.com/acme/skills/blob/main/SKILL.md",
@@ -117,9 +117,6 @@ export const FromUrl: Story = {
 export const NewSkillDraft: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add skill" }));
-    await userEvent.click(
-      await within(document.body).findByRole("menuitem", { name: "New skill" }),
-    );
   },
 };
 
@@ -163,9 +160,6 @@ export const NewSkillSaveFailed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole("button", { name: "Add skill" }));
-    await userEvent.click(
-      await within(document.body).findByRole("menuitem", { name: "New skill" }),
-    );
     await userEvent.click(await canvas.findByRole("textbox", { name: "SKILL.md" }));
     await userEvent.paste("---\nname: demo\ndescription: Demo skill.\n---\n\nSteps.\n");
     await userEvent.click(await canvas.findByRole("button", { name: "Save" }));

@@ -304,10 +304,15 @@ export function ModelSettingsOverlay({
   );
   const inUseProviderIds = useMemo(
     () =>
-      new Set([
-        ...(me?.hostCredentialProvider ? [me.hostCredentialProvider] : []),
-        ...(me?.defaultProvider && !me.needsModel ? [me.defaultProvider] : []),
-      ]),
+      // One provider: the one the bots use. The server's own credentials count only when no
+      // default model names a provider.
+      new Set(
+        me?.defaultProvider && !me.needsModel
+          ? [me.defaultProvider]
+          : me?.hostCredentialProvider
+            ? [me.hostCredentialProvider]
+            : [],
+      ),
     [me?.hostCredentialProvider, me?.defaultProvider, me?.needsModel],
   );
   const searching = providerQuery.trim() !== "";
@@ -1267,6 +1272,13 @@ export function ModelSettingsOverlay({
           className={`mx-6 text-[13px] text-muted-foreground sm:mx-8 ${embedded ? "mt-4" : "mt-5"}`}
         >
           <Trans>Pick a provider below and connect it.</Trans>
+        </p>
+      ) : defaultModelLabel ? (
+        // Side by side the active model shows beside the list; stacked it would sit below six rows.
+        <p
+          className={`mx-6 text-[13px] text-muted-foreground sm:mx-8 min-[1040px]:hidden ${embedded ? "mt-4" : "mt-5"}`}
+        >
+          <Trans>Your bots use {defaultModelLabel}.</Trans>
         </p>
       ) : null}
 

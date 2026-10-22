@@ -6543,14 +6543,14 @@ export function ShellPage() {
                 navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
               });
             }}
-            onClear={() => {
-              setClearTarget(
-                contextBot
-                  ? { kind: "bot", chat: contextBot }
-                  : { kind: "group", chat: contextGroup! },
-              );
-              setBotMenu(null);
-            }}
+            onClear={
+              contextBot
+                ? undefined
+                : () => {
+                    setClearTarget({ kind: "group", chat: contextGroup! });
+                    setBotMenu(null);
+                  }
+            }
             onArchive={() => {
               setBotMenu(null);
               const request = contextBot

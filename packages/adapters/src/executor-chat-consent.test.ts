@@ -1,0 +1,210 @@
+import type { AgentRunRequest } from "@rakazo/adapter-kit";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
+import { describe, expect, it, vi } from "vitest";
+import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
+import { createRunExecutor } from "./executor.js";
+
+vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof ComputerLifecycleModule>()),
+  acquireComputerExecutionLease: async () => null,
+  provisionComputer: async () => ({ id: "computer-1", kind: "desktop" }),
+}));
+
+function historyMessages() {
+  return [
+    {
+      id: "current",
+      threadId: "thread-1",
+      seq: 1,
+      role: "user",
+      runId: "run-1",
+      blocks: [{ kind: "text", text: "what contracts renew soon?" }],
+      replyToMessageId: null,
+      replyQuote: null,
+      replyTo: null,
+    },
+  ];
+}
+
+async function runChat(consented: boolean, effectStatus: string | null = null, trigger = "user") {
+  const switchModel = { provider: "openrouter", modelId: "openai/gpt-4o" };
+  const backupReadFails = false;
+  const scripted = false;
+  const run = {
+    id: "run-1",
+    botId: "bot-1",
+    threadId: "thread-1",
+    taskId: "task-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    status: "queued",
+    trigger,
+    leaseFence: 0,
+  };
+  const get = vi.fn(async () => new Uint8Array([1, 2, 3, 4]));
+  let request: AgentRunRequest | undefined;
+  const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
+    request = next;
+    yield { type: "done" as const, text: "Done" };
+  });
+  const prisma = {
+    // Messages are written in a transaction; none is set up here, so a write fails like before.
+    $transaction: vi.fn(async () => {
+      throw new Error("no message writes in this test");
+    }),
+    run: {
+      findUnique: vi.fn(async () => run),
+      findUniqueOrThrow: vi.fn(async () => run),
+      updateMany: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(run, data);
+        return { count: 1 };
+      }),
+    },
+    bot: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.botId,
+        name: "Chief",
+        userId: "user-1",
+        spawnKey: null,
+        title: "Assistant",
+        description: "Test assistant",
+        modelProvider: null,
+        modelId: null,
+        thinkingLevel: null,
+        computerId: "computer-1",
+        computerSwitching: false,
+        memoryScope: null,
+        computer: { id: "computer-1", scope: "dedicated" },
+      })),
+      findMany: vi.fn(async () => []),
+    },
+    attempt: {
+      create: vi.fn(async () => ({ id: "attempt-1" })),
+      update: vi.fn(),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    thread: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.threadId,
+        groupId: null,
+        historyCompactionSummary: null,
+        historyCompactedUpToSeq: null,
+        nextMessageSeq: 3,
+      })),
+    },
+    message: {
+      findMany: vi.fn(async (args: { where?: { threadId?: string } }) =>
+        args.where?.threadId ? historyMessages() : [],
+      ),
+      findUnique: vi.fn(async () => null),
+    },
+    task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Look again" })) },
+    computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
+    connection: { findMany: vi.fn(async () => []) },
+    spaceModelPreference: {
+      findFirst: vi.fn<(...args: unknown[]) => Promise<Record<string, unknown> | null>>(
+        async () => null,
+      ),
+    },
+    secret: { findFirst: vi.fn(async () => null) },
+    userModelCredential: { findFirst: vi.fn(async () => null) },
+    spaceBackupModel: {
+      findMany: vi.fn(async () => {
+        if (backupReadFails) throw new Error("Backup list unavailable");
+        return switchModel
+          ? [{ provider: switchModel.provider, modelId: switchModel.modelId }]
+          : [];
+      }),
+    },
+
+    deploymentSettings: {
+      findUnique: vi.fn(async () => ({
+        defaultModelProvider: "openrouter",
+        defaultModelId: "openai/gpt-6-luna",
+      })),
+    },
+    aiDataConsent: {
+      findUnique: vi.fn(async () => (consented ? { version: AI_DISCLOSURE_VERSION } : null)),
+    },
+    user: { findUnique: vi.fn(async () => null) },
+    taughtSkill: { findMany: vi.fn(async () => []) },
+    agentSecret: { findMany: vi.fn(async () => []) },
+    botSecret: { findMany: vi.fn(async () => []) },
+    agentSkill: { findMany: vi.fn(async () => []) },
+    botSkillSetting: { findMany: vi.fn(async () => []) },
+    scratchpadItem: { findMany: vi.fn(async () => []) },
+    externalEffect: {
+      findMany: vi.fn(async () => []),
+      findUnique: vi.fn(async () =>
+        effectStatus
+          ? { id: "effect-1", runId: "run-1", spaceId: "space-1", status: effectStatus }
+          : null,
+      ),
+      create: vi.fn(async () => ({
+        id: "effect-1",
+        runId: "run-1",
+        spaceId: "space-1",
+        status: "intended",
+      })),
+    },
+    artifact: {
+      findMany: vi.fn(async () => [
+        { id: "art-1", storageKey: "shot.png", size: 4, mimeType: "image/png", name: "shot.png" },
+      ]),
+    },
+  };
+  const finalizeRun = vi.fn(async () => ({ continuationRunId: null }));
+  const pauseRunForInput = vi.fn(async () => true);
+  const executor = createRunExecutor({
+    prisma,
+    deploymentModelKey: "fake-deployment-key",
+    runtime: { describe: () => ({ capabilities: { scripted } }), run: runtimeRun },
+    sandbox: {
+      describe: () => ({ capabilities: { graphical: false } }),
+      writeFile: vi.fn(async () => undefined),
+      async *exportWorkspace() {
+        yield* [];
+      },
+    },
+    home: { commit: vi.fn(async () => "fixture-revision") },
+    memory: { read: async () => ({ documents: [] }) },
+    memoryProviders: { resolve: async () => null },
+    artifacts: { get },
+    events: { append: vi.fn(async () => undefined), finalizeRun, pauseRunForInput },
+    jobs: { enqueue: vi.fn(async () => undefined) },
+    secrets: [],
+  } as unknown as Parameters<typeof createRunExecutor>[0]);
+
+  await executor.continueRun(run.id, "worker-1");
+  return { request, prisma, runtimeRun, finalizeRun, pauseRunForInput };
+}
+
+describe("Chat runs need AI consent for the model they use", () => {
+  it("pauses on the consent card without calling the model when consent is missing", async () => {
+    const { runtimeRun, pauseRunForInput } = await runChat(false);
+    expect(runtimeRun).not.toHaveBeenCalled();
+    expect(pauseRunForInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        blocks: [expect.objectContaining({ kind: "ask", consent: expect.any(Object) })],
+      }),
+    );
+  });
+
+  it("ends the run when the owner chose Not now", async () => {
+    const { runtimeRun, pauseRunForInput, finalizeRun } = await runChat(false, "denied");
+    expect(runtimeRun).not.toHaveBeenCalled();
+    expect(pauseRunForInput).not.toHaveBeenCalled();
+    expect(finalizeRun).toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
+  });
+
+  it("runs the model once consent is on file", async () => {
+    const { runtimeRun, pauseRunForInput } = await runChat(true);
+    expect(runtimeRun).toHaveBeenCalled();
+    expect(pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("leaves background runs to their own checks", async () => {
+    const { runtimeRun } = await runChat(false, null, "routine");
+    expect(runtimeRun).toHaveBeenCalled();
+  });
+});
