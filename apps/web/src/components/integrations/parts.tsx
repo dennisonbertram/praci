@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
+import { isMailThreadAgentSpawnKey } from "@rakazo/contracts";
 import { Badge, BotAvatar, cn, Switch } from "@rakazo/ui-web";
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -89,9 +90,15 @@ export function AgentToggleList({
   onToggle: (botId: string, next: boolean) => void;
 }) {
   const { t } = useLingui();
+  // Each email's own chat is one agent; they share a single row, as in the sidebar.
+  const emailChats = bots.filter((bot) => isMailThreadAgentSpawnKey(bot.spawnKey));
+  const rows = bots.filter((bot) => !isMailThreadAgentSpawnKey(bot.spawnKey));
+  // Mixed access reads as on (some chats still have it), so one click revokes all and never grants first.
+  const someEmailOn = emailChats.some((bot) => isOn(bot.id));
+  const allEmailOn = emailChats.every((bot) => isOn(bot.id));
   return (
     <div className="divide-y divide-border rounded-xl border border-border bg-card">
-      {bots.map((bot) => (
+      {rows.map((bot) => (
         <div key={bot.id} className="flex items-center gap-3 px-3.5 py-2.5">
           <BotAvatar color={bot.color} identity={bot.id} size={22} />
           <span className="min-w-0 flex-1 truncate text-sm">{bot.name}</span>
@@ -103,6 +110,29 @@ export function AgentToggleList({
           />
         </div>
       ))}
+      {emailChats.length > 0 ? (
+        <div className="flex items-center gap-3 px-3.5 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-sm">
+            <Trans>Email chats</Trans>
+            <span className="ms-2 text-xs tabular-nums text-muted-foreground">
+              {emailChats.length}
+            </span>
+            {someEmailOn && !allEmailOn ? (
+              <span className="ms-2 text-xs text-muted-foreground">
+                <Trans>Some</Trans>
+              </span>
+            ) : null}
+          </span>
+          <Switch
+            aria-label={t`Email chats can use ${appName}`}
+            checked={someEmailOn}
+            disabled={disabled}
+            onCheckedChange={(next) => {
+              for (const bot of emailChats) onToggle(bot.id, next);
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -52,6 +52,8 @@ model User {
   /// Set when the owner finishes or skips the first-run tour; null means it has not been shown.
   tourSeenAt                  DateTime?
   hiddenPages                 String[]                     @default([])
+  /// Masks money figures in this user's clients; follows the person, not the browser.
+  hideAmounts                 Boolean                      @default(false)
   sessions                    Session[]
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]

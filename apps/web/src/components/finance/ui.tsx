@@ -110,7 +110,7 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            className="min-w-0 max-w-full shrink text-muted-foreground"
+            className="max-w-[60%] shrink-0 text-muted-foreground"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }
@@ -410,7 +410,7 @@ export function CompanyMenu({ children, className }: { children?: ReactNode; cla
       )}
     >
       <SpaceName />
-      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+      <span className="flex min-w-0 shrink items-center gap-0.5 text-[11px] text-muted-foreground">
         {children}
       </span>
     </span>

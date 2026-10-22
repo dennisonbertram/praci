@@ -94,6 +94,11 @@
   text-underline-offset: 0.15em;
 }
 
+.rk-chat-markdown a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .rk-chat-markdown .rk-chat-markdown-image {
   display: inline-flex;
   max-width: 100%;

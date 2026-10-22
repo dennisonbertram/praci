@@ -1619,6 +1619,7 @@ export function createRouter(deps: RouterDeps) {
             timezone: input.timezone,
             tourSeenAt:
               input.tourSeen === undefined ? undefined : input.tourSeen ? new Date() : null,
+            hideAmounts: input.hideAmounts,
             // A tab open across the cap-table rename may still send the old key.
             hiddenPages: input.hiddenPages && [
               ...new Set(input.hiddenPages.map((key) => (key === "cap-table" ? "investors" : key))),
@@ -8931,6 +8932,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     timezone: user.timezone ?? null,
     tourSeen: Boolean(user.tourSeenAt),
     hiddenPages: user.hiddenPages ?? [],
+    hideAmounts: user.hideAmounts,
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
 }

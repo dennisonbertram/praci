@@ -1,9 +1,11 @@
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomConsentStatus } from "@rakazo/contracts";
 import { Button, Card } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { ConsentCard } from "../AiDataSharing";
+import { showNoticeToast } from "./upload-toasts";
 
 const DISMISSED_KEY = "rakazo.dataRoomConsentDismissed";
 
@@ -28,18 +30,11 @@ function saveDismissed(value: string | null) {
  * Asks for permission to send documents to the space's model, which reads, tags and files them.
  * Without a model it says why nothing is read. Hidden once allowed or when the status cannot load.
  * After "Not now" (remembered in this browser until the request changes) one line stays, with a way
- * to be asked again.
+ * to be asked again. Allowing shows a toast, so the page does not shift when the card goes.
  */
 export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) {
   const [status, setStatus] = useState<DataRoomConsentStatus | null>(null);
   const [dismissed, setDismissed] = useState(readDismissed);
-  // Allow removes the card, so a short line says what changed.
-  const [confirmed, setConfirmed] = useState(false);
-  useEffect(() => {
-    if (!confirmed) return;
-    const timer = setTimeout(() => setConfirmed(false), 5000);
-    return () => clearTimeout(timer);
-  }, [confirmed]);
   useEffect(() => {
     let live = true;
     rpc.dataRoom
@@ -52,12 +47,6 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
   }, []);
 
   const version = status ? `${status.key}:${status.version}` : "";
-  if (confirmed)
-    return (
-      <p role="status" className="text-xs text-muted-foreground">
-        <Trans>Praci can now read your documents.</Trans>
-      </p>
-    );
   if (!status || status.allowed) return null;
   if (status.recipients.length > 0 && dismissed === version) {
     return (
@@ -96,7 +85,7 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
       heading={<Trans>Let Praci read your documents</Trans>}
       onAllow={async () => {
         setStatus(await rpc.dataRoom.consentGrant({ key: status.key, version: status.version }));
-        setConfirmed(true);
+        showNoticeToast(t`Praci can now read your documents.`);
         onAllowed();
       }}
       onDismiss={() => {

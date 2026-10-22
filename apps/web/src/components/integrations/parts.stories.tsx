@@ -1,3 +1,4 @@
+import { mailThreadAgentSpawnKey } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { mockBots } from "../../stories/fixtures";
@@ -70,4 +71,35 @@ export const ToggleListDisabled: StoryObj = {
       />
     </div>
   ),
+};
+
+/** Every email's own chat shares one "Email chats" row, as in the sidebar. */
+export const ToggleListEmailChats: StoryObj = {
+  render: () => {
+    const [on, setOn] = useState(new Set(["bot_ada"]));
+    const bots = [
+      ...mockBots.slice(0, 1),
+      ...mockBots.slice(1, 3).map((bot, index) => ({
+        ...bot,
+        spawnKey: mailThreadAgentSpawnKey("conn_1", `thread_${index}`),
+      })),
+    ];
+    return (
+      <div className="w-80">
+        <AgentToggleList
+          bots={bots}
+          appName="Sample app"
+          isOn={(id) => on.has(id)}
+          onToggle={(id, next) =>
+            setOn((prev) => {
+              const copy = new Set(prev);
+              if (next) copy.add(id);
+              else copy.delete(id);
+              return copy;
+            })
+          }
+        />
+      </div>
+    );
+  },
 };
