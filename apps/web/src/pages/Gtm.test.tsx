@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   queue: vi.fn(),
   send: vi.fn(),
-  panel: vi.fn(() => null),
+  panel: vi.fn<(props: unknown) => null>(() => null),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
