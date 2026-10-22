@@ -1356,13 +1356,6 @@ function InboxListPage({
           </InputGroup>
         </form>
       )}
-      {/* After the search box, which arrives first: the name loads later and must not push it. */}
-      {spaceName ? (
-        // The full name is in the hover title when the row is too short for it.
-        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-          {spaceName}
-        </span>
-      ) : null}
     </>
   );
 
@@ -1378,6 +1371,7 @@ function InboxListPage({
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
+            spaceName={phone ? undefined : spaceName}
             meta={phone ? undefined : searchMeta}
             actions={
               <>
