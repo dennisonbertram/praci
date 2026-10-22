@@ -117,3 +117,19 @@ it("keeps the projected label inside a chart with a short runway", async () => {
   expect(text?.getAttribute("text-anchor")).toBe("end");
   done();
 });
+
+it("draws a flat balance line mid-chart, not on the x axis", async () => {
+  const values = [115_000_000, 115_000_000, 115_000_000, 115_000_000];
+  const { el, done } = await mount(
+    600,
+    <LineChart values={values} labels={["a", "b", "c", "d"]} height={200} label="Balance" />,
+  );
+  const ys = el
+    .querySelector("polyline")
+    ?.getAttribute("points")
+    ?.split(" ")
+    .map((p) => Number(p.split(",")[1]));
+  done();
+  // The plot runs from y=10 to y=170; mid-chart is 90.
+  expect(ys?.every((y) => Math.abs(y - 90) < 1)).toBe(true);
+});

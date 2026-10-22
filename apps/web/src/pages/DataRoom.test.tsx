@@ -627,10 +627,10 @@ it("keeps the Type, Party and Date filters while no item has them, and keeps the
   expect(labels()).toContain("Filter by Document date");
   // One source filters nothing, and a source with no files would only lead to "No results".
   expect(labels()).not.toContain("Filter by Source");
-  // No file has a status, so the empty Status column is left out; the header is the same either way.
+  // The header is the same whether or not a file has a status.
   const head = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
   const bareHead = head();
-  expect(bareHead).toBe("NameTypeAddedParties");
+  expect(bareHead).toBe("NameTypeAddedPartiesStatus");
 
   rpcMock.list.mockResolvedValue({
     items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
@@ -1013,7 +1013,7 @@ it("shows an import's progress, reloads the list while it runs, and stops when i
       failed: 1,
       inProgress: 0,
       finished: true,
-      latest: [{ id: "id-a.txt", name: "a.txt" }],
+      latest: ["a.txt", "x.txt", "y.txt"].map((name) => ({ id: `id-${name}`, name })),
     },
   ]);
   await act(async () => {
@@ -1038,7 +1038,7 @@ it("opens a file of a finished import, and lets the row be dismissed", async () 
       done: 5,
       inProgress: 0,
       finished: true,
-      latest: [{ id: "B", name: "b.txt" }],
+      latest: ["b.txt", "c.txt", "d.txt"].map((name, n) => ({ id: n ? name : "B", name })),
     },
   ]);
   rpcMock.item.mockResolvedValue({ ...item("b.txt"), id: "B" });
@@ -1259,4 +1259,32 @@ it("sends every ticked file to the chosen agent in one go", async () => {
     "a.txt",
   ]);
   expect(container.querySelector('[data-testid="data-room-selection"]')).toBeNull();
+});
+
+it("lists only the new folder's items when it is opened with the preview open", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  await settle();
+  await clickRow(0);
+  expect(previewName()).toBe("b.txt");
+  const inFolder = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
+  rpcMock.list.mockImplementation((input: { folderId?: string }) =>
+    input.folderId === "f1"
+      ? inFolder.promise
+      : Promise.resolve({ items: [item("b.txt"), item("a.txt")], nextCursor: null }),
+  );
+  const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Legal",
+  );
+  await act(async () => legal?.click());
+  // A background change announcement arrives while the folder's answer is on its way.
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  inFolder.resolve({ items: [item("c.txt")], nextCursor: null });
+  await settle();
+  await settle();
+  expect(names()).toEqual(["c.txt"]);
 });

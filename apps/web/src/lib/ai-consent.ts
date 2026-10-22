@@ -1,6 +1,7 @@
 import { rpc } from "./rpc";
 
-export const aiConsentStatus = () => rpc.aiConsent.status({});
+export const aiConsentStatus = (uses?: ("model" | "voice" | "memory")[]) =>
+  rpc.aiConsent.status(uses ? { uses } : {});
 
 /** Allows one recipient. With `shown`, it binds the grant to the scope and version the user reviewed; the server refuses it if they changed. */
 export async function allowRecipient(key: string, shown?: { scope: string; version: string }) {

@@ -78,7 +78,7 @@ export function ComposerError({
             <Trans>Open Models settings</Trans>
           </Button>
         ) : null}
-        {(message === MISSING_TOOL_FINAL_RESPONSE_ERROR && onRetry) || onRetrySend ? (
+        {(message.startsWith(MISSING_TOOL_FINAL_RESPONSE_ERROR) && onRetry) || onRetrySend ? (
           <Button size="sm" variant="outline" onClick={onRetrySend ?? onRetry}>
             <Trans>Retry</Trans>
           </Button>

@@ -334,7 +334,10 @@ export function McpDetail({
         {(hasAgent && server.agentBotId && !keyRoute) || (!hasAgent && bank) ? (
           <IntegrationAgentSection
             service={service}
-            agentName={agent?.name ?? t`${service} agent`}
+            agentName={
+              agent?.name ??
+              (server.agentBotId ? t`${service} agent` : t`Created when you allow changes`)
+            }
             agentHref={server.agentBotId ? `/app/${server.agentBotId}` : undefined}
             writesEnabled={server.writesEnabled || writesPending}
             shared={!server.agentExclusive}

@@ -402,7 +402,11 @@ import {
   legalToolsAllowed,
   lockLegalBot,
 } from "./legal-tools.js";
-import { approvedMailOutcome, mailSendRefusal } from "./mail-approval-recovery.js";
+import {
+  approvedMailOutcome,
+  failedMailToAgent,
+  mailSendRefusal,
+} from "./mail-approval-recovery.js";
 import {
   accountName,
   inferMailAccount,
@@ -410,6 +414,7 @@ import {
   mailToolFromTool,
   mailToolsAllowed,
   OWNER_INITIATED_TRIGGERS,
+  recoveryMailAccount,
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
@@ -2282,6 +2287,119 @@ export function createRunExecutor(deps: ExecutorDeps) {
           await failRunBeforeModel(MEETING_CONSENT_REQUIRED_MESSAGE);
           return;
         }
+        // A chat message, its history and the bot's memories go to this run's model, so a chat
+        // needs consent for that recipient too. Missing consent asks on a card in the chat; Not now
+        // ends the run. Only a configured model counts: a runtime's own fallback sends nothing out.
+        let chatRecipient: ReturnType<typeof aiRecipient> = null;
+        const chatGated =
+          !legalOnly &&
+          // A delegated run carries the owner's chat text to the target's model, so it needs the
+          // same consent; the owner's own run user holds it.
+          (run.trigger === "user" ||
+            run.trigger === "follow_up" ||
+            (run.trigger === "bot_message" && peerMessage?.ownerOrigin === true)) &&
+          selected.provider;
+        const consentUserId = run.trigger === "bot_message" ? run.userId : bot.userId;
+        if (chatGated && selected.provider) {
+          try {
+            chatRecipient = aiRecipient({
+              provider: selected.provider,
+              modelId: runModelId,
+              baseUrl: resolved.baseUrl,
+              use: "model",
+            });
+          } catch {
+            // A malformed endpoint cannot be called either; mail tools still refuse it themselves.
+          }
+        }
+        const chatConsented = chatRecipient
+          ? await deps.prisma.aiDataConsent
+              .findUnique({
+                where: {
+                  userId_spaceId_recipientKey: {
+                    userId: consentUserId,
+                    spaceId: run.spaceId,
+                    recipientKey: chatRecipient.key,
+                  },
+                },
+                select: { version: true },
+              })
+              // Unknown is treated as not allowed.
+              .then(
+                (row) => row?.version === AI_DISCLOSURE_VERSION,
+                () => false,
+              )
+          : true;
+        if (chatRecipient && !chatConsented && run.trigger === "bot_message") {
+          // The delegating chat shows the card (before the message is sent); this chat has no
+          // one to ask, so the run ends and the sender is told.
+          await failRunBeforeModel(CHAT_CONSENT_DECLINED_MESSAGE);
+          return;
+        }
+        if (chatRecipient && !chatConsented) {
+          const request = { recipientKey: chatRecipient.key, version: AI_DISCLOSURE_VERSION };
+          const recorded = await recordEffect(
+            deps,
+            run,
+            AI_CONSENT_EFFECT_KIND,
+            approvalEffectKey(runId, AI_CONSENT_EFFECT_KIND, request),
+            request,
+          );
+          if (recorded.duplicate && recorded.effect.status !== "intended") {
+            await failRunBeforeModel(CHAT_CONSENT_DECLINED_MESSAGE);
+            return;
+          }
+          const paused = await deps.events.pauseRunForInput({
+            spaceId: run.spaceId,
+            threadId: run.threadId,
+            botId: run.botId,
+            runId,
+            attemptId: attempt.id,
+            leaseOwner: workerId,
+            leaseFence: fence,
+            blocks: [buildConsentAskBlock(recorded.effect.id)],
+          });
+          if (!paused) throw new Error("Could not pause this run for consent; try sending again.");
+          return;
+        }
+        // Backup models and subagent model choices are other recipients: a chat run may use one only
+        // with consent on file for it. Unknown or failing lookups mean no.
+        const chatModelAllowed = async (provider: string, modelId: string): Promise<boolean> => {
+          if (!chatGated) return true;
+          try {
+            // Consent is per recipient, so a custom model that is not in the catalog is allowed
+            // when its recipient is. A connection supplies the endpoint; without one, only a
+            // provider with a fixed recipient can be checked.
+            const credential = await findModelCredential(deps.prisma, run, provider, modelId);
+            const baseUrl = credential
+              ? (
+                  await resolveModelKey(
+                    deps,
+                    run.userId,
+                    run.spaceId,
+                    credential,
+                    provider,
+                    modelId,
+                  )
+                ).baseUrl
+              : undefined;
+            const recipient = aiRecipient({ provider, modelId, baseUrl, use: "model" });
+            if (!recipient) return provider === "scripted";
+            const row = await deps.prisma.aiDataConsent.findUnique({
+              where: {
+                userId_spaceId_recipientKey: {
+                  userId: consentUserId,
+                  spaceId: run.spaceId,
+                  recipientKey: recipient.key,
+                },
+              },
+              select: { version: true },
+            });
+            return row?.version === AI_DISCLOSURE_VERSION;
+          } catch {
+            return false;
+          }
+        };
         if (legalOnly) {
           // The Legal agent's history and tools carry document content, so the model that receives
           // them must be one the user allowed. Without that consent the run ends before any model call.
@@ -4133,7 +4251,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             intent: args.intent as "request" | "result" | "question" | "status" | "fyi" | undefined,
           };
           let delegatesToInbox = false;
-          if (name === "message_bot" && run.trigger === "user") {
+          let delegatesToModel = false;
+          if (name === "message_bot" && (run.trigger === "user" || run.trigger === "follow_up")) {
             const owned = await deps.prisma.bot.findMany({
               where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
               select: { id: true, name: true, spawnKey: true },
@@ -4143,6 +4262,50 @@ export function createRunExecutor(deps: ExecutorDeps) {
               name: botMessageArgs.confirm_name,
             });
             delegatesToInbox = isInboxAgentSpawnKey(target?.spawnKey);
+            // The target's model receives this conversation, so ask for consent for it here.
+            if (target) {
+              delegatesToModel = true;
+              const targetModel = await resolveModel({
+                userId: run.userId,
+                spaceId: run.spaceId,
+                botId: target.id,
+              }).catch(() => null);
+              const targetRecipient = targetModel
+                ? (() => {
+                    try {
+                      return aiRecipient({
+                        provider: targetModel.provider,
+                        modelId: targetModel.id,
+                        baseUrl: targetModel.baseUrl,
+                        use: "model",
+                      });
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null;
+              if (targetRecipient) {
+                const granted = await deps.prisma.aiDataConsent
+                  .findUnique({
+                    where: {
+                      userId_spaceId_recipientKey: {
+                        userId: run.userId,
+                        spaceId: run.spaceId,
+                        recipientKey: targetRecipient.key,
+                      },
+                    },
+                    select: { version: true },
+                  })
+                  .then(
+                    (row) => row?.version === AI_DISCLOSURE_VERSION,
+                    () => false,
+                  );
+                if (!granted) {
+                  const asked = await askMailConsent(targetRecipient, botMessageArgs);
+                  if (asked) return asked;
+                }
+              }
+            }
             if (delegatesToInbox) {
               const status = await triageStatus(
                 { prisma: deps.prisma, resolveModel },
@@ -5003,12 +5166,36 @@ export function createRunExecutor(deps: ExecutorDeps) {
               args,
             ).finally(tracked.keep);
             if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
-              await recordApprovedMailOutcome(deps, run, applied.effect.id, name, result);
+              const failedAccount =
+                approvedMailOutcome(name, result).outcome === "failed"
+                  ? await mailAccounts()
+                      .then((accounts) =>
+                        recoveryMailAccount(
+                          deps.prisma,
+                          { spaceId: run.spaceId, userId: bot.userId },
+                          accounts,
+                          args,
+                        ),
+                      )
+                      .catch(() => undefined)
+                  : undefined;
+              await recordApprovedMailOutcome(
+                deps,
+                run,
+                applied.effect.id,
+                name,
+                result,
+                failedAccount && { id: failedAccount.id, name: accountName(failedAccount) },
+              );
               flushPendingTools();
               messageSegments = attachToolNotes(messageSegments, name, {
                 lines: [],
                 summary: mailOutcomeSummary(name, approvedMailOutcome(name, result).outcome),
               });
+              const settled = approvedMailOutcome(name, result);
+              if (settled.outcome === "failed" && settled.error) {
+                return finish(failedMailToAgent(name, settled.error));
+              }
             }
             return finish(result);
           }
@@ -6242,19 +6429,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (name === "message_bot") {
             // After Allow, the question saved with the consent card is what gets delivered.
-            const saved = delegatesToInbox
-              ? (
-                  await deps.prisma.externalEffect.findMany({
-                    where: {
-                      spaceId: run.spaceId,
-                      runId,
-                      kind: AI_CONSENT_EFFECT_KIND,
-                      status: "approved",
-                    },
-                    select: { id: true, result: true },
-                  })
-                ).find((effect) => (effect.result as { delegation?: unknown } | null)?.delegation)
-              : undefined;
+            const saved =
+              delegatesToInbox || delegatesToModel
+                ? (
+                    await deps.prisma.externalEffect.findMany({
+                      where: {
+                        spaceId: run.spaceId,
+                        runId,
+                        kind: AI_CONSENT_EFFECT_KIND,
+                        status: "approved",
+                      },
+                      select: { id: true, result: true },
+                    })
+                  ).find((effect) => (effect.result as { delegation?: unknown } | null)?.delegation)
+                : undefined;
             const delegation = saved
               ? (saved.result as { delegation: typeof botMessageArgs }).delegation
               : botMessageArgs;
@@ -6723,6 +6911,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           } catch (error) {
             getLogger().warn("Backup models could not be loaded", { runId, error });
           }
+          const allowed = await Promise.all(
+            fallbackModels.map((candidate) =>
+              chatModelAllowed(candidate.provider, candidate.modelId),
+            ),
+          );
+          fallbackModels = fallbackModels.filter((_, index) => allowed[index]);
         }
         let meetingMarkedMidRun = false;
         const fallbackModelKeys = new Set(
@@ -6875,10 +7069,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               executeTool: scripted ? undefined : applyTool,
               resolveModel: scripted
                 ? undefined
-                : (provider, modelId) =>
-                    resolveConnectedModel(run, provider, modelId, (values) =>
+                : async (provider, modelId) => {
+                    if (!(await chatModelAllowed(provider, modelId)))
+                      throw new Error("Allow that model's provider to receive this chat first");
+                    return resolveConnectedModel(run, provider, modelId, (values) =>
                       runSecrets.push(...values),
-                    ),
+                    );
+                  },
               onToolCompleted: (completion) =>
                 appendToolCompletionAudit(
                   deps,
@@ -8373,12 +8570,12 @@ export function directoryDescription(peer: {
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.${CONSENT_LINK_GUIDANCE}`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request: then give no link; never reply only that the request could not be completed.${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. When the user denied the request, say it was not submitted and add no link. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
@@ -9097,6 +9294,10 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
 }
 
 /** What the agent is told when the owner declined the consent card in this chat. */
+/** The run error after Not now on a chat's consent card; Settings has the switch. */
+const CHAT_CONSENT_DECLINED_MESSAGE =
+  "Chat is off until you allow AI models in Settings under Privacy and approvals.";
+
 export const MAIL_CONSENT_DECLINED =
   "The user chose not to allow AI data sharing for mail, so mail cannot be read. Tell them you can't read their mail, and don't send them to another page.";
 
@@ -9114,6 +9315,7 @@ async function recordApprovedMailOutcome(
   effectId: string,
   name: "mail_send" | "mail_draft",
   result: Record<string, unknown>,
+  account?: { id: string; name: string },
 ) {
   const { outcome, error } = approvedMailOutcome(name, result);
   const card = await findApprovalCard(deps, run, effectId);
@@ -9126,6 +9328,10 @@ async function recordApprovedMailOutcome(
       effectId,
       outcome,
       ...(error ? { error } : {}),
+      // So a failed send can be reopened in the composer from the account it was sent from.
+      ...(outcome === "failed" && account
+        ? { connectionId: account.id, account: account.name }
+        : {}),
     });
   } catch (cause) {
     // The card is a view of the result; the agent still gets the real one.

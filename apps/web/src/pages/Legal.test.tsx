@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -43,7 +43,7 @@ import {
   id,
   overview,
 } from "./legal/fixtures";
-import { LegalContracts } from "./legal/LegalContracts";
+import { LegalContracts, withoutSelf } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -461,6 +461,34 @@ it("says why Scan now is disabled, and what a missing consent hides", async () =
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
   expect(container.textContent).toContain("Connect a model in Settings first.");
+});
+
+it("shows a titled empty state when there are no contracts", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview);
+  await render(<LegalPage />);
+  expect(container.querySelector("h2")?.textContent).toBe("No contracts yet");
+});
+
+it("shows the scan result below the tabs, so they never move", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (status: "running" | "completed") => ({
+      ...overview,
+      agent: { ...overview.agent, lastScanRun: { id: id(7), status, error: null } },
+    });
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(withRun("running"));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun("completed"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    const result = container.querySelector("[role=status]");
+    const tabs = container.querySelector("[role=tablist]");
+    expect(result?.textContent).toContain("Scan finished");
+    expect(tabs?.compareDocumentPosition(result as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("says how many rows a scan added or changed, and when none did", async () => {
@@ -904,6 +932,32 @@ it("opens no two deadline rows with the same words and leaves out an all-active 
   expect(container.textContent).not.toContain("Status");
 });
 
+it("shows the Status column only for two or more non-active contracts, else a chip by the title", async () => {
+  const [first, second] = contracts;
+  if (!first || !second) throw new Error("fixtures");
+  const one = [first, { ...second, status: "expired" as const }].map((c, i) =>
+    i === 0 ? { ...c, status: "active" as const } : c,
+  );
+  await render(<LegalContracts contracts={one} />);
+  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).not.toContain(
+    "Status",
+  );
+  expect(container.querySelector("tbody")?.textContent).toContain("Expired");
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render(
+    <LegalContracts
+      contracts={[
+        { ...first, status: "expired" as const },
+        { ...second, status: "draft" as const },
+      ]}
+    />,
+  );
+  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).toContain(
+    "Status",
+  );
+});
+
 it("puts the contract name in the deadline title", async () => {
   await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
   const first = [...container.querySelectorAll("li .font-medium")].map((el) => el.textContent);
@@ -923,6 +977,91 @@ it("names the contract in the Undo line and keeps it for 30 seconds", async () =
     expect(button("Undo")).toBeDefined();
     await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
     expect(button("Undo")).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("leaves the company out of Parties even with a (Mock) note or a suffix, so the counterparty comes first", () => {
+  const mine = { ...contracts[0]!, counterparties: ["Northwind Robotics (Mock)", "Acme Hosting"] };
+  expect(withoutSelf(mine, "Northwind Robotics").counterparties).toEqual(["Acme Hosting"]);
+  const suffixed = { ...contracts[0]!, counterparties: ["Northwind Robotics, Inc.", "Acme"] };
+  expect(withoutSelf(suffixed, "Northwind Robotics").counterparties).toEqual(["Acme"]);
+  // Only the company itself: kept, so the cell is not empty.
+  const only = { ...contracts[0]!, counterparties: ["Northwind Robotics (Mock)"] };
+  expect(withoutSelf(only, "Northwind Robotics").counterparties).toEqual(only.counterparties);
+  // A different entity that shares the name stays.
+  const sibling = { ...contracts[0]!, counterparties: ["Northwind Robotics (UK)", "Acme"] };
+  expect(withoutSelf(sibling, "Northwind Robotics").counterparties).toEqual([
+    "Northwind Robotics (UK)",
+    "Acme",
+  ]);
+});
+
+it("opens the contract from a click anywhere on its row, and shows the Renewal notice in full", async () => {
+  const Where = () => <p data-testid="where">{useLocation().pathname + useLocation().search}</p>;
+  await render(
+    <>
+      <LegalContracts contracts={contracts} />
+      <Where />
+    </>,
+  );
+  const row = container.querySelector("tbody tr");
+  const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
+    td.textContent?.startsWith("Auto-renews"),
+  );
+  expect(renewalCell?.className).not.toContain("truncate");
+  await click(row?.querySelectorAll("td")[3]);
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    `/app/data-room?item=${contracts[0]!.dataRoomItemId}`,
+  );
+});
+
+it("says the derivation of notice deadlines once, and writes dates in notes the way the page does", async () => {
+  const note = "Derived from the expiration date and the notice period.";
+  const rows = [
+    { ...deadlines[0]!, id: id(80), notes: `${note} Renews automatically on 2026-12-10.` },
+    { ...deadlines[1]!, id: id(81), notes: note },
+  ];
+  await render(<LegalDeadlines deadlines={rows} onChanged={() => {}} today="2026-10-16" />);
+  const page = container.textContent ?? "";
+  expect(page.split("derived from the expiration date").length - 1).toBe(1);
+  expect(page).not.toContain("Derived from");
+  expect(page).toContain("Renews automatically on Dec 10, 2026.");
+  expect(page).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+});
+
+it("ends a scan that outlasts the wait with a one-line result", async () => {
+  vi.useFakeTimers();
+  try {
+    const running = {
+      ...overview,
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "running" as const, error: null },
+      },
+    };
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(running);
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(5 * 60_000 + 100)));
+    expect(container.querySelector("[role=status]")?.textContent).toContain(
+      "Scan is still running",
+    );
+    // The run ends later; a refresh on focus drops the stale note.
+    rpcMock.overview.mockResolvedValue({
+      ...overview,
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "succeeded" as const, error: null },
+      },
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(container.querySelector("[role=status]")).toBeNull();
   } finally {
     vi.useRealTimers();
   }

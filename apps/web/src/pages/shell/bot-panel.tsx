@@ -33,7 +33,7 @@ import {
   Toggle,
 } from "@rakazo/ui-web";
 import { ModelPicker } from "@rakazo/ui-web/components/ui/model-picker";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
@@ -84,7 +84,7 @@ function ComputerModePicker({
       <div className="text-[13.5px] font-medium text-foreground">
         <Trans>Workspace</Trans>
       </div>
-      <div className="mt-2 grid grid-cols-1 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2">
         {(["team", "dedicated"] as const).map((mode) => (
           <Toggle
             key={mode}
@@ -498,6 +498,7 @@ export function BotSettings({
           onClick={() => setUnfolded(true)}
         >
           <Trans>More settings</Trans>
+          <ChevronDown aria-hidden="true" className="size-4" />
         </Button>
       ) : (
         <>
@@ -635,7 +636,7 @@ export function BotSettings({
             onToggle={(event) => {
               if (!event.currentTarget.open) return;
               setAdvancedOpened(true);
-              event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
+              event.currentTarget.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
             }}
           >
             <summary
@@ -848,6 +849,7 @@ export function BotSettings({
               onClick={() => void onExport()}
             >
               <Trans>Export</Trans>
+              <Download aria-hidden="true" className="size-4" />
             </Button>
             <Button
               variant="ghost"

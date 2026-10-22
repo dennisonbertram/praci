@@ -29,46 +29,55 @@ export function FirstRunTour({
     () => [
       {
         id: "search",
+        name: t`Search`,
         anchor: '[data-tour="sidebar-search"]',
         text: t`Type here to find any page, chat or email.`,
       },
       {
         id: "create",
+        name: t`Create`,
         anchor: '[data-tour="create-menu"]',
         text: t`Press + to create a bot or a group chat.`,
       },
       {
         id: "inbox",
+        name: t`Inbox`,
         anchor: '[data-tour="sidebar-inbox"]',
         text: t`Read your mail sorted by what needs you, and send replies you approve.`,
       },
       {
         id: "finance",
+        name: t`Finance`,
         anchor: '[data-tour="sidebar-finance"]',
         text: t`See your cash, burn and runway, pulled from your bank.`,
       },
       {
         id: "legal",
+        name: t`Legal`,
         anchor: '[data-tour="sidebar-legal"]',
         text: t`Keep your contracts here and see which are due soon.`,
       },
       {
         id: "files",
+        name: t`Data room`,
         anchor: '[data-tour="sidebar-data-room"]',
         text: t`Upload files for bots to use.`,
       },
       {
         id: "chat",
+        name: t`Chief`,
         anchor: '[data-tour="sidebar-chat"]',
         text: t`Ask Chief anything.`,
       },
       {
         id: "apps",
+        name: t`Integrations`,
         anchor: '[data-tour="sidebar-integrations"]',
         text: t`See what bots can reach, and add more in Integrations.`,
       },
       {
         id: "account",
+        name: t`Account`,
         anchor: '[data-tour="user-menu"]',
         text: t`Change settings, export your data or retake this tour from here.`,
       },

@@ -385,7 +385,8 @@ it("treats the provider this space already uses as connected, with a key optiona
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
     // The provider the bots already use is marked, so a founder sees there is nothing to do here.
-    expect(text).toContain("In use");
+    expect(text).toContain("Included");
+    expect(text).not.toContain("In use");
   } finally {
     await view.unmount();
   }
@@ -398,7 +399,8 @@ it("opens the own-key form when a page asks for that provider's key", async () =
     );
   const closed = await renderSettings();
   try {
-    expect(ownKey(closed.container)?.open).toBe(false);
+    // "Use my own model" (clicked by the helper) opens the key form in the same step.
+    expect(ownKey(closed.container)?.open).toBe(true);
   } finally {
     await closed.unmount();
   }
@@ -548,10 +550,28 @@ it("lists the server's own provider as In use, not Connected, ahead of the A-Z l
       buttons(view.container, "More")[0]?.click();
     });
     const text = view.container.textContent ?? "";
-    // No key is stored, so nothing is "Connected".
-    expect(text).toContain("In use");
+    // No key is stored, so nothing is "Connected" or "In use"; the server's model is "Included".
+    expect(text).toContain("Included");
     expect(text).not.toContain("Connected");
     expect(text.indexOf("OpenRouter")).toBeLessThan(text.indexOf("Amazon Bedrock"));
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("marks In use on the provider of the active model only, not also the server's own provider", async () => {
+  vi.mocked(rpc.me).mockResolvedValue({
+    ...account("amazon", "a"),
+    hostCredentialProvider: "openrouter",
+    hostCredentialSource: "environment",
+  } as never);
+  models.list.mockResolvedValue([
+    { ...deepseekEntry, provider: "amazon", providerName: "Amazon Bedrock", id: "a" },
+    { ...deepseekEntry, provider: "openrouter", providerName: "OpenRouter", id: "or-model" },
+  ]);
+  const view = await renderSettings();
+  try {
+    expect(view.container.textContent?.match(/Included/g)).toHaveLength(1);
   } finally {
     await view.unmount();
   }
@@ -614,6 +634,11 @@ it("shows one line and one action on the system model, and opens the providers o
     await act(async () => buttons(view.container, "Use my own model")[0]?.click());
     expect(view.container.textContent).toContain("Providers");
     expect(view.container.textContent).toContain("Data room search model");
+    // The key form is already open: one click, not a second disclosure.
+    const own = [...view.container.querySelectorAll("details")].find((d) =>
+      d.textContent?.includes("Use your own key"),
+    );
+    expect(own?.open).toBe(true);
   } finally {
     await view.unmount();
   }

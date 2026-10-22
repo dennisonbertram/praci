@@ -42,6 +42,8 @@ export const Sent: Story = {
     mail: { ...mail, connectionId: "connection_1", outcome: "sent" },
   },
 };
+/** The server closed this card (a newer one replaced it): it reads Not sent, never Sending. */
+export const Superseded: Story = { args: { status: "answered", answer: "superseded" } };
 export const Approved: Story = { args: { status: "answered", answer: "allow" } };
 export const NotSent: Story = {
   args: {

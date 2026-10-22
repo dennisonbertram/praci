@@ -139,3 +139,29 @@ it("does not shrink inside the sidebar's scrolling flex column, and scrolls its 
   // The header and Filter toggle stay outside the scrolling rows.
   expect(rows?.contains(parent.querySelector("h2"))).toBe(false);
 });
+
+it("names a held approval and a held question the same, 'Needs your answer', on their own line", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.runs.list.mockImplementation(async ({ filter }: { filter: string }) => ({
+    runs:
+      filter === "active"
+        ? [{ ...run("a", "waiting_input"), needsApproval: true }, run("b", "waiting_input")]
+        : [],
+  }));
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () => createRoot(container).render(view()));
+
+  const labels = [...container.querySelectorAll("[data-activity-row]")].map((row) =>
+    row.getAttribute("aria-label"),
+  );
+  expect(labels).toEqual([
+    "Investor Relations (mock), Needs your answer",
+    "Investor Relations (mock), Needs your answer",
+  ]);
+  const row = container.querySelector("[data-activity-row]");
+  const statusLine = [...(row?.querySelectorAll("span.block") ?? [])].map((s) => s.textContent);
+  expect(statusLine).toEqual(["Needs your answer", "Draft the update"]);
+  // The group heading is for screen readers only; each row carries its own state.
+  expect(container.querySelector("#activity-needs-heading")?.className).toBe("sr-only");
+});

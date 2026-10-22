@@ -29,7 +29,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 
 /** Chat snippets come from markdown replies; show them as plain text. */
 export function plainSnippet(text: string): string {
-  return text.replace(/\*\*|__|`/g, "");
+  return text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|__|`/g, "");
 }
 
 function isApplePlatform() {

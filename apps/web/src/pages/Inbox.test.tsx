@@ -1068,6 +1068,84 @@ it("calls today's group 'Other mail today' when Needs reply is above it", async 
   expect([...plain.querySelectorAll("h2")].map((h) => h.textContent)).toContain("Today");
 });
 
+it("shows five Needs reply rows and the rest behind 'Show n more'", async () => {
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  rpcMock.list.mockResolvedValue(list(ids.map((id) => row(id, { needsReply: true }))));
+  const c = await render();
+  expect(c.querySelectorAll("button[data-row-id]").length).toBe(5);
+  await click(byText(c, "Show 2 more"));
+  expect(c.querySelectorAll("button[data-row-id]").length).toBe(7);
+  expect(byText(c, "Show 2 more")).toBeUndefined();
+});
+
+it("holds rows in their groups while triage is still running", async () => {
+  // Each answer is pending; the poll after the first load classifies row b as well.
+  let calls = 0;
+  rpcMock.list.mockImplementation(async () => {
+    calls += 1;
+    const b = calls > 2 ? row("b", { needsReply: true }) : row("b");
+    return list([row("a", { needsReply: true }), b], { triagePending: true });
+  });
+  const c = await render();
+  await dwell(5_000);
+  expect(calls).toBeGreaterThan(2);
+  // Row b sits after the "Other mail today" heading until triage ends.
+  const other = [...c.querySelectorAll("h2")].find((h) => h.textContent === "Other mail today");
+  const b = c.querySelector('button[data-row-id="b"]');
+  expect(
+    other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("does not hold a mark back while triage is running", async () => {
+  let marked = false;
+  rpcMock.feedback.mockImplementation(async () => {
+    marked = true;
+    return {};
+  });
+  rpcMock.list.mockImplementation(async () =>
+    list(
+      [
+        row("a", { needsReply: true }),
+        marked ? row("b", { needsReply: true, feedback: "noise" }) : row("b"),
+      ],
+      { triagePending: true },
+    ),
+  );
+  const c = await render();
+  await click(byText(c, "noise b"));
+  await dwell(1_000);
+  const other = [...c.querySelectorAll("h2")].find((h) => h.textContent === "Other mail today");
+  const b = c.querySelector('button[data-row-id="b"]');
+  // The marked row takes the server's new classification at once, so it is above the Other heading.
+  expect(
+    !other || (b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING),
+  ).toBeTruthy();
+});
+
+it("keeps one held snapshot per list", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockImplementation(async (input: { connectionId?: string }) =>
+    input.connectionId === "c2"
+      ? list([row("s1", { needsReply: true }), row("s2", { needsReply: true })], {
+          accounts,
+          triagePending: true,
+        })
+      : list([row("a", { needsReply: true }), row("b")], { accounts, triagePending: true }),
+  );
+  const c = await render();
+  // Both lists are cached after one visit, so the next switch shows rows at once, still pending.
+  await pickAccount("Sales");
+  await pickAccount("All");
+  // The Sales rows were never in the first list's snapshot; they still show under Needs reply.
+  await pickAccount("Sales");
+  await dwell(1_000);
+  expect([...c.querySelectorAll("h2")].map((h) => h.textContent)).toEqual(["Needs reply"]);
+});
+
 it("looks for new mail once a minute while it is open", async () => {
   vi.useFakeTimers();
   try {

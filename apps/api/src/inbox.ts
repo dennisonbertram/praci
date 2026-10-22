@@ -36,6 +36,7 @@ import {
   InboxPileSchema,
   InboxPrioritySchema,
   inboxAgentSpawnKey,
+  MailSignalsSchema,
 } from "@rakazo/contracts";
 import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
@@ -232,6 +233,7 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     ...(m.fromSelf ? { fromSelf: true } : {}),
     fromAddress: m.fromAddress.toLowerCase(),
     pile: m.isSpam ? "spam" : asPile(m.pile),
+    ...(MailSignalsSchema.safeParse(m.signals).data?.attachment ? { hasAttachment: true } : {}),
   };
 }
 

@@ -38,10 +38,13 @@ export function AppLogo({
   name,
   logo,
   size = "md",
+  letter,
 }: {
   name?: string;
   logo?: string | null;
   size?: keyof typeof SIZES;
+  /** The tile's letter when the name's own initial would match another tile's. */
+  letter?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const named = (name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -50,7 +53,8 @@ export function AppLogo({
   const src = mark ? localLogoUrl(mark) : null;
   const showImage = Boolean(src) && !failed;
   const mono = Boolean(mark?.startsWith(SIMPLE_ICONS));
-  const initial = /^[\p{L}\p{N}]/u.test(name ?? "") ? (name ?? "").charAt(0).toUpperCase() : null;
+  const initial =
+    letter ?? (/^[\p{L}\p{N}]/u.test(name ?? "") ? (name ?? "").charAt(0).toUpperCase() : null);
   return (
     <span
       data-testid="app-logo"
@@ -63,7 +67,6 @@ export function AppLogo({
         <img
           src={src ?? undefined}
           alt=""
-          loading="lazy"
           decoding="async"
           className={`size-[55%] object-contain ${mono ? "dark:invert" : ""}`}
           onError={() => setFailed(true)}

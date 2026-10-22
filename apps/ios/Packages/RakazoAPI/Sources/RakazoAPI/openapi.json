@@ -55787,6 +55787,9 @@
                                     "type": "null"
                                   }
                                 ]
+                              },
+                              "hasAttachment": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -85798,6 +85801,9 @@
                               },
                               "promptSnippet": {
                                 "type": "string"
+                              },
+                              "needsApproval": {
+                                "type": "boolean"
                               },
                               "updatedAt": {
                                 "type": "string"

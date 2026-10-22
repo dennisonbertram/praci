@@ -203,7 +203,7 @@ it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   expect(subtitle()).toBe("1 bank account + crypto");
 });
 
-it("narrows the cash total to the chosen source and says Brex does not share the card balance", async () => {
+it("narrows the cash total to the chosen source and shows no card balance tile when there is none", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.accounts.mockResolvedValue({
@@ -235,7 +235,7 @@ it("narrows the cash total to the chosen source and says Brex does not share the
   expect(kpi("Brex cash")).toContain("$300");
   expect(kpi("Brex cash")).toContain("1 bank account");
   expect(container.textContent).not.toContain("$75,300");
-  expect(kpi("Card balance owed")).toContain("Brex does not share it");
+  expect(kpi("Card balance owed")).toBeUndefined();
 });
 
 it("shows an account's last four digits once when its name already ends with them", async () => {

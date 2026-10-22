@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
   AuditRequest,
@@ -14,7 +14,7 @@ import type {
   Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
-import { capTableMath, isSafeSecurity } from "@rakazo/core";
+import { capTableMath, countedSafes, isSafeSecurity } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,7 +74,6 @@ import {
   ContactRowPlaceholder,
   FiguresPlaceholder,
   OwnershipPlaceholder,
-  UpdateRowPlaceholder,
 } from "../components/investors/Placeholders";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
@@ -139,15 +138,39 @@ function Figure({ title, value, hint }: { title: string; value: string; hint?: s
   );
 }
 
-/** Fully diluted shares (with the 409A when known) and Equity raised, which never counts SAFE money. */
-function Summary({ snapshot }: { snapshot: Snapshot }) {
+/**
+ * Fully diluted shares (with the 409A when known) and Equity raised: the table's invested money plus
+ * the SAFEs, which come only from the shared SAFE list (the one Fundraising shows).
+ */
+function Summary({
+  snapshot,
+  safes,
+  safesFailed,
+}: {
+  snapshot: Snapshot;
+  safes: readonly Safe[];
+  safesFailed: boolean;
+}) {
   useHideAmounts();
   const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
-  // Nothing known to add up shows a dash, not $0; SAFE money is never counted.
-  const raised = snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security))
-    ? usd(math.raisedUsd)
-    : DASH;
+  // Nothing known to add up shows a dash, not $0. Table rows that are SAFEs are not counted: the
+  // SAFE list is the record.
+  const counted = countedSafes(safes);
+  // Raised money is Funded only; Sent and Signed SAFEs are promises, shown apart as committed.
+  const sumUsd = (status: Safe["status"][]) =>
+    counted
+      .filter((safe) => status.includes(safe.status))
+      .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
+  const safeUsd = sumUsd(["funded"]);
+  const committedUsd = sumUsd(["sent", "signed"]);
+  // A failed SAFE request would make the total look complete when it is not.
+  const raised =
+    !safesFailed &&
+    (counted.length > 0 ||
+      snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
+      ? usd(math.raisedUsd + safeUsd)
+      : DASH;
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure
@@ -159,7 +182,17 @@ function Summary({ snapshot }: { snapshot: Snapshot }) {
             : undefined
         }
       />
-      <Figure title={t`Equity raised`} value={raised} />
+      <Figure
+        title={t`Equity raised`}
+        value={raised}
+        hint={
+          committedUsd > 0
+            ? t`${usd(committedUsd)} committed`
+            : counted.length > 0
+              ? plural(counted.length, { one: "# SAFE", other: "# SAFEs" })
+              : undefined
+        }
+      />
     </div>
   );
 }
@@ -382,10 +415,9 @@ function UpdatesSection({
       ) : updates === null ? (
         <Skeleton className="h-9 w-full" aria-busy="true" />
       ) : updates.length === 0 ? (
-        <ul>
-          <UpdateRowPlaceholder />
-          <UpdateRowPlaceholder />
-        </ul>
+        <p className="text-sm text-muted-foreground">
+          <Trans>No updates yet</Trans>
+        </p>
       ) : (
         <ul>
           {updates.map((update) => (
@@ -654,11 +686,19 @@ export function InvestorsPage({
         notify(errorText(cause, failure));
         loadUpdates();
       });
-  const startUpdate = (audience: "investors" | "board") =>
-    rpc.investors.updates
+  // Repeated clicks while a draft is being created must not create more drafts.
+  const startingUpdate = useRef(false);
+  const startUpdate = (audience: "investors" | "board") => {
+    if (startingUpdate.current) return Promise.resolve();
+    startingUpdate.current = true;
+    return rpc.investors.updates
       .save({ audience })
       .then((created) => navigate(`/app/investors/updates/${created.id}`))
-      .catch((cause) => notify(errorText(cause, t`Could not start an update`)));
+      .catch((cause) => notify(errorText(cause, t`Could not start an update`)))
+      .finally(() => {
+        startingUpdate.current = false;
+      });
+  };
   const retryUpdate = (update: InvestorUpdate) => {
     if (update.deliveries.some((d) => d.state === "unknown")) return setResending(update);
     void updateAction(() => rpc.investors.updates.retry({ id: update.id }), t`Could not retry`);
@@ -679,14 +719,23 @@ export function InvestorsPage({
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   const [capFailed, setCapFailed] = useState(false);
   const [safes, setSafes] = useState<Safe[]>([]);
+  const [safesFailed, setSafesFailed] = useState(false);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
     // The SAFE rows under the table are secondary: if they cannot load, the table still shows.
+    // One quiet retry, so a single dropped request does not show a dash.
     void rpc.fundraising.safes
       .list()
-      .then((rows) => request === latestCap.current && setSafes(rows ?? []))
-      .catch(() => {});
+      .catch(() => rpc.fundraising.safes.list())
+      .then((rows) => {
+        if (request !== latestCap.current) return;
+        setSafes(rows ?? []);
+        setSafesFailed(false);
+      })
+      .catch(() => {
+        if (request === latestCap.current) setSafesFailed(true);
+      });
     return rpc.investors
       .capTable()
       .then((state) => {
@@ -877,15 +926,22 @@ export function InvestorsPage({
   const holdingRows: HoldingRow[] =
     snapshot && math
       ? [
-          ...snapshot.holders.map((holder, i) => ({
-            key: `h${i}`,
-            name: holder.name,
-            security: holder.security,
-            shares: holder.shares,
-            amountUsd: holder.amountUsd,
-            percent: math.holders[i]?.percent ?? null,
-            contact: contactFor(allContacts, holder),
-          })),
+          ...snapshot.holders.flatMap((holder, i) =>
+            // SAFEs come from the SAFE list below the table, never from the snapshot.
+            isSafeSecurity(holder.security)
+              ? []
+              : [
+                  {
+                    key: `h${i}`,
+                    name: holder.name,
+                    security: holder.security,
+                    shares: holder.shares,
+                    amountUsd: holder.amountUsd,
+                    percent: math.holders[i]?.percent ?? null,
+                    contact: contactFor(allContacts, holder),
+                  },
+                ],
+          ),
           ...(math.pool
             ? [
                 {
@@ -1143,10 +1199,11 @@ export function InvestorsPage({
                   <>
                     {snapshot.holders.length === 0 &&
                     !snapshot.fullyDilutedShares &&
-                    !snapshot.latest409a ? (
+                    !snapshot.latest409a &&
+                    countedSafes(safes).length === 0 ? (
                       <FiguresPlaceholder />
                     ) : (
-                      <Summary snapshot={snapshot} />
+                      <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
                     )}
                     {snapshot.source === "native" ? (
                       <CapTableEditor

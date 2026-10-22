@@ -8,6 +8,7 @@ import {
   createThreadMessageInTransaction,
   RunHistoryWriteError,
 } from "./messages.js";
+import { closeApprovalCardsInTransaction } from "./run-pauses.js";
 import { createPendingSteeringRun } from "./steering.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
@@ -101,6 +102,28 @@ async function finalizeRunOnce(
     });
     if (task.count !== 1) throw new Error("Run task was not available to finalize");
 
+    // A run that fails after asking for approval leaves a card nobody can act on; close it, and
+    // say which action was not done. Earlier steps of the run may have completed.
+    let failure = input.outcome === "failed" ? input.error : null;
+    if (input.outcome === "failed") {
+      const expired = await closeApprovalCardsInTransaction(tx, {
+        spaceId: input.spaceId,
+        threadId: input.threadId,
+        botId: input.botId,
+        runIds: [input.runId],
+        answer: "expired",
+      });
+      if (expired > 0) {
+        const kinds = await tx.externalEffect.findMany({
+          where: { runId: input.runId, spaceId: input.spaceId, status: "expired" },
+          select: { kind: true },
+          distinct: ["kind"],
+        });
+        failure = `${input.error} The approval for ${kinds.map((e) => e.kind).join(", ")} expired, so that action was not done.`;
+        await tx.run.update({ where: { id: input.runId }, data: { error: failure } });
+      }
+    }
+
     if (input.outcome === "completed") {
       const completedBlocks = completedRunBlocks(input.blocks, writableRun?.startedAt ?? null, now);
       if (completedBlocks.length > 0) {
@@ -128,7 +151,7 @@ async function finalizeRunOnce(
       botId: input.botId,
       type: input.outcome === "completed" ? "run.completed" : "run.failed",
       runId: input.runId,
-      payload: input.outcome === "completed" ? {} : { error: input.error },
+      payload: input.outcome === "completed" ? {} : { error: failure },
     });
     await tx.event.deleteMany({ where: { runId: input.runId, type: "thread.progress" } });
     if (input.outcome === "completed") {

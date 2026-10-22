@@ -53,16 +53,13 @@ export function NotificationSettingsSection() {
   const channels = prefs?.channels ?? {};
 
   return (
-    <section className="rounded-xl border border-border px-4 py-4">
-      <h3 className="text-[15px] font-medium text-foreground">
-        <Trans>Notifications</Trans>
-      </h3>
+    <section aria-label={t`Notifications`} className="rounded-xl border border-border px-4 py-4">
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
-      <ul className="mt-3 flex flex-col gap-3">
+      <ul className="flex flex-col gap-3">
         <li>
           <div className="flex items-center gap-3 pointer-coarse:min-h-11">
             <Switch

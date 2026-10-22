@@ -11,8 +11,8 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import type { MouseEvent, ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay, hiddenOr } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -66,6 +66,7 @@ function Title({ contract, inline = false }: { contract: LegalContract; inline?:
     <>
       <Link
         to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
+        state={{ from: "legal" }}
         className={cn("rk-tap font-medium hover:underline", inline && "line-clamp-2")}
       >
         {contract.title}
@@ -98,9 +99,19 @@ function Field({
   );
 }
 
-function withoutSelf(contract: LegalContract, selfName?: string): LegalContract {
-  const self = selfName?.trim().toLowerCase();
-  const others = contract.counterparties.filter((party) => party.trim().toLowerCase() !== self);
+/** A company name without case, punctuation, a trailing "(Mock)" note or a trailing legal suffix such as "Inc.". */
+const companyKey = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/\s*\(mock\)\s*$/, "")
+    .replace(/[.,]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/ (inc|llc|ltd|corp|corporation|co|company|gmbh)$/, "");
+
+export function withoutSelf(contract: LegalContract, selfName?: string): LegalContract {
+  const self = selfName ? companyKey(selfName) : "";
+  const others = contract.counterparties.filter((party) => companyKey(party) !== self);
   return self && others.length > 0 ? { ...contract, counterparties: others } : contract;
 }
 
@@ -129,13 +140,25 @@ export function LegalContracts({
 }) {
   const contracts = all.map((contract) => withoutSelf(contract, selfName));
   useHideAmounts();
-  // Active is the normal case, so the column appears only when some contract is not.
-  const showStatus = contracts.some((contract) => contract.status !== "active");
+  const navigate = useNavigate();
+  // Any click on a row opens the contract; the title link stays the keyboard and screen-reader target.
+  const open = (contract: LegalContract) => (event: MouseEvent) => {
+    if ((event.target as HTMLElement).closest("a, button")) return;
+    navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, { state: { from: "legal" } });
+  };
+  // Active is the normal case. With one exception a chip beside the title says it; the column
+  // appears only when it would hold more than one value.
+  const showStatus = contracts.filter((contract) => contract.status !== "active").length >= 2;
   return (
     <>
       <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
         {contracts.map((contract) => (
-          <li key={contract.id} className="border-t border-border py-3 text-sm">
+          // biome-ignore lint/a11y/useKeyWithClickEvents: a mouse shortcut; the title link is the keyboard way in.
+          <li
+            key={contract.id}
+            onClick={open(contract)}
+            className="cursor-pointer border-t border-border py-3 text-sm"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <Title contract={contract} />
@@ -197,12 +220,21 @@ export function LegalContracts({
         </TableHeader>
         <TableBody>
           {contracts.map((contract) => (
-            <TableRow key={contract.id} className="group-data-[compact]/table:h-14">
+            <TableRow
+              key={contract.id}
+              onClick={open(contract)}
+              className="cursor-pointer group-data-[compact]/table:h-14"
+            >
               <TableCell
                 className="whitespace-normal"
                 title={`${contract.title} (${contract.contractType})`}
               >
                 <Title contract={contract} inline />
+                {showStatus ? null : (
+                  <span className="ms-2 align-middle">
+                    <Status status={contract.status} />
+                  </span>
+                )}
               </TableCell>
               <TableCell className="whitespace-normal" title={contract.counterparties.join(", ")}>
                 <span className="line-clamp-2">{contract.counterparties.join(", ") || dash}</span>
@@ -212,10 +244,10 @@ export function LegalContracts({
                   <Status status={contract.status} />
                 </TableCell>
               ) : null}
-              <TableCell className="truncate tabular-nums" title={term(contract)}>
+              <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="truncate" title={renewal(contract)}>
+              <TableCell className="whitespace-normal" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>

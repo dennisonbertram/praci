@@ -246,7 +246,7 @@ export function SettingsOverlay({
         initialFocus={() => panelRef.current}
         finalFocus={returnFocus}
         // One height for every section, so the nav never moves under the pointer; the pane scrolls.
-        className="flex h-[min(760px,calc(100%-2rem))] max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px]"
+        className="flex h-[min(760px,calc(100%-2rem))] max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-1rem))] flex-col sm:w-[min(1080px,calc(100%-2rem))] gap-0 overflow-hidden rounded-2xl p-0 max-w-[calc(100%-1rem)] sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px]"
       >
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* A phone cannot fit every section in a strip, so it gets a select. */}
@@ -289,7 +289,7 @@ export function SettingsOverlay({
                 />
                 <Trans>Advanced</Trans>
               </summary>
-              {navButton(memoryItem)}
+              <div className="ms-3">{navButton(memoryItem)}</div>
             </details>
           </nav>
 
@@ -319,7 +319,7 @@ export function SettingsOverlay({
               className={`min-h-0 flex-1 ${
                 section === "models" || section === "voice" || section === "memory"
                   ? "flex flex-col overflow-hidden pt-5"
-                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-6 pb-6 pt-5 sm:px-8 sm:pb-8"
+                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-3 pb-6 pt-5 sm:px-8 sm:pb-8"
               }`}
             >
               {section === "general" ? (

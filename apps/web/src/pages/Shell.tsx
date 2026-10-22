@@ -42,6 +42,7 @@ import {
   DEFAULT_BOT_COLOR,
   inferAttachmentMimeType,
   isActive,
+  isApprovalAskBlock,
   isRunTerminalEvent,
   latestAnswerableAskMessageId,
   matchesArtifactQuery,
@@ -82,6 +83,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  Clock,
   CodeXml,
   Compass,
   Files,
@@ -247,6 +249,7 @@ import {
 } from "../lib/right-panel-state";
 import {
   compactRosterStatusLabel,
+  needsAnswerLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
   rosterStatusChanged,
@@ -2527,6 +2530,12 @@ export function ShellPage() {
   }, []);
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
+  const waitingOnApproval = Boolean(
+    answerableAskMessageId &&
+      activeSnapshot?.messages
+        .find((message) => message.id === answerableAskMessageId)
+        ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block)),
+  );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
   );
@@ -3861,15 +3870,15 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on without a screen, or has never run, would show a heading over an
-  // empty box; the panel is then just the bot's routines.
-  const noComputerScreen =
-    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
-    computer?.kind !== "desktop" &&
-    !embeddedScreenUrl &&
-    !computerError &&
-    !computerOpen &&
-    !showComputerRecoveryHint;
+  // Without a screen to show (whatever the computer's state), the panel is just the bot's
+  // routines: no heading over an empty box.
+  const noComputerScreen = isRoutinesOnlyPanel({
+    kind: computer?.kind,
+    hasScreen: Boolean(embeddedScreenUrl),
+    hasError: Boolean(computerError),
+    open: computerOpen,
+    showRecoveryHint: showComputerRecoveryHint,
+  });
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -4159,6 +4168,7 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
+              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4341,7 +4351,6 @@ export function ShellPage() {
                 {/* One search surface: the box opens the Cmd+K palette. */}
                 <InputGroupInput
                   readOnly
-                  data-drawer-focus
                   value=""
                   onClick={() => {
                     // The box keeps focus until the palette takes it, so closing returns here.
@@ -4356,7 +4365,7 @@ export function ShellPage() {
                   placeholder={t`Search`}
                   autoComplete="off"
                   name="sidebar-search"
-                  className="cursor-pointer"
+                  className="cursor-pointer placeholder:text-foreground/70"
                 />
               </InputGroup>
             )
@@ -4373,7 +4382,7 @@ export function ShellPage() {
                   onClick={toggleActivityMode}
                   className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                     activityMode
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-sidebar-accent text-foreground"
                       : "text-muted-foreground/70 hover:text-foreground/75"
                   }`}
                 >
@@ -4443,6 +4452,7 @@ export function ShellPage() {
                   aria-label={t`Close menu`}
                   title={t`Close menu`}
                   data-testid="close-mobile-sidebar"
+                  data-drawer-focus
                   onClick={() => setMobileSidebarOpen(false)}
                 >
                   <X size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -5568,7 +5578,7 @@ export function ShellPage() {
           data-testid="bots-sidebar-edge"
           aria-label={t`Resize sidebar`}
           tabIndex={-1}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:bg-ring focus-visible:outline-none lg:block ${
             botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
           onPointerDown={(event) => {
@@ -5773,7 +5783,11 @@ export function ShellPage() {
                   data-active={panel === "computer" ? "" : undefined}
                   className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  {noComputerScreen ? (
+                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  ) : (
+                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  )}
                 </button>
               ) : null}
             </div>
@@ -6015,7 +6029,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    computerScreenError ? null : (
+                    computerScreenError || noComputerScreen ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -6277,7 +6291,15 @@ export function ShellPage() {
                 messageProviders={messagingProviders}
                 skills={agentSkills}
                 saving={savingRoutine}
-                running={runningRoutine}
+                // Stays on until the run itself finishes, not just until the request returns.
+                running={
+                  runningRoutine ||
+                  Boolean(
+                    editingRoutine &&
+                      snapshot?.run?.routineId === editingRoutine.id &&
+                      isActive(snapshot.run.status),
+                  )
+                }
                 error={routineError}
                 onBack={() => setPanel("computer")}
                 onClose={() => setPanel(null)}
@@ -6543,14 +6565,14 @@ export function ShellPage() {
                 navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
               });
             }}
-            onClear={() => {
-              setClearTarget(
-                contextBot
-                  ? { kind: "bot", chat: contextBot }
-                  : { kind: "group", chat: contextGroup! },
-              );
-              setBotMenu(null);
-            }}
+            onClear={
+              contextBot
+                ? undefined
+                : () => {
+                    setClearTarget({ kind: "group", chat: contextGroup! });
+                    setBotMenu(null);
+                  }
+            }
             onArchive={() => {
               setBotMenu(null);
               const request = contextBot
@@ -7217,6 +7239,23 @@ function computerPlaceholder(
   if (state === "suspended") return t`Computer is asleep. Open it to wake.`;
   if (state === "error") return t`Computer failed to boot`;
   return t`Computer is stopped`;
+}
+
+/** True when the panel has no computer screen to show, in any computer state: just routines. */
+export function isRoutinesOnlyPanel(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+  showRecoveryHint: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    !input.hasScreen &&
+    !input.hasError &&
+    !input.open &&
+    !input.showRecoveryHint
+  );
 }
 
 /** Panel heading for the bot computer, in words rather than the raw state slug. */

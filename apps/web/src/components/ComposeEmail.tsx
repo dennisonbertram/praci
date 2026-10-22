@@ -909,7 +909,11 @@ export function ComposeEmail({
               <Trans>Remove attachments?</Trans>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <Trans>Your text is saved as a draft. Attachments are not kept.</Trans>
+              {isBlank(fields) ? (
+                <Trans>Attachments are not kept.</Trans>
+              ) : (
+                <Trans>Your text is saved as a draft. Attachments are not kept.</Trans>
+              )}
             </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel>

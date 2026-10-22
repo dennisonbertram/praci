@@ -13,7 +13,7 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
 import {
@@ -114,6 +114,31 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   const hasAnyRuns = activeRuns.length > 0 || recentRuns.length > 0;
   const hasVisibleRuns = filteredActive.length > 0 || filteredRecent.length > 0;
 
+  // The list ends on a whole row: its height stops at the bottom of the last row that fits.
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const layoutKey = [...filteredActive, ...filteredRecent]
+    .map((run) => `${run.runId}${run.status}`)
+    .join();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: layoutKey, showFinished and error change which rows are drawn
+  useLayoutEffect(() => {
+    const scroller = rowsRef.current;
+    if (!scroller) return;
+    const fit = () => {
+      scroller.style.maxHeight = "";
+      if (scroller.scrollHeight <= scroller.clientHeight) return;
+      const top = scroller.getBoundingClientRect().top;
+      let bottom = 0;
+      for (const row of scroller.querySelectorAll("[data-activity-row]")) {
+        const end = row.getBoundingClientRect().bottom - top + scroller.scrollTop;
+        if (end <= scroller.clientHeight) bottom = end;
+      }
+      if (bottom > 0) scroller.style.maxHeight = `${Math.ceil(bottom)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [layoutKey, showFinished, error]);
+
   if (loading && !hasAnyRuns && !filtersOn) {
     return <RowsSkeleton rows={3} className="px-2.5 py-2" />;
   }
@@ -169,7 +194,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </PopoverContent>
         </Popover>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
+      <div ref={rowsRef} className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
         {error ? (
           <div className="px-2.5 pb-2" role="alert">
             <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />
@@ -186,7 +211,8 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
+        {/* Each row names its own state, so this group's heading is for screen readers only. */}
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>} titleHidden>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
@@ -235,16 +261,25 @@ const NEEDS_YOU = new Set<RunStatus>(["waiting_input", "waiting_takeover"]);
 function ActivitySection({
   id,
   title,
+  titleHidden = false,
   children,
 }: {
   id: string;
   title: ReactNode;
+  titleHidden?: boolean;
   children: ReactNode[];
 }) {
   if (children.length === 0) return null;
   return (
     <section className="mt-1 first:mt-0" aria-labelledby={id}>
-      <div id={id} className="px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80">
+      <div
+        id={id}
+        className={
+          titleHidden
+            ? "sr-only"
+            : "px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80"
+        }
+      >
         {title}
       </div>
       {children}
@@ -466,6 +501,7 @@ function ActivityRow({
       type="button"
       aria-label={activityLabel}
       onClick={onOpen}
+      data-activity-row=""
       className={`flex w-full gap-3 rounded-xl px-2.5 text-left hover:bg-accent ${compact ? "py-1.5" : "py-[9px]"}`}
     >
       <span
@@ -483,13 +519,13 @@ function ActivityRow({
             </span>
           )}
         </div>
-        <div hidden={compact} className="mt-0.5 flex items-baseline gap-2">
+        <div hidden={compact} className="mt-0.5">
+          <span className={`block text-xs ${tone}`}>{label}</span>
           {run.promptSnippet ? (
-            <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+            <span className="block truncate text-[13px] text-muted-foreground">
               {run.promptSnippet}
             </span>
           ) : null}
-          <span className={`ms-auto shrink-0 text-xs ${tone}`}>{label}</span>
         </div>
       </div>
     </button>
