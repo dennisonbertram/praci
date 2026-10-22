@@ -8648,6 +8648,12 @@
                                     "$ref": "#/components/schemas/RpcBootstrapOutputSchema45"
                                   }
                                 },
+                                "delegatePending": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
                                 "computer": {
                                   "type": "object",
                                   "properties": {
@@ -84642,6 +84648,12 @@
                                     "type": "null"
                                   }
                                 ]
+                              },
+                              "preview": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -95309,6 +95321,12 @@
                           "type": "array",
                           "items": {
                             "$ref": "#/components/schemas/RpcThreadsGetOutputSchema16"
+                          }
+                        },
+                        "delegatePending": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
                           }
                         },
                         "computer": {

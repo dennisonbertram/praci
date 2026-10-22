@@ -3216,6 +3216,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         /** The one consent card of this run attempt, shared by parallel mail calls. */
         let consentAsk: Promise<unknown> | undefined;
         let handedOff = false;
+        // A request handed to another agent: its answer comes back as that agent's message.
+        let delegatedRequest = false;
         let progressRedactor = createStreamingRedactor(runSecrets);
         const scripted = deps.runtime.describe().capabilities.scripted;
         const script = scripted ? inferScript(task.prompt, takeoverResume?.checkpoint) : undefined;
@@ -6470,6 +6472,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
               });
             }
             if (sent.held) heldForOwner = true;
+            if (
+              !sent.held &&
+              ["request", "question"].includes(botMessageArgs.intent ?? "request")
+            ) {
+              delegatedRequest = true;
+            }
             return finish({
               ok: true,
               botId: sent.botId,
@@ -7065,6 +7073,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               resumeFromCheckpoint: takeoverResume?.checkpoint,
               script,
               allowSilentEmpty: allowSilentEmptyRun,
+              delegated: () => delegatedRequest && run.trigger !== "bot_message",
               emptyResponseText,
               executeTool: scripted ? undefined : applyTool,
               resolveModel: scripted
@@ -7571,7 +7580,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             // only progress was posted, result when a final reply exists). Exact
             // NO_RESPONSE finals are treated as empty before this fallback runs.
             completionBlocks = completionMessageSegments(completionBlocks, {
-              allowSilentEmpty: allowSilentEmptyRun || publishedMidTurnUserMessage,
+              allowSilentEmpty:
+                allowSilentEmptyRun || publishedMidTurnUserMessage || delegatedRequest,
               emptyResponseText,
               suppressOutput: handedOff || isBackgroundRunTrigger(run.trigger),
               skipEmptyFallback: publishedTerminalSubagent || publishedMidTurnUserMessage,
