@@ -539,6 +539,10 @@ msgstr ""
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "{minutes} 分钟前"
@@ -707,6 +711,10 @@ msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
 msgstr ""
 
 #: src/pages/Finance.tsx
