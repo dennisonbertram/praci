@@ -33,7 +33,7 @@ import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootst
 import { useHideAmounts } from "./lib/hide-amounts-preference";
 import { markAfterPaint, markOnce } from "./lib/performance";
 import { getRemoteImagesEnabled, subscribeRemoteImages } from "./lib/remote-images-preference";
-import { resetCoalescedRequests, rpc } from "./lib/rpc";
+import { rpc } from "./lib/rpc";
 import {
   holdUnreachableGate,
   sessionGate,
@@ -132,8 +132,6 @@ function SessionApp() {
     () => false,
   );
   const session = authClient.useSession();
-  // Runs during render so it precedes child effects that issue shared list requests.
-  resetCoalescedRequests(session.data?.user?.id ?? null);
   const gate = sessionGate(session);
   const [holdingUnreachable, setHoldingUnreachable] = useState(false);
   const nextHolding = holdUnreachableGate(gate, holdingUnreachable);
