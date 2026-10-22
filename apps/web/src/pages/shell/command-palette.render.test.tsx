@@ -146,11 +146,12 @@ it("shows Pages above Bots before typing, and finds Legal by a keyword", async (
   expect(document.body.textContent).toContain("Legal");
 });
 
-it("underlines the typed text in a result", async () => {
+it("marks the typed text in a result with the same tint as Data room search", async () => {
   await mount();
   await search("fin");
   const marks = [...document.querySelectorAll("[data-testid=command-palette-list] mark")];
   expect(marks.length).toBeGreaterThan(0);
+  expect(marks.every((mark) => mark.className.includes("bg-warning/25"))).toBe(true);
   expect(marks.every((mark) => mark.textContent?.toLowerCase() === "fin")).toBe(true);
 });
 
@@ -445,4 +446,19 @@ it("hides a chat only when its bot is shown under Bots", async () => {
   await wait(300);
   expect(listText()).not.toContain("Finance agent chat");
   expect(listText()).toContain("Chief chat");
+});
+
+it("ends a group that has more results with a row that opens them", async () => {
+  await mount(vi.fn(), async () => [
+    {
+      heading: "Documents",
+      entries: [{ id: "/d1", label: "Hiring Plan" }],
+      more: { id: "/app/data-room?q=hiring", label: "See all in Data room" },
+    },
+  ]);
+  await search("hiring");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(listText()).toContain("See all in Data room");
 });

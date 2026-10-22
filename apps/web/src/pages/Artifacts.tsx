@@ -133,6 +133,8 @@ export function ArtifactsPage({
   const [pendingDelete, setPendingDelete] = useState<ArtifactSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // The dialog names the artifact as the list does, without the extension.
+  const deleteTitle = pendingDelete ? displayName(pendingDelete.name) : "";
 
   useEffect(() => {
     let cancelled = false;
@@ -412,7 +414,7 @@ export function ArtifactsPage({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                <Trans>Delete "{pendingDelete.name}"?</Trans>
+                <Trans>Delete "{deleteTitle}"?</Trans>
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {pendingDelete.versionCount > 1 ? (
@@ -834,14 +836,7 @@ function ArtifactCard({
           <ArtifactMimeIcon mimeType={artifact.mimeType} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-[15px] font-semibold">{title}</span>
-            {artifact.versionCount > 1 ? (
-              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
-                {`v${artifact.version}`}
-              </span>
-            ) : null}
-          </div>
+          <div className="line-clamp-2 break-words text-[15px] font-semibold">{title}</div>
           {artifact.description ? (
             <div className="line-clamp-1 text-[13px] text-muted-foreground max-md:hidden">
               {artifact.description}
@@ -857,6 +852,11 @@ function ArtifactCard({
             ) : (
               <span className="flex-1 max-md:hidden" />
             )}
+            {artifact.versionCount > 1 ? (
+              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
+                {`v${artifact.version}`}
+              </span>
+            ) : null}
             {showTime ? (
               <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
                 {formatRelativeTime(artifact.createdAt)}

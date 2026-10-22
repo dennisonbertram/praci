@@ -492,7 +492,7 @@ type SearchLink = { id: string; label: string; detail?: string };
 export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
-      rpc.dataRoom.search({ query, limit: 5 }),
+      rpc.dataRoom.search({ query, limit: 6 }),
       // Only for the folder line; a failure just leaves it off.
       rpc.dataRoom.folders().catch(() => []),
     ])
@@ -2394,7 +2394,12 @@ export function ShellPage() {
         {
           heading: t`Documents`,
           icon: <FileText size={16} strokeWidth={1.75} />,
-          entries: found.documents.map((doc) => ({
+          // The search asks for one more than is listed, to know whether Data room holds more.
+          more:
+            found.documents.length > 5
+              ? { id: `/app/data-room?q=${encodeURIComponent(q)}`, label: t`See all in Data room` }
+              : undefined,
+          entries: found.documents.slice(0, 5).map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
             detail: doc.detail,

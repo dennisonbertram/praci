@@ -4185,10 +4185,12 @@ msgid "Delete"
 msgstr "삭제"
 
 #. placeholder {0}: deleting?.title ?? ""
-#. placeholder {0}: pendingDelete.name
 #: src/components/integrations/StoredMeetingsList.tsx
-#: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Delete \"{deleteTitle}\"?"
 msgstr ""
 
 #. placeholder {0}: bot.name
@@ -5100,6 +5102,10 @@ msgstr ""
 
 #: src/lib/slash-skills.ts
 msgid "Find and summarize files in Box. Changes ask first."
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Find any page, chat or email."
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -9444,6 +9450,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9492,10 +9499,6 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Search finds any page, chat or email."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -9567,6 +9570,10 @@ msgstr ""
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Security"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "See all in Data room"
 msgstr ""
 
 #: src/pages/shell/composer.tsx

@@ -402,6 +402,10 @@ it("names the delete button after the title, without the file extension", async 
   try {
     const del = page.container.querySelector("button[aria-label^='Delete']");
     expect(del?.getAttribute("aria-label")).toBe("Delete Fundraising Plan");
+    // The confirm dialog names it the same way, not by the file name.
+    await act(async () => (del as HTMLElement).click());
+    const title = document.querySelector("[data-slot=alert-dialog-title]")?.textContent;
+    expect(title).toBe('Delete "Fundraising Plan"?');
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
