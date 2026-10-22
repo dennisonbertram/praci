@@ -288,7 +288,7 @@ export const Loading: Story = {
 };
 
 export const LoadFailed: Story = {
-  args: { messageId: "msg_error" },
+  args: { messageId: "msg_error", onArchive: () => undefined },
   beforeEach: () =>
     mockRpc({
       "inbox.get": () => Promise.reject(new Error("Could not load this message.")),

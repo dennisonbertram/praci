@@ -41,7 +41,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   Archive,
-  ListChecks,
+  BrushCleaning,
   ListFilter,
   Mail,
   MailWarning,
@@ -314,8 +314,6 @@ function InboxListPage({
   const autoRetried = useRef(false);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
-  // After 15 s of the first sort the unsorted rows show, dimmed, so the page is never only grey bars.
-  const [slowSort, setSlowSort] = useState(false);
   // A sync has returned a last-sync time, so the loading line never says "First sync" on an old mailbox.
   const [everSynced, setEverSynced] = useState(false);
   const appliedKey = useRef<string | null>(null);
@@ -769,14 +767,9 @@ function InboxListPage({
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
-  // The first sort shows no rows at all: they would regroup and the To do card would push them down.
-  const sortingNow = sorting || firstSort;
-  useEffect(() => {
-    if (!sortingNow) return setSlowSort(false);
-    const timer = setTimeout(() => setSlowSort(true), 15_000);
-    return () => clearTimeout(timer);
-  }, [sortingNow]);
-  const sortingRows = sortingNow && !stalled && !slowSort;
+  // The first sort shows no rows at all, however long it takes: they would regroup and the To do
+  // card would push them down. Only a stalled sort shows the unsorted rows, under its notice.
+  const sortingRows = (sorting || firstSort) && !stalled;
   const loading =
     !shown ||
     sortingRows ||
@@ -1382,10 +1375,10 @@ function InboxListPage({
                       render={
                         <Button
                           variant="outline"
-                          size="sm"
+                          size="icon"
                           data-testid="inbox-cleanup"
                           aria-label={t`Cleanup`}
-                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                          className="pointer-coarse:size-10"
                           onClick={() =>
                             setParams((before) => {
                               const next = new URLSearchParams(before);
@@ -1396,7 +1389,7 @@ function InboxListPage({
                         />
                       }
                     >
-                      <ListChecks aria-hidden="true" />
+                      <BrushCleaning aria-hidden="true" />
                     </TooltipTrigger>
                     <TooltipContent>{t`Cleanup`}</TooltipContent>
                   </Tooltip>
@@ -1430,7 +1423,7 @@ function InboxListPage({
                                     ? "secondary"
                                     : "outline"
                                 }
-                                size="sm"
+                                size={tabLabel ? "default" : "icon"}
                                 className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                               />
                             }
@@ -1546,8 +1539,8 @@ function InboxListPage({
                       render={
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                          size="icon"
+                          className="pointer-coarse:size-10"
                           aria-label={t`Compose`}
                           onClick={() => setComposing(true)}
                         />
@@ -1734,14 +1727,6 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
-            ) : sorting && slowSort ? (
-              <p
-                role="status"
-                className="mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Spinner aria-hidden="true" />
-                <Trans>Sorting your mail…</Trans>
-              </p>
             ) : showTodos ? (
               todoCard
             ) : null}
@@ -1795,11 +1780,7 @@ function InboxListPage({
                 </Button>
               </div>
             ) : null}
-            {/* The sort is about to regroup these rows, so a tap now could open a different mail: inert until it lands. */}
-            <div
-              className={cn(sorting && slowSort && !stalled && "opacity-60")}
-              inert={sorting && slowSort && !stalled}
-            >
+            <div>
               {digestOn ? (
                 <InboxDigest
                   rows={digestList}
