@@ -7512,6 +7512,10 @@ msgstr ""
 msgid "Out"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Out so far this month"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"
 msgstr ""
@@ -9734,10 +9738,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Spent so far this month"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
