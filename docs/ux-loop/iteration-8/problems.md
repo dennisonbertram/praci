@@ -1,0 +1,520 @@
+P0: 0, P1: 4, P2: 14, P3: 8
+
+# Iteration 8 problems: fix clusters
+
+Sources: R1-R3 (verify pass-7 clusters), J1-J3 (journeys), FLOW, V1-V3, on the mock demo stack (checkout 374a06f77). Read: docs/ux-flow/report.md, docs/ux-visual/problems.md, iteration 1-7 problems.md. Owner decisions respected and not raised: tour stays nine stops; Devin hidden until connected; the page is called Integrations and lives in the account menu; consent asked once per area; 44 px on coarse pointers; Hide amounts is a stable checkbox row in the account menu; Settings in five sections with a fixed height; palette is the one search surface; Legal row actions Ask agent / Done / Dismiss; Investors rows open Edit contact; Skip tour leaves an Ask Chief chip; Single/Multi line secret tabs stay; flag switch removed; Memory under Advanced.
+
+Environment: the demo stack restarted and reseeded 1-3 times during the walks, host load average was 200-500, and the mock founder account was shared by all walkers. Load times are not used as evidence (see Deferred). Single observations that may be walker interference are marked suspected.
+
+## Pass-7 clusters verified as met (R1-R3)
+Met: pass-7 C1 (link and row label; toast untested), C3, C4 and C7 (code and tests only), C6 (partly), C11, C12 (toast placement), C13 (1440), C14, C15, C16 (narrow widths), C19, C21, C27, C28. Not met, now reopened here: pass-7 C2 -> C1, C5 -> C14, C9 -> C7, C10 -> C5, C17 -> C4, C25 -> C10, C26 -> C2 and C6, C29 -> C22, C23 -> C26, C31 -> C19, C18 -> C20, C20 -> C13, C8 -> C8, C13 -> C9, C14 -> C17, C12 -> C12.
+
+## Clusters (ranked: P0, then P1, then severity x reach / effort)
+
+### C1 'Reply with draft' turns any agent answer, including a refusal, into an email body with Send enabled; the panel also grows off-centre, has no way back on a phone and shows 'Failed to fetch' (P1, rank 1, effort S)
+- Root cause: EmailAgentPanel.latestTextDraft returns the first non-question bot text after a 'draft a reply' request, so a refusal such as 'I can't create the reply approval card ... [Open Integrations](/app/integrations)' is offered as a draft and inserted with its markdown. The agent's instructions tell it to call mail_send, but in the demo it says the reply tool is not available (cause of that refusal not verified).
+- Findings: R1-01, J1-01, J3-02, J1-02, R1-02, J3-05, V2-09
+- Found by: R1-01 [R1]; J1-01 [J1]; J3-02 [J3]; J1-02 [J1]; R1-02 [R1]; J3-05 [J3]; V2-09 [V2]
+- Verification: Observed by 3 walkers (R1, J1, J3) with screenshots. Code confirmed: EmailAgentPanel.tsx:59-70 accepts any answer not ending in '?'; line 154 falls back to it; the only reference to mail_send is the pending-card check at :26. Why the agent lacks the reply tool is suspected (apps/api/src/inbox-thread-agent.ts:14 tells it to call mail_send).
+- Files:
+  - apps/web/src/components/inbox/EmailAgentPanel.tsx (latestTextDraft: reject refusals, answers with links or no body; strip markdown before insert; phone back arrow in the header; map network errors to a plain message with Retry)
+  - apps/web/src/components/inbox/InboxMessageDialog.tsx (keep the dialog centred when the panel opens)
+  - apps/api/src/inbox-thread-agent.ts and the thread agent tool set (check mail_send reaches the thread agent; if not, the refusal should name the missing piece, not link Integrations)
+- Reach: Anyone who asks the email agent for a reply: one tap on Send can email an error sentence to a real contact.
+- Acceptance criteria:
+  - With an agent answer that is a refusal, an error or contains '/app/integrations', no 'Reply with draft' button is shown (unit test over latestTextDraft with those three inputs).
+  - If the draft is inserted, the composer body contains no markdown link syntax.
+  - Opening the panel on a 1440 px window keeps left and right dialog margins within 8 px of each other.
+  - At 375 px the panel header has a labelled Back control that returns to the open email.
+  - A network failure shows 'Could not reach Praci. Try again.' with a Retry button, not 'Failed to fetch'.
+  - Ask agent then Draft a reply on the demo yields a mail_send approval card, or an answer that names why it cannot, in plain words.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C3 (InboxMessageDialog is not edited there)
+- Reopens: iteration 7 C2
+
+### C2 A bot waiting on an approval shows 'Working...' in the sidebar, while a row that says 'Needs your answer' can open a chat with nothing to answer (P1, rank 2, effort M)
+- Root cause: roster-status.ts maps only the waiting_input run status to 'Needs your answer'; a run held on a tool approval (payment, schedule, mail send) has another status, so it shows 'Working...' with no group dot. The reverse also occurs: the row and Activity keep 'Needs input' after the card shows 'Answered', and the needs-you source is an agent-to-agent request the thread does not render. Three names exist for one state: 'Needs you', 'Needs your answer', 'Needs input'.
+- Findings: J2-01, V2-02, V2-03, J3-10, R3-8-10, R2-04
+- Found by: J2-01 [J2]; V2-02 [V2]; V2-03 [V2]; J3-10 [J3]; R3-8-10 [R3]; R2-04 [R2]
+- Verification: J2-01 observed twice with a payment and a schedule approval. Code confirmed: lib/roster-status.ts:25 only waiting_input; names at components/sidebar-glance.tsx:63, pages/ActivityList.tsx:172 and :478, pages/Shell.tsx:6805. The stale-state half is observed by 3 walkers on a shared account (may be interference, no solo repro); which run status an approval uses was not checked, so that part is suspected.
+- Files:
+  - apps/web/src/lib/roster-status.ts (map a run with a pending approval to 'Needs your answer')
+  - apps/web/src/components/sidebar-glance.tsx:63 and apps/web/src/pages/ActivityList.tsx:172,478 and apps/web/src/pages/Shell.tsx:6805 (one name, 'Needs your answer')
+  - apps/web/src/pages/ActivityList.tsx (preview the pending question or approval, e.g. 'Wants to email Jo', never 'Message from another agent'; clear the state when the ask is answered)
+  - server query that supplies the status (find where the approval is stored and expose it on the roster row)
+- Reach: Everyone who delegates an action that needs approval; a $1,200 payment can wait with no signal.
+- Acceptance criteria:
+  - With a Mercury payment approval pending, the Mercury agent's sidebar row reads 'Needs your answer' and the Page agents group shows the needs-you dot (unit test on roster-status plus one demo check).
+  - After the approval is allowed or denied, row and Activity clear within one refresh.
+  - The strings 'Needs input' and 'Needs you' no longer appear for this state; grep finds one label.
+  - Opening a row that says 'Needs your answer' always shows a card or question that is unanswered.
+  - Activity preview shows the question or action text, never the generic fallback.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C6 (ActivityList.tsx)
+- Reopens: iteration 7 C1 and C26 (partly)
+
+### C3 Inbox on a phone: row checkboxes draw over the sticky header and a tap on the Important tab hits a hidden row; the fixed header takes 23 percent of the screen (P1, rank 3, effort XS)
+- Root cause: The row select checkbox is absolute with z-10 (InboxRow.tsx:302); the sticky header is also z-10 (Inbox.tsx:1124) and comes earlier in the DOM, so rows paint and hit-test above it. The header keeps title, search, org label and tabs sticky (190 px).
+- Findings: J3-01, J3-03
+- Found by: J3-01 [J3]; J3-03 [J3]
+- Verification: J3-01 observed with a screenshot and elementFromPoint ('Select Fictional Law Group' returned at the tab). Code confirmed at both lines. J3-03 observed, measured (190 px header, first row y=326).
+- Files:
+  - apps/web/src/pages/Inbox.tsx:1124 (header z-20; let the search row and org label scroll away on phone, keep title and tabs sticky)
+  - apps/web/src/components/inbox/InboxRow.tsx:302 (only if the z change is not enough)
+- Reach: Every phone user who scrolls the Inbox.
+- Acceptance criteria:
+  - At 375 px with the list scrolled, elementFromPoint over the Important tab and the hamburger returns the tab or button, not a row checkbox (Playwright test with hasTouch).
+  - No row checkbox is drawn over the header in a screenshot of the scrolled list.
+  - At 375 px the sticky area is under 120 px after the first scroll; first row is visible without scrolling at rest.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C26 and C17 (both edit Inbox.tsx)
+
+### C4 Tables an agent posts in the docked 263 px Ask panel render text columns 31 to 33 px wide, one letter per line (P1, rank 4, effort S)
+- Root cause: In the docked-panel container query (markdown-table.css, @container max-width 24rem) text cells get min-width: 0 !important with overflow-wrap: anywhere, so auto table layout shrinks text columns to one character and gives the room to numeric columns. The same one-letter-per-line result appears in the older spreadsheet card in chat.
+- Findings: R2-01, J2-13
+- Found by: R2-01 [R2]; J2-13 [J2]
+- Verification: R2-01 observed and measured (cells 33, 31, 87, 111 px). Code confirmed: markdown-table.css container block sets min-width: 0 !important and overflow-wrap: anywhere. J2-13 observed in the spreadsheet card (same markup suspected).
+- Files:
+  - packages/chat-ui/src/markdown-table.css (container block: overflow-wrap: break-word, min-width about 8ch on text columns, horizontal scroll with a visible cue when columns do not fit)
+  - spreadsheet card component in chat (same minimum column width, or collapse to '5 rows' with Expand)
+- Reach: Finance, Data room and Carta agent users whose answers include a table; the Ask panel is the main way to read them.
+- Acceptance criteria:
+  - A 5-row Vendor/Category/Amount/Share table in a 263 px panel has every text column at least 56 px wide and no word broken mid-letter (Playwright test measuring cell widths).
+  - If the columns do not fit, the card scrolls sideways and shows an edge fade.
+  - The expanded dialog and the main transcript tables are unchanged (existing screenshots).
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C17
+
+### C5 Chief and the Mercury page give contradictory or dead-end payment guidance (P2, rank 5, effort S)
+- Root cause: The 'not connected' guidance Chief receives (NOT_CONNECTED_GUIDANCE in packages/adapters/src/executor.ts) is used when Chief has no direct payment tool, even though Mercury or Brex is connected and a Mercury agent could take the request; the reply links Integrations. The Mercury page shows a live 'Allow changes' switch next to 'Create agent' before any agent exists, and the approval result gives no next place to go. Agent error text also names raw record ids.
+- Findings: R1-03, J2-02, J2-03, J2-04, J2-05, J2-22, R1-12, J1-11
+- Found by: R1-03 [R1]; J2-02 [J2]; J2-03 [J2]; J2-04 [J2]; J2-05 [J2]; J2-22 [J2]; R1-12 [R1]; J1-11 [J1]
+- Verification: R1-03 and J2-02 observed twice in different runs (same reply, Finance shows Mercury and Brex connected). The prompt source was not traced (executor.ts guidance is the lead, suspected); the demo seed may be part of it. J2-03 to J2-05 observed.
+- Files:
+  - packages/adapters/src/executor.ts (when a connected-app agent exists or can be created, tell Chief to hand off with message_bot; when writes are off say 'Turn on Allow changes on the Mercury page')
+  - apps/web/src/components/integrations/IntegrationAgentSection.tsx (hide the switches until an agent exists or label 'Create agent and allow changes'; 'Setting up...' while pending; disabled-on looks on)
+  - approval-ask.ts / payment approval card (primary label 'Send $1,200', result text names where the second approval happens)
+  - adapters mail_get error text (use the subject, not the id)
+- Reach: Anyone paying a bill or asking Chief about money.
+- Acceptance criteria:
+  - Asking Chief to pay a vendor with Mercury connected gets a hand-off to the Mercury agent or an instruction to turn on Allow changes, never 'no payment connection' (executor test with a connected integration).
+  - Mercury page without an agent shows no live Allow changes switch, or a single combined action.
+  - The payment approval card's primary button names the amount; the approved result says where to finish.
+  - No agent-facing text contains a raw id like mock-demo-29.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C10
+
+### C6 Activity panel pushes the chat list out of the sidebar and behaves like a page (P2, rank 6, effort S)
+- Root cause: With Activity open the Pages block is a 302 px scroll box (Shell.tsx:4347 max-h-50vh) and Activity fills it (211 px scroll area), leaving zero chat rows at 1440 and 375; Activity stays open after navigation and reload, shows the user's last message, formats times as '9m ago' where rows use clock times, and shows an empty 'Working' heading and skeletons for many seconds.
+- Findings: R3-8-01, V3-01, V3-02, V3-03
+- Found by: R3-8-01 [R3]; V3-01 [V3]; V3-02 [V3]; V3-03 [V3]
+- Verification: R3-8-01 and V3-01 observed and measured by two walkers (scroll box 302/1010 and 211/324). Layout code confirmed at Shell.tsx:4347. Skeleton length (V3-03) is load-inflated, so only the cached-result part is kept.
+- Files:
+  - apps/web/src/pages/ActivityList.tsx (cap at about 40 percent with its own scroll; hide empty section headings; same time format as rows)
+  - apps/web/src/pages/Shell.tsx (close Activity on navigation; keep at least 3 chat rows visible)
+- Reach: Anyone who opens Activity on a laptop or phone.
+- Acceptance criteria:
+  - With Activity open at 1440x900 and 375x812, at least 3 chat rows are visible (Playwright count).
+  - Navigating to a page closes Activity; reload does not reopen it.
+  - No section heading renders without a row.
+  - Times use one format across sidebar, Activity and palette (V1-13 string check).
+- Needs product decision: false
+- Depends on: C2
+- Conflicts with: C2 (ActivityList.tsx), C15 (Shell.tsx:4347)
+- Reopens: iteration 7 C26
+
+### C7 Investors shows the same SAFE holders twice, 'Equity raised' reads as nothing raised, and Fundraising disagrees (P2, rank 7, effort M)
+- Root cause: Investors renders SAFE rows inside the cap table and again in the 'SAFEs and funds' contact list (rows end in an unlabelled dash); Summary.raised deliberately never counts SAFE money (Investors.tsx:131) and shows a bare dash; Fundraising reads overview.safes and shows 'No SAFEs yet' for the same user; Legal lists the SAFE as a contract. No page says which record it reads. The header still carries 'Add contact' although the recorded decision is 'Investors header carries only Ask'.
+- Findings: FLOW-01, FLOW-02, J1-13, J2-06, J2-07, J2-08, V3-07, V3-08, V3-15, R1-05
+- Found by: FLOW-01 [FLOW]; FLOW-02 [FLOW]; J1-13 [J1]; J2-06 [J2]; J2-07 [J2]; J2-08 [J2]; V3-07 [V3]; V3-08 [V3]; V3-15 [V3]; R1-05 [R1]
+- Verification: Duplicate list and bare dash observed by 4 walkers (FLOW, J2, V3, J1). Code confirmed: Investors.tsx:131 comment and logic, header 'Add contact' at :1039. The three-page disagreement (FLOW-01) observed for the mock founder only.
+- Files:
+  - apps/web/src/pages/Investors.tsx (list only contacts not in the table, or fill the amount and hide the SAFE rows; label the right column; 'Equity raised' secondary line 'SAFEs $350,000' or rename 'Priced equity raised'; name the link 'Resend update link')
+  - apps/web/src/components/cap-table/HoldingsTable.tsx (SAFE terms on the row or in the contact card)
+  - apps/web/src/pages/Fundraising.tsx:241-262 (say which record the SAFEs card reads)
+- Reach: Founders raising on SAFEs, the common case.
+- Acceptance criteria:
+  - A person appears once per page; SAFE amount is shown wherever the holder is listed.
+  - The Equity raised card says why it shows no amount, or includes SAFEs under a label.
+  - Fundraising's SAFEs card and Investors list the same holders for the same user (test over one fixture).
+  - The right-hand column in 'SAFEs and funds' has a header; the row menu names the link.
+- Needs product decision: true. Which page owns SAFE records: Investors (shares and options; recommended: SAFE rows move to Fundraising and Investors links there) or Fundraising? And does the Investors header keep 'Add contact' (recommended: remove it, since rows open Edit contact and Contacts has the add button)?
+- Depends on: none
+- Conflicts with: C18 (Investors.tsx)
+- Reopens: iteration 7 C9
+
+### C8 Document consent: Legal and Data room ask separately in three wordings, the Legal panel has no Allow of its own, and the Chief mail card title understates what is shared (P2, rank 8, effort S)
+- Root cause: Both pages use ConsentCard but with separate state and wording (legal/ConsentPrompt.tsx:19, data-room/ConsentPrompt.tsx:83); the Legal agent panel composer is disabled with 'Allow access on the page to ask' and the Allow button is on the other side; the mail card at approval-ask.ts:141 names OpenRouter and not the content; Allow on Data room gives no confirmation; Advanced shows no per-area state.
+- Findings: FLOW-06, J1-03, J2-10, J2-19, R1-07, R1-08, V3-13
+- Found by: FLOW-06 [FLOW]; J1-03 [J1]; J2-10 [J2]; J2-19 [J2]; R1-07 [R1]; R1-08 [R1]; V3-13 [V3]
+- Verification: Cards and wording observed by 3 walkers. Code confirmed at the two ConsentPrompt files and approval-ask.ts:141. Whether Data room and Legal grant the same underlying flag is suspected, not checked. R1-07 is load-inflated, kept only as a skeleton row.
+- Files:
+  - apps/web/src/components/legal/ConsentPrompt.tsx and apps/web/src/components/data-room/ConsentPrompt.tsx (one wording; hide the second card when either is granted; show the card in List and Grid only)
+  - apps/web/src/pages/Shell.tsx:4054 (Allow button inside the Legal panel next to the disabled composer)
+  - packages/adapters/src/approval-ask.ts:141 (title says what is shared)
+  - Settings Privacy panel (skeleton row; per-area state under Advanced if the decision says so)
+- Reach: Every new user meets these cards in the first session.
+- Acceptance criteria:
+  - After one Allow on either page, neither shows a consent card again and the scan starts.
+  - The Legal panel offers Allow beside its disabled composer.
+  - All document and mail cards use one name for the AI model recipient.
+  - A brief confirmation follows Allow.
+- Needs product decision: true. Should one Allow cover both Data room and Legal (recommended, since Legal reads Data room text), and should Settings > Advanced list which areas are allowed (recommended: yes, one line per area), or drop the 'partly allowed' wording from the acceptance?
+- Depends on: none
+- Conflicts with: C21 (DataRoom.tsx)
+- Reopens: iteration 7 C8
+
+### C9 First-run tour: stop 5 text names a page the highlight does not show, popovers still cover content, Skip moves the user, and the tour competes with Connect your apps (P2, rank 9, effort S)
+- Root cause: FirstRunTour.tsx:53 says 'see who owns what in Investors' on the Legal stop and stop 6 mentions Artifacts, so highlight and sentence disagree (a side effect of the pass-7 rename fix); placement puts the popover over chat text or the composer on stops 4-7 and 9, and over rows at 375; Skip tour navigates to Chief; the tour starts at the same moment as the Connect cards.
+- Findings: V1-03, V1-04, J1-10, R1-10, V1-10
+- Found by: V1-03 [V1]; V1-04 [V1]; J1-10 [J1]; R1-10 [R1]; V1-10 [V1]
+- Verification: V1-03 confirmed in code (FirstRunTour.tsx:53). Placement observed by V1 and J1 at 1440 and 375, but R2 found the card beside the sidebar at all nine stops at 1440 (conflicting, so placement is suspected). Skip navigation observed once.
+- Files:
+  - apps/web/src/components/tour/FirstRunTour.tsx (step text per highlighted page; Skip stays on the current page; start condition)
+  - apps/web/src/components/tour/TourPopover.tsx (place away from the chat column on narrow screens)
+- Reach: All new users once.
+- Acceptance criteria:
+  - Each stop's sentence names only the highlighted page.
+  - At 375 px no popover covers the highlighted row's neighbours or the composer (screenshot per stop).
+  - Skip tour leaves the current route unchanged and keeps the 'Ask Chief' chip.
+  - The tour starts after the first Connect card is acted on or dismissed.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C13
+
+### C10 Computer panel says 'Computer is on' over a black box or 'Could not take control' (P2, rank 10, effort XS)
+- Root cause: The header label is not derived from the connection result (computerStateLabel near Shell.tsx:6822), and the screen area renders before any frame arrives, so a bot that never ran shows an empty black screen with a caption.
+- Findings: R3-8-02, J2-21
+- Found by: R3-8-02 [R3]; J2-21 [J2]
+- Verification: Observed by 2 walkers on the demo (no sandbox), so the real-sandbox state is unverified.
+- Files:
+  - apps/web/src/pages/Shell.tsx computerStateLabel (~6822) and the computer pane
+- Reach: Anyone who opens a bot's computer or routines.
+- Acceptance criteria:
+  - With no running computer the pane shows 'Not running' (or nothing), not a black box.
+  - On a failed connection the header does not say 'Computer is on'.
+  - Header text always matches the body state (test for each state).
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C25
+
+### C11 A long chat run never says it is taking long, and an answer typed to a pending ask may be sent twice (P2, rank 11, effort S)
+- Root cause: The thinking row ticks tenths of a second with no 'still working' note or Stop/Retry after minutes (V2-01, V1-12); pending-ask answers in the composer (thread-target.ts) may also send the text as a normal message (R3-8-04, one observation); internal tool names such as 'Scratchpad list' appear in the transcript; one report of the composer textarea filling with newlines.
+- Findings: V2-01, V1-12, R3-8-04, J1-09, J2-14
+- Found by: V2-01 [V2]; V1-12 [V1]; R3-8-04 [R3]; J1-09 [J1]; J2-14 [J2]
+- Verification: V2-01 and V1-12 observed on a run that cannot finish because the demo has no model key, so real-world impact is suspected. R3-8-04 and J2-14 are single observations with no solo repro (J2-14 may be a test-tool key repeat). Downgraded from the walker's P1.
+- Files:
+  - apps/web/src/pages/Shell.tsx thinking indicator and apps/web/src/lib/roster-status.ts (after 2 minutes: whole seconds, 'Taking longer than usual', Stop and Retry)
+  - apps/web/src/pages/shell/thread-target.ts (answering a pending ask sends once)
+  - transcript tool-row label map (plain names)
+  - composer textarea (trim trailing newlines, cap at 8 rows)
+- Reach: Users of slow models or stalled runs.
+- Acceptance criteria:
+  - A run older than 2 minutes shows 'Taking longer than usual' with Stop and Retry (component test).
+  - Typing text while a pending ask exists produces one answered card and no extra user bubble (test).
+  - No transcript row shows a raw tool name.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C2 (roster-status.ts)
+
+### C12 Toasts cover working controls and disappear before they can be used (P2, rank 12, effort S)
+- Root cause: Upload toasts sit top-right over the header sort and filter controls and stay over the Ask panel's first message for 25 s or more with no failure reason; phone toasts sit over header buttons and the composer; the approval toast is gone in about 10 s, does not open the chat, and the bulk-archive Undo may last under 10 s.
+- Findings: R2-03, J2-17, V3-11, J3-06, FLOW-05, R2-06
+- Found by: R2-03 [R2]; J2-17 [J2]; V3-11 [V3]; J3-06 [J3]; FLOW-05 [FLOW]; R2-06 [R2]
+- Verification: Placement observed by 4 walkers. Undo duration is suspected (not measured). Toast code: DropZone.tsx:142 and upload-toasts per R2; AppToaster.tsx not re-read.
+- Files:
+  - apps/web/src/components/data-room/DropZone.tsx:142 and upload-toasts.tsx (bottom of the list panel; auto-dismiss finished toasts after 8 s; failure reason)
+  - apps/web/src/components/AppToaster.tsx (approval toast stays until acted on and opens the card; phone toasts above the composer)
+  - apps/web/src/pages/Inbox.tsx undo toast timer (at least 10 s)
+- Reach: All users who upload or approve.
+- Acceptance criteria:
+  - No toast overlaps the header controls at 1440 or the search row at 375 (bounding-box test).
+  - 'Upload failed' states a reason and clears within 8 s.
+  - The approval toast persists until dismissed and its tap opens the approval card.
+  - Archive-all Undo stays at least 10 s.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C3 and C17 (Inbox.tsx timer line)
+- Reopens: iteration 7 C12
+
+### C13 Legal contract and renewal names are clipped without a tooltip while other columns have spare width (P2, rank 13, effort XS)
+- Root cause: The contract name cell has no title (LegalContracts.tsx:180) while Parties and Renewal have; Contract is about 234 px and truncates every name, Renewal clips on three rows; phone cards take 500 px each.
+- Findings: J2-12, V2-04, R2-08, V2-16
+- Found by: J2-12 [J2]; V2-04 [V2]; R2-08 [R2]; V2-16 [V2]
+- Verification: Observed by 3 walkers; code confirmed at LegalContracts.tsx:180.
+- Files:
+  - apps/web/src/pages/legal/LegalContracts.tsx (title on name cell; flexible Contract and Renewal widths or two-line wrap; phone card spacing and single-line Term and Value)
+- Reach: Legal page users.
+- Acceptance criteria:
+  - Every truncated cell has a title with its full text.
+  - At 1440 the longest seeded contract name shows fully or on two lines.
+  - At 375 ten contracts fit in at most 3 screens.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C20
+
+### C14 Finance: sync status has no words on a phone, sub-page headers take 115 px, the burn projection has no label, and the Subscriptions change column is mostly empty (P2, rank 14, effort S)
+- Root cause: At 375 the 'Mercury, Brex . synced just now' span collapses to 1 px (Finance.tsx:439 area); Burn and Runway sub-pages put the menu on its own row; charts.tsx draws the dashed projection without a 'Projected' text; the 3-mo change column holds one value; the Finance Ask button is icon-only where other pages have a label.
+- Findings: V2-05, R2-05, R1-04, V2-07, J3-08
+- Found by: V2-05 [V2]; R2-05 [R2]; R1-04 [R1]; V2-07 [V2]; J3-08 [J3]
+- Verification: Observed and measured; 1 px width measured in V2-05; 'Projected' string absent per R1. Code not re-opened for the header rows.
+- Files:
+  - apps/web/src/pages/Finance.tsx (visible 'Synced just now' text at phone width; Ask button label)
+  - apps/web/src/pages/finance/* and PageHeader.tsx (menu in the title row)
+  - apps/web/src/components/finance/charts.tsx ('Projected' label)
+  - Subscriptions table (hide a mostly empty column)
+- Reach: Finance users, mainly phone.
+- Acceptance criteria:
+  - At 375 the sync status is readable text (width over 60 px).
+  - Burn and Runway headers are one row, under 70 px.
+  - The dashed segment has a 'Projected' label at 1440 and 375.
+  - Finance Ask is labelled as on Inbox.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C16 and C5
+
+### C15 Phone drawer: the Pages block is capped at 50vh with its own scroll, Artifacts is cut in half, and the chat list is a second scroller (P2, rank 15, effort S)
+- Root cause: Shell.tsx:4347 gives the Pages block max-h-[50vh] overflow-y-auto; on a phone that leaves 184 px for chats. The sidebar also scrolls so a row's status is cut under the Pages divider (R1-11), and the top of the spaces scroller has no fade (V1-07). Integrations is also a sidebar footer row next to the account menu entry.
+- Findings: J3-04, R1-11, V1-07, FLOW-10, J3-08
+- Found by: J3-04 [J3]; R1-11 [R1]; V1-07 [V1]; FLOW-10 [FLOW]; J3-08 [J3]
+- Verification: J3-04 observed and measured (405/422, 184/483); code confirmed at Shell.tsx:4347. FLOW-10 is the open iteration 7 question about the footer entry.
+- Files:
+  - apps/web/src/pages/Shell.tsx:4347 and the sidebar scroller (single scroll on phone; clamp scroll on list changes; top fade)
+  - apps/web/src/pages/Shell.tsx:5357 (Integrations footer row)
+- Reach: Every phone user opening the drawer.
+- Acceptance criteria:
+  - At 375x812 the drawer has one scroller and all eight Pages rows are fully visible.
+  - Scroll position never cuts a status line under the divider.
+- Needs product decision: true. The account menu is the owner's home for Integrations. Remove the sidebar and drawer 'Integrations' row (recommended), or keep it?
+- Depends on: none
+- Conflicts with: C6 (Shell.tsx:4347)
+
+### C16 Storybook smoke fails on 8 of 1659 stories and the smoke script dies on one timeout (P2, rank 16, effort XS)
+- Root cause: SafeRows.stories.tsx and SafeList.stories.tsx wrap in MemoryRouter although preview.tsx already provides one; SafeDialog stories render in a portal and need the page-behind decorator; smoke.mjs:40 lets one page.goto timeout abort the run.
+- Findings: R3-8-12, R3-8-13, R3-8-14
+- Found by: R3-8-12 [R3]; R3-8-13 [R3]; R3-8-14 [R3]
+- Verification: R3-8-12 observed (error text) and confirmed in code: MemoryRouter at SafeRows.stories.tsx:38 and SafeList.stories.tsx:59. R3-8-13 suspected (cause from the README). R3-8-14 observed.
+- Files:
+  - apps/web/src/components/cap-table/SafeRows.stories.tsx
+  - apps/web/src/components/fundraising/SafeList.stories.tsx
+  - apps/web/src/components/fundraising/SafeDialog.stories.tsx (withPageBehind)
+  - apps/web/.storybook/smoke.mjs:40 (try/catch, record failure)
+- Reach: Maintainers; blocks the repo smoke gate.
+- Acceptance criteria:
+  - node .storybook/smoke.mjs in apps/web reports 0 failing stories.
+  - A navigation timeout is recorded as a failed story and the run finishes.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+
+### C17 Inbox Digest and Newsletters disagree: 'Archive all 6' sits over 4 sender cards and archives mail that the list does not show (P2, rank 17, effort S)
+- Root cause: The Digest counts messages in the 7-day window but shows one card per sender, with a different set from the Newsletters tab (3 rows vs 4 groups); no count is on every card.
+- Findings: J1-05, V2-11, V2-14
+- Found by: J1-05 [J1]; V2-11 [V2]; V2-14 [V2]
+- Verification: Observed by 2 walkers with the same numbers (6, 4, 3). Code location InboxDigest.tsx:59 from J1, not re-read.
+- Files:
+  - apps/web/src/components/inbox/InboxDigest.tsx (one source for both views; 'Archive all 6 messages from 4 senders'; align sender and subject)
+- Reach: Everyone who clears newsletters.
+- Acceptance criteria:
+  - Newsletters tab and Digest list the same messages (test over one fixture).
+  - The archive button names messages and senders.
+  - Sender and subject share a left edge.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C3 and C26 (Inbox files)
+- Reopens: iteration 7 C14
+
+### C18 Empty Investors offers six ways to add something; empty Fundraising is three empty boxes; Investors errors repeat four times when the API is down; content widths differ from other pages (P2, rank 18, effort M)
+- Root cause: Investors shows Add contact, Ask, three source chips, Updates, and a tab strip before any cap table exists; Fundraising shows a titleless Start a round card, a Pipeline with its own Add prospect and a SAFEs card; each Investors section renders its own error and Try again; Investors cards use max-w-5xl while the header is full width (Investors.tsx:310,1126,1240).
+- Findings: FLOW-03, FLOW-04, J2-09, J1-06, V3-09, R1-06, V3-06, J1-12
+- Found by: FLOW-03 [FLOW]; FLOW-04 [FLOW]; J2-09 [J2]; J1-06 [J1]; V3-09 [V3]; R1-06 [R1]; V3-06 [V3]; J1-12 [J1]
+- Verification: FLOW-03, FLOW-04 observed for fresh users; J2-09 and J1-12 observed during an outage; widths measured by three walkers; V3-06 confirmed in code (ActionItems.tsx:68-76 disabled with no label change).
+- Files:
+  - apps/web/src/pages/Investors.tsx (one 'Where is your cap table?' prompt for an empty page; page-level network error; width)
+  - apps/web/src/pages/Fundraising.tsx and components/fundraising/RoundCard.tsx (one empty state)
+  - apps/web/src/components/investors/ActionItems.tsx (label 'Drafting...' with spinner)
+  - apps/web/src/pages/Inbox.tsx / consent card (one error, Try again on the control that failed)
+- Reach: New founders on first visit to Investors and Fundraising.
+- Acceptance criteria:
+  - A fresh user sees one prompt on Investors and one Start a round state on Fundraising; Updates, tabs and the in-page Add prospect appear after a source exists.
+  - With the API down Investors shows one error and one Try again.
+  - At 1920 header and cards share one content width.
+  - Draft reply shows 'Drafting...' while disabled.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C7 (Investors.tsx)
+
+### C19 Settings: 'Advanced' names two things, Memory has a third disclosure style, and Notifications appears late and wraps on a phone (P3, rank 19, effort XS)
+- Root cause: AccountSettingsOverlay.tsx:274-282 names the General disclosure 'Advanced' (and links its open state to the nav group at SettingsOverlay.tsx:290); the Memory page uses a native details; the Notifications row mounts after a permission check; nested Memory pill is narrower than other nav items.
+- Findings: FLOW-08, V1-01, R3-8-07, R3-8-06, V1-02, V1-05, J3-07
+- Found by: FLOW-08 [FLOW]; V1-01 [V1]; R3-8-07 [R3]; R3-8-06 [R3]; V1-02 [V1]; V1-05 [V1]; J3-07 [J3]
+- Verification: Observed by 3 walkers for the duplicate name; code lines from V1-01.
+- Files:
+  - apps/web/src/pages/AccountSettingsOverlay.tsx:274-282 (rename to 'Chat display', unlink)
+  - apps/web/src/pages/SettingsOverlay.tsx:290
+  - Memory settings component (chevron row 'Outside memory service')
+  - apps/web/src/components/NotificationSettings.tsx (reserve the row; stack the hint on phones)
+- Reach: Anyone opening Settings.
+- Acceptance criteria:
+  - One 'Advanced' label exists in Settings.
+  - The Settings body height does not change when Notifications appears.
+  - All disclosures use the chevron style.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C31
+
+### C20 Integrations: search says 'Search apps', chips do not match section headings, and one description ends in an ellipsis at 375 (P3, rank 20, effort XS)
+- Root cause: IntegrationsHome.tsx:766-767 still uses 'Search apps' after the owner chose 'Integrations'; chip list and section headings are different lists; Blockscout copy is long and the page is 80 px taller than pass 6 at 375.
+- Findings: R3-8-11, V1-06, R2-07
+- Found by: R3-8-11 [R3]; V1-06 [V1]; R2-07 [R2]
+- Verification: R3-8-11 confirmed in code (IntegrationsHome.tsx:766). Others observed.
+- Files:
+  - apps/web/src/components/integrations/IntegrationsHome.tsx
+- Reach: Integrations page users.
+- Acceptance criteria:
+  - Placeholder and aria-label read 'Search integrations'.
+  - Chips equal section headings.
+  - At 375 the page height is 1,610 px or less and no description is cut.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C18
+
+### C21 Data room small items: Try again on an unreadable PDF, dash in most Status cells, and an 'Imported 3 files' strip that lists other names (P3, rank 21, effort XS)
+- Root cause: Preview.tsx:223 offers Try again for a file the list marks as not readable (ItemRows.tsx:265 offers only Delete); the Status cell prints a dash for ready files; importedText (format.ts:75) mixes count and names and persists across folders.
+- Findings: J2-16, V3-12, V3-10
+- Found by: J2-16 [J2]; V3-12 [V3]; V3-10 [V3]
+- Verification: Observed; code lines from the walkers.
+- Files:
+  - apps/web/src/components/data-room/Preview.tsx:223
+  - apps/web/src/components/data-room/ItemRows.tsx
+  - apps/web/src/components/data-room/format.ts:75 and pages/DataRoom.tsx
+- Reach: Data room users.
+- Acceptance criteria:
+  - No Try again for the unreadable-PDF error.
+  - Ready rows leave Status empty.
+  - The import strip names its count and clears on navigation.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C8 (DataRoom.tsx)
+
+### C22 Focus rings and small a11y/copy items: blue outlines, Hide amounts has no visible state, focusless lock icon, sign-in and sign-up form details (P3, rank 22, effort S)
+- Root cause: Sidebar buttons use outline:auto, a 2 px blue outline or none instead of one ring token; HideAmountsMenuItem shows only an icon change; the Artifacts isolation lock is a span; native minLength bubble on sign-up; 55 px gap above Sign in; 'Upload SKILL.md' jargon.
+- Findings: R3-8-03, J1-04, V2-10, V1-08, V1-09, J2-20
+- Found by: R3-8-03 [R3]; J1-04 [J1]; V2-10 [V2]; V1-08 [V1]; V1-09 [V1]; J2-20 [J2]
+- Verification: R3-8-03 measured from 14 Tabs; J1-04 confirmed in code (HideAmountsToggle.tsx:7-30, label fixed by decision, check icon missing).
+- Files:
+  - sidebar row components in Shell.tsx (focus-visible ring token)
+  - apps/web/src/components/HideAmountsToggle.tsx (visible check)
+  - apps/web/src/pages/Artifacts.tsx (lock as button)
+  - sign-up and sign-in forms
+  - bot skill menu copy
+- Reach: Keyboard and screen reader users, new sign-ups.
+- Acceptance criteria:
+  - Every sidebar control shows one ink focus ring and none show blue.
+  - Hide amounts row shows a check when on.
+  - Sign-up shows the 8-character rule in the page, not a native bubble.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+- Reopens: iteration 7 C29
+
+### C23 Layout shifts while loading: Skills and Memory boxes, banner slot above the Inbox list, and the palette during search (P3, rank 23, effort S)
+- Root cause: Bot settings sections render empty then grow 12 px; the Inbox banner slot is not reserved (28 px shift); the palette shows a bare input while a query runs; sidebar unread badge reads 1 then 10 after the first sync.
+- Findings: V1-11, V2-15, R3-8-08, V3-16, J1-07
+- Found by: V1-11 [V1]; V2-15 [V2]; R3-8-08 [R3]; V3-16 [V3]; J1-07 [J1]
+- Verification: Observed; timings are load-inflated, shifts are layout facts.
+- Files:
+  - bot settings panel
+  - apps/web/src/pages/Inbox.tsx:1514 area
+  - apps/web/src/pages/shell/command-palette.tsx
+  - apps/web/src/pages/Shell.tsx unreadCount
+- Reach: All users, small.
+- Acceptance criteria:
+  - No element moves more than 4 px during load (geometry audit).
+  - The palette keeps the previous results dimmed while searching.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C3, C17, C26 (Inbox.tsx)
+
+### C24 Artifacts cards: the age floats between the title and the type label at 1440 and 1920 (P3, rank 24, effort XS)
+- Root cause: The age text in the card footer has no shared edge with the type label (right edge 640 vs 663).
+- Findings: V2-17, V3-14
+- Found by: V2-17 [V2]; V3-14 [V3]
+- Verification: Observed and measured by 2 walkers.
+- Files:
+  - apps/web/src/pages/Artifacts.tsx
+- Reach: Artifacts users.
+- Acceptance criteria:
+  - Age and type label share one right edge in a geometry check at 1440.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: none
+
+### C25 A solo founder sees 'Personal' and 'New space', and 'New Bot' exists before it has a purpose (P3, rank 25, effort S)
+- Root cause: The space tag and New space menu item show for single-member accounts (bot-picker.tsx:86, dialogs.tsx:70); New bot creates a sidebar bot immediately.
+- Findings: FLOW-09, FLOW-11, V1-14
+- Found by: FLOW-09 [FLOW]; FLOW-11 [FLOW]; V1-14 [V1]
+- Verification: Observed; code lines from FLOW.
+- Files:
+  - apps/web/src/pages/shell/bot-picker.tsx:86
+  - apps/web/src/pages/shell/dialogs.tsx:70
+  - sidebar space menu ('Auto-group')
+- Reach: New solo users.
+- Acceptance criteria:
+  - A single-space account sees no space tag and no New space item.
+  - An untouched New Bot does not remain after the panel closes.
+- Needs product decision: true. Hide the 'Personal' tag and 'New space' until the account has a second member or space (recommended), and drop an untouched 'New Bot' when its panel closes (recommended)?
+- Depends on: none
+- Conflicts with: none
+
+### C26 Inbox details: two Clear controls in search, red 'Tomorrow', Cleanup 12 px off, To do repeats rows, no reason shown for a search match (P3, rank 26, effort S)
+- Root cause: Search mode header keeps the x and a 'Clear' link; TodoCard uses destructive red for tomorrow; Cleanup padding differs from the Inbox grid; To do and Needs reply list the same threads.
+- Findings: R3-8-05, V2-12, V2-13, FLOW-07, V3-17
+- Found by: R3-8-05 [R3]; V2-12 [V2]; V2-13 [V2]; FLOW-07 [FLOW]; V3-17 [V3]
+- Verification: Observed; FLOW-07 shift seen once, cause suspected.
+- Files:
+  - apps/web/src/pages/Inbox.tsx
+  - apps/web/src/components/inbox/TodoCard.tsx
+  - Cleanup page
+- Reach: Inbox users.
+- Acceptance criteria:
+  - One Clear control in search.
+  - Red only for overdue.
+  - Cleanup and Inbox share left padding.
+- Needs product decision: false
+- Depends on: none
+- Conflicts with: C3, C17, C23 (Inbox.tsx)
+- Reopens: iteration 7 C23
+
+## Deferred items (not in a cluster)
+- Load and skeleton times (R1-09, J2-15, J3-09, V2-18, V3-04, V3-05, V3-03 timing part): host load 200-500 and a shared stack. Not defects until measured on an idle stack; mail search over 4 s (V3-05) is the first to re-measure.
+- R2-02: Carta-agent instruction preview not reproducible (no Carta agent in the demo); cover with the repository test near packages/db/src/repos.ts:369-390.
+- R3-8-09: 'Could not load pins' 500 once after a restart; no recurrence.
+- J1-14: 'Ask agent' as a top-level button instead of a More-menu item; spec drift to confirm, not a defect.
+- Dropped: J1-08 and J2-11 (no Undo on Legal Done), because R2 observed 'Marked <title> done. Undo' for 25-30 s. J2-18 (stuck Reading row), seed state; R2 saw the retry chain work. V2-08 (Legal row actions repeat), owner decision. V2-06 (16 px Inbox checkboxes), J3 and V3 measured a 44 px hit area; the To do checkbox probe stays deferred from iteration 7. V2-01 was filed P1 by the walker and is P2 here (demo has no model key).
+
+## BLOCKED stories
+- STORY-APP-309/319 model sign-in and 'Connect your apps' (demo has a default model; Connect is real OAuth). Real OAuth Connect for Gmail, Calendar, Carta, Mercury reconnect, Brex, Devin; STORY-CAP-106.
+- STORY-INB-109 steps 3-6 and 11-19 (no Spam tab or Cleanup senders in the seed); Digest empty state and Archive-all Undo (seed aged out on reseed).
+- Pass-7 C22 Data room agent tag vs list (needs a model); pass-7 C4 and C7 live checks; pass-7 C1 toast over an open email panel.
+- Secret request card, Provide secret dialog focus, held 'Share with {name}?' cards, stale 'Answer the pending ask first' banner (no demo path).
+- STORY-DRM-103/104/105 (password zip, 12,000-file zip, unsafe paths); STORY-APP-371 iMessage and desktop stories; first-run tour at 375 (R2).
+
+## Counts by severity
+- Clusters: 26 (P0 0, P1 4, P2 14, P3 8)
+- Distinct finding ids in clusters: 125
+- Clusters needing a product decision: C7, C8, C15, C25
+- P1: C1 (a refusal becomes an email body with Send enabled; 3 walkers), C2 (an approval waits but the row says Working), C3 (phone Inbox header covered by row checkboxes), C4 (Ask panel tables unreadable).
