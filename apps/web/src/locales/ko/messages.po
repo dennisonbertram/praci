@@ -3948,9 +3948,8 @@ msgid "Delete \"{0}\"?"
 msgstr ""
 
 #. placeholder {0}: bot.name
-#. placeholder {0}: displayName(artifact.name)
 #. placeholder {0}: group.name
-#: src/pages/Artifacts.tsx
+#. placeholder {0}: item.text
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
@@ -3964,6 +3963,10 @@ msgstr "{0} 삭제"
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0}을 삭제할까요?"
+
+#: src/pages/Artifacts.tsx
+msgid "Delete {title}"
+msgstr "{title} 삭제"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
@@ -4193,7 +4196,7 @@ msgstr ""
 msgid "Dismiss error"
 msgstr "오류 닫기"
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
 msgstr ""
@@ -6040,7 +6043,7 @@ msgstr ""
 msgid "Marked {0} as spam"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
 msgstr ""
@@ -10450,6 +10453,7 @@ msgstr ""
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
 msgstr ""

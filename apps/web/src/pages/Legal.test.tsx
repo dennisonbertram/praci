@@ -729,3 +729,21 @@ it("puts the contract name in the deadline title", async () => {
   const first = [...container.querySelectorAll("li .font-medium")].map((el) => el.textContent);
   expect(first).toContain(`${deadlines[0]?.title}: ${deadlines[0]?.contractTitle}`);
 });
+
+it("names the contract in the Undo line and keeps it for 30 seconds", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.updateDeadline.mockResolvedValue({});
+    await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
+    await click(button(`Mark ${named(deadlines[0])} done`));
+    expect(container.querySelector("li[role=status]")?.textContent).toContain(
+      `Marked ${named(deadlines[0])} done.`,
+    );
+    await act(async () => void (await vi.advanceTimersByTimeAsync(29_000)));
+    expect(button("Undo")).toBeDefined();
+    await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
+    expect(button("Undo")).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
