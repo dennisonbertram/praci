@@ -15,7 +15,7 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MASK, percentFigure } from "../../lib/finance-format";
+import { MASK, percentFigure, totalPercent } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { OwnershipBar } from "./OwnershipBar";
 
@@ -467,7 +467,7 @@ export function CapTableEditor({
           </span>
           <span className="text-end tabular-nums @lg:col-start-5">
             {percentFigure(
-              math.holders.reduce((sum, h) => sum + (h.percent ?? 0), math.pool?.percent ?? 0),
+              totalPercent([math.pool?.percent, ...math.holders.map((h) => h.percent)]),
               1,
             )}
           </span>
