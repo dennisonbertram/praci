@@ -332,17 +332,15 @@ it("never puts two markers within 8 px of each other", async () => {
   done();
 });
 
-it("keeps each month control 44 px wide on a touch screen", async () => {
+it.each([300, 375])("keeps all 12 months reachable and 44 px wide at %i px on touch", async (w) => {
   const saved = window.matchMedia;
   window.matchMedia = ((q: string) => ({ matches: q.includes("coarse") })) as typeof matchMedia;
   const series = Array.from({ length: 12 }, (_, i) => mk(i + 1, 300_000 + i));
-  const { el, done } = await mount(
-    375,
-    <BurnLines label="Burn" series={series} onOpen={() => {}} />,
-  );
+  const { el, done } = await mount(w, <BurnLines label="Burn" series={series} onOpen={() => {}} />);
   const links = [...el.querySelectorAll("g[role=link] rect")];
-  expect(links.length).toBeGreaterThan(0);
+  expect(links).toHaveLength(12);
   for (const r of links) expect(Number(r.getAttribute("width"))).toBeGreaterThanOrEqual(44);
+  expect(Number(el.querySelector("svg")?.getAttribute("width"))).toBeGreaterThan(w);
   done();
   window.matchMedia = saved;
 });

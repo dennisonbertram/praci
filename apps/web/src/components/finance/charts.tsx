@@ -64,10 +64,13 @@ export const shade = (index: number) =>
 export function Chart({
   height,
   label,
+  minWidth = 0,
   children,
 }: {
   height: number;
   label: string;
+  /** Narrower containers scroll sideways (newest end in view) instead of squeezing the plot. */
+  minWidth?: number;
   children: (width: number) => React.ReactNode;
 }) {
   // Hidden amounts hide money only: the shape and the dates stay, the axis and figures go.
@@ -84,18 +87,22 @@ export function Chart({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  const svgWidth = Math.max(width, minWidth);
+  useEffect(() => {
+    if (ref.current && svgWidth > width) ref.current.scrollLeft = ref.current.scrollWidth;
+  }, [svgWidth, width]);
   return (
-    <div ref={ref} className="w-full" style={{ height }}>
+    <div ref={ref} className="w-full overflow-x-auto" style={{ height }}>
       {width > 0 ? (
         <svg
           role="img"
           aria-label={label}
-          width={width}
+          width={svgWidth}
           height={height}
-          viewBox={`0 0 ${width} ${height}`}
-          className="block"
+          viewBox={`0 0 ${svgWidth} ${height}`}
+          className="block max-w-none"
         >
-          {children(width)}
+          {children(svgWidth)}
         </svg>
       ) : null}
     </div>
@@ -385,28 +392,23 @@ export function BurnLines({
   // A finger cannot hit 20 px columns, so on touch the whole plot is one target: a tap picks the
   // nearest period (its figures show), a second tap in the same column opens it.
   const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  // The scale follows spend and revenue; a raise many times larger would flatten every other
+  // point, so a financing point above the scale is cut at the top and labelled instead.
+  const series = trimmed;
+  const max = Math.max(...series.flatMap((m) => [m.outCents, m.revenueCents]), 0);
+  const scale = niceScale(max > 0 ? max : Math.max(...series.map((m) => m.financingCents), 0));
+  // Room for the widest axis label (about 7 px a character at 12 px) so none is cut off.
+  const left = Math.max(40, axisMoney(scale.top).length * 7 + 10);
+  const right = 8;
+  const bottom = 24;
+  const clipped = series.some((m) => m.financingCents > scale.top);
+  const top = clipped ? 28 : 10;
+  // Each month is a control and must be 44 px wide on touch: a narrow phone scrolls the chart.
+  const minWidth =
+    touch && granularity === "month" ? left + right + Math.max(series.length, minSlots) * 44 : 0;
   return (
-    <Chart height={height} label={label}>
+    <Chart height={height} label={label} minWidth={minWidth}>
       {(width) => {
-        // Each month is a control; on touch it must be 44 px wide, so a phone shows the latest few.
-        // The 60 px stands for the axis labels on the left and the margin on the right.
-        const fits = Math.max(1, Math.floor((width - 60) / 44));
-        const series =
-          touch && granularity === "month" && trimmed.length > fits
-            ? trimmed.slice(-fits)
-            : trimmed;
-        const right = 8;
-        const bottom = 24;
-        // The scale follows spend and revenue; a raise many times larger would flatten every other
-        // point, so a financing point above the scale is cut at the top and labelled instead.
-        const max = Math.max(...series.flatMap((m) => [m.outCents, m.revenueCents]), 0);
-        const scale = niceScale(
-          max > 0 ? max : Math.max(...series.map((m) => m.financingCents), 0),
-        );
-        // Room for the widest axis label (about 7 px a character at 12 px) so none is cut off.
-        const left = Math.max(40, axisMoney(scale.top).length * 7 + 10);
-        const clipped = series.some((m) => m.financingCents > scale.top);
-        const top = clipped ? 28 : 10;
         const slot = (width - left - right) / Math.max(series.length, minSlots);
         // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
