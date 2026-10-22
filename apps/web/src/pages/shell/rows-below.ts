@@ -1,6 +1,12 @@
 /** Height of the "+N more" bar that covers the foot of the list while rows remain below. */
 export const MORE_BAR_HEIGHT = 28;
 
+/** Coarse pointers (phones) grow every button to 44px in styles.css, the bar included. */
+export const moreBarHeight = () =>
+  typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches
+    ? 44
+    : MORE_BAR_HEIGHT;
+
 /**
  * How many sidebar rows are not fully in view above the "+N more" bar, or 0 when the list is
  * scrolled to its end (or does not scroll). The list scrolls in whichever of `scrollers` is a
@@ -22,7 +28,7 @@ export function rowsBelow(
   });
   if (!scroller || scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)
     return 0;
-  const edge = scroller.getBoundingClientRect().bottom - MORE_BAR_HEIGHT;
+  const edge = scroller.getBoundingClientRect().bottom - moreBarHeight();
   let count = 0;
   for (const row of scroller.querySelectorAll<HTMLElement>(rowSelector)) {
     if (row.getBoundingClientRect().bottom > edge + 0.5) count += 1;

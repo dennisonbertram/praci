@@ -248,16 +248,19 @@ export const Transcript = memo(function Transcript({
   // One Tab stop for all the messages' More buttons (roving): the newest, or the one last focused.
   // Up and Down move between them, so Tab reaches the composer in a few presses on a long chat.
   const [moreId, setMoreId] = useState<string | null>(null);
-  const newestActionId = reactionView.visibleMessages
-    .filter(
-      (m) =>
-        !m.id.startsWith("progress:") &&
-        !isPeerReceiptBlocks(m.blocks) &&
-        messageHasVisibleBlocks(m.blocks, showToolActivity),
-    )
-    .at(-1)?.id;
-  const tabbableMoreId =
-    moreId && reactionView.visibleMessages.some((m) => m.id === moreId) ? moreId : newestActionId;
+  const items = foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages), (id) =>
+    reactionView.reactions.has(id),
+  );
+  // Only messages rendered on their own have a More button; grouped voice and finance cards do not.
+  const actionIds = items.flatMap((item) =>
+    item.kind === "message" &&
+    !item.message.id.startsWith("progress:") &&
+    !isPeerReceiptBlocks(item.message.blocks) &&
+    messageHasVisibleBlocks(item.message.blocks, showToolActivity)
+      ? [item.message.id]
+      : [],
+  );
+  const tabbableMoreId = moreId && actionIds.includes(moreId) ? moreId : actionIds.at(-1);
   const separatorIds = timeSeparatorIds(
     reactionView.visibleMessages.filter((message) =>
       messageHasVisibleBlocks(message.blocks, showToolActivity),
@@ -726,9 +729,7 @@ export const Transcript = memo(function Transcript({
             {loadingOlder ? t`Loading…` : t`Load earlier messages`}
           </button>
         ) : null}
-        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages), (id) =>
-          reactionView.reactions.has(id),
-        ).map((item) => {
+        {items.map((item) => {
           if (item.kind === "financeRun") {
             const first = item.messages[0];
             if (!first) return null;

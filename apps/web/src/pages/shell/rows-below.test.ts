@@ -39,3 +39,14 @@ it("measures the first real scroll container, skipping one that is display: cont
   contents.style.display = "contents";
   expect(rowsBelow([contents, list(0, [100, 450])])).toBe(1);
 });
+
+it("counts rows under the taller 44px bar on a phone", () => {
+  const original = window.matchMedia;
+  window.matchMedia = (() => ({ matches: true })) as unknown as typeof window.matchMedia;
+  try {
+    // A row ending 40px above the foot is covered by a 44px bar but not a 28px one.
+    expect(rowsBelow([list(0, [BOTTOM - 40])])).toBe(1);
+  } finally {
+    window.matchMedia = original;
+  }
+});

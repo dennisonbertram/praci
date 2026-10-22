@@ -357,7 +357,7 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./shell/roster-tab-stops";
-import { MORE_BAR_HEIGHT, rowsBelow } from "./shell/rows-below";
+import { moreBarHeight, rowsBelow } from "./shell/rows-below";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import {
   activeSpaceFirst,
@@ -5733,7 +5733,7 @@ export function ShellPage() {
               type="button"
               data-testid="sidebar-more-rows"
               className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center bg-sidebar text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-              style={{ height: MORE_BAR_HEIGHT }}
+              style={{ height: moreBarHeight() }}
               onClick={() => {
                 const pane = sidebarPaneRef.current;
                 const list = sidebarScrollRef.current;
