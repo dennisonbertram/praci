@@ -253,40 +253,45 @@ export function LegalDeadlines({
                   </p>
                 ) : null}
               </div>
-              <time
-                dateTime={deadline.dueDate}
-                className={cn("text-sm tabular-nums", overdue && "font-medium text-destructive")}
-              >
-                {fullDay(deadline.dueDate)}
-              </time>
-              <div className="flex gap-2">
-                {onAsk ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <time
+                  dateTime={deadline.dueDate}
+                  className={cn(
+                    "w-32 shrink-0 text-sm tabular-nums",
+                    overdue && "font-medium text-destructive",
+                  )}
+                >
+                  {fullDay(deadline.dueDate)}
+                </time>
+                <div className="flex gap-2">
+                  {onAsk ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t`Ask agent about ${name}`}
+                      onClick={() => onAsk(deadline)}
+                    >
+                      <Trans>Ask agent</Trans>
+                    </Button>
+                  ) : null}
                   <Button
                     size="sm"
                     variant="outline"
-                    aria-label={t`Ask agent about ${name}`}
-                    onClick={() => onAsk(deadline)}
+                    aria-label={t`Mark ${name} done`}
+                    onClick={(event) => void close(deadline, "done", rowHeight(event))}
                   >
-                    <Trans>Ask agent</Trans>
+                    <Trans>Done</Trans>
                   </Button>
-                ) : null}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={t`Mark ${name} done`}
-                  onClick={(event) => void close(deadline, "done", rowHeight(event))}
-                >
-                  <Trans>Done</Trans>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title={t`Not a real deadline: hide it`}
-                  aria-label={t`Dismiss ${name}`}
-                  onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
-                >
-                  <Trans>Dismiss</Trans>
-                </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title={t`Not a real deadline: hide it`}
+                    aria-label={t`Dismiss ${name}`}
+                    onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
+                  >
+                    <Trans>Dismiss</Trans>
+                  </Button>
+                </div>
               </div>
             </li>
           );

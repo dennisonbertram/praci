@@ -79,6 +79,7 @@ export const overview: LegalOverview = {
     activeContracts: 1,
     openDeadlines: 2,
     overdueDeadlines: 1,
+    doneDeadlines: 1,
     unreviewedDocuments: 3,
   },
   agent: {
@@ -98,6 +99,7 @@ export const emptyOverview: LegalOverview = {
     activeContracts: 0,
     openDeadlines: 0,
     overdueDeadlines: 0,
+    doneDeadlines: 0,
     unreviewedDocuments: 0,
   },
   agent: { botId: id(900), lastScanAt: null, dailyScanActive: true, lastScanRun: null },

@@ -4344,6 +4344,10 @@ msgstr "Don't share"
 msgid "Done"
 msgstr "Done"
 
+#: src/pages/Legal.tsx
+msgid "Done deadlines"
+msgstr "Done deadlines"
+
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
 #: src/components/data-room/SelectionBar.tsx
@@ -6853,6 +6857,10 @@ msgstr "No contracts yet"
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
 
+#: src/pages/Legal.tsx
+msgid "No deadlines marked done."
+msgstr "No deadlines marked done."
+
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
 msgstr "No Devin sessions yet."
@@ -8111,6 +8119,10 @@ msgstr "Reading {0}…"
 msgid "Reading {done} of {total}"
 msgstr "Reading {done} of {total}"
 
+#: src/pages/Legal.tsx
+msgid "Reading {readCount} of {scanTotal}"
+msgstr "Reading {readCount} of {scanTotal}"
+
 #: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr "Reading a connected app"
@@ -8709,6 +8721,10 @@ msgstr "Return to Praci"
 #: src/components/finance/ui.tsx
 msgid "Revenue"
 msgstr "Revenue"
+
+#: src/pages/Legal.tsx
+msgid "Review"
+msgstr "Review"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -9433,6 +9449,7 @@ msgid "Show all {total}"
 msgstr "Show all {total}"
 
 #: src/pages/Investors.tsx
+#: src/pages/Legal.tsx
 msgid "Show done"
 msgstr "Show done"
 
@@ -9459,6 +9476,10 @@ msgstr "Show list"
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Show more"
+
+#: src/pages/Legal.tsx
+msgid "Show open"
+msgstr "Show open"
 
 #: src/components/ComposeEmail.tsx
 msgid "Show original message"
