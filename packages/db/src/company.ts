@@ -905,17 +905,26 @@ async function createCandidate(
     where: { ...scope, kind: data.kind, reason: data.reason, sourceKey: data.sourceKey },
     select: { id: true, importRunId: true },
   });
+  const observe = async (candidateId: string) => {
+    if (!importRun) return;
+    await db.companyImportCandidate.createMany({
+      data: [{ ...scope, runId: importRun.id, candidateId }],
+      skipDuplicates: true,
+    });
+  };
   if (existing) {
     await db.companyCandidate.update({
       where: { id: existing.id },
       data: { ...candidateData, importRunId: existing.importRunId },
     });
+    await observe(existing.id);
     return existing.id;
   }
   const created = await db.companyCandidate.create({
     data: { ...scope, ...candidateData },
     select: { id: true },
   });
+  await observe(created.id);
   return created.id;
 }
 

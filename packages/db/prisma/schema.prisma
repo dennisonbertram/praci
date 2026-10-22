@@ -3523,6 +3523,7 @@ model CompanyCandidate {
   importRunId String?
   importRun    CompanyImportRun? @relation(fields: [importRunId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
   createdAt    DateTime    @default(now())
+  importObservations CompanyImportCandidate[]
 
   @@unique([id, spaceId, ownerUserId])
   @@index([spaceId, ownerUserId, createdAt])
@@ -3647,6 +3648,7 @@ model CompanyImportRun {
   calls                 CompanyImportCall[]
   candidates            CompanyCandidate[]
   evidenceObservations  CompanyImportEvidence[]
+  candidateObservations CompanyImportCandidate[]
 
   @@unique([id, spaceId, ownerUserId])
   @@index([spaceId, ownerUserId, createdAt])
@@ -3667,6 +3669,21 @@ model CompanyImportEvidence {
   @@unique([runId, evidenceId])
   @@index([spaceId, ownerUserId, evidenceId])
   @@map("company_import_evidence")
+}
+
+model CompanyImportCandidate {
+  id          String           @id @default(cuid())
+  runId       String
+  run         CompanyImportRun @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  candidateId String
+  candidate   CompanyCandidate @relation(fields: [candidateId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId     String
+  ownerUserId String
+  createdAt   DateTime         @default(now())
+
+  @@unique([runId, candidateId])
+  @@index([spaceId, ownerUserId, candidateId])
+  @@map("company_import_candidates")
 }
 
 model CompanyImportSource {

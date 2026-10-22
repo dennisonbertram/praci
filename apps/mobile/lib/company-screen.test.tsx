@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   rpc: vi.fn(),
   alert: vi.fn(),
   push: vi.fn(),
+  openURL: vi.fn(),
   back: vi.fn(),
   params: {} as Record<string, string>,
   apiBase: "http://api.test",
@@ -62,6 +63,7 @@ vi.mock("react-native", () => {
   return {
     ActivityIndicator: () => createElement("i", { "data-testid": "spinner" }),
     Alert: { alert: state.alert },
+    Linking: { openURL: state.openURL },
     AppState: { currentState: "active", addEventListener: () => ({ remove: vi.fn() }) },
     ScrollView: box,
     StyleSheet: { create: (styles: unknown) => styles },
@@ -329,6 +331,7 @@ beforeEach(() => {
   });
   state.alert.mockReset();
   state.push.mockReset();
+  state.openURL.mockReset().mockResolvedValue(undefined);
   state.back.mockReset();
   container = document.createElement("div");
   document.body.append(container);
@@ -342,6 +345,70 @@ afterEach(() => {
 });
 
 describe("native Company RPCs", () => {
+  it("routes recognized cached inbox provenance internally and keeps external links external", async () => {
+    const evidence = {
+      id: "evidence-1",
+      factKind: "entity" as const,
+      factId: "fact-1",
+      stance: "supports" as const,
+      sourceKind: "gmail" as const,
+      connectionId: "connection-1",
+      mcpServerId: null,
+      dataRoomItemId: null,
+      sourceItemId: "provider-message-1",
+      sourceKey: "gmail:provider-message-1",
+      sourceUrl: "/app/inbox?mail=cached-message_1",
+      quote: "A synthetic source quote.",
+      contentHash: "synthetic-hash",
+      extractedAt: "2026-01-02T03:04:05.000Z",
+      extractorRunId: null,
+      extractorModel: null,
+      confidence: 0.8,
+      confirmedByUserId: null,
+      confirmedAt: null,
+    };
+    const fact: CompanyFact = {
+      ...personFact,
+      record: { ...personFact.record, evidence: [evidence] },
+    };
+    await renderFact(fact);
+    await pressButton("Open source");
+    expect(state.push).toHaveBeenCalledWith({
+      pathname: "/inbox-message",
+      params: { messageId: "cached-message_1" },
+    });
+    expect(state.openURL).not.toHaveBeenCalled();
+
+    const externalFact: CompanyFact = {
+      ...fact,
+      record: {
+        ...fact.record,
+        id: "fact-external",
+        evidence: [
+          { ...evidence, factId: "fact-external", sourceUrl: "https://example.test/source" },
+        ],
+      },
+    };
+    await renderFact(externalFact);
+    await pressButton("Open source");
+    expect(state.openURL).toHaveBeenCalledWith("https://example.test/source");
+
+    const arbitraryRelativeFact: CompanyFact = {
+      ...fact,
+      record: {
+        ...fact.record,
+        id: "fact-relative",
+        evidence: [{ ...evidence, factId: "fact-relative", sourceUrl: "/app/other" }],
+      },
+    };
+    await renderFact(arbitraryRelativeFact);
+    expect(
+      [...container.querySelectorAll("button")].some(
+        (button) => button.textContent === "Open source",
+      ),
+    ).toBe(false);
+  });
+
   it("opens and edits a low-confidence Review fact from review data", async () => {
     await render(<CompanyScreen />);
     const open = [...container.querySelectorAll("button")].find(

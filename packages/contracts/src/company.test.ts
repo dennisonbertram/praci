@@ -4,9 +4,11 @@ import {
   CompanyEntityImportInputSchema,
   CompanyEntityRecordSchema,
   CompanyEvidenceInputSchema,
+  CompanyEvidenceRecordSchema,
   CompanyIdentityRecordSchema,
   CompanyPartialDateSchema,
   companyEntityIdentifiers,
+  companyInboxSourceMessageId,
 } from "./company.js";
 import { CompanyTrackerScopeSchema } from "./company-extraction.js";
 import { CompanyImportSourceInputSchema } from "./company-import.js";
@@ -83,6 +85,42 @@ describe("company contracts", () => {
         quote: "q".repeat(241),
       }).success,
     ).toBe(false);
+  });
+
+  it("allows only the internal cached-inbox URL form for Company evidence", () => {
+    const internalInboxUrl = "/app/inbox?mail=cache_123-abc";
+    const record = (sourceUrl: string) => ({
+      ...evidence,
+      id: "evidence-1",
+      factKind: "entity" as const,
+      factId: "entity-1",
+      stance: "supports" as const,
+      connectionId: null,
+      mcpServerId: null,
+      dataRoomItemId: null,
+      sourceKey: "message-1",
+      sourceUrl,
+      extractorRunId: null,
+      confirmedByUserId: null,
+      confirmedAt: null,
+    });
+    expect(companyInboxSourceMessageId(internalInboxUrl)).toBe("cache_123-abc");
+    expect(companyInboxSourceMessageId("/app/inbox?mail=x&other=y")).toBeNull();
+    expect(companyInboxSourceMessageId("//example.test/app/inbox?mail=x")).toBeNull();
+    expect(companyInboxSourceMessageId("javascript:alert(1)")).toBeNull();
+    for (const sourceUrl of [internalInboxUrl, "https://example.test/source"]) {
+      expect(CompanyEvidenceInputSchema.safeParse({ ...evidence, sourceUrl }).success).toBe(true);
+      expect(CompanyEvidenceRecordSchema.safeParse(record(sourceUrl)).success).toBe(true);
+    }
+    for (const sourceUrl of [
+      "//example.test/app/inbox?mail=x",
+      "javascript:alert(1)",
+      "/app/other",
+      "/app/inbox?mail=x&other=y",
+    ]) {
+      expect(CompanyEvidenceInputSchema.safeParse({ ...evidence, sourceUrl }).success).toBe(false);
+      expect(CompanyEvidenceRecordSchema.safeParse(record(sourceUrl)).success).toBe(false);
+    }
   });
 
   it("keeps owner-authored evidence out of extraction inputs", () => {

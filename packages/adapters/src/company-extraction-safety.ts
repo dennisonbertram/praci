@@ -16,13 +16,14 @@ function emailsIn(text: string) {
 function containsOnlyExplicitWorkEmails(line: string) {
   const matches = [...line.matchAll(emailToken)];
   let previousEnd = 0;
-  return matches.every((match) => {
+  const explicitWorkEmails = matches.every((match) => {
     const start = match.index ?? 0;
     const segment = line.slice(previousEnd, start);
     const continuesList = previousEnd > 0 && /^\s*(?:,\s*|and\s*)+$/i.test(segment);
     previousEnd = start + match[0].length;
     return workAddressLabel.test(segment) || continuesList;
   });
+  return explicitWorkEmails && !/\b(?:personal|private|home)\b/i.test(line.slice(previousEnd));
 }
 
 function cleanSource(text: string) {

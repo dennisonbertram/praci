@@ -769,19 +769,32 @@ export function createCompanyImportPage(deps: PageDeps) {
         }
       }
     }
-    const connections = await deps.prisma.connection.findMany({
-      where: {
-        spaceId: actor.spaceId,
-        userId: actor.userId,
-        id: {
-          in: run.sources.flatMap((source) => (source.connectionId ? [source.connectionId] : [])),
+    const [connections, mcpServers] = await Promise.all([
+      deps.prisma.connection.findMany({
+        where: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          id: {
+            in: run.sources.flatMap((source) => (source.connectionId ? [source.connectionId] : [])),
+          },
         },
-      },
-      select: { id: true, displayName: true },
-    });
+        select: { id: true, displayName: true },
+      }),
+      deps.prisma.mcpServer.findMany({
+        where: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          id: {
+            in: run.sources.flatMap((source) => (source.mcpServerId ? [source.mcpServerId] : [])),
+          },
+        },
+        select: { id: true, name: true },
+      }),
+    ]);
     const labels = new Map(
       connections.map((connection) => [connection.id, connection.displayName]),
     );
+    const serverLabels = new Map(mcpServers.map((server) => [server.id, server.name]));
     const progress = await deps.engine.progress(actor, run.id);
     return {
       mode: run.mode === "sample" ? "sample" : "full",
@@ -790,6 +803,7 @@ export function createCompanyImportPage(deps: PageDeps) {
         id: source.id,
         label:
           (source.connectionId ? labels.get(source.connectionId) : undefined) ??
+          (source.mcpServerId ? serverLabels.get(source.mcpServerId) : undefined) ??
           (source.sourceKind === "data_room" ? "Data Room" : source.sourceKind),
         sourceKind: source.sourceKind as CompanyImportSession["sources"][number]["sourceKind"],
         connectionId: source.connectionId,

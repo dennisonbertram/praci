@@ -1419,7 +1419,52 @@ export async function updateCompanyImportRun(
               });
             }
           }
-          await tx.companyCandidate.deleteMany({ where: { ...scope, importRunId: run.id } });
+          const affectedCandidates = await tx.companyCandidate.findMany({
+            where: {
+              ...scope,
+              OR: [
+                { importRunId: run.id },
+                { importObservations: { some: { ...scope, runId: run.id } } },
+              ],
+            },
+            select: { id: true, importRunId: true },
+          });
+          await tx.companyImportCandidate.deleteMany({ where: { ...scope, runId: run.id } });
+          if (affectedCandidates.length > 0) {
+            const candidateIds = affectedCandidates.map((candidate) => candidate.id);
+            const survivingObservations = await tx.companyImportCandidate.findMany({
+              where: { ...scope, candidateId: { in: candidateIds } },
+              select: { candidateId: true },
+            });
+            const observedCandidateIds = new Set(
+              survivingObservations.map((observation) => observation.candidateId),
+            );
+            const originRunIds = [
+              ...new Set(
+                affectedCandidates.flatMap((candidate) =>
+                  candidate.importRunId ? [candidate.importRunId] : [],
+                ),
+              ),
+            ];
+            const discardedOrigins = await tx.companyImportRun.findMany({
+              where: { ...scope, id: { in: originRunIds }, status: "discarded" },
+              select: { id: true },
+            });
+            const discardedOriginIds = new Set(discardedOrigins.map((origin) => origin.id));
+            const deletableCandidateIds = affectedCandidates
+              .filter(
+                (candidate) =>
+                  candidate.importRunId &&
+                  discardedOriginIds.has(candidate.importRunId) &&
+                  !observedCandidateIds.has(candidate.id),
+              )
+              .map((candidate) => candidate.id);
+            if (deletableCandidateIds.length > 0) {
+              await tx.companyCandidate.deleteMany({
+                where: { ...scope, id: { in: deletableCandidateIds } },
+              });
+            }
+          }
         }
       }
       return getCompanyImportProgress(tx, actor, run.id);
@@ -2091,6 +2136,28 @@ export async function completeCompanyImportUnit(
           mcpServerId: source.mcpServerId,
           runId: run.id,
         });
+      }
+      if (input.readItems?.length) {
+        const candidates = await tx.companyCandidate.findMany({
+          where: {
+            ...scope,
+            sourceKind: source.sourceKind,
+            connectionId: source.connectionId,
+            mcpServerId: source.mcpServerId,
+            OR: input.readItems,
+          },
+          select: { id: true },
+        });
+        if (candidates.length > 0) {
+          await tx.companyImportCandidate.createMany({
+            data: candidates.map((candidate) => ({
+              ...scope,
+              runId: run.id,
+              candidateId: candidate.id,
+            })),
+            skipDuplicates: true,
+          });
+        }
       }
       if (input.reusedEvidenceIds?.length) {
         const ids = [...new Set(input.reusedEvidenceIds)];

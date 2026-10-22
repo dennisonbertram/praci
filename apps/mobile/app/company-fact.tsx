@@ -9,6 +9,7 @@ import {
   CompanyEntityEditInputSchema,
   CompanyEventEditInputSchema,
   companyFactIsVisible,
+  companyInboxSourceMessageId,
 } from "@rakazo/contracts";
 import { companyDate, companyFactTitle } from "@rakazo/core";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -262,13 +263,20 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
               detail={maskAmountsWhenHidden(JSON.stringify(evidence.extractorModel))}
             />
           ) : null}
-          {evidence.sourceUrl && /^https?:\/\//i.test(evidence.sourceUrl) ? (
+          {evidence.sourceUrl &&
+          (/^https?:\/\//i.test(evidence.sourceUrl) ||
+            companyInboxSourceMessageId(evidence.sourceUrl) !== null) ? (
             <SettingsRow
               title={t("Open source")}
               onPress={() => {
-                void Linking.openURL(evidence.sourceUrl!).catch((error: unknown) =>
-                  Alert.alert(t("Open source"), errorText(error)),
-                );
+                const messageId = companyInboxSourceMessageId(evidence.sourceUrl!);
+                if (messageId) {
+                  router.push({ pathname: "/inbox-message", params: { messageId } });
+                } else {
+                  void Linking.openURL(evidence.sourceUrl!).catch((error: unknown) =>
+                    Alert.alert(t("Open source"), errorText(error)),
+                  );
+                }
               }}
               chevron="right"
             />

@@ -215,6 +215,7 @@ describe("company extraction safety", () => {
     for (const text of [
       "Work address: 12 Main Street; avery@gmail.com",
       "Work email is unknown. Contact: avery@gmail.com",
+      "Work email: avery@northwind.example (personal)",
     ]) {
       expect(prepareCompanyDocument({ title: "Contact", text }).text).toBe("");
       expect(() => validateCompanyExtraction(publicExtraction, { title: "Contact", text })).toThrow(

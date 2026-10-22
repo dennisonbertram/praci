@@ -76,7 +76,7 @@ export function companySourceScope(kind: string, raw: Record<string, unknown>, n
   if (kind === "composio") return CompanyGenericScopeSchema.parse(raw);
   if (kind !== "gmail" && !slack) return raw;
   const scope = slack ? CompanySlackScopeSchema.parse(raw) : CompanyMailScopeSchema.parse(raw);
-  if (scope.allTime || scope.after) return scope;
+  if (scope.allTime || scope.after || scope.before) return scope;
   const year = now.getUTCFullYear() - 3;
   const month = now.getUTCMonth();
   const day = Math.min(now.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
@@ -231,11 +231,12 @@ export function createCompanySourceWorker(deps: {
       document.text,
       Math.max(0, maxBytes - Buffer.byteLength(title) - Buffer.byteLength(separator)),
     );
+    const snippet = utf8Prefix(text, 1_200);
     const extractionDocument = {
       id: document.id,
       title,
       text,
-      snippet: document.snippet,
+      snippet,
       sourceUrl: document.sourceUrl,
     };
     const content = `${title}${separator}${text}`;
@@ -263,10 +264,7 @@ export function createCompanySourceWorker(deps: {
         nextCursor,
         reusedEvidenceIds: prior.map((row) => row.id),
       };
-    if (
-      !text.trim() ||
-      !(await deps.extractor.relevant({ title, text: document.snippet }, context))
-    )
+    if (!text.trim() || !(await deps.extractor.relevant({ title, text: snippet }, context)))
       return { ...noFacts, items, nextCursor };
     const result = await deps.extractor.extract(extractionDocument, context);
     const extraction = validateCompanyExtraction(result.extraction, extractionDocument);
@@ -602,7 +600,7 @@ export function createCompanySourceWorker(deps: {
         return noFacts;
       const cached = await deps.prisma.cachedMailMessage.findFirst({
         where: { ...context.actor, connectionId: account.id, providerMessageId: itemId },
-        select: { category: true, pile: true },
+        select: { id: true, category: true, pile: true },
       });
       const sender = message.from?.address.toLowerCase();
       const decision = sender
@@ -639,7 +637,7 @@ export function createCompanySourceWorker(deps: {
           title: full.subject,
           text: full.text,
           snippet: message.snippet,
-          sourceUrl: `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(full.threadId)}`,
+          sourceUrl: cached ? `/app/inbox?mail=${cached.id}` : null,
           truncated: full.truncated,
         },
         maxBytes,
