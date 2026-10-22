@@ -5,6 +5,7 @@ import { Button, Input, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useFinanceQuery } from "../components/finance/ui";
+import { GtmCalendar } from "../components/gtm/GtmCalendar";
 import { PageHeader } from "../components/PageHeader";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -206,11 +207,7 @@ export function GtmPage({
               </section>
             ) : null}
             {calendar ? (
-              <section aria-label={t`Calendar`} className="rounded-xl border border-border p-4">
-                <p className="text-sm text-muted-foreground">
-                  <Trans>Calendar view is coming next. Scheduled items remain in Plan.</Trans>
-                </p>
-              </section>
+              <GtmCalendar overview={data} />
             ) : (
               <>
                 {botId ? (

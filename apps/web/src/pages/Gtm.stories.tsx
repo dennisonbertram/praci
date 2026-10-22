@@ -46,3 +46,32 @@ export const ErrorState: Story = {
   beforeEach: () =>
     mockRpc({ "gtm.overview": () => Promise.reject(new Error("Could not load the GTM plan.")) }),
 };
+export const Previews: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "gtm.overview": {
+        ...overview,
+        gmailAccounts: [{ connectionId: "gmail_demo", label: "Demo Gmail" }],
+        groups: {
+          ...overview.groups,
+          needs_you: [
+            item,
+            { ...item, id: "linkedin_demo", channel: "linkedin", title: "Design partner program" },
+            {
+              ...item,
+              id: "email_demo",
+              category: "outbound_email",
+              channel: "email",
+              title: "Join our beta",
+              target: "prospect@example.test",
+              notes: "Join our design partner program.\nReply unsubscribe to stop these emails.",
+            },
+          ],
+        },
+        counts: { ...overview.counts, needs_you: 3 },
+      },
+      "pages.get": page,
+      "gtm.queue": { status: "ready", complete: true, posts: [] },
+      "inbox.compose.send": { status: "disabled" },
+    }),
+};
