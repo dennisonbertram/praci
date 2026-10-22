@@ -622,6 +622,12 @@ describe("tool names for people", () => {
     }
   });
 
+  it("names the scratchpad tools in plain words", () => {
+    expect(toolPhrase("scratchpad_list", "activity")).toBe("Checking notes");
+    expect(toolPhrase("scratchpad_add", "done")).toBe("Added note");
+    expect(humanizeToolName("scratchpad_remove")).toBe("Remove note");
+  });
+
   it("never says a mail send or draft finished before its outcome is known", () => {
     expect(toolPhrase("mail_send", "done")).toBe("Email to send");
     expect(toolPhrase("mail_draft", "done")).toBe("Draft to save");

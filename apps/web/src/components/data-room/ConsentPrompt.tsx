@@ -33,6 +33,13 @@ function saveDismissed(value: string | null) {
 export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) {
   const [status, setStatus] = useState<DataRoomConsentStatus | null>(null);
   const [dismissed, setDismissed] = useState(readDismissed);
+  // Allow removes the card, so a short line says what changed.
+  const [confirmed, setConfirmed] = useState(false);
+  useEffect(() => {
+    if (!confirmed) return;
+    const timer = setTimeout(() => setConfirmed(false), 5000);
+    return () => clearTimeout(timer);
+  }, [confirmed]);
   useEffect(() => {
     let live = true;
     rpc.dataRoom
@@ -45,6 +52,12 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
   }, []);
 
   const version = status ? `${status.key}:${status.version}` : "";
+  if (confirmed)
+    return (
+      <p role="status" className="text-xs text-muted-foreground">
+        <Trans>Praci can now read your documents.</Trans>
+      </p>
+    );
   if (!status || status.allowed) return null;
   if (status.recipients.length > 0 && dismissed === version) {
     return (
@@ -83,6 +96,7 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
       heading={<Trans>Let Praci read your documents</Trans>}
       onAllow={async () => {
         setStatus(await rpc.dataRoom.consentGrant({ key: status.key, version: status.version }));
+        setConfirmed(true);
         onAllowed();
       }}
       onDismiss={() => {

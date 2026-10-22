@@ -879,8 +879,8 @@ function ArtifactCard({
             </div>
           ) : null}
         </div>
-        {/* pe-8 keeps the time clear of the Delete button, so hovering never covers it. */}
-        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground max-md:mt-0">
+        {/* The time ends at the type label's edge. Delete takes its place on hover; where it is always shown (touch, narrow) pe-8 keeps them apart. */}
+        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground max-md:mt-0 max-md:pe-8 pointer-coarse:pe-8">
           {bot ? (
             <span className="contents max-md:hidden">
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />
@@ -889,7 +889,9 @@ function ArtifactCard({
           ) : (
             <span className="flex-1 max-md:hidden" />
           )}
-          <span className="shrink-0">{formatRelativeTime(artifact.createdAt)}</span>
+          <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
+            {formatRelativeTime(artifact.createdAt)}
+          </span>
         </div>
       </Link>
       <button

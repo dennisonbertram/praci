@@ -17,7 +17,7 @@ test("Investors opens from the sidebar and the old Cap table address redirects",
   // The panel opens only on Ask.
   await expect(page.getByTestId("investors-agent-panel")).toBeHidden();
 
-  await captureScreenshot(page, testInfo, "investors");
+  await captureScreenshot(page, testInfo, "investors-empty");
 
   await page.goto("/app/cap-table?kind=auditor");
   await expect(page).toHaveURL(/\/app\/investors\?kind=auditor$/);
@@ -34,6 +34,7 @@ test("A founder without Carta types the cap table in and it is saved", async ({
   const main = page.getByRole("main");
   await main.getByRole("button", { name: "Type it in" }).click();
   await expect(main.getByRole("button", { name: /^Typed in · as of/ })).toBeVisible();
+  await captureScreenshot(page, testInfo, "investors-typed-empty");
 
   const holder = main.getByLabel("Holder").first();
   await holder.fill("Ada Founder");

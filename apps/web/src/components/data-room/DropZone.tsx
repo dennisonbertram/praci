@@ -32,7 +32,9 @@ const failureText = (reason: UploadFailure) =>
               ? t`This zip has unsafe file paths`
               : reason === "zip-invalid"
                 ? t`This zip can't be read`
-                : t`Upload failed`;
+                : reason === "network"
+                  ? t`Upload failed. Check your connection and try again.`
+                  : t`Upload failed. The server could not save this file.`;
 
 /** The one line under an upload card's name while a zip is opened, filed and read. */
 export const importingText = (name: string, progress: DataRoomApiImport | null) => {
@@ -135,11 +137,11 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           role="status"
           aria-live="polite"
           data-testid="data-room-toasts"
-          // Phones: the full width less a 16px gutter each side, so the toast is centred.
-          // Top right under the header, never the bottom: an open Ask panel's composer lives there.
-          // A batch scrolls inside this height, so newer toasts and the composer stay reachable.
-          // Notification toasts start at the same spot: drop this stack below them so the two never overlap.
-          className="fixed inset-x-4 top-16 z-100 flex max-h-[calc(100dvh-14rem)] flex-col gap-2 overflow-y-auto sm:left-auto sm:w-72 [body:has([data-slot=notification-toast])_&]:top-44"
+          // Bottom of the page, never the top: the header's sort and filter controls, the phone's
+          // search row and the notification toasts all live there. Phones: the full width less a
+          // 16px gutter, lifted clear of an open Ask panel's composer. Wider: centred in the list.
+          // A batch scrolls inside this height, so newer toasts stay reachable.
+          className="fixed inset-x-4 bottom-24 z-100 flex max-h-[calc(100dvh-14rem)] flex-col gap-2 overflow-y-auto sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:w-72 sm:-translate-x-1/2"
           onPointerEnter={() => holdUploadToasts(true)}
           onPointerLeave={() => holdUploadToasts(false)}
         >

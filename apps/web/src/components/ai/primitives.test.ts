@@ -11,12 +11,16 @@ describe("formatElapsed", () => {
 
   it("formats elapsed time past a minute", () => {
     expect(formatElapsed(0, 60_000)).toBe("1m 0.0s");
-    expect(formatElapsed(0, 125_700)).toBe("2m 5.7s");
+    expect(formatElapsed(0, 90_700)).toBe("1m 30.7s");
+  });
+
+  it("drops the tenths once a run is slow", () => {
+    expect(formatElapsed(0, 125_700)).toBe("2m 5s");
   });
 
   it("rounds to tenths before choosing the minute boundary", () => {
     expect(formatElapsed(0, 59_950)).toBe("1m 0.0s");
-    expect(formatElapsed(0, 119_950)).toBe("2m 0.0s");
+    expect(formatElapsed(0, 119_950)).toBe("2m 0s");
   });
 
   it("clamps negative deltas to zero", () => {

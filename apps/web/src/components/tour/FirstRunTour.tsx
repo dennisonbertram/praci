@@ -50,12 +50,12 @@ export function FirstRunTour({
       {
         id: "legal",
         anchor: '[data-tour="sidebar-legal"]',
-        text: t`Keep contracts here, and see who owns what in Investors.`,
+        text: t`Keep your contracts here and see which are due soon.`,
       },
       {
         id: "files",
         anchor: '[data-tour="sidebar-data-room"]',
-        text: t`Upload files for bots to use. Artifacts holds what bots make.`,
+        text: t`Upload files for bots to use.`,
       },
       {
         id: "chat",

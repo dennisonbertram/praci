@@ -19,6 +19,7 @@ import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { SAVED_ROW_CLASS } from "../../lib/use-contact-notices";
 import { contactStageNames } from "../ContactDialog";
+import { ProspectRowPlaceholder } from "./Placeholders";
 
 function ProspectRow({
   prospect,
@@ -47,7 +48,7 @@ function ProspectRow({
   return (
     <li
       data-contact-id={prospect.id}
-      className={`flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0 ${saved ? SAVED_ROW_CLASS : ""}`}
+      className={`flex min-h-13 flex-wrap items-center gap-x-2 border-t border-border @md/bd:flex-nowrap ${saved ? SAVED_ROW_CLASS : ""}`}
     >
       <button
         type="button"
@@ -67,7 +68,7 @@ function ProspectRow({
         ) : null}
       </button>
       {/* A fixed column, so the amounts line up whatever the names are. */}
-      <span className="w-24 shrink-0 text-end text-sm tabular-nums" data-testid="check-size">
+      <span className="shrink-0 text-end text-sm tabular-nums @md/bd:w-24" data-testid="check-size">
         {usdFigure(
           prospect.checkSizeCents == null ? null : prospect.checkSizeCents / 100,
           0,
@@ -76,7 +77,7 @@ function ProspectRow({
       </span>
       {onSendSafe ? (
         // The button has its own slot after the amount, so amounts and menus line up in every row.
-        <span className="flex w-24 shrink-0 justify-end">
+        <span className="order-last flex w-full justify-start pb-2 @md/bd:order-none @md/bd:w-24 @md/bd:justify-end @md/bd:pb-0">
           {prospect.stage === "committed" && !waiting ? (
             <Button
               variant={filledSend ? "default" : "outline"}
@@ -135,7 +136,7 @@ function ProspectRow({
   );
 }
 
-/** Prospects grouped under their stage. Empty stages are not drawn; Passed is a button that expands in place. */
+/** Prospects grouped under their stage, the furthest first. Empty stages are not drawn; Passed is a button that expands in place. */
 export function Pipeline({
   prospects,
   savedId = null,
@@ -178,14 +179,34 @@ export function Pipeline({
       onNotSent={onNotSent && (() => onNotSent(prospect))}
     />
   );
+  if (prospects.length === 0)
+    // Nothing yet: the stages a first prospect lands in, with static skeleton rows.
+    return (
+      <div className="flex flex-col gap-4">
+        {(["meeting", "intro"] as const).map((stage, i) => (
+          <section key={stage} aria-label={stageNames[stage]}>
+            <h3 className="mb-0.5 flex gap-2 text-xs font-semibold text-muted-foreground">
+              {stageNames[stage]}
+            </h3>
+            <ul>
+              {Array.from({ length: i === 0 ? 2 : 1 }, (_, n) => (
+                <ProspectRowPlaceholder key={n} />
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    );
   return (
     <div className="flex flex-col gap-4">
-      {ContactStageSchema.options
+      {[...ContactStageSchema.options]
+        .reverse()
         .filter((stage) => stage !== "passed" && inStage(stage).length > 0)
         .map((stage) => (
           <section key={stage} aria-label={stageNames[stage]}>
-            <h3 className="mb-1 px-2 text-xs font-semibold text-muted-foreground">
+            <h3 className="mb-0.5 flex gap-2 text-xs font-semibold text-muted-foreground">
               {stageNames[stage]}
+              <span className="font-normal">{inStage(stage).length}</span>
             </h3>
             <ul>{inStage(stage).map(row)}</ul>
           </section>
