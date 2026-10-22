@@ -6277,9 +6277,11 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
+              <div
+                className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 ${TOP_BAR_HEIGHT}`}
+              >
                 <span
-                  className="min-w-0 truncate text-[13.5px] text-muted-foreground"
+                  className="min-w-0 truncate text-[16px] font-medium text-foreground"
                   title={panel === "settings" && active ? t`${active.name} settings` : undefined}
                 >
                   {panel === "settings" ? (
