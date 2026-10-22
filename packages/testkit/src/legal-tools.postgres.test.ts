@@ -576,10 +576,18 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       (await prisma.legalDeadline.findUniqueOrThrow({ where: { id: noticeRow.id } })).status,
     ).toBe("done");
 
-    // Terminating the contract dismisses what is derived and still open; the hand-made one stays.
-    await legal(a, "legal_upsert_contract", { ...base, title: "HQ lease", status: "terminated" });
+    // Terminating the contract never dismisses on its own: the derived open one is proposed for removal.
+    const ended = await legal(a, "legal_upsert_contract", {
+      ...base,
+      title: "HQ lease",
+      status: "terminated",
+    });
     const left = (await legal(a, "legal_query", { view: "deadlines", contractId })).deadlines;
-    expect(left.map((d: any) => d.id)).toEqual([manual.deadline.id]);
+    expect(left.map((d: any) => d.id).sort()).toEqual(
+      [manual.deadline.id, ...ended.proposedRemovals.map((d: any) => d.id)].sort(),
+    );
+    expect(ended.proposedRemovals.map((d: any) => d.title)).toEqual(["Expires"]);
+    expect(left.find((d: any) => d.title === "Expires").removalProposed).toBe(true);
   });
 
   it("keeps stored term, value and deadlines when a re-scan extracts nothing", async () => {
@@ -979,7 +987,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(await prisma.legalContract.count({ where: { dataRoomItemId: item.id } })).toBe(0);
   });
 
-  it("dismisses the open derived deadlines when a contract is reclassified as not legal", async () => {
+  it("proposes, never dismisses, the open derived deadlines when a contract is reclassified as not legal", async () => {
     const item = await addItem(a, "reclass.txt", "First read as a contract.");
     const made = await legal(a, "legal_upsert_contract", {
       dataRoomItemId: item.id,
@@ -991,14 +999,34 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       renewalNoticeDays: 30,
     });
     expect(made.derivedDeadlines).toHaveLength(2);
-    await legal(a, "legal_upsert_contract", {
+    const again = await legal(a, "legal_upsert_contract", {
       dataRoomItemId: item.id,
       revision: item.revision,
       notLegal: true,
     });
+    expect(again.proposedRemovals).toHaveLength(2);
     const rows = await prisma.legalDeadline.findMany({ where: { contractId: made.contract.id } });
-    expect(rows.map((r) => r.status)).toEqual(["dismissed", "dismissed"]);
-    expect(rows[0]?.notes).toBe("Dismissed: the contract no longer has this date.");
+    expect(rows.map((r) => r.status)).toEqual(["open", "open"]);
+    expect(rows.every((r) => r.removalProposedAt)).toBe(true);
+    // The agent cannot dismiss through the deadline tool either; that only proposes.
+    const viaTool = await legal(a, "legal_upsert_deadline", {
+      id: rows[0]?.id,
+      title: "x",
+      dueDate: "2033-02-02",
+      kind: "other",
+      status: "dismissed",
+    });
+    expect(viaTool.deadline.status).toBe("open");
+    // Keeping it clears the proposal; the founder's Dismiss still works.
+    await legalUpdateDeadline({ prisma } as never, a, { id: rows[0]?.id as string, keep: true });
+    expect(
+      (await prisma.legalDeadline.findUniqueOrThrow({ where: { id: rows[0]?.id } }))
+        .removalProposedAt,
+    ).toBeNull();
+    await legalUpdateDeadline({ prisma } as never, a, { id: rows[1]?.id as string, status: "dismissed" });
+    expect(
+      (await prisma.legalDeadline.findUniqueOrThrow({ where: { id: rows[1]?.id } })).status,
+    ).toBe("dismissed");
   });
 
   it("keeps a node per contract when two contracts share a title", async () => {

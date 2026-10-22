@@ -128,6 +128,7 @@ export const toLegalDeadline = (
   status: LegalDeadlineStatusSchema.catch("open").parse(row.status),
   sourceQuote: row.sourceQuote,
   notes: row.notes,
+  removalProposed: row.removalProposedAt !== null,
 });
 
 // ---- Input schemas ----
@@ -231,7 +232,6 @@ export const LEGAL_CONSENT_REFUSAL =
   "The user has not agreed to send Data Room documents to this agent's model provider, so the Data Room cannot be read. Ask the user to allow it for this agent, then try again.";
 const DAY_MS = 86_400_000;
 const NOTICE_NOTE = "Derived from the expiration date and the notice period.";
-const DISMISSED_NOTE = "Dismissed: the contract no longer has this date.";
 
 const actorOf = (scope: LegalToolDeps["scope"]): Actor => ({
   ...scope,
@@ -298,12 +298,24 @@ export async function legalToolFromTool(
     if (name === "legal_upsert_deadline") {
       const parsed = DeadlineArgs.safeParse(args);
       if (!parsed.success) return { error: issues(parsed.error) };
-      const { dueDate, ...rest } = parsed.data;
+      const { dueDate, status, ...rest } = parsed.data;
+      // The agent never dismisses: it proposes, and the founder confirms on the Legal page.
+      if (status === "dismissed" && !rest.id) {
+        return { error: "Pass the id of the deadline to propose removing it" };
+      }
       const row = await repo.upsertDeadline(actor, {
         ...rest,
+        ...(status && status !== "dismissed" ? { status } : {}),
         dueDate: parseLegalDay(dueDate) as Date,
       });
-      return { deadline: toLegalDeadline(row) };
+      const marked =
+        status === "dismissed" && row.status === "open"
+          ? await repo.updateDeadline(actor, row.id, { proposeRemoval: true })
+          : row;
+      return {
+        deadline: toLegalDeadline(marked),
+        ...(status === "dismissed" ? { note: "Proposed for removal; the founder confirms." } : {}),
+      };
     }
     if (name === "legal_upsert_node") {
       const parsed = NodeArgs.safeParse(args);
@@ -354,9 +366,9 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
         contractType: LEGAL_NOT_LEGAL_TYPE,
         status: "unknown",
       });
-      // No dates, so every open derived deadline of a contract reclassified as not legal is dismissed.
-      await deriveDeadlines(tx, row);
-      return { reviewed: true, contractId: row.id };
+      // No dates, so every open derived deadline of a contract reclassified as not legal is proposed for removal.
+      const derived = await deriveDeadlines(tx, row);
+      return { reviewed: true, contractId: row.id, ...proposals(derived.proposed) };
     });
   }
   if (!input.title || !input.contractType || !input.status) {
@@ -385,7 +397,8 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
     const derived = await deriveDeadlines(tx, row, input.renewalQuote ?? undefined);
     return {
       contract: toLegalContract(row),
-      derivedDeadlines: derived.map((d) => toLegalDeadline(d)),
+      derivedDeadlines: derived.upserted.map((d) => toLegalDeadline(d)),
+      ...proposals(derived.proposed),
     };
   });
 }
@@ -394,7 +407,7 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
  * Keeps the expiration and notice-of-non-renewal deadlines of a contract in line with its dates, so
  * the agent never does date arithmetic itself. They are marked `derived`. A date change moves the
  * open one, a deadline the user closed stays closed (a changed date opens a new one), and an open derived deadline that no longer
- * applies (contract terminated, renamed, no expiry) is dismissed. Deadlines made by hand are never touched.
+ * applies (contract terminated, renamed, no expiry) is only proposed for removal: a scan never dismisses. Deadlines made by hand are never touched.
  */
 async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecord, quote?: string) {
   const repo = createLegalRepos(deps.prisma);
@@ -428,11 +441,10 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
   const sameKey = (a: { kind: string; title: string }, b: { kind: string; title: string }) =>
     a.kind === b.kind && a.title === b.title;
   const out: LegalDeadlineRecord[] = [];
+  const proposed: LegalDeadlineRecord[] = [];
   for (const row of previous) {
     if (row.status === "open" && !wanted.some((item) => sameKey(item, row))) {
-      out.push(
-        await repo.updateDeadline(actor, row.id, { status: "dismissed", notes: DISMISSED_NOTE }),
-      );
+      proposed.push(await repo.updateDeadline(actor, row.id, { proposeRemoval: true }));
     }
   }
   for (const item of wanted) {
@@ -450,13 +462,18 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
         kind: item.kind,
         dueDate: item.dueDate,
         derived: true,
+        removalProposedAt: null,
         sourceQuote: quote,
         notes: item.notes ?? NOTICE_NOTE,
       }),
     );
   }
-  return out;
+  return { upserted: out, proposed };
 }
+
+/** The tool result for removals a scan proposed; absent when there are none. */
+const proposals = (rows: LegalDeadlineRecord[]) =>
+  rows.length ? { proposedRemovals: rows.map((d) => toLegalDeadline(d)) } : {};
 
 async function query(deps: LegalToolDeps, args: Record<string, unknown>) {
   const parsed = QueryArgs.safeParse(args);

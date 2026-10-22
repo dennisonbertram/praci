@@ -98,3 +98,31 @@ it("keeps another row's Undo when an earlier close fails", async () => {
   expect(container.textContent).toContain("Notice b");
   expect(container.textContent).toContain("Undo");
 });
+
+it("offers Keep on a deadline a scan proposed removing, and Keep clears the proposal", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  update.mockResolvedValue(null);
+  const deadline = {
+    id: "d9",
+    title: "Send non-renewal notice",
+    dueDate: "2030-01-01",
+    contractTitle: null,
+    dataRoomItemId: null,
+    sourceQuote: null,
+    removalProposed: true,
+  } as unknown as LegalDeadline;
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <LegalDeadlines deadlines={[deadline]} onChanged={() => undefined} today="2029-12-01" />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.textContent).toContain("The last scan thinks this no longer applies.");
+  const keep = [...container.querySelectorAll("button")].find((b) => b.textContent === "Keep");
+  await act(async () => keep?.click());
+  expect(update).toHaveBeenCalledWith({ id: "d9", keep: true });
+});

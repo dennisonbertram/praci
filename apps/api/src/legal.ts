@@ -195,7 +195,7 @@ export async function legalDoneDeadlines(deps: LegalDeps, actor: Actor) {
 export async function legalUpdateDeadline(
   deps: LegalDeps,
   actor: Actor,
-  input: { id: string; status?: string; notes?: string | null },
+  input: { id: string; status?: string; notes?: string | null; keep?: boolean },
 ) {
   try {
     const row = await createLegalRepos(deps.prisma).updateDeadline(actor, input.id, input);
