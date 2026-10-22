@@ -68,6 +68,14 @@ describe("executor approval replay", () => {
     expect(queue.assertDrained).not.toThrow();
   });
 
+  it("keeps an unanswered approval paused, whatever the run's task text says", () => {
+    // Only the card's own answer moves an effect to approved; a resume sees "intended" and
+    // pauses on the existing card instead of executing or issuing a new decision.
+    expect(resolveDuplicateEffectGate({ status: "intended" }, "requestSendMoney")).toEqual({
+      action: "paused",
+    });
+  });
+
   it("uses a stable secondary key when approval timestamps match", () => {
     expect(APPROVED_EFFECT_REPLAY_ORDER).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
   });

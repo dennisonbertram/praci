@@ -115,7 +115,7 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
   await expect(modelSelect).toBeVisible();
   await expect(modelSelect).toContainText("Space default");
   await captureScreenshot(page, testInfo, "27a-bot-settings-model");
-  await page.getByRole("button", { name: "Computer and routines" }).click();
+  await page.getByRole("button", { name: /^(Computer and )?routines$/i }).click();
   const sidePanel = page.getByTestId("side-panel");
   await expect(sidePanel).toHaveAttribute("data-panel", "computer");
   await expect(page.getByRole("button", { name: "Show settings" })).toBeVisible();
