@@ -41,6 +41,8 @@ export function ActiveBotGlyph({
   detail,
   detailSince,
   waitingLabel,
+  onStop,
+  onRetry,
 }: {
   bots: GroupAvatarMember[];
   label: string;
@@ -48,6 +50,8 @@ export function ActiveBotGlyph({
   detail?: string;
   detailSince?: number;
   waitingLabel?: string;
+  onStop?: () => void;
+  onRetry?: () => void;
 }) {
   return (
     <div className="flex min-h-10 items-center px-1">
@@ -58,6 +62,8 @@ export function ActiveBotGlyph({
         detail={detail}
         detailSince={detailSince}
         waitingLabel={waitingLabel}
+        onStop={onStop}
+        onRetry={onRetry}
       />
     </div>
   );

@@ -1123,6 +1123,8 @@ describe("sendThreadMessage", () => {
         data: { status: "queued" },
       }),
     );
+    // The typed answer is stored once; the card shows it as answered, with no second message.
+    expect(tx.message.create).toHaveBeenCalledTimes(1);
     expect(tx.steeringMessage.create).not.toHaveBeenCalled();
     expect(tx.task.create).not.toHaveBeenCalled();
     expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ name: "run.continue" }));

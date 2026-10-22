@@ -140,7 +140,7 @@ it("puts the status in its own column as a badge, and never in the Type cell", (
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
-  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", "—"]);
+  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", ""]);
   expect(cells[0]?.querySelector("[data-slot=badge]")).not.toBeNull();
   // The Type cell (second) never holds a status word.
   for (const row of container.querySelectorAll("[data-row]")) {

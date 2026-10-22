@@ -339,7 +339,7 @@ export function BotSkillsSection({
                 <Trans>New skill</Trans>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileInput.current?.click()}>
-                <Trans>Upload SKILL.md</Trans>
+                <Trans>Upload a skill file</Trans>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {

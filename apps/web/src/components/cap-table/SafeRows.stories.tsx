@@ -1,6 +1,5 @@
 import type { Safe } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MemoryRouter } from "react-router-dom";
 import { SafeRows } from "./SafeRows";
 
 const safe = (id: string, investorName: string, extra: Partial<Safe> = {}): Safe => ({
@@ -35,11 +34,9 @@ const meta = {
   component: SafeRows,
   decorators: [
     (Story) => (
-      <MemoryRouter>
-        <div className="max-w-3xl p-4">
-          <Story />
-        </div>
-      </MemoryRouter>
+      <div className="max-w-3xl p-4">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof SafeRows>;

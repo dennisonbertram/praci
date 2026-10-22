@@ -1000,7 +1000,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "高级"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -2181,6 +2176,10 @@ msgstr "聊天应用"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat apps, group channels, and agent connections."
 msgstr "聊天应用、群组频道和 Agent 连接。"
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -7497,6 +7496,10 @@ msgstr ""
 msgid "Out"
 msgstr ""
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -8935,13 +8938,6 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr ""
@@ -8964,6 +8960,13 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -9785,6 +9788,7 @@ msgstr ""
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9916,6 +9920,7 @@ msgstr "接管控制权"
 msgid "Take the tour"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""
@@ -10501,6 +10506,7 @@ msgstr ""
 msgid "Try {name} again"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -10835,6 +10841,10 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr ""
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr ""
@@ -10849,10 +10859,6 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use."
-msgstr ""
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -11096,10 +11102,6 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
-msgstr ""
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
