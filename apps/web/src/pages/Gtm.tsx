@@ -31,6 +31,8 @@ export function GtmPage({
   const [params, setParams] = useSearchParams();
   const calendar = params.get("view") === "calendar";
   const [page, setPage] = useState<BotPage | null>(null);
+  const hadContent = useRef(false);
+  if (page?.content.trim()) hadContent.current = true;
   const [editing, setEditing] = useState(false);
   const [goal, setGoal] = useState("");
   const [busy, setBusy] = useState(false);
@@ -211,10 +213,13 @@ export function GtmPage({
             ) : (
               <>
                 {botId ? (
-                  // Hidden until the agent has written something, but mounted so it can load the page.
+                  // Hidden only once the page loaded empty and was never written; stays visible while
+                  // loading, on load errors, and while the user edits or clears an existing page.
                   <section
                     className={
-                      page?.content.trim() ? "rounded-xl border border-border p-4" : "hidden"
+                      page && !page.content.trim() && !hadContent.current
+                        ? "hidden"
+                        : "rounded-xl border border-border p-4"
                     }
                   >
                     <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
