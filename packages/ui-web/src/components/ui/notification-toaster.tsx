@@ -100,7 +100,7 @@ function ToastBody({
         </span>
         <Toast.Description
           render={<span />}
-          className="mt-1 line-clamp-3 max-sm:line-clamp-4 text-sm text-muted-foreground break-words"
+          className="mt-1 line-clamp-3 max-sm:line-clamp-4 text-sm text-muted-foreground break-words group-data-[compact]/viewport:hidden"
         />
       </span>
     </>
@@ -190,6 +190,9 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
+      // A phone screen with no composer (a settings sheet, a detail page) has nothing to dock above:
+      // show the title alone so the card covers one line, not the content.
+      viewport.toggleAttribute("data-compact", isPhone() && lift === 0);
       // The toasts sit over the bottom of the thread above the composer; the thread pads by their height.
       const reserve = lift > 0 ? viewport.getBoundingClientRect().height + GAP_ABOVE_PX : 0;
       document.documentElement.style.setProperty("--toast-reserve", `${reserve}px`);
@@ -210,6 +213,7 @@ function ToastList({
       clearInterval(timer);
       window.removeEventListener("resize", place);
       viewport.style.removeProperty("--toast-lift");
+      viewport.removeAttribute("data-compact");
       viewport.style.removeProperty("--toast-shift");
       viewport.style.removeProperty("--toast-max-width");
       document.documentElement.style.removeProperty("--toast-reserve");
