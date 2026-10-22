@@ -7,9 +7,11 @@ import {
   filterBuiltinToolsForRun,
   filterBuiltinToolsForThread,
   isOneShotRoutineCron,
+  keepForcedSkill,
   listSchedulesFromTool,
   resolveScheduleTiming,
   SCHEDULE_TOOL_NAMES,
+  scheduleApproval,
 } from "./schedule-tools.js";
 
 describe("resolveScheduleTiming", () => {
@@ -473,5 +475,51 @@ describe("schedule tool persistence", () => {
         where: { spaceId: "ws-1", botId: "bot-1", userId: "user-1", id: "routine-1" },
       }),
     );
+  });
+});
+
+describe("routine from a forced skill", () => {
+  it("keeps the skill the owner forced as an @mention", () => {
+    expect(keepForcedSkill("Draft the note", "Use skill: Weekly investor note\n\nbody")).toBe(
+      "@Weekly investor note Draft the note",
+    );
+    expect(
+      keepForcedSkill("@Weekly investor note Draft", "/Weekly investor note\nevery Monday"),
+    ).toBe("@Weekly investor note Draft");
+    expect(keepForcedSkill("Draft the note", "every Monday draft a note")).toBe("Draft the note");
+  });
+
+  it("leads the approval with when it runs, and puts the prompt under details", async () => {
+    const card = await scheduleApproval(
+      { prisma: {} as never },
+      { spaceId: "s", botId: "b", userId: "u" },
+      "schedule_create",
+      { name: "Note", prompt: "Draft the note", cron: "0 9 * * 1" },
+      "America/New_York",
+    );
+    expect(card?.summary).toBe("Every Monday at 9:00 AM, posts here");
+    expect(card?.detail).toContain("prompt: Draft the note");
+  });
+
+  it("names the group an updated routine posts in", async () => {
+    const prisma = {
+      routine: {
+        findFirst: vi.fn(async () => ({
+          name: "Note",
+          timezone: "UTC",
+          crons: ["0 9 * * 1"],
+          threadId: "t-group",
+        })),
+      },
+      thread: { findUnique: vi.fn(async () => ({ group: { name: "Investors" } })) },
+    };
+    const card = await scheduleApproval(
+      { prisma: prisma as never },
+      { spaceId: "s", botId: "b", userId: "u" },
+      "schedule_update",
+      { id: "r1", prompt: "Draft a different note" },
+      null,
+    );
+    expect(card?.summary).toBe("Changing “Note”: Every Monday at 9:00 AM, posts in “Investors”");
   });
 });

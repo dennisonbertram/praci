@@ -2583,7 +2583,6 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "电脑"
@@ -2610,14 +2609,6 @@ msgstr "电脑已休眠"
 
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2710,6 +2701,10 @@ msgstr "连接模型"
 
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
+msgstr ""
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5192,10 +5187,6 @@ msgstr "请挂断，然后输入屏幕上的代码。"
 msgid "Has attachment"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "请求头"
@@ -5457,6 +5448,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In runway"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
@@ -6867,6 +6862,10 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
@@ -7217,6 +7216,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -7855,10 +7858,6 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "私有"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8873,6 +8872,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "回答是或否，或一句话说明。"
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -9272,13 +9283,13 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9961,10 +9972,6 @@ msgstr "示范任务"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "正在示范，发送新消息前请先停止示范。"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "团队"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -10958,10 +10965,6 @@ msgstr ""
 msgid "Use your own key"
 msgstr "使用自己的密钥"
 
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -11323,6 +11326,10 @@ msgstr "处理中…"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx

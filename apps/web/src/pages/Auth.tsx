@@ -32,6 +32,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   });
   const [pending, setPending] = useState(false);
   const [tooShort, setTooShort] = useState(false);
+  // Each field's own message sits under it; `error` stays for what only the server can say.
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
@@ -72,20 +76,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!reset?.passwordAuth) return;
-    if (mode === "up" && !name.trim()) {
-      setError(t`Enter your name`);
-      return;
-    }
-    const issue = credentialIssue({ email, password: mode === "forgot" ? undefined : password });
-    if (issue) {
-      setError(credentialIssueText(issue));
-      return;
-    }
-    // The rule is shown under the field; a short password turns that line red, with no native bubble.
-    if (mode === "up" && password.length < 8) {
-      setTooShort(true);
-      return;
-    }
+    const issues = {
+      name: mode === "up" && !name.trim() ? t`Enter your name` : null,
+      email: credentialIssue({ email }) ? credentialIssueText("email") : null,
+      password: mode === "in" && !password ? credentialIssueText("password") : null,
+    };
+    // At sign-up the rule under the field is the message: a short or empty password turns it red.
+    const short = mode === "up" && password.length < 8;
+    setError(null);
+    setNameError(issues.name);
+    setEmailError(issues.email);
+    setPasswordError(issues.password);
+    setTooShort(short);
+    if (issues.name || issues.email || issues.password || short) return;
     setPending(true);
     setError(null);
     try {
@@ -235,10 +238,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     // Chief greets the founder by this name; without it the email handle stood in.
                     required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setNameError(null);
+                    }}
                     placeholder={t`Your name`}
+                    aria-invalid={nameError ? true : undefined}
+                    aria-describedby={nameError ? "name-error" : undefined}
                     className={fieldClass}
                   />
+                  {nameError ? (
+                    <p id="name-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                      {nameError}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               <div className="w-full">
@@ -250,13 +263,22 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   name="email"
                   autoComplete="username"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(null);
+                  }}
                   placeholder={t`Your email address`}
                   type="email"
                   required
-                  aria-invalid={error ? true : undefined}
+                  aria-invalid={error || emailError ? true : undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
                   className={fieldClass}
                 />
+                {emailError ? (
+                  <p id="email-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                    {emailError}
+                  </p>
+                ) : null}
               </div>
               {mode !== "forgot" ? (
                 <div className="mt-4 w-full">
@@ -272,11 +294,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       onChange={(e) => {
                         setPassword(e.target.value);
                         setTooShort(false);
+                        setPasswordError(null);
                       }}
                       placeholder={t`Password`}
                       type={showPassword ? "text" : "password"}
                       required
-                      aria-invalid={error || tooShort ? true : undefined}
+                      aria-invalid={error || tooShort || passwordError ? true : undefined}
+                      aria-describedby={
+                        mode === "up"
+                          ? "password-hint"
+                          : passwordError
+                            ? "password-error"
+                            : undefined
+                      }
                       className={`${fieldClass} mt-0 pr-12`}
                     />
                     <Button
@@ -293,10 +323,16 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   </div>
                   {mode === "up" ? (
                     <p
+                      id="password-hint"
                       role={tooShort ? "alert" : undefined}
                       className={`mt-1.5 text-sm ${tooShort ? "text-destructive" : "text-muted-foreground"}`}
                     >
                       <Trans>At least 8 characters.</Trans>
+                    </p>
+                  ) : null}
+                  {mode === "in" && passwordError ? (
+                    <p id="password-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                      {passwordError}
                     </p>
                   ) : null}
                   {mode === "in" && reset?.passwordReset ? (

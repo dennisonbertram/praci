@@ -2583,7 +2583,6 @@ msgid "Compose"
 msgstr "Compose"
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Computer"
@@ -2611,14 +2610,6 @@ msgstr "Computer is asleep"
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
 msgstr "Computer is asleep. Open it to wake."
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr "Computer is off"
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
-msgstr "Computer is on"
 
 #: src/pages/Shell.tsx
 msgid "Computer is starting"
@@ -2711,6 +2702,10 @@ msgstr "Connect a model"
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
 msgstr "Connect a model in Settings first."
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
+msgstr "Connect a provider to add backups."
 
 #: src/pages/Shell.tsx
 msgid "Connect a voice provider to call Elio."
@@ -5192,10 +5187,6 @@ msgstr "Hang up, then enter the code on screen."
 msgid "Has attachment"
 msgstr "Has attachment"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr "Has its own computer."
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "header"
@@ -5458,6 +5449,10 @@ msgstr "In review"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In runway"
 msgstr "In runway"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
+msgstr "In use"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
@@ -6867,6 +6862,10 @@ msgstr "No mail matches this filter"
 msgid "No matches"
 msgstr "No matches"
 
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
+msgstr "No matches in pages, documents, contacts"
+
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr "No matches. Press Escape to send as typed."
@@ -7218,6 +7217,10 @@ msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
+msgstr "Only this bot"
 
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
@@ -7855,10 +7858,6 @@ msgstr "Priority"
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr "Privacy and approvals"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "Private"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8873,6 +8872,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "Say yes or no, or answer in a sentence."
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr "Scan cancelled."
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr "Scan finished: nothing changed."
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr "Scan now"
 
@@ -9272,14 +9283,14 @@ msgstr "Shared by all bots"
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr "Shared with your other bots"
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
 msgstr "Shares"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
-msgstr "Shares one computer with your other bots."
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Investors.tsx
@@ -9961,10 +9972,6 @@ msgstr "Teach a task"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "Teaching in progress. Stop teaching before sending a new message."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "Team"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -10958,10 +10965,6 @@ msgstr "Use this sheet"
 msgid "Use your own key"
 msgstr "Use your own key"
 
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr "Use your own model to add backups."
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -11324,6 +11327,10 @@ msgstr "Working…"
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
 msgstr "Workload and key people, from your connected tools"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
+msgstr "Workspace"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
