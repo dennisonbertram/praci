@@ -307,13 +307,7 @@ export function ArtifactsPage({
           // The space name drops to a third row on a phone; the header stays one row there.
           className="max-md:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Artifacts</Trans>}
-          meta={
-            spaceName ? (
-              <span className="truncate" title={spaceName}>
-                {spaceName}
-              </span>
-            ) : null
-          }
+          spaceName={spaceName}
           actions={
             <>
               {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}

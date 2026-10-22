@@ -98,6 +98,9 @@ export const overview: GtmOverview = {
   nextRunAt: "2026-11-01T13:00:00.000Z",
   directoryPolicy: { founderApprovals: 2, autoOpenings: 1, approvalsBeforeAuto: 3, dailyCap: 5 },
 };
+
+export const agentPageContent =
+  '# Channel focus\n\n```gtm-metric\n{"label":"Completed","count":"done","goal":50}\n```\n\n```gtm-plan\n{"group":"drafts","channel":["hn"],"limit":3}\n```\n\n```gtm-channels\n{}\n```';
 export const emptyOverview: GtmOverview = {
   ...overview,
   goal: null,

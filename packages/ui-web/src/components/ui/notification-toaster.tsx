@@ -100,7 +100,7 @@ function ToastBody({
         </span>
         <Toast.Description
           render={<span />}
-          className="mt-1 line-clamp-3 text-sm text-muted-foreground break-words"
+          className="mt-1 line-clamp-3 max-sm:line-clamp-4 text-sm text-muted-foreground break-words"
         />
       </span>
     </>

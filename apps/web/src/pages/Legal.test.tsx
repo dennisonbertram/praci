@@ -741,7 +741,7 @@ it("names the Legal agent on Ask, with no Hide amounts switch in the header", as
   expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
-it("runs the check from the unchecked documents line and opens Deadlines on the overdue ones", async () => {
+it("has one scan button beside the unchecked documents line and opens Deadlines on the overdue ones", async () => {
   // One deadline long past and one far ahead, so which one is overdue never depends on today.
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -752,10 +752,11 @@ it("runs the check from the unchecked documents line and opens Deadlines on the 
   });
   await render(<LegalPage />);
   expect(container.textContent).toContain("3 Data room documents not yet checked by Legal");
-  // The line offers the action, not a link to a list with no way to run it.
+  // The line is a count only: the header's Scan now is the one scan button.
   expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
+  expect(button("Check now")).toBeUndefined();
   rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
-  await click(button("Check now"));
+  await click(button("Scan now"));
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
   await act(async () => root.unmount());

@@ -370,3 +370,26 @@ export const GridContextMenu: Story = {
   render: () => <GridView rows={rows} o={o} />,
   play: ({ canvasElement }) => openSendToAgent(canvasElement),
 };
+
+const longRows = rows.map((row, index) => ({
+  ...row,
+  item: {
+    ...row.item,
+    name: index === 0 ? "Master services agreement signed copy final v3.pdf" : row.item.name,
+    facets: {
+      ...row.item.facets,
+      parties: ["Northwind Robotics", "Acme Ventilation Holdings"],
+    },
+  },
+}));
+/** A list pane as wide as a 1440 px window gives it: Parties and a 40+ character name both show whole. */
+export const ListWide: Story = {
+  decorators: [
+    (Story) => (
+      <div className="@container/list w-[1100px]">
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => <ListView rows={longRows} o={o} />,
+};

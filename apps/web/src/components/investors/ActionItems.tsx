@@ -18,8 +18,10 @@ import { SectionCard } from "../SectionCard";
 const day = (iso: string) => shortDay(iso.slice(0, 10), new Date(), i18n.locale || "en");
 
 /** The line under an audit request's name: the as-of date and due date, then what to check. */
-function auditSubline(audit: AuditRequest): string {
+function auditSubline(audit: AuditRequest, draftEnded: boolean): string {
   const parts: string[] = [];
+  // First, so a narrow row never cuts it off.
+  if (draftEnded) parts.push(t`No draft made, see Ask`);
   if (audit.asOf) {
     parts.push(
       audit.asOfMatched
@@ -34,10 +36,12 @@ function auditSubline(audit: AuditRequest): string {
 
 function AuditRow({
   audit,
+  draftEnded,
   onDraft,
   onClose,
 }: {
   audit: AuditRequest;
+  draftEnded: boolean;
   onDraft: (audit: AuditRequest) => void;
   onClose: (audit: AuditRequest, status: "done" | "dismissed") => void;
 }) {
@@ -51,7 +55,9 @@ function AuditRow({
         <span className="block truncate text-sm font-medium" title={audit.fund}>
           {t`Audit request · ${audit.fund}`}
         </span>
-        <span className="block truncate text-xs text-muted-foreground">{auditSubline(audit)}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {auditSubline(audit, draftEnded)}
+        </span>
       </div>
       {audit.newMail && !done ? (
         <Badge variant="secondary">
@@ -71,7 +77,8 @@ function AuditRow({
         <Button
           variant="outline"
           size="sm"
-          disabled={audit.drafting}
+          // Not disabled: a click while drafting opens the Ask panel.
+          aria-disabled={audit.drafting}
           onClick={() => onDraft(audit)}
         >
           {audit.drafting ? <Spinner aria-hidden="true" /> : null}
@@ -108,12 +115,15 @@ function AuditRow({
 export function ActionItems({
   drafts,
   audits = [],
+  draftEnded = new Set<string>(),
   onOpen,
   onDraftAudit = () => {},
   onCloseAudit = () => {},
 }: {
   drafts: InvestorUpdate[];
   audits?: AuditRequest[];
+  /** Requests whose draft run ended without a draft. */
+  draftEnded?: ReadonlySet<string>;
   onOpen: (update: InvestorUpdate) => void;
   onDraftAudit?: (audit: AuditRequest) => void;
   onCloseAudit?: (audit: AuditRequest, status: "done" | "dismissed") => void;
@@ -123,7 +133,13 @@ export function ActionItems({
     <SectionCard title={t`Action items`} attention>
       <ul>
         {audits.map((audit) => (
-          <AuditRow key={audit.id} audit={audit} onDraft={onDraftAudit} onClose={onCloseAudit} />
+          <AuditRow
+            key={audit.id}
+            audit={audit}
+            draftEnded={draftEnded.has(audit.id)}
+            onDraft={onDraftAudit}
+            onClose={onCloseAudit}
+          />
         ))}
         {drafts.map((draft) => (
           <li
