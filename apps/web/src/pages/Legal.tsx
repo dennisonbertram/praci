@@ -30,6 +30,7 @@ const VIEWS = ["contracts", "deadlines", "graph"] as const;
 type View = (typeof VIEWS)[number];
 const LEGAL_PATH = "/app/legal";
 
+const deadlineKey = (d: LegalDeadline) => [d.title, d.dueDate, d.notes].join("|");
 const deadlineQuestion = (deadline: LegalDeadline) => {
   const { title, contractTitle } = deadline;
   const due = fullDay(deadline.dueDate);
@@ -118,9 +119,10 @@ function Legal({
   // The run Scan now queued, until the overview shows it finished.
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
   // What the page showed when Scan now was pressed, and the one-line result once the scan ends.
-  const beforeScan = useRef<{ contracts: Map<string, string>; deadlines: Set<string> } | null>(
-    null,
-  );
+  const beforeScan = useRef<{
+    contracts: Map<string, string>;
+    deadlines: Map<string, string>;
+  } | null>(null);
   const [scanResult, setScanResult] = useState("");
   const status = granted ?? consent.data;
   const data = overview.data;
@@ -147,10 +149,16 @@ function Legal({
     const before = beforeScan.current;
     beforeScan.current = null;
     if (!before || !data || lastRun?.status === "failed") return;
+    if (lastRun?.status === "cancelled") {
+      setScanResult(t`Scan cancelled.`);
+      return;
+    }
     const contractsChanged = data.contracts.filter(
       (c) => before.contracts.get(c.id) !== c.analyzedAt,
     ).length;
-    const deadlinesAdded = data.deadlines.filter((d) => !before.deadlines.has(d.id)).length;
+    const deadlinesAdded = data.deadlines.filter(
+      (d) => before.deadlines.get(d.id) !== deadlineKey(d),
+    ).length;
     setScanResult(
       contractsChanged + deadlinesAdded === 0
         ? t`Scan finished: nothing changed.`
@@ -198,7 +206,7 @@ function Legal({
     setScanResult("");
     beforeScan.current = data && {
       contracts: new Map(data.contracts.map((c) => [c.id, c.analyzedAt])),
-      deadlines: new Set(data.deadlines.map((d) => d.id)),
+      deadlines: new Map(data.deadlines.map((d) => [d.id, deadlineKey(d)])),
     };
     try {
       const { runId } = await rpc.legal.scanNow();

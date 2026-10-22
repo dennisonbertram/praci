@@ -487,6 +487,42 @@ it("says how many rows a scan added or changed, and when none did", async () => 
   }
 });
 
+it("reports a changed deadline date and a cancelled scan", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (
+      base: typeof overview,
+      status: "running" | "completed" | "cancelled",
+      run: number,
+    ) => ({
+      ...base,
+      agent: { ...base.agent, lastScanRun: { id: id(run), status, error: null } },
+    });
+    const moved = {
+      ...overview,
+      deadlines: overview.deadlines.map((d, i) => (i === 0 ? { ...d, dueDate: "2031-01-01" } : d)),
+    };
+    rpcMock.overview
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValue(withRun(overview, "running", 7));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(moved, "completed", 7));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("0 contracts and 1 deadline added or updated.");
+    rpcMock.scanNow.mockResolvedValue({ runId: id(8), botId: id(2) });
+    rpcMock.overview.mockResolvedValue(withRun(moved, "running", 8));
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(moved, "cancelled", 8));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Scan cancelled.");
+    expect(container.textContent).not.toContain("Scan finished");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("keeps Scanning until the run ends, then shows the new time", async () => {
   vi.useFakeTimers();
   try {
