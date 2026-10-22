@@ -16,7 +16,7 @@ import { useCopyText } from "../../lib/copy-text";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
-import { CardHead, IntegrationTile, MenuSlot, SectionTitle } from "./parts";
+import { CardHead, IntegrationTile, SectionTitle } from "./parts";
 
 type Provider = MessagingSetupState["providers"][number];
 type FieldSpec = { id: string; label: string; secret?: boolean; optional?: boolean };
@@ -365,7 +365,6 @@ export function IMessageSection({
                 >
                   {provider.configured ? <Trans>Edit</Trans> : <Trans>Connect</Trans>}
                 </Button>
-                <MenuSlot />
               </div>
             </IntegrationTile>
           );
