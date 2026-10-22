@@ -427,6 +427,14 @@ msgstr ""
 msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr ""
 
+#: src/components/gtm/XPostPreview.tsx
+msgid "{count} / 280"
+msgstr ""
+
+#: src/components/gtm/LinkedInPostPreview.tsx
+msgid "{count} / 3,000"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr ""
@@ -883,6 +891,10 @@ msgstr ""
 msgid "Add a model"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Add a postal address"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
@@ -904,6 +916,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Add address"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1009,6 +1025,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "加入例行任务"
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Add unsubscribe instructions"
+msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -1353,6 +1373,10 @@ msgstr "API 密钥请求头"
 msgid "API key name"
 msgstr ""
 
+#: src/components/gtm/GtmCalendar.tsx
+msgid "API key required for Zernio queue"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
 msgstr ""
@@ -1371,6 +1395,7 @@ msgstr ""
 msgid "Approval boundaries"
 msgstr "审批边界"
 
+#: src/components/gtm/EmailItemCard.tsx
 #: src/pages/gtm/GtmPlan.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/shell/BotSkillsSection.tsx
@@ -2016,12 +2041,9 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/components/gtm/GtmCalendar.tsx
 #: src/pages/Gtm.tsx
 msgid "Calendar"
-msgstr ""
-
-#: src/pages/Gtm.tsx
-msgid "Calendar view is coming next. Scheduled items remain in Plan."
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -2058,6 +2080,7 @@ msgstr "无法连接服务器。"
 #: src/components/fundraising/RoundCard.tsx
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -2216,6 +2239,7 @@ msgstr ""
 msgid "Changed elsewhere"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Changed, review again"
 msgstr ""
@@ -2843,6 +2867,10 @@ msgstr "连接 Executor"
 
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Connect Gmail"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Connect Gmail in Inbox"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4523,6 +4551,10 @@ msgstr ""
 msgid "Draft saved"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Draft saved, not sent."
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "技能草稿"
@@ -4659,10 +4691,6 @@ msgstr ""
 msgid "Email and calendar"
 msgstr ""
 
-#: src/pages/gtm/GtmPlan.tsx
-msgid "Email approval requires a compliance preview."
-msgstr ""
-
 #: src/components/integrations/parts.tsx
 #: src/pages/Shell.tsx
 msgid "Email chats"
@@ -4672,12 +4700,24 @@ msgstr ""
 msgid "Email chats can use {appName}"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email checks"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "该邮箱不允许注册"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email send not recorded. Check Inbox before trying again."
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email sending is disabled."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4691,6 +4731,10 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "需要验证邮箱"
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Email was not sent. Review it before trying again."
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email, calendar and your company pages"
@@ -5112,6 +5156,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -5234,6 +5279,10 @@ msgstr ""
 
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Gmail is limiting requests. Nothing was sent."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -6011,6 +6060,10 @@ msgstr "关联聊天应用"
 msgid "Link address"
 msgstr ""
 
+#: src/components/gtm/XPostPreview.tsx
+msgid "Link counts as 23"
+msgstr ""
+
 #. placeholder {0}: link.name
 #: src/components/CopyLinkDialog.tsx
 msgid "Link for {0}"
@@ -6113,6 +6166,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Loading voice providers…"
 msgstr "正在加载语音提供方…"
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Loading Zernio queue…"
+msgstr ""
 
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
@@ -6788,6 +6845,7 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "需要接管"
 
+#: src/components/gtm/GtmCalendar.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
@@ -6931,6 +6989,10 @@ msgstr ""
 
 #: src/pages/Gtm.tsx
 msgid "Next wakeup in {minutes} min"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Next week"
 msgstr ""
 
 #: src/components/fundraising/SafeDialog.tsx
@@ -7195,6 +7257,10 @@ msgstr ""
 
 #: src/pages/Fundraising.tsx
 msgid "No SAFEs yet"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "No scheduled items in this view."
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -7966,6 +8032,7 @@ msgstr "置顶"
 msgid "Pipeline"
 msgstr ""
 
+#: src/components/gtm/GtmCalendar.tsx
 #: src/pages/Gtm.tsx
 msgid "Plan"
 msgstr ""
@@ -8026,6 +8093,14 @@ msgstr ""
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
 msgid "Post-money cap {0}"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Postal address"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Postal address present"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -8130,6 +8205,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Previous message"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Previous week"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -8463,6 +8542,10 @@ msgstr ""
 msgid "Reconnect Gmail"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Reconnect Gmail in Inbox before sending."
+msgstr ""
+
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Reconnect needed"
 msgstr ""
@@ -8539,6 +8622,7 @@ msgstr ""
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/fundraising/MercuryLine.tsx
+#: src/components/gtm/GtmCalendar.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -8940,6 +9024,10 @@ msgstr "返回 Praci"
 msgid "Revenue"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Review again"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "请检查提供方设置并重新测试。"
@@ -9096,6 +9184,7 @@ msgstr ""
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -9116,6 +9205,10 @@ msgstr "保存"
 #. placeholder {0}: prefill.name
 #: src/components/ContactDialog.tsx
 msgid "Save {0} as a contact"
+msgstr ""
+
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Save address"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -9523,6 +9616,10 @@ msgstr ""
 msgid "Sending is turned off."
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Sending was not confirmed. Check Sent in Inbox; this email will not be sent again."
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -9534,6 +9631,7 @@ msgid "Sends your meeting notes and transcripts to your AI model."
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
+#: src/components/gtm/EmailItemCard.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -10803,6 +10901,7 @@ msgid "To pick up, press space. Use the arrow keys to move, space to drop, escap
 msgstr ""
 
 #: src/components/EmailCards.tsx
+#: src/components/gtm/GtmCalendar.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
@@ -11112,6 +11211,10 @@ msgstr ""
 msgid "Unsubscribe {0}"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Unsubscribe line present"
+msgstr ""
+
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Unsubscribed and archived {n}"
 msgstr ""
@@ -11322,6 +11425,10 @@ msgstr "使用找到的模型"
 msgid "Use a Google Sheet"
 msgstr ""
 
+#: src/components/gtm/EmailItemCard.tsx
+msgid "Use a subject up to 200 characters, recipients up to 200, and a body up to 4,000."
+msgstr ""
+
 #: src/pages/Onboarding.tsx
 msgid "Use an API key instead"
 msgstr ""
@@ -11445,6 +11552,10 @@ msgstr ""
 #: src/pages/RoutineRunHistory.tsx
 msgid "View chat"
 msgstr "查看聊天"
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "View proof"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -11883,4 +11994,16 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Zernio not connected"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Zernio queue incomplete"
+msgstr ""
+
+#: src/components/gtm/GtmCalendar.tsx
+msgid "Zernio queue unavailable"
 msgstr ""
