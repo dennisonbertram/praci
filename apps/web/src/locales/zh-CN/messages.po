@@ -1976,10 +1976,6 @@ msgstr "已取消"
 msgid "Cap table"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Cap table, equity and investors"
-msgstr ""
-
 #: src/pages/Shell.tsx
 msgid "cap table, equity, ownership, Carta"
 msgstr ""
@@ -5314,6 +5310,10 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Investors, equity and cap table"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
 msgstr "隔离"
@@ -5363,7 +5363,7 @@ msgid "just now"
 msgstr "刚刚"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Cap table."
+msgid "Keep contracts here, and see who owns what in Investors."
 msgstr ""
 
 #: src/pages/DataRoom.tsx

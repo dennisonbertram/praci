@@ -88,7 +88,7 @@ function Card({ children, row }: { children: ReactNode; row?: boolean }) {
   );
 }
 
-/** Opens the app page an integration feeds (Inbox, Cap table), like Mercury's "Open Finance". */
+/** Opens the app page an integration feeds (Inbox, Investors), like Mercury's "Open Finance". */
 function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link to={to} className={OPEN_LINK}>
@@ -447,7 +447,7 @@ export function IntegrationsHome({
   const firstPartySections = { social: t`Social`, equity: t`Equity`, tools: t`Tools` };
   const firstPartyDescription = {
     zernio: t`Post and schedule to social accounts`,
-    carta: t`Cap table, equity and investors`,
+    carta: t`Investors, equity and cap table`,
     x: t`Read posts, DMs and bookmarks`,
     treg: t`Live data, enrichment and generation tools`,
     devin: t`Coding sessions and repo docs`,
