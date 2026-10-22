@@ -21,6 +21,7 @@ import { createDataRoomRepos, createDb, createLegalRepos, createRepos } from "@r
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   legalConsentGrant,
+  legalDoneDeadlines,
   legalItemLinks,
   legalOverview,
   legalSafeCount,
@@ -407,6 +408,13 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const done = await legalUpdateDeadline(api, a, { id: deadline.id, status: "done" });
     expect(done.status).toBe("done");
     expect((await legalOverview(api, a)).counts.doneDeadlines).toBeGreaterThan(0);
+    // A dismissed deadline is listed with the done ones, so the founder can restore it.
+    const other = overview.deadlines[1];
+    if (other) {
+      await legalUpdateDeadline(api, a, { id: other.id, status: "dismissed" });
+      const closed = await legalDoneDeadlines(api, a);
+      expect(closed.find((d) => d.id === other.id)?.status).toBe("dismissed");
+    }
     await expect(
       legalUpdateDeadline(api, b, { id: deadline.id, status: "open" }),
     ).rejects.toMatchObject({

@@ -403,3 +403,75 @@ it("anchors the last axis label of a line chart inside the svg", async () => {
     act(() => root.unmount());
   });
 });
+
+it("draws the running month as a dot only, with no falling dashed line to it", async () => {
+  const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 600,
+  });
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  const month = (m: number, outCents: number, partial = false) => ({
+    start: `2026-0${m}-01`,
+    end: `2026-0${m}-28`,
+    outCents,
+    revenueCents: 0,
+    financingCents: 0,
+    partial,
+  });
+  await act(async () =>
+    root.render(
+      <BurnLines
+        label="Burn"
+        series={[
+          month(7, 7_500_000),
+          month(8, 7_500_000),
+          month(9, 7_500_000),
+          month(10, 2_000_000, true),
+        ]}
+        onOpen={() => {}}
+      />,
+    ),
+  );
+  expect(el.querySelector("[data-testid=burn-out-pending]")).toBeNull();
+  expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
+  act(() => root.unmount());
+  if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+});
+
+it("names a year's financing above the plot, not on its bars", async () => {
+  const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 600,
+  });
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  await act(async () =>
+    root.render(
+      <BurnLines
+        label="Burn"
+        granularity="year"
+        series={[
+          {
+            start: "2026-01-01",
+            end: "2026-12-31",
+            outCents: 90_000_000,
+            revenueCents: 0,
+            financingCents: 25_000_000,
+            partial: true,
+          },
+        ]}
+        onOpen={() => {}}
+      />,
+    ),
+  );
+  const label = el.querySelector("[data-testid=financing-clipped]");
+  const barTop = Number(el.querySelector("[data-testid=burn-bar-out]")?.getAttribute("y"));
+  expect(Number(label?.getAttribute("y"))).toBeLessThan(barTop);
+  act(() => root.unmount());
+  if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+});

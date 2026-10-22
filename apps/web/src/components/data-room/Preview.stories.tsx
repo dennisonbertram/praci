@@ -101,6 +101,7 @@ export const Untagged: Story = {
 
 /** A file that is not a PDF fails the same way every time: Replace file, not Try again. */
 export const UnreadableFile: Story = {
+  beforeEach: () => serveFile("pdf"),
   args: {
     item: {
       ...readyItem,

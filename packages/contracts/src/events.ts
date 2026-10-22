@@ -530,6 +530,8 @@ export const ThreadMessageSchema = z.object({
   replyQuote: z.string().optional(),
   replyPreview: ReplyPreviewSchema.nullable().optional(),
   runId: Id.optional(),
+  /** The routine whose run wrote this reply; set when a thread is loaded, absent on live updates. */
+  routineName: z.string().optional(),
   /** Set when the message was sent from a live voice call; groups one call's transcript. */
   callId: z.string().optional(),
   createdAt: z.string(),

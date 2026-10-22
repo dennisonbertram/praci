@@ -462,6 +462,32 @@ it("lists every finance provider under Finance when nothing is connected", async
   expect(container.querySelector('[data-testid="finance-section"]')?.children).toHaveLength(6);
 });
 
+const lapsedMercury = () => {
+  const value = data(true, true);
+  value.financeSources = [
+    { provider: "mercury", serverId: "s1", status: "needs_reconnect", lastSyncedAt: null },
+  ];
+  return value;
+};
+
+it("keeps a lapsed bank's reconnect tile when the search matches it", async () => {
+  await show(lapsedMercury(), "/app/integrations?q=mercury");
+  expect(count("finance-tile-mercury")).toBe(1);
+});
+
+it("scrolls to the reconnect tile, not past it, from ?category=finance", async () => {
+  const scroll = vi.fn();
+  const saved = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = scroll;
+  try {
+    await show(lapsedMercury(), "/app/integrations?category=finance");
+  } finally {
+    Element.prototype.scrollIntoView = saved;
+  }
+  const target = scroll.mock.contexts[0] as Element;
+  expect(target.querySelector('[data-testid="finance-tile-mercury"]')).not.toBeNull();
+});
+
 it("hides the Finance heading when every provider is connected", async () => {
   financeRpc.crypto.mockResolvedValue({
     ...cryptoOn,

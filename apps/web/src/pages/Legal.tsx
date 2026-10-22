@@ -20,7 +20,7 @@ import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
-import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -75,7 +75,7 @@ export function LegalPage({
     <FinanceChromeProvider
       value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
     >
-      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7">
         <div className="mx-auto max-w-[1440px]">
           <Legal
             selfName={spaces?.find((space) => space.id === spaceId)?.name}
@@ -126,16 +126,19 @@ function Legal({
     contracts: Map<string, string>;
     deadlines: Map<string, string>;
   } | null>(null);
+  useHideAmounts(); // re-render the masked scan summary when the switch flips
   const [scanResult, setScanResult] = useState("");
   // How many documents were unchecked when Scan now was pressed; the count falling is the progress.
-  // Deadlines the user closed, listed on request under Deadlines.
+  // Deadlines the user closed (done or dismissed), listed on request under Deadlines.
   const [showDone, setShowDone] = useState(false);
   const [scanTotal, setScanTotal] = useState(0);
   const status = granted ?? consent.data;
   const data = overview.data;
   const lastRun = data?.agent.lastScanRun ?? null;
   const finishedWaiting = lastRun?.id === waitingFor && lastRun?.status !== "running";
-  const running = lastRun?.status === "running" || (waitingFor !== null && !finishedWaiting);
+  // A failed refresh stops the wait: the Could not refresh notice offers Try again.
+  const running =
+    !overview.error && (lastRun?.status === "running" || (waitingFor !== null && !finishedWaiting));
 
   const consentMissing = status?.allowed === false;
   const reportConsent = useRef(onConsentChange);
@@ -167,14 +170,31 @@ function Legal({
       (d) => before.deadlines.get(d.id) !== deadlineKey(d),
     ).length;
     const suggested = data.deadlines.filter((d) => d.removalProposed).length;
+    // Name what changed, so the founder can find it without comparing lists.
+    const names = [
+      ...data.contracts
+        .filter((c) => before.contracts.get(c.id) !== c.analyzedAt)
+        .map((c) => c.title),
+      ...data.deadlines
+        .filter((d) => before.deadlines.get(d.id) !== deadlineKey(d))
+        .map((d) => d.title),
+    ];
+    const list = names.slice(0, 3).join(", ");
+    const more = names.length - 3;
+    const named =
+      names.length === 0
+        ? ""
+        : more > 0
+          ? ` ${t`Updated: ${list} and ${more} more.`}`
+          : ` ${t`Updated: ${list}.`}`;
     const changes =
       contractsChanged + deadlinesAdded === 0
         ? t`Scan finished: nothing changed.`
         : t`Scan finished: ${plural(contractsChanged, { one: "# contract", other: "# contracts" })} and ${plural(deadlinesAdded, { one: "# deadline", other: "# deadlines" })} added or updated.`;
     setScanResult(
       suggested === 0
-        ? changes
-        : `${changes} ${plural(suggested, { one: "# deadline may no longer apply: review it under Deadlines.", other: "# deadlines may no longer apply: review them under Deadlines." })}`,
+        ? `${changes}${named}`
+        : `${changes}${named} ${plural(suggested, { one: "# deadline may no longer apply: review it under Deadlines.", other: "# deadlines may no longer apply: review them under Deadlines." })}`,
     );
   }, [finishedWaiting, data, lastRun?.status]);
   // A key added in Settings, or a model changed in another tab, shows up when the user comes back.
@@ -299,7 +319,7 @@ function Legal({
       </p>
     ) : scanResult ? (
       <p role="status" className="mb-3 text-sm text-muted-foreground">
-        {scanResult}
+        {maskCurrencyWhenHidden(scanResult)}
       </p>
     ) : null;
   // A row, not a fifth tile. It sits below the tabs, so it going away after a scan never moves them.
@@ -484,7 +504,7 @@ function Legal({
                 aria-pressed={showDone}
                 onClick={() => setShowDone(!showDone)}
               >
-                {showDone ? <Trans>Show open</Trans> : <Trans>Show done</Trans>}
+                {showDone ? <Trans>Show open</Trans> : <Trans>Show closed</Trans>}
               </Button>
             </div>
           ) : null}
@@ -518,7 +538,7 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
   if (done.data.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        <Trans>No deadlines marked done.</Trans>
+        <Trans>No closed deadlines.</Trans>
       </p>
     );
   }
@@ -541,7 +561,7 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
           {error}
         </p>
       ) : null}
-      <ul aria-label={t`Done deadlines`} className="flex flex-col">
+      <ul aria-label={t`Closed deadlines`} className="flex flex-col">
         {done.data.map((deadline) => (
           <li
             key={deadline.id}
@@ -553,13 +573,18 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
                   ? `${deadline.title}: ${deadline.contractTitle}`
                   : deadline.title,
               )}
+              {deadline.status === "dismissed" ? (
+                <span className="ms-2 font-normal text-muted-foreground">
+                  <Trans>Dismissed</Trans>
+                </span>
+              ) : null}
             </span>
             <span className="flex items-center gap-2">
               <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
                 {fullDay(deadline.dueDate)}
               </time>
               <Button size="sm" variant="ghost" onClick={() => void reopen(deadline.id)}>
-                <Trans>Reopen</Trans>
+                {deadline.status === "dismissed" ? <Trans>Restore</Trans> : <Trans>Reopen</Trans>}
               </Button>
             </span>
           </li>

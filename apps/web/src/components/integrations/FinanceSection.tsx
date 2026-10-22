@@ -315,12 +315,22 @@ export function connectedFinanceKeys(sources: FinanceSource[], status: FinanceSt
   return keys;
 }
 
+/** Mercury or Brex whose sign-in lapsed or whose sync failed: the one thing to fix, shown first. */
+export function lapsedFinanceKeys(sources: FinanceSource[]) {
+  const keys = new Set<string>();
+  for (const { provider } of FINANCE_PROVIDERS) {
+    const state = sources.find((s) => s.provider === provider)?.status;
+    if (state === "needs_reconnect" || state === "error") keys.add(provider);
+  }
+  return keys;
+}
+
 export const FINANCE_TILE_COUNT = FINANCE_PROVIDERS.length + 2 + EXCHANGES.length;
 
 /** Finance tiles. Mercury and Brex connect through the Finance API so the server treats them as
  * finance sources and the Finance agent gets its read-only assignment. `mode` picks the tiles:
  * "connected" renders only working connections (as bare tiles, to sit in the Connected grid),
- * "available" the rest, "all" both. Renders nothing when no tile is left. `extras` adds a line to a
+ * "lapsed" the ones to reconnect, "available" the rest, "all" every tile. Renders nothing when no tile is left. `extras` adds a line to a
  * connected tile (the agents that use its MCP server), keyed by provider or "crypto" for Blockscout. */
 export function FinanceSection({
   sources,
@@ -333,7 +343,7 @@ export function FinanceSection({
   sources: FinanceSource[];
   status: FinanceStatus;
   onChanged: () => void;
-  mode?: "all" | "connected" | "available";
+  mode?: "all" | "connected" | "lapsed" | "available";
   extras?: Partial<Record<FinanceProvider | "crypto", ReactNode>>;
   /** Where Blockscout's agents are chosen, once its MCP server exists. */
   cryptoManageTo?: string;
@@ -352,8 +362,13 @@ export function FinanceSection({
     status.reload();
     onChanged();
   };
+  const lapsedKeys = lapsedFinanceKeys(sources);
   const shown = (key: string) =>
-    mode === "all" || (mode === "connected") === connectedKeys.has(key);
+    mode === "all" ||
+    (mode === "lapsed"
+      ? lapsedKeys.has(key)
+      : (mode === "connected") === connectedKeys.has(key) &&
+        (mode === "connected" || !lapsedKeys.has(key)));
 
   async function connect(provider: FinanceProvider, reconnect: boolean) {
     setBusy(provider);
@@ -487,7 +502,12 @@ export function FinanceSection({
     </>
   );
   if (mode === "connected") return tiles;
-  if (FINANCE_TILE_COUNT === (mode === "all" ? 0 : connectedKeys.size)) return null;
+  if (
+    mode === "lapsed"
+      ? lapsedKeys.size === 0
+      : FINANCE_TILE_COUNT === (mode === "all" ? 0 : connectedKeys.size + lapsedKeys.size)
+  )
+    return null;
   return (
     <div
       data-testid="finance-section"

@@ -94,14 +94,9 @@ export function IntegrationAgentSection({
               settingUp ? (
                 <Trans>Setting up the agent...</Trans>
               ) : !agentHref ? (
-                <Trans>
-                  On: creates a {service} agent that can read and, after you approve, make changes.
-                </Trans>
+                <Trans>Creates a {service} agent that asks you before each change.</Trans>
               ) : (
-                <Trans>
-                  Off: the agent only reads. On: it can also make changes, and asks you before each
-                  one.
-                </Trans>
+                <Trans>The agent asks you before each change.</Trans>
               )
             }
           />
@@ -119,14 +114,7 @@ export function IntegrationAgentSection({
               <Trans>Let other agents use {service} directly</Trans>
             </Label>
             <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
-              {shared ? (
-                <Trans>
-                  On: other agents can read {service}. Changes still go through this agent and ask
-                  first.
-                </Trans>
-              ) : (
-                <Trans>Off: other agents reach {service} only through this agent.</Trans>
-              )}
+              <Trans>Other agents can read {service}; changes still go through this agent.</Trans>
             </p>
           </div>
         ) : null}
