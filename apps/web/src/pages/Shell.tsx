@@ -3820,8 +3820,16 @@ export function ShellPage() {
   }, [staleConsentError]);
   // "Answer the pending ask first" no longer applies once the question is answered.
   const stalePendingAskError =
-    isStalePendingAskError(sendError, activeSnapshot?.messages ?? []) ||
-    isStalePendingAskError(displayedRunError, activeSnapshot?.messages ?? []);
+    isStalePendingAskError(
+      sendError,
+      activeSnapshot?.messages ?? [],
+      activeSnapshot?.run?.status,
+    ) ||
+    isStalePendingAskError(
+      displayedRunError,
+      activeSnapshot?.messages ?? [],
+      activeSnapshot?.run?.status,
+    );
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the error becomes stale.
   useEffect(() => {
     if (stalePendingAskError) dismissComposerError();

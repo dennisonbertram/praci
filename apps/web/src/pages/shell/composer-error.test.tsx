@@ -124,4 +124,6 @@ it("treats the pending-ask error as stale once every question is answered", () =
   expect(isStalePendingAskError(error, open)).toBe(false);
   expect(isStalePendingAskError(error, done)).toBe(true);
   expect(isStalePendingAskError("Failed to send message", done)).toBe(false);
+  // The open question may sit outside the loaded window while the run still waits for it.
+  expect(isStalePendingAskError(error, done, "waiting_input")).toBe(false);
 });
