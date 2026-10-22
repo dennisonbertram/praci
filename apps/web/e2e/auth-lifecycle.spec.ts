@@ -162,7 +162,7 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   await page.waitForURL((url) => url.pathname === protectedBotPath, {
     timeout: 20_000,
   });
-  const composer = page.getByRole("combobox", { name: "Message Chief" });
+  const composer = page.getByRole("textbox", { name: "Message Chief" });
   await expect(composer).toHaveAttribute("name", "chat-message");
   await expect(composer).toHaveAttribute("autocomplete", "off");
   await expect(composer).toHaveAttribute("aria-label", "Message Chief");

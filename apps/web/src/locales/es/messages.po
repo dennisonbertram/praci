@@ -1068,7 +1068,6 @@ msgid "Address or ENS"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -2328,6 +2327,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Buscar actualizaciones"
+
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
@@ -4605,6 +4608,7 @@ msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr ""
 
@@ -5265,6 +5269,10 @@ msgstr ""
 msgid "Gmail filter limit reached"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Important"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
 msgstr ""
@@ -5627,7 +5635,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
-#: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
 
@@ -6140,10 +6147,6 @@ msgstr "Cargando catálogo de modelos…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Cargando vista previa…"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "Cargando reglas…"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
@@ -7135,11 +7138,8 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-msgid "No matches"
-msgstr ""
-
 #: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
+msgid "No matches"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -8828,6 +8828,7 @@ msgid "Renews {day}"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Reabrir"
@@ -9011,10 +9012,6 @@ msgstr "Volver a Praci"
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Review"
 msgstr ""
 
 #: src/components/gtm/EmailItemCard.tsx
@@ -9263,6 +9260,10 @@ msgstr "Guardado. Rota para revelar."
 
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -10078,7 +10079,7 @@ msgid "Sort descending"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort every file in the Data room"
+msgid "Sort files"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx

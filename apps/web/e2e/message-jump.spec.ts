@@ -8,7 +8,7 @@ test("a ?m= deep link jumps while the thread is streaming", async ({ page }) => 
 
   const botId = activeBotId(page);
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   const rows = transcript.locator("[data-message-id]");
 
   const targetText = `jump-target-${stamp}`;

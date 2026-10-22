@@ -1068,7 +1068,6 @@ msgid "Address or ENS"
 msgstr "Address or ENS"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -2328,6 +2327,10 @@ msgstr "Check for receipt"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Check for updates"
+
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr "Check now"
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
@@ -4605,6 +4608,7 @@ msgid "Drop to add to Data room"
 msgstr "Drop to add to Data room"
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr "Due"
 
@@ -5265,6 +5269,10 @@ msgstr "Gmail didn't respond. Try again."
 msgid "Gmail filter limit reached"
 msgstr "Gmail filter limit reached"
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Important"
+msgstr "Gmail Important"
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
 msgstr "Gmail is limiting requests right now."
@@ -5627,7 +5635,6 @@ msgstr "Import from Google Drive"
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
-#: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
 
@@ -6140,10 +6147,6 @@ msgstr "Loading model catalog…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Loading preview…"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "Loading rules…"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
@@ -7135,12 +7138,9 @@ msgstr "No mail matches this filter"
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "No matches"
 msgstr "No matches"
-
-#: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
-msgstr "No matches in pages, documents, contacts"
 
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
@@ -8828,6 +8828,7 @@ msgid "Renews {day}"
 msgstr "Renews {day}"
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Reopen"
@@ -9012,10 +9013,6 @@ msgstr "Return to Praci"
 #: src/components/finance/ui.tsx
 msgid "Revenue"
 msgstr "Revenue"
-
-#: src/pages/Legal.tsx
-msgid "Review"
-msgstr "Review"
 
 #: src/components/gtm/EmailItemCard.tsx
 msgid "Review again"
@@ -9264,6 +9261,10 @@ msgstr "Saved. Rotate to reveal."
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr "Saving a contact"
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
+msgstr "Saving results…"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
@@ -10078,8 +10079,8 @@ msgid "Sort descending"
 msgstr "Sort descending"
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort every file in the Data room"
-msgstr "Sort every file in the Data room"
+msgid "Sort files"
+msgstr "Sort files"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Sort new files"

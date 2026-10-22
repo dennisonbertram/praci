@@ -13,9 +13,10 @@ import type {
 import { preferNativeGoogle } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { INTEGRATIONS_CHANGED_EVENT } from "../../lib/agent-app";
+import { authClient } from "../../lib/auth";
 import { desktopBridge, nativeGoogleAvailable } from "../../lib/desktop";
 import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
-import { rpc } from "../../lib/rpc";
+import { rpc, selectedSpaceId } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
 /** The stored grant, which the access switches edit and save. */
@@ -47,27 +48,39 @@ export type IntegrationsData = {
   refresh: () => Promise<void>;
 };
 
+const EMPTY: Omit<IntegrationsData, "refresh"> = {
+  loaded: false,
+  error: null,
+  catalog: [],
+  connections: [],
+  servers: [],
+  bots: [],
+  mcpAssignments: [],
+  access: {},
+  sources: [],
+  financeSources: [],
+  setup: null,
+  feedEnabled: false,
+  catalogFailed: false,
+};
+
 /** Everything the Integrations pages show, loaded together and refreshed after any change. */
 export function useIntegrations(): IntegrationsData {
   const { t } = useLingui();
   // useLingui returns a fresh t each render; keep refresh stable so its effect runs once.
   const loadFailed = useRef(t`Could not load integrations`);
   loadFailed.current = t`Could not load integrations`;
-  const [data, setData] = useState<Omit<IntegrationsData, "refresh">>({
-    loaded: false,
-    error: null,
-    catalog: [],
-    connections: [],
-    servers: [],
-    bots: [],
-    mcpAssignments: [],
-    access: {},
-    sources: [],
-    financeSources: [],
-    setup: null,
-    feedEnabled: false,
-    catalogFailed: false,
-  });
+  const [data, setData] = useState<Omit<IntegrationsData, "refresh">>(EMPTY);
+  // Who and which Space this data belongs to. A response for anyone else is dropped.
+  const userId = authClient.useSession().data?.user?.id ?? null;
+  const owner = `${userId}:${selectedSpaceId()}`;
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
+  const [dataOwner, setDataOwner] = useState(owner);
+  if (dataOwner !== owner) {
+    setDataOwner(owner);
+    setData(EMPTY);
+  }
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -77,6 +90,7 @@ export function useIntegrations(): IntegrationsData {
   }, []);
 
   const refresh = useCallback(async () => {
+    const requestedFor = ownerRef.current;
     try {
       // A server without a managed catalog fails or returns nothing: custom connections still work.
       const [
@@ -127,7 +141,7 @@ export function useIntegrations(): IntegrationsData {
         ),
       );
       window.dispatchEvent(new Event(INTEGRATIONS_CHANGED_EVENT));
-      if (!mounted.current) return;
+      if (!mounted.current || ownerRef.current !== requestedFor) return;
       setData({
         loaded: true,
         error: null,
@@ -150,7 +164,7 @@ export function useIntegrations(): IntegrationsData {
         feedEnabled: feed.enabled,
       });
     } catch (err) {
-      if (mounted.current)
+      if (mounted.current && ownerRef.current === requestedFor)
         setData((prev) => ({
           ...prev,
           loaded: true,
@@ -159,9 +173,10 @@ export function useIntegrations(): IntegrationsData {
     }
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new person or Space loads again
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, owner]);
 
   // While the first Granola sync runs the page shows "Syncing"; look again every few seconds, only
   // while the page is visible, and stop once it has finished.

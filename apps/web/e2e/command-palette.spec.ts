@@ -48,7 +48,7 @@ test("command palette opens with keyboard, filters, and switches bots", async ({
   await expect(dialog).toBeHidden();
   await page.waitForURL(new RegExp(`/app/${researcher.id}$`));
   expect(activeBotId(page)).toBe(researcher.id);
-  await expect(page.getByRole("combobox", { name: "Message Researcher" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Message Researcher" })).toBeVisible();
 
   await page.keyboard.press("ControlOrMeta+K");
   await expect(dialog).toBeVisible();

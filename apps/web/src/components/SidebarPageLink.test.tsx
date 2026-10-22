@@ -78,6 +78,33 @@ it("keeps rail items in tab order and shows the label as a tooltip on keyboard f
   expect(document.querySelector('[role="tooltip"], [data-slot="tooltip-content"]')).not.toBeNull();
 });
 
+it("gives the badge its own button when it has an action, apart from the row", () => {
+  const onOpen = vi.fn();
+  const onBadge = vi.fn();
+  act(() => {
+    createRoot(container).render(
+      <SidebarPageLink
+        testId="a"
+        current={false}
+        icon={<Mail aria-hidden="true" />}
+        label="Data room"
+        badge={<span>2</span>}
+        badgeLabel="2 files failed"
+        onBadgeClick={onBadge}
+        onOpen={onOpen}
+      />,
+    );
+  });
+  const row = container.querySelector('[data-testid="a"]') as HTMLElement;
+  const badge = container.querySelector('button[aria-label="2 files failed"]') as HTMLElement;
+  expect(row.contains(badge)).toBe(false);
+  act(() => badge.click());
+  expect(onBadge).toHaveBeenCalledTimes(1);
+  expect(onOpen).not.toHaveBeenCalled();
+  act(() => row.click());
+  expect(onOpen).toHaveBeenCalledTimes(1);
+});
+
 it("renders a real link that opens in the app on a plain click and is left to the browser on Cmd-click", () => {
   const onOpen = vi.fn();
   act(() => {

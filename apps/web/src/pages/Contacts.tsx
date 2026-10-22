@@ -99,10 +99,12 @@ export function ContactsPage({
           }
           actions={
             <>
-              <Button onClick={() => setEditing("new")}>
-                <Plus aria-hidden="true" />
-                <Trans>Add contact</Trans>
-              </Button>
+              {contacts?.length === 0 ? null : (
+                <Button onClick={() => setEditing("new")}>
+                  <Plus aria-hidden="true" />
+                  <Trans>Add contact</Trans>
+                </Button>
+              )}
               {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
             </>
           }
@@ -181,7 +183,7 @@ export function ContactsPage({
                 </Button>
               </div>
             ) : (
-              <div>
+              <div className="max-w-4xl">
                 <Table compact className="table-fixed">
                   <TableHeader>
                     <TableHeadRow>
