@@ -29,7 +29,6 @@ import { ContactDialog } from "../components/ContactDialog";
 import { AssignSafeDialog, InvestorEmailDialog } from "../components/fundraising/MercuryDialogs";
 import { MercuryLine } from "../components/fundraising/MercuryLine";
 import { Pipeline } from "../components/fundraising/Pipeline";
-import { SafeRowPlaceholder } from "../components/fundraising/Placeholders";
 import { RoundCard, RoundDialog } from "../components/fundraising/RoundCard";
 import { SafeCoverSummary, SafeDialog } from "../components/fundraising/SafeDialog";
 import type { SafeStep } from "../components/fundraising/SafeList";
@@ -277,10 +276,9 @@ export function FundraisingPage({
 
             <SectionCard title={t`SAFEs`}>
               {overview.safes.length === 0 ? (
-                <ul>
-                  <SafeRowPlaceholder />
-                  <SafeRowPlaceholder />
-                </ul>
+                <p className="text-sm text-muted-foreground">
+                  <Trans>No SAFEs yet</Trans>
+                </p>
               ) : (
                 <SafeList
                   safes={overview.safes}

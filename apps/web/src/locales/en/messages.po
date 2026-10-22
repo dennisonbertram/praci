@@ -3873,10 +3873,6 @@ msgid "Created {0}"
 msgstr "Created {0}"
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Created when you allow changes"
-msgstr "Created when you allow changes"
-
-#: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr "Creating agent"
 
@@ -4687,7 +4683,6 @@ msgstr "Enter your name"
 msgid "Equity"
 msgstr "Equity"
 
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr "Equity raised"
@@ -5053,7 +5048,6 @@ msgstr "Fullscreen"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
-#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr "Fully diluted"
@@ -6849,6 +6843,7 @@ msgid "No closing balance found to check against"
 msgstr "No closing balance found to check against"
 
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "No contacts yet"
 msgstr "No contacts yet"
 
@@ -6987,6 +6982,10 @@ msgstr "No newsletters in the last 7 days"
 msgid "No open deadlines."
 msgstr "No open deadlines."
 
+#: src/components/fundraising/Pipeline.tsx
+msgid "No prospects yet"
+msgstr "No prospects yet"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "No providers found."
@@ -7033,6 +7032,10 @@ msgstr "No runs yet"
 #: src/components/EmailCards.tsx
 msgid "No rush"
 msgstr "No rush"
+
+#: src/pages/Fundraising.tsx
+msgid "No SAFEs yet"
+msgstr "No SAFEs yet"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -7298,6 +7301,10 @@ msgstr "On a call with {0}"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "On a schedule"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: creates a {service} agent that can read and, after you approve, make changes."
+msgstr "On: creates a {service} agent that can read and, after you approve, make changes."
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -11345,6 +11352,10 @@ msgstr "Weekly"
 msgid "What about its memories?"
 msgstr "What about its memories?"
 
+#: src/pages/Shell.tsx
+msgid "What are our account balances?"
+msgstr "What are our account balances?"
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What bots remember by default"
 msgstr "What bots remember by default"
@@ -11396,6 +11407,10 @@ msgstr "What this bot handles"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "What to return"
+
+#: src/pages/Shell.tsx
+msgid "What were the biggest payments this month?"
+msgstr "What were the biggest payments this month?"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What your bots remember between chats, and where they keep it."

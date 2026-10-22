@@ -577,31 +577,27 @@ it("reads the tab from the URL and names the kind when it is empty", async () =>
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
   await show("/app/investors?kind=board");
   expect(button("Board")?.getAttribute("aria-selected")).toBe("true");
-  expect(container.textContent).not.toContain("No board members yet");
-  expect(staticSkeletons("Contacts").length).toBeGreaterThan(0);
+  expect(container.querySelector('section[aria-label="Contacts"]')?.textContent).toContain(
+    "No contacts yet",
+  );
+  expect(container.querySelector("[data-slot=skeleton]")).toBeNull();
   await click(button("Add contact"));
   expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("board");
 });
 
 // ---- empty view and Carta ----
 
-const staticSkeletons = (label: string) =>
-  container.querySelectorAll(`section[aria-label="${label}"] [data-slot=skeleton][data-static]`);
-
-it("shows the empty Cap table, Updates and Contacts as static skeletons, with no 'No ... yet' line", async () => {
+it("shows the empty Cap table, Updates and Contacts as quiet lines, never skeleton bars", async () => {
   rpcMock.servers.mockResolvedValue([]);
   rpcMock.list.mockResolvedValue([]);
   await show();
-  for (const label of ["Cap table", "Contacts"]) {
-    expect(staticSkeletons(label).length).toBeGreaterThan(0);
-  }
-  // An empty Updates card says so in a sentence, not with grey bars.
-  expect(staticSkeletons("Updates")).toHaveLength(0);
+  expect(container.querySelector("[data-slot=skeleton]")).toBeNull();
   expect(container.querySelector('section[aria-label="Updates"]')?.textContent).toContain(
     "No updates yet",
   );
-  expect(container.querySelector("[data-slot=skeleton]:not([data-static])")).toBeNull();
-  expect(container.textContent).not.toMatch(/No (investors|board members) yet/);
+  expect(container.querySelector('section[aria-label="Contacts"]')?.textContent).toContain(
+    "No contacts yet",
+  );
   // The Cap table card holds the three source choices.
   const card = container.querySelector('section[aria-label="Cap table"]');
   expect([...(card?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
@@ -633,7 +629,9 @@ it("shows the typed-in table with an Add holder row and a labelled pool cell", a
   expect(pool?.placeholder).toBe("—");
   expect(pool?.closest("li")?.textContent).toContain("Unallocated pool");
   expect(pool?.closest("li")?.textContent).toContain("Pool");
-  expect(staticSkeletons("Cap table").length).toBeGreaterThan(0);
+  expect(
+    container.querySelector('section[aria-label="Cap table"] [data-slot=skeleton]'),
+  ).toBeNull();
 });
 
 it("offers Connect Carta and Type it in when nothing is set up, and no table or tabs of holders", async () => {

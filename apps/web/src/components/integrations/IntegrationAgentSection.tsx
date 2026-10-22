@@ -93,6 +93,10 @@ export function IntegrationAgentSection({
             hint={
               settingUp ? (
                 <Trans>Setting up the agent...</Trans>
+              ) : !agentHref ? (
+                <Trans>
+                  On: creates a {service} agent that can read and, after you approve, make changes.
+                </Trans>
               ) : (
                 <Trans>
                   Off: the agent only reads. On: it can also make changes, and asks you before each
