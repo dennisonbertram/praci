@@ -974,6 +974,7 @@ export const Transcript = memo(function Transcript({
         />
       ) : null}
       <div
+        data-toast-avoid=""
         // The pill has its own row between the messages and the composer, so it covers no text.
         // The row collapses to nothing at the end of the chat.
         className={`flex shrink-0 items-center justify-center overflow-hidden transition-[height] duration-200 motion-reduce:transition-none @max-md:justify-end @max-md:pe-3 ${

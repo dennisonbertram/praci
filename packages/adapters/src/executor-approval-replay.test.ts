@@ -453,7 +453,7 @@ describe("denied effect result", () => {
     const plain = resolveDuplicateEffectGate({ status: "denied" }, "mail_send");
     expect(plain).toMatchObject({
       action: "return",
-      result: { error: expect.stringContaining("The user denied this action") },
+      result: { error: expect.stringContaining("The person you are talking to denied this action") },
     });
   });
 });

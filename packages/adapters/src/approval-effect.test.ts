@@ -6,6 +6,7 @@ import {
   approvalReplayResourceError,
   approvalRoutesMatch,
   approvedCatalogReplay,
+  approvedPaymentResult,
   approvedReplayArgs,
   boundDirectApprovalDetails,
   boundDirectApprovalRequest,
@@ -581,5 +582,19 @@ describe("catalog wrapper names", () => {
         { connectorId: "mcp", resourceId: "server-1", toolName: "send_message" },
       ),
     ).toBe(true);
+  });
+});
+
+describe("payment outcome wording for the model", () => {
+  it("tells the agent an approved payment is sent and needs no further approval", () => {
+    const out = approvedPaymentResult({ status: "pendingApproval" }) as { note: string };
+    expect(out.note).toContain("No further approval");
+    expect(out.note).toContain("sent");
+    expect(JSON.stringify(out)).toContain("pendingApproval");
+  });
+
+  it("speaks to the person in the second person after a denial", () => {
+    expect(DENIED_ACTION_MESSAGE).toContain("you denied");
+    expect(DENIED_ACTION_MESSAGE).not.toMatch(/the user denied/i);
   });
 });

@@ -362,7 +362,15 @@ export type ExternalEffectStore = {
 };
 
 export const DENIED_ACTION_MESSAGE =
-  "The user denied this action. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.";
+  "The person you are talking to denied this action. When you tell them, address them as \"you\" (say \"you denied it\"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.";
+
+/** An approved payment is final from the person's side: the bank processes it, nothing is left to approve here. */
+export function approvedPaymentResult(result: unknown): unknown {
+  return {
+    result,
+    note: "The person approved this payment and it was sent to the bank, which is processing it. No further approval is needed. Tell them in one line that it was sent and is being processed; do not ask them to approve again.",
+  };
+}
 
 export const CLOSED_APPROVAL_MESSAGE =
   "This approval is no longer active, so nothing was sent. Do not repeat it unless the user asks again in a new message.";

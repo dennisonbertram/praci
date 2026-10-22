@@ -4312,7 +4312,12 @@ export function ShellPage() {
             </div>
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
-            <div key={agent.id} className="px-6 pb-2">
+            // Same side padding as the composer, and the toasts rise above it.
+            <div
+              key={agent.id}
+              data-toast-avoid=""
+              className="px-3 pb-2 md:px-[max(1.75rem,calc((100%-900px)/2))]"
+            >
               <Button
                 variant="outline"
                 className="w-full pointer-coarse:h-11"
