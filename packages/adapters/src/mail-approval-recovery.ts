@@ -39,6 +39,17 @@ export function approvedMailOutcome(
 }
 
 /**
+ * What the agent reads when an approved send or draft failed. It says which step failed, so the
+ * agent does not blame the original message, and that the card keeps the draft for the person.
+ */
+export function failedMailToAgent(name: "mail_send" | "mail_draft", error: string) {
+  const send = name === "mail_send";
+  return {
+    error: `The ${send ? "send" : "draft save"} failed (${error.slice(0, 200)}). Nothing was ${send ? "sent" : "saved"}. The approval card keeps the draft with an Open in composer button. Tell the user the ${send ? "send" : "save"} failed and the draft is kept; do not say the original message was missing.`,
+  };
+}
+
+/**
  * Settles edited mail approvals whose process died after the claim, so the card does not stay on
  * "Sending..." forever. An unsettled one is a denied mail effect still carrying the claim's cautious
  * note. The compose record made with the claim says how far it got:

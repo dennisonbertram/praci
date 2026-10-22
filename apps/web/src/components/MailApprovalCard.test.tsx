@@ -313,8 +313,23 @@ it("says Sent, or Not sent with the reason, once an approved send ends", async (
   });
   expect(status()).toBe("Not sent");
   expect(host.textContent).toContain("No connected mail account");
-  // The agent's own send has no composer account to reopen it in.
+  // Without the account the send used there is nothing to reopen the draft in.
   expect(button("Open in composer")).toBeUndefined();
+});
+
+it("offers the composer after the agent's own send fails, once the account is known", async () => {
+  const onOpenComposer = vi.fn();
+  const failed = {
+    ...mail,
+    outcome: "failed" as const,
+    error: "Message not found",
+    connectionId: "conn-1",
+    account: "maya@example.test",
+  };
+  await render({ status: "answered", answer: "allow", mail: failed, onOpenComposer });
+  expect(host.textContent).toContain("Message not found");
+  await click(button("Open in composer"));
+  expect(onOpenComposer).toHaveBeenCalledWith(failed);
 });
 
 it("shows Cc and Bcc rows only when the message has them", async () => {
