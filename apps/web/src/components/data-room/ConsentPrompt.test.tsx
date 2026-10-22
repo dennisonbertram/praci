@@ -24,6 +24,9 @@ vi.mock("../../lib/user-error", () => ({
 const rpc = vi.hoisted(() => ({ consent: vi.fn(), consentGrant: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc } }));
 
+const notice = vi.hoisted(() => vi.fn());
+vi.mock("./upload-toasts", () => ({ showNoticeToast: notice }));
+
 import { DataRoomConsentPrompt } from "./ConsentPrompt";
 
 const status = (over: Partial<DataRoomConsentStatus> = {}): DataRoomConsentStatus => ({
@@ -66,8 +69,10 @@ it("names where documents go and grants exactly the shown key and version on All
     version: "2026-10-22",
   });
   expect(onAllowed).toHaveBeenCalledTimes(1);
-  // Allowed: the card goes away and one line says what changed.
-  expect(container.textContent).toBe("Praci can now read your documents.");
+  // Allowed: the card goes away and a toast says what changed, so nothing takes its place and
+  // the list below does not shift.
+  expect(container.textContent).toBe("");
+  expect(notice).toHaveBeenCalledExactlyOnceWith("Praci can now read your documents.");
 });
 
 it("shows why the grant failed and keeps asking", async () => {

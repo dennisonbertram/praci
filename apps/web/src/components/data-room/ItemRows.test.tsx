@@ -94,7 +94,7 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
   expect(head?.textContent).toBe("NameTypeAddedParties");
-  expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
+  expect(container.querySelectorAll("colgroup > col")).toHaveLength(5);
 });
 
 it("cuts parties to one line with the full value in the title, and shows a dash when empty", () => {
@@ -285,8 +285,8 @@ it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  // Status keeps its column even with no status, so the others do not move between folders.
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
+  // No row has a status, so that column is left out entirely.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
 });
 
 it("opens the file when its search snippet is clicked", () => {
@@ -681,12 +681,12 @@ it("offers Try again on a file still Reading after 10 minutes", () => {
   expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "stuck" }));
 });
 
-it("keeps the Status column's space but leaves it blank when no row has a status", () => {
+it("leaves the Status column out when no row has a status", () => {
   act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
     "Status",
   );
-  expect(container.querySelector('[data-testid="data-room-status"]')?.textContent).toBe("");
+  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
   act(() =>
     root.render(
       <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,

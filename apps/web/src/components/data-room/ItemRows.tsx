@@ -190,7 +190,7 @@ function Columns({ showStatus }: { showStatus: boolean }) {
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
       <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
-      <col className={cn(MID_COLUMN, "w-20")} />
+      {showStatus ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
       <col className="w-7" />
     </colgroup>
   );
@@ -240,8 +240,11 @@ function ListHead({
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        {/* Always there, so the columns do not shift between a folder with a file being read and one without. */}
-        <TableHead className={MID_COL}>{showStatus ? <Trans>Status</Trans> : null}</TableHead>
+        {showStatus ? (
+          <TableHead className={MID_COL}>
+            <Trans>Status</Trans>
+          </TableHead>
+        ) : null}
         <TableHead />
       </TableHeadRow>
     </TableHeader>
@@ -397,15 +400,17 @@ function ItemRow({
       >
         {parties || empty}
       </TableCell>
-      <TableCell
-        data-testid="data-room-status"
-        className={MID_COL}
-        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-      >
-        {label ? (
-          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-        ) : null}
-      </TableCell>
+      {showStatus ? (
+        <TableCell
+          data-testid="data-room-status"
+          className={MID_COL}
+          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+        >
+          {label ? (
+            <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+          ) : null}
+        </TableCell>
+      ) : null}
       <TableCell className="pe-0">
         <ItemMenu
           item={item}
@@ -494,7 +499,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={3} className={MID_COL} />
+          <TableCell colSpan={showStatus ? 3 : 2} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -549,7 +554,7 @@ export function ListView({
 
 /** The picture area at the top of a file tile: one fixed shape, so tiles line up. */
 const PREVIEW_AREA =
-  "relative grid aspect-4/5 w-full place-items-center overflow-hidden rounded-md bg-muted [&>svg]:size-6";
+  "relative grid aspect-4/3 w-full place-items-center @min-[640px]/list:aspect-4/5 overflow-hidden rounded-md bg-muted [&>svg]:size-6";
 
 /**
  * The drawn thumbnail, fetched with the session once the tile nears the screen. The file icon
@@ -614,7 +619,7 @@ function TextPreview({ item, text }: { item: DataRoomApiItem; text: string }) {
       <span
         aria-hidden="true"
         className={cn(
-          "size-full overflow-hidden text-start text-[9px] leading-snug text-foreground/70",
+          "size-full overflow-hidden pe-7 text-start text-[9px] leading-snug text-foreground/70",
           sheet ? "font-mono whitespace-pre" : "break-words whitespace-pre-wrap",
         )}
       >
@@ -681,7 +686,10 @@ export function GridView({
             className="absolute top-3 right-3 bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
-          <span className="line-clamp-3 min-h-15 font-medium break-words" title={item.name}>
+          <span
+            className="line-clamp-2 min-h-10 font-medium break-words @min-[640px]/list:line-clamp-3 @min-[640px]/list:min-h-15"
+            title={item.name}
+          >
             {item.name}
           </span>
           {/* Type and date on lines of their own, two lines on every tile, so neither is cut short. */}

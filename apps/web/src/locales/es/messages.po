@@ -9256,6 +9256,11 @@ msgstr ""
 msgid "Shared"
 msgstr "Compartido"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr ""
@@ -10338,10 +10343,6 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Through BlueBubbles on your Mac"
-msgstr ""
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
 msgstr ""
 
 #: src/pages/Board.tsx
