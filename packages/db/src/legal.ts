@@ -505,7 +505,7 @@ export function createLegalRepos(prisma: PrismaClient) {
       const [openDeadlines, overdueDeadlines, doneDeadlines] = await Promise.all([
         prisma.legalDeadline.count({ where: open }),
         prisma.legalDeadline.count({ where: { ...open, dueDate: { lt: today } } }),
-        prisma.legalDeadline.count({ where: { ...scope(actor), status: "done" } }),
+        prisma.legalDeadline.count({ where: { ...scope(actor), status: { not: "open" } } }),
       ]);
       return { openDeadlines, overdueDeadlines, doneDeadlines };
     },
