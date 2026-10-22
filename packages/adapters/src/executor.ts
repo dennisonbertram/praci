@@ -6773,7 +6773,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
                   : undefined
                 : integrationAgent
-                  ? undefined
+                  ? integrationPeerRun
+                    ? INTEGRATION_PEER_RUN_LINE
+                    : undefined
                   : financeOnly
                     ? financeAgentRunLine(financeEnabled, run.trigger)
                     : connectedPlugins.length > 0
@@ -8654,6 +8656,10 @@ export async function priorDenialAwaitingOwner(
   }
 }
 
+/** A bank agent asked by another bot still posts its own approval card; it never sends the user away to authorize. */
+const INTEGRATION_PEER_RUN_LINE =
+  "Another bot sent this request for the user. Use your tools for it. A payment or other change posts an approval card in this chat, and the user approves it there: call the tool, then say it waits for their approval in this chat. Never tell the user to authorize it directly or somewhere else.";
+
 /** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
 const CONSENT_LINK_GUIDANCE =
   " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and end with [Open Integrations](/app/integrations) so the user can reach the bank. When the user approves a payment, report the outcome in one plain line (submitted, or failed with the reason) instead of repeating that it waits for approval, and never mention a missing request link or other tool internals. A denial covers only the request that was denied: when the user asks again in a new message for the same payment, message the agent again as a new request.";
@@ -8663,11 +8669,13 @@ const CONSENT_LINK_GUIDANCE =
  * by other bots: they answer with their own data and the asking bot passes it on to the user.
  */
 export function directoryDescription(peer: {
+  id?: string;
+  name?: string;
   description: string;
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request: then give no link; never reply only that the request could not be completed.${CONSENT_LINK_GUIDANCE}`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request: then give no link; never reply only that the request could not be completed.${peer.id ? ` If its answer says the user must approve a payment or other change, tell the user in one line to approve it in the ${peer.name ?? "agent"} chat and end with [Open ${peer.name ?? "the agent"}](/app/${peer.id}), never with an Integrations link.` : ""}${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;

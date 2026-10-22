@@ -87,6 +87,8 @@ export function ContactsPage({
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
+          // The space name is in the sidebar; on a phone it only adds a row under the title.
+          className="max-sm:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Contacts</Trans>}
           meta={
             spaceName ? (

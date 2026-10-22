@@ -241,6 +241,7 @@ function SessionApp() {
             <Route path="/app/integrations/*" element={<ShellPage />} />
             <Route path="/app/finance/*" element={<ShellPage />} />
             <Route path="/app/legal" element={<ShellPage />} />
+            <Route path="/app/gtm" element={<ShellPage />} />
             <Route path="/app/devin" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/investors/*" element={<ShellPage />} />

@@ -6,6 +6,7 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { makeBot, mockBots, mockMe, mockSections } from "../stories/fixtures";
+import { overview as gtmOverview, page as gtmPage } from "./gtm/fixtures";
 import { ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */
@@ -121,6 +122,40 @@ const loadedWith =
     });
 
 const loaded = loadedWith(mockBots[0] as ReturnType<typeof makeBot>);
+
+export const GtmWorkspace: Story = {
+  decorators: [at("/app/gtm")],
+  beforeEach: () => {
+    loadedWith(
+      makeBot({
+        id: "bot_gtm",
+        name: "GTM agent",
+        color: BOT_COLORS[5],
+        spawnKey: "gtm-agent:user_demo",
+      }),
+    )();
+    mockRpc({
+      "gtm.overview": gtmOverview,
+      "pages.get": gtmPage,
+      "notifications.glance": {
+        financeRunwayMonths: null,
+        legalDueSoon: 0,
+        devinNeedsYou: 0,
+        devinConnected: false,
+        gtmNeedsYou: 2,
+        dataRoomWaiting: 0,
+        hasTickets: false,
+        botKinds: {},
+      },
+      "notifications.unseenCounts": { counts: {} },
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("sidebar-gtm");
+    await canvas.findByRole("heading", { name: "GTM", level: 1 });
+  },
+};
 
 /** A page agent keeps the fixed colour its Inbox gets. */
 export const ConversationPageAgent: Story = {
