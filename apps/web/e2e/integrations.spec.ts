@@ -119,6 +119,44 @@ test("Integrations page fits a phone", async ({ page }, testInfo) => {
   await captureScreenshot(page, testInfo, "integrations-phone");
 });
 
+test("Zernio offers OAuth reads or a separately configured API key", async ({ page }, testInfo) => {
+  await signup(page, `integrations-zernio-${Date.now()}@rakazo.test`, "password12", "Demo Founder");
+  await completeOnboarding(page);
+  await openIntegrations(page);
+  await page.getByRole("button", { name: "Connect Zernio", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Connect Zernio" });
+  await expect(
+    dialog.getByText("OAuth connects reads only. Posting requires an API key."),
+  ).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Sign in with Zernio" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "zernio-oauth-reads");
+  await dialog.getByRole("button", { name: "Use API key" }).click();
+  await dialog.getByLabel("API key").fill("synthetic-key");
+  // Only synthetic server responses; never contact Zernio or use a real account.
+  await page.route("**/rpc/mcp/servers/create", (route) =>
+    route.fulfill({
+      json: {
+        json: {
+          id: "synthetic-server",
+          name: "Zernio",
+          endpoint: "https://mcp.zernio.com/mcp",
+          agentBotId: "synthetic-gtm",
+        },
+      },
+    }),
+  );
+  await page.route("**/rpc/gtm/postingCapability", (route) =>
+    route.fulfill({ json: { json: "ready" } }),
+  );
+  await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Zernio connected" })
+      .getByText("API key configured (not verified)."),
+  ).toBeVisible();
+  await captureScreenshot(page, testInfo, "zernio-key-configured-synthetic");
+});
+
 test("App page: ?connect=1 opens the connect dialog and ?next= returns the person afterwards", async ({
   page,
 }, testInfo) => {

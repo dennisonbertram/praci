@@ -45,6 +45,36 @@ export const FirstPartySignIn: Story = {
   args: { initialUrl: "https://mcp.app.carta.com/mcp", service: "Carta" },
 };
 
+export const ZernioSignIn: Story = {
+  args: { initialUrl: "https://mcp.zernio.com/mcp", service: "Zernio" },
+};
+
+export const ZernioApiKey: Story = {
+  ...ZernioSignIn,
+  play: async () => {
+    await userEvent.click(await screen().findByRole("button", { name: "Use API key" }));
+  },
+};
+
+export const ZernioApiKeyConfigured: Story = {
+  ...ZernioSignIn,
+  beforeEach: () =>
+    mockRpc({
+      "mcp.servers.create": {
+        id: "srv_demo",
+        name: "Zernio",
+        endpoint: "https://mcp.zernio.com/mcp",
+        agentBotId: "gtm_demo",
+      },
+      "gtm.postingCapability": "ready",
+    }),
+  play: async () => {
+    await userEvent.click(await screen().findByRole("button", { name: "Use API key" }));
+    await userEvent.type(await screen().findByLabelText("API key"), "synthetic-key");
+    await userEvent.click(screen().getByRole("button", { name: "Connect" }));
+  },
+};
+
 /** A first-party service that needs the person's own OAuth app, such as X or Box. */
 export const FirstPartyClientId: Story = {
   args: { initialUrl: "https://api.x.com/mcp", service: "X", oauthClient: true },

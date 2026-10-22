@@ -10,9 +10,10 @@ import { DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS, isDevinEndpoint } from "./devin.js
 import type { FinanceProvider } from "./finance.js";
 import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
 import { GRANOLA_READ_TOOLS, granolaAgentSpawnKey, isGranolaEndpoint } from "./granola.js";
+import { gtmAgentSpawnKey } from "./gtm.js";
 import { isInboxAgentSpawnKey } from "./inbox.js";
 import { isWisprFlowEndpoint, WISPR_FLOW_READ_NAME } from "./wispr-flow.js";
-import { ZERNIO_READ_TOOLS } from "./zernio.js";
+import { isZernioEndpoint, ZERNIO_READ_TOOLS } from "./zernio.js";
 
 /** The one place an integration agent's spawn key is built. The key encodes the MCP server id. */
 export const integrationAgentSpawnKey = (serverId: string) => `integration-agent:${serverId}`;
@@ -44,9 +45,11 @@ export function integrationAgentSpawnKeyForServer(server: {
   userId: string;
   endpoint?: string | null;
 }): string {
-  return isCartaEndpoint(server.endpoint)
-    ? cartaAgentSpawnKey(server.userId)
-    : integrationAgentSpawnKey(server.id);
+  return isZernioEndpoint(server.endpoint)
+    ? gtmAgentSpawnKey(server.userId)
+    : isCartaEndpoint(server.endpoint)
+      ? cartaAgentSpawnKey(server.userId)
+      : integrationAgentSpawnKey(server.id);
 }
 
 /** Whether this exact, live bot is linked to the server as its integration agent. */
@@ -249,6 +252,7 @@ export const INTEGRATION_PRESETS = {
     reads: ZERNIO_READ_TOOLS,
     forcedWrites: [],
     allowedTools: ZERNIO_READ_TOOLS,
+    requiresAgent: true,
   },
   devin: {
     service: "Devin",
@@ -296,6 +300,7 @@ export const INTEGRATION_PRESETS = {
 export function integrationPresetForEndpoint(
   endpoint: string | null | undefined,
 ): IntegrationPreset | undefined {
+  if (isZernioEndpoint(endpoint)) return INTEGRATION_PRESETS.zernio;
   if (isCartaEndpoint(endpoint)) return INTEGRATION_PRESETS.carta;
   if (isDevinEndpoint(endpoint)) return INTEGRATION_PRESETS.devin;
   if (isBoxEndpoint(endpoint)) return INTEGRATION_PRESETS.box;
