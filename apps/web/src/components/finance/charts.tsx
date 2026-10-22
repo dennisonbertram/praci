@@ -266,7 +266,9 @@ export function LineChart({
               <text
                 x={(x(solid) + x(values.length - 1)) / 2 + 8}
                 y={y(((values[solid] ?? 0) + (values.at(-1) ?? 0)) / 2) - 8}
-                textAnchor="start"
+                textAnchor={
+                  (x(solid) + x(values.length - 1)) / 2 + 8 > width - 70 ? "end" : "start"
+                }
                 className="fill-muted-foreground"
                 fontSize={11}
               >
@@ -728,7 +730,7 @@ export function MonthBars({
   );
 }
 
-const MAX_SEGMENTS = 6;
+export const MAX_SEGMENTS = 6;
 
 /** One stacked bar split into segments; each opens its target. */
 export function StackBar({
@@ -770,7 +772,7 @@ export function StackBar({
           // "Other" has no page of its own: it is named on hover and to screen readers, and opens nothing.
           if (segment.key === "")
             return (
-              <rect key="other" {...shape}>
+              <rect key="other" {...shape} role="img" aria-label={segment.label} tabIndex={0}>
                 <title>{segment.label}</title>
               </rect>
             );

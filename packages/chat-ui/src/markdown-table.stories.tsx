@@ -45,7 +45,7 @@ const wide = `| Merchant | Date | Category | Amount |
 export const NarrowPanel: Story = {
   decorators: [
     (Story) => (
-      <div style={{ width: 263 }}>
+      <div className="rk-docked-chat" style={{ width: 263 }}>
         <Story />
       </div>
     ),

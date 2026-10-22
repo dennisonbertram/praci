@@ -81,6 +81,7 @@ it("folds a long category list into five segments plus Other, each named", async
   expect(rects).toHaveLength(6);
   expect(rects.map((r) => r.querySelector("title")?.textContent).at(-1)).toBe("Other");
   expect(rects.every((r) => r.querySelector("title")?.textContent)).toBe(true);
+  expect(rects.every((r) => r.getAttribute("tabindex") === "0")).toBe(true);
   done();
 });
 
@@ -97,5 +98,22 @@ it("names the dashed part of the projection", async () => {
     />,
   );
   expect(el.textContent).toContain("Projected");
+  done();
+});
+
+it("keeps the projected label inside a chart with a short runway", async () => {
+  const { el, done } = await mount(
+    343,
+    <LineChart
+      label="Cash"
+      height={200}
+      values={Array.from({ length: 13 }, (_, i) => 500 - i)}
+      labels={Array.from({ length: 13 }, (_, i) => String(i))}
+      solidUntil={11}
+      projectedLabel="Projected"
+    />,
+  );
+  const text = [...el.querySelectorAll("text")].find((t) => t.textContent === "Projected");
+  expect(text?.getAttribute("text-anchor")).toBe("end");
   done();
 });

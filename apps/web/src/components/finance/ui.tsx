@@ -48,7 +48,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
-import { shade } from "./charts";
+import { MAX_SEGMENTS, shade } from "./charts";
 
 export type FinanceSpace = { id: string; name: string };
 
@@ -636,7 +636,7 @@ export function BreakdownRows({
             {swatches ? (
               <i
                 className="me-1.5 inline-block size-2 rounded-xs"
-                style={{ background: shade(i) }}
+                style={{ background: shade(Math.min(i, MAX_SEGMENTS - 1)) }}
                 aria-hidden="true"
               />
             ) : null}

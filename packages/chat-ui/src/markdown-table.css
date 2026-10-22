@@ -309,8 +309,9 @@ button.rk-table-sort {
 
 /* In a narrow container (the docked Ask panel is about 260px) the inline card drops the row-number
    column and lets cells wrap, so every column, Amount included, is visible without scrolling. The
-   expanded dialog is outside this container and keeps the full table. */
-.rk-chat-markdown .rk-table-card {
+   expanded dialog is outside this container and keeps the full table. Only the docked panel is a
+   container: size containment would collapse a content-sized bubble in the main transcript. */
+.rk-docked-chat .rk-chat-markdown .rk-table-card {
   container-type: inline-size;
 }
 
