@@ -813,10 +813,6 @@ msgstr "Add a local command"
 msgid "Add a model"
 msgstr "Add a model"
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Add a model in Settings to use this."
-msgstr "Add a model in Settings to use this."
-
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
@@ -978,6 +974,7 @@ msgstr "Address or ENS"
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
+#: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Advanced"
@@ -1091,10 +1088,6 @@ msgstr "Allow {0} connector without asking"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} without asking"
 msgstr "Allow {0} without asking"
-
-#: src/pages/Legal.tsx
-msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
@@ -1859,9 +1852,12 @@ msgid "Brex does not share it"
 msgstr "Brex does not share it"
 
 #: src/components/computer/ComputerWorkspace.tsx
-#: src/components/NotificationSettings.tsx
 msgid "Browser"
 msgstr "Browser"
+
+#: src/components/NotificationSettings.tsx
+msgid "Browser notifications"
+msgstr "Browser notifications"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
@@ -3394,10 +3390,6 @@ msgstr "Could not run routine"
 msgid "Could not save"
 msgstr "Could not save"
 
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Could not save Auto Review"
-msgstr "Could not save Auto Review"
-
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Could not save backup models"
 msgstr "Could not save backup models"
@@ -3872,8 +3864,8 @@ msgstr "Delete"
 msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
 
-#. placeholder {0}: artifact.name
 #. placeholder {0}: bot.name
+#. placeholder {0}: displayName(artifact.name)
 #. placeholder {0}: group.name
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
@@ -4746,10 +4738,6 @@ msgstr "First sync can take a minute"
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
 msgstr "Fix or remove the highlighted addresses."
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Flag unexpected actions"
-msgstr "Flag unexpected actions"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/Preview.tsx
@@ -6554,6 +6542,11 @@ msgstr "No closing balance found to check against"
 msgid "No contacts yet"
 msgstr "No contacts yet"
 
+#. placeholder {0}: fullDay(data.agent.lastScanAt)
+#: src/pages/Legal.tsx
+msgid "No contracts or deadlines found on {0}."
+msgstr "No contracts or deadlines found on {0}."
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
@@ -7785,6 +7778,10 @@ msgstr "Reading your cap table from Carta"
 msgid "Reading your contacts"
 msgstr "Reading your contacts"
 
+#: src/pages/Legal.tsx
+msgid "Reading your Data room…"
+msgstr "Reading your Data room…"
+
 #: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr "Reading your finances"
@@ -8965,10 +8962,6 @@ msgstr "Shell"
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr "Show all {total}"
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Show amounts"
-msgstr "Show amounts"
 
 #: src/components/finance/ui.tsx
 msgid "Show finances for"

@@ -154,12 +154,12 @@ const switchStates = () =>
     s.getAttribute("aria-checked"),
   ]);
 
-it("shows one switch for every model, on while any is allowed, with the models under Advanced", async () => {
+it("shows one switch for every model, on only when all are allowed, with the models under Advanced", async () => {
   consent.aiConsentStatus.mockResolvedValue(statusOf());
   await render(<AiDataSharingSection />);
 
   expect(switchStates()).toEqual([
-    ["Allow AI models", "true"],
+    ["Allow AI models", "false"],
     ["Model", "true"],
     ["TypeSafe", "false"],
   ]);
@@ -168,7 +168,7 @@ it("shows one switch for every model, on while any is allowed, with the models u
   expect(container.textContent).not.toContain("ElevenLabs");
 });
 
-it("shows the one switch on when only the model a Legal Allow granted is allowed, and off when none is", async () => {
+it("shows the one switch off when only some models are allowed (Advanced opens to show which), on when all are", async () => {
   consent.aiConsentStatus.mockResolvedValue(
     statusOf([
       { ...modelA, allowed: true },
@@ -176,16 +176,18 @@ it("shows the one switch on when only the model a Legal Allow granted is allowed
     ]),
   );
   await render(<AiDataSharingSection />);
-  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+  expect(container.querySelector("details")?.open).toBe(true);
 
   consent.aiConsentStatus.mockResolvedValue(
     statusOf([
-      { ...modelA, allowed: false },
-      { ...modelB, allowed: false },
+      { ...modelA, allowed: true },
+      { ...modelB, allowed: true },
     ]),
   );
-  await render(<AiDataSharingSection key="none" />);
-  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+  await render(<AiDataSharingSection key="all" />);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+  expect(container.querySelector("details")?.open).toBe(false);
 });
 
 it("holds its place with a skeleton until the status loads", async () => {
