@@ -56,6 +56,17 @@ it("says what each first-run focus covers until one is picked", async () => {
     root.render(
       <ChoiceCard
         botId="bot-1"
+        block={{ ...block, question: "What do you want me on first?" }}
+        onBotChanged={async () => {}}
+      />,
+    ),
+  );
+  expect(el.textContent).toContain("What should I work on first?");
+  expect(el.textContent).toContain("The web, notes and docs");
+  await act(async () =>
+    root.render(
+      <ChoiceCard
+        botId="bot-1"
         block={{ ...block, answerId: "company" }}
         onBotChanged={async () => {}}
       />,

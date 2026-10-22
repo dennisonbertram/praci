@@ -7,6 +7,7 @@ import type { ComponentProps } from "react";
 import { useEffect, useRef, useState } from "react";
 import { BuiCard, SuccessPop } from "../../components/ai/primitives";
 import { AppLogo } from "../../components/integrations/AppLogo";
+import { isFocusQuestion } from "../../components/tour/connect-cards";
 import type { ArtifactTarget } from "../../lib/artifact-open";
 import { chartViewport } from "../../lib/chart-viewport";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -136,7 +137,7 @@ export function ChoiceCard({
 
 /** First-run Chief focus card: API stores English; UI locale catalogs translate it. */
 function OnboardingFocusQuestion({ question }: { question: string }) {
-  if (question === "What should I work on first?") {
+  if (isFocusQuestion(question)) {
     return <Trans>What should I work on first?</Trans>;
   }
   return question;
@@ -144,7 +145,7 @@ function OnboardingFocusQuestion({ question }: { question: string }) {
 
 /** One line on what each first-run focus covers, so the choice is clear before it is made. */
 function OnboardingFocusOptionHint({ id, question }: { id: string; question: string }) {
-  if (question !== "What should I work on first?") return null;
+  if (!isFocusQuestion(question)) return null;
   const hint =
     id === "company" ? (
       <Trans>Email, calendar and your company pages</Trans>
@@ -171,7 +172,7 @@ function OnboardingFocusOptionLabel({
   label: string;
   question: string;
 }) {
-  if (question !== "What should I work on first?") return label;
+  if (!isFocusQuestion(question)) return label;
   switch (id) {
     case "company":
       return <Trans>Run my company</Trans>;
