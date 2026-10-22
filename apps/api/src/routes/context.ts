@@ -9,6 +9,7 @@ import type {
   MemoryStore,
   SandboxProvider,
   SecretStore,
+  TransactionalEmailProvider,
 } from "@rakazo/adapter-kit";
 import type {
   CloudAgentConnection,
@@ -39,6 +40,8 @@ import type { FinanceCryptoDeps } from "../finance.js";
 import type { ParseStatement } from "../finance-statements.js";
 
 export interface RouterDeps {
+  /** Transactional email for portal links; absent when the deployment has none. */
+  email?: TransactionalEmailProvider;
   /** Sends one-click unsubscribe POSTs; without it a one-click sender degrades to its link. */
   unsubscriber?: MailUnsubscriber;
   /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */

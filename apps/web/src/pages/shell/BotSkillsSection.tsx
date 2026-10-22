@@ -5,6 +5,7 @@ import type {
   AgentSkillDraft,
   BotAgentSkill,
 } from "@rakazo/contracts";
+import { buildSkillMd } from "@rakazo/core";
 import {
   Badge,
   Button,
@@ -18,7 +19,7 @@ import {
   Textarea,
 } from "@rakazo/ui-web";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { isHiddenBuiltinSkill, slashSkillLabel } from "../../lib/slash-skills";
 import { errorText } from "../../lib/user-error";
@@ -51,24 +52,6 @@ export function SkillSourceBadge({
   );
 }
 
-const NEW_SKILL_TEMPLATE = `---
-name: my-skill
-description: What this skill does and when the agent should use it.
----
-
-Steps the agent should follow.
-`;
-
-/** A new skill needs front matter with a non-empty name and description, and must not be the template. */
-function isNewSkillReady(draft: string) {
-  const text = draft.trim();
-  return (
-    text !== NEW_SKILL_TEMPLATE.trim() &&
-    /^name:\s*\S/m.test(text) &&
-    /^description:\s*\S/m.test(text)
-  );
-}
-
 /** Display only: the instructions without the leading `---` front matter block. */
 function skillBody(content: string) {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, "").trim();
@@ -91,6 +74,7 @@ export function BotSkillsSection({
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
 }) {
   const { t } = useLingui();
+  const fieldId = useId();
   const [loading, setLoading] = useState(true);
   const [skills, setSkills] = useState<BotAgentSkill[]>([]);
   const [drafts, setDrafts] = useState<AgentSkillDraft[]>([]);
@@ -99,6 +83,9 @@ export function BotSkillsSection({
   const [urlOpen, setUrlOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [draft, setDraft] = useState("");
+  // A new skill is written in fields; its SKILL.md front matter is built on save.
+  const [skillName, setSkillName] = useState("");
+  const [skillDescription, setSkillDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -238,16 +225,23 @@ export function BotSkillsSection({
       approve ? t`Could not approve skill` : t`Could not discard skill`,
     );
 
+  const newSkillReady = Boolean(skillName.trim() && skillDescription.trim() && draft.trim());
   const save = () =>
-    draft.trim()
-      ? write(() =>
-          creating
-            ? rpc.agentSkills.create({ content: draft })
-            : open
-              ? rpc.agentSkills.update({ skillId: open.id, content: draft })
-              : Promise.resolve(),
-        )
-      : undefined;
+    creating
+      ? newSkillReady
+        ? write(() =>
+            rpc.agentSkills.create({
+              content: buildSkillMd({
+                name: skillName,
+                description: skillDescription,
+                body: draft,
+              }),
+            }),
+          )
+        : undefined
+      : draft.trim() && open
+        ? write(() => rpc.agentSkills.update({ skillId: open.id, content: draft }))
+        : undefined;
 
   const importUrl = () =>
     url.trim()
@@ -325,7 +319,7 @@ export function BotSkillsSection({
                 <Button
                   variant="ghost"
                   type="button"
-                  className="px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+                  className="-me-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
                 />
               }
             >
@@ -337,6 +331,8 @@ export function BotSkillsSection({
                   closeEditor();
                   setCreating(true);
                   setDraft("");
+                  setSkillName("");
+                  setSkillDescription("");
                   setError(null);
                 }}
               >
@@ -400,7 +396,7 @@ export function BotSkillsSection({
           </Button>
         </div>
       ) : null}
-      {loading ? <Skeleton className="mt-2 h-10 w-full" /> : null}
+      {loading ? <Skeleton className="h-9 w-full" /> : null}
       {!editorOpen && !urlOpen && drafts.length > 0 ? (
         <div className="mt-2" data-testid="bot-skills-drafts">
           <h4 className="flex items-center gap-1.5 px-2.5 text-[12.5px] text-muted-foreground">
@@ -435,7 +431,7 @@ export function BotSkillsSection({
               >
                 {skillBody(draft.content)}
               </pre>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="sticky bottom-0 mt-2 flex items-center gap-2 bg-background py-1.5">
                 <Button
                   type="button"
                   disabled={busy}
@@ -485,25 +481,77 @@ export function BotSkillsSection({
               <SkillSourceBadge source={open.source} origin={open.origin} />
             </div>
           ) : null}
-          <Textarea
-            aria-label="SKILL.md"
-            placeholder={creating ? NEW_SKILL_TEMPLATE : undefined}
-            disabled={busy}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={Math.min(20, Math.max(8, draft.split("\n").length + 1))}
-            readOnly={Boolean(open?.readOnly)}
-            className={fieldClass}
-            dir="auto"
-          />
+          {creating ? (
+            <>
+              <label
+                htmlFor={`${fieldId}-name`}
+                className="mt-2 block text-[13px] text-muted-foreground"
+              >
+                <Trans>Name</Trans>
+                <Input
+                  id={`${fieldId}-name`}
+                  disabled={busy}
+                  value={skillName}
+                  maxLength={80}
+                  autoFocus
+                  onChange={(event) => setSkillName(event.target.value)}
+                  className="mt-1.5"
+                  dir="auto"
+                />
+              </label>
+              <label
+                htmlFor={`${fieldId}-about`}
+                className="mt-3 block text-[13px] text-muted-foreground"
+              >
+                <Trans>What it does and when to use it</Trans>
+                <Input
+                  id={`${fieldId}-about`}
+                  disabled={busy}
+                  value={skillDescription}
+                  maxLength={2000}
+                  onChange={(event) => setSkillDescription(event.target.value)}
+                  className="mt-1.5"
+                  dir="auto"
+                />
+              </label>
+            </>
+          ) : null}
+          {creating ? (
+            <label
+              htmlFor={`${fieldId}-steps`}
+              className="mt-3 block text-[13px] text-muted-foreground"
+            >
+              <Trans>Instructions</Trans>
+              <Textarea
+                id={`${fieldId}-steps`}
+                placeholder={t`Steps to follow`}
+                disabled={busy}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                rows={6}
+                className="mt-1.5 w-full"
+                dir="auto"
+              />
+            </label>
+          ) : (
+            <Textarea
+              aria-label="SKILL.md"
+              disabled={busy}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={Math.min(20, Math.max(8, draft.split("\n").length + 1))}
+              readOnly={Boolean(open?.readOnly)}
+              className={fieldClass}
+              dir="auto"
+            />
+          )}
           <div className="mt-2 flex items-center gap-2">
             {!open?.readOnly ? (
               <Button
                 variant="ghost"
                 type="button"
                 disabled={
-                  busy ||
-                  (creating ? !isNewSkillReady(draft) : !draft.trim() || draft === open?.content)
+                  busy || (creating ? !newSkillReady : !draft.trim() || draft === open?.content)
                 }
                 onClick={() => void save()}
                 className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"

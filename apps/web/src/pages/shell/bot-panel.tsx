@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   AgentSkillCatalogEntry,
   Bot,
+  BotAudience,
   ComputerHost,
   ComputerMode,
   Me,
@@ -14,6 +15,7 @@ import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
+  botAudienceEditable,
   isBuiltinToolName,
 } from "@rakazo/contracts";
 import {
@@ -31,6 +33,7 @@ import {
   Textarea,
   Toggle,
 } from "@rakazo/ui-web";
+import { ChevronRight } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
@@ -50,6 +53,17 @@ const ScratchpadSection = lazy(() =>
 const KnowledgeSection = lazy(() =>
   import("../KnowledgeSection").then((module) => ({ default: module.KnowledgeSection })),
 );
+
+/** Audience settings save the moment they change, each as its own patch. */
+type AudiencePatch = {
+  audience?: BotAudience;
+  externalMessageTargets?: string[];
+  externalComputerTools?: boolean;
+};
+
+/** The selected segment is a filled ink pill, so Internal/External and Team/Private read at a glance. */
+const SELECTED_SEGMENT =
+  "aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground";
 
 const fieldLabelClass = "mt-4 block text-[14px] text-muted-foreground";
 // Advanced sections share the heading style of Notifications, Skills, Memory and Credentials.
@@ -81,12 +95,19 @@ function ComputerModePicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(mode);
             }}
-            className="capitalize aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+            className={`capitalize ${SELECTED_SEGMENT}`}
           >
             {mode === "team" ? <Trans>Team</Trans> : <Trans>Private</Trans>}
           </Toggle>
         ))}
       </div>
+      <p className="mt-2 text-[12px] text-muted-foreground/70">
+        {value === "team" ? (
+          <Trans>Shares one computer with your other bots.</Trans>
+        ) : (
+          <Trans>Has its own computer.</Trans>
+        )}
+      </p>
     </div>
   );
 }
@@ -101,8 +122,11 @@ export function BotSettings({
   onClear,
   focusName = false,
   hostComputer,
+  messageTargets = [],
 }: {
   bot: Bot;
+  /** Internal bots an external bot can be allowed to message. */
+  messageTargets?: Pick<Bot, "id" | "name">[];
   /** Set only where the bot may run on the host computer; carries the deployment default. */
   hostComputer?: { defaultHost: ComputerHost };
   /** A bot just created as "New bot": focus and select its name so it gets named first. */
@@ -111,23 +135,25 @@ export function BotSettings({
   /** Changes when the agent may have created a skill, so the list reloads. */
   skillsRefreshKey?: number;
   memoryProviderConfigured: boolean;
-  onSave: (patch: {
-    name?: string;
-    title?: string;
-    description?: string;
-    instructions?: string;
-    color?: string;
-    notifyOnFinish?: boolean;
-    computerMode: ComputerMode;
-    runsOn?: ComputerHost;
-    memoryScope?: "isolated" | "shared" | null;
-    autoSpeak?: boolean;
-    voiceId?: string | null;
-    modelProvider?: string | null;
-    modelId?: string | null;
-    thinkingLevel?: ThinkingLevel | null;
-    disabledBuiltinTools?: string[];
-  }) => Promise<void>;
+  onSave: (
+    patch: {
+      name?: string;
+      title?: string;
+      description?: string;
+      instructions?: string;
+      color?: string;
+      notifyOnFinish?: boolean;
+      computerMode: ComputerMode;
+      runsOn?: ComputerHost;
+      memoryScope?: "isolated" | "shared" | null;
+      autoSpeak?: boolean;
+      voiceId?: string | null;
+      modelProvider?: string | null;
+      modelId?: string | null;
+      thinkingLevel?: ThinkingLevel | null;
+      disabledBuiltinTools?: string[];
+    } & AudiencePatch,
+  ) => Promise<void>;
   onExport: () => Promise<void>;
   onClear: () => void;
 }) {
@@ -173,6 +199,29 @@ export function BotSettings({
     persistedDisabledToolsRef.current = next;
     if (pendingSavesRef.current === 0) setDisabledBuiltinTools(next);
   }, [bot.disabledBuiltinTools]);
+  const [audience, setAudience] = useState<BotAudience>(bot.audience);
+  const [allowedTargets, setAllowedTargets] = useState<string[]>(bot.externalMessageTargets);
+  const [computerOn, setComputerOn] = useState(bot.externalComputerTools);
+  const [grantedConnections, setGrantedConnections] = useState<string[]>([]);
+  // Connections an external bot still reaches through an explicit grant. Read once the server
+  // has confirmed the audience, because the answer depends on it.
+  useEffect(() => {
+    if (bot.audience !== "external") return;
+    let live = true;
+    void Promise.all([rpc.connections.list(), rpc.connections.effectiveAccess()])
+      .then(([rows, access]) => {
+        if (!live) return;
+        setGrantedConnections(
+          rows
+            .filter((row) => row.status !== "revoked" && access[row.id]?.botIds.includes(bot.id))
+            .map((row) => row.displayName),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [bot.audience, bot.id]);
   const [toolNameDraft, setToolNameDraft] = useState("");
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
@@ -199,15 +248,17 @@ export function BotSettings({
   };
   const saveQueueRef = useRef(Promise.resolve());
   const executeSaveRef = useRef<
-    (patchOverrides?: {
-      name?: string;
-      title?: string;
-      description?: string;
-      color?: string;
-      notifyOnFinish?: boolean;
-      disabledBuiltinTools?: string[];
-      baseDisabledBuiltinTools?: string[];
-    }) => Promise<void>
+    (
+      patchOverrides?: {
+        name?: string;
+        title?: string;
+        description?: string;
+        color?: string;
+        notifyOnFinish?: boolean;
+        disabledBuiltinTools?: string[];
+        baseDisabledBuiltinTools?: string[];
+      } & AudiencePatch,
+    ) => Promise<void>
   >(async () => undefined);
   useEffect(() => {
     void rpc.voice
@@ -238,6 +289,14 @@ export function BotSettings({
     ? modelOptionKey(selectedModel.provider, selectedModel.modelId)
     : "";
 
+  // A chosen model whose provider is not connected: runs use the system model instead.
+  const unavailableModel =
+    modelMetaReady &&
+    selectedModel &&
+    !connectedOptions.some((option) => option.key === selectedModelKey)
+      ? (catalogLabel(catalog, selectedModel.provider, selectedModel.modelId) ??
+        selectedModel.modelId)
+      : null;
   const effectiveProvider = selectedModel?.provider ?? me?.defaultProvider ?? null;
   const effectiveModelId = selectedModel?.modelId ?? me?.defaultModel ?? null;
   const effectiveEntry =
@@ -258,15 +317,17 @@ export function BotSettings({
   ).filter((level) => level !== "off");
   const defaultThinkingLevel = effectiveCredential?.thinkingLevel ?? "medium";
 
-  async function executeSave(patchOverrides?: {
-    name?: string;
-    title?: string;
-    description?: string;
-    color?: string;
-    notifyOnFinish?: boolean;
-    disabledBuiltinTools?: string[];
-    baseDisabledBuiltinTools?: string[];
-  }) {
+  async function executeSave(
+    patchOverrides?: {
+      name?: string;
+      title?: string;
+      description?: string;
+      color?: string;
+      notifyOnFinish?: boolean;
+      disabledBuiltinTools?: string[];
+      baseDisabledBuiltinTools?: string[];
+    } & AudiencePatch,
+  ) {
     const selected = selectedModel;
     const nextName = (patchOverrides?.name !== undefined ? patchOverrides.name : name).trim();
     const nextTitle = (patchOverrides?.title !== undefined ? patchOverrides.title : title).trim();
@@ -296,6 +357,13 @@ export function BotSettings({
         computerMode,
         ...(hostComputer && runsOn !== (bot.runsOn ?? hostComputer.defaultHost) ? { runsOn } : {}),
         memoryScope,
+        ...(patchOverrides?.audience !== undefined ? { audience: patchOverrides.audience } : {}),
+        ...(patchOverrides?.externalMessageTargets !== undefined
+          ? { externalMessageTargets: patchOverrides.externalMessageTargets }
+          : {}),
+        ...(patchOverrides?.externalComputerTools !== undefined
+          ? { externalComputerTools: patchOverrides.externalComputerTools }
+          : {}),
         autoSpeak,
         voiceId: voiceId || null,
         modelProvider: selected?.provider ?? null,
@@ -344,6 +412,9 @@ export function BotSettings({
       setSaved(true);
     } catch (err) {
       setError(errorText(err, t`Could not save`));
+      setAudience(bot.audience);
+      setAllowedTargets(bot.externalMessageTargets);
+      setComputerOn(bot.externalComputerTools);
     } finally {
       pendingSavesRef.current -= 1;
       if (pendingSavesRef.current === 0) {
@@ -373,14 +444,16 @@ export function BotSettings({
     void enqueueSave({ disabledBuiltinTools: next });
   }
 
-  function enqueueSave(patchOverrides?: {
-    name?: string;
-    title?: string;
-    description?: string;
-    color?: string;
-    notifyOnFinish?: boolean;
-    disabledBuiltinTools?: string[];
-  }) {
+  function enqueueSave(
+    patchOverrides?: {
+      name?: string;
+      title?: string;
+      description?: string;
+      color?: string;
+      notifyOnFinish?: boolean;
+      disabledBuiltinTools?: string[];
+    } & AudiencePatch,
+  ) {
     // Serialize full-object auto-saves so an older in-flight request cannot
     // finish after a newer one and clobber fields. Always call through a ref so
     // queued work reads the latest field values, not a stale render closure.
@@ -398,6 +471,10 @@ export function BotSettings({
       .then(() => executeSaveRef.current(queuedPatch));
     return saveQueueRef.current;
   }
+
+  // A bot just created as "New bot" shows only its name until it has replied once.
+  const [unfolded, setUnfolded] = useState(false);
+  const folded = focusName && !unfolded;
 
   return (
     <div data-testid="bot-settings">
@@ -429,273 +506,372 @@ export function BotSettings({
           className="mt-1.5"
         />
       </label>
-      <label htmlFor={`${ids}-title`} className={fieldLabelClass}>
-        <Trans>Title</Trans>
-        <Input
-          id={`${ids}-title`}
-          value={title}
-          maxLength={BOT_TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => void enqueueSave()}
-          placeholder={t`e.g. Recruiting, Sales, Legal`}
-          className="mt-1.5"
-        />
-      </label>
-      <label htmlFor={`${ids}-description`} className={fieldLabelClass}>
-        <Trans>Description</Trans>
-        <Textarea
-          id={`${ids}-description`}
-          value={description}
-          maxLength={BOT_DESCRIPTION_MAX_LENGTH}
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={() => void enqueueSave()}
-          rows={3}
-          className="mt-1.5"
-        />
-      </label>
-      <div className="mt-6 flex items-center justify-between pt-4 border-t border-border/20">
-        <div className="space-y-0.5 pe-4">
-          <div
-            id={`${ids}-notify-finish-label`}
-            className="text-[13.5px] font-medium text-foreground"
-          >
-            <Trans>Notifications</Trans>
-          </div>
-          <div id={`${ids}-notify-finish-desc`} className="text-[12px] text-muted-foreground/70">
-            <Trans>Get notified when this bot finishes or needs input</Trans>
-          </div>
-        </div>
-        <Switch
-          id={`${ids}-notify-finish`}
-          checked={notifyOnFinish}
-          aria-labelledby={`${ids}-notify-finish-label`}
-          aria-describedby={`${ids}-notify-finish-desc`}
-          onCheckedChange={(checked) => {
-            setNotifyOnFinish(checked);
-            void enqueueSave({ notifyOnFinish: checked });
-          }}
-        />
-      </div>
-      <BotSkillsSection
-        botId={bot.id}
-        refreshKey={skillsRefreshKey}
-        onSkillsChange={onSkillsChange}
-      />
-      <details
-        data-testid="bot-settings-advanced"
-        className="group mt-5"
-        onToggle={(event) => {
-          if (!event.currentTarget.open) return;
-          setAdvancedOpened(true);
-          event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
-        }}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] text-muted-foreground">
-          <span className="text-muted-foreground">
-            <Trans>Advanced</Trans>
-          </span>
-          <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-            ›
-          </span>
-        </summary>
-        <ComputerModePicker
-          value={computerMode}
-          onChange={(value) => saveOnChange(() => setComputerMode(value))}
-        />
-        {hostComputer ? (
-          <div className="mt-4">
-            <div className="text-[13.5px] font-medium text-foreground">
-              <Trans>Runs on</Trans>
-            </div>
-            <RunsOnPicker
-              value={runsOn}
-              onChange={(value) => saveOnChange(() => setRunsOn(value))}
-            />
-          </div>
-        ) : null}
-        <ErrorBoundary fallback={<SectionLoadFailed />}>
-          <Suspense fallback={null}>
-            <ScratchpadSection botId={bot.id} />
-          </Suspense>
-        </ErrorBoundary>
-        {advancedOpened ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
-              <KnowledgeSection botId={bot.id} />
-            </Suspense>
-          </ErrorBoundary>
-        ) : null}
-        <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
-          <Trans>Model</Trans>
-          <NativeSelect
-            id={`${ids}-model`}
-            className="mt-2 w-full"
-            value={selectedModelKey}
-            onChange={(event) => {
-              saveOnChange(() => {
-                setModelKey(event.target.value);
-                setThinkingLevel("");
-              });
-            }}
-          >
-            <NativeSelectOption value="">
-              {t`Space default`}
-              {me?.defaultModel
-                ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
-                : ""}
-            </NativeSelectOption>
-            {selectedModelKey &&
-            !connectedOptions.some((option) => option.key === selectedModelKey) ? (
-              <NativeSelectOption value={selectedModelKey}>
-                {selectedModel?.modelId ?? selectedModelKey}
-              </NativeSelectOption>
-            ) : null}
-            {connectedOptions.map((option) => (
-              <NativeSelectOption key={option.key} value={option.key}>
-                {option.label}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </label>
-        {thinkingOptions.length ? (
-          <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
-            <Trans>Thinking</Trans>
-            <NativeSelect
-              id={`${ids}-thinking`}
-              className="mt-2 w-full"
-              value={thinkingLevel}
-              onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
-            >
-              <NativeSelectOption value="">
-                {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
-              </NativeSelectOption>
-              {thinkingOptions.map((level) => (
-                <NativeSelectOption key={level} value={level}>
-                  {thinkingLevelLabel(level)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-        ) : null}
-        {memoryProviderConfigured ? (
-          <div className="mt-4 text-[13.5px] font-medium text-foreground">
-            <Trans>Memory scope</Trans>
-            <div className="mt-2 flex gap-2">
-              {(
-                [
-                  { value: null, label: t`Inherit default` },
-                  { value: "isolated" as const, label: t`Isolated` },
-                  { value: "shared" as const, label: t`Shared` },
-                ] satisfies Array<{ value: "isolated" | "shared" | null; label: string }>
-              ).map((option) => (
-                <Toggle
-                  key={option.label}
-                  variant="outline"
-                  size="sm"
-                  pressed={memoryScope === option.value}
-                  onPressedChange={(pressed) => {
-                    if (pressed) saveOnChange(() => setMemoryScope(option.value));
-                  }}
-                  className="flex-1 aria-pressed:border-foreground/40 aria-pressed:text-foreground"
-                >
-                  {option.label}
-                </Toggle>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        <label
-          htmlFor={`${ids}-auto-speak`}
-          className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
-        >
-          <Switch
-            id={`${ids}-auto-speak`}
-            checked={autoSpeak}
-            onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
-          />
-          <Trans>Read replies aloud</Trans>
-        </label>
-        {voices.length ? (
-          <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
-            <Trans>Voice</Trans>
-            <NativeSelect
-              id={`${ids}-voice`}
-              className="mt-2 w-full"
-              value={voiceId}
-              onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
-            >
-              <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
-              {voices.map((voice) => (
-                <NativeSelectOption key={voice.id} value={voice.id}>
-                  {voice.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-        ) : null}
-        <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
-          <Trans>Disabled tools</Trans>
-          <Input
-            id={`${ids}-disabled-tools`}
-            value={toolNameDraft}
-            placeholder="web_search"
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            onChange={(event) => {
-              setToolNameDraft(event.target.value);
-              setToolError(null);
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              disableBuiltinTools(event.currentTarget.value);
-            }}
-            onBlur={(event) => {
-              if (event.currentTarget.value.trim()) disableBuiltinTools(event.currentTarget.value);
-            }}
-            className="mt-1.5 font-mono"
-          />
-        </label>
-        {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
-        {disabledBuiltinTools.map((toolName) => (
-          <label
-            key={toolName}
-            htmlFor={`${ids}-disabled-${toolName}`}
-            className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80"
-          >
-            <span className="font-mono">{toolName}</span>
-            <Switch
-              id={`${ids}-disabled-${toolName}`}
-              checked
-              onCheckedChange={(checked) => {
-                if (checked) return;
-                const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
-                setDisabledBuiltinTools(next);
-                void enqueueSave({ disabledBuiltinTools: next });
-              }}
-            />
-          </label>
-        ))}
-        {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
-      </details>
-      {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
-      <div className="mt-5 flex flex-col items-start gap-3">
-        <Button variant="ghost" size="sm" className="-ms-2.5" onClick={() => void onExport()}>
-          <Trans>Export</Trans>
-        </Button>
+      {folded ? (
         <Button
           variant="ghost"
           size="sm"
-          className="-ms-2.5 text-destructive hover:text-destructive"
-          onClick={onClear}
+          className="mt-4 -ms-2.5 text-muted-foreground"
+          onClick={() => setUnfolded(true)}
         >
-          <Trans>Clear conversation</Trans>
+          <Trans>More settings</Trans>
         </Button>
-      </div>
+      ) : (
+        <>
+          <label htmlFor={`${ids}-description`} className={fieldLabelClass}>
+            <Trans>Description</Trans>
+            <Textarea
+              id={`${ids}-description`}
+              value={description}
+              maxLength={BOT_DESCRIPTION_MAX_LENGTH}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={() => void enqueueSave()}
+              rows={3}
+              placeholder={t`What this bot handles`}
+              className="mt-1.5"
+            />
+          </label>
+          <label
+            htmlFor={`${ids}-notify-finish`}
+            className="mt-6 flex items-center justify-between pt-4 border-t border-border/20 pointer-coarse:min-h-11"
+          >
+            <div className="space-y-0.5 pe-4">
+              <div
+                id={`${ids}-notify-finish-label`}
+                className="text-[13.5px] font-medium text-foreground"
+              >
+                <Trans>Notifications</Trans>
+              </div>
+              <div
+                id={`${ids}-notify-finish-desc`}
+                className="text-[12px] text-muted-foreground/70"
+              >
+                <Trans>Get notified when this bot finishes or needs input</Trans>
+              </div>
+            </div>
+            <Switch
+              id={`${ids}-notify-finish`}
+              checked={notifyOnFinish}
+              aria-labelledby={`${ids}-notify-finish-label`}
+              aria-describedby={`${ids}-notify-finish-desc`}
+              onCheckedChange={(checked) => {
+                setNotifyOnFinish(checked);
+                void enqueueSave({ notifyOnFinish: checked });
+              }}
+            />
+          </label>
+          {botAudienceEditable(bot.spawnKey) ? (
+            <div data-testid="bot-audience" className="mt-6 border-t border-border/20 pt-4">
+              <div className="text-[13.5px] font-medium text-foreground">
+                <Trans>Audience</Trans>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {(["internal", "external"] as const).map((value) => (
+                  <Toggle
+                    key={value}
+                    variant="outline"
+                    pressed={audience === value}
+                    data-testid={`bot-audience-${value}`}
+                    onPressedChange={(pressed) => {
+                      if (!pressed || audience === value) return;
+                      setAudience(value);
+                      void enqueueSave({ audience: value });
+                    }}
+                    className={SELECTED_SEGMENT}
+                  >
+                    {value === "internal" ? <Trans>Internal</Trans> : <Trans>External</Trans>}
+                  </Toggle>
+                ))}
+              </div>
+              {audience === "external" ? (
+                <>
+                  <p className="mt-2 text-[12px] text-muted-foreground/70">
+                    <Trans>
+                      Talks to people outside your company. Private tools are turned off.
+                    </Trans>
+                  </p>
+                  {grantedConnections.length ? (
+                    <p className="mt-1.5 text-[12px] text-muted-foreground/70">
+                      {t`Still has access to: ${grantedConnections.join(", ")}`}
+                    </p>
+                  ) : null}
+                  {messageTargets.length ? (
+                    <div className="mt-4">
+                      <div className="text-[13.5px] font-medium text-foreground">
+                        <Trans>Can message</Trans>
+                      </div>
+                      {messageTargets.map((target) => (
+                        <label
+                          key={target.id}
+                          htmlFor={`${ids}-target-${target.id}`}
+                          className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
+                        >
+                          <span>{target.name}</span>
+                          <Switch
+                            id={`${ids}-target-${target.id}`}
+                            checked={allowedTargets.includes(target.id)}
+                            onCheckedChange={(checked) => {
+                              const next = checked
+                                ? [...allowedTargets, target.id]
+                                : allowedTargets.filter((id) => id !== target.id);
+                              setAllowedTargets(next);
+                              void enqueueSave({ externalMessageTargets: next });
+                            }}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                  <label
+                    htmlFor={`${ids}-external-computer`}
+                    className="mt-4 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
+                  >
+                    <Trans>Computer and browser</Trans>
+                    <Switch
+                      id={`${ids}-external-computer`}
+                      checked={computerOn}
+                      onCheckedChange={(checked) => {
+                        setComputerOn(checked);
+                        void enqueueSave({ externalComputerTools: checked });
+                      }}
+                    />
+                  </label>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          <BotSkillsSection
+            botId={bot.id}
+            refreshKey={skillsRefreshKey}
+            onSkillsChange={onSkillsChange}
+          />
+          <details
+            data-testid="bot-settings-advanced"
+            className="group mt-5"
+            onToggle={(event) => {
+              if (!event.currentTarget.open) return;
+              setAdvancedOpened(true);
+              event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
+            }}
+          >
+            <summary className={`${FOOTER_ROW} cursor-pointer list-none text-muted-foreground`}>
+              <Trans>Advanced</Trans>
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4 transition-transform group-open:rotate-90"
+              />
+            </summary>
+            <ComputerModePicker
+              value={computerMode}
+              onChange={(value) => saveOnChange(() => setComputerMode(value))}
+            />
+            {hostComputer ? (
+              <div className="mt-4">
+                <div className="text-[13.5px] font-medium text-foreground">
+                  <Trans>Runs on</Trans>
+                </div>
+                <RunsOnPicker
+                  value={runsOn}
+                  onChange={(value) => saveOnChange(() => setRunsOn(value))}
+                />
+              </div>
+            ) : null}
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={null}>
+                <ScratchpadSection botId={bot.id} />
+              </Suspense>
+            </ErrorBoundary>
+            {advancedOpened ? (
+              <ErrorBoundary fallback={<SectionLoadFailed />}>
+                <Suspense fallback={null}>
+                  <KnowledgeSection botId={bot.id} />
+                </Suspense>
+              </ErrorBoundary>
+            ) : null}
+            <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
+              <Trans>Model</Trans>
+              <NativeSelect
+                id={`${ids}-model`}
+                className="mt-2 w-full"
+                value={selectedModelKey}
+                onChange={(event) => {
+                  saveOnChange(() => {
+                    setModelKey(event.target.value);
+                    setThinkingLevel("");
+                  });
+                }}
+              >
+                <NativeSelectOption value="">
+                  {t`System model`}
+                  {me?.defaultModel
+                    ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
+                    : ""}
+                </NativeSelectOption>
+                {selectedModelKey &&
+                !connectedOptions.some((option) => option.key === selectedModelKey) ? (
+                  <NativeSelectOption value={selectedModelKey}>
+                    {unavailableModel ?? selectedModel?.modelId ?? selectedModelKey}
+                  </NativeSelectOption>
+                ) : null}
+                {connectedOptions.map((option) => (
+                  <NativeSelectOption key={option.key} value={option.key}>
+                    {option.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              {unavailableModel ? (
+                <span className="mt-1.5 block text-[12.5px] font-normal text-muted-foreground">
+                  {t`Using the system model: ${unavailableModel} isn't available`}
+                </span>
+              ) : null}
+            </label>
+            {thinkingOptions.length ? (
+              <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
+                <Trans>Thinking</Trans>
+                <NativeSelect
+                  id={`${ids}-thinking`}
+                  className="mt-2 w-full"
+                  value={thinkingLevel}
+                  onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
+                >
+                  <NativeSelectOption value="">
+                    {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
+                  </NativeSelectOption>
+                  {thinkingOptions.map((level) => (
+                    <NativeSelectOption key={level} value={level}>
+                      {thinkingLevelLabel(level)}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </label>
+            ) : null}
+            {memoryProviderConfigured ? (
+              <div className="mt-4 text-[13.5px] font-medium text-foreground">
+                <Trans>Memory scope</Trans>
+                <div className="mt-2 flex gap-2">
+                  {(
+                    [
+                      { value: null, label: t`Inherit default` },
+                      { value: "isolated" as const, label: t`Isolated` },
+                      { value: "shared" as const, label: t`Shared` },
+                    ] satisfies Array<{ value: "isolated" | "shared" | null; label: string }>
+                  ).map((option) => (
+                    <Toggle
+                      key={option.label}
+                      variant="outline"
+                      size="sm"
+                      pressed={memoryScope === option.value}
+                      onPressedChange={(pressed) => {
+                        if (pressed) saveOnChange(() => setMemoryScope(option.value));
+                      }}
+                      className={`flex-1 ${SELECTED_SEGMENT}`}
+                    >
+                      {option.label}
+                    </Toggle>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <label
+              htmlFor={`${ids}-auto-speak`}
+              className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
+            >
+              <Switch
+                id={`${ids}-auto-speak`}
+                checked={autoSpeak}
+                onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
+              />
+              <Trans>Read replies aloud</Trans>
+            </label>
+            {voices.length ? (
+              <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
+                <Trans>Voice</Trans>
+                <NativeSelect
+                  id={`${ids}-voice`}
+                  className="mt-2 w-full"
+                  value={voiceId}
+                  onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
+                >
+                  <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
+                  {voices.map((voice) => (
+                    <NativeSelectOption key={voice.id} value={voice.id}>
+                      {voice.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </label>
+            ) : null}
+            <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
+              <Trans>Disabled tools</Trans>
+              <Input
+                id={`${ids}-disabled-tools`}
+                value={toolNameDraft}
+                placeholder="web_search"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                onChange={(event) => {
+                  setToolNameDraft(event.target.value);
+                  setToolError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  disableBuiltinTools(event.currentTarget.value);
+                }}
+                onBlur={(event) => {
+                  if (event.currentTarget.value.trim())
+                    disableBuiltinTools(event.currentTarget.value);
+                }}
+                className="mt-1.5 font-mono"
+              />
+            </label>
+            {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
+            {disabledBuiltinTools.map((toolName) => (
+              <label
+                key={toolName}
+                htmlFor={`${ids}-disabled-${toolName}`}
+                className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
+              >
+                <span className="font-mono">{toolName}</span>
+                <Switch
+                  id={`${ids}-disabled-${toolName}`}
+                  checked
+                  onCheckedChange={(checked) => {
+                    if (checked) return;
+                    const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
+                    setDisabledBuiltinTools(next);
+                    void enqueueSave({ disabledBuiltinTools: next });
+                  }}
+                />
+              </label>
+            ))}
+            {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
+          </details>
+          {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+          <div className="mt-3 flex flex-col gap-3">
+            <Button
+              variant="ghost"
+              className={`${FOOTER_ROW} h-auto p-0 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground`}
+              onClick={() => void onExport()}
+            >
+              <Trans>Export</Trans>
+            </Button>
+            <Button
+              variant="ghost"
+              className={`${FOOTER_ROW} h-auto p-0 font-normal text-destructive hover:bg-transparent hover:text-destructive`}
+              onClick={onClear}
+            >
+              <Trans>Clear conversation</Trans>
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+/** The footer rows (Advanced, Export, Clear conversation) share one layout and right edge. */
+const FOOTER_ROW = "flex w-full items-center justify-between gap-3 text-[14px]";
 
 function sameStringList(left: readonly string[], right: readonly string[]) {
   return left.length === right.length && left.every((entry, index) => entry === right[index]);

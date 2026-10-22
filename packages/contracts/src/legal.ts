@@ -9,17 +9,16 @@ export const legalAgentSpawnKey = (userId: string) => `legal-agent:${userId}`;
 export const isLegalAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(legalAgentSpawnKey("")));
 
-/** The model the Legal agent runs on: Meta Muse Spark 1.2 via OpenRouter (never a -contributor SKU). */
+/**
+ * The model the Legal agent prefers: Meta Muse Wonder via OpenRouter (never a -contributor SKU).
+ * It is a default, not a rule: without that connection Legal runs on the system model.
+ */
 export const LEGAL_AGENT_MODEL = {
   provider: "openrouter",
-  id: "meta/muse-spark-1.2",
-  /** The level the model was benchmarked at; the catalog lists xhigh as supported for it. */
+  id: "meta/muse-wonder",
+  /** The highest effort level; the catalog lists xhigh as supported for it. */
   thinkingLevel: "xhigh",
 } as const;
-
-/** Shown when a Legal run resolves to any other model; the agent runs on Muse Spark 1.2 only. */
-export const LEGAL_MODEL_REQUIRED_MESSAGE =
-  "The Legal agent runs only on Muse Spark 1.2, which needs your own OpenRouter key. Add it in Settings > Models > OpenRouter.";
 
 /** Shown when a Legal run stops because the user has not yet allowed it to read their documents. */
 export const LEGAL_CONSENT_REQUIRED_MESSAGE =
@@ -168,12 +167,6 @@ export const LegalOverviewSchema = z.object({
    * Null when the agent does not exist yet or no model resolves.
    */
   model: z.object({ provider: z.string(), id: z.string(), isPreferred: z.boolean() }).nullable(),
-  /**
-   * Why the Legal agent cannot run on Muse Spark 1.2, or null when it can. "own_key": the user has no
-   * OpenRouter key of their own (a space or server key is not used for the Legal agent).
-   * "model_changed": the Legal agent was set to another model.
-   */
-  modelBlocker: z.enum(["own_key", "model_changed"]).nullable(),
 });
 export type LegalOverview = z.infer<typeof LegalOverviewSchema>;
 

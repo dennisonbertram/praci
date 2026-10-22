@@ -84,12 +84,14 @@ describe("mock demo data", () => {
     expect(DEMO_CHIEF_DRAFT_V1.name).toBe(DEMO_CHIEF_DRAFT.name);
     for (const artifact of [DEMO_CHIEF_DRAFT_V1, ...DEMO_ARTIFACTS]) {
       expect(artifact.name).toContain("MOCK");
-      expect(artifact.text).toContain(MOCK_NOTE);
+      // A CSV stays pure rows; its MOCK name is the marker.
+      if (!artifact.name.endsWith(".csv")) expect(artifact.text).toContain(MOCK_NOTE);
     }
     expect(DEMO_ARCHIVED_BOT.description).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
-      expect(document.text).toContain(MOCK_NOTE);
+      if (!document.name.endsWith(".csv")) expect(document.text).toContain(MOCK_NOTE);
+      else expect(document.text).not.toContain("MOCK DEMO DATA");
     }
   });
 
@@ -158,6 +160,8 @@ describe("mock demo data", () => {
       const server = servers[new URL(FINANCE_MCP_ENDPOINTS[provider]).hostname];
       expect(server?.tools.length).toBeGreaterThan(0);
       for (const tool of server?.tools ?? []) {
+        // Lookups by id rightly refuse an unknown id; the card-name test below covers them.
+        if (tool.name === "getRecipient" || tool.name === "getAccount") continue;
         const schema = tool.inputSchema as {
           properties: Record<string, { type: string }>;
           required: string[];
@@ -312,7 +316,7 @@ describe("mock demo data", () => {
       expect(message.subject).toMatch(/^(Re: )?\[MOCK\] /);
       expect(message.text).toContain(MOCK_NOTE);
     }
-    expect(new Set(messages.map((m) => m.threadId)).size).toBe(62);
+    expect(new Set(messages.map((m) => m.threadId)).size).toBe(63);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
     const redlines = messages.filter((m) => m.threadId.endsWith("msa-redlines"));
     expect(redlines).toHaveLength(4);
@@ -468,7 +472,23 @@ describe("mock demo data", () => {
     const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
     const mercury = await callToolFor({ id: "s", provider: "mercury", endpoint: "" } as never);
     expect(await mercury("getRecipients", {})).toMatchObject({
-      recipients: [{ id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" }],
+      recipients: [
+        { id: "recipient_mock_acme", name: "Acme Servo Supply (Mock)", status: "active" },
+      ],
+    });
+  });
+
+  it("serves the name lookups an approval card needs, and lists them to the agent", async () => {
+    const server = Object.values(demoFinanceMcp("http://localhost"))[0]!;
+    const tools = server.tools.map((t) => t.name);
+    expect(tools).toEqual(expect.arrayContaining(["getRecipient", "getAccount"]));
+    expect(await server.call("getRecipient", { recipientId: "recipient_mock_acme" })).toMatchObject(
+      {
+        name: "Acme Servo Supply (Mock)",
+      },
+    );
+    expect(await server.call("getAccount", { accountId: "chk-1111" })).toMatchObject({
+      name: "MOCK Checking ••1111",
     });
   });
 

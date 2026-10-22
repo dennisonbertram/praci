@@ -19,7 +19,7 @@ import {
 } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import type { Turn } from "./conversations.js";
-import { DEMO_CONVERSATIONS } from "./conversations.js";
+import { DEMO_CONVERSATIONS, DEMO_EMAIL_AGENT_CONVERSATION } from "./conversations.js";
 import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
@@ -38,7 +38,6 @@ import {
   DEMO_FINANCE_RECONNECT_SPACE,
   DEMO_GROUP,
   DEMO_LEGAL,
-  DEMO_LEGAL_KEY,
   DEMO_RATE_LIMIT_SPACE,
   DEMO_READING_DOCUMENT,
   DEMO_RECONNECT_SPACE,
@@ -548,27 +547,6 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     }
   }
 
-  // Legal runs only on the user's own OpenRouter key. A placeholder one lets the founder reach the
-  // consent card, Scan now and Scanning; OpenRouter rejects it, so a scan ends in "Last scan
-  // failed" with Retry and nothing is spent. It is not the space default, so other agents still
-  // use the space's shared model.
-  {
-    const credential = await session.rpc<{ id: string }>("models/connect", {
-      provider: LEGAL_AGENT_MODEL.provider,
-      apiKey: DEMO_LEGAL_KEY.apiKey,
-      label: DEMO_LEGAL_KEY.label,
-      modelId: LEGAL_AGENT_MODEL.id,
-    });
-    const db = createDb(options.databaseUrl);
-    try {
-      await db.prisma.spaceModelPreference.deleteMany({ where: { credentialId: credential.id } });
-    } finally {
-      await db.prisma.$disconnect();
-      await db.pool.end();
-    }
-    done.push(`placeholder OpenRouter key for Legal (${MOCK_NOTE})`);
-  }
-
   // Team: extra bots and a group chat.
   const botIds = [chief.id];
   for (const bot of DEMO_BOTS) {
@@ -698,6 +676,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
 
   // The Data room agent is created on first use; create it now so it has a conversation.
   await session.rpc("dataRoom/agent");
+  // The Investors agent is created when the Investors page first opens; create it now so Bots lists it.
+  await session.rpc("investors/agent");
 
   // The agents' earlier conversations, routines and saved skills, written straight to the database
   // (no model call). Each bot's own introduction run is waited for first, then replaced.
@@ -732,6 +712,26 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           conversation,
           artifactIds,
           new Map(bots.map((bot) => [bot.name, bot.id])),
+        );
+      }
+      // The email agent for the Sam Ortiz thread: made the way Ask agent makes it, then its chat is written.
+      const sam = await db.prisma.cachedMailMessage.findFirst({
+        where: { spaceId, subject: { contains: "Notice of Stockholder Action" }, fromSelf: false },
+        orderBy: { receivedAt: "desc" },
+      });
+      if (sam) {
+        const agent = await session.rpc<{ id: string }>("inbox/askAgent", { messageId: sam.id });
+        await waitForIdleBot(db.prisma, agent.id);
+        const agentThread = await db.prisma.thread.findUniqueOrThrow({
+          where: { botId: agent.id },
+        });
+        await writeConversation(
+          db.prisma,
+          agentThread.id,
+          agent.id,
+          DEMO_EMAIL_AGENT_CONVERSATION,
+          artifactIds,
+          new Map(),
         );
       }
       const botId = (name: string) => bots.find((bot) => bot.name === name)?.id;

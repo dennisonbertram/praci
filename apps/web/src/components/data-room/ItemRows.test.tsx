@@ -95,7 +95,7 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
-  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
+  expect(head?.textContent).toBe("NameTypeAddedParties");
   expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
 });
 
@@ -287,18 +287,35 @@ it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
+  // Status has no column while no row has a status.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
 });
 
 it("opens the file when its search snippet is clicked", () => {
   const onToggle = vi.fn();
   const rows = [{ item: item("lease", null), snippets: ["a «match» here"] }];
   act(() => root.render(<ListView rows={rows} o={{ ...o(), onToggle }} />));
-  const snippetRow = container.querySelector('tbody[aria-label="Items"] tr:not([data-row])');
-  expect(snippetRow?.textContent).toContain("match");
-  const text = snippetRow?.querySelector("p");
-  act(() => text?.click());
+  // The snippet sits in the name cell, under the name, so a narrow page never squeezes the name.
+  const nameCell = container.querySelector('[data-testid="data-room-name"]');
+  expect(nameCell?.textContent).toContain("match");
+  expect(container.querySelectorAll('tbody[aria-label="Items"] tr')).toHaveLength(1);
+  act(() => nameCell?.querySelector("p")?.click());
   expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: "lease" }));
+});
+
+it("makes only the first row a Tab stop, with menus out of the Tab order", () => {
+  const rows = [item("a", null), item("b", null), item("c", null)].map((i) => ({
+    item: i,
+    snippets: [],
+  }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(
+    Array.from(container.querySelectorAll<HTMLElement>("[data-row]")).map((r) => r.tabIndex),
+  ).toEqual([0, -1, -1]);
+  const menus = Array.from(
+    container.querySelectorAll<HTMLElement>('button[aria-label^="More actions"]'),
+  );
+  expect(menus.map((m) => m.tabIndex)).toEqual([-1, -1, -1]);
 });
 
 it("shows the added date under the name of an untagged file on a phone", () => {
@@ -316,8 +333,9 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
       <ListView
         rows={[{ item: item("a", null), snippets: [] }]}
         o={o()}
-        lead={() => (
+        lead={(showStatus) => (
           <SubfolderList
+            showStatus={showStatus}
             folders={[invoices]}
             contents={() => "2 items"}
             onOpen={vi.fn()}
@@ -455,7 +473,7 @@ it("sends a grid tile to an agent from its right-click menu", async () => {
   expect(pick).toHaveBeenCalledWith(file, expect.objectContaining({ id: "bot_ben" }));
 });
 
-it("offers the same four actions in the right-click menu as in the row's More actions menu", async () => {
+it("offers the same actions in the right-click menu as in the row's More actions menu", async () => {
   const names = () =>
     Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
       e.textContent?.trim(),
@@ -471,7 +489,7 @@ it("offers the same four actions in the right-click menu as in the row's More ac
       ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
   });
   await flush();
-  expect(names()).toEqual(["Send to agent", "Move", "Rename", "Delete"]);
+  expect(names()).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
 });
 
 it("keeps Move, Rename and Delete in the right-click menu when there is no agent to send to", async () => {
@@ -549,5 +567,105 @@ it("lets a long file name wrap and keeps the Type column off narrow lists", () =
   expect(name?.className).not.toContain("truncate");
   expect(container.querySelector("tbody td:nth-child(2)")?.className).toContain(
     "@min-[640px]/list",
+  );
+});
+
+it("shows why a failed file failed on its grid tile", async () => {
+  await showGrid({
+    status: "failed",
+    error: "This file isn't a readable PDF",
+    folderId: "f-legal",
+  });
+  const reason = container.querySelector('[data-testid="data-room-failed-reason"]');
+  expect(reason?.textContent).toBe("This file isn't a readable PDF");
+  // Failed tiles keep the same fields as the others: no folder line after the reason.
+  expect(container.querySelector('[data-testid="data-room-tile-meta"]')?.textContent).not.toContain(
+    "Legal",
+  );
+});
+
+it("ticks a row from its checkbox or the x key without opening the preview", () => {
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  const onCheck = vi.fn();
+  const onToggle = vi.fn();
+  act(() =>
+    root.render(
+      <ListView rows={rows} o={{ ...o(), onCheck, onToggle, checked: new Set(["b"]) }} />,
+    ),
+  );
+  const boxes = Array.from(container.querySelectorAll<HTMLElement>('[role="checkbox"]'));
+  expect(boxes.map((box) => box.getAttribute("aria-checked"))).toEqual(["false", "true"]);
+  act(() => boxes[0]?.click());
+  expect(onCheck).toHaveBeenCalledTimes(1);
+  expect(onToggle).not.toHaveBeenCalled();
+  const row = container.querySelector<HTMLElement>("[data-row]");
+  act(() => {
+    row?.dispatchEvent(new KeyboardEvent("keydown", { key: "x", bubbles: true }));
+  });
+  expect(onCheck).toHaveBeenCalledTimes(2);
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector('[role="checkbox"]')).toBeNull();
+});
+
+const asRows = (...items: unknown[]) =>
+  items.map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
+
+it("offers Delete, not Try again, on a file that cannot be read", () => {
+  const onAction = vi.fn();
+  const rows = asRows({
+    ...item("scan", null),
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  });
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
+  const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(buttons).not.toContain("Try again");
+  act(() =>
+    Array.from(container.querySelectorAll("button"))
+      .find((b) => b.textContent === "Delete")
+      ?.click(),
+  );
+  expect(onAction).toHaveBeenCalledWith("delete", expect.objectContaining({ id: "scan" }));
+});
+
+it("keeps Try again for a failure that is not about the file's bytes", () => {
+  const rows = asRows({
+    ...item("late", null),
+    status: "failed",
+    error: "TimeoutError: timed out",
+  });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(buttons).toContain("Try again");
+});
+
+it("shows how long a file has been Reading once that passes two minutes", () => {
+  const long = new Date(Date.now() - 5 * 60_000).toISOString();
+  const short = new Date(Date.now() - 30_000).toISOString();
+  const rows = asRows(
+    { ...item("old", null), status: "extracting", createdAt: long },
+    { ...item("new", null), status: "extracting", createdAt: short },
+  );
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const lines = Array.from(container.querySelectorAll('[data-testid="data-room-subline"]')).map(
+    (el) => el.textContent,
+  );
+  expect(lines[0]).toMatch(/^Reading for/);
+  expect(lines[1]).toBe("Reading");
+});
+
+it("leaves out the Status column when no row has a status", () => {
+  act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
+    "Status",
+  );
+  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
+  act(() =>
+    root.render(
+      <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,
+    ),
+  );
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain(
+    "Status",
   );
 });

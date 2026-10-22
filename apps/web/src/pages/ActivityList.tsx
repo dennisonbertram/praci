@@ -5,6 +5,7 @@ import { isAgedStuckWork } from "@rakazo/core";
 import { Button, Input, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { RowsSkeleton } from "../components/RowsSkeleton";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
 import {
   activityFiltersActive,
@@ -104,11 +105,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   const hasVisibleRuns = filteredActive.length > 0 || filteredRecent.length > 0;
 
   if (loading && !hasAnyRuns && !filtersOn) {
-    return (
-      <div className="min-h-20 px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
-        <Trans>Loading activity…</Trans>
-      </div>
-    );
+    return <RowsSkeleton rows={3} className="px-2.5 py-2" />;
   }
 
   if (!hasAnyRuns && !filtersOn) {
@@ -132,7 +129,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 max-h-[40vh] overflow-y-auto border-b border-border pb-2"
+      className="mb-2 flex max-h-[40vh] shrink-0 flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
@@ -154,61 +151,62 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
       {showFilters || filtersOn ? (
         <ActivityFilters filters={filters} onChange={setFilters} />
       ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
+        {error ? (
+          <div className="px-2.5 pb-2" role="alert">
+            <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />
+          </div>
+        ) : null}
 
-      {error ? (
-        <div className="px-2.5 pb-2" role="alert">
-          <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />
-        </div>
-      ) : null}
+        {loading && !hasAnyRuns ? (
+          <p className="px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
+            <Trans>Loading activity…</Trans>
+          </p>
+        ) : !error && filtersOn && hasAnyRuns && !hasVisibleRuns ? (
+          <p className="px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
+            <Trans>No runs match these filters.</Trans>
+          </p>
+        ) : null}
 
-      {loading && !hasAnyRuns ? (
-        <p className="px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
-          <Trans>Loading activity…</Trans>
-        </p>
-      ) : !error && filtersOn && hasAnyRuns && !hasVisibleRuns ? (
-        <p className="px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
-          <Trans>No runs match these filters.</Trans>
-        </p>
-      ) : null}
-
-      <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
-        {needsYou.map((run) => (
-          <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
-        ))}
-      </ActivitySection>
-      <ActivitySection id="activity-now-heading" title={<Trans>Working</Trans>}>
-        {working.map((run) => (
-          <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
-        ))}
-      </ActivitySection>
-      {needsYou.length === 0 && working.length === 0 && !filtersOn ? (
-        <p className="px-2.5 py-1 text-[13px] text-muted-foreground/80" role="status">
-          <Trans>Nothing needs you right now.</Trans>
-        </p>
-      ) : null}
-      {/* Finished runs need nothing from the person, so they stay folded unless filtering. */}
-      {filteredRecent.length > 0 && !showFinished && !filtersOn ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 w-full justify-start rounded-xl px-2.5 text-[12.5px] font-medium text-muted-foreground/80"
-          data-testid="activity-show-finished"
-          aria-expanded={false}
-          onClick={() => setShowFinished(true)}
-        >
-          {plural(filteredRecent.length, {
-            one: "Show # finished run",
-            other: "Show # finished runs",
-          })}
-        </Button>
-      ) : (
-        <ActivitySection id="activity-recent-heading" title={<Trans>Finished</Trans>}>
-          {filteredRecent.map((run) => (
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
+          {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
         </ActivitySection>
-      )}
+        <ActivitySection id="activity-now-heading" title={<Trans>Working</Trans>}>
+          {working.map((run) => (
+            <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+          ))}
+        </ActivitySection>
+        {needsYou.length === 0 && working.length === 0 && !filtersOn ? (
+          <p className="px-2.5 py-1 text-[13px] text-muted-foreground/80" role="status">
+            <Trans>Nothing needs you right now.</Trans>
+          </p>
+        ) : null}
+        {/* Finished runs need nothing from the person, so they stay folded unless filtering. */}
+        {filteredRecent.length > 0 && !showFinished && !filtersOn ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-full justify-start rounded-xl px-2.5 text-[12.5px] font-medium text-muted-foreground/80"
+            data-testid="activity-show-finished"
+            aria-expanded={false}
+            onClick={() => setShowFinished(true)}
+          >
+            {plural(filteredRecent.length, {
+              one: "Show # finished run",
+              other: "Show # finished runs",
+            })}
+          </Button>
+        ) : (
+          <ActivitySection id="activity-recent-heading" title={<Trans>Finished</Trans>}>
+            {filteredRecent.map((run) => (
+              <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+            ))}
+          </ActivitySection>
+        )}
+      </div>
     </div>
   );
 }

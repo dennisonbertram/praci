@@ -64,6 +64,15 @@ describe("task catalog", () => {
     expect(result.tasks).toEqual([
       expect.objectContaining({ id: "item-1", title: "Check the inbox", source: "scratchpad" }),
     ]);
+    expect(prisma.scratchpadItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          spaceId: "space-1",
+          userId: "user-1",
+          botId: "bot-1",
+        }),
+      }),
+    );
     expect(result.routines).toEqual([
       expect.objectContaining({ routineId: "routine-1", name: "Morning report", active: true }),
     ]);

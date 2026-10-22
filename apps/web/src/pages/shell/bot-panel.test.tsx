@@ -15,6 +15,10 @@ vi.mock("../../lib/rpc", () => ({
       list: vi.fn().mockResolvedValue([]),
     },
     me: vi.fn().mockResolvedValue(null),
+    connections: {
+      list: vi.fn().mockResolvedValue([]),
+      effectiveAccess: vi.fn().mockResolvedValue({}),
+    },
   },
 }));
 vi.mock("@lingui/react/macro", () => {
@@ -106,6 +110,9 @@ function bot(description = "Billing"): Bot {
     teamChatAmbientEnabled: false,
     teamChatRules: "",
     disabledBuiltinTools: [],
+    audience: "internal",
+    externalMessageTargets: [],
+    externalComputerTools: false,
     webhookConfigured: false,
     spawnKey: null,
     runPhase: null,
@@ -336,5 +343,128 @@ describe("BotSettings saving without a Save button", () => {
     const message = input.closest("label")?.nextElementSibling;
     expect(message?.textContent).toBe("Unknown tool: nonexistent_tool");
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe("BotSettings for a bot just created with New bot", () => {
+  it("shows only the name until More settings is pressed", async () => {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={bot("")}
+          focusName
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    expect(container.querySelector("input")).not.toBeNull();
+    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector('[data-testid="bot-settings-advanced"]')).toBeNull();
+    const more = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("More settings"),
+    );
+    await act(async () => more?.click());
+    expect(container.querySelector("textarea")).not.toBeNull();
+    expect(container.querySelector('[data-testid="bot-settings-advanced"]')).not.toBeNull();
+  });
+});
+
+describe("BotSettings audience", () => {
+  const helper = "Talks to people outside your company. Private tools are turned off.";
+  async function renderWith(
+    overrides: Partial<Bot> = {},
+    targets: { id: string; name: string }[] = [],
+  ) {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={{ ...bot(), ...overrides }}
+          messageTargets={targets}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+  }
+  const button = (testId: string) =>
+    container.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+
+  it("shows no explanation while the bot is internal", async () => {
+    await renderWith();
+    expect(button("bot-audience-internal")?.getAttribute("aria-pressed")).toBe("true");
+    expect(container.textContent).not.toContain(helper);
+    expect(container.textContent).not.toContain("Can message");
+  });
+
+  it("saves the audience on selecting External and then shows the helper and the allowlist", async () => {
+    await renderWith({}, [{ id: "bot-2", name: "Chief" }]);
+    await act(async () => {
+      button("bot-audience-external")?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ audience: "external" }));
+    expect(container.textContent).toContain(helper);
+    expect(container.textContent).toContain("Can message");
+    expect(container.textContent).toContain("Chief");
+    expect(container.textContent).toContain("Computer and browser");
+  });
+
+  it("names the connections an external bot still reaches", async () => {
+    vi.mocked(rpc.connections.list).mockResolvedValueOnce([
+      { id: "c1", displayName: "Slack", status: "connected" },
+      { id: "c2", displayName: "Notion", status: "connected" },
+    ] as never);
+    vi.mocked(rpc.connections.effectiveAccess).mockResolvedValueOnce({
+      c1: { shared: "some", botIds: ["bot-1"] },
+      c2: { shared: "all", botIds: ["bot-9"] },
+    });
+    await renderWith({ audience: "external" });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Still has access to: Slack");
+    expect(container.textContent).not.toContain("Notion");
+  });
+
+  it("offers the system model on a page agent", async () => {
+    await renderWith({ spawnKey: "legal-agent:user-1" });
+    const model = container.querySelector("select");
+    expect(model?.textContent).toContain("System model");
+  });
+
+  it("says the system model is used when the chosen provider is not connected", async () => {
+    vi.mocked(rpc.models.credentials).mockResolvedValueOnce([]);
+    vi.mocked(rpc.models.list).mockResolvedValueOnce([
+      {
+        provider: "openrouter",
+        providerName: "OpenRouter",
+        id: "meta/muse-wonder",
+        label: "Muse Wonder",
+        billing: "",
+      },
+    ]);
+    await renderWith({
+      spawnKey: "legal-agent:user-1",
+      modelProvider: "openrouter",
+      modelId: "meta/muse-wonder",
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Using the system model: Muse Wonder isn't available");
+  });
+
+  it("has no switch for a page or integration agent", async () => {
+    await renderWith({ spawnKey: "finance-agent:user-1" });
+    expect(button("bot-audience-external")).toBeNull();
   });
 });

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { withPageBehind } from "../../stories/decorators";
+import { makeBot } from "../../stories/fixtures";
 import { InboxMessageDialog } from "./InboxMessageDialog";
 
 // The message cache is module-level, so every story uses its own message id.
@@ -111,7 +112,7 @@ export const WithInboxActions: Story = {
   beforeEach: () => mockRpc({ "inbox.get": message }),
 };
 
-/** Ask agent sits with Reply, Forward and Archive; it opens a chat made for this conversation. */
+/** Ask agent sits beside Reply and Archive; it opens a chat made for this conversation. */
 export const WithAskAgent: Story = {
   name: "With Ask agent",
   args: {
@@ -123,6 +124,32 @@ export const WithAskAgent: Story = {
     onAskAgent: async () => undefined,
   },
   beforeEach: () => mockRpc({ "inbox.get": message }),
+};
+
+/** The agent opens beside the email without moving the email's left edge. */
+export const AskAgentPanelOpen: Story = {
+  args: {
+    messageId: "msg_ask_panel",
+    onAskAgentPanel: async () =>
+      makeBot({ id: "bot_email_agent", name: "Quarterly planning notes" }),
+  },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": message,
+      "threads.get": {
+        threadId: "thread_email_agent",
+        cursor: -1,
+        messages: [],
+        olderCursor: null,
+        botId: "bot_email_agent",
+        run: null,
+      },
+    }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await body.findByRole("button", { name: "Ask agent" }));
+    await body.findByTestId("email-agent-panel");
+  },
 };
 
 export const AskAgentFailed: Story = {

@@ -281,14 +281,42 @@ it("says no model is active, not the saved default, while no model is set up", a
     needsModel: true,
   });
   const view = await renderSettings();
-  expect(view.container.textContent).toContain("None yet");
   expect(view.container.textContent).toContain("Pick a provider below and connect it.");
-  expect(view.container.textContent).not.toMatch(/Active model\s*DeepSeek Chat/);
+  expect(view.container.textContent).not.toContain("Active model");
   // The detail names the provider it is about, since none is marked as connected yet.
   expect(view.container.textContent).toContain(
     "Connect DeepSeek to use it as your personal model.",
   );
   await view.unmount();
+});
+
+it("keeps the key field behind Replace key while connected, opened only when asked for", async () => {
+  models.credentials.mockResolvedValue([
+    {
+      id: "cred-deepseek",
+      provider: "deepseek",
+      label: "DeepSeek",
+      hasKey: true,
+      isDefault: true,
+      modelId: "deepseek-chat",
+    },
+  ]);
+  const closed = await renderSettings();
+  try {
+    const fold = keyField(closed.container).closest("details");
+    expect(fold?.querySelector("summary")?.textContent).toBe("Replace key");
+    expect(fold?.open).toBe(false);
+    expect(buttons(closed.container, "Disconnect").length).toBeGreaterThan(0);
+    expect(closed.container.textContent).not.toContain("Active model");
+  } finally {
+    await closed.unmount();
+  }
+  const asked = await renderSettings("deepseek");
+  try {
+    expect(keyField(asked.container).closest("details")?.open).toBe(true);
+  } finally {
+    await asked.unmount();
+  }
 });
 
 it("leaves the key field empty until a key is saved", async () => {
@@ -307,7 +335,7 @@ it("treats the provider this space already uses as connected, with a key optiona
   const view = await renderSettings();
   try {
     const text = view.container.textContent ?? "";
-    expect(text).toContain("This space already uses DeepSeek.");
+    expect(text).toContain("Your bots already use DeepSeek.");
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
     // A founder should learn they need to do nothing here before reading a list of providers.

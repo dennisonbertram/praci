@@ -174,19 +174,34 @@ function typeInto(el: HTMLTextAreaElement | HTMLInputElement | null, value: stri
   });
 }
 
-const SKILL_MD = "---\nname: my-skill\ndescription: Does a thing.\n---\n\nSteps.\n";
+const SKILL_MD = "---\nname: my-skill\ndescription: Does a thing.\n---\n\nSteps.";
 
-it("starts New skill empty with the template as a placeholder and cannot save it untouched", async () => {
+function field(view: { container: HTMLElement }, label: string) {
+  const owner = [...view.container.querySelectorAll("label")].find((item) =>
+    item.textContent?.startsWith(label),
+  );
+  return (owner ? document.getElementById(owner.htmlFor) : null) as
+    | HTMLInputElement
+    | HTMLTextAreaElement
+    | null;
+}
+
+async function fillNewSkill(view: { container: HTMLElement }) {
+  await typeInto(field(view, "Name"), "my-skill");
+  await typeInto(field(view, "What it does and when to use it"), "Does a thing.");
+  await typeInto(field(view, "Instructions"), "Steps.");
+}
+
+it("creates a new skill from Name, description and instructions fields, with no front matter to type", async () => {
   const view = await mount();
   await act(async () => view.button("New skill").click());
-  const area = view.container.querySelector("textarea");
-  expect(area?.value).toBe("");
-  expect(area?.placeholder).toContain("name: my-skill");
+  expect(view.container.querySelector("textarea")?.placeholder).not.toContain("---");
   expect((view.button("Save") as HTMLButtonElement).disabled).toBe(true);
-  // The template text pasted back in is still not a skill.
-  await typeInto(area ?? null, area?.placeholder ?? "");
+  await typeInto(field(view, "Name"), "my-skill");
+  await typeInto(field(view, "Instructions"), "Steps.");
+  // The description is still missing.
   expect((view.button("Save") as HTMLButtonElement).disabled).toBe(true);
-  await typeInto(area ?? null, SKILL_MD);
+  await typeInto(field(view, "What it does and when to use it"), "Does a thing.");
   expect((view.button("Save") as HTMLButtonElement).disabled).toBe(false);
   await view.unmount();
 });
@@ -195,7 +210,7 @@ it("creates a skill from New skill and shows it in the list", async () => {
   api.create.mockResolvedValue({});
   const view = await mount();
   await act(async () => view.button("New skill").click());
-  await typeInto(view.container.querySelector("textarea"), SKILL_MD);
+  await fillNewSkill(view);
   await act(async () => view.button("Save").click());
   expect(api.create).toHaveBeenCalledWith({ content: SKILL_MD });
   catalog = [...catalog, skill("user-2", "my-skill", "user")];
@@ -208,7 +223,7 @@ it("creates a skill from New skill and shows it in the list", async () => {
 it("shows the server's reason when a skill cannot be saved, and clears it on retry and Cancel", async () => {
   const view = await mount();
   await act(async () => view.button("New skill").click());
-  await typeInto(view.container.querySelector("textarea"), SKILL_MD);
+  await fillNewSkill(view);
   api.create.mockRejectedValueOnce(new Error("Skill front matter needs a name."));
   await act(async () => view.button("Save").click());
   expect(view.container.textContent).toContain("Skill front matter needs a name.");

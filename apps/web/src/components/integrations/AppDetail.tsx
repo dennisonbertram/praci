@@ -361,7 +361,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden="true" />
-      <Trans>Apps</Trans>
+      <Trans>Integrations</Trans>
     </Link>
   );
 

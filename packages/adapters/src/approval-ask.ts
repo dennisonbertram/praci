@@ -7,10 +7,12 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
-  isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
+  isMailAgentSpawnKey,
   isReadTool,
   MAX_COMPOSE_BODY,
+  modelLabel,
 } from "@rakazo/contracts";
 import { humanizeToolName, redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
@@ -61,14 +63,16 @@ export function buildApprovalAskBlock(
       ? imessageSendDetail(args, options.imessage, options.reviewReason)
       : options?.fullMail
         ? fullMailDetail(args, options.reviewReason)
-        : options?.integrationWriteTool !== undefined
-          ? integrationWriteDetail(
-              toolName,
-              options.integrationWriteTool,
-              args,
-              options.reviewReason,
-            )
-          : formatApprovalDetail(toolName, args, options?.reviewReason);
+        : isSendMoney(toolName)
+          ? moneyDetail(args, options?.moneyNames, options?.reviewReason)
+          : options?.integrationWriteTool !== undefined
+            ? integrationWriteDetail(
+                toolName,
+                options.integrationWriteTool,
+                args,
+                options.reviewReason,
+              )
+            : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -129,10 +133,12 @@ export function buildConsentAskBlock(
   effectId: string,
   recipient: { name: string; detail?: string },
 ): MessageBlock {
+  // "GPT-6 Luna (via OpenRouter)", not the router's raw "openai/gpt-6-luna, forwarded to its provider".
+  const model = modelLabel(recipient.detail ?? "");
   return {
     kind: "ask",
     approvalEffectId: effectId,
-    text: `Allow your mail to be sent to ${recipient.name}${recipient.detail ? ` (${recipient.detail})` : ""}?`,
+    text: `Allow your mail to be sent to ${model ? `${model} (via ${recipient.name})` : recipient.name}?`,
     // The clause says the permission is standing, not for this one read.
     detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Account settings.`,
     consent: { version: AI_DISCLOSURE_VERSION },
@@ -145,12 +151,14 @@ export function buildConsentAskBlock(
 }
 
 /**
- * The Carta and Inbox agents' mail_send: always asks, never from a saved rule or Auto Review, so
+ * The Carta, Inbox and email agents' mail_send: always asks, never from a saved rule or Auto Review, so
  * the founder sees the whole message on a card before investor or customer mail goes out.
  */
 export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
   toolName === "mail_send" &&
-  (isCartaAgentSpawnKey(botSpawnKey) || isInboxAgentSpawnKey(botSpawnKey));
+  (isCartaAgentSpawnKey(botSpawnKey) ||
+    isInvestorsAgentSpawnKey(botSpawnKey) ||
+    isMailAgentSpawnKey(botSpawnKey));
 
 /**
  * The Carta agent's write tools on Carta's server: every call asks, whatever the saved rules say.
@@ -206,6 +214,23 @@ export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean 
 }
 
 /** The raw tool name and every argument, nested ones included, so the user sees the operation. */
+/** A money request as labelled rows: what, to whom, from where. No tool id and no raw JSON. */
+function moneyDetail(
+  args: Record<string, unknown>,
+  names: MoneyNames | undefined,
+  reviewReason?: string,
+): string {
+  const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
+  lines.push(
+    `Amount: ${args.amount == null ? "not given" : formatAmount(args.amount, args.currency)}`,
+    `To: ${names?.recipient ?? String(args.recipientId ?? "not given")}`,
+    `From account: ${names?.account ?? String(args.accountId ?? "not given")}`,
+  );
+  for (const key of ["note", "memo", "externalMemo"])
+    if (typeof args[key] === "string" && args[key]) lines.push(`Note: ${args[key]}`);
+  return lines.join("\n");
+}
+
 function integrationWriteDetail(
   toolName: string,
   rawTool: string,
@@ -252,8 +277,7 @@ export type MoneyNames = { recipient?: string; account?: string };
 
 /**
  * The names behind a send-money request's recipientId and accountId, read with the provider's own
- * read tools through `read`. A failed or empty lookup leaves that name out, so the card says
- * "a recipient" rather than an id. The caller caches lookups for the same id.
+ * read tools through `read`. A failed or empty lookup leaves that name out, so the card says "a recipient" or "an account"; Details still shows the ids. The caller caches lookups for the same id.
  */
 export async function resolveMoneyNames(
   toolName: string,

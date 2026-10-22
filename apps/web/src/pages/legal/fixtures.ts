@@ -87,8 +87,7 @@ export const overview: LegalOverview = {
     dailyScanActive: true,
     lastScanRun: { id: id(950), status: "completed", error: null },
   },
-  model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
-  modelBlocker: null,
+  model: { provider: "openrouter", id: "meta/muse-wonder", isPreferred: true },
 };
 
 export const emptyOverview: LegalOverview = {
@@ -102,15 +101,7 @@ export const emptyOverview: LegalOverview = {
     unreviewedDocuments: 0,
   },
   agent: { botId: id(900), lastScanAt: null, dailyScanActive: true, lastScanRun: null },
-  model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
-  modelBlocker: null,
-};
-
-/** No OpenRouter key of the user's own: the agent falls back to the space model and cannot run. */
-export const needsKeyOverview: LegalOverview = {
-  ...emptyOverview,
-  model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
-  modelBlocker: "own_key",
+  model: { provider: "openrouter", id: "meta/muse-wonder", isPreferred: true },
 };
 
 export const graph: LegalGraph = {
@@ -192,5 +183,5 @@ export const consentFixture = {
   version: "v1",
   allowed: true,
   disclosure: "Document text from your Data room is sent to the model that runs the Legal agent.",
-  recipients: [{ name: "OpenRouter", detail: "Meta Muse Spark 1.2" }],
+  recipients: [{ name: "OpenRouter", detail: "Meta Muse Wonder" }],
 };

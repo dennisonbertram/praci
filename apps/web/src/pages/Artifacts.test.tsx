@@ -184,10 +184,10 @@ it("explains what artifacts are when the space has none", async () => {
   const page = await renderArtifacts();
   try {
     expect(page.container.textContent).toContain("No artifacts yet");
-    const open = [...page.container.querySelectorAll("a")].find((link) =>
-      link.textContent?.includes("Open chat"),
-    );
-    expect(open?.getAttribute("href")).toBe("/app");
+    // Nothing to filter or switch yet, and Ask in the header already opens the chat.
+    expect(page.container.textContent).not.toContain("Open chat");
+    expect(page.container.querySelector('[data-testid="artifacts-filters"]')).toBeNull();
+    expect(page.container.querySelector('[aria-label="Grid view"]')).toBeNull();
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
@@ -247,14 +247,14 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     await act(async () => button("List view")?.click());
     expect(page.container.querySelectorAll("[data-testid='artifact-row']")).toHaveLength(2);
     const headings = [...page.container.querySelectorAll("th")].map((th) => th.textContent);
-    expect(headings).toEqual(expect.arrayContaining(["Name", "Added", "Size"]));
+    expect(headings).toEqual(expect.arrayContaining(["Name", "Added"]));
     expect(headings).not.toContain("Bot");
+    expect(headings).not.toContain("Size");
     expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
       "/app/artifacts/artifact-1",
     );
-    expect(page.container.querySelector("[data-testid='artifact-meta']")?.textContent).toContain(
-      "128 bytes",
-    );
+    // No size anywhere: "128 bytes" means nothing to a founder.
+    expect(page.container.textContent).not.toMatch(/bytes|\b128 B\b/);
     expect(window.localStorage.getItem("rakazo:artifacts-view-mode")).toBe("list");
     await act(async () => button("Grid view")?.click());
     expect(page.container.querySelector("table")).toBeNull();
@@ -368,5 +368,31 @@ it("labels cards Doc and Sheet and gives a sheet its own icon", async () => {
     expect(cards[1]?.querySelector("svg rect")).not.toBeNull();
   } finally {
     await page.cleanup();
+  }
+});
+
+it("offers Ask Chief in the header when Chief is available", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({ items: [artifact("Q3 Plan", "artifact-1")], nextCursor: null });
+  const ask = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={["/app/artifacts"]}>
+          <ArtifactsPage onAskAgent={ask} />
+        </MemoryRouter>,
+      ),
+    );
+    const button = [...container.querySelectorAll("button")].find((b) => b.textContent === "Ask");
+    expect(button?.closest("[data-page-header]")).toBeTruthy();
+    await act(async () => button?.click());
+    expect(ask).toHaveBeenCalledOnce();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
   }
 });

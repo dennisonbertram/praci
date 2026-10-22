@@ -119,11 +119,9 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(page).toHaveURL(/\/app\/finance\/vendor\/acme-hosting$/);
   await expect(main.getByRole("heading", { name: "Acme Hosting", level: 1 })).toBeVisible();
   await expect(main.getByText("↑ 40%")).toBeVisible();
-  // Opened from the dashboard's Breakdown card, so the trail says so (Acme Hosting is also a
+  // Opened from the dashboard's Breakdown card, so Back says so (Acme Hosting is also a
   // subscription, but the user did not come from there).
-  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toHaveText(
-    "Finance/Breakdown/Acme Hosting",
-  );
+  await expect(main.getByRole("link", { name: "← Breakdown" })).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-vendor");
 
   // A charge without a receipt says so and offers no upload.
@@ -434,14 +432,17 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   ).toHaveText("$75,000");
   await expect(main.getByText("$15,000 · not in runway", { exact: true })).toBeVisible();
   await expect(main.getByText("$8,000 · not in runway", { exact: true })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Count crypto" })).toHaveAttribute(
-    "aria-pressed",
+  await expect(main.getByRole("switch", { name: "Count crypto" })).toHaveAttribute(
+    "aria-checked",
     "false",
   );
-  await main.getByRole("button", { name: "Count crypto" }).click();
+  await main.getByRole("switch", { name: "Count crypto" }).click();
   // The Cash card and the In runway row both read the full total.
   await expect(main.getByText("$98,000", { exact: true })).toHaveCount(2);
-  await expect(main.getByRole("button", { name: "Counting all crypto" })).toBeVisible();
+  await expect(main.getByRole("switch", { name: "Count crypto" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 });
 
 test("Finance month groups transactions by vendor and expands a vendor", async ({

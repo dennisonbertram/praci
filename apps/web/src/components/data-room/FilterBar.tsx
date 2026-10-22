@@ -13,8 +13,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@rakazo/ui-web";
-import { ChevronDown, Folder, FolderPlus, WandSparkles, X } from "lucide-react";
-import type { FormEvent, ReactElement } from "react";
+import { ChevronDown, Folder, FolderPlus, ListFilter, WandSparkles, X } from "lucide-react";
+import type { FormEvent, ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { PickFilter, SearchField, SortControl, Tip } from "../ListControls";
 import { PAGE_GUTTER_X } from "../PageHeader";
@@ -53,13 +53,21 @@ export const TOOLBAR_LABEL = "@max-[639px]/bd:sr-only";
 export function ToolbarTip({
   label,
   compact,
+  disabled,
   children,
 }: {
   label: string;
   compact: boolean;
+  disabled?: boolean;
   children: ReactElement;
 }) {
-  return compact ? <Tip label={label}>{children}</Tip> : children;
+  return compact ? (
+    <Tip label={label} disabled={disabled}>
+      {children}
+    </Tip>
+  ) : (
+    children
+  );
 }
 
 /** A pill that opens a popover; with a value it shows "Label: value" and a remove button. */
@@ -217,6 +225,8 @@ export function FilterBar({
   parties,
   sources,
   hasDates,
+  statsView = false,
+  trailing,
   folders,
   folderId,
   onFolder,
@@ -248,6 +258,10 @@ export function FilterBar({
   parties: string[];
   sources: string[];
   hasDates: boolean;
+  /** Stats count by the filters only: search and sort order a list, so they are left out. */
+  statsView?: boolean;
+  /** The view toggles: on a phone they sit in the folder row; Sort waits behind Filters. */
+  trailing?: ReactNode;
 }) {
   const labels = sortLabels();
   const field = sort?.field ?? "relevance";
@@ -263,18 +277,48 @@ export function FilterBar({
   );
   const direction = sort?.direction ?? "desc";
   const openFolder = folders.find(({ folder }) => folder.id === folderId);
+  // On a phone the pills sit behind one "Filters" button on the search row, with the count set.
+  const [pillsOpen, setPillsOpen] = useState(false);
+  const activeFilters = [
+    filters.docType,
+    filters.party,
+    filters.docDateFrom || filters.docDateTo,
+    filters.status,
+    filters.legalUnchecked,
+    filters.source,
+  ].filter(Boolean).length;
   return (
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
     <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
-      <SearchField
-        className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80"
-        value={query}
-        onChange={onQuery}
-        placeholder={t`Search names and text`}
-        label={t`Search documents`}
-        name="data-room-search"
-      />
+      {statsView ? (
+        // Where the search box is, so Filters stays at the right edge in every view.
+        <div
+          aria-hidden="true"
+          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:hidden"
+        />
+      ) : (
+        <SearchField
+          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80 @min-[640px]/bd:flex-none"
+          value={query}
+          onChange={onQuery}
+          placeholder={t`Search names and text`}
+          label={t`Search documents`}
+          name="data-room-search"
+        />
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="order-1 h-8 rounded-full @min-[640px]/bd:hidden"
+        aria-expanded={pillsOpen}
+        aria-controls="data-room-filters"
+        onClick={() => setPillsOpen(!pillsOpen)}
+      >
+        <ListFilter aria-hidden="true" />
+        <Trans>Filters</Trans>
+        {activeFilters > 0 ? <span className="tabular-nums">{activeFilters}</span> : null}
+      </Button>
       {/* Where the folder tree is hidden, this picks the folder; it sits with Sort, not the pills. */}
       <div className="order-2 flex h-8 items-center gap-1 @min-[800px]/bd:hidden">
         <DropdownMenu>
@@ -322,8 +366,9 @@ export function FilterBar({
         ) : null}
       </div>
       <div
+        id="data-room-filters"
         data-testid="data-room-filters"
-        className="order-4 flex basis-full flex-wrap items-center gap-1.5 *:h-8 *:shrink-0 empty:hidden @min-[960px]/bd:order-3 @min-[960px]/bd:min-w-0 @min-[960px]/bd:basis-0 @min-[960px]/bd:flex-1"
+        className={`order-4 flex basis-full flex-wrap ${pillsOpen ? "" : "@max-[639px]/bd:hidden"} items-center gap-1.5 *:h-8 *:shrink-0 empty:hidden @min-[960px]/bd:order-3 @min-[960px]/bd:min-w-0 @min-[960px]/bd:basis-0 @min-[960px]/bd:flex-1`}
       >
         <PickFilter
           label={t`Type`}
@@ -358,6 +403,14 @@ export function FilterBar({
             onChange={(status) => onFilters({ ...filters, status })}
           />
         ) : null}
+        {filters.legalUnchecked ? (
+          <PickFilter
+            label={t`Legal`}
+            value="unchecked"
+            options={[["unchecked", t`Not checked`]]}
+            onChange={() => onFilters({ ...filters, legalUnchecked: undefined })}
+          />
+        ) : null}
         {sources.length > 1 || filters.source ? (
           <PickFilter
             label={t`Source`}
@@ -370,17 +423,24 @@ export function FilterBar({
           />
         ) : null}
       </div>
-      <div className="order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 @min-[960px]/bd:order-4">
-        {/* Relevance has no direction, so the arrow only shows for a field sort. */}
-        <SortControl
-          fields={fields.map((name) => [name, labels[name]])}
-          field={field}
-          fieldLabel={labels[field]}
-          direction={sort ? direction : undefined}
-          onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
-          onDirection={(next) => sort && onSort({ ...sort, direction: next })}
-        />
-      </div>
+      {trailing ? (
+        <div className="order-3 ms-auto flex items-center @min-[640px]/bd:hidden">{trailing}</div>
+      ) : null}
+      {statsView ? null : (
+        <div
+          className={`order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 ${pillsOpen ? "" : "@max-[639px]/bd:hidden"} @min-[960px]/bd:order-4`}
+        >
+          {/* Relevance has no direction, so the arrow only shows for a field sort. */}
+          <SortControl
+            fields={fields.map((name) => [name, labels[name]])}
+            field={field}
+            fieldLabel={labels[field]}
+            direction={sort ? direction : undefined}
+            onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
+            onDirection={(next) => sort && onSort({ ...sort, direction: next })}
+          />
+        </div>
+      )}
     </div>
   );
 }

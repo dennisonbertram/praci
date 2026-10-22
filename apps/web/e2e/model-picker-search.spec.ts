@@ -15,7 +15,7 @@ test("model dropdown search and provider group headers", async ({ page }, testIn
   await providerSearch.fill("openrouter");
   await page.getByRole("button", { name: /OpenRouter/ }).click();
   // OpenRouter is what this space already uses, so its key and model picker sit behind a disclosure.
-  await expect(page.getByText("This space already uses OpenRouter.")).toBeVisible();
+  await expect(page.getByText("Your bots already use OpenRouter.")).toBeVisible();
   await page.getByText("Use your own key", { exact: true }).click();
 
   const modelCombobox = page.getByRole("combobox", { name: "Model", exact: true });

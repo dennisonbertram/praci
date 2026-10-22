@@ -51,6 +51,7 @@ vi.mock("../components/finance/StatementImport", () => ({
 }));
 
 import { hereCrumb, shortSpaceName, trailFor, WithEndings } from "../components/finance/ui";
+import { resetHideAmountsMemory, setHideAmounts } from "../lib/hide-amounts-preference";
 import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -551,6 +552,22 @@ it("hides the comparison when the previous period is not fully synced", async ()
   expect(container.textContent).not.toContain("vs Sep");
 });
 
+it("keeps runway months and the run-out month visible while amounts are hidden", async () => {
+  setHideAmounts(true);
+  try {
+    rpcMock.overview.mockResolvedValue(connectedOverview());
+    await show("/app/finance");
+    await flush();
+    const text = container.textContent ?? "";
+    expect(text).toContain("6.3 mo");
+    expect(text).toContain("Until April 2027");
+    expect(text).not.toContain("$50,000");
+  } finally {
+    setHideAmounts(false);
+    resetHideAmountsMemory();
+  }
+});
+
 it("shows the figures, syncs once, and lets the period chips change the spend number", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
@@ -658,10 +675,38 @@ it("labels the subscription figures by what they measure", async () => {
   await show("/app/finance");
   await flush();
   const heads = [...container.querySelectorAll("thead th")].map((th) => th.textContent);
-  expect(heads).toContain("Usual per month");
-  expect(heads).toContain("Change, 3 months");
+  expect(heads).toContain("Per month");
+  expect(heads).toContain("3-mo change");
   expect(heads).not.toContain("Typical month");
-  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Usual per month");
+  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Per month");
+});
+
+it("shows no percentage for a period under a week old, and no red under 10%", async () => {
+  const base = connectedOverview();
+  const week = { ...totals("week", 61_300, 4_700), start: "2026-10-19", end: "2026-10-22" };
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    spendTotals: {
+      ...base.spendTotals,
+      week: { ...week, previousStart: "2026-10-12", previousEnd: "2026-10-15" },
+    },
+  });
+  await show("/app/finance?period=week");
+  await flush();
+  expect(container.textContent).not.toContain("1204%");
+  expect(container.textContent).not.toMatch(/vs Oct 12/);
+});
+
+it("shows a change under 10% in the neutral colour", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    spendTotals: { ...base.spendTotals, month: totals("month", 103_000, 100_000) },
+  });
+  await show("/app/finance?period=month");
+  await flush();
+  expect(container.textContent).toContain("↑ 3%");
+  expect(container.querySelector(".text-destructive")?.textContent ?? "").not.toContain("↑ 3%");
 });
 
 it("offers Ask only while the panel is closed", async () => {
@@ -735,7 +780,6 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   await flush();
   expect(rpcMock.vendor).toHaveBeenCalledWith({ key: "acme-hosting" });
   expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
-  expect(container.querySelector("nav")?.textContent).toContain("Subscriptions");
   expect(container.querySelector('a[href="/app/finance#subscriptions"]')?.textContent).toContain(
     "Subscriptions",
   );
@@ -786,6 +830,37 @@ it("names the space on detail pages too, switches company from there, and puts A
   expect(onSwitchSpace).toHaveBeenCalledWith("s1");
   const titleRow = container.querySelector("h1")?.parentElement;
   expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
+});
+
+it("names the company on a detail page even with one space, as plain text with no switcher", async () => {
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: false,
+    monthlyAvgCents: 50_000,
+    changePct: null,
+    firstSeenAt: "2025-03-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [],
+  });
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
+        <FinancePage
+          spaces={[{ id: "s1", name: "Example Space One" }]}
+          spaceId="s1"
+          onSwitchSpace={vi.fn()}
+          onAskAgent={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+  });
+  await flush();
+  expect(container.querySelector('[title="Example Space One"]')?.textContent).toBe(
+    "Example Space One",
+  );
+  expect(container.querySelector('button[aria-label^="Company:"]')).toBeNull();
 });
 
 const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
@@ -1210,7 +1285,7 @@ it("sends Back from a vendor opened in Breakdown to the Breakdown card", async (
   // Opened from Breakdown, although the vendor is also a subscription.
   const back = container.querySelector('a[href="/app/finance?by=vendor#breakdown"]');
   expect(back?.textContent).toContain("Breakdown");
-  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+  expect(back?.textContent).not.toContain("Subscriptions");
   expect(container.textContent).toContain("Last 3 full months");
   // Back reopens Breakdown in Vendor mode.
   Element.prototype.scrollIntoView = vi.fn();
@@ -1255,7 +1330,7 @@ it("keeps the vendor's Breakdown origin after opening one of its charges and com
   expect(
     container.querySelector('a[href="/app/finance?by=vendor#breakdown"]')?.textContent,
   ).toContain("Breakdown");
-  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+  expect(container.textContent).not.toContain("← Subscriptions");
 });
 
 it("leaves no empty crumb and no guessed origin on a missing vendor", async () => {

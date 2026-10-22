@@ -139,7 +139,7 @@ describe("account preferences", () => {
       name: "Test User",
       avatarStyle: "organic",
       timezone: null,
-      hiddenPages: ["legal", "cap-table"],
+      hiddenPages: ["legal", "investors"],
     });
 
     const { response } = await handler.handle(
@@ -148,7 +148,7 @@ describe("account preferences", () => {
         headers: { "content-type": "application/json" },
         // A userId in the body is ignored: the target is always the actor.
         body: JSON.stringify({
-          json: { hiddenPages: ["legal", "cap-table", "legal"], userId: "user-2" },
+          json: { hiddenPages: ["legal", "investors", "legal"], userId: "user-2" },
         }),
       }),
       { prefix: "/rpc", context: { actor } },
@@ -157,10 +157,26 @@ describe("account preferences", () => {
     expect(response.status).toBe(200);
     expect(update).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      data: expect.objectContaining({ hiddenPages: ["legal", "cap-table"] }),
+      data: expect.objectContaining({ hiddenPages: ["legal", "investors"] }),
     });
     await expect(response.json()).resolves.toEqual({
-      json: expect.objectContaining({ hiddenPages: ["legal", "cap-table"] }),
+      json: expect.objectContaining({ hiddenPages: ["legal", "investors"] }),
+    });
+  });
+
+  it("saves the old cap-table hidden key as investors, once", async () => {
+    const { update, actor, handler } = preferencesDeps("organic");
+    await handler.handle(
+      new Request("http://127.0.0.1/rpc/preferences/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ json: { hiddenPages: ["cap-table", "legal", "investors"] } }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: expect.objectContaining({ hiddenPages: ["investors", "legal"] }),
     });
   });
 
@@ -484,6 +500,8 @@ describe("thread answer delivery", () => {
           computer: null,
         }),
       },
+      // The answer handler first checks whether the card is a held bot-to-bot message.
+      message: { findFirst: vi.fn().mockResolvedValue(null) },
     } as unknown as PrismaClient;
     const deps = {
       prisma,
@@ -3285,8 +3303,11 @@ describe("bot model auth on save", () => {
       isDefault: boolean;
       modelId: string;
     } | null;
+    bot?: Record<string, unknown>;
+    /** How many of the chosen message targets are internal bots of this space and user. */
+    internalTargets?: number;
   }) {
-    const bot = storedBot(options.modelId);
+    const bot = { ...storedBot(options.modelId), ...options.bot };
     const preferenceFindFirst = vi.fn(options.preferences);
     const secretFindFirst = vi.fn(async (args: { where: { id?: string } }) => {
       if (args.where.id === "secret-api") {
@@ -3310,8 +3331,11 @@ describe("bot model auth on save", () => {
     };
     const prisma = {
       bot: {
-        findFirst: vi.fn(async () => bot),
+        findFirst: vi.fn(async (args: { where: { spaceId?: string; userId?: string } }) =>
+          args.where.spaceId === bot.spaceId && args.where.userId === bot.userId ? bot : null,
+        ),
         findMany: vi.fn(async () => [{ ...bot, name: "Ada renamed" }]),
+        count: vi.fn(async () => options.internalTargets ?? 0),
         update: botUpdate,
       },
       spaceModelPreference: { findFirst: preferenceFindFirst },
@@ -3431,6 +3455,72 @@ describe("bot model auth on save", () => {
         where: expect.objectContaining({ id: "secret-api", userId: actor.userId, spaceId: null }),
       }),
     );
+  });
+
+  describe("audience", () => {
+    const setup = (extra: Partial<Parameters<typeof saveDeps>[0]> = {}) =>
+      saveDeps({ modelId: luna, preferences: () => null, ...extra });
+
+    it("lets the owner make a bot external and saves the allowed targets", async () => {
+      const { botUpdate, handler } = setup({ internalTargets: 2 });
+      const response = await call(handler, "bots/update", {
+        botId: "bot-1",
+        audience: "external",
+        externalMessageTargets: ["bot-2", "bot-3", "bot-2"],
+        externalComputerTools: true,
+      });
+      expect(response.status).toBe(200);
+      expect(botUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            audience: "external",
+            externalMessageTargets: ["bot-2", "bot-3"],
+            externalComputerTools: true,
+          }),
+        }),
+      );
+    });
+
+    it("leaves audience alone when the request does not name it", async () => {
+      const { botUpdate, handler } = setup();
+      await call(handler, "bots/update", { botId: "bot-1", name: "Ada renamed" });
+      const data = (botUpdate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0]
+        .data;
+      expect(data).not.toHaveProperty("audience");
+      expect(data).not.toHaveProperty("externalMessageTargets");
+    });
+
+    it("refuses a bot of another user or space", async () => {
+      const { botUpdate, handler } = setup({ bot: { userId: "someone-else" } });
+      const response = await call(handler, "bots/update", { botId: "bot-1", audience: "external" });
+      expect(response.status).not.toBe(200);
+      expect(botUpdate).not.toHaveBeenCalled();
+      const otherSpace = setup({ bot: { spaceId: "another-space" } });
+      const second = await call(otherSpace.handler, "bots/update", {
+        botId: "bot-1",
+        audience: "external",
+      });
+      expect(second.status).not.toBe(200);
+      expect(otherSpace.botUpdate).not.toHaveBeenCalled();
+    });
+
+    it("keeps page and integration agents internal", async () => {
+      const { botUpdate, handler } = setup({ bot: { spawnKey: "finance-agent:user-1" } });
+      const response = await call(handler, "bots/update", { botId: "bot-1", audience: "external" });
+      expect(response.status).toBe(400);
+      expect(botUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects message targets that are not internal bots of this space and user", async () => {
+      const { botUpdate, handler } = setup({ internalTargets: 1 });
+      const response = await call(handler, "bots/update", {
+        botId: "bot-1",
+        audience: "external",
+        externalMessageTargets: ["bot-2", "foreign-bot"],
+      });
+      expect(response.status).not.toBe(200);
+      expect(botUpdate).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -4552,13 +4642,64 @@ describe("Carta server guards", () => {
   it("refuses a refresh until a Carta server is signed in", async () => {
     for (const status of ["none", "reconnect"] as const) {
       const client = clientFor(
-        { mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) } },
+        {
+          mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+          capTableSnapshot: { findUnique: vi.fn().mockResolvedValue(null) },
+        },
         status,
       );
-      await expect(client.carta.refresh()).rejects.toThrow("Connect Carta first");
+      await expect(client.investors.refresh()).rejects.toThrow("Connect Carta first");
     }
-    const none = clientFor({ mcpServer: { findMany: vi.fn().mockResolvedValue([]) } });
-    await expect(none.carta.refresh()).rejects.toThrow("Connect Carta first");
+    const none = clientFor({
+      mcpServer: { findMany: vi.fn().mockResolvedValue([]) },
+      capTableSnapshot: { findUnique: vi.fn().mockResolvedValue(null) },
+    });
+    await expect(none.investors.refresh()).rejects.toThrow("Connect Carta first");
+  });
+
+  it("refuses to refresh from Carta when the table's source is another one", async () => {
+    const client = clientFor(
+      {
+        mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+        capTableSnapshot: { findUnique: vi.fn().mockResolvedValue({ source: "native" }) },
+      },
+      "connected",
+    );
+    await expect(client.investors.refresh()).rejects.toThrow(
+      "The cap table is not read from Carta",
+    );
+  });
+
+  it("refreshes a sheet table through the sheet read, not Carta", async () => {
+    // No file id is stored, so the sheet read refuses; Carta's "Connect Carta first" never shows.
+    const client = clientFor({
+      mcpServer: { findMany: vi.fn().mockResolvedValue([]) },
+      capTableSnapshot: { findUnique: vi.fn().mockResolvedValue({ source: "sheet", data: {} }) },
+    });
+    await expect(client.investors.refresh()).rejects.toThrow(
+      "The cap table is not read from a sheet",
+    );
+  });
+
+  it("answers a stale typed-in save as a conflict", async () => {
+    const client = clientFor({
+      capTableSnapshot: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ id: "row" }),
+      },
+    });
+    await expect(
+      client.investors.capTableSave({
+        updatedAt: new Date(0).toISOString(),
+        table: {
+          companyName: "Example Co",
+          asOf: "2026-01-31",
+          fullyDilutedShares: 0,
+          shareClasses: [],
+          holders: [],
+        },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 
   it("refuses to give a Carta server to a bot other than the Carta agent", async () => {
@@ -4576,3 +4717,186 @@ describe("Carta server guards", () => {
     ).rejects.toThrow("This integration is used only by its agent.");
   });
 });
+
+describe("Investors agent", () => {
+  it("reserves its spawn key so bots.create cannot squat on it", async () => {
+    const deps = {
+      prisma: {} as PrismaClient,
+      env: { defaultProvider: "fake", defaultModel: "fake-model" },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const client = createRouterClient(createRouter(deps), { context: { actor } });
+    await expect(
+      client.bots.create({
+        name: "Squatter",
+        title: "",
+        description: "",
+        instructions: "",
+        notifyOnFinish: true,
+        computerMode: "team" as const,
+        spawnKey: "investors-agent:someone",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("GTM scratchpad RPC", () => {
+  const actor = {
+    spaceId: "space-1",
+    userId: "user-1",
+    email: "user@rakazo.test",
+    isDeploymentOwner: false,
+  } satisfies Actor;
+  const bot = {
+    id: "bot-1",
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    name: "GTM",
+    title: "",
+    description: "",
+    instructions: "",
+    color: "#000",
+    notifyOnFinish: true,
+    pinned: false,
+    position: 0,
+    sectionId: null,
+    archivedAt: null,
+    parentBotId: null,
+    memoryScope: null,
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    thread: null,
+    computer: null,
+  };
+
+  function scratchpadClient(scratchpadItem: Record<string, unknown>) {
+    const deps = {
+      prisma: {
+        bot: { findFirst: vi.fn(async () => bot) },
+        scratchpadItem,
+      } as unknown as PrismaClient,
+      env: { defaultProvider: "fake", defaultModel: "fake-model" },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    return createRouterClient(createRouter(deps), { context: { actor } });
+  }
+
+  it("creates gated items through the shared store in parked status", async () => {
+    const createdAt = new Date("2026-08-25T12:00:00.000Z");
+    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+      id: "item-1",
+      ...data,
+      createdAt,
+      updatedAt: createdAt,
+      approvedAt: null,
+      approvedBy: null,
+      proof: null,
+      scheduledFor: null,
+      target: null,
+      channel: "x",
+    }));
+    const client = scratchpadClient({ create });
+    const item = await client.scratchpad.create({
+      botId: "bot-1",
+      title: "Post",
+      category: "public_post",
+      channel: "x",
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        botId: "bot-1",
+        category: "public_post",
+        channel: "x",
+        status: "parked",
+      }),
+    });
+    expect(item.status).toBe("parked");
+  });
+
+  it("returns CONFLICT for stale approval and rejects an approval without rendered updatedAt", async () => {
+    const existing = {
+      id: "item-1",
+      ...scopeForTest(),
+      title: "Post",
+      status: "parked",
+      notes: "Exact post",
+      category: "public_post",
+      channel: "x",
+      target: "account-1",
+      scheduledFor: null,
+      proof: null,
+      approvedAt: null,
+      approvedBy: null,
+      createdAt: new Date("2026-08-25T11:00:00.000Z"),
+      updatedAt: new Date("2026-08-25T12:00:00.000Z"),
+    };
+    const updateMany = vi.fn(async () => ({ count: 0 }));
+    const findFirst = vi.fn(async () => existing);
+    const client = scratchpadClient({ findFirst, updateMany });
+    await expect(
+      client.scratchpad.update({
+        itemId: existing.id,
+        status: "open",
+        updatedAt: "2026-08-25T11:59:00.000Z",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: "Changed, review again" });
+    await expect(
+      client.scratchpad.update({
+        itemId: existing.id,
+        status: "open",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("returns CONFLICT when a previously rendered approval version is already open", async () => {
+    const current = {
+      id: "item-1",
+      ...scopeForTest(),
+      title: "Post",
+      status: "open",
+      notes: "Exact post",
+      category: "public_post",
+      channel: "x",
+      target: "account-1",
+      scheduledFor: null,
+      proof: null,
+      approvedAt: new Date("2026-08-25T12:00:01.000Z"),
+      approvedBy: "user",
+      createdAt: new Date("2026-08-25T11:00:00.000Z"),
+      updatedAt: new Date("2026-08-25T12:00:01.000Z"),
+    };
+    const findFirst = vi.fn(async () => current);
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const client = scratchpadClient({ findFirst, updateMany });
+    await expect(
+      client.scratchpad.update({
+        itemId: current.id,
+        status: "open",
+        updatedAt: "2026-08-25T12:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: "Changed, review again" });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects category mutation from raw panel RPC arguments", async () => {
+    const client = scratchpadClient({});
+    await expect(
+      client.scratchpad.update({
+        itemId: "item-1",
+        category: "draft",
+      } as never),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+function scopeForTest() {
+  return { spaceId: "space-1", userId: "user-1", botId: "bot-1" };
+}

@@ -15,7 +15,7 @@ import { Link } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay, hiddenOr } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
-import { contractValue } from "../../lib/legal-format";
+import { contractValue, daysBetween, todayIso } from "../../lib/legal-format";
 
 const statusName = (status: LegalContractStatus): string =>
   ({
@@ -49,15 +49,23 @@ const value = (contract: LegalContract) =>
     ? dash
     : hiddenOr(contractValue(contract.valueCents, contract.currency));
 
-const nextDeadline = (contract: LegalContract) =>
-  contract.nextDeadline ? fullDay(contract.nextDeadline) : dash;
+/** A deadline already past is red, matching the Overdue tile above the table. */
+function NextDeadline({ contract }: { contract: LegalContract }) {
+  if (!contract.nextDeadline) return dash;
+  const late = daysBetween(todayIso(), contract.nextDeadline) < 0;
+  return (
+    <span className={cn(late && "font-medium text-destructive")}>
+      {fullDay(contract.nextDeadline)}
+    </span>
+  );
+}
 
 function Title({ contract }: { contract: LegalContract }) {
   return (
     <>
       <Link
         to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-        className="font-medium hover:underline"
+        className="rk-tap font-medium hover:underline"
       >
         {contract.title}
       </Link>
@@ -66,14 +74,11 @@ function Title({ contract }: { contract: LegalContract }) {
   );
 }
 
+/** Active is the normal case and says nothing; only a contract that is not active gets a chip. */
 function Status({ status }: { status: LegalContractStatus }) {
+  if (status === "active") return null;
   return (
-    <span
-      className={cn(
-        "whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs",
-        status === "active" && "border-success text-success",
-      )}
-    >
+    <span className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs">
       {statusName(status)}
     </span>
   );
@@ -86,6 +91,8 @@ function Status({ status }: { status: LegalContractStatus }) {
  */
 export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
   useHideAmounts();
+  // Active is the normal case, so the column appears only when some contract is not.
+  const showStatus = contracts.some((contract) => contract.status !== "active");
   return (
     <>
       <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
@@ -117,7 +124,9 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
               <dt className="text-muted-foreground">
                 <Trans>Next deadline</Trans>
               </dt>
-              <dd className="tabular-nums">{nextDeadline(contract)}</dd>
+              <dd className="tabular-nums">
+                <NextDeadline contract={contract} />
+              </dd>
             </dl>
           </li>
         ))}
@@ -127,10 +136,10 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className="w-[20%]" />
-          <col className="w-[14%]" />
-          <col className="w-[8%]" />
-          <col className="w-[20%]" />
+          <col className={showStatus ? "w-[20%]" : "w-[22%]"} />
+          <col className={showStatus ? "w-[14%]" : "w-[18%]"} />
+          {showStatus ? <col className="w-[8%]" /> : null}
+          <col className={showStatus ? "w-[20%]" : "w-[22%]"} />
           <col className="w-[17%]" />
           <col className="w-[9%]" />
           <col className="w-[12%]" />
@@ -143,9 +152,11 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
             <TableHead>
               <Trans>Parties</Trans>
             </TableHead>
-            <TableHead>
-              <Trans>Status</Trans>
-            </TableHead>
+            {showStatus ? (
+              <TableHead>
+                <Trans>Status</Trans>
+              </TableHead>
+            ) : null}
             <TableHead>
               <Trans>Term</Trans>
             </TableHead>
@@ -167,14 +178,16 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
                 <Title contract={contract} />
               </TableCell>
               <TableCell>{contract.counterparties.join(", ") || dash}</TableCell>
-              <TableCell>
-                <Status status={contract.status} />
-              </TableCell>
+              {showStatus ? (
+                <TableCell>
+                  <Status status={contract.status} />
+                </TableCell>
+              ) : null}
               <TableCell className="whitespace-nowrap tabular-nums">{term(contract)}</TableCell>
               <TableCell className="whitespace-nowrap">{renewal(contract)}</TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
               <TableCell className="ps-6 whitespace-nowrap tabular-nums">
-                {nextDeadline(contract)}
+                <NextDeadline contract={contract} />
               </TableCell>
             </TableRow>
           ))}

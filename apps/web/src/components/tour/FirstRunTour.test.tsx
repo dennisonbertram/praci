@@ -19,7 +19,7 @@ vi.mock("@lingui/react/macro", () => ({
 const update = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { preferences: { update } } }));
 
-import { connectCardsOpen, FirstRunTour } from "./FirstRunTour";
+import { FirstRunTour } from "./FirstRunTour";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -67,11 +67,24 @@ it("skips steps whose anchor is missing, walks Next and Back, and records Done",
   await click("Next");
   await click("Next");
   expect(document.body.textContent).toContain("3/3");
-  // The last step ends on an action: it ends the tour, records it, then hands off to the composer.
-  await click("Ask a question");
+  // Done ends the tour and records it, without opening a chat.
+  await click("Done");
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
   expect(onClose).toHaveBeenCalled();
-  expect(onAsk).toHaveBeenCalled();
+  expect(onAsk).not.toHaveBeenCalled();
+});
+
+it("offers Ask Chief beside Done on the last step only, and it ends the tour first", async () => {
+  const onClose = vi.fn();
+  const onAsk = vi.fn();
+  await act(async () => root.render(<FirstRunTour open onClose={onClose} onAsk={onAsk} />));
+  expect(button("Ask Chief")).toBeUndefined();
+  await click("Next");
+  await click("Next");
+  await click("Ask Chief");
+  expect(update).toHaveBeenCalledWith({ tourSeen: true });
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(onAsk).toHaveBeenCalledTimes(1);
 });
 
 it("records Skip tour", async () => {
@@ -98,7 +111,7 @@ it("closes the tour on the last step's action without waiting for the save", asy
   await act(async () => root.render(<FirstRunTour open onClose={onClose} onAsk={vi.fn()} />));
   await click("Next");
   await click("Next");
-  await click("Ask a question");
+  await click("Ask Chief");
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
@@ -127,23 +140,17 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     if (i < order.length - 1) await click("Next");
   }
   expect(document.body.textContent).toContain("9/9");
-  expect(seen[0]).toContain("find any chat");
+  expect(seen[0]).toContain("find any page, chat");
   expect(seen[6]).toContain("Ask Chief");
+  expect(seen[1]).toContain("create a bot");
+  // New users already ask before email and purchases, so the tour sends nobody to Settings.
+  expect(seen[6]).not.toContain("Settings");
   expect(seen[7]).toContain("Connect Gmail");
+  expect(seen[7]).toContain("bots");
+  expect(seen.join(" ")).not.toMatch(/agent|apps/i);
   expect(seen[8]).toContain("retake this tour");
-  expect(button("Ask a question")).toBeTruthy();
-});
-
-const msg = (role: "user" | "bot", ...blocks: unknown[]) => ({ role, blocks }) as never;
-const card = (status: "pending" | "connected") => ({ kind: "app_connect", status });
-
-it("waits for pending Connect cards until they are connected or the user writes", () => {
-  expect(connectCardsOpen([msg("bot", card("pending"), card("connected"))])).toBe(true);
-  expect(connectCardsOpen([msg("bot", card("connected"))])).toBe(false);
-  expect(connectCardsOpen([msg("bot", card("pending")), msg("user", { kind: "text" })])).toBe(
-    false,
-  );
-  expect(connectCardsOpen([])).toBe(false);
+  expect(button("Done")).toBeTruthy();
+  expect(button("Ask Chief")).toBeTruthy();
 });
 
 it("ends on Escape before the drawer's own Escape handler sees it", async () => {
@@ -161,6 +168,6 @@ it("ends on Escape before the drawer's own Escape handler sees it", async () => 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   });
   document.removeEventListener("keydown", drawer);
-  expect(onClose).toHaveBeenCalled();
+  expect(onClose).toHaveBeenCalledWith(null, true);
   expect(drawer).not.toHaveBeenCalled();
 });

@@ -202,11 +202,25 @@ describe("Newsletters digest", () => {
   const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
   const issues = [
     row("old", { receivedAt: daysAgo(10), pile: "newsletters" }),
-    row("d2", { receivedAt: daysAgo(2), pile: "newsletters", reason: "Second issue" }),
+    row("d2", {
+      from: "Beta Weekly",
+      fromAddress: "hi@beta.example",
+      receivedAt: daysAgo(2),
+      pile: "newsletters",
+      reason: "Second issue",
+    }),
     row("d1", { receivedAt: daysAgo(1), pile: "newsletters", unread: true }),
-    row("d3", { receivedAt: daysAgo(5), pile: "newsletters" }),
+    row("d3", {
+      from: "Beta Weekly",
+      fromAddress: "hi@beta.example",
+      receivedAt: daysAgo(5),
+      pile: "newsletters",
+    }),
   ];
-  const toggle = (c: HTMLElement) => c.querySelector<HTMLElement>('button[aria-label="Digest"]');
+  const toggle = (c: HTMLElement) =>
+    [...c.querySelectorAll<HTMLElement>("button[aria-pressed]")].find(
+      (b) => b.textContent === "Digest",
+    ) ?? null;
   beforeEach(() => {
     rpcMock.list.mockImplementation(async (input: { pile?: string }) =>
       list(input.pile === "newsletters" ? issues : updates, {
@@ -222,10 +236,12 @@ describe("Newsletters digest", () => {
     expect(toggle(other)).toBeNull();
   });
 
-  it("shows one card per issue from the last 7 days, newest first, in place of the sender groups", async () => {
+  it("shows one card per sender from the last 7 days with a message count, in place of the sender groups", async () => {
     const c = await render("/app/inbox?pile=newsletters");
     await click(toggle(c));
-    expect(rowIds(c)).toEqual(["d1", "d2", "d3"]);
+    expect(rowIds(c)).toEqual(["d1", "d2"]);
+    expect(c.querySelector('[data-row-id="d2"]')?.textContent).toContain("2 messages");
+    expect(c.querySelector('[data-row-id="d1"]')?.textContent).not.toContain("messages");
     expect(c.textContent).toContain("Second issue");
     await click(toggle(c));
     expect(rowIds(c)).toContain(headerKey);
@@ -234,7 +250,7 @@ describe("Newsletters digest", () => {
   it("reads the digest from ?digest=1, so a link or Back returns to it", async () => {
     const c = await render("/app/inbox?pile=newsletters&digest=1");
     expect(toggle(c)?.getAttribute("aria-pressed")).toBe("true");
-    expect(rowIds(c)).toEqual(["d1", "d2", "d3"]);
+    expect(rowIds(c)).toEqual(["d1", "d2"]);
   });
 
   it("opens an issue in the message viewer", async () => {

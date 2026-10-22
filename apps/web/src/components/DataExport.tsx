@@ -57,7 +57,7 @@ export function DataExportSection() {
 
   return (
     <section
-      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-border px-4 py-4"
+      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2"
       data-testid="data-export"
     >
       <div className="flex flex-col gap-0.5">

@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { InboxRow } from "./InboxRow";
+import { InboxGroup, InboxRow } from "./InboxRow";
 
 const row: MailRow = {
   id: "m1",
@@ -72,6 +72,16 @@ it("shows a compact label dot in the narrow pane that names the label", async ()
   const dot = document.querySelector("[data-label-dot]");
   expect(dot?.getAttribute("title")).toBe("Newsletter");
   expect(dot?.className).toContain("@md:hidden");
+});
+
+it("lets Tab reach the revealed row actions once the row has focus", async () => {
+  await show();
+  const archive = () => document.querySelector<HTMLElement>('button[aria-label="Archive"]');
+  expect(archive()?.tabIndex).toBe(-1);
+  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.focus());
+  expect(archive()?.tabIndex).toBe(0);
+  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.blur());
+  expect(archive()?.tabIndex).toBe(-1);
 });
 
 it("gives the More trigger a larger touch target on coarse pointers", async () => {
@@ -168,7 +178,7 @@ it("checks the row from its own checkbox without opening it, and passes the shif
   const onOpen = vi.fn();
   await show({ onPick, onOpen });
   const box = document.querySelector<HTMLElement>('[role="checkbox"]');
-  expect(box?.getAttribute("aria-label")).toBe("Select");
+  expect(box?.getAttribute("aria-label")).toBe("Select Sam Rivera");
   // The checkbox is a sibling of the row button, never inside it.
   expect(box?.closest("button[data-row-id]")).toBeNull();
   await act(async () => box?.click());
@@ -242,4 +252,12 @@ it("offers no spam or trash items without a move handler", async () => {
   await show();
   const items = await menuItems();
   expect(items.map((el) => el.textContent)).toEqual(["Archive", "Mark read"]);
+});
+
+it("labels the group number as unread mail, not a row count", async () => {
+  const rows = [row, { ...row, id: "m2", unread: false }, { ...row, id: "m3", unread: false }];
+  await act(async () =>
+    root.render(<InboxGroup title="Earlier" rows={rows} onOpen={() => {}} onMark={undefined} />),
+  );
+  expect(document.querySelector("h2")?.textContent).toBe("Earlier1 unread");
 });

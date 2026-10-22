@@ -188,6 +188,11 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
           <Section>
             <h2 className="text-xs font-semibold text-muted-foreground">{windowName}</h2>
             <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
+            {data.excludedNonUsdCount ? (
+              <p className="text-xs text-muted-foreground">
+                {t`${data.excludedNonUsdCount} non-USD not counted`}
+              </p>
+            ) : null}
           </Section>
           {/* A labelled monthly chart, not an unlabelled sparkline: which months, how much. */}
           {trend.length > 0 ? (
@@ -316,14 +321,18 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
             <Kpi
-              title={t`Monthly avg`}
+              title={t`Per month`}
               value={money(data.monthlyAvgCents)}
-              sub={plural(data.monthlyAvgMonths ?? 6, {
-                one: "Last full month",
-                other: "Last # full months",
-              })}
+              sub={
+                data.monthlyUsual
+                  ? t`Usual charge`
+                  : plural(data.monthlyAvgMonths ?? 6, {
+                      one: "Last full month",
+                      other: "Last # full months",
+                    })
+              }
             />
             <Kpi
               title={t`Change`}

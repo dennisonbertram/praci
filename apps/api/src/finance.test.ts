@@ -526,6 +526,14 @@ describe("finance detail lookups", () => {
     expect(given.map((r) => r.id)).toEqual(["t-1"]);
   });
 
+  it("counts the category's non-USD transactions that its total leaves out", async () => {
+    const { deps } = setup({
+      financeTransaction: [txn(a, { id: "t-1" }), txn(a, { id: "t-2", currency: "EUR" })],
+    });
+    const out = await financeCategory(deps, a, { slug: "software" });
+    expect(out.excludedNonUsdCount).toBe(1);
+  });
+
   it("covers the dashboard period a category was opened from, in its total, vendors and list", async () => {
     const { deps } = setup({
       financeTransaction: [
@@ -1107,8 +1115,9 @@ describe("finance pages with the real calculations", () => {
     });
     const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
     // Jul, Aug and Sep are the full months since first seen; October is still partial.
+    // A steady monthly charge is a subscription, so the page shows the list's usual charge.
     expect(vendor.monthlyAvgCents).toBe(481_200);
-    expect(vendor.monthlyAvgMonths).toBe(3);
+    expect(vendor.monthlyUsual).toBe(true);
     // The chart shows the six full months averaged, not the partial current one; charges list
     // from the chart's first month.
     expect(vendor.monthly.map((m) => m.month)).toEqual([
@@ -1120,6 +1129,24 @@ describe("finance pages with the real calculations", () => {
       "2026-09",
     ]);
     expect(vendor.charges.map((c) => c.postedAt.slice(0, 7))).toContain("2026-10");
+  });
+
+  it("shows a subscription's list figure on its vendor page, from one function", async () => {
+    const usage = ["05", "06", "07", "08", "09"].map((m, i) =>
+      monthlyCharge(m, {
+        id: `u-${m}`,
+        externalId: `u-${m}`,
+        counterparty: "OpenRouter",
+        vendorKey: "openrouter",
+        amountCents: BigInt(-(i + 1) * 10_000),
+      }),
+    );
+    const { deps } = setup({ financeAccount: [account(a)], financeTransaction: usage });
+    const { recurring } = await financeRecurring(deps, a, { key: "openrouter" });
+    const vendor = await financeVendor(deps, a, { key: "openrouter" });
+    expect(recurring.monthlyCents).toBe(30_000);
+    expect(vendor.monthlyAvgCents).toBe(recurring.monthlyCents);
+    expect(vendor.monthlyAvgMonths).toBe(5);
   });
 
   it("windows a vendor by purchase date, the same date its monthly totals use", async () => {

@@ -82,7 +82,7 @@ afterEach(() => {
 it("connects through the Finance API and shows Open Finance once connected", async () => {
   connect.mockResolvedValue("connected");
   const onChanged = await show([source("mercury", "not_connected"), source("brex", "ok")]);
-  expect(tile("mercury")?.textContent).toContain("Not connected");
+  expect(tile("mercury")?.textContent).not.toContain("Connected");
   expect(tile("brex")?.textContent).toContain("Connected");
   expect(tile("brex")?.querySelector('a[href="/app/finance"]')).not.toBeNull();
   expect(tile("brex")?.querySelector("img")?.getAttribute("src")).toContain("brex");
@@ -233,9 +233,11 @@ const exchange = (provider: string, connected: boolean) => ({
 it("shows an exchange as Connected only after its first sync", async () => {
   cryptoRpc.exchanges.mockResolvedValue([exchange("coinbase", false), exchange("kraken", true)]);
   await show([source("mercury", "ok"), source("brex", "ok")]);
-  expect(tile("coinbase")?.textContent).toContain("Not connected");
+  expect(tile("coinbase")?.textContent).not.toContain("Connected");
   expect(tile("kraken")?.textContent).toContain("Connected");
-  expect(tile("kraken")?.textContent).toContain("Replace key");
+  // Replace key sits in the tile's one overflow menu, not beside the main link.
+  expect(tile("kraken")?.querySelector('[aria-label="More Kraken actions"]')).not.toBeNull();
+  expect(tile("kraken")?.textContent).not.toContain("Replace key");
 });
 
 it("connects Kraken from a dialog with the key help link, then shows Connected", async () => {
@@ -282,7 +284,7 @@ it("shows the exchange's error inside the dialog and stays not connected", async
     });
   await press2(dialog, "Connect");
   expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("can't read balances");
-  expect(tile("kraken")?.textContent).toContain("Not connected");
+  expect(tile("kraken")?.textContent).not.toContain("Connected");
 });
 
 const alchemy = () => container.querySelector('[data-testid="finance-tile-alchemy"]') as Element;
@@ -307,7 +309,7 @@ it("connects Alchemy only after the server accepts the key, and shows its error 
   await typeKey("bad");
   await press2(dialog, "Save");
   expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("Alchemy rejected");
-  expect(alchemy().textContent).toContain("Not connected");
+  expect(alchemy().textContent).not.toContain("Connected");
   await typeKey("good");
   await press2(dialog, "Save");
   expect(cryptoRpc.cryptoProviderConnect).toHaveBeenLastCalledWith({

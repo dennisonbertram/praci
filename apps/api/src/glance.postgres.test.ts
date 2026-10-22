@@ -64,7 +64,9 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
       financeRunwayMonths: null,
       legalDueSoon: 0,
       devinNeedsYou: 0,
+      devinConnected: false,
       dataRoomWaiting: 0,
+      hasTickets: false,
       botKinds: {},
     });
   });
@@ -135,6 +137,7 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
     expect((await glance(alice)).devinNeedsYou).toBe(2);
     expect((await glance(bob)).devinNeedsYou).toBe(2);
     expect((await glance(aliceElsewhere)).devinNeedsYou).toBe(1);
+    expect((await glance(bob)).devinConnected).toBe(true);
 
     await prisma.devinConnectionState.update({
       where: { serverId: active.id },

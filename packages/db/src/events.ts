@@ -109,6 +109,8 @@ export interface ClaimSteeringInput {
   leaseOwner: string;
   leaseFence: number;
   seenIds: string[];
+  /** Leave messages that carry the external-chain mark unclaimed. */
+  excludeExternalOrigin?: boolean;
 }
 
 export interface ClaimedSteeringMessage {

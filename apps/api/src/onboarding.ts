@@ -27,7 +27,7 @@ type FocusOption = {
   label: string;
   summary: string;
   apps: string[];
-  /** Posted when no app card applies, for work that lives on an app page rather than in a connection. */
+  /** Added to the reply (after any app cards' intro) for work that lives on an app page rather than in a connection. */
   note?: string;
 };
 
@@ -38,7 +38,7 @@ const FOCUS_OPTIONS: FocusOption[] = [
     label: "Run my company",
     summary: "email, calendar, and your company pages",
     apps: ["gmail", "googlecalendar"],
-    note: "For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Cap table](/app/cap-table). Board decks and investor documents go in the [Data room](/app/data-room).",
+    note: "For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Investors](/app/investors). Board decks and investor documents go in the [Data room](/app/data-room).",
   },
   {
     id: "day",
@@ -119,7 +119,7 @@ export async function seedBlankBotGreeting(
   const hi = firstName ? `Hi ${firstName}` : "Hi";
   // A blank bot is usually renamed right after it is created, so its greeting does not name it.
   const text = options.first
-    ? `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and the cap table, find investor documents in the Data room, and draft updates and research for you.`
+    ? `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and your investors, find investor documents in the Data room, and draft updates and research for you.`
     : `${hi}. I'm a blank slate right now, so you get to decide what I become. What's the main thing you'd want me handling for you?`;
   await post(deps, { spaceId: actor.spaceId, botId: bot.id, threadId: bot.threadId }, [
     { kind: "text", text },
@@ -323,7 +323,7 @@ export async function chooseFocus(
   await post(deps, target, [
     {
       kind: "text",
-      text: `${got} Connect ${named} here and I’ll use what you already have.`,
+      text: `${got} Connect ${named} here and I’ll use what you already have.${option.note ? ` ${option.note}` : ""}`,
     },
   ]);
   await post(deps, target, cards);

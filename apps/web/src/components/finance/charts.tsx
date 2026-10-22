@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CashPoint } from "@rakazo/contracts";
 import { useEffect, useId, useRef, useState } from "react";
@@ -35,6 +36,19 @@ export function niceRange(min: number, max: number): { step: number; top: number
   };
 }
 
+/**
+ * A balance line whose values stay close together would be flat on an axis that starts at $0, so
+ * its axis starts at the nearest step below the lowest value. Other lines keep `niceRange`.
+ */
+function lineRange(min: number, max: number) {
+  if (min > 0 && max - min < max / 2) {
+    const { step } = niceScale(max - min);
+    const floor = Math.floor(min / step) * step;
+    return { step, floor, top: Math.max(floor + step, Math.ceil(max / step) * step) };
+  }
+  return niceRange(min, Math.max(max, 0));
+}
+
 /** Monochrome fills for stacked segments and their legend swatches; index 0 is darkest. */
 export const shade = (index: number) =>
   `color-mix(in srgb, var(--foreground) ${[100, 78, 60, 46, 34, 24, 16][index % 7]}%, var(--card))`;
@@ -49,8 +63,8 @@ export function Chart({
   label: string;
   children: (width: number) => React.ReactNode;
 }) {
-  // A chart's shape alone shows trends and when cash runs out, so it is not drawn while hidden.
-  const hidden = useHideAmounts();
+  // Hidden amounts hide money only: the shape and the dates stay, the axis and figures go.
+  useHideAmounts();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -62,18 +76,7 @@ export function Chart({
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-    // Mounted while hidden there is nothing to measure yet; showing amounts measures again.
-  }, [hidden]);
-  if (hidden)
-    return (
-      <div
-        data-testid="chart-hidden"
-        className="grid w-full place-items-center rounded-md bg-muted text-[13px] text-muted-foreground"
-        style={{ height }}
-      >
-        {height >= 40 ? <Trans>Chart hidden while amounts are hidden</Trans> : null}
-      </div>
-    );
+  }, []);
   return (
     <div ref={ref} className="w-full" style={{ height }}>
       {width > 0 ? (
@@ -109,7 +112,7 @@ function Grid({
   bottom: number;
   scale: { step: number; top: number; floor?: number };
 }) {
-  useHideAmounts();
+  const hidden = useHideAmounts();
   const floor = scale.floor ?? 0;
   const lines: number[] = [];
   // With nothing to plot every step rounds to "$0"; one $0 line is drawn instead of a stack of them.
@@ -129,15 +132,17 @@ function Grid({
               className="stroke-border"
               strokeWidth={1}
             />
-            <text
-              x={left - 6}
-              y={y + 3}
-              textAnchor="end"
-              className="fill-muted-foreground"
-              fontSize={10}
-            >
-              {axisMoney(v)}
-            </text>
+            {hidden ? null : (
+              <text
+                x={left - 6}
+                y={y + 3}
+                textAnchor="end"
+                className="fill-muted-foreground"
+                fontSize={11}
+              >
+                {axisMoney(v)}
+              </text>
+            )}
           </g>
         );
       })}
@@ -192,10 +197,10 @@ export function LineChart({
         const left = axes ? 46 : 4;
         const right = axes ? 10 : 4;
         const top = axes ? 10 : 4;
-        const bottom = axes ? 22 : 4;
+        const bottom = axes ? 30 : 4;
         const maxValue = Math.max(...values, 0);
         // A balance can dip below zero; the axis reaches down to it instead of clipping the line.
-        const scale = niceRange(Math.min(...values), maxValue);
+        const scale = lineRange(Math.min(...values), maxValue);
         const hi = axes ? scale.top : maxValue;
         const lo = axes ? scale.floor : Math.min(...values);
         const x = (i: number) =>
@@ -205,7 +210,7 @@ export function LineChart({
         const solid = Math.min(solidUntil ?? values.length - 1, values.length - 1);
         const every = Math.max(
           1,
-          Math.ceil(46 / ((width - left - right) / (values.length - 1 || 1))),
+          Math.ceil(62 / ((width - left - right) / (values.length - 1 || 1))),
         );
         return (
           <>
@@ -228,7 +233,7 @@ export function LineChart({
                       y={height - 6}
                       textAnchor={i === values.length - 1 && x(i) > width - 24 ? "end" : "middle"}
                       className="fill-muted-foreground"
-                      fontSize={10}
+                      fontSize={11}
                     >
                       {text}
                     </text>
@@ -553,7 +558,7 @@ export function BurnLines({
                       y={height - 8}
                       textAnchor="middle"
                       className="fill-muted-foreground"
-                      fontSize={10}
+                      fontSize={11}
                       fontWeight={m.partial ? 700 : 400}
                     >
                       {name}
@@ -563,8 +568,10 @@ export function BurnLines({
                 </g>
               );
             })}
-            {series.map((m, i) =>
-              m.financingCents > scale.top ? (
+            {series.map((m, i) => {
+              if (m.financingCents <= scale.top) return null;
+              const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
+              return (
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
@@ -573,12 +580,12 @@ export function BurnLines({
                   y={top - 6}
                   textAnchor={cx(i) > width - 32 ? "end" : "middle"}
                   className="fill-foreground"
-                  fontSize={10}
+                  fontSize={11}
                 >
-                  {`↑ ${money(m.financingCents)}`}
+                  {`${t`Financing, ${when}`} ↑ ${money(m.financingCents)}`}
                 </text>
-              ) : null,
-            )}
+              );
+            })}
             {shown && active !== null ? (
               <g data-testid="burn-tooltip" pointerEvents="none">
                 <rect
@@ -638,7 +645,7 @@ export function MonthBars({
   height?: number;
   label: string;
 }) {
-  useHideAmounts();
+  const hidden = useHideAmounts();
   return (
     <Chart height={height} label={label}>
       {(width) => {
@@ -673,21 +680,23 @@ export function MonthBars({
                     rx={2}
                     className="fill-foreground"
                   />
-                  <text
-                    x={cx}
-                    y={y - 4}
-                    textAnchor="middle"
-                    className="fill-muted-foreground"
-                    fontSize={10}
-                  >
-                    {money(item.cents)}
-                  </text>
+                  {hidden ? null : (
+                    <text
+                      x={cx}
+                      y={y - 4}
+                      textAnchor="middle"
+                      className="fill-muted-foreground"
+                      fontSize={11}
+                    >
+                      {money(item.cents)}
+                    </text>
+                  )}
                   <text
                     x={cx}
                     y={height - 6}
                     textAnchor="middle"
                     className="fill-muted-foreground"
-                    fontSize={10}
+                    fontSize={11}
                   >
                     {item.label}
                   </text>

@@ -22,7 +22,6 @@ vi.mock("../../lib/rpc", () => ({
   withSpaceHeaders: () => new Headers(),
 }));
 
-import type { AutoSortFile } from "./AutoSortDialog";
 import { AutoSortDialog } from "./AutoSortDialog";
 import { getUploadToasts, setUploadScope, showSortedToast } from "./upload-toasts";
 
@@ -73,8 +72,12 @@ afterEach(() => {
 });
 
 const flush = () => act(async () => void (await Promise.resolve()));
-const render = async (onApplied = vi.fn(), onClose = vi.fn(), files: AutoSortFile[] = []) => {
-  act(() => root.render(<AutoSortDialog files={files} onClose={onClose} onApplied={onApplied} />));
+const render = async (onApplied = vi.fn(), onClose = vi.fn(), onOpenModels?: () => void) => {
+  act(() =>
+    root.render(
+      <AutoSortDialog onClose={onClose} onApplied={onApplied} onOpenModels={onOpenModels} />,
+    ),
+  );
   await flush();
   return { onApplied, onClose };
 };
@@ -94,14 +97,19 @@ it("groups the changes as Merge, Move and Rename, each before and after, all tic
   expect(text).toContain("Unfiled → Benefits / Health");
   expect(text).toContain("Screenshot 2026-10-18 at 9.10.50 AM.png");
   expect(text).toContain("→ Cap table - Example Co.png");
-  expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["true", "true", "true"]);
+  expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual([
+    "true",
+    "true",
+    "true",
+    "true",
+  ]);
 });
 
 it("applies only the ticked changes", async () => {
   autoSort.plan.mockResolvedValue(plan);
   autoSort.apply.mockResolvedValue({ batchId: "b1", items: 2, skipped: 0 });
   const { onApplied, onClose } = await render();
-  act(() => boxes()[2]?.click());
+  act(() => boxes()[3]?.click());
   act(() => button("Apply").click());
   await flush();
   expect(autoSort.apply).toHaveBeenCalledWith({ operations: plan.operations.slice(0, 2) });
@@ -113,7 +121,7 @@ it("says Already tidy. when there is nothing to change, and shows an error with 
   autoSort.plan.mockResolvedValueOnce({ mode: "basic", operations: [] });
   await render();
   expect(document.body.textContent).toContain("Already tidy.");
-  expect(button("Apply").hasAttribute("disabled")).toBe(true);
+  expect(button("Apply")).toBeUndefined();
 
   autoSort.plan.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(plan);
   act(() => root.unmount());
@@ -122,7 +130,7 @@ it("says Already tidy. when there is nothing to change, and shows an error with 
   expect(button("Retry")).toBeTruthy();
   act(() => button("Retry").click());
   await flush();
-  expect(boxes()).toHaveLength(3);
+  expect(boxes()).toHaveLength(4);
 });
 
 it("shows Sorted N items after applying, and Undo reverses that batch", async () => {
@@ -144,68 +152,55 @@ it("does not call a plan with no model 'Already tidy.', and offers Retry", async
   expect(document.body.textContent).not.toContain("Already tidy.");
   expect(document.body.textContent).toContain("The model could not sort your files.");
   expect(button("Retry")).toBeTruthy();
+  expect(button("Apply")).toBeUndefined();
 });
 
-const names = ["plan.pdf", "Screenshot 2026-10-18 at 9.10.50 AM.png", "notes.txt"];
-const files = names.map((name, n) => ({ id: `i${n + 1}`, name }));
-const items = () => Array.from(document.querySelectorAll("li")).map((li) => li.textContent);
+it("names a rejected key and opens the Models settings from the dialog", async () => {
+  autoSort.plan.mockResolvedValue({ mode: "basic", reason: "ai_rejected", operations: [] });
+  const openModels = vi.fn();
+  const { onClose } = await render(vi.fn(), vi.fn(), openModels);
+  expect(document.body.textContent).toContain("The model provider did not accept your API key.");
+  expect(button("Apply")).toBeUndefined();
+  act(() => button("Open Models settings").click());
+  expect(openModels).toHaveBeenCalledTimes(1);
+  expect(onClose).toHaveBeenCalled();
+});
+
 const motion = (reduce: boolean) =>
   vi.stubGlobal("matchMedia", () => ({ matches: reduce }) as MediaQueryList);
 
-it("lists the files being reviewed while the plan is made, and Apply waits", async () => {
+it("names its scope while the plan is made, and Apply waits", async () => {
   motion(false);
   autoSort.plan.mockReturnValue(new Promise(() => undefined));
-  await render(vi.fn(), vi.fn(), files);
-  expect(document.body.textContent).toContain("Reviewing 3 files");
-  expect(items()).toEqual(names);
+  await render();
+  expect(document.body.textContent).toContain("Looking for changes");
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
 });
 
-it("reveals each file's outcome in turn, then shows the review", async () => {
-  motion(false);
-  vi.useFakeTimers();
-  autoSort.plan.mockResolvedValue(plan);
-  await render(vi.fn(), vi.fn(), files);
-  expect(items()).toEqual(names);
-  await act(() => vi.advanceTimersByTimeAsync(50));
-  expect(items()[0]).toBe("plan.pdfMove → Benefits / Health");
-  expect(items()[1]).toBe(names[1]);
-  await act(() => vi.advanceTimersByTimeAsync(50));
-  expect(items()[1]).toContain("Rename → Cap table - Example Co.png");
+it("Select all ticks the whole plan, so applying it takes two clicks", async () => {
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [
+      { ...plan.operations[1], key: "m1", fromFolderId: "f9" },
+      { ...plan.operations[1], key: "m2", itemId: "i3", fromFolderId: "f9" },
+    ],
+  });
+  await render();
+  expect(button("Apply").textContent).toBe("Apply");
+  act(() => document.querySelector<HTMLElement>('[role="checkbox"]')?.click());
+  expect(button("Apply").textContent).toBe("Apply 2 changes");
+});
+
+it("says what to do when no change is ticked, instead of Apply 0 changes", async () => {
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [{ ...plan.operations[1], fromFolderId: "f9" }],
+  });
+  await render();
+  expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["false"]);
+  expect(document.body.textContent).toContain("Tick a change to apply it.");
+  expect(button("Apply").textContent).toBe("Apply");
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
-  await act(() => vi.advanceTimersByTimeAsync(300));
-  expect(items()).toEqual([]);
-  expect(boxes()).toHaveLength(3);
-  expect(button("Apply").hasAttribute("disabled")).toBe(false);
-  vi.useRealTimers();
-});
-
-it("shows No change for a file the plan leaves alone", async () => {
-  motion(false);
-  vi.useFakeTimers();
-  autoSort.plan.mockResolvedValue(plan);
-  await render(vi.fn(), vi.fn(), files);
-  await act(() => vi.advanceTimersByTimeAsync(150));
-  expect(items()[2]).toBe("notes.txtNo change");
-  vi.useRealTimers();
-});
-
-it("skips the reveal when the user prefers reduced motion", async () => {
-  motion(true);
-  autoSort.plan.mockResolvedValue(plan);
-  await render(vi.fn(), vi.fn(), files);
-  expect(items()).toEqual([]);
-  expect(boxes()).toHaveLength(3);
-  expect(button("Apply").hasAttribute("disabled")).toBe(false);
-});
-
-it("lists at most 300 files and counts the rest", async () => {
-  motion(false);
-  autoSort.plan.mockReturnValue(new Promise(() => undefined));
-  const many = Array.from({ length: 305 }, (_, n) => ({ id: `m${n}`, name: `file ${n}.pdf` }));
-  await render(vi.fn(), vi.fn(), many);
-  expect(items()).toHaveLength(301);
-  expect(items().at(-1)).toBe("+5 more");
 });
 
 it("leaves files already in a folder unticked and groups moves by destination", async () => {
@@ -220,7 +215,7 @@ it("leaves files already in a folder unticked and groups moves by destination", 
   await flush();
   await flush();
   const boxes = Array.from(document.querySelectorAll('[role="checkbox"]'));
-  expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+  expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
   expect(document.querySelectorAll("h4")).toHaveLength(1);
   expect(button("Apply").textContent).toBe("Apply 1 change");
 });

@@ -182,16 +182,13 @@ it("opens the Add account modal and reaches the Add wallet dialog through Wallet
   expect(dialog()?.textContent).toContain("Add wallet");
 });
 
-const toggle = () =>
-  [...container.querySelectorAll("button")].find((b) =>
-    /^(Count crypto|Counting)/.test(b.textContent ?? ""),
-  ) as HTMLButtonElement | undefined;
+const toggle = () => container.querySelector('[role="switch"]') as HTMLButtonElement | null;
 const subtitle = () =>
   [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash")
     ?.nextElementSibling?.nextElementSibling?.textContent;
 
 it("leaves Count crypto to the Runway page and keeps the plain subtitle under the bank scope", () => {
-  expect(toggle()).toBeUndefined();
+  expect(toggle()).toBeNull();
   expect(subtitle()).toBe("1 bank account");
 });
 

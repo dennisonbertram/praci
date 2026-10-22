@@ -82,6 +82,7 @@ import {
 import { SkillDraftCard } from "../../components/teach/SkillDraftCard";
 import { bubbleMeasure, UserTextBubble } from "../../components/UserTextBubble";
 import type { ArtifactTarget } from "../../lib/artifact-open";
+import { delegateWaitTarget } from "../../lib/delegate-wait";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
@@ -227,6 +228,8 @@ export const Transcript = memo(function Transcript({
   const autoScrolling = useRef(false);
   const lastScrollTop = useRef<number | null>(null);
   const autoScrollTimer = useRef<number | undefined>(undefined);
+  // Until this time, a layout change keeps the "New" divider where the open scrolled it.
+  const dividerPinUntil = useRef(0);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
   const messageById = useMemo(
     () => new Map(messages.map((message) => [message.id, message])),
@@ -288,6 +291,8 @@ export const Transcript = memo(function Transcript({
                 ? t`${workingBotName} is working`
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
+  // After this agent messages another and nothing has come back, the wait is on that agent.
+  const delegate = delegateWaitTarget(messages);
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -390,6 +395,15 @@ export const Transcript = memo(function Transcript({
     const element = scrollRef.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
+      if (performance.now() < dividerPinUntil.current) {
+        // Rows measure themselves after the first paint and the thread shrinks; keep the divider at the top.
+        const row = element.querySelector("[data-unread-divider]");
+        const drift = row
+          ? row.getBoundingClientRect().top - element.getBoundingClientRect().top - 24
+          : 0;
+        if (Math.abs(drift) > 1) element.scrollTop += drift;
+        return;
+      }
       if (!following.current || jumpScrolling.current) return;
       if (element.scrollHeight - element.scrollTop - element.clientHeight > 1) {
         element.scrollTop = element.scrollHeight;
@@ -542,13 +556,32 @@ export const Transcript = memo(function Transcript({
         following.current = false;
         autoScrolling.current = false;
         element.scrollTop += offset - 24;
+        dividerPinUntil.current = performance.now() + 1500;
+      }
+      // A question waiting for an answer matters more than where the unread messages begin.
+      const ask = answerableAskMessageId
+        ? element?.querySelector<HTMLElement>(
+            `[data-stored-message][data-message-id="${CSS.escape(answerableAskMessageId)}"]`,
+          )
+        : null;
+      if (element && ask) {
+        const view = element.getBoundingClientRect();
+        const box = ask.getBoundingClientRect();
+        if (box.bottom > view.bottom || box.top < view.top) {
+          following.current = false;
+          autoScrolling.current = false;
+          element.scrollTop += box.top - view.top - 24;
+          dividerPinUntil.current = 0;
+        }
+      }
+      if (element) {
         setAtEnd(transcriptIsNearEnd(element));
         measureView();
       }
       setDividerSettled(true);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [showDividerId, dividerSettled, scrollRef, measureView]);
+  }, [showDividerId, dividerSettled, scrollRef, measureView, answerableAskMessageId]);
 
   useEffect(() => {
     if (atEnd) setDismissedCount(0);
@@ -610,16 +643,19 @@ export const Transcript = memo(function Transcript({
         aria-live="polite"
         aria-relevant="additions"
         onPointerDown={(event) => {
+          dividerPinUntil.current = 0;
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
           following.current = false;
         }}
         onTouchStart={(event) => {
+          dividerPinUntil.current = 0;
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
           following.current = false;
         }}
         onWheel={(event) => {
+          dividerPinUntil.current = 0;
           if (event.deltaY < 0) {
             lastScrollTop.current = event.currentTarget.scrollTop;
             autoScrolling.current = false;
@@ -715,6 +751,8 @@ export const Transcript = memo(function Transcript({
           if (!messageHasVisibleBlocks(message.blocks, showToolActivity)) return null;
           const peerReceipt = isPeerReceiptBlocks(message.blocks);
           const messageReactions = reactionView.reactions.get(message.id);
+          // Email cards run the full width of the transcript, like the "New" divider.
+          const fullWidth = message.blocks.some((block) => block.kind === "emails");
           return (
             <Fragment key={message.id}>
               {separatorIds.has(message.id) ? (
@@ -748,9 +786,11 @@ export const Transcript = memo(function Transcript({
                             // A narrow transcript (the Inbox agent panel) cannot spare 8rem beside each bubble.
                             message.role === "user"
                               ? "max-w-[max(min(84%,calc(100%_-_8rem)),min(84%,20rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
-                              : message.blocks.some((block) => block.kind === "ask" && block.mail)
-                                ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
-                                : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
+                              : fullWidth
+                                ? "w-full max-w-full"
+                                : message.blocks.some((block) => block.kind === "ask" && block.mail)
+                                  ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
+                                  : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >
@@ -791,6 +831,7 @@ export const Transcript = memo(function Transcript({
                         message={message}
                         hasReactions={Boolean(messageReactions)}
                         side={message.role === "user" ? "start" : "end"}
+                        below={fullWidth}
                         onReply={onReply}
                         onReact={onReact}
                         remember={remember}
@@ -814,6 +855,8 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "@max-sm:[@media(hover:hover)]:end-0 @max-sm:[@media(hover:hover)]:pe-0"
                             : "@max-sm:[@media(hover:hover)]:start-0 @max-sm:[@media(hover:hover)]:ps-0",
+                          fullWidth &&
+                            "[@media(hover:hover)]:start-0 [@media(hover:hover)]:top-full [@media(hover:hover)]:bottom-auto [@media(hover:hover)]:ps-0 [@media(hover:hover)]:pt-1",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
@@ -870,7 +913,9 @@ export const Transcript = memo(function Transcript({
                 ? activity.detail
                 : activity?.kind === "phase"
                   ? maskCurrencyWhenHidden(runPhaseLine(activity.phase) ?? "")
-                  : undefined
+                  : delegate
+                    ? t`Waiting on ${delegate}`
+                    : undefined
             }
             detailSince={activity?.kind === "phase" ? Date.parse(activity.phase.at) : undefined}
             waitingLabel={
@@ -1032,9 +1077,11 @@ function MessageHoverActions({
   onReply,
   onReact,
   remember,
+  below,
 }: {
   message: ThreadMessage;
   side: "start" | "end";
+  below?: boolean;
   hasReactions?: boolean;
   onReply: (message: ThreadMessage) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
@@ -1064,6 +1111,7 @@ function MessageHoverActions({
     <MessageHoverMetadata
       pinned={moreOpen || reactionsOpen}
       side={side}
+      below={below}
       hasReactions={hasReactions}
     >
       <div data-testid="message-hover-actions" className="flex items-center gap-0.5">
@@ -1674,44 +1722,49 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "ask") {
+          // A card after text in the same message sits one message-gap (20 px) below it.
+          const gap = i > 0 ? "mt-5" : undefined;
           if (block.mail && isApprovalAskBlock(block)) {
             return (
-              <MailApprovalCard
-                key={i}
-                mail={block.mail}
-                status={block.status === "answered" ? "answered" : "pending"}
-                answer={block.answer}
-                canAnswer={canAnswer}
-                botName={botToolControls?.editableBotName(message.botId)}
-                onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
-                onOpenComposer={(failed) =>
-                  failed.connectionId
-                    ? botToolControls?.openComposer({
-                        connectionId: failed.connectionId,
-                        account: failed.account ?? "",
-                        to: failed.to,
-                        cc: failed.cc,
-                        bcc: failed.bcc,
-                        subject: failed.subject,
-                        body: failed.body,
-                      })
-                    : undefined
-                }
-                onDisableTool={
-                  message.botId
-                    ? (tool) => botToolControls!.disableTool(message.botId!, tool)
-                    : undefined
-                }
-              />
+              <div key={i} className={gap}>
+                <MailApprovalCard
+                  mail={block.mail}
+                  status={block.status === "answered" ? "answered" : "pending"}
+                  answer={block.answer}
+                  canAnswer={canAnswer}
+                  botName={botToolControls?.editableBotName(message.botId)}
+                  onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
+                  onOpenComposer={(failed) =>
+                    failed.connectionId
+                      ? botToolControls?.openComposer({
+                          connectionId: failed.connectionId,
+                          account: failed.account ?? "",
+                          to: failed.to,
+                          cc: failed.cc,
+                          bcc: failed.bcc,
+                          subject: failed.subject,
+                          body: failed.body,
+                        })
+                      : undefined
+                  }
+                  onDisableTool={
+                    message.botId
+                      ? (tool) => botToolControls!.disableTool(message.botId!, tool)
+                      : undefined
+                  }
+                />
+              </div>
             );
           }
           return (
-            <AskCard
-              key={i}
-              block={block}
-              canAnswer={canAnswer}
-              onAnswer={(text, username) => onAnswer(message, text, username)}
-            />
+            <div key={i} className={gap}>
+              <AskCard
+                block={block}
+                // A held message is answered without a waiting run, so it stays answerable.
+                canAnswer={canAnswer || block.share === true}
+                onAnswer={(text, username) => onAnswer(message, text, username)}
+              />
+            </div>
           );
         }
         if (block.kind === "cloud_agent") return <CloudAgentCard key={i} block={block} />;

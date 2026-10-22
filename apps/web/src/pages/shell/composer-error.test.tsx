@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
-import { LEGAL_CONSENT_REQUIRED_MESSAGE, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import {
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
+  MISSING_TOOL_FINAL_RESPONSE_ERROR,
+} from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -31,22 +34,6 @@ afterEach(() => {
 
 const settingsButton = () =>
   [...container.querySelectorAll("button")].find((b) => b.textContent === "Open Models settings");
-
-it("offers OpenRouter's Models settings for the Legal model error", async () => {
-  const open = vi.fn();
-  await act(async () =>
-    root.render(
-      <ComposerError
-        message={LEGAL_MODEL_REQUIRED_MESSAGE}
-        onDismiss={() => {}}
-        onOpenModelSettings={open}
-      />,
-    ),
-  );
-  expect(container.textContent).toContain("needs your own OpenRouter key");
-  await act(async () => settingsButton()?.click());
-  expect(open).toHaveBeenCalledWith("openrouter");
-});
 
 it("offers Models settings when the provider did not accept the API key", async () => {
   const open = vi.fn();
@@ -105,4 +92,27 @@ it("has no page button for other errors", async () => {
     ),
   );
   expect(pageButton("Allow")).toBeUndefined();
+});
+
+it("offers Retry, and a 24 px dismiss target, when a run ended without a reply", async () => {
+  const retry = vi.fn();
+  await act(async () =>
+    root.render(
+      <ComposerError
+        message={MISSING_TOOL_FINAL_RESPONSE_ERROR}
+        onDismiss={() => {}}
+        onRetry={retry}
+      />,
+    ),
+  );
+  await act(async () => pageButton("Retry")?.click());
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('[aria-label="Dismiss error"]')?.className).toContain("size-6");
+});
+
+it("has no Retry for other errors", async () => {
+  await act(async () =>
+    root.render(<ComposerError message="Network down" onDismiss={() => {}} onRetry={() => {}} />),
+  );
+  expect(pageButton("Retry")).toBeUndefined();
 });

@@ -18,13 +18,21 @@ describe("shouldToast", () => {
 });
 
 describe("resultShownInOpenChat", () => {
-  it("is true for a failure or, with the tab in front, a finished run in the chat that is open", () => {
+  it("skips a failure in the open chat, and a finished run while the tab is in front", () => {
     expect(resultShownInOpenChat({ botId: "b1", kind: "failed" }, "b1", false)).toBe(true);
-    expect(resultShownInOpenChat({ botId: "b2", kind: "failed" }, "b1", true)).toBe(false);
+    // A background agent's failure shows as a badge on its sidebar row, not a toast, while the tab is in front.
+    expect(resultShownInOpenChat({ botId: "b2", kind: "failed" }, "b1", true)).toBe(true);
+    expect(resultShownInOpenChat({ botId: "b2", kind: "failed" }, "b1", false)).toBe(false);
+    // The open chat already shows its own approval card.
+    expect(resultShownInOpenChat({ botId: "b1", kind: "needs_input" }, "b1", true)).toBe(true);
+    expect(resultShownInOpenChat({ botId: "b2", kind: "needs_input" }, "b1", true)).toBe(false);
     expect(resultShownInOpenChat({ botId: "b1", kind: "done" }, "b1", true)).toBe(true);
     expect(resultShownInOpenChat({ botId: "b1", kind: "done" }, "b1", false)).toBe(false);
-    expect(resultShownInOpenChat({ botId: "b1", kind: "done" }, "b2", true)).toBe(false);
-    expect(resultShownInOpenChat({ botId: "b1" }, undefined, true)).toBe(false);
+    // An agent that is not on screen gets its sidebar row only.
+    expect(resultShownInOpenChat({ botId: "b1", kind: "done" }, "b2", true)).toBe(true);
+    expect(resultShownInOpenChat({ botId: "b1", kind: "done" }, undefined, true)).toBe(true);
+    expect(resultShownInOpenChat({ botId: "b1", kind: "done" }, undefined, false)).toBe(false);
+    expect(resultShownInOpenChat({ botId: "b1", kind: "failed" }, undefined, true)).toBe(true);
   });
 });
 

@@ -55,8 +55,10 @@ export const Composer = memo(function Composer({
   artifactTarget,
   draftKey,
   activeName,
+  placeholder: placeholderText,
   running,
   disabled,
+  disabledPlaceholder,
   pendingAttachments,
   dataRoomItems = [],
   onRemoveDataRoomItem,
@@ -64,6 +66,7 @@ export const Composer = memo(function Composer({
   onDismissAttachmentNotice,
   sendError,
   runError,
+  onRetryRun,
   runErrorId,
   onRunErrorPresented,
   onDismissError,
@@ -88,8 +91,12 @@ export const Composer = memo(function Composer({
   sentHistory = [],
 }: {
   activeName?: string;
+  /** Replaces "Message <name>" as the empty composer's hint. */
+  placeholder?: string;
   running: boolean;
   disabled?: boolean;
+  /** Says why the composer is disabled, in place of the usual placeholder. */
+  disabledPlaceholder?: string;
   pendingAttachments: PendingAttachment[];
   /** Data room files sent by reference with the next message. */
   dataRoomItems?: DataRoomRef[];
@@ -98,6 +105,7 @@ export const Composer = memo(function Composer({
   onDismissAttachmentNotice?: () => void;
   sendError: string | null;
   runError: string | null;
+  onRetryRun?: () => void;
   runErrorId: string | null;
   onRunErrorPresented: (runId: string) => void;
   onDismissError: () => void;
@@ -625,6 +633,7 @@ export const Composer = memo(function Composer({
         <ComposerError
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
+          onRetry={!sendError ? onRetryRun : undefined}
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
           onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {
@@ -1060,12 +1069,17 @@ export const Composer = memo(function Composer({
             disabled={disabled}
             placeholder={
               showComposerPlaceholder
-                ? activeName
-                  ? t`Message ${activeName}`
-                  : t`Message…`
+                ? disabled && disabledPlaceholder
+                  ? disabledPlaceholder
+                  : (placeholderText ??
+                    // On a phone the header already names the agent, and a long name wraps.
+                    (activeName && !window.matchMedia?.("(max-width: 480px)").matches
+                      ? t`Message ${activeName}`
+                      : t`Message…`))
                 : undefined
             }
-            aria-label={activeName ? t`Message ${activeName}` : t`Message`}
+            // A name cut short with "…" would be read aloud as part of the label.
+            aria-label={activeName ? t`Message ${activeName.replace(/…$/, "")}` : t`Message`}
             role="combobox"
             aria-autocomplete="list"
             aria-haspopup="listbox"

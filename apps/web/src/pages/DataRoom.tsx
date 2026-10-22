@@ -11,16 +11,12 @@ import { ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import type { ComposeRestore } from "../components/ComposeEmail";
+import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { AutoSortDialog } from "../components/data-room/AutoSortDialog";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { DataRoomStats } from "../components/data-room/DataRoomStats";
-import {
-  FilterBar,
-  facetOptions,
-  Tip,
-  TOOLBAR_BUTTON,
-  TOOLBAR_LABEL,
-} from "../components/data-room/FilterBar";
+import { FilterBar, facetOptions, Tip } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
 import { alreadyText } from "../components/data-room/format";
@@ -35,6 +31,7 @@ import { PathBar } from "../components/data-room/PathBar";
 import { Preview } from "../components/data-room/Preview";
 import { ProcessingStrip } from "../components/data-room/ProcessingStrip";
 import { ResizableFolders } from "../components/data-room/ResizableFolders";
+import { SelectionBar } from "../components/data-room/SelectionBar";
 import type { SendTarget } from "../components/data-room/SendToAgent";
 import {
   setOpenDataRoomFolder,
@@ -50,7 +47,13 @@ import { useDataRoomList } from "../components/data-room/use-data-room-list";
 import { useDataRoomProcessing } from "../components/data-room/use-data-room-processing";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
-import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
+import {
+  DATA_ROOM_CHANGED,
+  fetchDataRoomBlob,
+  readDataRoomView,
+  saveDataRoomItem,
+  saveDataRoomView,
+} from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -68,11 +71,7 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
-function FileInputButton({
-  children,
-  tip,
-  ...props
-}: React.ComponentProps<typeof Button> & { tip?: string }) {
+function FileInputButton(props: React.ComponentProps<typeof Button>) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -87,18 +86,7 @@ function FileInputButton({
           event.target.value = "";
         }}
       />
-      {tip ? (
-        // To the side, so the label never covers the toolbar below.
-        <Tip label={tip} side="left">
-          <Button {...props} onClick={() => input.current?.click()}>
-            {children}
-          </Button>
-        </Tip>
-      ) : (
-        <Button {...props} onClick={() => input.current?.click()}>
-          {children}
-        </Button>
-      )}
+      <Button {...props} onClick={() => input.current?.click()} />
     </>
   );
 }
@@ -110,14 +98,17 @@ function FileInputButton({
 export function DataRoomPage({
   spaceName,
   onAskAgent,
+  onOpenModelSettings,
   agents,
   onSendToAgent,
 }: {
   spaceName?: string;
   onAskAgent?: () => void;
+  /** Where a model problem is fixed; without it Auto-sort only names the problem. */
+  onOpenModelSettings?: () => void;
   /** The agents a file can be sent to; without them the menu item is not offered. */
   agents?: SendTarget[];
-  onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
+  onSendToAgent?: (items: DataRoomApiItem[], agent: SendTarget) => void;
 } = {}) {
   const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
@@ -131,7 +122,10 @@ export function DataRoomPage({
   const query = queryInput.trim() === "" ? "" : debouncedQuery;
   // The open folder lives in the URL and nothing else does: a reload, a bookmark, a shared link or
   // the Back button opens the folder again. The other filters are page state.
-  const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>({});
+  const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>(
+    // The Legal page links here to list the documents it has not checked.
+    () => (params.get("legal") === "unchecked" ? { legalUnchecked: true } : {}),
+  );
   const filters = useMemo<Filters>(
     () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
     [otherFilters, urlFolder],
@@ -373,6 +367,9 @@ export function DataRoomPage({
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
   const shown = previewOpen ? fresh(pinned) : null;
 
+  // Ticked files by id, kept across searches and filters; only a folder change or Clear drops them.
+  const [checked, setChecked] = useState<ReadonlyMap<string, DataRoomApiItem>>(new Map());
+  const checkedIds = new Set(checked.keys());
   const interaction: RowInteraction = {
     shownId: shown?.id,
     onSelect: (item) => {
@@ -393,13 +390,103 @@ export function DataRoomPage({
       }
     },
     onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
+    // Tick boxes are for the list; the grid has its tiles' own menus.
+    ...(view === "list" || searching
+      ? {
+          checked: checkedIds,
+          onCheck: (item: DataRoomApiItem) =>
+            setChecked((current) => {
+              const next = new Map(current);
+              if (!next.delete(item.id)) next.set(item.id, item);
+              return next;
+            }),
+          onCheckAll: (on: boolean) =>
+            setChecked((current) => {
+              const next = new Map(current);
+              for (const { item } of list.rows) {
+                if (on) next.set(item.id, item);
+                else next.delete(item.id);
+              }
+              return next;
+            }),
+        }
+      : {}),
     agents,
-    onSendToAgent,
+    onSendToAgent: onSendToAgent && ((item, agent) => onSendToAgent([item], agent)),
     folderPath,
     openFolderId: filters.folderId,
   };
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [compose, setCompose] = useState<ComposeRestore | null>(null);
+  // A search or filter keeps the selection; another folder starts a new one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the folder is the trigger.
+  useEffect(
+    () => setChecked((current) => (current.size ? new Map() : current)),
+    [filters.folderId],
+  );
+  const checkedItems = [...checked.values()];
+
+  /** Saves each ticked file in turn; one that cannot be read is named, the rest still download. */
+  async function downloadChecked() {
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const item of checkedItems) {
+      try {
+        await saveDataRoomItem(item);
+      } catch {
+        failed.push(item.name);
+      }
+    }
+    setBulkBusy(false);
+    if (failed.length) showNoticeToast(t`Could not download ${failed.join(", ")}`);
+  }
+
+  /** Opens the mail composer with the ticked files attached; Send there is the usual send. */
+  async function sendChecked() {
+    setBulkBusy(true);
+    try {
+      const { accounts } = await rpc.inbox.list({});
+      if (!accounts.length) {
+        showNoticeToast(t`Connect Gmail to send files`);
+        return;
+      }
+      const files: File[] = [];
+      const failed: string[] = [];
+      for (const item of checkedItems) {
+        try {
+          files.push(new File([await fetchDataRoomBlob(item)], item.name, { type: item.mimeType }));
+        } catch {
+          failed.push(item.name);
+        }
+      }
+      setCompose({
+        seed: NEW_MESSAGE,
+        clientId: crypto.randomUUID().replaceAll("-", ""),
+        fields: {
+          connectionId: accounts[0]?.connectionId ?? "",
+          to: [],
+          cc: [],
+          bcc: [],
+          subject: "",
+          html: "",
+          text: "",
+        },
+        forwarded: [],
+        files,
+        saved: false,
+        accounts,
+        ...(failed.length ? { notice: t`Not attached: ${failed.join(", ")}` } : {}),
+      });
+    } catch (cause) {
+      showNoticeToast(errorText(cause));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+  const fileInput = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [autoSorting, setAutoSorting] = useState(false);
 
@@ -415,8 +502,24 @@ export function DataRoomPage({
         setPinned((current) => (current?.id === updated.id ? updated : current));
       })
       .catch((cause) => showNoticeToast(errorText(cause)))
-      .finally(reload);
+      // The processing counts pick up the file again and reload the list as it is read.
+      .finally(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)));
   }
+
+  // Whether the last input was a pointer: focus is put back after a key press, not after a tap,
+  // where the restored row would show a keyboard focus ring.
+  const pointerLast = useRef(false);
+  useEffect(() => {
+    const note = (event: Event) => {
+      pointerLast.current = event.type === "pointerdown";
+    };
+    document.addEventListener("pointerdown", note, true);
+    document.addEventListener("keydown", note, true);
+    return () => {
+      document.removeEventListener("pointerdown", note, true);
+      document.removeEventListener("keydown", note, true);
+    };
+  }, []);
 
   function closePreview() {
     const id = shown?.id;
@@ -424,7 +527,7 @@ export function DataRoomPage({
     setPreviewOpen(false);
     setDialogOpen(false);
     // Keep the keyboard where the user was.
-    if (id) {
+    if (id && !pointerLast.current) {
       requestAnimationFrame(() =>
         document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`)?.focus(),
       );
@@ -468,9 +571,10 @@ export function DataRoomPage({
       hasDates: facetValues.hasDates || shown.hasDates,
     };
   }, [rows, facetValues]);
-  const subfolderList = () => (
+  const subfolderList = (showStatus?: boolean) => (
     <SubfolderList
       tiles={view === "grid"}
+      showStatus={showStatus}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
@@ -481,6 +585,44 @@ export function DataRoomPage({
   const filtered = Object.entries(filters).some(([key, value]) => key !== "folderId" && value);
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
   const openFolderPath = filters.folderId ? folderPath(filters.folderId) : "";
+
+  // On a phone the toggles move down to the folder row so the title row keeps + and Ask.
+  const viewToggles = (className: string) => (
+    <fieldset className={`m-0 flex min-w-0 gap-0.5 border-0 p-0 ${className}`}>
+      <legend className="sr-only">{t`View`}</legend>
+      <Tip label={t`List view`}>
+        <Toggle
+          size="sm"
+          pressed={!showStats && view === "list"}
+          onPressedChange={() => {
+            setView("list");
+            setShowStats(false);
+          }}
+          aria-label={t`List view`}
+        >
+          <List aria-hidden="true" />
+        </Toggle>
+      </Tip>
+      <Tip label={t`Grid view`}>
+        <Toggle
+          size="sm"
+          pressed={!showStats && view === "grid"}
+          onPressedChange={() => {
+            setView("grid");
+            setShowStats(false);
+          }}
+          aria-label={t`Grid view`}
+        >
+          <LayoutGrid aria-hidden="true" />
+        </Toggle>
+      </Tip>
+      <Tip label={t`Stats`}>
+        <Toggle size="sm" pressed={showStats} onPressedChange={setShowStats} aria-label={t`Stats`}>
+          <ChartColumn aria-hidden="true" />
+        </Toggle>
+      </Tip>
+    </fieldset>
+  );
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
@@ -498,55 +640,37 @@ export function DataRoomPage({
             <>
               {empty ? null : (
                 <>
-                  <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
-                    <legend className="sr-only">{t`View`}</legend>
-                    <Tip label={t`List view`}>
-                      <Toggle
-                        size="sm"
-                        pressed={!showStats && view === "list"}
-                        onPressedChange={() => {
-                          setView("list");
-                          setShowStats(false);
-                        }}
-                        aria-label={t`List view`}
-                      >
-                        <List aria-hidden="true" />
-                      </Toggle>
-                    </Tip>
-                    <Tip label={t`Grid view`}>
-                      <Toggle
-                        size="sm"
-                        pressed={!showStats && view === "grid"}
-                        onPressedChange={() => {
-                          setView("grid");
-                          setShowStats(false);
-                        }}
-                        aria-label={t`Grid view`}
-                      >
-                        <LayoutGrid aria-hidden="true" />
-                      </Toggle>
-                    </Tip>
-                    <Tip label={t`Stats`}>
-                      <Toggle
-                        size="sm"
-                        pressed={showStats}
-                        onPressedChange={setShowStats}
-                        aria-label={t`Stats`}
-                      >
-                        <ChartColumn aria-hidden="true" />
-                      </Toggle>
-                    </Tip>
-                  </fieldset>
-                  <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-                  <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
-                    <Plus aria-hidden="true" />
-                    <span className={TOOLBAR_LABEL}>
-                      <Trans>Add files</Trans>
-                    </span>
-                  </FileInputButton>
+                  {viewToggles("@max-[639px]/bd:hidden")}
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    multiple
+                    hidden
+                    data-testid="data-room-file-input"
+                    onChange={(event) => {
+                      uploadFilesToDataRoom(Array.from(event.target.files ?? []));
+                      event.target.value = "";
+                    }}
+                  />
+                  <ImportSources
+                    compact
+                    folderId={filters.folderId ?? null}
+                    onDone={showNotice}
+                    onUpload={() => fileInput.current?.click()}
+                  />
                 </>
               )}
-              {onAskAgent ? <AskBotButton botName="Data room agent" onClick={onAskAgent} /> : null}
+              {onAskAgent ? (
+                <AskBotButton
+                  botName="Data room agent"
+                  onClick={() => {
+                    // The agent panel takes the room the preview had.
+                    setPinned(null);
+                    setPreviewOpen(false);
+                    onAskAgent();
+                  }}
+                />
+              ) : null}
             </>
           }
         />
@@ -591,9 +715,16 @@ export function DataRoomPage({
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
             onNewFolder={() => setCreatingFolder(true)}
             onAutoSort={() => setAutoSorting(true)}
+            statsView={showStats}
+            trailing={viewToggles("@min-[640px]/bd:hidden")}
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
-            <div className="hidden self-stretch border-e border-border @min-[800px]/bd:flex">
+            {/* With a preview beside the list the tree needs a wider page, or file names get ~100px. */}
+            <div
+              className={`hidden self-stretch border-e border-border ${
+                shown && !narrow && !showStats ? "@min-[1100px]/bd:flex" : "@min-[800px]/bd:flex"
+              }`}
+            >
               <ResizableFolders bounds={bodyEl}>
                 <FolderTree
                   nodes={nodes}
@@ -632,6 +763,18 @@ export function DataRoomPage({
                 data-testid="data-room-list"
                 className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
               >
+                <SelectionBar
+                  count={checkedItems.length}
+                  busy={bulkBusy}
+                  onDownload={() => void downloadChecked()}
+                  onSend={() => void sendChecked()}
+                  agents={agents}
+                  onSendToAgent={(agent) => {
+                    onSendToAgent?.(checkedItems, agent);
+                    setChecked(new Map());
+                  }}
+                  onClear={() => setChecked(new Map())}
+                />
                 <PathBar
                   nodes={nodes}
                   folderId={filters.folderId}
@@ -643,14 +786,13 @@ export function DataRoomPage({
                   onDismiss={importActivity.dismiss}
                   hideRunning={processing.active}
                 />
-                {processing.processing &&
-                (processing.active || processing.finished || processing.processing.failed > 0) ? (
+                {/* A file that could not be read is flagged on its row and by the sidebar badge. */}
+                {processing.processing && (processing.active || processing.finished) ? (
                   <ProcessingStrip
                     importing={processing.active ? importProgress(importActivity.imports) : null}
                     processing={processing.processing}
                     total={processing.total}
                     finished={!processing.active}
-                    onShowFailed={() => setFilters({ ...filters, status: "failed" })}
                   />
                 ) : null}
                 {searching && openFolderPath ? (
@@ -746,7 +888,7 @@ export function DataRoomPage({
                 onAction={interaction.onAction}
                 onClose={closePreview}
                 agents={agents}
-                onSendToAgent={onSendToAgent}
+                onSendToAgent={onSendToAgent && ((item, agent) => onSendToAgent([item], agent))}
               />
             ) : null}
           </div>
@@ -754,7 +896,13 @@ export function DataRoomPage({
       )}
       {shown && narrow && dialogOpen ? (
         <Dialog open onOpenChange={(open) => !open && closePreview()}>
-          <DialogContent className="max-h-[85dvh] overflow-y-auto p-0">
+          {/* Focus the dialog itself, so Escape closes it at once (a focused icon button would show its tooltip first). */}
+          <DialogContent
+            ref={dialogRef}
+            initialFocus={dialogRef}
+            tabIndex={-1}
+            className="max-h-[85dvh] overflow-y-auto p-0"
+          >
             <Preview
               inDialog
               item={shown}
@@ -762,15 +910,15 @@ export function DataRoomPage({
               onAction={interaction.onAction}
               onClose={closePreview}
               agents={agents}
-              onSendToAgent={onSendToAgent}
+              onSendToAgent={onSendToAgent && ((item, agent) => onSendToAgent([item], agent))}
             />
           </DialogContent>
         </Dialog>
       ) : null}
       {autoSorting ? (
         <AutoSortDialog
-          files={rows.map(({ item }) => ({ id: item.id, name: item.name }))}
           onClose={() => setAutoSorting(false)}
+          onOpenModels={onOpenModelSettings}
           onApplied={({ batchId, items }) => {
             showSortedToast(items, batchId);
             reload();
@@ -817,6 +965,14 @@ export function DataRoomPage({
             reload();
             reloadFolders();
           }}
+        />
+      ) : null}
+      {compose ? (
+        <ComposeEmail
+          seed={NEW_MESSAGE}
+          accounts={compose.accounts}
+          restore={compose}
+          onClose={() => setCompose(null)}
         />
       ) : null}
       {notice ? (

@@ -1,5 +1,5 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
-import { LEGAL_CONSENT_REQUIRED_MESSAGE, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
@@ -126,6 +126,7 @@ async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2", tri
     aiDataConsent: {
       findFirst: vi.fn(async () => (consented ? { userId: "user-1" } : null)),
     },
+    user: { findUnique: vi.fn(async () => null) },
     taughtSkill: { findMany: vi.fn(async () => []) },
     agentSecret: { findMany: vi.fn(async () => []) },
     botSecret: { findMany: vi.fn(async () => []) },
@@ -166,7 +167,7 @@ async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2", tri
 
 describe("Legal agent runs need Data Room consent for the model they use", () => {
   it("ends the run without calling the model when consent is missing", async () => {
-    const { runtimeRun, finalizeRun } = await runLegal(false);
+    const { runtimeRun, finalizeRun, prisma } = await runLegal(false);
     expect(runtimeRun).not.toHaveBeenCalled();
     expect(finalizeRun).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,6 +175,13 @@ describe("Legal agent runs need Data Room consent for the model they use", () =>
         error: LEGAL_CONSENT_REQUIRED_MESSAGE,
       }),
     );
+    // The bar above the composer shows the run's error; no bot message repeats it in the chat.
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("still sends the consent notice as a bot message on a linked messaging chat", async () => {
+    const { prisma } = await runLegal(false, "meta/muse-spark-1.2", "messaging");
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 
   it("runs on the consented model only: no backup models are read or offered", async () => {
@@ -186,22 +194,18 @@ describe("Legal agent runs need Data Room consent for the model they use", () =>
     expect(request?.resolveFallbackModel).toBeUndefined();
   });
 
-  it("ends a run that resolved to any other model before calling it, even with consent", async () => {
-    const { runtimeRun, finalizeRun, prisma } = await runLegal(true, "openai/gpt-6-luna");
-    expect(runtimeRun).not.toHaveBeenCalled();
-    expect(finalizeRun).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: "failed", error: LEGAL_MODEL_REQUIRED_MESSAGE }),
-    );
-    // The run's error is the only notice; no bot message repeats it in the chat.
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+  it("runs on the space default model when the Legal agent has no key of its own", async () => {
+    const { request, runtimeRun, finalizeRun } = await runLegal(true, "openai/gpt-6-luna");
+    expect(runtimeRun).toHaveBeenCalled();
+    expect(finalizeRun).not.toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
+    expect(request?.model.id).toBe("openai/gpt-6-luna");
   });
 
-  it("still sends the model notice as a bot message on a linked messaging chat", async () => {
-    const { prisma, finalizeRun } = await runLegal(true, "openai/gpt-6-luna", "messaging");
+  it("still asks for consent when the resolved model is not Muse Spark", async () => {
+    const { runtimeRun, finalizeRun } = await runLegal(false, "openai/gpt-6-luna");
+    expect(runtimeRun).not.toHaveBeenCalled();
     expect(finalizeRun).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: "failed", error: LEGAL_MODEL_REQUIRED_MESSAGE }),
+      expect.objectContaining({ outcome: "failed", error: LEGAL_CONSENT_REQUIRED_MESSAGE }),
     );
-    // Messaging channels deliver stored bot messages, not the run's error.
-    expect(prisma.$transaction).toHaveBeenCalled();
   });
 });

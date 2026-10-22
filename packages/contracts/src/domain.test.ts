@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { ConnectionCatalogItem } from "./domain.js";
-import { ConnectionSchema, preferNativeGoogle } from "./domain.js";
+import {
+  ConnectionSchema,
+  CreateScratchpadItemInput,
+  preferNativeGoogle,
+  ScratchpadCategorySchema,
+  ScratchpadChannelSchema,
+  ScratchpadItemSchema,
+} from "./domain.js";
 
 const item = (connectorId: string, slug: string): ConnectionCatalogItem => ({
   connectorId,
@@ -92,5 +99,65 @@ describe("ConnectionSchema", () => {
     expect(
       ConnectionSchema.parse({ ...base, writesEnabled: true, agentBotId: "bot-1" }),
     ).toMatchObject({ writesEnabled: true, agentBotId: "bot-1" });
+  });
+});
+
+describe("scratchpad metadata schemas", () => {
+  it("accepts the plan enums and rejects values outside them", () => {
+    expect(ScratchpadCategorySchema.options).toEqual([
+      "goal",
+      "research",
+      "draft",
+      "public_post",
+      "create_account",
+      "outbound_email",
+    ]);
+    expect(ScratchpadChannelSchema.options).toEqual([
+      "x",
+      "linkedin",
+      "threads",
+      "bluesky",
+      "reddit",
+      "hn",
+      "producthunt",
+      "directory",
+      "email",
+    ]);
+    expect(ScratchpadCategorySchema.safeParse("public_post").success).toBe(true);
+    expect(ScratchpadCategorySchema.safeParse("other").success).toBe(false);
+    expect(ScratchpadChannelSchema.safeParse("producthunt").success).toBe(true);
+    expect(ScratchpadChannelSchema.safeParse("mastodon").success).toBe(false);
+  });
+
+  it("keeps the new output fields optional for old scratchpad literals", () => {
+    const old = {
+      id: "item-1",
+      botId: "bot-1",
+      title: "Old item",
+      status: "open",
+      notes: "",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(ScratchpadItemSchema.parse(old)).toMatchObject(old);
+    expect(
+      ScratchpadItemSchema.parse({
+        ...old,
+        category: "public_post",
+        channel: "x",
+        target: null,
+        scheduledFor: null,
+        proof: null,
+        approvedAt: null,
+        approvedBy: "user",
+      }),
+    ).toMatchObject({ category: "public_post", channel: "x", approvedBy: "user" });
+    expect(
+      CreateScratchpadItemInput.parse({
+        botId: "bot-1",
+        title: "A goal",
+        category: "goal",
+      }),
+    ).not.toHaveProperty("status");
   });
 });

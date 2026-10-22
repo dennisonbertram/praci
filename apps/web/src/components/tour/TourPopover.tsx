@@ -68,14 +68,13 @@ function useRect(element: Element | null) {
 export function TourPopover({
   steps,
   onFinish,
-  doneLabel,
-  onDone,
+  lastAction,
 }: {
   steps: readonly TourStep[];
-  /** Label of the last step's button, and what it does after the tour is recorded. Default: Done. */
-  doneLabel?: string;
-  onDone?: () => void;
-  onFinish: (result: "done" | "skip" | "empty") => void;
+  /** A secondary button on the last step, next to Done: ends the tour, then runs. */
+  lastAction?: { label: string; run: () => void };
+  /** `byEscape` is set when the Escape key ended the tour, so the caller can leave the drawer open. */
+  onFinish: (result: "done" | "skip" | "empty", byEscape?: boolean) => void;
 }) {
   const { t } = useLingui();
   const wide = useWide();
@@ -102,10 +101,11 @@ export function TourPopover({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
-      onFinish("skip");
+      onFinish("skip", true);
     };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
+    // On window, so it runs before any drawer listener on the document.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [wide, onFinish]);
   if (!step) return null;
 
@@ -130,21 +130,27 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        <Button
-          size="sm"
-          autoFocus
-          onClick={() => {
-            if (!last) return setIndex(index + 1);
-            onFinish("done");
-            onDone?.();
-          }}
-        >
-          {last ? (doneLabel ?? <Trans>Done</Trans>) : <Trans>Next</Trans>}
+        {last && lastAction ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onFinish("done");
+              lastAction.run();
+            }}
+          >
+            {lastAction.label}
+          </Button>
+        ) : null}
+        <Button size="sm" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
+          {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
       </div>
     </>
   );
 
+  // Over the sidebar, never the page: the page to its right holds the greeting, composer and cards.
+  const below = !rect || rect.top + rect.height / 2 < window.innerHeight / 2;
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (!wide) {
     // Keep the card off the ring: on top when the target is in the lower half of the screen.
@@ -178,8 +184,9 @@ export function TourPopover({
       >
         <PopoverContent
           anchor={element}
-          side="right"
-          align={step.anchor.includes("user-menu") ? "end" : "start"}
+          side={below ? "bottom" : "top"}
+          // An icon at the sidebar's edge keeps its card over the sidebar, not the page.
+          align={rect && rect.width < 100 ? "end" : "start"}
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"

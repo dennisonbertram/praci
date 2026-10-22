@@ -13,7 +13,7 @@
     --fg: #ecebe6;
     --muted: #a3a29c;
     --border: #3a3a37;
-  }
+    }
 }
 
 * {
@@ -161,6 +161,35 @@ button:focus-visible {
 [hidden] {
   display: none;
 }
+#hosted {
+  margin-bottom: 56px;
+}
+#join {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+#join input,
+#join button {
+  padding: 8px 12px;
+  font-size: 15px;
+}
+#join input {
+  flex: 1 1 200px;
+}
+#join button {
+  white-space: nowrap;
+}
+.alt {
+  margin: 16px 0 0;
+  color: var(--muted);
+}
+.alt a {
+  color: var(--fg);
+}
+#status:empty {
+  min-height: 0;
+  margin: 0;
+}
 #status {
   margin: 12px 0 0;
   min-height: 1.5em;
@@ -278,3 +307,13 @@ section.works {
   letter-spacing: -0.02em;
   line-height: 24px;
 }
+
+.row {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+.row input {
+  flex: 1;
+}
+

@@ -20,6 +20,14 @@ The boards are `.dc.html` design-canvas files. They load the canvas runtime (`su
 | `boards/PG-A-Rules.dc.html`, `boards/PG-B-Rules.dc.html` | How to generate any page, then one rule card per page: outer, inner ⅓ + ⅔, half-folded ½ + ½ and laptop recipes, states, glass decisions, the one prominent action |
 | `boards/Main`, `Sheet`, `Split`, `Inner`, `Inner-Message`, `Desk`, `Desk-Computer` | iPhone Duo mockups: outer Home and Inbox, inner sidebar + Inbox, half-folded Inbox + Inbox agent or open message, laptop pose Finance or Computer (in control) |
 
+## Native implementation catalog
+
+The generated [component catalog](../components.md#native-ios-swiftui) lists
+the phase 0–2 SwiftUI views. `AuthenticationView` and `ServerView` implement
+the sign-in and server boards with system controls and generated semantic
+colors; `AuthStatus` renders conditional errors and notices. Native stories
+and simulator screenshots are pending. Later page boards remain design-only.
+
 ## Rules in short
 
 - Glass is only the floating layer for navigation and controls. Lists, cards, bubbles and buttons inside cards are content and use solid fills.

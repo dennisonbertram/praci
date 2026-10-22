@@ -85,6 +85,9 @@ describe("isTechnicalErrorMessage", () => {
       "VALIDATION_ERROR",
       "Response body exceeds 262144 bytes",
       "JSON Parse error: Unexpected character: <",
+      "Internal Server Error",
+      "Internal server error.",
+      "Bad Gateway",
     ]) {
       expect(isTechnicalErrorMessage(message), message).toBe(true);
     }
@@ -234,6 +237,14 @@ describe("plainRunError", () => {
   const copy = { keyRejected: "KEY", generic: "GENERIC" };
   it("hides a provider 401 JSON body", () => {
     expect(plainRunError('401: {"message":"User not found.","code":401}', copy)).toBe("KEY");
+  });
+  it("hides a gateway error from the model proxy", () => {
+    expect(
+      plainRunError(
+        "upstream connect error or disconnect/reset before headers. reset reason: connection timeout",
+        copy,
+      ),
+    ).toBe("GENERIC");
   });
   it("hides stack-trace text and keeps human messages", () => {
     expect(plainRunError("x".repeat(400), copy)).toBe("GENERIC");

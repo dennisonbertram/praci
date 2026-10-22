@@ -517,7 +517,10 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
       results: { id: string; name: string; snippet: string }[];
     };
     expect(found.results.map((r) => r.id)).toEqual([mine.id]);
+    // The file has been read but is not tagged and indexed yet: the agent is told.
+    expect(found).toMatchObject({ note: expect.stringContaining("still being indexed") });
     expect(found.results[0]?.snippet).not.toContain("\u0001");
+    expect(found.results[0]).toMatchObject({ link: `/app/data-room?item=${mine.id}` });
 
     const read = (await call("read_data_room_item", { item_id: mine.id })) as Record<
       string,
@@ -526,6 +529,7 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     expect(read).toMatchObject({
       id: mine.id,
       name: "mine.txt",
+      link: `/app/data-room?item=${mine.id}`,
       text: "quarterly zebra report",
       truncated: false,
     });

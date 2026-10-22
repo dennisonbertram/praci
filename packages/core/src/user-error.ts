@@ -1,4 +1,5 @@
 import type { ThreadSnapshot } from "@rakazo/contracts";
+import { MISSING_TOOL_FINAL_RESPONSE_ERROR } from "@rakazo/contracts";
 
 /** Copy each client supplies in its own language. */
 export type UserErrorCopy = { fallback: string; offline: string };
@@ -27,6 +28,7 @@ const TECHNICAL_MESSAGE = [
   /\bE(?:CONN[A-Z]+|TIMEDOUT|NOTFOUND|AI_AGAIN|PIPE|HOSTUNREACH|NETUNREACH)\b/,
   /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/, // bare internal codes
   /\d+ bytes\b/,
+  /^(?:internal server error|bad gateway|service unavailable|gateway timeout)\.?$/i, // bare HTTP reason phrases
   /unexpected token|is not a function|cannot read propert|undefined is not|null is not an object|json parse error/i,
 ];
 
@@ -68,7 +70,7 @@ export function isTechnicalErrorMessage(message: string): boolean {
 }
 
 const INTERNAL_RUN_ERROR =
-  /invocation in|prisma|at Object\.|\bECONN[A-Z]*\b|(?:^|[\s(])\/(?:[\w.-]+\/)+[\w.-]+|[A-Za-z]:\\|\.[cm]?[jt]sx?:\d+|\b(?:SELECT|INSERT INTO|UPDATE \w+ SET|DELETE FROM)\b|\bat \S+ \(/i;
+  /upstream connect error|reset reason|invocation in|prisma|at Object\.|\bECONN[A-Z]*\b|(?:^|[\s(])\/(?:[\w.-]+\/)+[\w.-]+|[A-Za-z]:\\|\.[cm]?[jt]sx?:\d+|\b(?:SELECT|INSERT INTO|UPDATE \w+ SET|DELETE FROM)\b|\bat \S+ \(/i;
 
 /** True for a stored run error that is implementation detail (database or stack-trace text). */
 export function isInternalRunError(error: string): boolean {
@@ -165,6 +167,15 @@ export function plainRunError(
       : error;
 }
 
+/** True when a delegate agent's reply reached this thread after the run began: the answer is on screen. */
+function repliedAfter(snapshot: ThreadSnapshot, since: string): boolean {
+  return snapshot.messages.some(
+    (message) =>
+      message.createdAt >= since &&
+      message.blocks.some((block) => block.kind === "bot_message_received"),
+  );
+}
+
 /** Reason the newest run stopped, until the reader dismisses that run's failure. */
 export function threadRunError(
   snapshot: ThreadSnapshot | null,
@@ -172,7 +183,9 @@ export function threadRunError(
   dismissedRunIds?: ReadonlySet<string>,
 ): string | null {
   const run = snapshot?.run;
-  if (run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
+  if (!snapshot || run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
+  if (run.error === MISSING_TOOL_FINAL_RESPONSE_ERROR && repliedAfter(snapshot, run.createdAt))
+    return null;
   return run.error ? describe(run.error) : null;
 }
 

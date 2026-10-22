@@ -347,11 +347,16 @@ it("shows wallet-only totals in the Wallets section when exchanges add to the su
   ]);
   await show();
   const heading = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Wallets");
-  const wallets = heading?.parentElement?.parentElement;
+  // The first "Wallets" heading is the figure card (wallets only); the second is the list.
+  const wallets = heading?.parentElement;
   expect(wallets?.textContent).toContain("$3,003");
   expect(wallets?.textContent).not.toContain("$3,253");
   expect(wallets?.textContent).toContain("1 unpriced");
   expect(wallets?.textContent).not.toContain("4 unpriced");
+  // The page leads with the overview's figure: wallets plus exchanges.
+  const page = container.textContent ?? "";
+  expect(page.indexOf("$3,253")).toBeGreaterThan(-1);
+  expect(page.indexOf("$3,253")).toBeLessThan(page.indexOf("Wallets"));
 });
 
 it("leaves out the Chains card when every holding is on one chain", async () => {

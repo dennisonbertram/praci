@@ -5,6 +5,8 @@ import {
   ContactKindSchema,
   EmailUrgency,
   MAX_EMAIL_CARDS,
+  ScratchpadCategorySchema,
+  ScratchpadChannelSchema,
   SecretAskPurpose,
   SecretHttpRequest,
   TICKET_PRIORITIES,
@@ -1205,21 +1207,51 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "investor_update_draft",
+    description:
+      "Past investor and board updates, and the drafts on the Investors page. action history: recent sent updates with their full text, to match their sections and voice (optionally audience investors or board). action get: one update by id. action save: change the subject, period or body of an existing draft by id; a sent update is refused. action create: add a draft (audience investors or board). You never send an update: the user sends it from the Investors page. Write TBD for anything you cannot source. Body is markdown.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["history", "get", "save", "create"] },
+        id: { type: "string", description: "For get and save." },
+        audience: { type: "string", enum: ["investors", "board"] },
+        subject: { type: "string" },
+        period: { type: "string", description: "YYYY-MM or YYYY-Qn." },
+        body: { type: "string", description: "Markdown." },
+        limit: { type: "number", description: "For history. Default 5, max 20." },
+      },
+      required: ["action"],
+    },
+  },
+  {
     name: "cap_table_read",
     description:
-      "The cap table on the user's Cap Table page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
+      "The cap table on the user's Investors page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
+    name: "fundraising_read",
+    description:
+      "The user's Fundraising page: the open round (or the latest closed one) with its target and post-money cap, the pending amount, and each prospect with stage, check size, next step and whether it counts in pending. Amounts are US dollars. Read this before answering round or pipeline questions. You cannot change a stage; point to the prospect's row on the Fundraising page.",
     inputSchema: { type: "object", properties: {} },
     readOnly: true,
   },
   {
     name: "cap_table_update",
     description:
-      "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta; never estimate, and use null for anything Carta does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",
+      "Replace the cap table on the user's Investors page. Pass exact figures from Carta, or from the Google Sheet you were asked to read; never estimate, and use null for anything the source does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",
     inputSchema: {
       type: "object",
       properties: {
         companyName: { type: "string" },
-        asOf: { type: "string", description: "The date Carta's figures are as of." },
+        asOf: { type: "string", description: "The date the figures are as of." },
+        sourceRef: {
+          type: "object",
+          description: "A Google Sheet read only: the sheet's file id and name.",
+          properties: { driveFileId: { type: "string" }, name: { type: "string" } },
+        },
         fullyDilutedShares: { type: "number" },
         amountRaisedUsd: { type: ["number", "null"] },
         optionPoolAvailable: { type: ["number", "null"] },
@@ -1686,16 +1718,21 @@ export const builtinAgentTools: ConnectorTool[] = [
         status: {
           type: "string",
           enum: ["open", "parked", "done"],
-          description: "Defaults to open.",
+          description: "Defaults to open for ordinary items and parked for gated plan items.",
         },
         notes: { type: "string", description: "Optional notes." },
+        category: { type: "string", enum: ScratchpadCategorySchema.options },
+        channel: { type: "string", enum: ScratchpadChannelSchema.options },
+        target: { type: "string", maxLength: 200 },
+        scheduledFor: { type: "string", description: "Absolute ISO datetime with timezone." },
       },
       required: ["title"],
+      additionalProperties: false,
     },
   },
   {
     name: "scratchpad_update",
-    description: "Update a scratchpad item's title, status, or notes.",
+    description: "Update a scratchpad item's title, status, notes, target, schedule, or proof.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1703,8 +1740,12 @@ export const builtinAgentTools: ConnectorTool[] = [
         title: { type: "string" },
         status: { type: "string", enum: ["open", "parked", "done"] },
         notes: { type: "string" },
+        target: { type: "string", maxLength: 200 },
+        scheduledFor: { type: "string", description: "Absolute ISO datetime with timezone." },
+        proof: { type: "string", maxLength: 2_000 },
       },
       required: ["itemId"],
+      additionalProperties: false,
     },
   },
   {
@@ -1714,8 +1755,10 @@ export const builtinAgentTools: ConnectorTool[] = [
       type: "object",
       properties: {
         itemId: { type: "string" },
+        proof: { type: "string", maxLength: 2_000 },
       },
       required: ["itemId"],
+      additionalProperties: false,
     },
   },
   {

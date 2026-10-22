@@ -5,11 +5,16 @@ import {
   isDevinEndpoint,
   isGranolaEndpoint,
 } from "@rakazo/contracts";
-import { Button, Input } from "@rakazo/ui-web";
+import { Button, Input, Skeleton } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { mcpStatus } from "../../lib/integrations";
+import {
+  FINANCE_PROVIDERS,
+  FIRST_PARTY_MCP,
+  isSameMcpEndpoint,
+  mcpStatus,
+} from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
@@ -42,6 +47,8 @@ export function McpDetail({
   const [confirmingWrites, setConfirmingWrites] = useState(false);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
+  // The switch reads on from the moment the user confirms, until the server has answered.
+  const [writesPending, setWritesPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const back = (
@@ -50,7 +57,7 @@ export function McpDetail({
       className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden="true" />
-      <Trans>Apps</Trans>
+      <Trans>Integrations</Trans>
     </Link>
   );
   if (!server) {
@@ -61,7 +68,12 @@ export function McpDetail({
           <p className="text-muted-foreground">
             <Trans>This connection no longer exists.</Trans>
           </p>
-        ) : null}
+        ) : (
+          <div role="status" aria-label={t`Loading`} data-testid="mcp-detail-loading">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="mt-4 h-24 w-full max-w-xl rounded-xl" />
+          </div>
+        )}
       </div>
     );
   }
@@ -141,6 +153,11 @@ export function McpDetail({
   const carta = isCartaEndpoint(server.endpoint);
   const bank = Boolean(financeProviderForEndpoint(server.endpoint));
   const service = carta ? "Carta" : server.name;
+  // The same mark the list card shows.
+  const financeProvider = financeProviderForEndpoint(server.endpoint);
+  const logo =
+    FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint))?.logo ??
+    FINANCE_PROVIDERS.find(({ provider }) => provider === financeProvider)?.logo;
   const agent = data.bots.find((bot) => bot.id === server.agentBotId);
   const granola = isGranolaEndpoint(server.endpoint);
   const keyRoute = granola ? (data.meetings ?? null) : null;
@@ -170,7 +187,7 @@ export function McpDetail({
       <div className="mx-auto max-w-[1040px]">
         {back}
         <div className="flex flex-wrap items-center gap-4">
-          <AppLogo name={server.name} size="xl" />
+          <AppLogo name={server.name} logo={logo} size="xl" />
           <div className="min-w-0">
             {draft === null ? (
               <h1 className="break-all text-xl font-semibold">{server.name}</h1>
@@ -216,8 +233,8 @@ export function McpDetail({
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {carta ? (
-            <Button variant="outline" render={<Link to="/app/cap-table" />}>
-              <Trans>Open Cap table</Trans>
+            <Button variant="outline" render={<Link to="/app/investors" />}>
+              <Trans>Open Investors</Trans>
             </Button>
           ) : null}
           {server.transport !== "stdio" ? (
@@ -282,22 +299,23 @@ export function McpDetail({
           </div>
         ) : null}
 
-        {/* Once the key connection exists the agent link is drawn under its status, not here. */}
-        {hasAgent && server.agentBotId && !keyRoute ? (
+        {/* One element for a bank before and after its agent exists, so confirming "Allow changes" does not move or remount the switch. */}
+        {(hasAgent && server.agentBotId && !keyRoute) || (!hasAgent && bank) ? (
           <IntegrationAgentSection
             service={service}
             agentName={agent?.name ?? t`${service} agent`}
-            agentHref={`/app/${server.agentBotId}`}
-            writesEnabled={server.writesEnabled}
+            agentHref={server.agentBotId ? `/app/${server.agentBotId}` : undefined}
+            writesEnabled={server.writesEnabled || writesPending}
             shared={!server.agentExclusive}
-            disabled={busy}
+            disabled={busy || writesPending}
             onWrites={isDevinEndpoint(server.endpoint) || granola ? undefined : setWrites}
             usedBy={usedBy}
-            onShared={(shared) => void setShared(shared)}
+            onShared={hasAgent ? (shared) => void setShared(shared) : () => undefined}
+            sharedLocked={!hasAgent}
           />
         ) : null}
 
-        {hasAgent ? null : (
+        {hasAgent || bank ? null : (
           <>
             <Heading>
               <Trans>Used by</Trans>
@@ -356,12 +374,19 @@ export function McpDetail({
         confirm={t`Allow changes`}
         grant
         onCancel={() => setConfirmingWrites(false)}
-        onConfirm={() =>
+        onConfirm={() => {
+          setConfirmingWrites(false);
+          setWritesPending(true);
           void run(async () => {
-            await rpc.mcp.servers.setWrites({ id: server.id, enabled: true });
-            setConfirmingWrites(false);
-          }, t`Could not update changes`)
-        }
+            try {
+              // Writes belong to the agent, so a bank with none gets its agent first.
+              if (!hasAgent) await rpc.integrationAgents.create({ serverId: server.id });
+              await rpc.mcp.servers.setWrites({ id: server.id, enabled: true });
+            } finally {
+              setWritesPending(false);
+            }
+          }, t`Could not update changes`);
+        }}
       >
         <li>
           {carta ? (

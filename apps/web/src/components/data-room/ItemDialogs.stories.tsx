@@ -39,6 +39,36 @@ export const DeleteWithLegalContract: Story = {
   args: { action: "delete" },
   beforeEach: () => mockRpc({ "legal.itemLinks": { contractTitle: "Office lease", deadlines: 2 } }),
 };
+const investorContact = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  email: `${name.toLowerCase().replace(" ", ".")}@example.test`,
+  organization: null,
+  kind: "investor",
+  notes: null,
+  addedBy: null,
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z",
+  ...extra,
+});
+/** Share with investors: Ada already has the file (Unshare), Bo and Cy do not; "Email them a link" is ticked. */
+export const Share: Story = {
+  args: { action: "share" },
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [
+        investorContact("c1", "Ada Example"),
+        investorContact("c2", "Bo Sample"),
+        investorContact("c3", "Cy Placeholder"),
+      ],
+      "investors.shares": ["c1"],
+    }),
+};
+export const ShareNoInvestors: Story = {
+  args: { action: "share" },
+  beforeEach: () => mockRpc({ "contacts.list": [], "investors.shares": [] }),
+};
+
 /** "New folder…" chosen: a name field appears and Save creates the folder, then moves the item. */
 export const MoveToNewFolder: Story = {
   args: { action: "move" },

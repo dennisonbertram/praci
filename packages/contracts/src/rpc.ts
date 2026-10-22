@@ -22,8 +22,18 @@ import {
   UpdateTicketInput,
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
-import { CapTableStateSchema } from "./carta.js";
-import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
+import {
+  CapTableChangeSourceInputSchema,
+  CapTableSaveInputSchema,
+  CapTableSourceRefSchema,
+  CapTableStateSchema,
+} from "./carta.js";
+import {
+  ContactLinkedSchema,
+  ContactListInputSchema,
+  ContactSaveInputSchema,
+  ContactSchema,
+} from "./contacts.js";
 import {
   DataRoomApiBoxListInputSchema,
   DataRoomApiBoxListOutputSchema,
@@ -186,6 +196,12 @@ import {
   FinanceStatementsOutputSchema,
   FinanceStatementUploadInputSchema,
 } from "./finance-statements.js";
+import {
+  FundraiseRoundSaveInputSchema,
+  FundraiseRoundSchema,
+  FundraisingOverviewSchema,
+  ProspectSaveInputSchema,
+} from "./fundraising.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   CleanupArchiveInputSchema,
@@ -213,6 +229,7 @@ import {
   InboxScopeInputSchema,
   InboxTodoSchema,
   InboxTodosOutputSchema,
+  MailAccountSchema,
   MailActionsListOutputSchema,
   MailActionUndoInputSchema,
   MailActionUndoOutputSchema,
@@ -223,6 +240,18 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import {
+  InvestorPostResultSchema,
+  InvestorReminderCadenceSchema,
+  InvestorShareInputSchema,
+  InvestorShareResultSchema,
+  InvestorUnshareInputSchema,
+  InvestorUpdateRetryInputSchema,
+  InvestorUpdateSaveInputSchema,
+  InvestorUpdateSchema,
+  PortalResendInputSchema,
+  PortalResendResultSchema,
+} from "./investors.js";
 import {
   LegalDeadlineSchema,
   LegalGraphSchema,
@@ -833,12 +862,19 @@ export const appContract = {
     create: oc.input(CreateScratchpadItemInput).output(ScratchpadItemSchema),
     update: oc
       .input(
-        z.object({
-          itemId: Id,
-          title: z.string().min(1).max(200).optional(),
-          status: ScratchpadItemStatusSchema.optional(),
-          notes: z.string().max(4_000).optional(),
-        }),
+        z
+          .object({
+            itemId: Id,
+            title: z.string().min(1).max(200).optional(),
+            status: ScratchpadItemStatusSchema.optional(),
+            notes: z.string().max(4_000).optional(),
+            target: z.string().max(200).optional(),
+            scheduledFor: z.iso.datetime({ offset: true }).optional(),
+            proof: z.string().max(2_000).optional(),
+            updatedAt: z.iso.datetime({ offset: true }).optional(),
+            reapprove: z.boolean().optional(),
+          })
+          .strict(),
       )
       .output(ScratchpadItemSchema),
     remove: oc.input(z.object({ itemId: Id })).output(z.object({ ok: z.literal(true) })),
@@ -1298,7 +1334,11 @@ export const appContract = {
         legalDueSoon: z.number().int(),
         /** Devin sessions that need a person (waiting or failed) on the space's active connection. */
         devinNeedsYou: z.number().int(),
+        /** The space has a Devin connection; the Devin page shows in the sidebar only then. */
+        devinConnected: z.boolean(),
         dataRoomWaiting: z.number().int(),
+        /** A ticket exists in the space; the Task board shows in menus only then. */
+        hasTickets: z.boolean(),
         /** Per agent with unseen notifications, the highest-priority kind. */
         botKinds: z.record(z.string(), NotificationKindSchema),
       }),
@@ -1510,17 +1550,76 @@ export const appContract = {
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
   },
+  investors: {
+    /** Creates the Investors agent once (idempotent) and returns it. */
+    agent: oc.output(BotSchema),
+    /** The Investors page's cap table and whether the Carta agent is refreshing it. */
+    capTable: oc.output(CapTableStateSchema),
+    /** Starts the read for the cap table source: a Carta agent run that refreshes the snapshot and the investor contacts, or a Google Sheet read. */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
+    /** Makes a Google Sheet the cap table source and starts reading it. */
+    useSheet: oc.input(CapTableSourceRefSchema).output(CapTableStateSchema),
+    /** Saves the typed-in table whole; CONFLICT when the table changed since it was loaded. */
+    capTableSave: oc.input(CapTableSaveInputSchema).output(CapTableStateSchema),
+    /** Makes another source the writer at once, keeping the data and one Undo. */
+    changeSource: oc.input(CapTableChangeSourceInputSchema).output(CapTableStateSchema),
+    /** Restores the table before the last source switch, once. */
+    undoSource: oc.output(CapTableStateSchema),
+    updates: {
+      list: oc.output(z.array(InvestorUpdateSchema)),
+      /** The caller's connected Gmail accounts: empty means Send is unavailable. */
+      accounts: oc.output(z.array(MailAccountSchema)),
+      get: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      /** Adds a draft (no id) or saves one; refused once the update has been sent. */
+      save: oc.input(InvestorUpdateSaveInputSchema).output(InvestorUpdateSchema),
+      /** Starts the send and returns at once; the update reads Sending until every recipient has a result. */
+      send: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      /** Sends again to failed recipients (and Unknown ones only when `resendUnknown`). */
+      retry: oc.input(InvestorUpdateRetryInputSchema).output(InvestorUpdateSchema),
+      /** Records every Unknown recipient as Sent. */
+      markDelivered: oc
+        .input(z.object({ id: Id, contactIds: z.array(Id).max(1000).optional() }))
+        .output(InvestorUpdateSchema),
+      duplicate: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+      /** Without Gmail: the draft becomes Posted on the portal and each investor contact with an email gets a notice. */
+      post: oc.input(z.object({ id: Id })).output(InvestorPostResultSchema),
+    },
+    /** The investor contacts a Data room document is shared with. */
+    shares: oc.input(z.object({ itemId: Id })).output(z.array(Id)),
+    share: oc.input(InvestorShareInputSchema).output(InvestorShareResultSchema),
+    unshare: oc.input(InvestorUnshareInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** Mints a new link for an investor contact: emailed, or returned when `copy` or no email provider. */
+    portalResend: oc.input(PortalResendInputSchema).output(PortalResendResultSchema),
+    portalRevoke: oc.input(z.object({ contactId: Id })).output(ContactSchema),
+    portalUnblock: oc.input(z.object({ contactId: Id })).output(ContactSchema),
+    /** Reads the update reminder; with `cadence` it changes the monthly routine first. */
+    reminder: oc
+      .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
+      .output(z.object({ cadence: InvestorReminderCadenceSchema })),
+  },
+  fundraising: {
+    overview: oc.output(FundraisingOverviewSchema),
+    round: {
+      /** Starts the round, or edits the open one when `id` is given; CONFLICT when a round is already open. */
+      save: oc.input(FundraiseRoundSaveInputSchema).output(FundraiseRoundSchema),
+      close: oc.input(z.object({ id: Id })).output(FundraiseRoundSchema),
+      /** CONFLICT while another round is open. */
+      reopen: oc.input(z.object({ id: Id })).output(FundraiseRoundSchema),
+    },
+    prospects: {
+      save: oc.input(ProspectSaveInputSchema).output(ContactSchema),
+    },
+  },
   carta: {
     agent: oc.output(BotSchema),
-    /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */
-    capTable: oc.output(CapTableStateSchema),
-    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts. */
-    refresh: oc.output(z.object({ ok: z.literal(true) })),
   },
   contacts: {
     list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
     save: oc.input(ContactSaveInputSchema).output(ContactSchema),
     delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    /** What deleting the contact would remove besides its own fields. */
+    linked: oc.input(z.object({ id: Id })).output(ContactLinkedSchema),
   },
   sidebarPages: {
     list: oc.output(SidebarPagesStateSchema),

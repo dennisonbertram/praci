@@ -56,15 +56,31 @@ export function useContactNotices(
     return () => clearTimeout(timer);
   }, [focusId, contacts]);
 
-  const deleted = (gone: Contact) => {
+  /** `undoable` is false for a contact with linked data: it was confirmed first and cannot come back. */
+  const deleted = (gone: Contact, undoable = true) => {
     reload();
-    const { name, email, organization, kind, notes } = gone;
+    if (!undoable) {
+      toast(t`Deleted ${gone.name}`);
+      return;
+    }
+    const { name, email, organization, kind, notes, stage, checkSizeCents, nextStep, roundId } =
+      gone;
     let restoring = false;
     const restore = () => {
       if (restoring) return;
       restoring = true;
       rpc.contacts
-        .save({ name, email, organization, kind, notes })
+        .save({
+          name,
+          email,
+          organization,
+          kind,
+          notes,
+          stage,
+          checkSizeCents,
+          nextStep,
+          roundId: roundId ?? undefined,
+        })
         .then((saved) => {
           toast(t`Restored ${name}`);
           reload();

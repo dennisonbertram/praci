@@ -66,6 +66,23 @@ export const Section: Story = {
   beforeEach: () => mockRpc({ "aiConsent.status": status(false) }),
 };
 
+/** Every model allowed, as after Allow on the Legal card: the one switch reads on. */
+export const SectionAllowed: Story = {
+  ...Section,
+  beforeEach: () =>
+    mockRpc({
+      "aiConsent.status": {
+        ...status(true),
+        recipients: status(true).recipients.map((r) => ({ ...r, allowed: true })),
+      },
+    }),
+};
+
+export const SectionLoading: Story = {
+  ...Section,
+  beforeEach: () => mockRpc({ "aiConsent.status": () => new Promise(() => undefined) }),
+};
+
 export const SectionHiddenWhenEmpty: Story = {
   render: () => (
     <div className="w-[480px] text-sm text-muted-foreground">

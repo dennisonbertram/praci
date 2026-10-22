@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
-import { AI_DATA_DISCLOSURES } from "@rakazo/contracts";
+import { AI_DATA_DISCLOSURES, modelLabel } from "@rakazo/contracts";
 import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -87,7 +87,7 @@ export function InboxConsentPrompt({
   return (
     <ConsentCard
       id="inbox-consent"
-      className="mb-5"
+      className="mb-3 py-2"
       heading={<Trans>Let Praci sort your mail</Trans>}
       sends={
         <Trans>
@@ -101,10 +101,7 @@ export function InboxConsentPrompt({
   );
 }
 
-/** "vendor/gpt-6-luna, forwarded to its provider" -> "gpt-6-luna". */
-const modelLabel = (detail: string) => detail.split(",")[0]?.split("/").pop()?.trim() ?? "";
-
-/** One switch per AI model that receives data; hidden when there is none or it cannot load. */
+/** One switch for every AI model that receives data; the models are listed under Advanced. Hidden when there is none or it cannot load. */
 export function AiDataSharingSection() {
   const { t } = useLingui();
   // null until the first read, so the section holds its place instead of appearing late.
@@ -123,55 +120,87 @@ export function AiDataSharingSection() {
     };
   }, []);
 
-  if (recipients === null) return <Skeleton aria-busy="true" className="h-[132px] rounded-xl" />;
-  if (recipients.length === 0) return null;
-  const set = (recipient: AiRecipient, allowed: boolean) => {
+  if (recipients?.length === 0) return null;
+  const afterChange = (status: AiConsentStatus) => {
+    show(status);
+    // An open Inbox reloads, so its sorting and the consent prompt match the switch.
+    window.dispatchEvent(new Event(INBOX_CHANGED_EVENT));
+  };
+  const run = (change: () => Promise<AiConsentStatus>) => {
     setPending(true);
     setError("");
-    (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key))
-      .then((status) => {
-        show(status);
-        // An open Inbox reloads, so its sorting and the consent prompt match the switch.
-        window.dispatchEvent(new Event(INBOX_CHANGED_EVENT));
-      })
+    change()
+      .then(afterChange)
       .catch((cause) => setError(errorText(cause)))
       .finally(() => setPending(false));
   };
+  const setOne = (recipient: AiRecipient, allowed: boolean) =>
+    run(() => (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key)));
+  const setAll = (allowed: boolean) =>
+    run(async () => {
+      let status: AiConsentStatus | undefined;
+      for (const recipient of recipients ?? []) {
+        status = await (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key));
+      }
+      return status ?? aiConsentStatus();
+    });
+  // On while any model is allowed (for example the one a Legal Allow granted); Advanced shows which.
+  const anyAllowed = recipients?.some((recipient) => recipient.allowed) ?? false;
   return (
     <section className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
         <Trans>AI data sharing</Trans>
       </h3>
       <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        <Trans>Bots cannot use a model until you allow it.</Trans>
-      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
-      <ul className="mt-3 flex flex-col gap-3">
-        {recipients.map((recipient) => {
-          const model = modelLabel(recipient.detail) || recipient.name;
-          return (
-            <li key={recipient.key} className="flex items-center gap-3">
-              <Switch
-                aria-label={t`Allow ${model}`}
-                checked={recipient.allowed}
-                disabled={pending}
-                onCheckedChange={(allowed) => set(recipient, allowed)}
-              />
-              <span className="flex min-w-0 flex-col">
-                <span className="text-[14px] text-foreground/75">
-                  <Trans>Bots, mail, files and contracts</Trans>
-                </span>
-                <span className="text-[12.5px] text-muted-foreground">{model}</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      {/* The text above is fixed, so only the row waits. */}
+      {recipients === null ? (
+        <Skeleton className="mt-3 h-10 rounded-md" />
+      ) : (
+        <div className="mt-3 flex items-center gap-3 pointer-coarse:min-h-11">
+          <Switch
+            aria-label={t`Allow AI models`}
+            checked={anyAllowed}
+            disabled={pending}
+            onCheckedChange={setAll}
+          />
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[14px] text-foreground/75">
+              <Trans>Allow AI models</Trans>
+            </span>
+            <span className="text-[12.5px] text-muted-foreground">
+              <Trans>For bots, mail, files and contracts</Trans>
+            </span>
+          </span>
+        </div>
+      )}
+      {recipients && recipients.length > 0 ? (
+        <details className="group mt-3">
+          <summary className="cursor-pointer list-none text-[13px] text-muted-foreground">
+            <Trans>Advanced</Trans>
+          </summary>
+          <ul className="mt-3 flex flex-col gap-3">
+            {recipients.map((recipient) => {
+              const model = modelLabel(recipient.detail) || recipient.name;
+              return (
+                <li key={recipient.key} className="flex items-center gap-3 pointer-coarse:min-h-11">
+                  <Switch
+                    aria-label={model}
+                    checked={recipient.allowed}
+                    disabled={pending}
+                    onCheckedChange={(allowed) => setOne(recipient, allowed)}
+                  />
+                  <span className="text-[14px] text-foreground/75">{model}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      ) : null}
     </section>
   );
 }

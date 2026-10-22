@@ -253,7 +253,7 @@ export function MailApprovalCard({
       data-testid="mail-approval-card"
       data-editing={editing || undefined}
       className={cn(
-        "@container w-xl max-w-full overflow-hidden rounded-3xl bg-muted",
+        "@container w-160 max-w-full overflow-hidden rounded-3xl bg-muted",
         editing ? "ring-2 ring-primary" : interactive && "ring-1 ring-inset ring-border",
       )}
     >

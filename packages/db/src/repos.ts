@@ -75,6 +75,9 @@ function mapBot(
     teamChatAmbientEnabled?: boolean;
     teamChatRules?: string;
     disabledBuiltinTools?: string[];
+    audience?: string;
+    externalMessageTargets?: string[];
+    externalComputerTools?: boolean;
     webhookSecretId?: string | null;
     spawnKey?: string | null;
     runsOn?: string | null;
@@ -120,6 +123,9 @@ function mapBot(
     teamChatAmbientEnabled: bot.teamChatAmbientEnabled ?? false,
     teamChatRules: bot.teamChatRules ?? "",
     disabledBuiltinTools: bot.disabledBuiltinTools ?? [],
+    audience: bot.audience === "external" ? "external" : "internal",
+    externalMessageTargets: bot.externalMessageTargets ?? [],
+    externalComputerTools: bot.externalComputerTools ?? false,
     webhookConfigured: Boolean(bot.webhookSecretId),
     spawnKey: bot.spawnKey ?? null,
   };
@@ -347,23 +353,36 @@ export function createRepos(prisma: PrismaClient) {
             if (windowRunIds.length > 0) {
               await classifyRunIds(windowRunIds);
             }
-            const visible = userVisibleMessages(
-              messages.map((message) => ({
-                ...message,
-                blocks: message.blocks as MessageBlock[],
-                runId: message.runId ?? undefined,
-              })),
-              {
+            const recent = messages.map((message) => ({
+              ...message,
+              blocks: message.blocks as MessageBlock[],
+              runId: message.runId ?? undefined,
+            }));
+            const visible = new Set(
+              userVisibleMessages(recent, {
                 knownPeerRunIds: peerRunIds,
                 backgroundRunIds,
                 includeDelegatedReplyText: false,
-              },
+              }),
             );
             // The latest words: a reaction is shown on its message, and a card (a choice, app
-            // connections) has no words, so the preview reads past both.
-            for (const message of visible) {
+            // connections) has no words, so the preview reads past both. A delegate's answer
+            // (a receipt that returns to a message this agent sent) counts as words, so the row
+            // shows the answer instead of the question that started the hand-off.
+            for (const message of recent) {
               if (messageReaction(message)) continue;
-              preview = previewFromBlocks(message.blocks);
+              if (visible.has(message)) preview = previewFromBlocks(message.blocks);
+              else {
+                const reply = message.blocks.find(
+                  (block) =>
+                    block.kind === "bot_message_received" &&
+                    block.returnToMessageId &&
+                    // A request or question is an instruction, not an answer.
+                    block.intent !== "request" &&
+                    block.intent !== "question",
+                );
+                if (reply) preview = previewFromBlocks([reply]);
+              }
               if (preview) break;
             }
             if (preview || messages.length === 0 || !bot.thread || attempt === 4) break;
@@ -419,6 +438,10 @@ export function createRepos(prisma: PrismaClient) {
         modelId?: string | null;
         thinkingLevel?: string | null;
         disabledBuiltinTools?: string[];
+        /** A copy keeps the original's audience; every other new bot is internal. */
+        audience?: "internal" | "external";
+        externalMessageTargets?: string[];
+        externalComputerTools?: boolean;
         initialMessage?: {
           role: "user" | "bot" | "system";
           blocks: MessageBlock[];
@@ -493,6 +516,9 @@ export function createRepos(prisma: PrismaClient) {
               modelId,
               thinkingLevel,
               disabledBuiltinTools,
+              audience: input.audience ?? "internal",
+              externalMessageTargets: input.externalMessageTargets ?? [],
+              externalComputerTools: input.externalComputerTools ?? false,
             },
           });
           // A child of a thread that holds meeting text starts out marked, in this transaction.

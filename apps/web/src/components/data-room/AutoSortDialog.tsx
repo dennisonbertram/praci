@@ -14,20 +14,7 @@ import {
 import { useCallback, useEffect, useId, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { LoadingState, Shimmer } from "../ai/primitives";
-
-/** The server plans for this many of the newest classified files. */
-const FILE_LIST_CAP = 300;
-const REVEAL_STEP_MS = 50;
-/** Steps the last outcome stays on screen before the review replaces the list. */
-const HOLD_STEPS = 4;
-/** However many files there are, the reveal takes no longer than this. */
-const REVEAL_MAX_MS = 1500;
-
-export type AutoSortFile = { id: string; name: string };
-
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+import { LoadingState } from "../ai/primitives";
 
 type Group = { type: AutoSortOperation["type"]; title: string };
 
@@ -61,36 +48,19 @@ function Row({
  * with every change ticked. Nothing changes until Apply, and Apply sends only the ticked ones.
  */
 export function AutoSortDialog({
-  files = [],
   onClose,
   onApplied,
+  onOpenModels,
 }: {
-  /** The files the page has loaded; the list shows them while the plan is made. */
-  files?: AutoSortFile[];
   onClose: () => void;
   onApplied: (result: AutoSortApplyOutput) => void;
+  /** Opens the Models settings, where a rejected key is replaced. */
+  onOpenModels?: () => void;
 }) {
   const [plan, setPlan] = useState<AutoSortPlan | null>(null);
   const [error, setError] = useState("");
   const [off, setOff] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
-
-  const listed = files.slice(0, FILE_LIST_CAP);
-  const more = files.length - listed.length;
-  const [instant] = useState(prefersReducedMotion);
-  const [revealed, setRevealed] = useState(0);
-  const revealing =
-    Boolean(plan) && !instant && listed.length > 0 && revealed < listed.length + HOLD_STEPS;
-  // Once the plan is back, each file's outcome appears in turn, so the pass reads as going
-  // through the files even when the plan was fast. Nothing here pretends to measure the model call.
-  const planned = Boolean(plan);
-  useEffect(() => {
-    if (!planned) return setRevealed(0);
-    if (!revealing) return;
-    const step = Math.min(REVEAL_STEP_MS, REVEAL_MAX_MS / listed.length);
-    const timer = setInterval(() => setRevealed((n) => n + 1), step);
-    return () => clearInterval(timer);
-  }, [planned, revealing, listed.length]);
 
   const load = useCallback(() => {
     setPlan(null);
@@ -118,11 +88,15 @@ export function AutoSortDialog({
     { type: "rename_item", title: t`Rename` },
   ];
   const reasonText =
-    plan?.reason === "ai_failed"
-      ? t`The model could not sort your files.`
-      : plan?.reason
-        ? t`Turn on a model and allow AI access to sort files.`
-        : null;
+    plan?.reason === "ai_rejected"
+      ? t`The model provider did not accept your API key.`
+      : plan?.reason === "ai_failed"
+        ? t`The model could not sort your files.`
+        : plan?.reason
+          ? t`Turn on a model and allow AI access to sort files.`
+          : null;
+  // A model problem is fixed in Models; "Retry" alone would fail the same way.
+  const fixInModels = plan?.reason === "ai_rejected" || plan?.reason === "ai_unavailable";
   const chosen = plan?.operations.filter((op) => !off.has(op.key)) ?? [];
   const toggle = (key: string, on: boolean) =>
     setOff((prev) => {
@@ -144,17 +118,6 @@ export function AutoSortDialog({
       .finally(() => setBusy(false));
   };
 
-  const outcome = (id: string): string => {
-    const parts = (plan?.operations ?? []).flatMap((op) =>
-      op.type === "move_item" && op.itemId === id
-        ? [`${t`Move`} → ${op.to}`]
-        : op.type === "rename_item" && op.itemId === id
-          ? [`${t`Rename`} → ${op.toName}`]
-          : [],
-    );
-    return parts.join(", ") || t`No change`;
-  };
-
   const describe = (op: AutoSortOperation): { title: string; detail?: string } =>
     op.type === "merge_folder"
       ? { title: `${op.from} → ${op.into}` }
@@ -167,7 +130,8 @@ export function AutoSortDialog({
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            <Trans>Auto-sort</Trans>
+            {/* Auto-sort always works on the whole Data room, never on ticked files. */}
+            <Trans>Sort every file in the Data room</Trans>
           </DialogTitle>
         </DialogHeader>
         <div className="max-h-[60dvh] min-h-16 overflow-y-auto">
@@ -178,39 +142,9 @@ export function AutoSortDialog({
                 <Trans>Retry</Trans>
               </Button>
             </div>
-          ) : !plan || revealing ? (
+          ) : !plan ? (
             <div className="flex flex-col gap-2">
-              {!plan ? (
-                <LoadingState
-                  label={
-                    files.length
-                      ? plural(files.length, {
-                          one: "Reviewing # file",
-                          other: "Reviewing # files",
-                        })
-                      : t`Auto-sort`
-                  }
-                />
-              ) : null}
-              <ul className="flex flex-col gap-0.5 text-[13px]">
-                {listed.map(({ id, name }, n) => (
-                  <li key={id} className="flex items-baseline justify-between gap-3 px-2">
-                    <span className="min-w-0 truncate" title={name}>
-                      {plan && n < revealed ? name : <Shimmer>{name}</Shimmer>}
-                    </span>
-                    {plan && n < revealed ? (
-                      <span className="max-w-[55%] shrink-0 truncate text-xs text-muted-foreground">
-                        {outcome(id)}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-                {more > 0 ? (
-                  <li className="px-2 text-xs text-muted-foreground">
-                    <Trans>+{more} more</Trans>
-                  </li>
-                ) : null}
-              </ul>
+              <LoadingState label={t`Looking for changes`} />
             </div>
           ) : plan.operations.length === 0 && !reasonText ? (
             <p className="text-muted-foreground">
@@ -221,10 +155,31 @@ export function AutoSortDialog({
               {reasonText ? (
                 <div className="flex flex-wrap items-center gap-3 px-2 text-muted-foreground">
                   {reasonText}
+                  {fixInModels && onOpenModels ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onClose();
+                        onOpenModels();
+                      }}
+                    >
+                      <Trans>Open Models settings</Trans>
+                    </Button>
+                  ) : null}
                   <Button variant="outline" size="sm" onClick={load}>
                     <Trans>Retry</Trans>
                   </Button>
                 </div>
+              ) : null}
+              {plan.operations.length > 1 ? (
+                <Row
+                  checked={chosen.length === plan.operations.length}
+                  onChange={(on) =>
+                    setOff(on ? new Set() : new Set(plan.operations.map((op) => op.key)))
+                  }
+                  title={t`Select all`}
+                />
               ) : null}
               {groups.map(({ type, title }) => {
                 const ops = plan.operations.filter((op) => op.type === type);
@@ -264,9 +219,21 @@ export function AutoSortDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             <Trans>Cancel</Trans>
           </Button>
-          <Button type="button" disabled={busy || revealing || chosen.length === 0} onClick={apply}>
-            {plural(chosen.length, { one: "Apply # change", other: "Apply # changes" })}
-          </Button>
+          {/* Nothing to apply (a failed or empty plan): the button would only read "Apply 0 changes". */}
+          {plan && plan.operations.length === 0 ? null : error && !plan ? null : (
+            <>
+              {plan && chosen.length === 0 ? (
+                <span className="me-auto self-center text-[13px] text-muted-foreground">
+                  <Trans>Tick a change to apply it.</Trans>
+                </span>
+              ) : null}
+              <Button type="button" disabled={busy || !plan || chosen.length === 0} onClick={apply}>
+                {chosen.length === 0
+                  ? t`Apply`
+                  : plural(chosen.length, { one: "Apply # change", other: "Apply # changes" })}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

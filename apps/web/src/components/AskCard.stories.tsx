@@ -17,7 +17,7 @@ const approvalActions = [
 
 const consentAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
   ask({
-    text: "Allow your mail to be sent to OpenRouter (example/model-1, forwarded to its provider)?",
+    text: "Allow your mail to be sent to Example Model 1 (via OpenRouter)?",
     detail:
       "Messages, chat history, bot instructions, memories, attachments, screenshots and connected-app content are sent to run your bots, including routines. This stays on until you turn it off in Account settings.",
     approvalEffectId: "effect_demo",
@@ -26,6 +26,20 @@ const consentAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
       { id: "allow", label: "Allow" },
       { id: "deny", label: "Not now" },
     ],
+    ...overrides,
+  });
+
+const shareAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
+  ask({
+    text: "Share with Support?",
+    detail: "Our lead investor is Halcyon Ventures. You can reach them at priya@halcyon.example.",
+    approvalEffectId: "effect_share",
+    share: true,
+    actions: [
+      { id: "allow", label: "Share" },
+      { id: "deny", label: "Don't share" },
+    ],
+    status: "pending",
     ...overrides,
   });
 
@@ -184,11 +198,11 @@ export const CreatedSpace: Story = {
 export const SecretApiKey: Story = {
   args: {
     block: ask({
-      text: "Paste the API key for the sample service.",
+      text: "Example access for the weekly report. Waiting for the key.",
       input: "secret",
       purpose: "api_key",
       credential: {
-        name: "SAMPLE_KEY",
+        name: "EXAMPLE_API_KEY",
         origin: "https://api.example.com",
         auth: { type: "bearer" },
       },
@@ -250,4 +264,15 @@ export const ConsentAllowed: Story = {
 
 export const ConsentDeclined: Story = {
   args: { block: consentAsk({ status: "answered", answer: "deny" }) },
+};
+
+/** A message from one bot to an external bot, held for the owner: the exact text, Share once or Don't share. */
+export const HeldShare: Story = { args: { block: shareAsk() } };
+
+export const HeldShareShared: Story = {
+  args: { block: shareAsk({ status: "answered", answer: "allow" }) },
+};
+
+export const HeldShareDeclined: Story = {
+  args: { block: shareAsk({ status: "answered", answer: "deny" }) },
 };

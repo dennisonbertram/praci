@@ -5,9 +5,10 @@ import type { ThreadMessage } from "@rakazo/contracts";
 import { commandVariableName } from "@rakazo/contracts";
 import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
-import { Check, X } from "lucide-react";
-import { useId, useState } from "react";
+import { Check, KeyRound, X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { errorText } from "../lib/user-error";
+import { SecretRequestDialog } from "./SecretRequestDialog";
 
 export type AskBlock = Extract<ThreadMessage["blocks"][number], { kind: "ask" }>;
 
@@ -18,9 +19,11 @@ function formatAnsweredState(
   outcome?: "created" | "cancelled",
   actions?: AskBlock["actions"],
   consent?: boolean,
+  share?: boolean,
 ): string {
   if (secret) return t`Saved`;
   if (!answer) return t`Answered`;
+  if (share && approval) return answer === "allow" ? t`Shared` : t`Not shared`;
   if (consent && approval) return answer === "allow" ? t`Allowed` : t`Not now`;
   if (!approval) return t`Answered: ${selectedAskActionLabel(answer, actions)}`;
   if (outcome === "created") return t`Created`;
@@ -51,7 +54,10 @@ function approvalActionLabel(
   fallback: string,
   outcome?: "created" | "cancelled",
   consent?: boolean,
+  share?: boolean,
 ): string {
+  if (share && id === "allow") return t`Share`;
+  if (share && id === "deny") return t`Don't share`;
   if (consent && id === "allow") return t`Allow`;
   if (consent && id === "deny") return t`Not now`;
   if (outcome === "created") return t`Create space`;
@@ -79,34 +85,49 @@ export function AskCard({
 }) {
   const { t } = useLingui();
   const [editing, setEditing] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [username, setUsername] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const questionId = useId();
+  const answeredHere = useRef(false);
   const submitting = pendingAction !== null;
   const approvalActions = isApprovalAskBlock(block) ? block.actions : undefined;
   const askActions = block.actions;
   const secretInput = isSecretAskBlock(block);
   const loginInput = secretInput && block.credential?.auth.type === "login";
   const secretLabel = loginInput ? t`Password` : secretFieldLabel(block.purpose);
+  const secretName = block.credential
+    ? block.credential.auth.type === "command"
+      ? commandVariableName(block.credential.name)
+      : block.credential.name
+    : secretLabel;
 
-  async function submitAnswer(value: string) {
+  // The answer lands in the thread a moment after the click, and the re-render can drop focus to
+  // the page. Put it back on the composer, but only for a card this reader just answered.
+  useEffect(() => {
+    if (block.status !== "answered" || !answeredHere.current) return;
+    answeredHere.current = false;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
+  }, [block.status]);
+
+  async function submitAnswer(value: string, secretUsername?: string) {
     if (submitting) return;
     if (secretInput ? value.length === 0 : !value.trim()) return;
-    const submitUsername = loginInput ? username.trim() : undefined;
+    const submitUsername = loginInput ? secretUsername?.trim() : undefined;
     if (loginInput && !submitUsername) return;
     const submitValue = secretInput ? value : value.trim();
     setPendingAction(secretInput ? "submit" : submitValue);
     setError(null);
     if (secretInput) {
-      setAnswer("");
-      setUsername("");
+      setDialogOpen(false);
     }
     try {
       await onAnswer(submitValue, submitUsername);
+      answeredHere.current = true;
       // The card's buttons vanish with the answer; keep the keyboard in the conversation.
-      if (approvalActions) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
+      if (!secretInput) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
     } catch (err) {
       // A secret answer's failure may echo the secret, so never show its message.
       setError(
@@ -125,8 +146,16 @@ export function AskCard({
       role="group"
       aria-labelledby={questionId}
       data-testid={secretInput ? "secret-ask-card" : undefined}
-      className="max-w-full rounded-2xl border border-border bg-card px-5 py-4"
+      className="w-160 max-w-full rounded-2xl border border-border bg-card px-5 py-4"
     >
+      {secretInput && block.status !== "answered" && canAnswer ? (
+        <div className="mb-3 flex items-center gap-2 text-[13.5px] font-medium text-foreground">
+          <KeyRound aria-hidden className="size-4 text-muted-foreground" />
+          <span>
+            <Trans>Credentials requested:</Trans> <span className="font-mono">{secretName}</span>
+          </span>
+        </div>
+      ) : null}
       <div id={questionId} className="text-[15.5px] leading-[1.5] text-foreground">
         <ChatMarkdown>{block.text}</ChatMarkdown>
       </div>
@@ -152,9 +181,9 @@ export function AskCard({
           </pre>
         </details>
       ) : block.detail && !secretInput ? (
-        <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] text-muted-foreground">
+        <p className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
           {block.detail}
-        </pre>
+        </p>
       ) : null}
       {block.status === "answered" ? (
         (() => {
@@ -177,6 +206,7 @@ export function AskCard({
                 outcome,
                 askActions,
                 Boolean(block.consent),
+                Boolean(block.share),
               )}
             </div>
           );
@@ -229,6 +259,7 @@ export function AskCard({
                       action.label,
                       action.outcome,
                       Boolean(block.consent),
+                      Boolean(block.share),
                     )
                   ) : (
                     action.label
@@ -238,42 +269,21 @@ export function AskCard({
             )}
         </div>
       ) : secretInput ? (
-        <form
-          className="mt-3.5 flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitAnswer(answer);
-          }}
-        >
-          {loginInput ? (
-            <Input
-              aria-label={t`Username`}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={submitting}
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder={t`Username`}
-            />
-          ) : null}
-          <Input
-            aria-label={secretLabel}
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            disabled={submitting}
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder={secretLabel}
-          />
-          <Button
-            type="submit"
-            className="self-start"
-            disabled={answer.length === 0 || (loginInput && !username.trim()) || submitting}
-          >
-            {submitting ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+        <div className="mt-3.5 border-t border-border pt-3.5">
+          <Button disabled={submitting} onClick={() => setDialogOpen(true)}>
+            {submitting ? <Trans>Saving…</Trans> : <Trans>Provide secret</Trans>}
           </Button>
-        </form>
+          <SecretRequestDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            name={secretName}
+            description={block.text}
+            login={loginInput}
+            onSubmit={(value, user) => {
+              void submitAnswer(value, user);
+            }}
+          />
+        </div>
       ) : editing ? (
         <form
           className="mt-3.5 flex flex-col gap-2"

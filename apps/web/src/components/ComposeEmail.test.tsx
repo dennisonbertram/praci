@@ -85,7 +85,7 @@ const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
 // Roots still mounted when a test ends would fire their autosave timers during a later test.
 const mounted: Array<ReturnType<typeof createRoot>> = [];
 
-async function open(seed: ComposeSeed, onClose = () => {}) {
+async function open(seed: ComposeSeed, onClose = () => {}, draft?: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
@@ -101,7 +101,9 @@ async function open(seed: ComposeSeed, onClose = () => {}) {
   const root = createRoot(container);
   mounted.push(root);
   await act(async () =>
-    root.render(<ComposeEmail seed={seed} accounts={[]} connectionId="c1" onClose={onClose} />),
+    root.render(
+      <ComposeEmail seed={seed} accounts={[]} connectionId="c1" draft={draft} onClose={onClose} />,
+    ),
   );
   return { container, root };
 }
@@ -143,6 +145,14 @@ it("seeds a reply-all with chips, shows Cc only because it has addresses, and ke
   expect(field("Bcc")).toBeNull();
   const quote = document.querySelector("blockquote");
   expect(quote?.textContent).toContain("quoted line");
+});
+
+it("starts a reply with the agent's draft above the quoted original", async () => {
+  await open(reply("reply"), () => {}, "Hi Sam,\n\nThe split makes it 4,600.");
+  const text = document.querySelector(".ProseMirror")?.textContent ?? "";
+  expect(text).toContain("The split makes it 4,600.");
+  expect(text.indexOf("4,600")).toBeLessThan(text.indexOf("quoted line"));
+  expect(document.querySelector("blockquote")?.textContent).toContain("quoted line");
 });
 
 it("starts a forward in the To field", async () => {
@@ -422,6 +432,34 @@ it("explains an invalid address and moves focus into a revealed Cc", async () =>
   expect(note?.textContent).toBe("Not a valid email address");
   await act(async () => button("Cc").click());
   expect(document.activeElement).toBe(field("Cc"));
+});
+
+it("shows Preparing draft until the reply prefill arrives", async () => {
+  let arrive: (value: unknown) => void = () => {};
+  prefill.mockImplementation(() => new Promise((resolve) => (arrive = resolve)));
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push(root);
+  await act(async () =>
+    root.render(
+      <ComposeEmail seed={reply("reply")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  expect(document.body.textContent).toContain("Preparing draft…");
+  await act(async () =>
+    arrive({
+      connectionId: "c1",
+      replyToMessageId: "m1",
+      to: "Sam Lee <sam@example.test>",
+      cc: "",
+      subject: "Re: Offsite",
+      body,
+      attachments: [],
+    }),
+  );
+  expect(document.body.textContent).not.toContain("Preparing draft…");
 });
 
 it("retries a failed reply prefill", async () => {

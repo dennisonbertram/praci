@@ -84,10 +84,6 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
   }
   const isPreferred =
     resolved?.provider === LEGAL_AGENT_MODEL.provider && resolved.id === LEGAL_AGENT_MODEL.id;
-  // The agent is set to Muse Spark yet resolved to something else: the user has no OpenRouter key of
-  // their own, because a bot override only runs on the user's credential (never the space default's).
-  const setToMuse =
-    bot.modelProvider === LEGAL_AGENT_MODEL.provider && bot.modelId === LEGAL_AGENT_MODEL.id;
   return {
     contracts: contracts.map((c) => toLegalContract(c, next.get(c.id) ?? null)),
     deadlines: openDeadlines.map((d) =>
@@ -117,7 +113,6 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
         : null,
     },
     model: resolved ? { provider: resolved.provider, id: resolved.id, isPreferred } : null,
-    modelBlocker: isPreferred ? null : setToMuse ? "own_key" : "model_changed",
   };
 }
 

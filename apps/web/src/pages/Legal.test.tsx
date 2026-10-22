@@ -40,7 +40,6 @@ import {
   emptyOverview,
   graph,
   id,
-  needsKeyOverview,
   overview,
 } from "./legal/fixtures";
 import { LegalContracts } from "./legal/LegalContracts";
@@ -62,7 +61,7 @@ const button = (name: string) =>
     (b) => b.textContent === name || b.getAttribute("aria-label") === name,
   );
 const tab = (name: string) =>
-  [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent === name);
+  [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent?.startsWith(name));
 
 beforeEach(() => {
   container = document.createElement("div");
@@ -114,17 +113,19 @@ it("shows the empty state, loading skeleton and load error", async () => {
   expect(container.querySelector("h1")?.textContent).toBe("Legal");
 });
 
-it("drops the Active tile when it repeats Contracts, and colors Overdue when above zero", async () => {
+it("puts the counts in the tab labels and colors Overdue when above zero", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
-    counts: { ...overview.counts, contracts: 2, activeContracts: 2 },
     deadlines: [{ ...deadlines[0]!, dueDate: "2000-01-01" }],
   });
   await render(<LegalPage />);
-  const titles = [...container.querySelectorAll("h2")].map((h) => h.textContent);
-  expect(titles).not.toContain("Active");
-  const overdue = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Overdue");
-  expect(overdue?.nextElementSibling?.className).toContain("text-destructive");
+  expect(tab("Contracts")?.textContent).toContain(String(overview.counts.contracts));
+  expect(container.querySelectorAll("h2")).toHaveLength(0);
+  const overdue = [...container.querySelectorAll("span")].find((e) =>
+    e.textContent?.endsWith("overdue"),
+  );
+  expect(overdue?.textContent).toBe("1 overdue");
+  expect(overdue?.className).toContain("text-destructive");
 });
 
 it("asks for consent when it is not allowed, and grants the shown key", async () => {
@@ -133,7 +134,11 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   rpcMock.consentGrant.mockResolvedValue(consentFixture);
   await render(<LegalPage />);
   expect(container.textContent).toContain("Let Praci read your contracts");
-  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
+  // The card says what is sent, not just that an AI model is involved.
+  expect(container.textContent).toContain("The text of your Data room documents is sent");
+  // The card's Allow is the one action: no dimmed Scan now, no zero tiles.
+  expect(button("Scan now")).toBeUndefined();
+  expect(container.querySelectorAll("h2")).toHaveLength(1);
   await click(button("Allow"));
   expect(rpcMock.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
   expect(container.textContent).not.toContain("Let Praci read your contracts");
@@ -166,8 +171,14 @@ it("scans now without opening the agent panel", async () => {
   expect(ask).not.toHaveBeenCalled();
 });
 
+// A row's buttons are named from its whole first line, contract included.
+const named = (d?: { title: string; contractTitle?: string | null }) =>
+  d?.contractTitle ? `${d.title}: ${d.contractTitle}` : d?.title;
+
 it("marks overdue deadlines and closes one with Done", async () => {
   const onChanged = vi.fn();
+  const sidebarRefresh = vi.fn();
+  window.addEventListener("rakazo:notifications-changed", sidebarRefresh);
   rpcMock.updateDeadline.mockResolvedValue({});
   await render(<LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2026-10-16" />);
   const page = container.textContent ?? "";
@@ -176,16 +187,22 @@ it("marks overdue deadlines and closes one with Done", async () => {
   expect(page).toMatch(/[A-Z][a-z]{2} \d{1,2}, 20\d\d/);
   expect(page).toContain("Tenant shall submit the closing statement");
   expect(page.match(/Overdue by/g)).toHaveLength(1);
-  await click(button(`Mark ${deadlines[0]?.title} done`));
+  await click(button(`Mark ${named(deadlines[0])} done`));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "done" });
-  expect(container.querySelectorAll("li")).toHaveLength(1);
+  // The closed row's slot now holds the Undo line, so the rows below stay where they were.
+  const rows = container.querySelectorAll("li");
+  expect(rows).toHaveLength(2);
+  expect(rows[0]?.textContent).toContain("Undo");
   expect(onChanged).toHaveBeenCalled();
+  // The sidebar Legal badge refreshes at once.
+  expect(sidebarRefresh).toHaveBeenCalled();
+  window.removeEventListener("rakazo:notifications-changed", sidebarRefresh);
 });
 
 it("keeps the deadline and shows the error when the update fails", async () => {
   rpcMock.updateDeadline.mockRejectedValue(new Error("nope"));
   await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
-  await click(button(`Dismiss ${deadlines[1]?.title}`));
+  await click(button(`Dismiss ${named(deadlines[1])}`));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({
     id: deadlines[1]?.id,
     status: "dismissed",
@@ -241,44 +258,21 @@ it("handles an empty graph and caps a very large one", async () => {
   );
 });
 
-it("says the user's own OpenRouter key is missing, not that OpenRouter is, and links to it", async () => {
-  const openSettings = vi.fn();
-  rpcMock.overview.mockResolvedValue(needsKeyOverview);
-  await render(<LegalPage onOpenSettings={openSettings} />);
-  const page = container.textContent ?? "";
-  expect(page).toContain("needs your own OpenRouter key");
-  expect(page).toContain("shared OpenRouter access can't be used for Legal");
-  // The disabled Scan now says why, and the empty page points at the fix.
-  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
-  expect(page).toContain("needs your own OpenRouter key");
-  expect(page).toContain("Add your OpenRouter key above to start.");
-  await click(button("Add your OpenRouter key"));
-  expect(openSettings).toHaveBeenCalledTimes(1);
-});
-
-it("says when the Legal agent was set to another model", async () => {
+it("shows no key or model banner when Legal runs on the space default model", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
     model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
-    modelBlocker: "model_changed",
   });
   await render(<LegalPage onOpenSettings={() => {}} />);
-  expect(container.textContent).toContain("The Legal agent is set to openai/gpt-6-luna.");
-  expect(container.textContent).not.toContain("Needs Muse Spark 1.2.");
-  expect(button("Add your OpenRouter key")).toBeUndefined();
+  expect(container.textContent).not.toMatch(/OpenRouter|Muse Spark|its own model/);
+  expect(button("Scan now")).toBeDefined();
 });
 
-it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
-  rpcMock.overview.mockResolvedValue(overview);
-  await render(<LegalPage />);
-  expect(container.textContent).not.toContain("OpenRouter key");
-});
-
-it("warns on first load when no model resolves, and shows no consent card without a recipient", async () => {
-  rpcMock.overview.mockResolvedValue({ ...overview, model: null, modelBlocker: "own_key" });
+it("shows no consent card without a recipient", async () => {
+  rpcMock.overview.mockResolvedValue({ ...overview, model: null });
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("needs your own OpenRouter key");
+  expect(container.textContent).not.toContain("OpenRouter");
   expect(button("Allow")).toBeUndefined();
 });
 
@@ -310,31 +304,22 @@ it("hides the contract value while amounts are hidden", async () => {
   }
 });
 
-it("counts the Overdue tile from the viewer's date, like the row pills", async () => {
+it("counts overdue from the viewer's date, like the row pills", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
     counts: { ...overview.counts, overdueDeadlines: 0 },
     deadlines: [{ ...deadlines[0]!, dueDate: "2000-01-01" }],
   });
   await render(<LegalPage />);
-  const tile = [...container.querySelectorAll("div")].find(
-    (el) => el.textContent?.startsWith("Overdue") && el.children.length <= 3,
-  );
-  expect(tile?.textContent).toContain("1");
+  expect(tab("Deadlines")?.textContent).toContain("1 overdue");
 });
 
-it("says why Scan now is disabled, and shows no consent card while the model is wrong", async () => {
-  const openSettings = vi.fn();
-  rpcMock.overview.mockResolvedValue({
-    ...overview,
-    model: { provider: "openrouter", id: "other/model", isPreferred: false },
-    modelBlocker: "own_key",
-  });
+it("says why Scan now is disabled, and what a missing consent hides", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
-  await render(<LegalPage onOpenSettings={openSettings} />);
-  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
-  expect(container.textContent).not.toContain("Needs your OpenRouter key.");
-  expect(button("Allow")).toBeUndefined();
+  await render(<LegalPage />);
+  expect(button("Scan now")).toBeUndefined();
+  expect(button("Allow")).toBeDefined();
 
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -409,9 +394,17 @@ it("offers the OpenRouter key field when the last scan's key was rejected", asyn
   });
   const openSettings = vi.fn();
   await render(<LegalPage onOpenSettings={openSettings} />);
-  expect(container.textContent).toContain("Last scan failed: OpenRouter did not accept your key.");
-  await click(button("Replace OpenRouter key"));
+  // Plain words, no vendor name, in a notice under the tiles that can be dismissed.
+  const notice = container.querySelector('[data-testid="scan-failed"]');
+  expect(notice?.textContent).toContain("Last scan failed: The AI key was rejected.");
+  expect(notice?.textContent).not.toContain("OpenRouter");
+  expect(container.querySelector("[data-page-header]")?.textContent ?? "").not.toContain(
+    "Last scan failed",
+  );
+  await click(button("Replace key"));
   expect(openSettings).toHaveBeenCalledTimes(1);
+  await click(container.querySelector('[data-testid="scan-failed"] button[aria-label="Dismiss"]'));
+  expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
 });
 
 it("has one Scan now button on an empty page", async () => {
@@ -435,7 +428,7 @@ it("offers Undo after Done and reopens the deadline", async () => {
   const onChanged = vi.fn();
   rpcMock.updateDeadline.mockResolvedValue({});
   await render(<LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2026-10-16" />);
-  await click(button(`Mark ${deadlines[0]?.title} done`));
+  await click(button(`Mark ${named(deadlines[0])} done`));
   expect(container.textContent).not.toContain("Tenant shall submit");
   await click(button("Undo"));
   expect(rpcMock.updateDeadline).toHaveBeenLastCalledWith({ id: deadlines[0]?.id, status: "open" });
@@ -517,7 +510,7 @@ it("names the Legal agent on Ask, with no Hide amounts switch in the header", as
   expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
-it("links the unchecked documents line to the Data room and the deadline tiles to Deadlines", async () => {
+it("links the unchecked documents line to the Data room and opens Deadlines on the overdue ones", async () => {
   // One deadline long past and one far ahead, so which one is overdue never depends on today.
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -527,15 +520,20 @@ it("links the unchecked documents line to the Data room and the deadline tiles t
     ],
   });
   await render(<LegalPage />);
-  expect(container.querySelector('a[href="/app/data-room"]')?.textContent).toBe(
+  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')?.textContent).toBe(
     "3 Data room documents not yet checked by Legal",
   );
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
-  const overdue = [...container.querySelectorAll("a")].find((a) =>
-    a.textContent?.startsWith("Overdue"),
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/legal?view=deadlines&due=overdue"]}>
+        <LegalPage />
+      </MemoryRouter>,
+    ),
   );
-  expect(overdue?.getAttribute("href")).toBe("/app/legal?view=deadlines&due=overdue");
-  await click(overdue);
+  await flush();
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("true");
   // The tile said 1, so the list it opens shows that one, not every open deadline.
   expect(container.textContent).toContain("Return the security deposit paperwork");
@@ -572,7 +570,7 @@ it("states the consent wait once, in the banner, when access is not allowed", as
   await render(<LegalPage />);
   // The scan time stays out of the header until Legal may read anything.
   expect(container.textContent).not.toContain("Last scan");
-  expect(button("Scan now")?.getAttribute("title")).toBe("Allow access first.");
+  expect(button("Scan now")).toBeUndefined();
   expect(container.textContent).not.toContain("Daily scans wait");
   expect(container.textContent).not.toContain("Scans daily.");
 });
@@ -584,7 +582,7 @@ it("leaves out the unchecked documents line when Legal has checked everything", 
   });
   await render(<LegalPage />);
   expect(container.textContent).not.toContain("not yet checked");
-  expect(container.querySelector('a[href="/app/data-room"]')).toBeNull();
+  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
 });
 
 it("words a term with only a start date, and gives the next deadline its year", async () => {
@@ -640,4 +638,72 @@ it("says the daily scan is paused when the Legal routine is off", async () => {
   await render(<LegalPage />);
   expect(container.textContent).toContain("Daily scan paused.");
   expect(container.textContent).not.toContain("Scans daily");
+});
+
+it("tells the shell while consent is missing, so the agent composer waits for the page's one Allow", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  rpcMock.consentGrant.mockResolvedValue(consentFixture);
+  const onConsentChange = vi.fn();
+  const onAskAbout = vi.fn();
+  await render(<LegalPage onConsentChange={onConsentChange} onAskAbout={onAskAbout} />);
+  expect(onConsentChange).toHaveBeenLastCalledWith(true);
+  // No row offers the agent before the page's Allow.
+  await click(tab("Deadlines"));
+  expect(button("Ask agent about Send non-renewal notice")).toBeUndefined();
+  await click(button("Allow"));
+  expect(onConsentChange).toHaveBeenLastCalledWith(false);
+});
+
+it("offers Ask agent on each deadline row, with the row as the question", async () => {
+  const onAsk = vi.fn();
+  await render(
+    <LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" onAsk={onAsk} />,
+  );
+  expect(container.querySelectorAll("li")).toHaveLength(2);
+  await click(button(`Ask agent about ${named(deadlines[1])}`));
+  expect(onAsk).toHaveBeenCalledWith(deadlines[1]);
+});
+
+it("gives each deadline row its own first line, naming the contract", async () => {
+  const twin = {
+    ...deadlines[1],
+    id: id(13),
+    contractTitle: "Hosting renewal",
+  } as (typeof deadlines)[number];
+  await render(
+    <LegalDeadlines deadlines={[...deadlines, twin]} onChanged={() => {}} today="2026-10-16" />,
+  );
+  const firstLines = [...container.querySelectorAll("li")].map(
+    (li) => li.querySelector(".font-medium")?.parentElement?.textContent?.split("Due")[0],
+  );
+  expect(new Set(firstLines).size).toBe(firstLines.length);
+  expect(firstLines.join()).toContain("Hosting renewal");
+  const names = [...container.querySelectorAll("li button")].map((b) =>
+    b.getAttribute("aria-label"),
+  );
+  expect(new Set(names).size).toBe(names.length);
+});
+
+it("shows a status chip only for a contract that is not active", async () => {
+  await render(<LegalContracts contracts={contracts} />);
+  const text = (selector: string) =>
+    [...container.querySelectorAll(selector)].map((el) => el.textContent).join(" ");
+  expect(text("tbody tr")).toContain("Expired");
+  expect(text("tbody tr")).not.toContain("Active");
+});
+
+it("opens no two deadline rows with the same words and leaves out an all-active Status column", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    contracts: overview.contracts.map((c) => ({ ...c, status: "active" as const })),
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).not.toContain("Status");
+});
+
+it("puts the contract name in the deadline title", async () => {
+  await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
+  const first = [...container.querySelectorAll("li .font-medium")].map((el) => el.textContent);
+  expect(first).toContain(`${deadlines[0]?.title}: ${deadlines[0]?.contractTitle}`);
 });

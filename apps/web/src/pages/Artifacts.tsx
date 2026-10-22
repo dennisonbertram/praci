@@ -26,6 +26,7 @@ import {
   TableRow,
   Toggle,
 } from "@rakazo/ui-web";
+import { cn } from "@rakazo/ui-web/lib/utils";
 import {
   ArrowLeft,
   Download,
@@ -42,14 +43,16 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArtifactPreview } from "../components/ArtifactPreview";
+import { AskBotButton } from "../components/AskBotButton";
 import { Tip } from "../components/data-room/FilterBar";
-import { sizeText } from "../components/data-room/format";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { artifactDisplayName as displayName } from "../lib/artifact-name";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { takeInitialBootstrap } from "../lib/bootstrap";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { canPreviewSpreadsheet } from "../lib/spreadsheet";
 import { errorText } from "../lib/user-error";
 
 type ViewMode = "grid" | "list";
@@ -58,11 +61,6 @@ const VIEW_MODE_STORAGE_KEY = "rakazo:artifacts-view-mode";
 const LIST_PAGE_SIZE = 60;
 
 type ArtifactSummary = Artifact & { versionCount: number };
-
-/** The type badge already says "MD" or "CSV", so the title drops the extension. */
-function displayName(name: string): string {
-  return name.replace(/\.[A-Za-z0-9]{1,5}$/, "") || name;
-}
 
 const isSheet = (mimeType: string) => /csv|spreadsheet|excel/.test(mimeType);
 
@@ -108,7 +106,13 @@ function matchesCalendarDateFilter(iso: string, filter: DateFilter, now: Date): 
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
-export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
+export function ArtifactsPage({
+  spaceName,
+  onAskAgent,
+}: {
+  spaceName?: string;
+  onAskAgent?: () => void;
+}) {
   const { artifactId } = useParams<{ artifactId?: string }>();
   const navigate = useNavigate();
   const { t } = useLingui();
@@ -278,10 +282,40 @@ export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
     }
   }
 
+  const viewToggle = (className: string) => (
+    <fieldset className={`m-0 flex min-w-0 gap-0.5 border-0 p-0 ${className}`}>
+      <legend className="sr-only">{t`View`}</legend>
+      <Tip label={t`List view`}>
+        <Toggle
+          size="sm"
+          pressed={viewMode === "list"}
+          onPressedChange={() => setMode("list")}
+          aria-label={t`List view`}
+        >
+          <List aria-hidden="true" />
+        </Toggle>
+      </Tip>
+      <Tip label={t`Grid view`}>
+        <Toggle
+          size="sm"
+          pressed={viewMode === "grid"}
+          onPressedChange={() => setMode("grid")}
+          aria-label={t`Grid view`}
+        >
+          <LayoutGrid aria-hidden="true" />
+        </Toggle>
+      </Tip>
+    </fieldset>
+  );
+
+  // Nothing to filter or switch views on until the space has an artifact.
+  const nothingYet = items?.length === 0 && !nextCursor && !filterActive;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground/90">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
+          // The space name drops to a third row on a phone; the header stays one row there.
+          className="max-md:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Artifacts</Trans>}
           meta={
             spaceName ? (
@@ -293,7 +327,7 @@ export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
           actions={
             <>
               {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
-              {artifactId && maximized ? null : (
+              {(artifactId && maximized) || nothingYet ? null : (
                 <Toggle
                   variant="outline"
                   size="sm"
@@ -310,31 +344,8 @@ export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
                   ) : null}
                 </Toggle>
               )}
-              {!artifactId ? (
-                <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
-                  <legend className="sr-only">{t`View`}</legend>
-                  <Tip label={t`List view`}>
-                    <Toggle
-                      size="sm"
-                      pressed={viewMode === "list"}
-                      onPressedChange={() => setMode("list")}
-                      aria-label={t`List view`}
-                    >
-                      <List aria-hidden="true" />
-                    </Toggle>
-                  </Tip>
-                  <Tip label={t`Grid view`}>
-                    <Toggle
-                      size="sm"
-                      pressed={viewMode === "grid"}
-                      onPressedChange={() => setMode("grid")}
-                      aria-label={t`Grid view`}
-                    >
-                      <LayoutGrid aria-hidden="true" />
-                    </Toggle>
-                  </Tip>
-                </fieldset>
-              ) : null}
+              {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}
+              {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
             </>
           }
         />
@@ -381,6 +392,8 @@ export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
               ))}
             </NativeSelect>
           ) : null}
+          {/* On a phone the header has no room for the view switch, so it waits here with the filters. */}
+          {!artifactId ? viewToggle("ms-auto md:hidden") : null}
         </div>
       ) : null}
 
@@ -570,7 +583,6 @@ function ArtifactTable({
           <col />
           {showBot ? <col className={`${MID_COLUMN} w-40`} /> : null}
           <col className={`${MID_COLUMN} w-28`} />
-          <col className={`${MID_COLUMN} w-24`} />
           <col className="w-9" />
         </colgroup>
         <TableHeader
@@ -589,9 +601,6 @@ function ArtifactTable({
             <TableHead className={MID_COL}>
               <Trans>Added</Trans>
             </TableHead>
-            <TableHead className={MID_COL}>
-              <Trans>Size</Trans>
-            </TableHead>
             <TableHead />
           </TableHeadRow>
         </TableHeader>
@@ -602,7 +611,7 @@ function ArtifactTable({
               <TableRow
                 key={artifact.id}
                 data-testid="artifact-row"
-                className="group/row cursor-pointer"
+                className="group/row h-10 cursor-pointer [&>td]:py-1.5"
                 onClick={() => navigate(`/app/artifacts/${artifact.id}`)}
               >
                 <TableCell>
@@ -619,16 +628,12 @@ function ArtifactTable({
                       >
                         {displayName(artifact.name)}
                       </Link>
-                      {/* Where the Bot, Added and Size columns are hidden (a narrow pane), they go under the name. */}
+                      {/* Where the Bot and Added columns are hidden (a narrow pane), they go under the name. */}
                       <span
                         data-testid="artifact-meta"
                         className="truncate text-xs text-muted-foreground @min-[720px]/list:hidden"
                       >
-                        {[
-                          bot?.name,
-                          formatRelativeTime(artifact.createdAt),
-                          sizeText(artifact.size),
-                        ]
+                        {[bot?.name, formatRelativeTime(artifact.createdAt)]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
@@ -659,9 +664,6 @@ function ArtifactTable({
                 ) : null}
                 <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
                   {formatRelativeTime(artifact.createdAt)}
-                </TableCell>
-                <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
-                  {sizeText(artifact.size)}
                 </TableCell>
                 <TableCell className="pe-0">
                   <button
@@ -724,11 +726,7 @@ function EmptyArtifacts({
             write one.
           </Trans>
         }
-      >
-        <Button render={<Link to="/app" />}>
-          <Trans>Open chat</Trans>
-        </Button>
-      </PageEmptyState>
+      />
     );
   }
   if (!nextCursor) {
@@ -840,7 +838,7 @@ function ArtifactCard({
         // h-full: cards in one grid row share a height, so the hover Delete stays inside each.
         className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40"
       >
-        <div className="flex items-start justify-between">
+        <div className="flex items-center justify-between">
           <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-accent-foreground">
             <ArtifactMimeIcon mimeType={artifact.mimeType} />
           </span>
@@ -863,8 +861,8 @@ function ArtifactCard({
             </div>
           ) : null}
         </div>
-        {/* pe-8 keeps the time clear of the Delete button that appears on hover. */}
-        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground">
+        {/* On hover the Delete button covers the time; where it always shows (touch), pe-8 keeps clear. */}
+        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground pointer-coarse:pe-8">
           {bot ? (
             <>
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />
@@ -1145,7 +1143,15 @@ function PreviewPane({
             {state.message}
           </div>
         ) : (
-          <div className="relative h-full overflow-hidden rounded-2xl border border-border">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-2xl border border-border",
+              // A sheet is as tall as its rows (scrolling past the pane); other files fill it.
+              canPreviewSpreadsheet(state.artifact.name, state.artifact.mimeType)
+                ? "flex max-h-full flex-col"
+                : "h-full",
+            )}
+          >
             <ArtifactPreview artifact={state.artifact} bytes={state.bytes} />
           </div>
         )}

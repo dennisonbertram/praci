@@ -229,6 +229,17 @@ export const NamedSpace: Story = {
   beforeEach: load(),
 };
 
+/** One space: the company is named, with nothing to switch to. */
+export const SingleSpace: Story = {
+  args: {
+    onAskAgent: () => {},
+    spaces: [{ id: "s1", name: "Northwind Robotics" }],
+    spaceId: "s1",
+    onSwitchSpace: () => {},
+  },
+  beforeEach: load(),
+};
+
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "finance.overview": () => new Promise(() => {}) }),
 };
@@ -371,4 +382,22 @@ export const VendorBreakdown: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByRole("button", { name: "Vendor" }));
   },
+};
+
+/** Three days into the week: no percentage, because three days against three days is not a trend. */
+export const PartialWeek: Story = {
+  args: { onAskAgent: () => {} },
+  parameters: { initialEntries: ["/app/finance?period=week"] },
+  beforeEach: load({
+    spendTotals: {
+      ...overview.spendTotals,
+      week: {
+        ...totals("week", 613_000, 47_000),
+        start: day(-2),
+        end: day(1),
+        previousStart: day(-9),
+        previousEnd: day(-6),
+      },
+    },
+  }),
 };

@@ -130,7 +130,7 @@ describe("greeting without a name", () => {
 });
 
 describe("company focus", () => {
-  it("points to the Finance, Cap Table and Data room pages after the email cards", async () => {
+  it("points to the Finance, Investors and Data room pages after the email cards", async () => {
     const { deps, actor } = fixture([
       { connectorId: "composio", slug: "gmail", name: "Gmail", connected: false, logo: null },
       {
@@ -149,9 +149,9 @@ describe("company focus", () => {
     );
     // One sentence above the cards, not three bubbles that all say connect.
     expect(texts[0]).toBe(
-      "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have.",
+      "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have. For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Investors](/app/investors). Board decks and investor documents go in the [Data room](/app/data-room).",
     );
-    // One bubble and the cards; the page note is only for the no-cards reply.
+    // One bubble and the cards, with the page pointers inside the bubble.
     expect(texts).toHaveLength(1);
     expect(posted).toHaveLength(2);
   });

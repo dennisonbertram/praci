@@ -45,10 +45,12 @@ import type {
   DataRoomConsentStatus,
 } from "@rakazo/contracts";
 import {
+  AI_DISCLOSURE_VERSION,
   DATA_ROOM_DISCLOSURE,
   DATA_ROOM_DISCLOSURE_VERSION,
   DataRoomApiName,
 } from "@rakazo/contracts";
+import { KEY_REJECTED_PATTERN } from "@rakazo/core";
 import type {
   DataRoomFilters,
   DataRoomFolderRecord,
@@ -424,6 +426,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         ]);
         let proposal: unknown = null;
         let asked = false;
+        let rejected = false;
         if (ai?.model && ai.allowed && deps.proposeSort && items.length) {
           asked = true;
           const paths = autoSortFolderPaths(folders);
@@ -447,14 +450,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
               },
             );
           } catch (error) {
+            const message = error instanceof Error ? error.message : "unknown";
+            rejected = KEY_REJECTED_PATTERN.test(message);
             getLogger().warn("data room auto-sort model failed; merging duplicates only", {
-              error: error instanceof Error ? error.message : "unknown",
+              error: message,
             });
           }
         }
         const plan = buildAutoSortPlan({ folders, items, proposal });
         if (plan.mode === "ai" || plan.reason || !items.length) return plan;
-        return { ...plan, reason: asked ? ("ai_failed" as const) : ("ai_unavailable" as const) };
+        const reason = !asked ? "ai_unavailable" : rejected ? "ai_rejected" : "ai_failed";
+        return { ...plan, reason } as const;
       },
       apply: (actor: Actor, input: { operations: AutoSortOperation[] }) =>
         dataRoomCall(async () => {
@@ -505,6 +511,25 @@ export function createDataRoomService(deps: DataRoomDeps) {
         },
         update: { version: status.version, grantedAt: new Date() },
       });
+      // One consent per model: Settings shows these models as allowed too.
+      for (const { key } of ai.recipients) {
+        await deps.prisma.aiDataConsent.upsert({
+          where: {
+            userId_spaceId_recipientKey: {
+              userId: actor.userId,
+              spaceId: actor.spaceId,
+              recipientKey: key,
+            },
+          },
+          create: {
+            userId: actor.userId,
+            spaceId: actor.spaceId,
+            recipientKey: key,
+            version: AI_DISCLOSURE_VERSION,
+          },
+          update: { version: AI_DISCLOSURE_VERSION, grantedAt: new Date() },
+        });
+      }
       const visionKey = dataRoomVisionKey({ ...ai, allowed: true });
       const queue = async (step: "ingest" | "classify" | "index", embeddingModel?: string) => {
         for (const id of await repo.requeueReady(actor, step, embeddingModel, visionKey)) {

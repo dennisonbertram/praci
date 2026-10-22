@@ -73,14 +73,14 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onClose,
     onArchive,
     onMoveToInbox,
-    onAskAgent,
+    onAskAgentPanel,
     notice,
   }: {
     messageId: string | null;
     onClose: () => void;
     onArchive?: () => void;
     onMoveToInbox?: () => void;
-    onAskAgent?: () => Promise<unknown>;
+    onAskAgentPanel?: () => Promise<unknown>;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -94,8 +94,8 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
             dialog archive
           </button>
         ) : null}
-        {onAskAgent ? (
-          <button type="button" onClick={() => void onAskAgent()}>
+        {onAskAgentPanel ? (
+          <button type="button" onClick={() => void onAskAgentPanel()}>
             dialog ask agent
           </button>
         ) : null}
@@ -233,6 +233,15 @@ const press = (key: string, target: Element | Document = document.body) =>
     vi.setSystemTime(Date.now() + 200); // j/k are throttled to one step per 150ms
     target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
   });
+// The account choice lives in the Filter menu, as a radio group under "Account".
+const pickAccount = async (name: string) => {
+  await click(document.querySelector('[data-testid="inbox-filter"]'));
+  const item = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+    (el) => el.textContent === name,
+  );
+  await click(item);
+};
+
 const click = (el: Element | null | undefined) =>
   act(async () => {
     el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -631,14 +640,13 @@ it("marks an unread deep-linked message read once, and j and k never mark read",
   expect(rpcMock.markRead).not.toHaveBeenCalled();
 });
 
-it("Ask agent makes the agent for the open message and hands it to the shell", async () => {
+it("Ask agent makes the agent for the open message", async () => {
   const bot = { id: "bot-1", name: "Subject a" };
   rpcMock.askAgent.mockResolvedValue(bot);
   const onOpenAgent = vi.fn();
   const c = await render(["/app/inbox?mail=a"], undefined, { onOpenAgent });
   await click(byText(c, "dialog ask agent"));
   expect(rpcMock.askAgent).toHaveBeenCalledWith({ messageId: "a" });
-  expect(onOpenAgent).toHaveBeenCalledWith(bot);
 });
 
 it("offers no Ask agent without a shell to open the chat in", async () => {
@@ -714,13 +722,74 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   // Each poll returns a fresh answer, as the server does.
   rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
-  for (let i = 0; i < 13; i++) await dwell(5_000);
+  for (let i = 0; i < 7; i++) await dwell(5_000);
   expect(c.textContent).not.toContain("Sorting your mail…");
   expect(c.textContent).toContain("Sorting is taking longer than usual.");
   const refreshes = rpcMock.refresh.mock.calls.length;
   await click(byText(c, "Try sorting again"));
   expect(rpcMock.refresh.mock.calls.length).toBe(refreshes + 1);
   expect(c.textContent).toContain("Sorting your mail…");
+});
+
+it("keeps the sorting stall notice through the minute sync", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
+    const c = await render();
+    for (let i = 0; i < 7; i++)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+    expect(c.textContent).toContain("Sorting is taking longer than usual.");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
+    expect(c.textContent).toContain("Sorting is taking longer than usual.");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("says it is reading the mail during the first sync and asks the server a few times only", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(list([]));
+    rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
+    const c = await render();
+    expect(c.textContent).toContain("Reading your mail…");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25_000);
+    });
+    expect(rpcMock.refresh.mock.calls.length).toBeLessThanOrEqual(6);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("says a first sync can take a minute after 5 s, and shows the consent prompt while it runs", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(
+      list([], {
+        enabled: false,
+        triageBlocked: {
+          reason: "needs_consent",
+          recipient: { key: "k", name: "Model" },
+        } as never,
+      }),
+    );
+    rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
+    const c = await render();
+    expect(c.textContent).toContain("Reading your mail…");
+    expect(c.textContent).not.toContain("First sync can take a minute");
+    expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(c.textContent).toContain("First sync can take a minute");
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("shows nothing from the first sort until it and its to-dos have landed, then changes once", async () => {
@@ -939,7 +1008,8 @@ it("turns off search and Filter until mail is connected", async () => {
   rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
   const c = await render();
   expect(c.textContent).toContain("No mail connected");
-  expect(c.querySelector<HTMLInputElement>('input[aria-label="Search mail"]')?.disabled).toBe(true);
+  const search = c.querySelector<HTMLInputElement>('input[aria-label="Search mail"]');
+  expect(search === null || search.disabled).toBe(true);
 });
 
 const meetingTodo = (id: string, text: string, extra: Record<string, unknown> = {}) => ({
@@ -1045,12 +1115,10 @@ it("shows meeting follow-ups on every account tab", async () => {
   rpcMock.todos.mockImplementation(async (input: { connectionId?: string }) => forTab(input));
   const c = await render();
   expect(c.textContent).toContain("From a meeting");
-  const tab = (name: string) =>
-    [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find((el) => el.textContent === name);
-  await click(tab("Sales") ?? null);
+  await pickAccount("Sales");
   expect(c.textContent).toContain("From a meeting");
   expect(c.textContent).toContain("Mail on Sales");
-  await click(tab("All") ?? null);
+  await pickAccount("All");
 });
 
 it("shows meeting follow-ups even when the mail list is empty, on All and on an account tab", async () => {
@@ -1067,15 +1135,9 @@ it("shows meeting follow-ups even when the mail list is empty, on All and on an 
   const c = await render();
   expect(c.textContent).toContain("No mail");
   expect(c.textContent).toContain("From a meeting");
-  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "Sales",
-  );
-  await click(sales ?? null);
+  await pickAccount("Sales");
   expect(c.textContent).toContain("From a meeting");
-  const all = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "All",
-  );
-  await click(all ?? null);
+  await pickAccount("All");
 });
 
 it("opens the shortcut list with ? while a message is open", async () => {
@@ -1091,20 +1153,15 @@ it("keeps the chosen account tab after leaving the Inbox and coming back", async
   ] as InboxListOutput["accounts"];
   rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
   const c = await render();
-  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "Sales",
-  );
-  await click(sales ?? null);
+  expect(c.querySelectorAll('[role="tab"]')).toHaveLength(3);
+  await pickAccount("Sales");
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ connectionId: "c2" }));
   for (const cleanup of cleanups.splice(0)) await cleanup();
   rpcMock.list.mockClear();
   await render();
   expect(rpcMock.list).toHaveBeenCalledWith(expect.objectContaining({ connectionId: "c2" }));
   // Back to All for the tests that follow.
-  const again = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "All",
-  );
-  await click(again ?? null);
+  await pickAccount("All");
 });
 
 it("polls refresh while it reports syncing and reloads the list once when it stops", async () => {
@@ -1118,7 +1175,8 @@ it("polls refresh while it reports syncing and reloads the list once when it sto
   await dwell(2_000);
   expect(rpcMock.refresh).toHaveBeenCalledTimes(2);
   expect(rpcMock.list.mock.calls.length).toBe(lists);
-  await dwell(2_000);
+  // Each wait doubles, so a long first sync is not asked about every two seconds.
+  await dwell(4_000);
   expect(rpcMock.refresh).toHaveBeenCalledTimes(3);
   expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
   await dwell(10_000);
@@ -1177,6 +1235,8 @@ describe("piles", () => {
     const c = await render(["/app/inbox?pile=updates"]);
     expect(c.textContent).toContain("No mail");
     expect(c.textContent).not.toContain("matches this filter");
+    // No mail in any pile, so there is nothing to search.
+    expect(c.querySelector('input[aria-label="Search mail"]')).toBeNull();
   });
 
   it("leaves the old view parameter alone and opens Important", async () => {

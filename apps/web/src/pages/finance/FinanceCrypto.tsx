@@ -25,7 +25,7 @@ import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { LineChart } from "../../components/finance/charts";
 import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
-import { DetailPage, Section, useFinanceQuery } from "../../components/finance/ui";
+import { DetailPage, Kpi, Section, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { chainName, shortAddress, tokenAmount } from "../../lib/crypto-format";
 import { dayMonth, money } from "../../lib/finance-format";
@@ -188,6 +188,21 @@ export function FinanceCryptoPage() {
               {data.lastError}
             </p>
           ) : null}
+          {/* The same figure cards as every other Finance page. Total is the figure the overview shows. */}
+          {(exchanges.data ?? []).length > 0 || data.wallets.length > 0 ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+              {(exchanges.data ?? []).length > 0 ? (
+                <Kpi title={t`Total`} value={money(data.summary.totalCents)} />
+              ) : null}
+              {data.wallets.length > 0 ? (
+                <Kpi
+                  title={t`Wallets`}
+                  value={money(walletCents)}
+                  sub={unpriced > 0 ? t`${unpriced} unpriced` : undefined}
+                />
+              ) : null}
+            </div>
+          ) : null}
           <Section
             title={<Trans>Wallets</Trans>}
             action={
@@ -197,19 +212,7 @@ export function FinanceCryptoPage() {
             }
           >
             {data.wallets.length > 0 ? (
-              <>
-                <div>
-                  <div className="text-[22px] font-semibold leading-tight tabular-nums">
-                    {money(walletCents)}
-                  </div>
-                  {unpriced > 0 ? (
-                    <div className="text-[11px] text-muted-foreground">
-                      {t`${unpriced} unpriced`}
-                    </div>
-                  ) : null}
-                </div>
-                <WalletRows data={data} onEdit={setEditing} onRemove={setRemoving} />
-              </>
+              <WalletRows data={data} onEdit={setEditing} onRemove={setRemoving} />
             ) : (
               <p className="py-2 text-sm text-muted-foreground">
                 <Trans>No wallets yet. Add a wallet address to see its balances here.</Trans>

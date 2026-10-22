@@ -125,6 +125,24 @@ const MAIL: Mail[] = [
     text: "Maya, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
     unread: true,
   },
+  // An investor reply with two asks, which the demo's email agent has already worked through.
+  {
+    thread: "stockholder-action",
+    agoMs: 52 * HOUR_MS,
+    from: ME,
+    to: "Sam Ortiz <sam@harborline.example.test>",
+    sent: true,
+    subject: "Notice of Stockholder Action",
+    text: "Hi Sam,\n\nAttached is the Notice of Stockholder Action for the recapitalization and the Seed Prime round. Please let me know if you have questions.\n\nMaya",
+  },
+  {
+    thread: "stockholder-action",
+    agoMs: 5 * HOUR_MS,
+    from: "Sam Ortiz <sam@harborline.example.test>",
+    subject: "Notice of Stockholder Action",
+    text: "Maya,\n\nThanks for the notice. Two things.\n\n1. For tax purposes I want to close out my position. Either the company buys back my shares and my warrant for a nominal $1, or I abandon them in writing and you acknowledge it. Whichever is easier for you.\n\n2. Can you confirm my share count after the recap, and whether existing investors were offered the Seed Prime round? I had 18,400 preferred on Carta.\n\nSam",
+    unread: true,
+  },
   {
     thread: "hosting-invoice",
     agoMs: 9 * HOUR_MS,
@@ -313,7 +331,7 @@ const MAIL: Mail[] = [
     agoMs: 2.5 * DAY_MS,
     from: "Quinn Auditwell <quinn@auditwell.example.test>",
     subject: "Audit confirmation: Quill Capital Fund I holdings as of Sep 30",
-    text: "Hi Alex,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
+    text: "Hi Maya,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
     unread: true,
   },
   {
@@ -332,7 +350,7 @@ const MAIL: Mail[] = [
     to: ME,
     sent: true,
     subject: "Northwind Robotics: August investor update",
-    text: "Hi all,\n\nHighlights\n- Signed our second pilot customer (Beacon Retail).\n- Shipped firmware 2.3 with 18% faster picking.\n\nLowlights\n- A sensor supplier slipped two weeks.\n\nMetrics\n- Cash: $1.42M. Monthly burn: $72k. Runway: 19 months.\n\nAsks\n- Intros to warehouse operators in the Midwest.\n\nThanks,\nAlex",
+    text: "Hi all,\n\nHighlights\n- Signed our second pilot customer (Beacon Retail).\n- Shipped firmware 2.3 with 18% faster picking.\n\nLowlights\n- A sensor supplier slipped two weeks.\n\nMetrics\n- Cash: $1.42M. Monthly burn: $72k. Runway: 19 months.\n\nAsks\n- Intros to warehouse operators in the Midwest.\n\nThanks,\nMaya",
   },
   {
     thread: "investor-update-july",
@@ -341,7 +359,7 @@ const MAIL: Mail[] = [
     to: ME,
     sent: true,
     subject: "Northwind Robotics: July investor update",
-    text: "Hi all,\n\nHighlights\n- Closed the $250,000 Quill Capital SAFE.\n- Hired our first firmware engineer.\n\nLowlights\n- Pilot install took a week longer than planned.\n\nMetrics\n- Cash: $1.55M. Monthly burn: $68k. Runway: 22 months.\n\nAsks\n- Candidates for a senior firmware role.\n\nThanks,\nAlex",
+    text: "Hi all,\n\nHighlights\n- Closed the $250,000 Quill Capital SAFE.\n- Hired our first firmware engineer.\n\nLowlights\n- Pilot install took a week longer than planned.\n\nMetrics\n- Cash: $1.55M. Monthly burn: $68k. Runway: 22 months.\n\nAsks\n- Candidates for a senior firmware role.\n\nThanks,\nMaya",
   },
   {
     thread: "partner-intro",
@@ -363,7 +381,7 @@ const MAIL: Mail[] = [
     agoMs: 40 * DAY_MS,
     from: "Riley Testwell <riley@bookkeeping.example.test>",
     subject: "W-9 for the new vendor",
-    text: "Alex, can you send the W-9 for Globex Cloud (Mock) so I can file it?\n\nRiley",
+    text: "Maya, can you send the W-9 for Globex Cloud (Mock) so I can file it?\n\nRiley",
   },
   {
     thread: "support-ticket",
@@ -696,7 +714,7 @@ export function demoNewMail(now = new Date()): EmulatedMessage {
     from: "Priya Placeholder <priya@quill-capital.example.test>",
     to: ME,
     subject: `${MOCK_SUBJECT_PREFIX} Quick question on the hiring plan`,
-    text: `Hi Alex,\n\nBefore the LP call, can you confirm we still plan two engineering hires in Q4?\n\nPriya${FOOTER}`,
+    text: `Hi Maya,\n\nBefore the LP call, can you confirm we still plan two engineering hires in Q4?\n\nPriya${FOOTER}`,
   };
 }
 
@@ -1101,7 +1119,10 @@ export function demoFinance(now = new Date()) {
     {
       id: "mock-bill-legal",
       status: "APPROVED",
-      due_at: new Date(now.getTime() + 10 * DAY_MS).toISOString(),
+      // The 30th, as the Chief and Finance replies say ("Oct 30").
+      due_at: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 28 ? 1 : 0), 30, 12),
+      ).toISOString(),
       vendor: { name: "Placeholder Legal LLP (Mock)" },
       amount: { value: "2000.00", currency: "USD" },
     },
@@ -1127,6 +1148,9 @@ const DEMO_FINANCE_TOOLS = {
     getAccounts: obj({}),
     getTreasury: obj({}),
     getRecipients: obj({ limit: { type: "number" } }),
+    // Read by the approval card to name the payee and account behind a send-money request.
+    getRecipient: obj({ recipientId: str }, ["recipientId"]),
+    getAccount: obj({ accountId: str }, ["accountId"]),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },
@@ -1339,35 +1363,35 @@ export const DEMO_CONTACTS = [
     name: "Casey Advisor (Mock)",
     email: "casey.advisor@advisors.example.test",
     organization: "Independent advisor (Mock)",
-    kind: "other" as const,
+    kind: "advisor" as const,
     notes: `${MOCK_NOTE}: advisor with 250,000 common shares.`,
   },
   {
     name: "Morgan Pretend",
     email: "morgan@halcyon-logistics.example.test",
     organization: "Halcyon Logistics (Mock)",
-    kind: "other" as const,
+    kind: "customer" as const,
     notes: `${MOCK_NOTE}: head of operations at our first annual customer.`,
   },
   {
     name: "Dana Counselor",
     email: "dana@halcyon-logistics.example.test",
     organization: "Halcyon Logistics (Mock)",
-    kind: "other" as const,
+    kind: "legal" as const,
     notes: `${MOCK_NOTE}: Halcyon's legal counsel.`,
   },
   {
     name: "Robin Prospect",
     email: "robin@bolt-freight.example.test",
     organization: "Bolt Freight (Mock)",
-    kind: "other" as const,
+    kind: "customer" as const,
     notes: `${MOCK_NOTE}: prospect asking for pricing on 20 units.`,
   },
   {
     name: "Riley Testwell",
     email: "riley@bookkeeping.example.test",
     organization: "Testwell Bookkeeping (Mock)",
-    kind: "other" as const,
+    kind: "vendor" as const,
     notes: `${MOCK_NOTE}: outside bookkeeper, closes the month.`,
   },
   {
@@ -1381,7 +1405,7 @@ export const DEMO_CONTACTS = [
     name: "Sam Samplesworth",
     email: "sam@pilot-customer.example.test",
     organization: "Pilot customer (Mock)",
-    kind: "other" as const,
+    kind: "customer" as const,
     notes: `${MOCK_NOTE}: runs the second pilot site.`,
   },
 ];
@@ -1666,7 +1690,11 @@ const doc = (folder: string, name: string, text: string, kind: DemoDocument["kin
   name,
   kind,
   // "Acme Mock" reads as "Acme (Mock)", the form the parties take, so a model reading it agrees.
-  text: `MOCK DEMO DATA. ${text.replace(/ Mock\b/g, " (Mock)")} ${MOCK_NOTE}, not a real document.`,
+  // A CSV stays pure rows: the MOCK in its name is the marker, not a header or data row.
+  text:
+    kind === "csv"
+      ? text.replace(/ Mock\b/g, " (Mock)")
+      : `MOCK DEMO DATA. ${text.replace(/ Mock\b/g, " (Mock)")} ${MOCK_NOTE}, not a real document.`,
 });
 
 export const DEMO_DOCUMENTS: DemoDocument[] = [
@@ -1941,7 +1969,6 @@ ${MOCK_NOTE}: invented for UX testing.
 current,67621,24.2
 hire two engineers,101600,16.1
 cut tools 10%,60859,26.8
-${MOCK_NOTE},,
 `,
   },
   {
@@ -1955,7 +1982,6 @@ ${MOCK_NOTE},,
 2026-07,64900
 2026-08,66800
 2026-09,67600
-${MOCK_NOTE},
 `,
   },
   {
@@ -1977,10 +2003,9 @@ ${MOCK_NOTE}: invented for UX testing.
     text: `customer,stage,value_usd,next_step
 Halcyon Logistics (Mock),Won,120000,Q1 deployment kickoff
 Bolt Freight (Mock),Negotiation,60000,Resend the signed NDA
-Cascade Robotics (Mock),Won,0,Reseller onboarding
+Cascade Robotics (Mock),Won,30000,Reseller onboarding
 Pilot customer (Mock),Pilot,25000,Review results on Nov 6
 Orchard Fulfillment (Mock),Qualified,45000,Site visit
-${MOCK_NOTE},,,
 `,
   },
   {
@@ -2125,12 +2150,6 @@ export const DEMO_WAITING_RUN = {
     { id: "anonymous", label: "Say 'a logistics customer'" },
   ],
 };
-/** A placeholder OpenRouter key for the Legal agent; OpenRouter rejects it, so it never spends. */
-export const DEMO_LEGAL_KEY = {
-  apiKey: "sk-or-v1-mock-demo-not-a-real-key",
-  label: `OpenRouter (${MOCK_NOTE}: placeholder key, scans fail)`,
-};
-
 /**
  * What the Legal agent's last daily scan recorded. Dates are days from today, so the overdue and
  * upcoming deadlines stay that way whenever the demo is seeded. Money is integer cents.

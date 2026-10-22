@@ -58,6 +58,7 @@ const content: Record<string, { mimeType: string; contentBase64: string }> = {
   },
   art_img: { mimeType: "image/png", contentBase64: png },
   art_bin: { mimeType: "application/zip", contentBase64: b64("zip") },
+  art_csv: { mimeType: "text/csv", contentBase64: b64("Month,Burn\nJan,1\n") },
 };
 
 const bootstrap = {
@@ -91,7 +92,10 @@ const load = (list = items, nextCursor: string | null = null) =>
 function Page({ at = "/app/artifacts" }: { at?: string }) {
   return (
     <Routes>
-      <Route path="/app/artifacts/:artifactId?" element={<ArtifactsPage />} />
+      <Route
+        path="/app/artifacts/:artifactId?"
+        element={<ArtifactsPage spaceName="Northwind Robotics" onAskAgent={() => {}} />}
+      />
       <Route path="*" element={<Navigate to={at} replace />} />
     </Routes>
   );
@@ -190,6 +194,26 @@ export const ImagePreviewStory: Story = {
   name: "ImagePreview",
   render: () => <Page at="/app/artifacts/art_img" />,
   beforeEach: () => load(),
+};
+
+/** A five-row sheet: the card is as tall as its rows, not the whole pane. */
+export const SheetPreviewOpen: Story = {
+  render: () => <Page at="/app/artifacts/art_csv" />,
+  beforeEach: () => {
+    load();
+    mockRpc({
+      "files.spreadsheetPreview": () => ({
+        status: "ready",
+        sheets: [{ name: "Burn", dimension: null }],
+        sheet: "Burn",
+        columns: ["A", "B"],
+        headerRow: 1,
+        header: ["Month", "Burn"],
+        rows: [2, 3, 4, 5, 6].map((row) => ({ row, cells: [`Month ${row}`, row * 1000] })),
+        truncated: false,
+      }),
+    });
+  },
 };
 
 export const UnsupportedPreview: Story = {

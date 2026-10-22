@@ -2,6 +2,8 @@ import {
   cartaAgentSpawnKey,
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   financeAgentSpawnKey,
+  INVESTORS_AGENT_BUILTIN_TOOLS,
+  investorsAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
 } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
@@ -40,6 +42,17 @@ describe("contact tools", () => {
     expect(capTableToolsAllowed({ ...base, botSpawnKey: null })).toBe(false);
     expect(capTableToolsAllowed({ ...base, botSpawnKey: financeAgentSpawnKey("u") })).toBe(false);
     expect(capTableToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
+  });
+
+  it("the Investors agent passes the cap table gate and its fixed list has cap_table_update", () => {
+    const investors = { ...base, botSpawnKey: investorsAgentSpawnKey("u") };
+    expect(capTableToolsAllowed(investors)).toBe(true);
+    expect(capTableToolsAllowed({ ...investors, trigger: "bot_message" })).toBe(false);
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_read");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_update");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toEqual(
+      expect.arrayContaining(["contacts_list", "contacts_add", "contacts_save"]),
+    );
   });
 
   it("the Legal and Data room agents are offered contacts_list and contacts_add", () => {
@@ -132,7 +145,12 @@ describe("contact tools", () => {
     };
     const findUnique = vi
       .fn()
-      .mockResolvedValueOnce({ data: saved, updatedAt: new Date("2026-02-01T00:00:00Z") })
+      .mockResolvedValueOnce({
+        data: saved,
+        source: "carta",
+        previous: null,
+        updatedAt: new Date("2026-02-01T00:00:00Z"),
+      })
       .mockResolvedValueOnce(null);
     const prisma = { capTableSnapshot: { findUnique } } as never;
     const read = await contactToolFromTool("cap_table_read", { prisma, scope }, {});
@@ -146,15 +164,15 @@ describe("contact tools", () => {
   });
 
   it("cap_table_update validates, then saves for the run's owner", async () => {
-    const upsert = vi.fn(async () => ({}));
-    const prisma = { capTableSnapshot: { upsert } } as never;
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
     const bad = await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
       { companyName: "X" },
     );
     expect(bad).toEqual({ error: expect.stringContaining("asOf") });
-    expect(upsert).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
     const ok = await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
@@ -167,9 +185,58 @@ describe("contact tools", () => {
       },
     );
     expect(ok).toEqual({ ok: true });
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { spaceId_userId: scope } }),
+    // Written as Carta, whatever the model passes for the source.
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ ...scope, source: "carta" }) }),
     );
+  });
+
+  it("cap_table_update writes as the sheet for the Investors agent and refuses a table of another source", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const args = {
+      companyName: "Example Co",
+      asOf: "2026-01-31",
+      fullyDilutedShares: 1000,
+      source: "carta",
+      sourceRef: { driveFileId: "file-1", name: "Cap table" },
+      shareClasses: [],
+      holders: [{ name: "Ada Fund", security: "Common", shares: 1000 }],
+    };
+    expect(
+      await contactToolFromTool("cap_table_update", { prisma, scope, writer: "sheet" }, args),
+    ).toEqual({ ok: true });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ ...scope, source: "sheet" }) }),
+    );
+    const empty = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope, writer: "sheet" },
+      { ...args, holders: [] },
+    );
+    expect(empty).toEqual({ error: expect.stringContaining("nothing was changed") });
+  });
+
+  it("cap_table_update says so when another source owns the table", async () => {
+    const prisma = {
+      capTableSnapshot: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+        findUnique: vi.fn(async () => ({ id: "row" })),
+      },
+    } as never;
+    const refused = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      {
+        companyName: "Example Co",
+        asOf: "2026-01-31",
+        fullyDilutedShares: 1000,
+        source: "native",
+        shareClasses: [],
+        holders: [],
+      },
+    );
+    expect(refused).toEqual({ error: expect.stringContaining("not read from Carta") });
   });
 
   it("contacts_save updates a matching contact and never creates one", async () => {
@@ -184,12 +251,21 @@ describe("contact tools", () => {
       updatedAt: new Date(0),
     };
     const findFirst = vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ id: "c1" });
-    const updateMany = vi.fn(async () => ({ count: 1 }));
     const create = vi.fn();
     const upsert = vi.fn();
+    const update = vi.fn(async () => row);
     const findUniqueOrThrow = vi.fn(async () => ({ ...row, name: "Ada Capital" }));
+    // The write runs in a transaction that locks the row, whose email and kind are read first.
+    const tx = {
+      $queryRaw: vi.fn(async () => [{ email: row.email, kind: row.kind }]),
+      contact: { update, findUniqueOrThrow },
+      investorPortalToken: { deleteMany: vi.fn() },
+      portalSession: { deleteMany: vi.fn() },
+      investorShare: { deleteMany: vi.fn() },
+    };
     const prisma = {
-      contact: { findFirst, updateMany, create, upsert, findUniqueOrThrow },
+      contact: { findFirst, create, upsert },
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
     } as never;
     const args = { name: "Ada Capital", email: "ada@example.test" };
     const missing = await contactToolFromTool("contacts_save", { prisma, scope }, args);
@@ -203,5 +279,30 @@ describe("contact tools", () => {
     const saved = await contactToolFromTool("contacts_save", { prisma, scope }, args);
     expect(saved).toEqual({ contact: expect.objectContaining({ name: "Ada Capital" }) });
     expect(upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("fundraising_read", () => {
+  const offered = (flags: { fundraisingEnabled?: boolean; capTableEnabled?: boolean }) =>
+    selectBuiltinToolsForRun({
+      graphicalToolsAllowed: false,
+      pageBrowserAllowed: false,
+      groupId: null,
+      trigger: "message",
+      semanticMemoryEnabled: false,
+      messagingChannelRun: false,
+      ...flags,
+    }).map((tool) => tool.name);
+
+  it("is offered only with its own gate, which the cap table gate does not open", () => {
+    expect(offered({})).not.toContain("fundraising_read");
+    expect(offered({ capTableEnabled: true })).not.toContain("fundraising_read");
+    expect(offered({ fundraisingEnabled: true })).toContain("fundraising_read");
+  });
+
+  it("is in the Investors agent's fixed list and in no other agent's", () => {
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("fundraising_read");
+    for (const tools of [LEGAL_AGENT_BUILTIN_TOOLS, DATA_ROOM_AGENT_BUILTIN_TOOLS])
+      expect(tools).not.toContain("fundraising_read");
   });
 });

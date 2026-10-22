@@ -66,7 +66,6 @@ import {
   changeText,
   dayRange,
   fullDay,
-  hiddenOr,
   lastDayOf,
   money,
   moneyExact,
@@ -339,6 +338,8 @@ function Overview({
   const [allUpcoming, setAllUpcoming] = useState(false);
   const [allSubs, setAllSubs] = useState(false);
   const totals = data.spendTotals[period];
+  // A period under a week old is a few days against a few days: too little to call a trend.
+  const elapsedDays = (Date.parse(totals.end) - Date.parse(totals.start)) / 86_400_000;
   const change = changeText(totals.changePct);
   const burning = data.burn.monthlyCents > 0;
   // Without a cash balance (Brex only, or no cash accounts) there is nothing to run out of.
@@ -358,9 +359,7 @@ function Overview({
   const heldStablecoins = data.crypto?.stablecoinCents ?? 0;
   const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = runwayText(data.bankRunway?.months);
-  const runOutMonth = data.runway.runOutDate
-    ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
-    : "";
+  const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
   // The same figure on both sides says nothing, and nothing spent so far (a statement account has
   // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
@@ -416,7 +415,7 @@ function Overview({
                           ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
                           : undefined
                       }
-                      className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+                      className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                     />
                   }
                 >
@@ -424,7 +423,7 @@ function Overview({
                     aria-hidden="true"
                     className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                   />
-                  <span className="truncate">
+                  <span className="truncate @max-sm/ph:sr-only">
                     {syncing
                       ? t`${sourceNames} · syncing…`
                       : updated
@@ -506,15 +505,19 @@ function Overview({
       ) : (
         <div className="flex flex-col gap-3">
           <div
-            // Two per row when narrow; an odd last card takes the whole row instead of sitting alone.
-            className={`grid grid-cols-2 gap-3 [&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
+            // Two per row when narrow, the odd last card taking the whole row. Five cards go 3 + 2
+            // (three-sixths wide, then the last two half each) from 28rem, so the Ask panel never
+            // leaves one alone, before they fit one row of five.
+            className={`grid grid-cols-2 gap-3 ${
               kpiCount >= 5
-                ? "@3xl:grid-cols-3 @5xl:grid-cols-5"
-                : kpiCount === 4
-                  ? "@3xl:grid-cols-4"
-                  : kpiCount === 3
-                    ? "@3xl:grid-cols-3"
-                    : "@3xl:grid-cols-2"
+                ? "@max-md:[&>:last-child]:col-span-2 @md:grid-cols-6 @md:[&>*]:col-span-2 @md:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
+                : `[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
+                    kpiCount === 4
+                      ? "@3xl:grid-cols-4"
+                      : kpiCount === 3
+                        ? "@3xl:grid-cols-3"
+                        : "@3xl:grid-cols-2"
+                  }`
             }`}
           >
             {hasCash ? (
@@ -600,7 +603,7 @@ function Overview({
               <PeriodTabs value={period} onChange={setPeriod} />
               <Link
                 to={financePath.spend(period)}
-                className="text-lg font-semibold tabular-nums hover:underline"
+                className="rk-tap text-lg font-semibold tabular-nums hover:underline"
               >
                 {money(totals.currentCents)}
               </Link>
@@ -610,7 +613,7 @@ function Overview({
                     ? t`${soFar} · ${spentRange}`
                     : t`${soFar} · spent ${spentRange}`
                   : t`Spent ${spentRange}`}
-                {sameAsBefore(totals) ? null : (
+                {sameAsBefore(totals) || elapsedDays < 7 ? null : (
                   <>
                     {" · "}
                     {change ? <span className={toneClass(totals.changePct)}>{change} </span> : null}
@@ -623,7 +626,10 @@ function Overview({
 
           <Section
             title={
-              <Link to={financePath.burn()} className="inline-flex items-center hover:underline">
+              <Link
+                to={financePath.burn()}
+                className="rk-tap inline-flex items-center hover:underline"
+              >
                 <Trans>Burn</Trans>
                 <ChevronRight aria-hidden="true" className="size-3" />
               </Link>
@@ -637,6 +643,7 @@ function Overview({
               </div>
             ) : (
               <BurnLines
+                height={180}
                 series={bars}
                 granularity={barGranularity}
                 label={t`Cash out and cash in over time`}
@@ -657,14 +664,8 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Side by side, the two cards share one height, their footers on one line; once one
-          is expanded each keeps its own, so the other does not stretch to match. */}
-          <div
-            className={cn(
-              "grid gap-3 @3xl:grid-cols-2",
-              (allBreakdown || allUpcoming) && "items-start",
-            )}
-          >
+          {/* Side by side, the two cards end on the same line. */}
+          <div className="grid items-stretch gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -867,7 +868,7 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
-          <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px]">
+          <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
             {upcomingTag(item)}
           </span>
         </span>
@@ -930,7 +931,7 @@ function SubscriptionsTable({
   useHideAmounts();
   const rowProps = useRowNavigate();
   return (
-    <Table compact className="max-w-3xl">
+    <Table compact>
       <TableHeader>
         <TableHeadRow>
           <TableHead>
@@ -938,12 +939,12 @@ function SubscriptionsTable({
           </TableHead>
           <TableHead
             className="text-end"
-            title={t`Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names.`}
+            title={t`The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure.`}
           >
-            <Trans>Usual per month</Trans>
+            <Trans>Per month</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
-            <Trans>Change, 3 months</Trans>
+            <Trans>3-mo change</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>Last charge</Trans>
@@ -970,8 +971,13 @@ function SubscriptionsTable({
                 >
                   {sub.name}
                 </HereLink>
+                {trendText(sub.trendCents) ? (
+                  <div className="text-[11px] font-normal tabular-nums text-muted-foreground @md:hidden">
+                    {trendText(sub.trendCents)}
+                  </div>
+                ) : null}
                 {similar ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
+                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[11px] font-normal text-muted-foreground">
                     {similar}
                   </span>
                 ) : null}

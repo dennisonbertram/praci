@@ -1,5 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getCapTableSnapshot, saveCapTableSnapshot } from "./cap-table.js";
+import {
+  CapTableSourceError,
+  changeCapTableSource,
+  getCapTableSnapshot,
+  saveCapTableSnapshot,
+  undoCapTableSource,
+} from "./cap-table.js";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 
@@ -76,5 +82,124 @@ describePostgres("cap table snapshot (PostgreSQL)", () => {
       saveCapTableSnapshot(prisma, mine, { ...input, asOf: "last week" }),
     ).rejects.toThrow();
     expect((await getCapTableSnapshot(prisma, mine))?.fullyDilutedShares).toBe(2000);
+  });
+
+  describe("sources", () => {
+    const owner = { spaceId: mine.spaceId, userId: sameSpace.userId };
+    const typed = { ...input, source: "native" as const, companyName: "Typed Co" };
+
+    it("reads old rows as carta", async () => {
+      await prisma.$executeRaw`DELETE FROM cap_table_snapshots WHERE "userId" = ${owner.userId}`;
+      await prisma.capTableSnapshot.create({ data: { ...owner, data: input } });
+      const snapshot = await getCapTableSnapshot(prisma, owner);
+      expect(snapshot?.source).toBe("carta");
+      expect(snapshot?.canUndo).toBe(false);
+    });
+
+    it("refuses a write that expects another source than the row's", async () => {
+      await changeCapTableSource(prisma, owner, { source: "native", companyName: "Typed Co" });
+      await expect(saveCapTableSnapshot(prisma, owner, input)).rejects.toBeInstanceOf(
+        CapTableSourceError,
+      );
+      await expect(
+        saveCapTableSnapshot(prisma, owner, { ...input, source: "sheet" }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      expect((await getCapTableSnapshot(prisma, owner))?.source).toBe("native");
+    });
+
+    it("refuses a stale whole-table save and accepts a current one", async () => {
+      const loaded = (await getCapTableSnapshot(prisma, owner))!;
+      await saveCapTableSnapshot(prisma, owner, typed, { loadedAt: loaded.updatedAt });
+      await expect(
+        saveCapTableSnapshot(prisma, owner, typed, { loadedAt: loaded.updatedAt }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+    });
+
+    it("Undo after a switch returns the typed rows once", async () => {
+      await saveCapTableSnapshot(prisma, owner, {
+        ...typed,
+        holders: [{ name: "Typed Holder", security: "Common", shares: 1000 }],
+      });
+      await changeCapTableSource(prisma, owner, { source: "carta", companyName: "Typed Co" });
+      const switched = (await getCapTableSnapshot(prisma, owner))!;
+      expect(switched.source).toBe("carta");
+      expect(switched.canUndo).toBe(true);
+      // The late write from the source that was left is refused.
+      await expect(saveCapTableSnapshot(prisma, owner, typed)).rejects.toBeInstanceOf(
+        CapTableSourceError,
+      );
+      expect(await undoCapTableSource(prisma, owner)).toBe(true);
+      const undone = (await getCapTableSnapshot(prisma, owner))!;
+      expect(undone.source).toBe("native");
+      expect(undone.holders[0]?.name).toBe("Typed Holder");
+      expect(undone.canUndo).toBe(false);
+      expect(await undoCapTableSource(prisma, owner)).toBe(false);
+    });
+
+    it("the new source's own write keeps Undo, a typed-in save clears it", async () => {
+      await saveCapTableSnapshot(prisma, owner, {
+        ...typed,
+        holders: [{ name: "Typed Holder", security: "Common", shares: 1000 }],
+      });
+      await changeCapTableSource(prisma, owner, { source: "carta", companyName: "Typed Co" });
+      await saveCapTableSnapshot(prisma, owner, { ...typed, source: "carta" });
+      expect((await getCapTableSnapshot(prisma, owner))?.canUndo).toBe(true);
+      expect(await undoCapTableSource(prisma, owner)).toBe(true);
+      expect((await getCapTableSnapshot(prisma, owner))?.holders[0]?.name).toBe("Typed Holder");
+    });
+
+    it("a late sheet write after a switch back is refused, and the next change clears Undo", async () => {
+      await changeCapTableSource(prisma, owner, {
+        source: "sheet",
+        sourceRef: { driveFileId: "file-1", name: "Cap table" },
+        companyName: "Typed Co",
+      });
+      await changeCapTableSource(prisma, owner, { source: "native", companyName: "Typed Co" });
+      await expect(
+        saveCapTableSnapshot(prisma, owner, { ...typed, source: "sheet" }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      const loaded = (await getCapTableSnapshot(prisma, owner))!;
+      await saveCapTableSnapshot(prisma, owner, typed, { loadedAt: loaded.updatedAt });
+      expect((await getCapTableSnapshot(prisma, owner))?.canUndo).toBe(false);
+    });
+
+    it("a sheet write must name the chosen file and carry at least one holder", async () => {
+      const ref = { driveFileId: "file-2", name: "Cap table" };
+      const sheet = { ...input, source: "sheet" as const, companyName: "Sheet Co", sourceRef: ref };
+      // The source is still native here, so even a matching write is refused.
+      await expect(saveCapTableSnapshot(prisma, owner, sheet)).rejects.toBeInstanceOf(
+        CapTableSourceError,
+      );
+      await changeCapTableSource(prisma, owner, {
+        source: "sheet",
+        sourceRef: ref,
+        companyName: "Sheet Co",
+      });
+      await expect(
+        saveCapTableSnapshot(prisma, owner, {
+          ...sheet,
+          sourceRef: { driveFileId: "other-file", name: "Other" },
+        }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      await expect(
+        saveCapTableSnapshot(prisma, owner, { ...sheet, holders: [] }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      await expect(
+        saveCapTableSnapshot(prisma, owner, { ...sheet, sourceRef: null }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      await saveCapTableSnapshot(prisma, owner, sheet);
+      const saved = await getCapTableSnapshot(prisma, owner);
+      expect(saved?.source).toBe("sheet");
+      expect(saved?.sourceRef?.driveFileId).toBe("file-2");
+      expect(saved?.holders[0]?.name).toBe("Ada Fund");
+    });
+
+    it("creates an empty typed-in table when there is none, and keeps spaces apart", async () => {
+      await changeCapTableSource(prisma, otherSpace, { source: "native", companyName: "Other Co" });
+      const created = await getCapTableSnapshot(prisma, otherSpace);
+      expect(created?.holders).toEqual([]);
+      expect(created?.companyName).toBe("Other Co");
+      expect((await getCapTableSnapshot(prisma, mine))?.companyName).not.toBe("Other Co");
+    });
   });
 });

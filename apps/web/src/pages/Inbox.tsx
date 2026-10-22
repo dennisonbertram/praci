@@ -90,11 +90,13 @@ type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
 const ALL = "all";
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
+/** The wait doubles after each answer that still says syncing, up to this. */
+const SYNC_POLL_MAX_MS = 10_000;
 const SYNC_POLL_MAX = 60;
 const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
-const TRIAGE_MAX_POLLS = 12;
+const TRIAGE_MAX_POLLS = 6;
 // ponytail: an open Inbox looks for new mail once a minute (the server syncs at most that often);
 // switch to a pushed event if the delay matters.
 const NEW_MAIL_POLL_MS = 60_000;
@@ -103,6 +105,8 @@ const STATUS_MS = 10_000;
 const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
+
+const coarsePointer = () => window.matchMedia?.("(pointer: coarse)").matches ?? false;
 
 /** The account tab last chosen in this window; a removed account falls back to All. */
 let rememberedTab: string | undefined;
@@ -132,7 +136,8 @@ const filterLabels = (): Record<InboxFilter, string> => ({
   primary: t`Primary`,
   promotions: t`Promotions`,
   social: t`Social`,
-  updates: t`Updates`,
+  // The Updates pile above is a different list, so the Gmail tab says which one it is.
+  updates: t`Gmail Updates`,
 });
 
 /** Triage categories the filter menu offers, narrowing the cached list. */
@@ -158,6 +163,14 @@ export function InboxPage(props: InboxPageProps) {
       connectionId={rememberedTab}
       onRefreshed={props.onRefreshed}
       onAllowMailRules={props.onAllowMailRules}
+      onOpenNewsletters={() =>
+        setParams((before) => {
+          const next = new URLSearchParams(before);
+          next.delete("cleanup");
+          next.set("pile", "newsletters");
+          return next;
+        })
+      }
       onBack={() =>
         setParams((before) => {
           const next = new URLSearchParams(before);
@@ -249,6 +262,13 @@ function InboxListPage({
   const [help, setHelp] = useState(false);
   const searchRef = useRef<HTMLFormElement>(null);
   const [synced, setSynced] = useState(false);
+  // The first sync of a new connection can take a minute; after 5 s the loading line says so.
+  const [slowSync, setSlowSync] = useState(false);
+  useEffect(() => {
+    if (synced) return;
+    const timer = setTimeout(() => setSlowSync(true), 5_000);
+    return () => clearTimeout(timer);
+  }, [synced]);
   // "Try again" is busy until its sync answers, so the click visibly does something.
   const [retrying, setRetrying] = useState(false);
   // A retry was made since the notice appeared; if the notice is back, it says so.
@@ -423,8 +443,6 @@ function InboxListPage({
   // `attempt` re-runs the sync for "Try again".
   useEffect(() => {
     if (paused) return;
-    polls.current = 0;
-    setStalled(false);
     let live = true;
     let wake: (() => void) | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -434,7 +452,7 @@ function InboxListPage({
       for (let i = 0; i < SYNC_POLL_MAX && live && result?.syncing; i++) {
         await new Promise<void>((resolve) => {
           wake = resolve;
-          timer = setTimeout(resolve, SYNC_POLL_MS);
+          timer = setTimeout(resolve, Math.min(SYNC_POLL_MS * 2 ** i, SYNC_POLL_MAX_MS));
         });
         if (live) result = await rpc.inbox.refresh({});
       }
@@ -517,7 +535,7 @@ function InboxListPage({
   );
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
-    if (digestOn) return digestList.map((row) => row.id);
+    if (digestOn) return groupBySender(digestList).map((group) => group.newest.id);
     if (grouped)
       return senderGroups.flatMap((group) =>
         group.count === 1
@@ -533,6 +551,11 @@ function InboxListPage({
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
+  // With two or more accounts the Filter menu picks one; the button then names it.
+  const tabLabel =
+    accounts.length > 1
+      ? accounts.find((account) => account.connectionId === tab)?.label
+      : undefined;
   const failed = error || (shown ? syncErrorText(shown, retried && !retrying) : "");
   const limited =
     !error && Boolean(shown?.rateLimitedAccounts?.length) && !shown?.reconnectAccounts.length;
@@ -547,11 +570,17 @@ function InboxListPage({
     Boolean(failed) && (!shown || rows.length === 0) && !(data && accounts.length === 0);
   // Cleanup, Filter, Compose and the pile tabs act on loaded mail, so they wait for it.
   const tools = accounts.length > 0 && !failedEmpty;
+  // The once-a-minute new-mail sync must not restart the sorting clock, or the stall line never shows.
+  const restartSortWatch = () => {
+    polls.current = 0;
+    setStalled(false);
+  };
   const retry = () => {
     if (retrying) return;
     setRetried(true);
     setError("");
     setRetrying(true);
+    restartSortWatch();
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
   };
@@ -563,7 +592,17 @@ function InboxListPage({
   const loading =
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
-    (showTodos && todos === undefined && !sorting);
+    // The To do card is waited for on the Important pile even before it is known to show (meetings
+    // arrive with it), so it never pushes the loaded rows down.
+    (pile === "important" && !paused && todos === undefined && !sorting);
+  // Nothing to search in a mailbox with no mail in any pile.
+  const mailboxEmpty =
+    !loading &&
+    rows.length === 0 &&
+    !query &&
+    !filter &&
+    !category &&
+    (pileCounts ? Object.values(pileCounts).every((n) => n === 0) : true);
   // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
   const patchRows = (change: (rows: MailRow[], searched: boolean) => MailRow[]) => {
     const patch = (list: InboxListOutput, searched: boolean) => ({
@@ -601,7 +640,8 @@ function InboxListPage({
     // The selection and the open message move on to a neighbor before the row goes.
     const index = ids.indexOf(messageId);
     const neighbor = ids[index + 1] ?? ids[index - 1];
-    if (selectedId === messageId) setSelectedId(neighbor);
+    // A touch screen has no keyboard cursor to carry over, so no row stays highlighted.
+    if (selectedId === messageId) setSelectedId(coarsePointer() ? undefined : neighbor);
     const subject = rows.find((row) => row.id === messageId)?.subject ?? "";
     // A search also finds archived mail, so its row stays and says Archived.
     patchRows((list, searched) =>
@@ -680,7 +720,10 @@ function InboxListPage({
     if (selectedId && !stays(selectedId)) {
       const index = ids.indexOf(selectedId);
       setSelectedId(
-        ids.slice(index + 1).find(stays) ?? ids.slice(0, Math.max(index, 0)).reverse().find(stays),
+        coarsePointer()
+          ? undefined
+          : (ids.slice(index + 1).find(stays) ??
+              ids.slice(0, Math.max(index, 0)).reverse().find(stays)),
       );
     }
     patchRows((list, searched) =>
@@ -826,6 +869,23 @@ function InboxListPage({
     setSelectedId(id);
     setParams(next, { state: LIST_OPEN });
   };
+  // Allowing syncs again, which is what queues triage now that it may run. It shows while the
+  // first sync still loads the list, so the choice is not hidden behind the skeleton.
+  const consentPrompt =
+    pile === "important" &&
+    shown?.triageBlocked?.reason === "needs_consent" &&
+    !consentDismissed ? (
+      <InboxConsentPrompt
+        recipient={shown.triageBlocked.recipient}
+        onAllowed={() => {
+          restartSortWatch();
+          setJustAllowed(true);
+          setAttempt((n) => n + 1);
+          setReload((n) => n + 1);
+        }}
+        onDismiss={() => setConsentDismissed(true)}
+      />
+    ) : null;
   const todoCard = todos ? (
     <TodoCard
       todos={todos}
@@ -1051,98 +1111,119 @@ function InboxListPage({
                     {spaceName}
                   </span>
                 ) : null}
-                <form
-                  ref={searchRef}
-                  className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    setParam("q", draft.trim());
-                  }}
-                >
-                  <InputGroup className="w-full max-w-sm">
-                    <InputGroupAddon>
-                      <Search aria-hidden="true" />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      type="search"
-                      name="inbox-search"
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Escape") return;
-                        setDraft("");
-                        if (query) setParam("q", "");
-                      }}
-                      // Short enough to fit beside the agent panel; the hover title keeps the example.
-                      placeholder={t`Search mail`}
-                      title={t`Search mail, e.g. from:sam has:attachment`}
-                      aria-label={t`Search mail`}
-                      // Nothing to search or filter before mail is connected.
-                      disabled={Boolean(data) && accounts.length === 0}
-                      maxLength={MAX_QUERY}
-                      className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                      autoComplete="off"
-                    />
-                    {draft ? (
-                      <InputGroupAddon align="inline-end">
-                        <InputGroupButton
-                          size="icon-xs"
-                          aria-label={t`Clear`}
-                          onClick={() => {
-                            setDraft("");
-                            setParam("q", "");
-                            searchRef.current?.querySelector("input")?.focus();
-                          }}
-                        >
-                          <X aria-hidden="true" />
-                        </InputGroupButton>
+                {mailboxEmpty ? null : (
+                  <form
+                    ref={searchRef}
+                    className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      setParam("q", draft.trim());
+                    }}
+                  >
+                    <InputGroup className="w-full max-w-sm">
+                      <InputGroupAddon>
+                        <Search aria-hidden="true" />
                       </InputGroupAddon>
-                    ) : null}
-                  </InputGroup>
-                </form>
+                      <InputGroupInput
+                        type="search"
+                        name="inbox-search"
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Escape") return;
+                          setDraft("");
+                          if (query) setParam("q", "");
+                        }}
+                        // Short enough to fit beside the agent panel; the hover title keeps the example.
+                        placeholder={t`Search mail`}
+                        title={t`Search mail, e.g. from:sam has:attachment`}
+                        aria-label={t`Search mail`}
+                        // Nothing to search or filter before mail is connected.
+                        disabled={Boolean(data) && accounts.length === 0}
+                        maxLength={MAX_QUERY}
+                        className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+                        autoComplete="off"
+                      />
+                      {draft ? (
+                        <InputGroupAddon align="inline-end">
+                          <InputGroupButton
+                            size="icon-xs"
+                            aria-label={t`Clear`}
+                            onClick={() => {
+                              setDraft("");
+                              setParam("q", "");
+                              searchRef.current?.querySelector("input")?.focus();
+                            }}
+                          >
+                            <X aria-hidden="true" />
+                          </InputGroupButton>
+                        </InputGroupAddon>
+                      ) : null}
+                    </InputGroup>
+                  </form>
+                )}
               </>
             }
             actions={
               <>
                 {tools ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    data-testid="inbox-cleanup"
-                    aria-label={t`Cleanup`}
-                    title={t`Cleanup`}
-                    className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-                    onClick={() =>
-                      setParams((before) => {
-                        const next = new URLSearchParams(before);
-                        next.set("cleanup", "1");
-                        return next;
-                      })
-                    }
-                  >
-                    <ListChecks aria-hidden="true" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid="inbox-cleanup"
+                          aria-label={t`Cleanup`}
+                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                          onClick={() =>
+                            setParams((before) => {
+                              const next = new URLSearchParams(before);
+                              next.set("cleanup", "1");
+                              return next;
+                            })
+                          }
+                        />
+                      }
+                    >
+                      <ListChecks aria-hidden="true" />
+                    </TooltipTrigger>
+                    <TooltipContent>{t`Cleanup`}</TooltipContent>
+                  </Tooltip>
                 ) : null}
                 {tools ? (
                   <DropdownMenu>
-                    <DropdownMenuTrigger
-                      data-testid="inbox-filter"
-                      render={
-                        <Button
-                          variant={filter || (triage && category) ? "secondary" : "outline"}
-                          size="sm"
-                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-                        />
-                      }
-                      aria-label={filter || (triage && category) ? undefined : t`Filter`}
-                    >
-                      <ListFilter aria-hidden="true" />
-                      {filter
-                        ? filterLabels()[filter]
-                        : triage && category
-                          ? categoryLabels()[category]
-                          : null}
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <DropdownMenuTrigger
+                            data-testid="inbox-filter"
+                            render={
+                              <Button
+                                variant={
+                                  filter || (triage && category) || tabLabel
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                                size="sm"
+                                className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                              />
+                            }
+                            aria-label={
+                              filter || (triage && category) || tabLabel ? undefined : t`Filter`
+                            }
+                          >
+                            <ListFilter aria-hidden="true" />
+                            {filter
+                              ? filterLabels()[filter]
+                              : triage && category
+                                ? categoryLabels()[category]
+                                : tabLabel}
+                          </DropdownMenuTrigger>
+                        }
+                      />
+                      <TooltipContent>{t`Filter`}</TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="end" className="min-w-48">
                       <DropdownMenuRadioGroup
                         value={filter ?? (triage ? category : undefined) ?? ""}
@@ -1186,6 +1267,35 @@ function InboxListPage({
                           </>
                         ) : null}
                       </DropdownMenuRadioGroup>
+                      {accounts.length > 1 ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel>
+                              <Trans>Account</Trans>
+                            </DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                              value={tab ?? ALL}
+                              onValueChange={(value) =>
+                                setTab(value === ALL ? undefined : String(value))
+                              }
+                            >
+                              <DropdownMenuRadioItem value={ALL} closeOnClick>
+                                <Trans>All</Trans>
+                              </DropdownMenuRadioItem>
+                              {accounts.map((account) => (
+                                <DropdownMenuRadioItem
+                                  key={account.connectionId}
+                                  value={account.connectionId}
+                                  closeOnClick
+                                >
+                                  {account.label}
+                                </DropdownMenuRadioItem>
+                              ))}
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuGroup>
+                        </>
+                      ) : null}
                       {filter || (triage && category) ? (
                         <>
                           <DropdownMenuSeparator />
@@ -1222,7 +1332,7 @@ function InboxListPage({
             }
           />
           {tools ? (
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <InboxPileTabs
                 value={pile}
                 counts={pileCounts}
@@ -1231,8 +1341,7 @@ function InboxListPage({
               {pile === "newsletters" ? (
                 <Toggle
                   size="sm"
-                  className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                  aria-label={t`Digest`}
+                  className="-mt-2 mb-4 ms-auto"
                   pressed={digest}
                   onPressedChange={(on) => {
                     const next = new URLSearchParams(params);
@@ -1242,31 +1351,10 @@ function InboxListPage({
                   }}
                 >
                   <Newspaper aria-hidden="true" />
+                  <Trans>Digest</Trans>
                 </Toggle>
               ) : null}
             </div>
-          ) : null}
-          {accounts.length > 1 ? (
-            <Tabs
-              className="-mt-2 mb-4"
-              value={tab ?? ALL}
-              onValueChange={(value) => setTab(value === ALL ? undefined : value)}
-            >
-              <TabsList className="max-w-full rounded-full">
-                <TabsTrigger value={ALL} className="rounded-full px-3">
-                  <Trans>All</Trans>
-                </TabsTrigger>
-                {accounts.map((account) => (
-                  <TabsTrigger
-                    key={account.connectionId}
-                    value={account.connectionId}
-                    className="max-w-40 rounded-full px-3"
-                  >
-                    <span className="truncate">{account.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
           ) : null}
         </div>
 
@@ -1327,6 +1415,16 @@ function InboxListPage({
           </PageEmptyState>
         ) : loading ? (
           <div className="flex flex-col gap-2" aria-busy="true">
+            {consentPrompt}
+            {synced ? null : (
+              <p role="status" className="text-sm text-muted-foreground">
+                {slowSync ? (
+                  <Trans>First sync can take a minute</Trans>
+                ) : (
+                  <Trans>Reading your mail…</Trans>
+                )}
+              </p>
+            )}
             {[0, 1, 2, 3, 4].map((n) => (
               <Skeleton key={n} className="h-9 w-full" />
             ))}
@@ -1365,22 +1463,12 @@ function InboxListPage({
           </>
         ) : shown ? (
           <>
-            {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" &&
-              !consentDismissed ? (
-              // Allowing syncs again, which is what queues triage now that it may run.
-              <InboxConsentPrompt
-                recipient={shown.triageBlocked.recipient}
-                onAllowed={() => {
-                  setJustAllowed(true);
-                  setAttempt((n) => n + 1);
-                  setReload((n) => n + 1);
-                }}
-                onDismiss={() => setConsentDismissed(true)}
-              />
+            {consentPrompt ? (
+              consentPrompt
             ) : sorting && stalled ? (
               <div
                 role="status"
-                className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
+                className="mb-4 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
               >
                 <Trans>Sorting is taking longer than usual. Your mail is below.</Trans>
                 <Button variant="outline" size="sm" onClick={retry}>
@@ -1392,8 +1480,8 @@ function InboxListPage({
               <p
                 role="status"
                 className={cn(
-                  "mb-4 flex items-center gap-2 text-sm text-muted-foreground",
-                  justAllowed && "mb-5 min-h-28 items-start",
+                  "mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
+                  justAllowed && "min-h-16",
                 )}
               >
                 <Spinner aria-hidden="true" />
@@ -1594,10 +1682,8 @@ function InboxListPage({
           onNavigate={goToMessage}
           unread={openRow?.unread}
           inInbox={openRow?.inInbox}
-          onAskAgent={
-            onOpenAgent && openId
-              ? async () => onOpenAgent(await rpc.inbox.askAgent({ messageId: openId }))
-              : undefined
+          onAskAgentPanel={
+            onOpenAgent && openId ? () => rpc.inbox.askAgent({ messageId: openId }) : undefined
           }
           onArchive={
             openRow?.inInbox

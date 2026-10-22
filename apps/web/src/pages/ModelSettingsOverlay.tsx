@@ -341,19 +341,6 @@ export function ModelSettingsOverlay({
   const cloudflareRoutingReady =
     !isCloudflareGateway || cloudflareGatewayRouting({ accountId, gatewayId }) !== undefined;
   const credential = credentials.find((entry) => entry.provider === provider);
-  const currentEntry = catalog.find(
-    (entry) => entry.provider === me?.defaultProvider && entry.id === me?.defaultModel,
-  );
-  const activeCredential = credentials.find(
-    (entry) => entry.provider === me?.defaultProvider && entry.modelId === me?.defaultModel,
-  );
-  // The banner shows the effective effort — stored level or the runtime
-  // default — only when the active model can actually think.
-  const activeThinkingLabel =
-    (currentEntry?.thinkingLevels ?? []).some((level) => level !== "off") ||
-    activeCredential?.reasoning
-      ? thinkingLevelLabel(activeCredential?.thinkingLevel ?? "medium")
-      : null;
   const isActive =
     me?.defaultProvider === selected?.provider &&
     me?.defaultModel === (isOpenAiCompatible ? modelId.trim() : selected?.id);
@@ -1228,45 +1215,18 @@ export function ModelSettingsOverlay({
         <p className="px-6 pt-1 text-[13.5px] text-muted-foreground/70 sm:px-8">{description}</p>
       )}
 
-      <div className={`mx-6 sm:mx-8 ${embedded ? "mt-4" : "mt-5"}`}>
-        {/* Wraps on a phone instead of cutting the model name to "Ope…". */}
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <span className="shrink-0 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground/80">
-            <Trans>Active model</Trans>
-          </span>
-          {/* The saved default names a model, but with no provider connected nothing can run it. */}
-          {me?.needsModel ? (
-            <>
-              <span className="min-w-0 truncate text-[15px] text-foreground">
-                <Trans>None yet</Trans>
-              </span>
-              <span className="text-[13px] text-muted-foreground">
-                <Trans>Pick a provider below and connect it.</Trans>
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="min-w-0 truncate text-[15px] text-foreground">
-                {currentEntry?.label ?? me?.defaultModel ?? t`Deployment default`}
-              </span>
-              <span className="truncate text-[13px] text-muted-foreground">
-                {currentEntry?.providerName ?? me?.defaultProvider ?? (
-                  <Trans>Configured by deployment</Trans>
-                )}
-              </span>
-            </>
-          )}
-          {!me?.needsModel && activeThinkingLabel ? (
-            <span className="shrink-0 text-[13px] text-muted-foreground">
-              <Trans>Thinking: {activeThinkingLabel}</Trans>
-            </span>
-          ) : null}
-        </div>
-      </div>
+      {/* The active model shows in the picker and the provider list; only the empty case needs a line. */}
+      {me?.needsModel ? (
+        <p
+          className={`mx-6 text-[13px] text-muted-foreground sm:mx-8 ${embedded ? "mt-4" : "mt-5"}`}
+        >
+          <Trans>Pick a provider below and connect it.</Trans>
+        </p>
+      ) : null}
 
       <EmbeddingModelField />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-6 py-6 sm:px-8 min-[1040px]:flex-row">
+      <div className="rk-scroll flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6 sm:px-8 min-[1040px]:flex-row min-[1040px]:overflow-hidden">
         <div className="flex min-h-0 shrink-0 flex-col min-[1040px]:w-[310px]">
           <div className="mb-3 text-[13.5px] text-muted-foreground">
             <Trans>Providers</Trans>
@@ -1281,7 +1241,7 @@ export function ModelSettingsOverlay({
             placeholder={t`Search providers`}
             className="h-10 rounded-xl px-3.5"
           />
-          <div className="rk-scroll mt-3 max-h-[240px] overflow-y-auto rounded-xl border border-border min-[1040px]:min-h-0 min-[1040px]:max-h-none min-[1040px]:flex-1">
+          <div className="rk-scroll mt-3 rounded-xl border border-border min-[1040px]:min-h-0 min-[1040px]:flex-1 min-[1040px]:overflow-y-auto">
             {filteredGroups.length ? (
               <>
                 {connectedGroups.length ? (
@@ -1325,7 +1285,7 @@ export function ModelSettingsOverlay({
         <div
           ref={detailScrollRef}
           data-testid="model-detail"
-          className="rk-scroll min-h-0 min-w-0 flex-1 overflow-y-auto"
+          className="rk-scroll min-w-0 flex-1 shrink-0 min-[1040px]:min-h-0 min-[1040px]:shrink min-[1040px]:overflow-y-auto"
         >
           {error ? (
             <p className="mb-4 text-sm text-destructive" role="alert">
@@ -1528,7 +1488,19 @@ export function ModelSettingsOverlay({
                   </div>
                   <div className="mt-5">{catalogModelConfig}</div>
                   {saveButton}
-                  <div className="mt-6 border-t border-border pt-5">{connectionControls}</div>
+                  {/* Sign-in and the key field open only on request; the model above is what people change. */}
+                  <details
+                    className="mt-6 border-t border-border pt-4 text-sm text-muted-foreground"
+                    open={ownKeyProvider === provider}
+                    onToggle={(event) =>
+                      setOwnKeyProvider(event.currentTarget.open ? provider : null)
+                    }
+                  >
+                    <summary className="w-fit cursor-pointer select-none">
+                      <Trans>Replace key</Trans>
+                    </summary>
+                    <div className="mt-5">{connectionControls}</div>
+                  </details>
                 </>
               ) : provider === me?.hostCredentialProvider ||
                 (provider === me?.defaultProvider && !me?.needsModel) ? (
@@ -1538,7 +1510,7 @@ export function ModelSettingsOverlay({
                     serverCredentialsNote
                   ) : (
                     <p className="text-sm leading-[1.5] text-muted-foreground">
-                      <Trans>This space already uses {selectedProviderName}.</Trans>
+                      <Trans>Your bots already use {selectedProviderName}.</Trans>
                     </p>
                   )}
                   <details

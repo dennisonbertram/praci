@@ -104,6 +104,20 @@ export function SettingsOverlay({
 }) {
   const { t } = useLingui();
   const panelRef = useRef<HTMLDivElement>(null);
+  const opener = useRef(document.activeElement);
+  // The app behind a modal dialog cannot take focus or clicks while it is open.
+  useEffect(() => {
+    const app = document.getElementById("root");
+    app?.setAttribute("inert", "");
+    return () => app?.removeAttribute("inert");
+  }, []);
+  // The control that opened Settings, or the user menu's button when that menu item is gone.
+  const returnFocus = () => {
+    const from = opener.current;
+    return from instanceof HTMLElement && from.isConnected && from !== document.body
+      ? from
+      : document.querySelector<HTMLElement>('[data-testid="user-menu-trigger"]');
+  };
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
@@ -203,18 +217,17 @@ export function SettingsOverlay({
         showCloseButton={false}
         aria-modal="true"
         initialFocus={() => panelRef.current}
-        // Models needs the full height for its two panes; other sections size to their content.
-        className={`flex max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px] ${
-          section === "models" ? "h-[min(760px,calc(100%-2rem))]" : ""
-        }`}
+        finalFocus={returnFocus}
+        // One height for every section, so the nav never moves under the pointer; the pane scrolls.
+        className="flex h-[min(760px,calc(100%-2rem))] max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px]"
       >
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* A phone cannot fit every section in a strip, so it gets a select. */}
-          <div className="border-b border-border px-4 py-3 md:hidden">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3 md:hidden">
             <NativeSelect
               data-testid="settings-nav-select"
               aria-label={t`Settings`}
-              className="w-full"
+              className="min-w-0 flex-1"
               value={section}
               disabled={panelBusy}
               onChange={(event) => setSection(event.target.value as SettingsSection)}
@@ -225,11 +238,18 @@ export function SettingsOverlay({
                 </NativeSelectOption>
               ))}
             </NativeSelect>
+            <DialogClose
+              aria-label={closeLabel}
+              disabled={panelBusy}
+              render={<Button variant="ghost" size="icon-sm" />}
+            >
+              <XIcon />
+            </DialogClose>
           </div>
           <nav
             data-testid="settings-nav"
             aria-label={t`Settings`}
-            className="hidden shrink-0 gap-1 border-border md:flex md:w-[200px] md:flex-col md:overflow-y-auto md:border-e md:px-3 md:py-4"
+            className="hidden shrink-0 gap-1 border-border md:flex md:w-[208px] md:flex-col md:overflow-y-auto md:border-e md:px-3 md:py-4"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -258,19 +278,20 @@ export function SettingsOverlay({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* Scrolling sections get a divider so cards never look tucked under the title. */}
             <div
-              className={`flex items-start justify-between gap-4 px-6 pt-6 sm:px-8 sm:pt-7 ${
+              className={`flex items-start justify-between gap-4 px-6 pt-6 max-md:p-0 sm:px-8 sm:pt-7 ${
                 section === "models" || section === "voice" || section === "memory"
                   ? ""
-                  : "border-b border-border pb-4"
+                  : "border-b border-border pb-4 max-md:border-b-0 max-md:pb-0"
               }`}
             >
-              <DialogTitle className="text-2xl font-medium text-foreground">
+              {/* On a phone the select above already names the section; the title stays for screen readers. */}
+              <DialogTitle className="text-2xl font-medium text-foreground max-md:sr-only">
                 {sectionTitle}
               </DialogTitle>
               <DialogClose
                 aria-label={closeLabel}
                 disabled={panelBusy}
-                render={<Button variant="ghost" size="icon-sm" />}
+                render={<Button variant="ghost" size="icon-sm" className="max-md:hidden" />}
               >
                 <XIcon />
               </DialogClose>

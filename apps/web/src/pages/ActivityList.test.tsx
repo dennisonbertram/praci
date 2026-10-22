@@ -33,6 +33,7 @@ vi.mock("@rakazo/ui-web", () => ({
   Label: () => null,
   NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
   NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
+  Skeleton: () => <div data-slot="skeleton" />,
 }));
 
 import { ActivityList } from "./ActivityList";
@@ -112,4 +113,22 @@ it("keeps the Activity header and Filter toggle visible while the filter form is
 
   await act(async () => toggle()?.click());
   expect(container.querySelector('[data-testid="activity-status-filter"]')).toBeNull();
+});
+
+it("does not shrink inside the sidebar's scrolling flex column, and scrolls its rows inside", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.runs.list.mockImplementation(async ({ filter }: { filter: string }) => ({
+    runs: filter === "active" ? [run("a", "waiting_input")] : [],
+  }));
+  const parent = document.createElement("div");
+  parent.className = "flex flex-col overflow-y-auto";
+  document.body.append(parent);
+  await act(async () => createRoot(parent).render(view()));
+
+  const root = parent.querySelector<HTMLElement>('[data-testid="activity-list"]');
+  expect(root?.classList.contains("shrink-0")).toBe(true);
+  const rows = parent.querySelector<HTMLElement>('[data-testid="activity-rows"]');
+  expect(rows?.classList.contains("overflow-y-auto")).toBe(true);
+  // The header and Filter toggle stay outside the scrolling rows.
+  expect(rows?.contains(parent.querySelector("h2"))).toBe(false);
 });

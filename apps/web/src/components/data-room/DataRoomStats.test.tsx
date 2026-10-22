@@ -58,7 +58,7 @@ const button = (label: string) =>
 it("shows every section and applies the filter of what is clicked", () => {
   render(manyDocuments);
   for (const title of [
-    "Documents over time",
+    "Documents by document date",
     "Types",
     "Sources",
     "Top parties",
@@ -108,4 +108,9 @@ it("turns a month or a year into the date range it covers", () => {
     docDateFrom: "2024-01-01T00:00:00.000Z",
     docDateTo: "2024-12-31T23:59:59.999Z",
   });
+});
+
+it("leaves out the Sources card when every file has the same source", () => {
+  render({ ...manyDocuments, sources: [{ value: "upload", count: 3 }] });
+  expect(container.textContent).not.toContain("Sources");
 });

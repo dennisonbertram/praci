@@ -4,6 +4,7 @@ import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
 import {
   Badge,
   Button,
+  Checkbox,
   ContextMenu,
   ContextMenuContent,
   ContextMenuTrigger,
@@ -22,7 +23,15 @@ import type { KeyboardEvent, ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
-import { dateText, isSettled, stageLabel, statusLabel, typeLabel } from "./format";
+import {
+  dateText,
+  isSettled,
+  isUnreadable,
+  readingAge,
+  stageLabel,
+  statusLabel,
+  typeLabel,
+} from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu, ItemMenuItems } from "./ItemMenu";
 import type { SendTarget } from "./SendToAgent";
@@ -42,6 +51,11 @@ export type RowInteraction = {
   /** The agents a file can be sent to, most recent first; without them there is no such menu. */
   agents?: SendTarget[];
   onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
+  /** Ticked rows (list view); without `onCheck` the list has no checkboxes. */
+  checked?: ReadonlySet<string>;
+  onCheck?: (item: DataRoomApiItem) => void;
+  /** The header box: tick (or untick) every row the list shows. */
+  onCheckAll?: (on: boolean) => void;
 };
 
 /** A file's row or tile, with the item menu on a right-click (or a long press on touch). */
@@ -85,12 +99,17 @@ function moveFocus(event: KeyboardEvent<HTMLElement>) {
   arrowMove = false;
 }
 
-function rowProps(item: DataRoomApiItem, o: RowInteraction) {
+/**
+ * Only the first row is a Tab stop and the arrow keys move between rows, so a page of 50 rows is
+ * one stop, not 100. ponytail: Shift+Tab back into the list lands on the first row, not the last one used.
+ */
+function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
   return {
     "data-row": "",
     "data-item-id": item.id,
-    tabIndex: 0,
-    onClick: () => o.onToggle(item),
+    tabIndex: first ? 0 : -1,
+    onClick: (event: React.MouseEvent) =>
+      o.onCheck && (event.metaKey || event.ctrlKey) ? o.onCheck(item) : o.onToggle(item),
     onFocus: (event: React.FocusEvent<HTMLElement>) => {
       if (arrowMove && event.target === event.currentTarget) o.onSelect(item);
     },
@@ -99,6 +118,9 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         moveFocus(event);
+      } else if (event.key === "x" && o.onCheck) {
+        // The keyboard route to a tick, as in the inbox: the checkbox itself is not a Tab stop.
+        o.onCheck(item);
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         o.onToggle(item);
@@ -160,20 +182,31 @@ const dateOf = (item: DataRoomApiItem, field: SortField | undefined) =>
   field === "date" ? dateText(item.facets.docDate) : dateText(item.createdAt, true);
 
 /** Fixed widths, so a one-row list leaves no stretched empty area and columns never shift. */
-function Columns() {
+function Columns({ showStatus }: { showStatus: boolean }) {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-28")} />
+      <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-36")} />
-      <col className={cn(MID_COLUMN, "w-20")} />
+      <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
+      <col className={cn(showStatus ? MID_COLUMN : "hidden", "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
 }
 
-function ListHead({ sortField }: { sortField: SortField | undefined }) {
+function ListHead({
+  sortField,
+  rows,
+  o,
+  showStatus,
+}: {
+  sortField: SortField | undefined;
+  rows: Row[];
+  o: RowInteraction;
+  showStatus: boolean;
+}) {
+  const allChecked = rows.length > 0 && rows.every(({ item }) => o.checked?.has(item.id));
   return (
     <TableHeader
       data-testid="data-room-head"
@@ -181,7 +214,21 @@ function ListHead({ sortField }: { sortField: SortField | undefined }) {
     >
       <TableHeadRow>
         <TableHead>
-          <Trans>Name</Trans>
+          {o.onCheckAll ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+                <Checkbox
+                  aria-label={t`Select all`}
+                  className="size-4.5 shrink-0"
+                  checked={allChecked}
+                  onCheckedChange={(on) => o.onCheckAll?.(on)}
+                />
+              </span>
+              <Trans>Name</Trans>
+            </div>
+          ) : (
+            <Trans>Name</Trans>
+          )}
         </TableHead>
         <TableHead className={MID_COL}>
           <Trans>Type</Trans>
@@ -192,17 +239,24 @@ function ListHead({ sortField }: { sortField: SortField | undefined }) {
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        <TableHead className={MID_COL}>
-          <Trans>Status</Trans>
-        </TableHead>
+        {showStatus ? (
+          <TableHead className={MID_COL}>
+            <Trans>Status</Trans>
+          </TableHead>
+        ) : null}
         <TableHead />
       </TableHeadRow>
     </TableHeader>
   );
 }
 
-/** Reads a failed file again, in the row itself. It never opens the preview. */
+/**
+ * The one action under a failed file. Retrying a file that cannot be read fails the same way, so
+ * that file offers Delete (then upload a new copy); a transient failure offers Try again. It never
+ * opens the preview.
+ */
 function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
+  const unreadable = isUnreadable(item.error);
   return (
     <Button
       variant="outline"
@@ -210,11 +264,11 @@ function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) 
       className="mt-1"
       onClick={(event) => {
         event.stopPropagation();
-        o.onAction("retry", item);
+        o.onAction(unreadable ? "delete" : "retry", item);
       }}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <Trans>Try again</Trans>
+      {unreadable ? <Trans>Delete</Trans> : <Trans>Try again</Trans>}
     </Button>
   );
 }
@@ -224,97 +278,123 @@ function ItemRow({
   snippets,
   o,
   sortField,
+  first,
+  showStatus,
 }: {
   item: DataRoomApiItem;
-  /** Search only: the text that matched, under the row. */
+  /** Search only: the text that matched, under the name. */
   snippets: string[];
   o: RowInteraction;
   sortField: SortField | undefined;
+  first: boolean;
+  showStatus: boolean;
 }) {
   const label = statusLabel(item.status);
+  // ponytail: age since the file was added, so a retried file shows its full age; an item field would be exact.
+  const age = label && item.status !== "failed" ? readingAge(item.createdAt) : "";
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   const parties = item.facets.parties.join(", ");
   const type = typeLabel(item.facets.docType);
   const date = dateOf(item, sortField);
   const shown = o.shownId === item.id;
   return (
-    <>
-      <FileContext
-        item={item}
-        o={o}
-        render={
-          <TableRow
-            aria-current={shown}
-            {...rowProps(item, o)}
-            className={cn(
-              "group/row cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-              // Clearly stronger than the hover tint, so the chosen row stays obvious.
-              shown && "bg-sidebar-accent hover:bg-sidebar-accent",
-            )}
-          />
-        }
-      >
-        <TableCell data-testid="data-room-name">
-          <div className="flex min-w-0 items-center gap-2">
+    <FileContext
+      item={item}
+      o={o}
+      render={
+        <TableRow
+          aria-current={shown}
+          {...rowProps(item, o, first)}
+          className={cn(
+            "group/row cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+            // Clearly stronger than the hover tint, so the chosen row stays obvious.
+            shown && "bg-sidebar-accent hover:bg-sidebar-accent",
+          )}
+        />
+      }
+    >
+      <TableCell data-testid="data-room-name">
+        <div className="flex min-w-0 items-center gap-2">
+          {/* On touch the checkbox always shows, so the slot is a 44 px target. */}
+          <span className="relative inline-flex shrink-0 pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center">
             <Marker item={item} />
-            <div className="flex min-w-0 flex-col">
-              <span
-                className={cn(
-                  "line-clamp-2 font-medium break-words",
-                  !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
-                )}
-                title={item.name}
-              >
-                {item.name}
+            {o.onCheck ? (
+              <Checkbox
+                aria-label={t`Select ${item.name}`}
+                tabIndex={-1}
+                checked={o.checked?.has(item.id) ?? false}
+                onCheckedChange={() => o.onCheck?.(item)}
+                onClick={(event) => event.stopPropagation()}
+                // Over the icon: shown on hover, while ticked, and always on touch screens.
+                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-3.25 pointer-coarse:opacity-100 data-checked:opacity-100"
+              />
+            ) : null}
+          </span>
+          <div className="flex min-w-0 flex-col">
+            <span
+              className={cn(
+                "line-clamp-2 font-medium break-words",
+                !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
+              )}
+              title={item.name}
+            >
+              {item.name}
+            </span>
+            {folder ? (
+              <span className="truncate text-xs text-muted-foreground">{folder}</span>
+            ) : null}
+            {/* Where the Type, Date and Status columns are hidden (a phone), they go under the name. */}
+            <span
+              data-testid="data-room-subline"
+              className={cn(
+                "truncate text-xs text-muted-foreground",
+                // On a wide list the Status column says it; the age has no column, so it stays.
+                !age && "@min-[640px]/list:hidden",
+                item.status === "failed" && "text-destructive",
+              )}
+            >
+              {age || label || <TypeAndDate item={item} sortField={sortField} />}
+            </span>
+            {item.status === "failed" && !item.error ? (
+              <span data-testid="data-room-failed-reason" className="text-xs text-destructive">
+                <Trans>Could not read this file. Delete it and upload it again.</Trans>
               </span>
-              {folder ? (
-                <span className="truncate text-xs text-muted-foreground">{folder}</span>
-              ) : null}
-              {/* Where the Type, Date and Status columns are hidden (a phone), they go under the name. */}
-              <span
-                data-testid="data-room-subline"
-                className={cn(
-                  "truncate text-xs text-muted-foreground @min-[640px]/list:hidden",
-                  item.status === "failed" && "text-destructive",
-                )}
-              >
-                {label || <TypeAndDate item={item} sortField={sortField} />}
+            ) : null}
+            {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
+            {item.status === "failed" && item.error ? (
+              <span data-testid="data-room-error" className="text-xs text-destructive">
+                {item.error}
               </span>
-              {item.status === "failed" && !item.error ? (
-                <span data-testid="data-room-failed-reason" className="text-xs text-destructive">
-                  <Trans>Could not read this file. Delete it and upload it again.</Trans>
-                </span>
-              ) : null}
-              {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
-              {item.status === "failed" && item.error ? (
-                <span data-testid="data-room-error" className="text-xs text-destructive">
-                  {item.error}
-                </span>
-              ) : null}
-              {item.status === "failed" ? (
-                <span>
-                  <RetryButton item={item} o={o} />
-                </span>
-              ) : null}
-            </div>
+            ) : null}
+            {item.status === "failed" ? (
+              <span>
+                <RetryButton item={item} o={o} />
+              </span>
+            ) : null}
+            {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
+            {snippets.map((snippet) => (
+              <Snippet key={snippet} text={snippet} />
+            ))}
           </div>
-        </TableCell>
-        <TableCell
-          className={cn(MID_COL, "truncate text-muted-foreground")}
-          title={type || undefined}
-        >
-          {type || (isSettled(item.status) ? <NotTagged /> : empty)}
-        </TableCell>
-        <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
-          {date || empty}
-        </TableCell>
-        <TableCell
-          data-testid="data-room-parties"
-          className={cn(PARTIES_COL, "truncate text-muted-foreground")}
-          title={parties || undefined}
-        >
-          {parties || empty}
-        </TableCell>
+        </div>
+      </TableCell>
+      <TableCell
+        className={cn(MID_COL, "truncate text-muted-foreground")}
+        title={type || undefined}
+      >
+        {type || (isSettled(item.status) ? <NotTagged /> : empty)}
+      </TableCell>
+      <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
+        {date || empty}
+      </TableCell>
+      <TableCell
+        data-testid="data-room-parties"
+        className={cn(PARTIES_COL, "truncate text-muted-foreground")}
+        title={parties || undefined}
+      >
+        {parties || empty}
+      </TableCell>
+      {showStatus ? (
         <TableCell
           data-testid="data-room-status"
           className={MID_COL}
@@ -324,36 +404,19 @@ function ItemRow({
             <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
           ) : null}
         </TableCell>
-        <TableCell className="pe-0">
-          <ItemMenu
-            item={item}
-            onAction={o.onAction}
-            canRetry={item.status === "failed"}
-            agents={o.agents}
-            onSendToAgent={o.onSendToAgent}
-            className={ROW_ACTIONS}
-          />
-        </TableCell>
-      </FileContext>
-      {snippets.length ? (
-        // Under the name (past its icon), across the whole row.
-        <TableRow
-          className={cn(
-            "h-auto cursor-pointer border-t-0",
-            shown && "bg-sidebar-accent hover:bg-sidebar-accent",
-          )}
-          onClick={() => o.onToggle(item)}
-        >
-          <TableCell colSpan={6} className="pt-0 ps-5.5">
-            <div className="flex flex-col gap-1">
-              {snippets.map((snippet) => (
-                <Snippet key={snippet} text={snippet} />
-              ))}
-            </div>
-          </TableCell>
-        </TableRow>
       ) : null}
-    </>
+      <TableCell className="pe-0">
+        <ItemMenu
+          item={item}
+          onAction={o.onAction}
+          canRetry={item.status === "failed"}
+          agents={o.agents}
+          onSendToAgent={o.onSendToAgent}
+          triggerTabIndex={-1}
+          className={ROW_ACTIONS}
+        />
+      </TableCell>
+    </FileContext>
   );
 }
 
@@ -374,6 +437,7 @@ export function SubfolderList({
   onAction,
   contents,
   tiles = false,
+  showStatus = true,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
@@ -381,6 +445,8 @@ export function SubfolderList({
   /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
   contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
+  /** Whether the file table has a Status column; the empty cells span the columns that exist. */
+  showStatus?: boolean;
 }) {
   if (!folders.length) return null;
   if (tiles) {
@@ -427,7 +493,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={3} className={MID_COL} />
+          <TableCell colSpan={showStatus ? 3 : 2} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -450,19 +516,29 @@ export function ListView({
 }: {
   rows: Row[];
   o: RowInteraction;
-  lead?: () => ReactNode;
+  lead?: (showStatus: boolean) => ReactNode;
   /** The field the list is sorted by; the Date column shows it. Without one: when added. */
   sortField?: SortField;
 }) {
+  // A column that is empty on every row is left out.
+  const showStatus = rows.some(({ item }) => statusLabel(item.status));
   return (
     <div className={LIST_PAD}>
       <Table>
-        <Columns />
-        <ListHead sortField={sortField} />
-        {lead?.()}
+        <Columns showStatus={showStatus} />
+        <ListHead sortField={sortField} rows={rows} o={o} showStatus={showStatus} />
+        {lead?.(showStatus)}
         <TableBody aria-label={t`Items`} data-rows>
-          {rows.map(({ item, snippets }) => (
-            <ItemRow key={item.id} item={item} snippets={snippets} o={o} sortField={sortField} />
+          {rows.map(({ item, snippets }, index) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              snippets={snippets}
+              o={o}
+              sortField={sortField}
+              first={index === 0}
+              showStatus={showStatus}
+            />
           ))}
         </TableBody>
       </Table>
@@ -577,14 +653,14 @@ export function GridView({
 }) {
   return (
     <ul aria-label={t`Items`} data-rows className={TILE_GRID}>
-      {rows.map(({ item }) => (
+      {rows.map(({ item }, index) => (
         <FileContext
           key={item.id}
           item={item}
           o={o}
           render={
             <li
-              {...rowProps(item, o)}
+              {...rowProps(item, o, index === 0)}
               aria-current={o.shownId === item.id}
               className={cn(
                 TILE,
@@ -600,6 +676,7 @@ export function GridView({
             canRetry={item.status === "failed"}
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
+            triggerTabIndex={-1}
             className="absolute top-3 right-3 bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
@@ -614,8 +691,19 @@ export function GridView({
               item.status === "failed" && "text-destructive",
             )}
           >
-            {statusLabel(item.status) ? (
-              <span>{statusLabel(item.status)}</span>
+            {item.status === "failed" ? (
+              <>
+                <span>{statusLabel(item.status)}</span>
+                {/* Why, as on the list row; the reason may run to two lines. */}
+                <span
+                  data-testid="data-room-failed-reason"
+                  className="line-clamp-2 whitespace-normal!"
+                >
+                  {item.error ?? t`Could not read this file`}
+                </span>
+              </>
+            ) : statusLabel(item.status) ? (
+              <span>{readingAge(item.createdAt) || statusLabel(item.status)}</span>
             ) : (
               <>
                 <span>{typeLabel(item.facets.docType) || <NotTagged />}</span>

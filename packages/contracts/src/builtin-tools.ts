@@ -66,6 +66,8 @@ export const BUILTIN_TOOL_NAMES = [
   "contacts_save",
   "cap_table_read",
   "cap_table_update",
+  "investor_update_draft",
+  "fundraising_read",
   "drive_search",
   "drive_read",
   "drive_create_file",
@@ -159,3 +161,45 @@ export const DisabledBuiltinToolsSchema = z
     });
   })
   .transform((names) => [...new Set(names)]);
+
+/**
+ * The only built-in tools an external bot is offered (a closed list, not a denylist: a tool added
+ * later stays off). It has no mail, finance, cap table, data room, meeting, memory or history
+ * tools, and no way to spawn, hand off to or connect other bots.
+ */
+export const EXTERNAL_BUILTIN_TOOLS: ReadonlySet<string> = new Set([
+  "web_search",
+  "web_fetch",
+  "ask_user",
+  "page_read",
+  "page_write",
+  "page_edit",
+  "scratchpad_list",
+  "scratchpad_add",
+  "scratchpad_update",
+  "scratchpad_complete",
+  "scratchpad_remove",
+  "skill_read",
+  "message_bot",
+]);
+
+/** Added to the external list only when the owner turns the computer on for that bot. */
+export const EXTERNAL_COMPUTER_TOOLS: ReadonlySet<string> = new Set([
+  "computer_observe",
+  "computer_act",
+  "browser_navigate",
+  "browser_snapshot",
+  "browser_act",
+  "list_files",
+  "read_file",
+  "write_file",
+  "attach_file",
+  "show_image",
+  "shell",
+  "open_path",
+  "launch_app",
+]);
+
+export function externalBotMayUseBuiltin(name: string, computerTools: boolean): boolean {
+  return EXTERNAL_BUILTIN_TOOLS.has(name) || (computerTools && EXTERNAL_COMPUTER_TOOLS.has(name));
+}

@@ -1,19 +1,9 @@
 import { useLingui } from "@lingui/react/macro";
-import type { Me, ThreadSnapshot } from "@rakazo/contracts";
+import type { Me } from "@rakazo/contracts";
 import { useCallback, useMemo } from "react";
 import { rpc } from "../../lib/rpc";
 import type { TourStep } from "./TourPopover";
 import { TourPopover } from "./TourPopover";
-
-/** True while a Connect card waits for an answer: still pending, and the user has not written since. */
-export function connectCardsOpen(messages: ThreadSnapshot["messages"]) {
-  const lastUser = messages.findLastIndex((message) => message.role === "user");
-  return messages.some(
-    (message, i) =>
-      i > lastUser &&
-      message.blocks.some((block) => block.kind === "app_connect" && block.status === "pending"),
-  );
-}
 
 /**
  * The first-run tour. It runs when `open` is true; finishing or skipping it records `tourSeen`
@@ -25,10 +15,10 @@ export function FirstRunTour({
   onAsk,
 }: {
   open: boolean;
-  /** The last step's button: finishes the tour and focuses the composer on a sample question. */
+  /** The last step's "Ask Chief": finishes the tour, opens Chief and sends a sample question. */
   onAsk: () => void;
-  /** Called as soon as the tour ends. */
-  onClose: (me: Me | null) => void;
+  /** Called as soon as the tour ends; `byEscape` when the Escape key ended it. */
+  onClose: (me: Me | null, byEscape?: boolean) => void;
 }) {
   const { t } = useLingui();
   // Top to bottom, in the order the sidebar shows them. Each line says what Maya can do there.
@@ -37,12 +27,12 @@ export function FirstRunTour({
       {
         id: "search",
         anchor: '[data-tour="sidebar-search"]',
-        text: t`Type here to find any chat, file or email.`,
+        text: t`Type here to find any page, chat or email.`,
       },
       {
         id: "create",
         anchor: '[data-tour="create-menu"]',
-        text: t`Press + to create an agent or a group chat.`,
+        text: t`Press + to create a bot or a group chat.`,
       },
       {
         id: "inbox",
@@ -57,22 +47,22 @@ export function FirstRunTour({
       {
         id: "legal",
         anchor: '[data-tour="sidebar-legal"]',
-        text: t`Keep contracts here, and see who owns what in Cap table.`,
+        text: t`Keep contracts here, and see who owns what in Investors.`,
       },
       {
         id: "files",
         anchor: '[data-tour="sidebar-data-room"]',
-        text: t`Upload files for agents to use. Artifacts holds what agents make.`,
+        text: t`Upload files for bots to use. Artifacts holds what bots make.`,
       },
       {
         id: "chat",
         anchor: '[data-tour="sidebar-chat"]',
-        text: t`Ask Chief anything. Agents ask before they send, pay or change anything.`,
+        text: t`Ask Chief anything.`,
       },
       {
         id: "apps",
         anchor: '[data-tour="sidebar-integrations"]',
-        text: t`Connect Gmail, Calendar and other apps so agents can read your mail and files.`,
+        text: t`Connect Gmail, Calendar and more in Integrations so bots can read your mail and files.`,
       },
       {
         id: "account",
@@ -83,17 +73,17 @@ export function FirstRunTour({
     [t],
   );
   const finish = useCallback(
-    (result: "done" | "skip" | "empty") => {
+    (result: "done" | "skip" | "empty", byEscape?: boolean) => {
       // With nothing to point at (the page has not loaded) nothing is recorded, so it can run later.
       if (result === "empty") return onClose(null);
       // Close at once; the save runs behind it so the popover never lingers on the next page.
       rpc.preferences.update({ tourSeen: true }).catch(() => undefined);
-      onClose(null);
+      onClose(null, byEscape);
     },
     [onClose],
   );
   if (!open) return null;
   return (
-    <TourPopover steps={steps} onFinish={finish} doneLabel={t`Ask a question`} onDone={onAsk} />
+    <TourPopover steps={steps} onFinish={finish} lastAction={{ label: t`Ask Chief`, run: onAsk }} />
   );
 }

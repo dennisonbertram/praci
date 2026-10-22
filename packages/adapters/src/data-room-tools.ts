@@ -10,7 +10,7 @@ import type { Actor } from "@rakazo/contracts";
 import { DataRoomApiFiltersSchema } from "@rakazo/contracts";
 import { clampInt } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, IsolationError } from "@rakazo/db";
+import { createDataRoomRepos, eligibleWhere, IsolationError } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
   createFileDataRoomItem,
@@ -96,6 +96,9 @@ export function isNotADocument(file: { mimeType: string; size: number; name: str
   );
 }
 
+/** The in-app path that opens a file's preview; the agent writes it as a markdown link on the file's name. */
+const dataRoomItemLink = (id: string) => `/app/data-room?item=${encodeURIComponent(id)}`;
+
 export async function dataRoomToolFromTool(
   name: string,
   deps: DataRoomToolDeps,
@@ -139,10 +142,23 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     limit: clampInt(args.limit, 1, MAX_RESULTS, DEFAULT_RESULTS),
     ...(await dataRoomQueryVector(deps.resolveAi, actor, query)),
   });
+  // A file still being read or indexed cannot match yet; say so, so "nothing found" is not final.
+  const indexing = await deps.prisma.dataRoomItem.count({
+    where: {
+      ...eligibleWhere(actor, { excludeConnectionIds: filters.excludeConnectionIds }),
+      status: { in: ["pending", "extracting", "classifying", "indexing"] },
+    },
+  });
   return {
+    ...(indexing
+      ? {
+          note: `${indexing} ${indexing === 1 ? "file is" : "files are"} still being indexed, so results may be incomplete. Tell the user and suggest asking again shortly.`,
+        }
+      : {}),
     results: page.results.map(({ item, snippet }) => ({
       id: item.id,
       name: item.name,
+      link: dataRoomItemLink(item.id),
       docType: item.docType,
       docDate: item.docDate?.toISOString().slice(0, 10) ?? null,
       snippet: snippet.replace(HIGHLIGHT_MARKS, "").slice(0, SNIPPET_CHARS),
@@ -175,6 +191,7 @@ async function read(deps: DataRoomToolDeps, actor: Actor, args: Record<string, u
   return {
     id: item.id,
     name: item.name,
+    link: dataRoomItemLink(item.id),
     folder: path.length ? path.join("/") : null,
     mimeType: item.mimeType,
     status: item.status,

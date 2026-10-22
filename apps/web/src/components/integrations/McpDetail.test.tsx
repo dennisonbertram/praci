@@ -135,10 +135,10 @@ it("has no switch on other servers", async () => {
   expect(writesSwitch()).toBeNull();
 });
 
-it("Carta links back to Cap table, hides the MCP host and names who loses access", async () => {
+it("Carta links back to Investors, hides the MCP host and names who loses access", async () => {
   await show(false);
-  const link = container.querySelector<HTMLAnchorElement>('a[href="/app/cap-table"]');
-  expect(link?.textContent).toBe("Open Cap table");
+  const link = container.querySelector<HTMLAnchorElement>('a[href="/app/investors"]');
+  expect(link?.textContent).toBe("Open Investors");
   expect(container.textContent).not.toContain("via MCP");
   expect(container.textContent).toContain("asks you before each one");
   await press("Remove Carta");
@@ -366,4 +366,44 @@ it("draws the Granola agent link once, under the key status, and names the route
   expect(container.querySelectorAll('a[href="/app/bot_ada"]')).toHaveLength(1);
   expect(container.querySelector("#server-writes")).toBeNull();
   expect(container.querySelector("#server-shared")).toBeNull();
+});
+
+it("lets a bank with no agent allow changes: confirming creates the agent and the switch reads on at once", async () => {
+  let finish: (value: object) => void = () => {};
+  create.mockResolvedValue({ server: {}, botId: "bot_new" });
+  setWrites.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+  await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
+  expect((writesSwitch() as HTMLInputElement).checked).toBe(false);
+  await act(async () => writesSwitch()?.click());
+  expect(create).not.toHaveBeenCalled();
+  await press("Allow changes");
+  expect((writesSwitch() as HTMLInputElement).checked).toBe(true);
+  expect(create).toHaveBeenCalledWith({ serverId: "s1" });
+  expect(navigate).not.toHaveBeenCalled();
+  await act(async () => finish({}));
+  expect(setWrites).toHaveBeenCalledWith({ id: "s1", enabled: true });
+});
+
+it("turns the pending switch back off and shows the error when allowing changes fails", async () => {
+  create.mockRejectedValue(new Error("nope"));
+  await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
+  await act(async () => writesSwitch()?.click());
+  await press("Allow changes");
+  expect(setWrites).not.toHaveBeenCalled();
+  expect((writesSwitch() as HTMLInputElement).checked).toBe(false);
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+});
+
+it("shows a skeleton, not an empty page, while the connections load", async () => {
+  const data = { ...mockIntegrations({ servers: [] }), loaded: false, refresh };
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations/mcp/s1"]}>
+        <Routes>
+          <Route path="/app/integrations/mcp/:serverId" element={<McpDetail data={data} />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[data-testid="mcp-detail-loading"]')).not.toBeNull();
 });

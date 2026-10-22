@@ -19,3 +19,16 @@ it("the Devin skill is read-only and links sessions with the page's session URL"
     expect(text).toContain(read);
   expect(text).toContain(devinSessionUrl("SESSION_ID"));
 });
+
+const update = BUILTIN_AGENT_SKILLS.find((s) => s.name === "investor-update");
+
+it("the investor-update skill reads past updates, takes an audience, saves a draft and never makes a Gmail draft or sends", () => {
+  const text = update?.content ?? "";
+  expect(BUILTIN_AGENT_SKILLS.some((s) => s.name === "carta-investor-update")).toBe(false);
+  expect(text).toContain('investor_update_draft with action "history"');
+  expect(text).toContain("audience");
+  expect(text).toContain("mail_search");
+  expect(text).toContain("notify_user");
+  for (const banned of ["mail_draft", "mail_send", "Bcc", "Carta"])
+    expect(text).not.toContain(banned);
+});

@@ -49,11 +49,13 @@ export function IntegrationAgentSection({
   onWrites,
   onShared,
   usedBy,
+  sharedLocked = false,
   idPrefix = "server",
 }: {
   service: string;
   agentName: string;
-  agentHref: string;
+  /** Omitted while the agent does not exist yet; the name is shown unlinked so the layout holds. */
+  agentHref?: string;
   writesEnabled: boolean;
   shared: boolean;
   disabled: boolean;
@@ -63,6 +65,8 @@ export function IntegrationAgentSection({
   onShared?: (on: boolean) => void;
   /** The per-agent list, shown while the connection is shared. */
   usedBy?: ReactNode;
+  /** The agent does not exist yet: the sharing switch shows its default so the rows below stay put. */
+  sharedLocked?: boolean;
   idPrefix?: string;
 }) {
   const { t } = useLingui();
@@ -72,9 +76,13 @@ export function IntegrationAgentSection({
         <Trans>Agent</Trans>
       </Heading>
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-3.5 py-3">
-        <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
-          {agentName}
-        </Link>
+        {agentHref ? (
+          <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
+            {agentName}
+          </Link>
+        ) : (
+          <span className="w-fit text-sm font-medium">{agentName}</span>
+        )}
         {onWrites ? (
           <WritesSwitch
             service={service}
@@ -96,7 +104,7 @@ export function IntegrationAgentSection({
               id={`${idPrefix}-shared`}
               aria-describedby={`${idPrefix}-shared-hint`}
               checked={shared}
-              disabled={disabled}
+              disabled={disabled || sharedLocked}
               onCheckedChange={onShared}
             />
             <Label htmlFor={`${idPrefix}-shared`}>

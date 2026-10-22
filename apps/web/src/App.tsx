@@ -12,7 +12,16 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -33,9 +42,13 @@ import {
 } from "./lib/session-gate";
 import { signInFor, signInNext } from "./lib/sign-in-next";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
+import { ConnectedCallbackPage } from "./pages/ConnectedCallback";
 import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
 import { LocalSettingsPage } from "./pages/LocalSettings";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
+import { PortalDead } from "./pages/portal/PortalDead";
+import { PortalHome } from "./pages/portal/PortalHome";
+import { PortalOpen } from "./pages/portal/PortalOpen";
 import { ShellPage } from "./pages/Shell";
 
 const AuthPage = lazy(() =>
@@ -53,6 +66,22 @@ const WelcomePage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import("./pages/NotFound").then((module) => ({ default: module.NotFoundPage })),
 );
+
+/** The investor portal: no Shell and no app session. An investor holds a link, never an account. */
+function PortalApp() {
+  const navigate = useNavigate();
+  return (
+    <Routes>
+      <Route path="/portal/open" element={<PortalOpen />} />
+      <Route
+        path="/portal/home"
+        element={<PortalHome onSignedOut={() => navigate("/portal", { replace: true })} />}
+      />
+      <Route path="/portal" element={<PortalDead quiet />} />
+      <Route path="*" element={<PortalDead />} />
+    </Routes>
+  );
+}
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -80,6 +109,8 @@ export function App() {
           <ErrorBoundary fallback={<AppFailed />}>
             {window.location.pathname === SSO_CALLBACK_PATH ? (
               <SsoCallbackPage />
+            ) : window.location.pathname.startsWith("/portal") ? (
+              <PortalApp />
             ) : window.location.pathname === LOCAL_SETTINGS_PAGE ? (
               <LocalSettingsPage />
             ) : (
@@ -116,7 +147,9 @@ function SessionApp() {
     return <SessionUnavailable refetch={session.refetch} />;
   }
   if (gate === "loading") {
-    return window.location.pathname.startsWith("/app") ? (
+    // /integrations/* also opens inside the shell, so it waits behind the same skeleton.
+    const { pathname } = window.location;
+    return pathname.startsWith("/app") || pathname.startsWith("/integrations") ? (
       <ShellSkeleton />
     ) : (
       <div
@@ -179,6 +212,7 @@ function SessionApp() {
             path="/integrations/google/callback"
             element={user ? <GoogleOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
+          <Route path="/integrations/connected" element={<ConnectedCallbackPage />} />
           {/* Setup links from the server use this path; the page itself lives inside the shell. */}
           <Route path="/integrations/setup" element={<LegacySetupRedirect />} />
           <Route
@@ -207,7 +241,9 @@ function SessionApp() {
             <Route path="/app/legal" element={<ShellPage />} />
             <Route path="/app/devin" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
-            <Route path="/app/cap-table/*" element={<ShellPage />} />
+            <Route path="/app/investors/*" element={<ShellPage />} />
+            <Route path="/app/fundraising" element={<ShellPage />} />
+            <Route path="/app/cap-table/*" element={<CapTableRedirect />} />
             <Route path="/app/contacts" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
@@ -226,6 +262,19 @@ function SessionApp() {
 function LegacySetupRedirect() {
   const { search } = useLocation();
   return <Navigate to={`/app/integrations/setup${search}`} replace />;
+}
+
+/** Cap table became Investors; old links keep their query, minus the Carta-only kinds that no longer filter. */
+function CapTableRedirect() {
+  const { search } = useLocation();
+  const rest = useParams()["*"];
+  const params = new URLSearchParams(search);
+  if (params.get("kind") === "shareholder" || params.get("kind") === "options")
+    params.delete("kind");
+  const query = params.toString();
+  return (
+    <Navigate to={`/app/investors${rest ? `/${rest}` : ""}${query ? `?${query}` : ""}`} replace />
+  );
 }
 
 /** Signed-out visits to an app page come back to that page after sign-in. */

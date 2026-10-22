@@ -1,8 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
-  LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
-  LEGAL_MODEL_REQUIRED_MESSAGE,
+  MISSING_TOOL_FINAL_RESPONSE_ERROR,
 } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import { X } from "lucide-react";
@@ -14,7 +13,6 @@ import { runErrorText } from "../../lib/user-error";
  * field; `""` opens the space's default provider's key field (a rejected key).
  */
 function modelSettingsFor(message: string): { provider: string } | null {
-  if (message === LEGAL_MODEL_REQUIRED_MESSAGE) return { provider: LEGAL_AGENT_MODEL.provider };
   return message === runErrorText("401") ? { provider: "" } : null;
 }
 
@@ -23,12 +21,15 @@ export function ComposerError({
   ref,
   message,
   onDismiss,
+  onRetry,
   onOpenModelSettings,
   onNavigate,
 }: {
   ref?: Ref<HTMLDivElement>;
   message: string;
   onDismiss: () => void;
+  /** Sends the last message again; offered only for a run that ended without a reply. */
+  onRetry?: () => void;
   onOpenModelSettings?: (provider?: string) => void;
   onNavigate?: (path: string) => void;
 }) {
@@ -53,6 +54,11 @@ export function ComposerError({
             <Trans>Open Models settings</Trans>
           </Button>
         ) : null}
+        {message === MISSING_TOOL_FINAL_RESPONSE_ERROR && onRetry ? (
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            <Trans>Retry</Trans>
+          </Button>
+        ) : null}
         {needsConsent && onNavigate ? (
           <Button size="sm" variant="outline" onClick={() => onNavigate("/app/legal")}>
             <Trans>Allow</Trans>
@@ -63,7 +69,7 @@ export function ComposerError({
           aria-label={t`Dismiss error`}
           data-testid="composer-error-dismiss"
           onClick={onDismiss}
-          className="shrink-0 text-destructive hover:text-foreground"
+          className="grid size-6 shrink-0 place-items-center text-destructive hover:text-foreground"
         >
           <X size={13} strokeWidth={2} />
         </button>

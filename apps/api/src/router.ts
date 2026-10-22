@@ -23,6 +23,8 @@ import type {
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
+  addScratchpadItemFromTool,
+  answerBotShare,
   applyCodexLiveCatalog,
   applyPendingSenderRules,
   applyTeachingDesktopInput,
@@ -57,6 +59,7 @@ import {
   enqueueTakeoverContinuation,
   ensureComputerWorkspaceLayout,
   expireComputerControl,
+  findBotShareEffect,
   forgetBotSecret,
   getBotPage,
   getBotPins,
@@ -66,7 +69,6 @@ import {
   isComputerScreenUnavailable,
   isMailConnection,
   isSandboxGoneError,
-  isScratchpadStatus,
   kickModelCredentialRefresh,
   latestAccountExport,
   listAvailablePiCatalog,
@@ -74,7 +76,6 @@ import {
   listPiCatalog,
   listScratchpadItems,
   McpOAuthBroker,
-  mapScratchpadItem,
   modelCredentialAuthKindsForSpace,
   modelCredentialDto,
   normalizeSecretDestination,
@@ -94,6 +95,7 @@ import {
   queueComputerUpdate,
   refreshBotPins,
   releaseComputerExecutionLease,
+  removeScratchpadItemFromUser,
   renderPageChartSvg,
   replaceComputer,
   requestAccountExport,
@@ -119,6 +121,7 @@ import {
   toComputerRef,
   touchRunningComputer,
   UNAVAILABLE_MODEL_FOR_AUTH_MESSAGE,
+  updateScratchpadItemFromUser,
   updateTicket,
   validateConnectedModelChoice,
   validateModelAuthAvailability,
@@ -129,6 +132,7 @@ import type {
   Actor,
   Bot,
   BotSecretMetadata,
+  ComposeFields,
   ComputerReleaseReason,
   ComputerStatus,
   ExportManifest,
@@ -142,6 +146,7 @@ import {
   ATTACHMENT_MAX_BYTES,
   actorScope,
   BotSecretAuth,
+  botAudienceEditable,
   ComputerCommandSchema,
   FIRST_BOT_SPAWN_KEY,
   foldComputerCommands,
@@ -157,6 +162,7 @@ import {
   isGranolaEndpoint,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
@@ -198,9 +204,12 @@ import {
   CannotDeleteLastSpaceError,
   CannotDeleteSpaceAsNonOwnerError,
   CannotRenameSpaceAsNonOwnerError,
+  CapTableSourceError,
   ComputerLimitError,
   ContactEmailTakenError,
+  changeCapTableSource,
   claimEmptySpaceDeletionForMember,
+  closeRound,
   createExternalConversationRepos,
   createGroupRepos,
   createRepos,
@@ -209,9 +218,12 @@ import {
   defaultModelCredentialCandidates,
   deleteContact,
   deleteEmptySpaceForMember,
+  deleteInvestorUpdate,
   deletePushTokens,
   deleteUnreferencedCredentialSecret,
+  duplicateInvestorUpdate,
   ensureBoard,
+  FundraiseRoundOpenError,
   findDefaultModelCredential,
   findDefaultVoiceCredential,
   findModelCredential,
@@ -219,28 +231,38 @@ import {
   findTicket,
   formatMessagingLinkCode,
   getCapTableSnapshot,
+  getContact,
+  getFundraisingOverview,
+  getInvestorUpdate,
   getNotificationPreferences,
   InvalidSpaceNameError,
+  InvestorUpdateLockedError,
   IsolationError,
   isRecordNotFound,
   issueMessagingLinkCode,
   isUniqueViolation,
+  linkedContact,
   linkedImessageIdentities,
   listBoards,
   listContacts,
+  listInvestorUpdates,
   listNotifications,
   listPushEndpoints,
+  listShareContactIds,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
+  markInvestorUpdateDelivered,
   markSeen,
   markShown,
+  mintPortalTokenFor,
   moveSidebarFolder,
   moveSidebarItem,
   NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
+  PortalBlockedError,
   Prisma,
   PushSessionEndedError,
   parseComputerMode,
@@ -250,26 +272,36 @@ import {
   removeSidebarPage,
   renameSpaceForMember,
   renewSpaceDeletionClaim,
+  reopenRound,
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
   restoreSidebar,
+  revokePortal,
   SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
   SpaceLimitError,
   SpaceNotEmptyError,
   SpaceNotFoundError,
+  saveCapTableSnapshot,
   saveContact,
+  saveInvestorUpdate,
+  saveProspect,
   savePushToken,
+  saveRound,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   setSidebarFolderCollapsed,
+  shareDocument,
   toBoardDto,
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unblockPortal,
+  undoCapTableSource,
   unseenBotKinds,
   unseenCounts,
+  unshareDocument,
   updateNotificationPreferences,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -311,6 +343,7 @@ import {
   assertNoOtherDevinConnection,
   devinAgent,
   devinConnect,
+  devinConnected,
   devinDisconnect,
   devinNeedsYouCount,
   devinReplaceKey,
@@ -376,6 +409,7 @@ import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
 import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
 import {
+  accountOut,
   inboxComposeDiscard,
   inboxComposeDraftSave,
   inboxComposePrefill,
@@ -402,6 +436,19 @@ import {
   setIntegrationExclusive,
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
+import {
+  deliverPortalLinks,
+  postInvestorUpdate,
+  startInvestorUpdateRetry,
+  startInvestorUpdateSend,
+} from "./investor-send.js";
+import {
+  cadenceOf,
+  ensureInvestorsAgent,
+  INVESTOR_UPDATE_ROUTINE_NAME,
+  setInvestorsReminder,
+} from "./investors-agent.js";
+import { sheetReadState, startSheetRead } from "./investors-sheet-sync.js";
 import {
   legalAgent,
   legalConsent,
@@ -741,7 +788,7 @@ async function allEffectiveAccess(prisma: PrismaClient, actor: Actor) {
     }),
     prisma.bot.findMany({
       where: { ...scope, archivedAt: null },
-      select: { id: true, spawnKey: true, archivedAt: true },
+      select: { id: true, spawnKey: true, archivedAt: true, audience: true },
     }),
   ]);
   return effectiveAccessByConnection(rows, bots);
@@ -893,11 +940,34 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
+/** A cap table write from a stale copy or a source that no longer owns the table is a conflict. */
+function capTableConflict(error: unknown): never {
+  if (error instanceof CapTableSourceError)
+    throw new ORPCError("CONFLICT", { message: error.message });
+  throw error;
+}
+
 function sidebarPageError(error: unknown): never {
   if (error instanceof SidebarPageError) {
     throw new ORPCError(error.code === "owner_only" ? "FORBIDDEN" : "BAD_REQUEST", {
       message: error.message,
     });
+  }
+  throw error;
+}
+
+function investorUpdateError(error: unknown): never {
+  if (error instanceof InvestorUpdateLockedError)
+    throw new ORPCError("CONFLICT", { message: error.message });
+  if (error instanceof PortalBlockedError)
+    throw new ORPCError("CONFLICT", { message: error.message });
+  return contactNotFound(error);
+}
+
+function fundraisingError(error: unknown): never {
+  if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
+  if (error instanceof FundraiseRoundOpenError) {
+    throw new ORPCError("CONFLICT", { message: error.message });
   }
   throw error;
 }
@@ -1172,6 +1242,29 @@ export function createRouter(deps: RouterDeps) {
     hasModel: async (actor) => !(await modelSetup(deps, actor)).needsModel,
     enqueueRun: (runId) => deps.jobs.enqueue(runContinueJob(runId)),
   };
+  const capTableState = async (actor: Actor) => {
+    const snapshot = await getCapTableSnapshot(deps.prisma, actorScope(actor));
+    return {
+      snapshot,
+      syncing: await isCartaSyncing(deps.prisma, actor),
+      ...(snapshot?.source === "sheet"
+        ? await sheetReadState(deps.prisma, actor, snapshot.updatedAt)
+        : { reading: false, lastReadFailed: false }),
+    };
+  };
+  /** Starts the sheet read and turns its refusals into the messages the page shows. */
+  const readSheet = async (actor: Actor) => {
+    const result = await startSheetRead(
+      { ...cartaSyncDeps, prisma: deps.prisma, jobs: deps.jobs },
+      actor,
+    ).catch((error: unknown) => {
+      throw mapSpaceLifecycleError(error);
+    });
+    if (result === "no_model")
+      throw new ORPCError("BAD_REQUEST", { message: "Add a model before reading the sheet" });
+    if (result === "other_source")
+      throw new ORPCError("BAD_REQUEST", { message: "The cap table is not read from a sheet" });
+  };
   const beginMcpOAuth = (input: {
     serverId: string;
     spaceId: string;
@@ -1197,6 +1290,24 @@ export function createRouter(deps: RouterDeps) {
     crypto: deps.financeCrypto,
     parseStatement: deps.parseStatement,
     ...(deps.exchangeFetch ? { exchangeFetch: deps.exchangeFetch } : {}),
+  };
+  const investorSendDeps = {
+    prisma: deps.prisma,
+    mailWritesDisabled: deps.env.mailWritesDisabled,
+    compose: (actor: Actor, fields: ComposeFields) =>
+      inboxComposeSend({ ...deps, mailWritesDisabled: deps.env.mailWritesDisabled }, actor, fields),
+    gmailConnectionIds: async (actor: Actor) =>
+      (
+        await deps.mail.listAccounts(
+          { spaceId: actor.spaceId, userId: actor.userId },
+          mailContext(actor, "investors.updates.send"),
+        )
+      ).map((account) => account.id),
+    email: deps.email,
+    portalLink: async (actor: Actor, contactId: string) => {
+      const { token, email } = await mintPortalTokenFor(deps.prisma, actor, contactId);
+      return { link: `${deps.env.webOrigin}/portal/open#${token}`, email };
+    },
   };
   const legalDeps = {
     prisma: deps.prisma,
@@ -1297,7 +1408,12 @@ export function createRouter(deps: RouterDeps) {
           where: {
             userId: context.actor.userId,
             spaceId: context.actor.spaceId,
-            recipientKey: input.key ?? undefined,
+            // Taking a model back also takes back the document grants given on top of it.
+            ...(input.key
+              ? {
+                  OR: [{ recipientKey: input.key }, { recipientKey: { startsWith: "data-room:" } }],
+                }
+              : {}),
           },
         });
         return aiConsentStatus(deps, context.actor);
@@ -1318,7 +1434,10 @@ export function createRouter(deps: RouterDeps) {
             timezone: input.timezone,
             tourSeenAt:
               input.tourSeen === undefined ? undefined : input.tourSeen ? new Date() : null,
-            hiddenPages: input.hiddenPages && [...new Set(input.hiddenPages)],
+            // A tab open across the cap-table rename may still send the old key.
+            hiddenPages: input.hiddenPages && [
+              ...new Set(input.hiddenPages.map((key) => (key === "cap-table" ? "investors" : key))),
+            ],
           },
         });
         return meDto(deps, context.actor);
@@ -2083,6 +2202,7 @@ export function createRouter(deps: RouterDeps) {
           isMailThreadAgentSpawnKey(input.spawnKey) ||
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
+          isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
@@ -2128,6 +2248,9 @@ export function createRouter(deps: RouterDeps) {
             modelId: source.modelId,
             thinkingLevel: source.thinkingLevel,
             disabledBuiltinTools: source.disabledBuiltinTools,
+            audience: source.audience === "external" ? "external" : "internal",
+            externalMessageTargets: source.externalMessageTargets,
+            externalComputerTools: source.externalComputerTools,
           })
           .catch((error: unknown) => {
             throw mapSpaceLifecycleError(error);
@@ -2293,6 +2416,27 @@ export function createRouter(deps: RouterDeps) {
             });
           }
         }
+        // Only the signed-in owner reaches this (getBot above is scoped to space and user), and no
+        // bot tool can set audience. Agents that hold private data by design stay internal.
+        if (input.audience === "external" && !botAudienceEditable(existing.spawnKey)) {
+          throw new ORPCError("BAD_REQUEST", { message: "This agent cannot be external" });
+        }
+        const messageTargets =
+          input.externalMessageTargets === undefined
+            ? undefined
+            : [...new Set(input.externalMessageTargets)];
+        if (messageTargets?.length) {
+          const allowed = await deps.prisma.bot.count({
+            where: {
+              id: { in: messageTargets, not: input.botId },
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              archivedAt: null,
+              audience: "internal",
+            },
+          });
+          if (allowed !== messageTargets.length) throw new IsolationError();
+        }
         await commitBotUpdate({
           prisma: deps.prisma,
           notify: (threadId, seq) => deps.events.notify(threadId, seq),
@@ -2324,6 +2468,11 @@ export function createRouter(deps: RouterDeps) {
               ? { disabledBuiltinTools: input.disabledBuiltinTools }
               : {}),
             ...(input.runsOn !== undefined ? { runsOn: input.runsOn } : {}),
+            ...(input.audience !== undefined ? { audience: input.audience } : {}),
+            ...(messageTargets !== undefined ? { externalMessageTargets: messageTargets } : {}),
+            ...(input.externalComputerTools !== undefined
+              ? { externalComputerTools: input.externalComputerTools }
+              : {}),
           },
         });
         const bots = await repos.listBots(context.actor);
@@ -2986,6 +3135,22 @@ export function createRouter(deps: RouterDeps) {
                 getLogger().error("thread answer enqueue", error);
               }),
           );
+          return { ok: true as const };
+        }
+        // A held bot-to-bot message is answered without a waiting run: Share delivers the stored
+        // text once, Don't share delivers nothing. The card says which; the client sends no text.
+        const scope = {
+          spaceId: context.actor.spaceId,
+          userId: context.actor.userId,
+          threadId: target.threadId,
+        };
+        if (await findBotShareEffect(deps.prisma, scope, input)) {
+          const shared = await answerBotShare(deps, scope, input);
+          if (!shared) {
+            throw new ORPCError("CONFLICT", {
+              message: "This prompt is no longer awaiting an answer",
+            });
+          }
           return { ok: true as const };
         }
         const answered = await deps.events.answerRunInput({
@@ -4224,6 +4389,7 @@ export function createRouter(deps: RouterDeps) {
           { prisma: deps.prisma },
           {
             spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
             botId: input.botId,
             status: input.status,
             includeDone: input.includeDone ?? false,
@@ -4232,17 +4398,25 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.scratchpad.create.handler(async ({ context, input }) => {
         await repos.getBot(context.actor, input.botId);
-        const row = await deps.prisma.scratchpadItem.create({
-          data: {
+        const result = await addScratchpadItemFromTool(
+          { prisma: deps.prisma },
+          {
             spaceId: context.actor.spaceId,
-            botId: input.botId,
             userId: context.actor.userId,
-            title: input.title.trim(),
+            botId: input.botId,
+            title: input.title,
             status: input.status,
-            notes: input.notes.trim(),
+            notes: input.notes,
+            category: input.category,
+            channel: input.channel,
+            target: input.target,
+            scheduledFor: input.scheduledFor,
           },
-        });
-        return mapScratchpadItem(row);
+        );
+        if ("error" in result) {
+          throw new ORPCError("BAD_REQUEST", { message: result.error });
+        }
+        return result.item;
       }),
       update: authed.scratchpad.update.handler(async ({ context, input }) => {
         const existing = await deps.prisma.scratchpadItem.findFirst({
@@ -4253,18 +4427,31 @@ export function createRouter(deps: RouterDeps) {
           },
         });
         if (!existing) throw new IsolationError();
-        if (input.status !== undefined && !isScratchpadStatus(input.status)) {
-          throw new ORPCError("BAD_REQUEST", { message: "Invalid scratchpad status." });
-        }
-        const row = await deps.prisma.scratchpadItem.update({
-          where: { id: existing.id },
-          data: {
-            ...(input.title !== undefined ? { title: input.title.trim() } : {}),
-            ...(input.status !== undefined ? { status: input.status } : {}),
-            ...(input.notes !== undefined ? { notes: input.notes.trim() } : {}),
+        await repos.getBot(context.actor, existing.botId);
+        const result = await updateScratchpadItemFromUser(
+          { prisma: deps.prisma },
+          {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            botId: existing.botId,
+            itemId: input.itemId,
+            title: input.title,
+            status: input.status,
+            notes: input.notes,
+            target: input.target,
+            scheduledFor: input.scheduledFor,
+            proof: input.proof,
+            updatedAt: input.updatedAt,
+            reapprove: input.reapprove,
           },
-        });
-        return mapScratchpadItem(row);
+        );
+        if ("conflict" in result) {
+          throw new ORPCError("CONFLICT", { message: "Changed, review again" });
+        }
+        if ("error" in result) {
+          throw new ORPCError("BAD_REQUEST", { message: result.error });
+        }
+        return result.item;
       }),
       remove: authed.scratchpad.remove.handler(async ({ context, input }) => {
         const existing = await deps.prisma.scratchpadItem.findFirst({
@@ -4275,7 +4462,17 @@ export function createRouter(deps: RouterDeps) {
           },
         });
         if (!existing) throw new IsolationError();
-        await deps.prisma.scratchpadItem.delete({ where: { id: existing.id } });
+        await repos.getBot(context.actor, existing.botId);
+        const result = await removeScratchpadItemFromUser(
+          { prisma: deps.prisma },
+          {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            botId: existing.botId,
+            itemId: existing.id,
+          },
+        );
+        if ("error" in result) throw new ORPCError("BAD_REQUEST", { message: result.error });
         return { ok: true as const };
       }),
     },
@@ -5502,8 +5699,13 @@ export function createRouter(deps: RouterDeps) {
         if (input.permission && input.connectorId !== "google") {
           throw new ORPCError("BAD_REQUEST", { message: "This permission is only for Google" });
         }
+        // Composio and Pipedream finish by polling, so their sign-in window only has to close itself.
         const redirectUrl =
-          input.redirect === "desktop" ? GOOGLE_DESKTOP_REDIRECT_URI : `${deps.env.webOrigin}/app`;
+          input.redirect === "desktop"
+            ? GOOGLE_DESKTOP_REDIRECT_URI
+            : input.connectorId === "composio" || input.connectorId === "pipedream"
+              ? `${deps.env.webOrigin}/integrations/connected`
+              : `${deps.env.webOrigin}/app`;
         const connector =
           deps.integrationSettings &&
           (input.connectorId === "composio" ||
@@ -7158,17 +7360,143 @@ export function createRouter(deps: RouterDeps) {
         legalConsentGrant(legalDeps, context.actor, input),
       ),
     },
-    carta: {
-      agent: authed.carta.agent.handler(({ context }) =>
-        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
-          throw mapSpaceLifecycleError(error);
-        }),
+    investors: {
+      agent: authed.investors.agent.handler(({ context }) =>
+        ensureInvestorsAgent({ prisma: deps.prisma, jobs: deps.jobs, repos }, context.actor).catch(
+          (error: unknown) => {
+            throw mapSpaceLifecycleError(error);
+          },
+        ),
       ),
-      capTable: authed.carta.capTable.handler(async ({ context }) => ({
-        snapshot: await getCapTableSnapshot(deps.prisma, actorScope(context.actor)),
-        syncing: await isCartaSyncing(deps.prisma, context.actor),
-      })),
-      refresh: authed.carta.refresh.handler(async ({ context }) => {
+      updates: {
+        list: authed.investors.updates.list.handler(({ context }) =>
+          listInvestorUpdates(deps.prisma, context.actor),
+        ),
+        accounts: authed.investors.updates.accounts.handler(async ({ context }) =>
+          (
+            await deps.mail.listAccounts(
+              { spaceId: context.actor.spaceId, userId: context.actor.userId },
+              mailContext(context.actor, "investors.updates.accounts"),
+            )
+          ).map(accountOut),
+        ),
+        get: authed.investors.updates.get.handler(({ context, input }) =>
+          getInvestorUpdate(deps.prisma, context.actor, input.id).catch(contactNotFound),
+        ),
+        save: authed.investors.updates.save.handler(({ context, input }) =>
+          saveInvestorUpdate(deps.prisma, context.actor, input).catch(investorUpdateError),
+        ),
+        send: authed.investors.updates.send.handler(
+          async ({ context, input }) =>
+            (
+              await startInvestorUpdateSend(investorSendDeps, context.actor, input.id).catch(
+                investorUpdateError,
+              )
+            ).update,
+        ),
+        retry: authed.investors.updates.retry.handler(
+          async ({ context, input }) =>
+            (
+              await startInvestorUpdateRetry(investorSendDeps, context.actor, input).catch(
+                investorUpdateError,
+              )
+            ).update,
+        ),
+        markDelivered: authed.investors.updates.markDelivered.handler(({ context, input }) =>
+          markInvestorUpdateDelivered(deps.prisma, context.actor, input.id, input.contactIds).catch(
+            investorUpdateError,
+          ),
+        ),
+        duplicate: authed.investors.updates.duplicate.handler(({ context, input }) =>
+          duplicateInvestorUpdate(deps.prisma, context.actor, input.id).catch(investorUpdateError),
+        ),
+        delete: authed.investors.updates.delete.handler(async ({ context, input }) => {
+          await deleteInvestorUpdate(deps.prisma, context.actor, input.id).catch(
+            investorUpdateError,
+          );
+          return { ok: true as const };
+        }),
+        post: authed.investors.updates.post.handler(({ context, input }) =>
+          postInvestorUpdate(investorSendDeps, context.actor, input.id).catch(investorUpdateError),
+        ),
+      },
+      shares: authed.investors.shares.handler(({ context, input }) =>
+        listShareContactIds(deps.prisma, context.actor, input.itemId),
+      ),
+      share: authed.investors.share.handler(async ({ context, input }) => {
+        const added = await shareDocument(
+          deps.prisma,
+          context.actor,
+          input.itemId,
+          input.contactIds,
+        ).catch(investorUpdateError);
+        // Without "Email them a link" nothing is minted: Copy link on the contact makes one later.
+        if (!input.emailLink) return { links: [] };
+        return deliverPortalLinks(investorSendDeps, context.actor, added, { copy: false }).catch(
+          investorUpdateError,
+        );
+      }),
+      unshare: authed.investors.unshare.handler(async ({ context, input }) => {
+        await unshareDocument(deps.prisma, context.actor, input.itemId, input.contactId);
+        return { ok: true as const };
+      }),
+      portalResend: authed.investors.portalResend.handler(async ({ context, input }) => {
+        const { links } = await deliverPortalLinks(
+          investorSendDeps,
+          context.actor,
+          [input.contactId],
+          { copy: input.copy === true, strict: true },
+        ).catch(investorUpdateError);
+        if (links.length === 0 && !investorSendDeps.email)
+          throw new ORPCError("NOT_FOUND", { message: "Contact not found" });
+        return { link: links[0]?.link ?? null };
+      }),
+      portalRevoke: authed.investors.portalRevoke.handler(async ({ context, input }) => {
+        const scope = actorScope(context.actor);
+        await revokePortal(deps.prisma, scope, input.contactId).catch(contactNotFound);
+        return getContact(deps.prisma, scope, input.contactId).catch(contactNotFound);
+      }),
+      portalUnblock: authed.investors.portalUnblock.handler(async ({ context, input }) => {
+        const scope = actorScope(context.actor);
+        await unblockPortal(deps.prisma, scope, input.contactId).catch(contactNotFound);
+        return getContact(deps.prisma, scope, input.contactId).catch(contactNotFound);
+      }),
+      reminder: authed.investors.reminder.handler(async ({ context, input }) => {
+        const bot = await ensureInvestorsAgent(
+          { prisma: deps.prisma, jobs: deps.jobs, repos },
+          context.actor,
+        ).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        });
+        if (input.cadence)
+          return {
+            cadence: await setInvestorsReminder(
+              { prisma: deps.prisma, jobs: deps.jobs },
+              context.actor,
+              bot.id,
+              input.cadence,
+            ),
+          };
+        const routine = await deps.prisma.routine.findFirst({
+          where: {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            botId: bot.id,
+            name: INVESTOR_UPDATE_ROUTINE_NAME,
+          },
+        });
+        return { cadence: routine ? cadenceOf(routine) : ("monthly" as const) };
+      }),
+      capTable: authed.investors.capTable.handler(({ context }) => capTableState(context.actor)),
+      refresh: authed.investors.refresh.handler(async ({ context }) => {
+        const current = await deps.prisma.capTableSnapshot.findUnique({
+          where: { spaceId_userId: actorScope(context.actor) },
+          select: { source: true },
+        });
+        if (current?.source === "sheet") {
+          await readSheet(context.actor);
+          return { ok: true as const };
+        }
         const cartaServers = (
           await deps.prisma.mcpServer.findMany({ where: actorScope(context.actor) })
         ).filter((server) => server.enabled && isCartaEndpoint(server.endpoint));
@@ -7184,8 +7512,77 @@ export function createRouter(deps: RouterDeps) {
         );
         if (result === "no_model")
           throw new ORPCError("BAD_REQUEST", { message: "Add a model before refreshing" });
+        if (result === "other_source")
+          throw new ORPCError("BAD_REQUEST", { message: "The cap table is not read from Carta" });
         return { ok: true as const };
       }),
+      useSheet: authed.investors.useSheet.handler(async ({ context, input }) => {
+        const space = await deps.prisma.space.findUnique({
+          where: { id: context.actor.spaceId },
+          select: { name: true },
+        });
+        if (!space) throw new ORPCError("NOT_FOUND");
+        await changeCapTableSource(deps.prisma, actorScope(context.actor), {
+          source: "sheet",
+          sourceRef: input,
+          companyName: space.name,
+        }).catch(capTableConflict);
+        await readSheet(context.actor);
+        return capTableState(context.actor);
+      }),
+      capTableSave: authed.investors.capTableSave.handler(async ({ context, input }) => {
+        await saveCapTableSnapshot(
+          deps.prisma,
+          actorScope(context.actor),
+          { ...input.table, source: "native" },
+          { loadedAt: input.updatedAt },
+        ).catch(capTableConflict);
+        return capTableState(context.actor);
+      }),
+      changeSource: authed.investors.changeSource.handler(async ({ context, input }) => {
+        const space = await deps.prisma.space.findUnique({
+          where: { id: context.actor.spaceId },
+          select: { name: true },
+        });
+        if (!space) throw new ORPCError("NOT_FOUND");
+        await changeCapTableSource(deps.prisma, actorScope(context.actor), {
+          ...input,
+          companyName: space.name,
+        }).catch(capTableConflict);
+        return capTableState(context.actor);
+      }),
+      undoSource: authed.investors.undoSource.handler(async ({ context }) => {
+        await undoCapTableSource(deps.prisma, actorScope(context.actor));
+        return capTableState(context.actor);
+      }),
+    },
+    fundraising: {
+      overview: authed.fundraising.overview.handler(({ context }) =>
+        getFundraisingOverview(deps.prisma, actorScope(context.actor)),
+      ),
+      round: {
+        save: authed.fundraising.round.save.handler(({ context, input }) =>
+          saveRound(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+        close: authed.fundraising.round.close.handler(({ context, input }) =>
+          closeRound(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
+        reopen: authed.fundraising.round.reopen.handler(({ context, input }) =>
+          reopenRound(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
+      },
+      prospects: {
+        save: authed.fundraising.prospects.save.handler(({ context, input }) =>
+          saveProspect(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+      },
+    },
+    carta: {
+      agent: authed.carta.agent.handler(({ context }) =>
+        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
     },
     sidebarPages: {
       list: authed.sidebarPages.list.handler(({ context }) =>
@@ -7213,6 +7610,9 @@ export function createRouter(deps: RouterDeps) {
         );
         return { ok: true as const };
       }),
+      linked: authed.contacts.linked.handler(({ context, input }) =>
+        linkedContact(deps.prisma, actorScope(context.actor), input.id).catch(contactNotFound),
+      ),
     },
     finance: {
       agent: authed.finance.agent.handler(({ context }) =>
@@ -7758,26 +8158,42 @@ export function createRouter(deps: RouterDeps) {
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
       glance: authed.notifications.glance.handler(async ({ context }) => {
-        const [runwayMonths, legalDueSoon, devinNeedsYou, dataRoomWaiting, botKinds] =
-          await Promise.all([
-            financeRunwayMonths(financeDeps, context.actor),
-            legalDueSoonCount(legalDeps, context.actor, 7),
-            devinNeedsYouCount(devinDeps, context.actor),
-            // Failed items are the only ones the user can act on (retry or remove).
-            deps.prisma.dataRoomItem.count({
-              where: {
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-                status: "failed",
-              },
-            }),
-            unseenBotKinds(deps.prisma, context.actor),
-          ]);
+        const [
+          runwayMonths,
+          legalDueSoon,
+          devinNeedsYou,
+          isDevinConnected,
+          dataRoomWaiting,
+          hasTicket,
+          botKinds,
+        ] = await Promise.all([
+          financeRunwayMonths(financeDeps, context.actor),
+          legalDueSoonCount(legalDeps, context.actor, 7),
+          devinNeedsYouCount(devinDeps, context.actor),
+          devinConnected(devinDeps, context.actor),
+          // Failed items are the only ones the user can act on (retry or remove).
+          deps.prisma.dataRoomItem.count({
+            where: {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              status: "failed",
+            },
+          }),
+          deps.env?.ticketBoardEnabled
+            ? deps.prisma.ticket.findFirst({
+                where: { spaceId: context.actor.spaceId },
+                select: { id: true },
+              })
+            : null,
+          unseenBotKinds(deps.prisma, context.actor),
+        ]);
         return {
           financeRunwayMonths: runwayMonths,
           legalDueSoon,
           devinNeedsYou,
+          devinConnected: isDevinConnected,
           dataRoomWaiting,
+          hasTickets: Boolean(hasTicket),
           botKinds,
         };
       }),

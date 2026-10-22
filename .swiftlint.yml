@@ -1,0 +1,12 @@
+strict: true
+included:
+  - apps/ios/Sources
+  - apps/ios/Tests
+  - apps/ios/Packages
+excluded:
+  - apps/ios/Packages/*/.build
+  - apps/ios/DerivedData
+  - apps/ios/*.xcodeproj
+identifier_name:
+  excluded:
+    - id

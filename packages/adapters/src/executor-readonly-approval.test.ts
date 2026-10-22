@@ -13,12 +13,13 @@ import {
   integrationAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule } from "@rakazo/core";
-import { buildBotMessageWakePrompt } from "@rakazo/core";
+import { buildBotMessageWakePrompt, externalOriginNotice } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AiConsentModule from "./ai-consent.js";
 import { DENIED_ACTION_MESSAGE, isApprovalPausedResult } from "./approval-effect.js";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";
+import type { MessageBotOptions } from "./bot-messages.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
 import { ConnectorRegistry } from "./composio-connector.js";
@@ -27,9 +28,13 @@ import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { DestinationEmulator } from "./destination-emulator.js";
 import {
   createRunExecutor,
+  EXTERNAL_BOT_PROMPT,
+  EXTERNAL_REQUEST_REASON,
+  EXTERNAL_TAINT_FREE_TOOLS,
   MAIL_CONSENT_DECLINED,
   MAIL_CONSENT_OFF,
   MEETING_TAINT_FREE_TOOLS,
+  withExternalBotPrompt,
 } from "./executor.js";
 import { fakeMercury, fakeMercuryMcpFetch } from "./finance-fake-tools.js";
 import type * as InboxTriageModule from "./inbox-triage.js";
@@ -74,6 +79,22 @@ vi.mock("./run-notification.js", async (importOriginal) => ({
   notifyThreadEvent: async (_p: unknown, _e: unknown, _r: unknown, message: never) => {
     notices.sent.push(message);
     return "created";
+  },
+}));
+
+/** Records what the executor hands messageBot; the real function has its own tests. */
+const sentBotMessages = vi.hoisted(() => ({ calls: [] as unknown[][], held: false }));
+vi.mock("./bot-messages.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./bot-messages.js")>()),
+  messageBot: async (...args: unknown[]) => {
+    sentBotMessages.calls.push(args);
+    return {
+      ok: true,
+      botId: "bot-fin",
+      name: "Finance",
+      note: "sent",
+      ...(sentBotMessages.held ? { held: true } : {}),
+    };
   },
 }));
 
@@ -143,13 +164,17 @@ function fixture({
   shutdownSignal,
   builtin = false,
   disabledBuiltinTools = [],
+  audience = "internal",
+  externalComputerTools = false,
   existingSharedMemory,
+  ticketBoard = false,
   advanceRevisionAfterRead = false,
   spawnKey = null,
   mail,
   messaging,
   afterCall,
   beforeToolCall,
+  steering = [],
   route,
   connector: realConnector,
   peer,
@@ -173,6 +198,8 @@ function fixture({
     linked: boolean;
     serverIds?: string[];
     ownerOrigin?: boolean;
+    /** The incoming message carries the external-chain mark. */
+    externalOrigin?: boolean;
     /** The sender's spawn key; a meeting-source sender needs a server in `mcpServers`. */
     senderSpawnKey?: string;
   };
@@ -187,7 +214,9 @@ function fixture({
   /** Offers the native Google Calendar and Drive tools. */
   googleConnectors?: boolean;
   availableTools?: ConnectorTool[];
-  beforeToolCall?: (index: number) => void;
+  beforeToolCall?: (index: number) => void | Promise<void>;
+  /** Messages the run claims as steering, in order, when the runtime asks. */
+  steering?: { blocks: unknown[] }[];
   /** Replaces the stub connector, for runs against a real McpConnector. */
   connector?: unknown;
   route?: ConnectorTool["route"];
@@ -195,10 +224,14 @@ function fixture({
   mail?: unknown;
   /** The messaging dep, as createMessagingContextLoader builds it. */
   messaging?: unknown;
-  afterCall?: (index: number) => void;
+  afterCall?: (index: number) => void | Promise<void>;
   builtin?: boolean;
   disabledBuiltinTools?: string[];
+  audience?: "internal" | "external";
+  externalComputerTools?: boolean;
   existingSharedMemory?: string;
+  /** Turns the ticket board on, with one ticket RK-7 whose last comment is private. */
+  ticketBoard?: boolean;
   /** Simulates another writer landing between the save's read and its commit. */
   advanceRevisionAfterRead?: boolean;
   name?: string;
@@ -326,10 +359,24 @@ function fixture({
         title: bot.title,
         description: bot.description,
         disabledBuiltinTools,
+        audience,
+        externalMessageTargets: [],
+        externalComputerTools,
         computerId: "computer-1",
         computer: { id: "computer-1", scope: "dedicated" },
       })),
-      findMany: vi.fn(async () => []),
+      // Sender lookups for the outbound record: the known bots, all internal.
+      findMany: vi.fn(async ({ where }: { where?: { id?: { in?: string[] } } } = {}) =>
+        where?.id?.in
+          ? where.id.in
+              .filter((botId) => knownBots?.[botId] !== undefined)
+              .map((botId) => ({ id: botId, audience: "internal" }))
+          : Object.entries(knownBots ?? {}).map(([id, spawnKey]) => ({
+              id,
+              name: id,
+              spawnKey,
+            })),
+      ),
       findFirst: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
         where?.id && knownBots?.[where.id] !== undefined
           ? {
@@ -406,12 +453,30 @@ function fixture({
             intent: "request",
             returnToMessageId: "m0",
             ...(peer?.ownerOrigin ? { ownerOrigin: true } : {}),
+            ...(peer?.externalOrigin
+              ? { externalOrigin: true, externalOriginName: "Support" }
+              : {}),
           },
         ],
         replyTo: null,
       })),
     },
     task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt })) },
+    board: { findUnique: vi.fn(async () => ({ id: "board-1", ticketPrefix: "RK" })) },
+    ticket: {
+      findMany: vi.fn(async () => [
+        {
+          id: "ticket-7",
+          number: 7,
+          title: "Renew vendor contract",
+          status: "open",
+          assigneeBotId: null,
+        },
+      ]),
+    },
+    ticketComment: {
+      findMany: vi.fn(async () => [{ ticketId: "ticket-7", body: "PRIVATE-TICKET-NOTE" }]),
+    },
     connection: {
       findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) =>
         connectionRows.filter((row) => matchesWhere(row, where)),
@@ -462,6 +527,7 @@ function fixture({
     { args: { id: "item-1" }, executionId: "call-1" },
   ];
   const offeredTools: string[] = [];
+  const claimSteeringSpy = vi.fn();
   let lastRequest: AgentRunRequest | undefined;
   const runtimeRun = vi.fn(async function* (request: AgentRunRequest) {
     offeredTools.push(...(request.tools ?? []).map((t) => t.name));
@@ -474,14 +540,14 @@ function fixture({
       if (settled.some(isApprovalPausedResult)) return;
     }
     for (const [index, call] of parallel ? [] : calls.entries()) {
-      beforeToolCall?.(index);
+      await beforeToolCall?.(index);
       const result = await request.executeTool!(
         catalog ? executeToolName : name,
         catalog ? { id: name, arguments: call.args } : call.args,
         call.executionId,
       );
       results.push(result);
-      afterCall?.(results.length - 1);
+      await afterCall?.(results.length - 1);
       if (isApprovalPausedResult(result)) return;
     }
     yield { type: "done" as const, text: "Done" };
@@ -516,7 +582,7 @@ function fixture({
       read: async (request: { scope: string; path?: string }) => {
         const documents =
           request.scope === "user" &&
-          request.path === "MEMORY.md" &&
+          (request.path === "MEMORY.md" || request.path === undefined) &&
           sharedMemoryState.content !== undefined
             ? [
                 {
@@ -537,17 +603,31 @@ function fixture({
       commit,
     },
     memoryProviders: { resolve: async () => null },
-    events: { append: vi.fn(async () => undefined), pauseRunForInput, finalizeRun },
+    events: {
+      append: vi.fn(async () => undefined),
+      pauseRunForInput,
+      finalizeRun,
+      claimSteering: claimSteeringSpy.mockImplementation(async () =>
+        steering.splice(0).map((item, index) => ({
+          id: `steer-${index}`,
+          messageId: `steer-msg-${index}`,
+          text: "steered",
+          ...item,
+        })),
+      ),
+    },
     jobs: { enqueue: vi.fn(async () => undefined) },
     secrets,
     autoReview: autoReviewProvider,
     shutdownSignal,
     mail,
+    ...(ticketBoard ? { ticketBoardEnabled: true } : {}),
     ...(messaging ? { messaging } : {}),
     ...(googleConnectors ? { connectors: {} } : {}),
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   return {
     offeredTools,
+    claimSteeringCalls: () => claimSteeringSpy.mock.calls.map(([input]) => input),
     request: () => lastRequest,
     threadMarked: () => mark.at !== null,
     markThread: () => {
@@ -598,6 +678,140 @@ describe("disabled builtins", () => {
     expect(f.commit).not.toHaveBeenCalled();
     expect(f.execute).not.toHaveBeenCalled();
     expect(f.effects).toEqual([]);
+  });
+});
+
+describe("external bots", () => {
+  const privateTool =
+    /^(mail_|inbox_|finance_|contacts_|cap_table_|legal_|drive_|calendar_|meetings_|search_data_room|read_data_room|add_to_data_room|search_history|read_history|recall_memory|save_memory|remember|spawn_bot|handoff_to_bot|connect_agent|message_agent|run_subagent|update_bot|schedule_)/;
+  const computerTool =
+    /^(shell|computer_|browser_|read_file|write_file|list_files|launch_app|open_path)/;
+  const mailStub = () => ({
+    listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+  });
+
+  it("offers an internal bot its mail and computer tools (control)", async () => {
+    const f = fixture({ name: "web_search", builtin: true, mail: mailStub() });
+    await f.run();
+    expect(f.offeredTools).toContain("mail_search");
+    expect(f.offeredTools).toContain("shell");
+  });
+
+  it("offers no mail, finance, data room, memory, delegation or computer tool", async () => {
+    const f = fixture({
+      name: "web_search",
+      builtin: true,
+      audience: "external",
+      mail: mailStub(),
+    });
+    await f.run();
+    expect(f.offeredTools.filter((n) => privateTool.test(n) || computerTool.test(n))).toEqual([]);
+    expect(f.offeredTools).toEqual(expect.arrayContaining(["web_search", "message_bot"]));
+  });
+
+  it("refuses a direct call to a private tool the model was never offered", async () => {
+    for (const name of ["mail_search", "finance_overview", "cap_table_read", "shell"]) {
+      const f = fixture({ name, builtin: true, audience: "external", mail: mailStub() });
+      f.setCalls([{ args: {}, executionId: "call-1" }]);
+      await f.run();
+      expect(f.results).toEqual([{ error: `Tool ${name} is not available to this bot.` }]);
+      expect(f.execute).not.toHaveBeenCalled();
+    }
+  });
+
+  it("offers the computer and browser tools only when the owner turned them on", async () => {
+    const off = fixture({ name: "web_search", builtin: true, audience: "external" });
+    await off.run();
+    expect(off.offeredTools.filter((n) => computerTool.test(n))).toEqual([]);
+    const on = fixture({
+      name: "web_search",
+      builtin: true,
+      audience: "external",
+      externalComputerTools: true,
+    });
+    await on.run();
+    expect(on.offeredTools).toContain("shell");
+    expect(on.offeredTools.filter((n) => privateTool.test(n))).toEqual([]);
+  });
+
+  it("reaches a connector only through an explicit access row", async () => {
+    const row = (id: string, provider: string, extra: Record<string, unknown>) => ({
+      id,
+      userId: "user-1",
+      spaceId: "space-1",
+      connectorId: "composio",
+      provider,
+      providerRef: "ref",
+      displayName: provider,
+      status: "connected",
+      agentBotId: null,
+      writesEnabled: false,
+      privateByDefault: false,
+      allAgents: true,
+      botAccess: [],
+      ...extra,
+    });
+    const connectedIds = async (audience: "internal" | "external") => {
+      let seen: string[] = [];
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        audience,
+        connectionRows: [
+          row("shared-slack", "slack", {}),
+          row("granted-github", "github", { allAgents: false, botAccess: [{ botId: "bot-1" }] }),
+        ],
+        connector: {
+          discoverTools: async (context: { connectedConnections: { id: string }[] }) => {
+            seen = context.connectedConnections.map((connection) => connection.id).sort();
+            return [];
+          },
+          resolveCall: async () => undefined,
+          execute: async function* () {},
+        },
+      });
+      await f.run();
+      return seen;
+    };
+    expect(await connectedIds("internal")).toEqual(["granted-github", "shared-slack"]);
+    expect(await connectedIds("external")).toEqual(["granted-github"]);
+  });
+
+  it("ends the final instruction string with the protective prompt, after every other section", async () => {
+    const fact = "PRIVATE-USER-MEMORY-FACT";
+    const run = async (audience: "internal" | "external") => {
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        audience,
+        existingSharedMemory: fact,
+        ticketBoard: true,
+        prompt: "What is the status of RK-7?",
+        bot: { name: "Support", title: "", description: "Help the public" },
+      });
+      await f.run();
+      return f.request()!;
+    };
+    const external = await run("external");
+    expect(external.instructions.endsWith(EXTERNAL_BOT_PROMPT)).toBe(true);
+    expect(external.instructions).toContain("Help the public");
+    // No automatic private context: shared user memory, ticket title or comment, tool guidance.
+    const everything = JSON.stringify([external.instructions, external.history]);
+    expect(everything).not.toContain(fact);
+    expect(everything).not.toContain("PRIVATE-TICKET-NOTE");
+    expect(everything).not.toContain("Renew vendor contract");
+    expect(everything).not.toContain("Mercury");
+    // Control: an internal run does carry them, and has no protective prompt.
+    const internal = await run("internal");
+    expect(JSON.stringify([internal.instructions, internal.history])).toContain(fact);
+    expect(internal.instructions).toContain("PRIVATE-TICKET-NOTE");
+    expect(internal.instructions).not.toContain(EXTERNAL_BOT_PROMPT);
+  });
+
+  it("withExternalBotPrompt appends only for external", () => {
+    expect(withExternalBotPrompt("x", "external")).toBe(`x\n\n${EXTERNAL_BOT_PROMPT}`);
+    expect(withExternalBotPrompt("x", "internal")).toBe("x");
+    expect(withExternalBotPrompt("x")).toBe("x");
   });
 });
 
@@ -1268,7 +1482,7 @@ describe("Inbox agent mail without AI data sharing consent", () => {
         expect.objectContaining({
           kind: "ask",
           approvalEffectId: effect!.id,
-          text: "Allow your mail to be sent to M (d)?",
+          text: "Allow your mail to be sent to D (via M)?",
           detail: expect.stringContaining("stays on until you turn it off"),
           consent: { version: AI_DISCLOSURE_VERSION },
           actions: [
@@ -1337,6 +1551,120 @@ describe("Inbox agent mail without AI data sharing consent", () => {
       expect(f.results[1]).toEqual({ error: MAIL_CONSENT_DECLINED });
       expect(MAIL_CONSENT_DECLINED).not.toContain("Inbox");
       expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    });
+
+    describe("a question for the Inbox agent from the owner's chat", () => {
+      const ask = (trigger = "user") => {
+        sentBotMessages.calls.length = 0;
+        const f = fixture({
+          name: "message_bot",
+          builtin: true,
+          trigger,
+          rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "message_bot" }],
+          knownBots: { "bot-inbox": inboxAgentSpawnKey("user-1") },
+        });
+        f.setCalls([
+          { args: { bot_id: "bot-inbox", message: "What needs a reply?" }, executionId: "c1" },
+        ]);
+        return f;
+      };
+
+      it("shows the Allow card in the asking chat before the Inbox agent is woken", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        await f.run();
+        expect(isApprovalPausedResult(f.results[0])).toBe(true);
+        expect(f.effects.map((effect) => effect.kind)).toContain("ai_consent");
+        expect(sentBotMessages.calls).toEqual([]);
+        const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
+        expect(blocks).toEqual([
+          expect.objectContaining({ kind: "ask", consent: { version: AI_DISCLOSURE_VERSION } }),
+        ]);
+      });
+
+      it("delivers the question once the owner has allowed it", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        await f.run();
+        triage.needsConsent = false;
+        f.effects.find((effect) => effect.kind === "ai_consent")!.status = "approved";
+        await f.run();
+        expect(sentBotMessages.calls).toHaveLength(1);
+      });
+
+      it("delivers the original question even if the model rewords it after Allow", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        await f.run();
+        triage.needsConsent = false;
+        f.effects.find((effect) => effect.kind === "ai_consent")!.status = "approved";
+        f.setCalls([
+          { args: { bot_id: "bot-inbox", message: "Reworded question" }, executionId: "c2" },
+        ]);
+        await f.run();
+        expect(sentBotMessages.calls).toHaveLength(1);
+        expect((sentBotMessages.calls[0]![3] as { message: string }).message).toBe(
+          "What needs a reply?",
+        );
+        // The saved question is used once; a later delegation in the run is the model's own.
+        f.setCalls([{ args: { bot_id: "bot-inbox", message: "Another one" }, executionId: "c3" }]);
+        await f.run();
+        expect((sentBotMessages.calls[1]![3] as { message: string }).message).toBe("Another one");
+      });
+
+      it("asks for consent, then approval, then delivers once for a marked thread", async () => {
+        triage.needsConsent = true;
+        sentBotMessages.calls.length = 0;
+        const f = fixture({
+          name: "message_bot",
+          builtin: true,
+          threadMarkedAtStart: true,
+          knownBots: { "bot-inbox": inboxAgentSpawnKey("user-1") },
+        });
+        f.setCalls([
+          { args: { bot_id: "bot-inbox", message: "What needs a reply?" }, executionId: "c1" },
+        ]);
+        await f.run();
+        const delegation = () => f.effects.find((effect) => effect.kind === "message_bot")!;
+        expect(f.effects.map((effect) => effect.kind)).toContain("ai_consent");
+        // Nothing is claimed while the consent card is open.
+        expect(delegation().status).toBe("intended");
+        triage.needsConsent = false;
+        f.effects.find((effect) => effect.kind === "ai_consent")!.status = "approved";
+        await f.run();
+        expect(f.pauseRunForInput).toHaveBeenCalledTimes(2);
+        expect(delegation().status).toBe("intended");
+        delegation().status = "approved";
+        await f.run();
+        expect(sentBotMessages.calls).toHaveLength(1);
+        expect(delegation().status).toBe("completed");
+      });
+
+      it("shows the card when the Inbox agent is addressed by name", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        f.setCalls([
+          { args: { confirm_name: "bot-inbox", message: "Any news?" }, executionId: "c1" },
+        ]);
+        await f.run();
+        expect(isApprovalPausedResult(f.results[0])).toBe(true);
+        expect(f.effects.map((effect) => effect.kind)).toContain("ai_consent");
+        expect(sentBotMessages.calls).toEqual([]);
+      });
+
+      it("delivers the question when mail is already allowed", async () => {
+        const f = ask();
+        await f.run();
+        expect(f.pauseRunForInput).not.toHaveBeenCalled();
+        expect(sentBotMessages.calls).toHaveLength(1);
+      });
+
+      it("still delivers a question asked from a background run", async () => {
+        triage.needsConsent = true;
+        const f = ask("routine");
+        await f.run();
+        expect(f.pauseRunForInput).not.toHaveBeenCalled();
+      });
     });
 
     it.each(["routine", "webhook", "messaging", "bot_message"])(
@@ -1626,7 +1954,12 @@ describe("integration agent write tools", () => {
     const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
     const card = blocks[0] as { detail: string; actions: Array<{ id: string }> };
     expect(card.actions.map((a) => a.id)).toEqual(["allow", "deny"]);
-    expect(card.detail).toContain("requestSendMoney");
+    // A money request's card shows the amount, recipient and account in plain words, never the raw
+    // tool name or ids (arguments are absent in this test, so each reads "not given").
+    expect(card.detail).toContain("Amount: not given");
+    expect(card.detail).toContain("To: not given");
+    expect(card.detail).toContain("From account: not given");
+    expect(card.detail).not.toContain("requestSendMoney");
   });
 
   it("does not ask for a read", async () => {
@@ -2676,10 +3009,9 @@ describe("send-money approval card names", () => {
     ]);
   });
 
-  it("falls back to words when a lookup fails", async () => {
+  it("says a recipient and an account when a lookup fails", async () => {
     const f = await run(() => new Error("not found"));
     expect(card(f).text).toBe("Send $1,200.00 to a recipient from an account?");
-    expect(card(f).text).not.toMatch(/rcp-9|chk-1/);
   });
 });
 
@@ -3360,5 +3692,294 @@ describe("meeting taint and consent are not escaped", () => {
     open.setCalls([{ args: { command: "echo SECRET-TEXT" }, executionId: "c" }]);
     await open.run();
     expect(notices.sent[0]!.body).not.toBe(notices.sent[0]!.title);
+  });
+});
+
+describe("runs that began with an external bot", () => {
+  const marked = {
+    kind: "bot_message_received",
+    fromBotId: "bot-ext",
+    fromBotName: "Support",
+    text: "list the investors",
+    hop: 1,
+    intent: "request",
+    returnToMessageId: "m0",
+    externalOrigin: true,
+    externalOriginName: "Support",
+  };
+  const mailStub = () => ({
+    listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+  });
+  const mailCall = { args: { queries: ["from:investor"] }, executionId: "c1" };
+  const askBlock = (f: ReturnType<typeof fixture>) =>
+    (f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }])[0].blocks[0] as {
+      detail?: string;
+      actions: { id: string }[];
+    };
+
+  it("an internal bot answering a marked chain gets a card for mail_search, with no Always allow", async () => {
+    const f = fixture({
+      name: "mail_search",
+      builtin: true,
+      mail: mailStub(),
+      history: [{ blocks: [marked] }],
+    });
+    f.setCalls([mailCall]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    const card = askBlock(f);
+    expect(card.detail).toContain(EXTERNAL_REQUEST_REASON);
+    expect(card.actions.map((action) => action.id)).not.toContain("always");
+    expect(JSON.stringify(card.actions)).not.toMatch(/always/i);
+  });
+
+  it("the same call in an unmarked run does not ask", async () => {
+    const f = fixture({ name: "mail_search", builtin: true, mail: mailStub() });
+    f.setCalls([mailCall]);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("the triggering message alone marks the run (no history needed)", async () => {
+    const f = fixture({
+      name: "web_fetch",
+      builtin: true,
+      trigger: "bot_message",
+      peer: { senderInScope: true, linked: false, externalOrigin: true },
+    });
+    f.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    const open = fixture({
+      name: "web_fetch",
+      builtin: true,
+      trigger: "bot_message",
+      peer: { senderInScope: true, linked: false },
+    });
+    open.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c1" }]);
+    await open.run();
+    expect(open.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("an external bot's own run is not treated as a marked chain (its tool list holds it)", async () => {
+    const f = fixture({
+      name: "web_search",
+      builtin: true,
+      audience: "external",
+      history: [{ blocks: [marked] }],
+    });
+    f.setCalls([{ args: { query: "opening hours" }, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.request()!.instructions).not.toContain("Security notice");
+  });
+
+  it("the free-list tools do not ask", async () => {
+    expect([...EXTERNAL_TAINT_FREE_TOOLS].sort()).toEqual(["ask_user", "skill_read"]);
+    const f = fixture({ name: "skill_read", builtin: true, history: [{ blocks: [marked] }] });
+    f.setCalls([{ args: { name: "nothing" }, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("an unmarked run leaves marked steering for its own run; a marked run takes it", async () => {
+    const claimed = async (history: { blocks: unknown[] }[]) => {
+      const f = fixture({ name: "web_search", builtin: true, history });
+      await f.run();
+      await f.request()!.claimSteering!([]);
+      return f.claimSteeringCalls();
+    };
+    // The unmarked run's tools, context and notice were built without the mark.
+    expect(await claimed([])).toEqual([expect.objectContaining({ excludeExternalOrigin: true })]);
+    // A marked run, and an external bot's own run, take everything.
+    expect(await claimed([{ blocks: [marked] }])).toEqual([
+      expect.objectContaining({ excludeExternalOrigin: false }),
+    ]);
+  });
+
+  it("hands a marked run's mark to messageBot so a delegation to Finance stays marked", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({
+      name: "message_bot",
+      builtin: true,
+      history: [{ blocks: [marked] }],
+    });
+    f.setCalls([{ args: { bot_id: "bot-fin", message: "cash?" }, executionId: "c1" }]);
+    await f.run();
+    // message_bot is not on the free list: it asks, and runs once the owner approves.
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    f.effects[0]!.status = "approved";
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as { externalChain?: { name?: string } };
+    expect(options.externalChain).toEqual({ externalOrigin: true, name: "Support" });
+    // An unmarked run hands none.
+    sentBotMessages.calls.length = 0;
+    const open = fixture({ name: "message_bot", builtin: true });
+    open.setCalls([{ args: { bot_id: "bot-fin", message: "cash?" }, executionId: "c1" }]);
+    await open.run();
+    expect((sentBotMessages.calls.at(-1)![4] as { externalChain?: unknown }).externalChain).toBe(
+      undefined,
+    );
+  });
+
+  it("keeps connected-account names and saved-skill descriptions out of a marked internal run", async () => {
+    const connected = {
+      id: "conn-1",
+      userId: "user-1",
+      spaceId: "space-1",
+      connectorId: "composio",
+      provider: "secretcrm",
+      providerRef: "ref",
+      displayName: "SecretCRM",
+      status: "connected",
+      agentBotId: null,
+      writesEnabled: false,
+      privateByDefault: false,
+      allAgents: true,
+      botAccess: [],
+    };
+    const run = async (history: { blocks: unknown[] }[]) => {
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        history,
+        connectionRows: [connected],
+      });
+      await f.run();
+      return f.request()!.instructions;
+    };
+    const open = await run([]);
+    expect(open).toContain("SecretCRM");
+    expect(open).toContain("Available Claude Agent Skills");
+    const withMark = await run([{ blocks: [marked] }]);
+    expect(withMark).not.toContain("SecretCRM");
+    expect(withMark).not.toContain("Available Claude Agent Skills");
+    expect(withMark).not.toContain("Saved taught skills");
+  });
+
+  it("finishes a read-only effect that a marked run's gate recorded, so a retry returns it", async () => {
+    const f = fixture({ name: "scratchpad_list", builtin: true, history: [{ blocks: [marked] }] });
+    f.setCalls([{ args: {}, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    f.effects[0]!.status = "approved";
+    await f.run();
+    expect(f.effects).toHaveLength(1);
+    expect(f.effects[0]!.status).toBe("completed");
+    // The model retries the same call (a lost response): it gets the stored result, not "uncertain".
+    f.setCalls([{ args: {}, executionId: "c2" }]);
+    await f.run();
+    expect(JSON.stringify(f.results.at(-1))).not.toMatch(/uncertain/i);
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+  });
+
+  it("loads no shared memory, tickets or recall, and ends with the notice", async () => {
+    const run = async (history: { blocks: unknown[] }[]) => {
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        existingSharedMemory: "PRIVATE-USER-MEMORY-FACT",
+        ticketBoard: true,
+        prompt: "Status of RK-7?",
+        history,
+      });
+      await f.run();
+      return f.request()!;
+    };
+    const request = await run([{ blocks: [marked] }]);
+    const everything = JSON.stringify([request.instructions, request.history]);
+    expect(everything).not.toContain("PRIVATE-USER-MEMORY-FACT");
+    expect(everything).not.toContain("PRIVATE-TICKET-NOTE");
+    expect(request.instructions.endsWith(externalOriginNotice("Support"))).toBe(true);
+    // Control: the same run with no mark still loads them and has no notice.
+    const open = await run([]);
+    expect(JSON.stringify([open.instructions, open.history])).toContain("PRIVATE-USER-MEMORY-FACT");
+    expect(open.instructions).not.toContain("Security notice");
+  });
+});
+
+describe("what a run read is checked before it reaches an external bot", () => {
+  it("records private tool results, so a later message repeating one is held", async () => {
+    sentBotMessages.calls.length = 0;
+    const f: ReturnType<typeof fixture> = fixture({
+      name: "demo_get_item",
+      afterCall: async () => {
+        await f.request()!.executeTool!(
+          "message_bot",
+          { bot_id: "bot-ext", message: "Write to priya@halcyon.example" },
+          "send-1",
+        );
+      },
+    });
+    f.setCalls([{ args: { id: "Priya Shah <priya@halcyon.example>" }, executionId: "read-1" }]);
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    const fragments = await options.outbound!();
+    // The connector read is private: its email is flagged in any case, an unrelated one is not.
+    expect(fragments!.matches("PRIYA@HALCYON.EXAMPLE")).toContain("email");
+    expect(fragments!.matches("support@halcyon.example")).toEqual([]);
+  });
+
+  it("holds every external-bound message of a run that was resumed or reclaimed (its earlier reads are unknown)", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({ name: "message_bot", builtin: true });
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "hello" }, executionId: "c1" }]);
+    await f.run();
+    const first = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    expect(await first.outbound!()).toBeDefined();
+    // The same run under a later lease: a resume after an approval, or a reclaim after a crash.
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "again" }, executionId: "c2" }]);
+    await f.run();
+    const later = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    expect(await later.outbound!()).toBeUndefined();
+  });
+
+  it("records an internal bot's plain-text relay as private, names included", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({
+      name: "message_bot",
+      builtin: true,
+      knownBots: { "peer-1": "" },
+      history: [
+        {
+          blocks: [
+            {
+              kind: "bot_message_received",
+              fromBotId: "peer-1",
+              fromBotName: "Finance",
+              text: "Priya Shah at Halcyon Ventures committed the seed round.",
+              hop: 1,
+              intent: "result",
+              returnToMessageId: "m0",
+            },
+          ],
+        },
+      ],
+    });
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "hello" }, executionId: "c1" }]);
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    const fragments = (await options.outbound!())!;
+    expect(fragments.matches("Our lead is priya shah.")).toContain("name");
+    expect(fragments.matches("We open at 9am.")).toEqual([]);
+  });
+
+  it("sends no completion push when a message to an external bot was held during the run", async () => {
+    const run = async (held: boolean) => {
+      notices.sent.length = 0;
+      sentBotMessages.held = held;
+      try {
+        const f = fixture({ name: "message_bot", builtin: true });
+        f.setCalls([
+          { args: { bot_id: "bot-ext", message: "Priya <priya@x.example>" }, executionId: "c1" },
+        ]);
+        await f.run();
+      } finally {
+        sentBotMessages.held = false;
+      }
+      return notices.sent.map((notice) => notice.body);
+    };
+    expect(await run(false)).not.toEqual([]);
+    expect(await run(true)).toEqual([]);
   });
 });

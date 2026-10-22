@@ -175,7 +175,7 @@ export function IntegrationSetup({
       {embedded ? null : (
         <div>
           <h1 className="text-lg font-semibold text-foreground">
-            {serverSetup ? t`Server apps` : t`Add MCP server`}
+            {serverSetup ? t`Integration sign-in` : t`Add MCP server`}
           </h1>
           {serverSetup ? (
             <p className="mt-1 text-sm text-muted-foreground">

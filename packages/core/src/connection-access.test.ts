@@ -92,6 +92,40 @@ describe("deniedConnectionIds", () => {
   });
 });
 
+describe("Composio Gmail linked to the Inbox agent", () => {
+  const inbox = { id: "inbox", spawnKey: "inbox-agent:user-1", archivedAt: null };
+  const rows = [
+    row("a", "connected", false, { agentBotId: "inbox", botAccess: grant("inbox") }),
+    row("b", "connected", false, { agentBotId: "inbox", botAccess: grant("inbox") }),
+  ];
+  it("is not denied to the Inbox agent, so its mail tools see both accounts", () => {
+    expect(deniedConnectionIds(rows).size).toBe(0);
+  });
+  it("lists the Inbox agent as able to use both accounts", () => {
+    const access = effectiveAccessByConnection(rows, [inbox]);
+    expect(access.a?.botIds).toEqual(["inbox"]);
+    expect(access.b?.botIds).toEqual(["inbox"]);
+  });
+});
+
+describe("effectiveAccessByConnection for an external bot", () => {
+  const bots = [
+    { id: "chief", spawnKey: null, archivedAt: null },
+    { id: "support", spawnKey: null, archivedAt: null, audience: "external" },
+  ];
+  it("shared with all agents does not reach an external bot; an explicit grant does", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("open", "connected", true),
+        { ...row("granted", "connected", true), provider: "slack", botAccess: grant("support") },
+      ],
+      bots,
+    );
+    expect(result.open?.botIds).toEqual(["chief"]);
+    expect(result.granted?.botIds).toEqual(["chief", "support"]);
+  });
+});
+
 describe("effectiveAccessByConnection", () => {
   const bots = [
     { id: "chief", spawnKey: null, archivedAt: null },
@@ -169,16 +203,20 @@ describe("effectiveAccessByConnection", () => {
       "inbox-agent:u1",
       "legal-agent:u1",
       "carta-agent:u1",
+      "investors-agent:u1",
       "voice-agent:u1",
     ].map((spawnKey, i) => ({ id: `s${i}`, spawnKey, archivedAt: null }));
     const all = [...bots, ...special];
-    const slack = effectiveAccessByConnection([row("x", "connected", true)], all).x;
+    const slack = effectiveAccessByConnection(
+      [row("x", "connected", true, { provider: "slack" })],
+      all,
+    ).x;
     expect(slack?.botIds).toEqual(["chief", "other"]);
     const gmail = effectiveAccessByConnection(
       [row("g", "connected", true, { connectorId: "google", provider: "gmail" })],
       all,
     ).g;
-    expect(gmail?.botIds).toEqual(["chief", "other", "s0", "s1", "s2", "s3"]);
+    expect(gmail?.botIds).toEqual(["chief", "other", "s0", "s1", "s2", "s3", "s4"]);
   });
 
   it("gives a pending connection no users", () => {

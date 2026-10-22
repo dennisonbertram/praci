@@ -1,94 +1,49 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { Bot } from "@rakazo/contracts";
-import {
-  BotAvatar,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@rakazo/ui-web";
-import { Info, Lock, Plus, Search, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Command, CommandGroup, CommandItem, CommandList, CommandSeparator } from "@rakazo/ui-web";
+import { Info, Lock, Plus, Users } from "lucide-react";
+import type { KeyboardEvent } from "react";
+
+// Enter and Space on an info button must not select the row; Escape and Tab must still reach the popover.
+function stopActivationKeys(event: KeyboardEvent<HTMLElement>) {
+  if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+}
+
+// Initial focus for the popover: the list itself (arrow keys pick a row), not the first info button.
+export const pickerInitialFocus = () =>
+  document.querySelector<HTMLElement>('[data-testid="bot-create-picker"] [cmdk-root]');
 
 export function BotCreatePicker({
-  bots,
   onCreateBot,
-  onOpenBot,
   onCreateGroup,
   onCreateSpace,
   onShowGroupInfo,
   onShowSpaceInfo,
 }: {
-  bots: Bot[];
   onCreateBot: () => void;
-  onOpenBot: (botId: string) => void;
   onCreateGroup: () => void;
   onCreateSpace: () => void;
   onShowGroupInfo: () => void;
   onShowSpaceInfo: () => void;
 }) {
   const { t } = useLingui();
-  const [query, setQuery] = useState("");
-  const needle = query.trim().toLowerCase();
-  const matched = useMemo(() => {
-    if (!needle) return bots;
-    return bots.filter(
-      (bot) => bot.name.toLowerCase().includes(needle) || bot.title.toLowerCase().includes(needle),
-    );
-  }, [bots, needle]);
-  const showCreate =
-    !needle ||
-    "create new bot".includes(needle) ||
-    needle.split(/\s+/).every((part) => "create new bot".includes(part));
-
   return (
-    <div data-testid="bot-create-picker" className="w-[min(320px,calc(100vw-2rem))]">
-      <label className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <Search
-          size={14}
-          strokeWidth={1.8}
-          aria-hidden="true"
-          className="shrink-0 text-muted-foreground"
-        />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t`Search`}
-          aria-label={t`Search`}
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
-        />
-      </label>
-      <Command shouldFilter={false} className="rounded-none border-0 bg-transparent p-0">
+    <div data-testid="bot-create-picker" className="w-[min(240px,calc(100vw-2rem))]">
+      <Command
+        shouldFilter={false}
+        tabIndex={-1}
+        className="rounded-none border-0 bg-transparent p-0"
+      >
         <CommandList className="max-h-72 p-1">
-          <CommandEmpty>
-            <Trans>No bots match</Trans>
-          </CommandEmpty>
           <CommandGroup>
-            {showCreate ? (
-              <CommandItem
-                value="create-new-bot"
-                data-testid="create-new-bot"
-                onSelect={() => onCreateBot()}
-                className="gap-2"
-              >
-                <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
-                <Trans>New bot</Trans>
-              </CommandItem>
-            ) : null}
-            {matched.map((bot) => (
-              <CommandItem
-                key={bot.id}
-                value={bot.id}
-                data-testid={`picker-bot-${bot.id}`}
-                onSelect={() => onOpenBot(bot.id)}
-                className="gap-2"
-              >
-                <BotAvatar color={bot.color} identity={bot.id} size={22} status={bot.status} />
-                <span className="min-w-0 flex-1 truncate">{bot.name}</span>
-              </CommandItem>
-            ))}
+            <CommandItem
+              value="create-new-bot"
+              data-testid="create-new-bot"
+              onSelect={() => onCreateBot()}
+              className="gap-2"
+            >
+              <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
+              <Trans>New bot</Trans>
+            </CommandItem>
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup>
@@ -114,7 +69,7 @@ export function BotCreatePicker({
                   event.preventDefault();
                   onShowGroupInfo();
                 }}
-                onKeyDown={(event) => event.stopPropagation()}
+                onKeyDown={stopActivationKeys}
                 className="-mr-2 shrink-0 rounded p-1 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-focus-within/command-item:opacity-100 group-hover/command-item:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <Info size={14} strokeWidth={1.8} aria-hidden="true" />
@@ -142,7 +97,7 @@ export function BotCreatePicker({
                   event.preventDefault();
                   onShowSpaceInfo();
                 }}
-                onKeyDown={(event) => event.stopPropagation()}
+                onKeyDown={stopActivationKeys}
                 className="-mr-2 shrink-0 rounded p-1 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-focus-within/command-item:opacity-100 group-hover/command-item:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <Info size={14} strokeWidth={1.8} aria-hidden="true" />

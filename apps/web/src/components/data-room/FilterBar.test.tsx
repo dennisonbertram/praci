@@ -133,3 +133,34 @@ it("labels the date sort Document date, so it is not mistaken for when a file wa
   expect(container.textContent).toContain("Sort: Added");
   expect(container.textContent).not.toMatch(/Sort: Date\b/);
 });
+
+it("puts the filter pills behind one Filters button that shows how many are set", () => {
+  render("", vi.fn());
+  const toggle = () => container.querySelector<HTMLButtonElement>("button[aria-controls]");
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
+  expect(toggle()?.textContent).toBe("Filters");
+  act(() => toggle()?.click());
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+  act(() =>
+    root.render(
+      <FilterBar
+        query=""
+        onQuery={() => undefined}
+        searching={false}
+        filters={{ docType: "legal", party: "Acme" }}
+        onFilters={() => undefined}
+        sort={null}
+        onSort={() => undefined}
+        types={[]}
+        parties={[]}
+        sources={[]}
+        hasDates={false}
+        folders={[]}
+        folderId={undefined}
+        onFolder={() => undefined}
+        onNewFolder={onNewFolder}
+      />,
+    ),
+  );
+  expect(toggle()?.textContent).toBe("Filters2");
+});

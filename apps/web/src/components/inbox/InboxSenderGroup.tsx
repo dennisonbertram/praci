@@ -119,11 +119,11 @@ export function InboxSenderGroup({
         </button>
         {onPickGroup ? (
           <Checkbox
-            aria-label={t`Select`}
+            aria-label={t`Select ${group.sender}`}
             checked={checked === group.count}
             indeterminate={checked > 0 && checked < group.count}
             onClick={onPickGroup}
-            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
+            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:after:-start-3.25 pointer-coarse:after:-end-4.25 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
           />
         ) : null}
         {onArchiveGroup ? (
