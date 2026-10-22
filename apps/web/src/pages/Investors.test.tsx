@@ -827,6 +827,22 @@ it("counts the SAFE list in Equity raised, with the same count and total as Fund
   expect(container.textContent).not.toContain("Dee Newcomer");
 });
 
+it("shows Equity raised from SAFEs when the cap table is empty", async () => {
+  rpcMock.capTable.mockResolvedValue(state({ ...carta, fullyDilutedShares: 0, holders: [] }));
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+  ]);
+  await show();
+  expect(container.textContent).toContain("Equity raised$25,000");
+});
+
+it("shows a dash for Equity raised when the SAFE list fails to load", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList.mockRejectedValue(new Error("down"));
+  await show();
+  expect(container.textContent).toContain("Equity raised—");
+});
+
 it("shows a dash for Equity raised when only SAFEs have amounts", async () => {
   rpcMock.capTable.mockResolvedValue(
     state({

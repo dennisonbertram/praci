@@ -143,7 +143,15 @@ function Figure({ title, value, hint }: { title: string; value: string; hint?: s
  * Fully diluted shares (with the 409A when known) and Equity raised: the table's invested money plus
  * the SAFEs, which come only from the shared SAFE list (the one Fundraising shows).
  */
-function Summary({ snapshot, safes }: { snapshot: Snapshot; safes: readonly Safe[] }) {
+function Summary({
+  snapshot,
+  safes,
+  safesFailed,
+}: {
+  snapshot: Snapshot;
+  safes: readonly Safe[];
+  safesFailed: boolean;
+}) {
   useHideAmounts();
   const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
@@ -151,9 +159,11 @@ function Summary({ snapshot, safes }: { snapshot: Snapshot; safes: readonly Safe
   // SAFE list is the record.
   const counted = countedSafes(safes);
   const safeUsd = counted.reduce((sum, safe) => sum + safe.amountCents / 100, 0);
+  // A failed SAFE request would make the total look complete when it is not.
   const raised =
-    counted.length > 0 ||
-    snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security))
+    !safesFailed &&
+    (counted.length > 0 ||
+      snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
       ? usd(math.raisedUsd + safeUsd)
       : DASH;
   return (
@@ -695,14 +705,21 @@ export function InvestorsPage({
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   const [capFailed, setCapFailed] = useState(false);
   const [safes, setSafes] = useState<Safe[]>([]);
+  const [safesFailed, setSafesFailed] = useState(false);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
     // The SAFE rows under the table are secondary: if they cannot load, the table still shows.
     void rpc.fundraising.safes
       .list()
-      .then((rows) => request === latestCap.current && setSafes(rows ?? []))
-      .catch(() => {});
+      .then((rows) => {
+        if (request !== latestCap.current) return;
+        setSafes(rows ?? []);
+        setSafesFailed(false);
+      })
+      .catch(() => {
+        if (request === latestCap.current) setSafesFailed(true);
+      });
     return rpc.investors
       .capTable()
       .then((state) => {
@@ -1166,10 +1183,11 @@ export function InvestorsPage({
                   <>
                     {snapshot.holders.length === 0 &&
                     !snapshot.fullyDilutedShares &&
-                    !snapshot.latest409a ? (
+                    !snapshot.latest409a &&
+                    countedSafes(safes).length === 0 ? (
                       <FiguresPlaceholder />
                     ) : (
-                      <Summary snapshot={snapshot} safes={safes} />
+                      <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
                     )}
                     {snapshot.source === "native" ? (
                       <CapTableEditor
