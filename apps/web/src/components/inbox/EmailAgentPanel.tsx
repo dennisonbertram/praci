@@ -111,7 +111,6 @@ export function EmailAgentPanel({
       editableBotName: (id: string | undefined) => outer?.editableBotName(id),
       disableTool: async (id: string, tool: string) => outer?.disableTool(id, tool),
       openComposer: (failed: ComposerDraft) => onReplyWithDraft(failed.body, failed),
-      accountFromThread: true,
     }),
     [outer, onReplyWithDraft],
   );

@@ -215,6 +215,7 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
+import { recoverComposerDraft } from "../lib/composer-accounts";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -2894,9 +2895,46 @@ export function ShellPage() {
     [],
   );
   const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
+  // The Space the open composer was started in, kept for its save and send calls.
+  const [composerSpaceId, setComposerSpaceId] = useState<string | null>(null);
+  // The From choices when a failed send named none: the composer shows a picker for them.
+  const [composerAccounts, setComposerAccounts] = useState<
+    Awaited<ReturnType<typeof rpc.inbox.list>>["accounts"] | null
+  >(null);
+  const composerScopeRef = useRef({ userId, spaceId: bootstrapMe?.spaceId });
+  composerScopeRef.current = { userId, spaceId: bootstrapMe?.spaceId };
   const botToolControls = useMemo<BotToolControls>(
     () => ({
-      openComposer: setComposerDraft,
+      openComposer: (draft) => {
+        setComposerAccounts(null);
+        // Pinned to the Space of the thread the failed send is in, not the shared selection.
+        const botId = activeBotId.current;
+        const groupId = activeGroupId.current;
+        const threadSpace = groupId
+          ? groupsRef.current.find((group) => group.id === groupId)?.spaceId
+          : botsRef.current.find((bot) => bot.id === botId)?.spaceId;
+        const origin = {
+          userId: composerScopeRef.current.userId,
+          spaceId: composerScopeRef.current.spaceId,
+          selected: selectedSpaceId(),
+        };
+        const spaceId = threadSpace ?? origin.spaceId ?? null;
+        setComposerSpaceId(spaceId);
+        if (draft.connectionId) return setComposerDraft(draft);
+        void recoverComposerDraft(
+          draft,
+          spaceId,
+          (space) => rpc.inbox.list({}, { context: { spaceId: space } }),
+          () =>
+            composerScopeRef.current.userId === origin.userId &&
+            composerScopeRef.current.spaceId === origin.spaceId &&
+            selectedSpaceId() === origin.selected,
+        ).then((recovered) => {
+          if (!recovered) return;
+          setComposerAccounts(recovered.accounts);
+          setComposerDraft(recovered.draft);
+        });
+      },
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
       disableTool: async (botId, tool) => {
         const bot = botsRef.current.find((item) => item.id === botId);
@@ -4215,10 +4253,13 @@ export function ShellPage() {
           {composerDraft ? (
             <ComposeEmail
               seed={NEW_MESSAGE}
-              accounts={[
-                { connectionId: composerDraft.connectionId, label: composerDraft.account },
-              ]}
+              accounts={
+                composerAccounts ?? [
+                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                ]
+              }
               connectionId={composerDraft.connectionId}
+              spaceId={composerSpaceId}
               restore={{
                 seed: NEW_MESSAGE,
                 clientId: crypto.randomUUID().replaceAll("-", ""),
@@ -4234,7 +4275,7 @@ export function ShellPage() {
                 forwarded: [],
                 files: [],
                 saved: false,
-                accounts: [
+                accounts: composerAccounts ?? [
                   { connectionId: composerDraft.connectionId, label: composerDraft.account },
                 ],
               }}

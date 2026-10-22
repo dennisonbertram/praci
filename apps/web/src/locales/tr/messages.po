@@ -1057,6 +1057,10 @@ msgstr ""
 msgid "Added by {0}"
 msgstr ""
 
+#: src/components/inbox/MailAttachments.tsx
+msgid "Added to Data room"
+msgstr ""
+
 #. placeholder {0}: currentName ?? ""
 #: src/components/data-room/DropZone.tsx
 msgid "Adding {added} of {total} · {0}"
@@ -2416,6 +2420,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Choose when it runs"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Choose which account to send from."
 msgstr ""
 
 #: src/pages/shell/working-label.ts

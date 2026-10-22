@@ -85,7 +85,7 @@ const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
 // Roots still mounted when a test ends would fire their autosave timers during a later test.
 const mounted: Array<ReturnType<typeof createRoot>> = [];
 
-async function open(seed: ComposeSeed, onClose = () => {}, draft?: string) {
+async function open(seed: ComposeSeed, onClose = () => {}, draft?: string, spaceId?: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
@@ -102,7 +102,14 @@ async function open(seed: ComposeSeed, onClose = () => {}, draft?: string) {
   mounted.push(root);
   await act(async () =>
     root.render(
-      <ComposeEmail seed={seed} accounts={[]} connectionId="c1" draft={draft} onClose={onClose} />,
+      <ComposeEmail
+        seed={seed}
+        accounts={[]}
+        connectionId="c1"
+        draft={draft}
+        spaceId={spaceId}
+        onClose={onClose}
+      />,
     ),
   );
   return { container, root };
@@ -783,4 +790,53 @@ it("shows the one account a new message is sent from", async () => {
   );
   const from = [...document.querySelectorAll("span")].find((el) => el.textContent === "From");
   expect(from?.nextElementSibling?.textContent).toBe("me@example.test");
+});
+
+it("sends in the Space it was opened in", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  await open(reply("reply"), () => {}, undefined, "space-a");
+  vi.useFakeTimers();
+  await act(async () => button("Send").click());
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  });
+  vi.useRealTimers();
+  expect(send.mock.calls[0]?.[1]).toEqual({ context: { spaceId: "space-a" } });
+});
+
+it("will not send a new message with no From account chosen", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(container);
+  mounted.push(root);
+  await act(async () =>
+    root.render(
+      <ComposeEmail
+        seed={{ kind: "new" }}
+        accounts={[{ connectionId: "c1", label: "Personal" }]}
+        connectionId=""
+        restore={{
+          seed: { kind: "new" },
+          clientId: "abcdefgh12",
+          fields: {
+            connectionId: "",
+            to: ["a@example.test"],
+            cc: [],
+            bcc: [],
+            subject: "",
+            html: "",
+            text: "x",
+          },
+          forwarded: [],
+          files: [],
+          saved: false,
+          accounts: [{ connectionId: "c1", label: "Personal" }],
+        }}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await act(async () => button("Send").click());
+  expect(document.body.textContent).toContain("Choose which account to send from.");
+  expect(send).not.toHaveBeenCalled();
 });

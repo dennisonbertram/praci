@@ -182,6 +182,7 @@ it("adds to the Data room once, however often it is clicked", async () => {
   expect(importEmail).toHaveBeenCalledTimes(1);
   expect(importEmail).toHaveBeenCalledWith({ picks: [{ messageId: "m1", attachmentId: "a1" }] });
   expect(add().textContent).toBe("Added");
+  expect(document.querySelector("[role=status]")?.textContent).toContain("Added to Data room");
 });
 
 it("shows Added for an attachment already in the Data room", async () => {

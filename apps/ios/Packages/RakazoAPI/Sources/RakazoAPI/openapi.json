@@ -8654,6 +8654,29 @@
                                     "type": "string"
                                   }
                                 },
+                                "delegatePendingAgents": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "messageId": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "$ref": "#/components/schemas/RpcBootstrapOutputSchema0"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "messageId",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "computer": {
                                   "type": "object",
                                   "properties": {
@@ -55889,6 +55912,9 @@
                         "cc": {
                           "type": "string"
                         },
+                        "replyAllDiffers": {
+                          "type": "boolean"
+                        },
                         "date": {
                           "type": "string"
                         },
@@ -85578,6 +85604,12 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "waitingOn": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -96251,6 +96283,29 @@
                           "type": "array",
                           "items": {
                             "type": "string"
+                          }
+                        },
+                        "delegatePendingAgents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "messageId": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "$ref": "#/components/schemas/RpcThreadsGetOutputSchema0"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "messageId",
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "computer": {
