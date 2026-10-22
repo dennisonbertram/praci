@@ -5799,11 +5799,8 @@ msgstr ""
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let Praci read your contracts"
-msgstr ""
-
 #: src/components/data-room/ConsentPrompt.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -7787,6 +7784,10 @@ msgid "Posting readiness unavailable."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci can now read your documents."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
@@ -9220,6 +9221,10 @@ msgstr ""
 msgid "Set up app catalog"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Setting up the agent..."
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -10142,10 +10147,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "The text is sent to the AI model that runs your bots."
-msgstr ""
-
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The text of your Data room documents is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
