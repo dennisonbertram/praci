@@ -98,7 +98,6 @@ export function buildApprovalAskBlock(
         ? safeDetail
         : truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH)
       : undefined,
-    waitsFor: isSendMoney(toolName) ? options?.serviceName : undefined,
     mail: mailApproval(
       toolName,
       options?.mailAccount && !(typeof args.account === "string" && args.account)
@@ -281,7 +280,7 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
 }
 
 /** A bank's request to send money, whichever server slug the tool sits under. */
-const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
+export const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
 
 export type MoneyNames = { recipient?: string; account?: string };
 

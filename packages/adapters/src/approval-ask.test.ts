@@ -71,7 +71,7 @@ describe("describeApprovalAction money and generic tools", () => {
     expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
   });
 
-  it("names the service that must still approve a send-money request", () => {
+  it("does not claim a wait on the service before the request was submitted", () => {
     const block = buildApprovalAskBlock(
       "e1",
       "mcp__finance-mercury__requestSendMoney",
@@ -79,7 +79,7 @@ describe("describeApprovalAction money and generic tools", () => {
       [],
       { serviceName: "Mercury" },
     );
-    expect(block.kind === "ask" && block.waitsFor).toBe("Mercury");
+    expect(block.kind === "ask" && block.waitsFor).toBeUndefined();
   });
 
   it("keeps hand-written titles", () => {
@@ -336,7 +336,7 @@ describe("mail approval payload", () => {
     };
     expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
     expect(text("mcp__finance-mercury__requestTransferMoney")).toBe(
-      "Review before Request transfer money → Jana <jana@example.test>",
+      "Review before Ask to transfer money → Jana <jana@example.test>",
     );
     expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
   });

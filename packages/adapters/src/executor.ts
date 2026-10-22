@@ -189,6 +189,7 @@ import {
   cartaMailSendIsComplete,
   isCartaMailSend,
   isIntegrationAgentWrite,
+  isSendMoney,
   resolveMoneyNames,
 } from "./approval-ask.js";
 import {
@@ -6540,6 +6541,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 }
               }
             }
+            if (
+              approvedByCard &&
+              applied &&
+              isSendMoney(name) &&
+              callRoute?.serverName &&
+              toolResultError(result) === undefined
+            ) {
+              await recordPaymentSubmitted(deps, run, applied.effect.id, callRoute.serverName);
+            }
             return finish(result);
           }
           return finish({ error: `unknown tool ${name}` });
@@ -9102,22 +9112,9 @@ async function recordApprovedMailOutcome(
   result: Record<string, unknown>,
 ) {
   const { outcome, error } = approvedMailOutcome(name, result);
+  const card = await findApprovalCard(deps, run, effectId);
+  if (!card) return;
   try {
-    const messages = await deps.prisma.message.findMany({
-      where: { runId: run.id, role: "bot" },
-      select: { id: true, threadId: true, blocks: true },
-    });
-    const card = messages.find(
-      (message) =>
-        Array.isArray(message.blocks) &&
-        message.blocks.some(
-          (block) =>
-            block !== null &&
-            typeof block === "object" &&
-            (block as { approvalEffectId?: unknown }).approvalEffectId === effectId,
-        ),
-    );
-    if (!card) return;
     await deps.events.setMailApprovalOutcome({
       spaceId: run.spaceId,
       threadId: card.threadId,
@@ -9129,6 +9126,59 @@ async function recordApprovedMailOutcome(
   } catch (cause) {
     // The card is a view of the result; the agent still gets the real one.
     getLogger().error("mail approval outcome", cause);
+  }
+}
+
+/** The card message for an approval in this run, or undefined once it is gone (a cleared thread). */
+async function findApprovalCard(
+  deps: ExecutorDeps,
+  run: { id: string },
+  effectId: string,
+): Promise<{ id: string; threadId: string } | undefined> {
+  try {
+    const messages = await deps.prisma.message.findMany({
+      where: { runId: run.id, role: "bot" },
+      select: { id: true, threadId: true, blocks: true },
+    });
+    return messages.find(
+      (message) =>
+        Array.isArray(message.blocks) &&
+        message.blocks.some(
+          (block) =>
+            block !== null &&
+            typeof block === "object" &&
+            (block as { approvalEffectId?: unknown }).approvalEffectId === effectId,
+        ),
+    );
+  } catch (cause) {
+    getLogger().error("approval card lookup", cause);
+    return undefined;
+  }
+}
+
+/**
+ * Once the provider has accepted a money request, the card says the provider still has to approve
+ * it. A connector error or a refused recheck never gets here, so the card never claims a wait for
+ * a payment that was not submitted.
+ */
+async function recordPaymentSubmitted(
+  deps: ExecutorDeps,
+  run: { id: string; spaceId: string },
+  effectId: string,
+  service: string,
+) {
+  const card = await findApprovalCard(deps, run, effectId);
+  if (!card) return;
+  try {
+    await deps.events.setApprovalWaitsFor({
+      spaceId: run.spaceId,
+      threadId: card.threadId,
+      messageId: card.id,
+      effectId,
+      waitsFor: service,
+    });
+  } catch (cause) {
+    getLogger().error("approval waits-for", cause);
   }
 }
 
