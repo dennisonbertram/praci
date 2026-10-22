@@ -111,6 +111,7 @@ import {
   ChartBlockView,
   ChoiceCard,
   McpApprovalCard,
+  ResultCard,
 } from "./message-cards";
 import { toolActionLabel } from "./working-label";
 
@@ -1749,20 +1750,7 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "card") {
-          return (
-            <div key={i} className="flex justify-start">
-              <div className="flex flex-col gap-2 rounded-[20px] bg-muted px-5 py-4">
-                {block.lines.map((line) => (
-                  <div key={line.k} className="flex items-baseline gap-2.5 text-[15px]">
-                    <span className="text-success">✓</span>
-                    <span className="font-semibold text-foreground">{line.k}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span>{line.v}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
+          return <ResultCard key={i} block={block} />;
         }
         if (block.kind === "ask") {
           // A card after text in the same message sits one message-gap (20 px) below it.

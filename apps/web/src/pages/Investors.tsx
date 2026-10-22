@@ -14,7 +14,7 @@ import type {
   Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
-import { capTableMath, countedSafes, isSafeSecurity } from "@rakazo/core";
+import { capTableMath, countedSafes, equityRaisedUsd, isSafeSecurity } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -152,7 +152,6 @@ function Summary({
   safesFailed: boolean;
 }) {
   useHideAmounts();
-  const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
   // Nothing known to add up shows a dash, not $0. Table rows that are SAFEs are not counted: the
   // SAFE list is the record.
@@ -162,14 +161,13 @@ function Summary({
     counted
       .filter((safe) => status.includes(safe.status))
       .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
-  const safeUsd = sumUsd(["funded"]);
   const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
   const raised =
     !safesFailed &&
     (counted.length > 0 ||
       snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
-      ? usd(math.raisedUsd + safeUsd)
+      ? usd(equityRaisedUsd(snapshot.holders, counted))
       : DASH;
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">

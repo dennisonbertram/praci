@@ -65,9 +65,20 @@ export function capTableMath<H extends CapTableMathHolder>(input: CapTableMathIn
     totalShares,
     reconciles,
     /** Equity raised: the Invested column; SAFE money is never in it. */
-    raisedUsd: input.holders.reduce(
-      (sum, h) => sum + (isSafeSecurity(h.security) ? 0 : (h.amountUsd ?? 0)),
-      0,
-    ),
+    raisedUsd: investedUsd(input.holders),
   };
 }
+
+const investedUsd = (holders: readonly CapTableMathHolder[]) =>
+  holders.reduce((sum, h) => sum + (isSafeSecurity(h.security) ? 0 : (h.amountUsd ?? 0)), 0);
+
+/**
+ * Equity raised, the one figure the Investors page and the agents' cap_table_read both show: the
+ * table's invested money plus Funded SAFEs. Sent and Signed SAFEs are promises, not raised money.
+ */
+export const equityRaisedUsd = (
+  holders: readonly CapTableMathHolder[],
+  safes: readonly { status: string; amountCents: number }[],
+) =>
+  investedUsd(holders) +
+  safes.filter((s) => s.status === "funded").reduce((sum, s) => sum + s.amountCents / 100, 0);

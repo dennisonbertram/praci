@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capTableMath } from "./cap-table.js";
+import { capTableMath, equityRaisedUsd } from "./cap-table.js";
 
 const holder = (
   name: string,
@@ -91,5 +91,20 @@ describe("capTableMath", () => {
     expect(math.raisedUsd).toBe(0);
     expect(math.totalShares).toBe(0);
     expect(math.holders).toEqual([]);
+  });
+});
+
+describe("equityRaisedUsd", () => {
+  it("adds only Funded SAFEs to the invested money; Sent, Signed and SAFE rows add nothing", () => {
+    const holders = [holder("A", 100, 100_000), holder("Fund", null, 999, "SAFE")];
+    const safes = [
+      { status: "funded", amountCents: 15_000_000 },
+      { status: "sent", amountCents: 5_000_000 },
+      { status: "signed", amountCents: 5_000_000 },
+    ];
+    expect(equityRaisedUsd(holders, safes)).toBe(250_000);
+    expect(
+      capTableMath({ fullyDilutedShares: 100, optionPoolAvailable: null, holders }).raisedUsd,
+    ).toBe(100_000);
   });
 });
