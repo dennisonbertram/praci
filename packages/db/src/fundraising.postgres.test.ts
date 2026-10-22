@@ -152,7 +152,10 @@ describePostgres("fundraising (PostgreSQL)", () => {
     expect(await getFundraisingOverview(prisma, lonely)).toEqual({
       round: null,
       pendingCents: 0,
+      signedCents: 0,
+      fundedCents: 0,
       prospects: [],
+      safes: [],
     });
   });
 });

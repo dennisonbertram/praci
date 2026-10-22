@@ -379,6 +379,10 @@ msgstr ""
 msgid "{count} months"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "{count} SAFEs are signed and unpaid."
+msgstr ""
+
 #: src/components/data-room/SelectionBar.tsx
 msgid "{count} selected"
 msgstr ""
@@ -445,6 +449,16 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
+
+#. placeholder {0}: usd(amountCents)
+#: src/pages/Fundraising.tsx
+msgid "{investorName}'s {0} SAFE is signed and unpaid."
+msgstr ""
+
+#. placeholder {0}: usd(amountCents)
+#: src/pages/Fundraising.tsx
+msgid "{investorName}'s {0} SAFE will be removed."
 msgstr ""
 
 #: src/components/sidebar-folders/SidebarDnd.tsx
@@ -755,6 +769,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "{0} için işlemler"
+
+#. placeholder {0}: safe.investorName
+#: src/components/fundraising/SafeList.tsx
+msgid "Actions for {0} SAFE"
+msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/sidebar-folders/FolderHeader.tsx
@@ -1188,6 +1207,7 @@ msgstr "Her zaman izinli"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/fundraising/SafeDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -1524,6 +1544,10 @@ msgstr ""
 msgid "Attachments: {0}"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Attention"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Audience"
 msgstr ""
@@ -1616,6 +1640,11 @@ msgstr "Avatar Stüdyosu"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Avatars"
+msgstr ""
+
+#. placeholder {0}: usd(safe.amountCents)
+#: src/components/fundraising/SafeList.tsx
+msgid "Awaiting deposit · {0}"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
@@ -1927,6 +1956,8 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -1941,6 +1972,7 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1959,7 +1991,13 @@ msgstr "Yeni grubu iptal et"
 msgid "Cancel reply"
 msgstr "Yanıtı iptal et"
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Cancel SAFE"
+msgstr ""
+
+#: src/components/fundraising/SafeList.tsx
 #: src/pages/BillingSettingsPanel.tsx
+#: src/pages/Fundraising.tsx
 msgid "Canceled"
 msgstr ""
 
@@ -2313,6 +2351,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
+#: src/components/fundraising/SafeDialog.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
@@ -2384,7 +2423,12 @@ msgid "Close preview"
 msgstr "Önizlemeyi kapat"
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Fundraising.tsx
 msgid "Close round"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Close round?"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -2874,6 +2918,10 @@ msgstr "Bu sunucu onaylanamadı"
 msgid "Could not authorize this app"
 msgstr "Bu uygulama yetkilendirilemedi"
 
+#: src/pages/Fundraising.tsx
+msgid "Could not cancel"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Could not change password"
 msgstr "Parola değiştirilemedi"
@@ -3033,6 +3081,10 @@ msgstr "Beceri silinemedi"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete space"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Could not delete the SAFE"
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -3225,6 +3277,10 @@ msgstr "Ses ayarları yüklenemedi"
 msgid "Could not mark delivered"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Could not mark sent"
+msgstr ""
+
 #. placeholder {0}: prospect.name
 #: src/pages/Fundraising.tsx
 msgid "Could not move {0}"
@@ -3359,6 +3415,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -3423,6 +3480,10 @@ msgstr ""
 msgid "Could not save the round"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Could not save the SAFE"
+msgstr ""
+
 #: src/components/AutoFileEmailSetting.tsx
 msgid "Could not save the setting"
 msgstr ""
@@ -3472,6 +3533,7 @@ msgstr "Bu yanıt gönderilemedi"
 msgid "Could not take control"
 msgstr "Kontrol alınamadı"
 
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Could not undo"
 msgstr ""
@@ -3760,6 +3822,8 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Date"
@@ -3812,9 +3876,11 @@ msgstr "Varsayılan ({0})"
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/fundraising/SafeList.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
@@ -3869,6 +3935,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Delete memories too"
 msgstr "Hafızayı da sil"
+
+#: src/pages/Fundraising.tsx
+msgid "Delete SAFE?"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Delete space"
@@ -3965,6 +4035,10 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Different terms"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Digest"
 msgstr ""
@@ -4029,6 +4103,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnecting…"
 msgstr "Bağlantı kesiliyor…"
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Discount"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 #: src/components/data-room/DropZone.tsx
@@ -4160,6 +4238,7 @@ msgstr ""
 msgid "Downloading…"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/investors/ActionItems.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -4359,6 +4438,10 @@ msgstr ""
 msgid "Enter a password"
 msgstr "Bir parola girin"
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Enter a post-money cap"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Enter a username and password"
 msgstr ""
@@ -4385,6 +4468,7 @@ msgstr "Görüntü sınırı için 1 ile 1000 arasında bir tam sayı girin."
 
 #: src/components/ContactDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
 msgid "Enter an amount"
 msgstr ""
 
@@ -4481,6 +4565,7 @@ msgstr ""
 msgid "Expected"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Expired"
 msgstr ""
@@ -4622,6 +4707,10 @@ msgstr ""
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Find in Finance"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Find models"
@@ -4761,6 +4850,10 @@ msgstr ""
 msgid "From Google Drive"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "from Mercury"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr ""
@@ -4780,6 +4873,7 @@ msgid "Fully diluted"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeList.tsx
 msgid "Funded"
 msgstr ""
 
@@ -4886,6 +4980,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Google Drive"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Governing state"
 msgstr ""
 
 #: src/components/integrations/GranolaPage.tsx
@@ -5302,6 +5400,7 @@ msgid "Invested"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
+#: src/components/fundraising/SafeDialog.tsx
 msgid "Investor"
 msgstr ""
 
@@ -5759,6 +5858,10 @@ msgstr ""
 msgid "Mark delivered"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Mark funded"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
@@ -5780,6 +5883,15 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark read"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Mark sent"
+msgstr ""
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Mark signed"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -5812,8 +5924,20 @@ msgstr ""
 msgid "Marked {n} as spam"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "Marked funded"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Marked read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Marked sent"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Marked signed"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -5968,6 +6092,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Messaging you"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "MFN"
 msgstr ""
 
 #: src/lib/call-session.ts
@@ -6395,6 +6523,10 @@ msgstr ""
 
 #: src/components/ContactDialog.tsx
 msgid "Next step"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "No"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -6892,6 +7024,7 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -7389,11 +7522,15 @@ msgid "POST to"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
 msgid "Post-money cap"
 msgstr ""
 
 #. placeholder {0}: usd(round.capCents)
+#. placeholder {0}: usd(safe.capCents)
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
 msgid "Post-money cap {0}"
 msgstr ""
 
@@ -7463,6 +7600,10 @@ msgstr ""
 msgid "Primary"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Print"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -7481,6 +7622,10 @@ msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Private workspace with its own bots and groups."
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Pro rata side letter"
 msgstr ""
 
 #: src/components/data-room/ProcessingStrip.tsx
@@ -8319,12 +8464,20 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "SAFE"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "safe, round, raise"
 msgstr ""
 
 #: src/pages/Fundraising.tsx
 msgid "SAFEs"
+msgstr ""
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "SAFEs, if converted at cap"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8679,6 +8832,11 @@ msgstr "Gönder"
 msgid "Send reset link"
 msgstr "Sıfırlama bağlantısı gönder"
 
+#: src/components/fundraising/Pipeline.tsx
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Send SAFE"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
 msgstr ""
@@ -8711,6 +8869,7 @@ msgstr "Gönderiliyor…"
 msgid "Sends your meeting notes and transcripts to your AI model."
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -8722,6 +8881,11 @@ msgstr ""
 #. placeholder {0}: day(update.sentAt)
 #: src/pages/Investors.tsx
 msgid "Sent {0}"
+msgstr ""
+
+#. placeholder {0}: day(safe.sentAt ?? safe.createdAt)
+#: src/components/fundraising/SafeList.tsx
+msgid "Sent {0}, not signed"
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -8973,6 +9137,7 @@ msgid "Sign-in was denied or failed."
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeList.tsx
 msgid "Signed"
 msgstr ""
 
@@ -10110,6 +10275,7 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/lib/use-contact-notices.ts
+#: src/pages/Fundraising.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Investors.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -10417,6 +10583,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Valuation"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -10770,6 +10940,10 @@ msgstr ""
 msgid "Wrote {path}"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "YC documents ›"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "year"
 msgstr ""
@@ -10780,6 +10954,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Yearly"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Yes"
 msgstr ""
 
 #: src/lib/roster-time.ts

@@ -251,6 +251,7 @@ import {
   deleteEmptySpaceForMember,
   deleteInvestorUpdate,
   deletePushTokens,
+  deleteSafe,
   deleteUnreferencedCredentialSecret,
   duplicateInvestorUpdate,
   ensureBoard,
@@ -277,11 +278,13 @@ import {
   listInvestorUpdates,
   listNotifications,
   listPushEndpoints,
+  listSafes,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
   markInvestorUpdateDelivered,
+  markSafe,
   markSeen,
   markShown,
   moveSidebarFolder,
@@ -302,6 +305,9 @@ import {
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
   restoreSidebar,
+  SafeActiveError,
+  SafeCapRequiredError,
+  SafeStateError,
   SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
@@ -314,6 +320,7 @@ import {
   saveProspect,
   savePushToken,
   saveRound,
+  saveSafe,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   setSidebarFolderCollapsed,
@@ -1074,6 +1081,12 @@ function investorUpdateError(error: unknown): never {
 
 function fundraisingError(error: unknown): never {
   if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
+  if (error instanceof SafeActiveError || error instanceof SafeStateError) {
+    throw new ORPCError("CONFLICT", { message: error.message });
+  }
+  if (error instanceof SafeCapRequiredError) {
+    throw new ORPCError("BAD_REQUEST", { message: error.message });
+  }
   if (error instanceof FundraiseRoundOpenError) {
     throw new ORPCError("CONFLICT", { message: error.message });
   }
@@ -7691,6 +7704,23 @@ export function createRouter(deps: RouterDeps) {
         save: authed.fundraising.prospects.save.handler(({ context, input }) =>
           saveProspect(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
         ),
+      },
+      safes: {
+        list: authed.fundraising.safes.list.handler(({ context }) =>
+          listSafes(deps.prisma, actorScope(context.actor)),
+        ),
+        save: authed.fundraising.safes.save.handler(({ context, input }) =>
+          saveSafe(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+        mark: authed.fundraising.safes.mark.handler(({ context, input }) =>
+          markSafe(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+        delete: authed.fundraising.safes.delete.handler(async ({ context, input }) => {
+          await deleteSafe(deps.prisma, actorScope(context.actor), input.id).catch(
+            fundraisingError,
+          );
+          return { ok: true as const };
+        }),
       },
     },
     carta: {

@@ -196,6 +196,9 @@ import {
   FundraiseRoundSchema,
   FundraisingOverviewSchema,
   ProspectSaveInputSchema,
+  SafeMarkInputSchema,
+  SafeSaveInputSchema,
+  SafeSchema,
 } from "./fundraising.js";
 import { Id, IsoDate } from "./ids.js";
 import {
@@ -1588,6 +1591,14 @@ export const appContract = {
     },
     prospects: {
       save: oc.input(ProspectSaveInputSchema).output(ContactSchema),
+    },
+    safes: {
+      list: oc.output(z.array(SafeSchema)),
+      /** Adds a native Draft; CONFLICT when the contact already has a SAFE, BAD_REQUEST without a cap. */
+      save: oc.input(SafeSaveInputSchema).output(SafeSchema),
+      /** Native SAFEs only; CONFLICT for a Mercury SAFE or canceling a Funded one. */
+      mark: oc.input(SafeMarkInputSchema).output(SafeSchema),
+      delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     },
   },
   carta: {

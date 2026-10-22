@@ -28,6 +28,7 @@ model User {
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
   fundraiseRounds             FundraiseRound[]
+  safes                       Safe[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
@@ -272,6 +273,7 @@ model Space {
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
   fundraiseRounds             FundraiseRound[]
+  safes                       Safe[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
@@ -2469,6 +2471,7 @@ model Contact {
   /// The round open when the prospect's stage was last saved as committed; null otherwise.
   roundId        String?
   round          FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  safes          Safe[]
   /// The agent that added the contact, set by the server; null for a contact added by hand or after the agent was deleted.
   botId          String?
   bot            Bot?            @relation(fields: [botId], references: [id], onDelete: SetNull)
@@ -2526,9 +2529,54 @@ model FundraiseRound {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   contacts    Contact[]
+  safes       Safe[]
 
   @@index([spaceId, userId])
   @@map("fundraise_rounds")
+}
+
+/// A SAFE. A native row is the founder's own record of a YC post-money cap SAFE they send themselves;
+/// its status is derived from the dates (packages/core/src/safes.ts), never stored.
+model Safe {
+  id                 String          @id @default(cuid())
+  spaceId            String
+  space              Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "native" | "mercury"
+  source             String          @default("native")
+  /// Mercury's id; null on a native row.
+  externalId         String?
+  contactId          String?
+  contact            Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  roundId            String?
+  round              FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  investorName       String
+  investorEmail      String?
+  amountCents        BigInt
+  /// "post_money_cap" on every native row.
+  valuationType      String          @default("post_money_cap")
+  capCents           BigInt?
+  discountPercent    Float?
+  mfn                Boolean         @default(false)
+  proRata            Boolean         @default(false)
+  governingState     String?
+  investmentDate     DateTime?
+  expiresAt          DateTime?
+  canceledAt         DateTime?
+  sentAt             DateTime?
+  signedByOwnerAt    DateTime?
+  signedByInvestorAt DateTime?
+  paidAt             DateTime?
+  documentUrl        String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@unique([spaceId, userId, source, externalId])
+  @@index([spaceId, userId])
+  @@index([contactId])
+  @@index([roundId])
+  @@map("safes")
 }
 
 /// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.

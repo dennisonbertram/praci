@@ -152,15 +152,42 @@ describe("contact tools", () => {
         updatedAt: new Date("2026-02-01T00:00:00Z"),
       })
       .mockResolvedValueOnce(null);
-    const prisma = { capTableSnapshot: { findUnique } } as never;
+    const safeRow = (id: string, extra: Record<string, unknown>) => ({
+      id,
+      source: "native",
+      investorName: id,
+      amountCents: 5_000_000n,
+      capCents: 100_000_000n,
+      valuationType: "post_money_cap",
+      mfn: false,
+      proRata: false,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      ...extra,
+    });
+    const sent = new Date("2026-02-01T00:00:00Z");
+    const findMany = vi.fn(async () => [
+      safeRow("Sent Fund", { sentAt: sent }),
+      safeRow("Draft Fund", {}),
+    ]);
+    const prisma = { capTableSnapshot: { findUnique }, safe: { findMany } } as never;
     const read = await contactToolFromTool("cap_table_read", { prisma, scope }, {});
     expect(read).toEqual({
       capTable: expect.objectContaining({ companyName: "Example Co", fullyDilutedShares: 1000 }),
+      // A Draft is not on the Cap Table page, so the agent does not see it here either.
+      safes: [
+        {
+          investor: "Sent Fund",
+          status: "sent",
+          amountUsd: 50_000,
+          postMoneyCapUsd: 1_000_000,
+          atCapPercent: 5,
+        },
+      ],
     });
     expect(findUnique).toHaveBeenCalledWith({ where: { spaceId_userId: scope } });
-    expect(await contactToolFromTool("cap_table_read", { prisma, scope }, {})).toEqual({
-      capTable: null,
-    });
+    expect(await contactToolFromTool("cap_table_read", { prisma, scope }, {})).toEqual(
+      expect.objectContaining({ capTable: null }),
+    );
   });
 
   it("cap_table_update validates, then saves for the run's owner", async () => {
