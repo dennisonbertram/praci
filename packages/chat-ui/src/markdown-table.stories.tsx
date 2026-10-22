@@ -34,3 +34,21 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = { render: () => <ChatMarkdown>{small}</ChatMarkdown> };
 export const Paginated: Story = { render: () => <ChatMarkdown>{many}</ChatMarkdown> };
 export const NoRows: Story = { render: () => <ChatMarkdown>{empty}</ChatMarkdown> };
+
+const wide = `| Merchant | Date | Category | Amount |
+| --- | --- | --- | ---: |
+| Amazon Web Services | Oct 3 | Software | $4,210.00 |
+| Rivet Legal LLP | Oct 9 | Legal | $12,500.00 |
+| Blue Bottle Coffee | Oct 12 | Meals | $86.40 |`;
+
+/** The docked Ask panel is about 263 px wide: no row numbers, cells wrap, every column shows. */
+export const NarrowPanel: Story = {
+  decorators: [
+    (Story) => (
+      <div className="rk-docked-chat" style={{ width: 263 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => <ChatMarkdown>{wide}</ChatMarkdown>,
+};

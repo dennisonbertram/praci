@@ -3880,7 +3880,7 @@ export function ShellPage() {
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
         <div
-          className="flex min-h-0 min-w-0 flex-1 flex-col"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col${pageMode ? " rk-docked-chat" : ""}`}
           data-bot-accent={threadAccent ? "" : undefined}
           style={threadAccent ? botAccentStyle(threadAccent) : undefined}
         >
@@ -3967,6 +3967,7 @@ export function ShellPage() {
                 onOpenComputer={onOpenComputer}
                 lastReadSeq={activeSnapshot?.lastReadSeq}
                 onRead={readThreadUpTo}
+                anchorToUnread={!pageMode}
               />
             )}
           </BotToolControlsContext.Provider>

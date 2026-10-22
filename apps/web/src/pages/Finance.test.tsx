@@ -365,6 +365,29 @@ it("puts Treasury yield in the KPI row, not alone below the tables", async () =>
   expect(kpi?.closest("a")?.textContent).toContain("Last month, after fees");
 });
 
+it("shows Ask in the header of the empty Finance page", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
+  const ask = vi.fn();
+  await show("/app/finance", ask);
+  await act(async () => button(/^Ask Finance agent$/)?.click());
+  expect(ask).toHaveBeenCalledTimes(1);
+});
+
+it("says in words when the status dot is not green", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    sources: base.sources.map((s) => ({ ...s, status: "needs_reconnect" as const, serverId: "s" })),
+  });
+  await show("/app/finance");
+  await flush();
+  const status = [...container.querySelectorAll('a[href="/app/finance/accounts"]')].find((a) =>
+    a.textContent?.includes("Mercury"),
+  );
+  expect(status?.querySelector(".sr-only")?.textContent).toBe("Sign-in needed.");
+});
+
 it("shows the connected sources and the sync time as one link to Accounts", async () => {
   const base = connectedOverview();
   rpcMock.overview.mockResolvedValue({

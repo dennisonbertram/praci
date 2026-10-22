@@ -7394,6 +7394,7 @@ msgstr "原消息不可用"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7808,6 +7809,10 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Project secret"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Projected"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -9330,6 +9335,10 @@ msgstr ""
 msgid "Sign-in failed"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Sign-in needed."
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9766,6 +9775,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "正在切换…"
+
+#: src/pages/Finance.tsx
+msgid "Sync failed."
+msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx

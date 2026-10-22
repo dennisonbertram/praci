@@ -90,7 +90,7 @@ export function FinanceBurnPage() {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
             <Kpi
               title={t`Monthly burn`}
               value={data.monthlyCents > 0 ? money(data.monthlyCents) : "—"}
@@ -255,7 +255,7 @@ export function FinanceMonthPage({ month }: { month: string }) {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
             <Kpi title={t`Out`} value={money(data.outCents)} />
             <Kpi title={t`In`} value={money(data.inCents)} />
             <Kpi
@@ -317,7 +317,7 @@ export function FinanceRunwayPage() {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
             <Kpi title={t`Cash`} value={money(data.cashCents)} to={financePath.accounts()} />
             <Kpi
               title={t`Monthly burn`}
@@ -327,7 +327,11 @@ export function FinanceRunwayPage() {
             <Kpi title={t`Runway`} value={runMonths === undefined ? "—" : t`${runMonths} mo`} />
             <Kpi
               title={t`Run-out`}
-              value={data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}
+              value={
+                <span className="whitespace-nowrap">
+                  {data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}
+                </span>
+              }
             />
           </div>
           {hasCrypto ? (
@@ -349,6 +353,7 @@ export function FinanceRunwayPage() {
               labels={monthAxisLabels(points.map((p) => p.month))}
               height={380}
               label={t`Projected cash`}
+              projectedLabel={t`Projected`}
               solidUntil={Math.max(data.history.length - 1, 0)}
               endMarker={ahead.length > 0 && (ahead.at(-1)?.balanceCents ?? 1) <= 0}
             />
