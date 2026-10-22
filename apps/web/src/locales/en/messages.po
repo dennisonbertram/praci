@@ -9352,7 +9352,6 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9402,6 +9401,10 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
+msgstr "Search finds any page, chat or email."
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -11088,10 +11091,6 @@ msgstr "Turn on a model and allow AI access to sort files."
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
 msgstr "Type"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
-msgstr "Type here to find any page, chat or email."
 
 #: src/pages/Investors.tsx
 msgid "Type it in"

@@ -9352,7 +9352,6 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9401,6 +9400,10 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -11087,10 +11090,6 @@ msgstr ""
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
 msgstr ""
 
 #: src/pages/Investors.tsx

@@ -186,6 +186,7 @@ import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOv
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
+import { clearTourStep, tourInProgress } from "../components/tour/TourPopover";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -1021,6 +1022,10 @@ export function ShellPage() {
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
   const tourQuestion = useRef(false);
+  // A reload part-way through a tour reopens it, even a retake of a tour already seen.
+  useEffect(() => {
+    if (userId && tourInProgress(userId)) setTourRestart(true);
+  }, [userId]);
   // Once the tour ends, a late profile response that still says unseen cannot restart it.
   const [tourEnded, setTourEnded] = useState(false);
   // After Skip tour the first question stays one tap away in Chief's composer.
@@ -5640,6 +5645,7 @@ export function ShellPage() {
         </div>
         <FirstRunTour
           open={tourOpen}
+          userId={userId}
           onAsk={() => {
             if (!chiefId) return;
             tourQuestion.current = true;
@@ -5741,6 +5747,7 @@ export function ShellPage() {
               className="w-full justify-start font-normal"
               onClick={() =>
                 void authClient.signOut().then(() => {
+                  clearTourStep(userId);
                   clearAgentAppCache();
                   clearSpaceSelection();
                   navigate("/");
