@@ -26,7 +26,9 @@ export function glanceBadge({
   onValueClick?: () => void;
   rail: boolean;
 }) {
-  if (unseen > 0) {
+  // A failure count is the only way to the failed files, so a new-item dot never replaces it.
+  const keepFailure = failure && !!value && !rail;
+  if (unseen > 0 && !keepFailure) {
     return {
       notified: true,
       badgeLabel: t`new`,
@@ -41,6 +43,7 @@ export function glanceBadge({
   }
   if (!value || rail) return { badge: null, badgeLabel: undefined };
   return {
+    notified: unseen > 0 || undefined,
     badgeLabel: valueLabel,
     onBadgeClick: onValueClick,
     badge: (

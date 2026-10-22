@@ -31,6 +31,19 @@ it("shows a dot labelled new while notifications are unseen, instead of the valu
   expect(container.textContent).not.toContain("3");
 });
 
+it("keeps the failed count over the new dot, and the dot when nothing failed", () => {
+  const badge = glanceBadge({
+    unseen: 2,
+    value: "1",
+    valueLabel: "1 failed",
+    failure: true,
+    rail: false,
+  });
+  expect(badge.badgeLabel).toBe("1 failed");
+  expect(html(badge.badge)).toContain("glance-value");
+  expect(glanceBadge({ unseen: 2, value: "1", failure: true, rail: true }).badgeLabel).toBe("new");
+});
+
 it("shows the value when nothing is unseen, and nothing when there is no value", () => {
   const badge = glanceBadge({ unseen: 0, value: "3", valueLabel: "3 unread", rail: false });
   expect(badge.badgeLabel).toBe("3 unread");
