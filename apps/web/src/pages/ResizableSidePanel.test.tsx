@@ -45,3 +45,15 @@ it("from xl the panel sits beside the chat, so Escape leaves it open", () => {
   expect(onClose).not.toHaveBeenCalled();
   act(() => root.unmount());
 });
+
+it("Escape handled by an overlay above the panel leaves the panel open", () => {
+  const { onClose, root } = setup(true);
+  const above = (event: KeyboardEvent) => event.preventDefault();
+  window.addEventListener("keydown", above, true);
+  act(() =>
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true })),
+  );
+  window.removeEventListener("keydown", above, true);
+  expect(onClose).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
