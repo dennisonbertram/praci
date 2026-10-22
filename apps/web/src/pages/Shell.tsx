@@ -304,6 +304,7 @@ import { threadReadInput } from "../lib/thread-read";
 import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activity-preference";
 import { transcriptCanSnapAfterFrame, transcriptIsNearEnd } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
+import { useNotificationsOff } from "../lib/use-notifications-off";
 import { useRememberedMessages } from "../lib/use-remembered-messages";
 import { useRunResumedAt } from "../lib/use-run-resumed-at";
 import { useSidebarGlance } from "../lib/use-sidebar-glance";
@@ -1043,6 +1044,7 @@ export function ShellPage() {
   );
   const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
   const recoveryHoldTimer = useRef<number | undefined>(undefined);
+  const notificationsOff = useNotificationsOff(panel === "settings");
   const showComputerRecoveryHint =
     computersAreUnavailable(bootstrapMe?.sandboxProvider) || keepComputerRecovery;
   const releaseComputerRecovery = useCallback(() => {
@@ -6489,6 +6491,8 @@ export function ShellPage() {
                 key={active.id}
                 bot={active}
                 focusName={namingBotId === active.id}
+                notificationsOff={notificationsOff}
+                onOpenNotificationSettings={() => openSettings("general")}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 hostComputer={
                   canOfferHostComputer(bootstrapMe)

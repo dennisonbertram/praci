@@ -60,13 +60,13 @@ export function GtmChannels({ overview }: { overview: GtmOverview }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="ps-4">
+            <TableHead className="w-1/5 ps-4">
               <Trans>Channel</Trans>
             </TableHead>
-            <TableHead>
+            <TableHead className="w-[32%]">
               <Trans>Destination</Trans>
             </TableHead>
-            <TableHead className="hidden sm:table-cell">
+            <TableHead className="hidden w-[28%] sm:table-cell">
               <Trans>Rule</Trans>
             </TableHead>
             <TableHead>
@@ -79,8 +79,12 @@ export function GtmChannels({ overview }: { overview: GtmOverview }) {
             return (
               <TableRow key={row.key}>
                 <TableCell className="ps-4 font-medium">{row.label}</TableCell>
-                <TableCell className="max-w-48 whitespace-normal break-words text-muted-foreground">
-                  {row.destination}
+                <TableCell className="whitespace-normal break-words text-muted-foreground">
+                  {row.destination.split(", ").map((part) => (
+                    <span key={part} className="block">
+                      {part}
+                    </span>
+                  ))}
                   <span className="mt-1 block text-xs sm:hidden">{row.rule}</span>
                 </TableCell>
                 <TableCell className="hidden max-w-64 whitespace-normal text-xs text-muted-foreground sm:table-cell">
