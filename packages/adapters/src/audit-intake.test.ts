@@ -206,11 +206,18 @@ describe("runAuditIntake", () => {
     expect(f.runCreate).not.toHaveBeenCalled();
   });
 
-  it("gives the claim back when the run cannot be started", async () => {
-    const f = fixture();
-    f.enqueue.mockRejectedValue(new Error("queue down"));
-    await runAuditIntake(f.deps, payload);
+  it("gives the claim back when the run cannot be created, but keeps it when only the enqueue fails", async () => {
+    const created = fixture();
+    created.runCreate.mockRejectedValue(new Error("db down"));
+    await runAuditIntake(created.deps, payload);
     expect(db.releaseAuditDraft).toHaveBeenCalledWith(expect.anything(), scope, "ar-1");
+
+    db.releaseAuditDraft.mockClear();
+    const queued = fixture();
+    queued.enqueue.mockRejectedValue(new Error("queue down"));
+    await runAuditIntake(queued.deps, payload);
+    expect(queued.runCreate).toHaveBeenCalledOnce();
+    expect(db.releaseAuditDraft).not.toHaveBeenCalled();
   });
 
   it("a DocuSign notice with no attachment from an unknown sender is still picked up", async () => {

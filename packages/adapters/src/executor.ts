@@ -141,6 +141,7 @@ import {
 } from "@rakazo/core/node/approval-effect-key";
 import type { McpServer, NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  AUDIT_DRAFT_PROMPT_START,
   appendEventInTransaction,
   createSpaceForMember,
   createThreadMessageInTransaction,
@@ -2685,8 +2686,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         // The Investors agent may overwrite the cap table only on the routine sheet read, so text in a
         // document or email cannot steer a chat turn into writing it.
+        // An audit drafting run reads untrusted email, so it never writes the cap table either.
         const capTableWriteBlocked =
-          isInvestorsAgentSpawnKey(bot.spawnKey) && run.trigger !== "routine";
+          isInvestorsAgentSpawnKey(bot.spawnKey) &&
+          (run.trigger !== "routine" || task.prompt.startsWith(AUDIT_DRAFT_PROMPT_START));
         const investorsEnabled = investorUpdateToolsAllowed({
           hasProvider: true,
           groupId: thread.groupId,

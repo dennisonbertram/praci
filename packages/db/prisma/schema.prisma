@@ -2604,6 +2604,7 @@ model InvestorUpdate {
 /// An auditor, 409A or DocuSign request. Created by the mail intake job the moment the mail arrives
 /// (so it shows even if drafting never starts), or by the Investors agent for a request that did not
 /// arrive by mail. Only the founder closes it (done or dismissed); a dismissed row keeps its thread.
+/// audit_requests_agent_open_key is raw SQL, a partial unique index over the agent-added rows.
 model AuditRequest {
   id              String    @id @default(cuid())
   spaceId         String

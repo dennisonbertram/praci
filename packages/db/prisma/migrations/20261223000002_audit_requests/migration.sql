@@ -31,3 +31,6 @@ CREATE INDEX "audit_requests_spaceId_userId_draftStartedAt_idx" ON "audit_reques
 
 ALTER TABLE "audit_requests" ADD CONSTRAINT "audit_requests_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "audit_requests" ADD CONSTRAINT "audit_requests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Two equivalent requests added by the agent (no mail thread) cannot both stay open.
+CREATE UNIQUE INDEX "audit_requests_agent_open_key" ON "audit_requests"("spaceId", "userId", "fundKey", COALESCE("asOf", DATE '1970-01-01')) WHERE "mailThreadId" IS NULL AND "status" IN ('open', 'drafted');

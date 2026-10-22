@@ -158,7 +158,28 @@ describePostgres("audit requests (PostgreSQL)", () => {
     // The run ended without drafting: the row is New again with Draft reply.
     await prisma.run.update({ where: { id: run.id }, data: { status: "completed" } });
     expect((await listAuditRequests(prisma, mine)).find((r) => r.id === id)?.drafting).toBe(false);
-    expect(await claimAuditDraft(prisma, mine, id, null)).toBe(true);
+    // After the claim window the button works again.
+    expect(await claimAuditDraft(prisma, mine, id, null, new Date(Date.now() + 180_000))).toBe(
+      true,
+    );
+  });
+
+  it("two simultaneous draft clicks start one run", async () => {
+    const { id } = await fileAuditRequestFromMail(prisma, mine, mail());
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => claimAuditDraft(prisma, mine, id, null)),
+    );
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+
+  it("concurrent equivalent upserts without an id leave one open row", async () => {
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        upsertAuditRequest(prisma, mine, { fund: "Race Fund", asOf: "2026-06-30" }),
+      ),
+    );
+    expect(new Set(results.map((r) => r.request.id)).size).toBe(1);
+    expect(results.filter((r) => r.created)).toHaveLength(1);
   });
 
   it("the agent's upsert returns the open row with the same fund and as-of date", async () => {
