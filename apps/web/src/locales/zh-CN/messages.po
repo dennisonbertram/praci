@@ -660,6 +660,10 @@ msgstr ""
 msgid "{stepCount, plural, one {Working… · # tool} other {Working… · # tools}}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "{suggested, plural, one {# deadline may no longer apply: review it under Deadlines.} other {# deadlines may no longer apply: review them under Deadlines.}}"
+msgstr ""
+
 #: src/pages/investors/UpdateEditor.tsx
 msgid "{tbd} TBD left. Send anyway?"
 msgstr ""
@@ -699,6 +703,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "* So far"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "+{hiddenRows} more"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -2353,6 +2361,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "检查更新"
+
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
@@ -4800,6 +4812,10 @@ msgid "Enter a Client ID to sign in."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
 msgstr ""
 
@@ -5903,6 +5919,14 @@ msgstr ""
 #: src/lib/relative-time.ts
 msgid "just now"
 msgstr "刚刚"
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Keep"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Keep {name}"
+msgstr ""
 
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
@@ -7151,10 +7175,6 @@ msgstr ""
 msgid "No draft made, see Ask"
 msgstr ""
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr ""
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr ""
@@ -7437,6 +7457,10 @@ msgstr ""
 msgid "Not now"
 msgstr "暂不"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not read"
+msgstr ""
+
 #: src/components/data-room/upload-toasts.ts
 msgid "Not retried: the space changed"
 msgstr ""
@@ -7488,6 +7512,10 @@ msgstr ""
 msgid "Not tagged yet."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged. Praci can't read your documents."
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
 msgstr ""
@@ -7519,10 +7547,6 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "暂无记忆"
-
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr ""
 
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
@@ -7571,6 +7595,10 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Off"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -7878,10 +7906,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Out so far this month, not over"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -8915,6 +8939,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
 msgstr "替换 API 密钥"
+
+#: src/components/data-room/Preview.tsx
+msgid "Replace file"
+msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
@@ -10254,6 +10282,10 @@ msgstr ""
 msgid "Spent {spentRange}"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr ""
@@ -10691,6 +10723,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "The last scan thinks this no longer applies."
 msgstr ""
 
 #: src/pages/Devin.tsx
@@ -11904,6 +11940,14 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Won't ask again for this kind of action."
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Won't be searchable"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Won't be searchable. Praci can't read this kind of file."
 msgstr ""
 
 #: src/lib/ticket-status.ts

@@ -290,7 +290,7 @@ function SheetRow({
             key={index}
             title={text.length > 24 ? text : undefined}
             className={cn(
-              "max-w-[28ch] truncate border-b border-border px-2 py-1",
+              "max-w-[28ch] truncate border-b border-border px-2 py-1 max-sm:break-words max-sm:whitespace-normal",
               head && "sticky top-7 z-10 bg-background",
               (head ? numericColumns?.has(index) : isNumericSheetCell(cell)) &&
                 "text-end font-mono tabular-nums",

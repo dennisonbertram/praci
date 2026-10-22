@@ -94,6 +94,21 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
   // The same resolution path a run uses: the bot's own model if the user has its credential, else the default.
   const resolved = (await deps.resolveAi(actor, bot.id).catch(() => null))?.model;
   const titles = new Map(contracts.map((c) => [c.id, c.title]));
+  // A contract reclassified as not legal is hidden from the list but its proposed removals still name it.
+  const missing = [
+    ...new Set(
+      openDeadlines.flatMap((d) =>
+        d.contractId && !titles.has(d.contractId) ? [d.contractId] : [],
+      ),
+    ),
+  ];
+  if (missing.length) {
+    const hidden = await deps.prisma.legalContract.findMany({
+      where: { id: { in: missing }, ...scope(actor) },
+      select: { id: true, title: true },
+    });
+    for (const c of hidden) titles.set(c.id, c.title);
+  }
   const next = new Map<string, string>();
   for (const d of openDeadlines) {
     // Deadlines are sorted by date, so the first one seen for a contract is its next one.
@@ -195,7 +210,7 @@ export async function legalDoneDeadlines(deps: LegalDeps, actor: Actor) {
 export async function legalUpdateDeadline(
   deps: LegalDeps,
   actor: Actor,
-  input: { id: string; status?: string; notes?: string | null },
+  input: { id: string; status?: string; notes?: string | null; keep?: boolean },
 ) {
   try {
     const row = await createLegalRepos(deps.prisma).updateDeadline(actor, input.id, input);

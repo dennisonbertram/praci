@@ -66,8 +66,8 @@ async function mount(next: MessagingSetupState) {
 it("shows both tiles to the owner and nothing to anyone else", async () => {
   const host = await mount(state());
   expect(host.textContent).toContain("iMessage");
-  const letters = [...host.querySelectorAll("[data-testid=app-logo]")].map((el) => el.textContent);
-  expect(new Set(letters).size).toBe(letters.length);
+  const marks = [...host.querySelectorAll("[data-testid=app-logo]")].map((el) => el.innerHTML);
+  expect(new Set(marks).size).toBe(marks.length);
   expect(host.textContent).toContain("Through BlueBubbles on your Mac");
   expect(host.textContent).toContain("Needs a server restart");
   act(() => root?.unmount());

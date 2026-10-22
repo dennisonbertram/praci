@@ -741,7 +741,7 @@ it("names the Legal agent on Ask, with no Hide amounts switch in the header", as
   expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
-it("has one scan button beside the unchecked documents line and opens Deadlines on the overdue ones", async () => {
+it("starts a scan from the unchecked documents line and opens Deadlines on the overdue ones", async () => {
   // One deadline long past and one far ahead, so which one is overdue never depends on today.
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -752,11 +752,12 @@ it("has one scan button beside the unchecked documents line and opens Deadlines 
   });
   await render(<LegalPage />);
   expect(container.textContent).toContain("3 Data room documents not yet checked by Legal");
-  // The line is a count only: the header's Scan now is the one scan button.
+  // The line carries its own action, which is the same scan as the header's Scan now.
   expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
-  expect(button("Check now")).toBeUndefined();
   rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
-  await click(button("Scan now"));
+  await click(button("Check now"));
+  // While the scan runs the line is gone, so there is one progress statement.
+  expect(button("Check now")).toBeUndefined();
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
   await act(async () => root.unmount());

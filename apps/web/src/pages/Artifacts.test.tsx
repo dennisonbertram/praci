@@ -345,7 +345,7 @@ it("offers only bots that own artifacts and shows the title without its extensio
   }
 });
 
-it("labels cards Doc and Sheet and gives a sheet its own icon", async () => {
+it("shows cards without a file extension and gives a sheet its own icon", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   api.listSpace.mockResolvedValue({
     items: [artifact("Memo.md", "a1"), { ...artifact("Burn.csv", "a2"), mimeType: "text/csv" }],
@@ -355,8 +355,8 @@ it("labels cards Doc and Sheet and gives a sheet its own icon", async () => {
   try {
     const cards = [...page.container.querySelectorAll("a[href^='/app/artifacts/']")];
     expect(cards.map((c) => c.textContent)).toEqual([
-      expect.stringContaining("Doc"),
-      expect.stringContaining("Sheet"),
+      expect.stringContaining("Memo"),
+      expect.stringContaining("Burn"),
     ]);
     expect(page.container.textContent).not.toMatch(/\b(MD|CSV)\b/);
     expect(cards[0]?.querySelector("svg path")).not.toBeNull();
@@ -404,6 +404,27 @@ it("names the delete button after the title, without the file extension", async 
     expect(del?.getAttribute("aria-label")).toBe("Delete Fundraising Plan");
   } finally {
     await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps the view switch in the split view and returns to the full list when it is used", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  window.localStorage.removeItem("rakazo:artifacts-view-mode");
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Alpha notes", "artifact-1"), artifact("Beta report", "artifact-2")],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts("/app/artifacts/artifact-1");
+  try {
+    const list = page.container.querySelector<HTMLButtonElement>("button[aria-label='List view']");
+    expect(list).not.toBeNull();
+    await act(async () => list?.click());
+    expect(page.container.querySelector("table")).not.toBeNull();
+    expect(page.container.querySelector("[data-testid='artifact-row']")).not.toBeNull();
+  } finally {
+    await page.cleanup();
+    window.localStorage.removeItem("rakazo:artifacts-view-mode");
     vi.unstubAllGlobals();
   }
 });

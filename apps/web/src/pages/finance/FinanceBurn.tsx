@@ -90,14 +90,16 @@ export function FinanceBurnPage() {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
-            <Kpi
-              title={t`Monthly burn`}
-              value={data.monthlyCents > 0 ? money(data.monthlyCents) : "—"}
-              sub={t`3-mo avg, after revenue`}
-            />
-          </div>
           <Section title={<Trans>Burn</Trans>} action={<BurnLegend />}>
+            {/* The figure sits with the chart it summarises, not in a card with empty space beside it. */}
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <span className="text-lg font-semibold tabular-nums">
+                {data.monthlyCents > 0 ? money(data.monthlyCents) : "—"}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t`Monthly burn`} · {t`3-mo avg, after revenue`}
+              </span>
+            </div>
             <BurnLines
               series={series.map(({ month, ...rest }) => ({
                 ...rest,
@@ -314,6 +316,7 @@ export function FinanceRunwayPage() {
             <Kpi
               title={t`Monthly burn`}
               value={data.monthlyBurnCents > 0 ? money(data.monthlyBurnCents) : "—"}
+              sub={t`3-mo avg, after revenue`}
               to={financePath.burn()}
             />
             <Kpi title={t`Runway`} value={runMonths === undefined ? "—" : t`${runMonths} mo`} />
