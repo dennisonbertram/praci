@@ -1,7 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ActionApprovalRule } from "@rakazo/contracts";
-import { Button, Label, Switch } from "@rakazo/ui-web";
+import { Button, Label, Skeleton, Switch } from "@rakazo/ui-web";
 import { useEffect, useId, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -114,14 +114,18 @@ export function ApprovalRulesSettings() {
             key={kind}
             className="flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center"
           >
-            <Switch
-              id={id}
-              data-testid={`approval-preset-${kind}`}
-              className="mt-0.5"
-              checked={presetRule(kind) !== undefined}
-              disabled={loading || savingPreset !== null}
-              onCheckedChange={(checked) => void setPreset(kind, checked)}
-            />
+            {loading ? (
+              <Skeleton className="mt-0.5 h-[18.4px] w-[32px] shrink-0 rounded-full" />
+            ) : (
+              <Switch
+                id={id}
+                data-testid={`approval-preset-${kind}`}
+                className="mt-0.5"
+                checked={presetRule(kind) !== undefined}
+                disabled={savingPreset !== null}
+                onCheckedChange={(checked) => void setPreset(kind, checked)}
+              />
+            )}
             <Label
               htmlFor={id}
               className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch pointer-coarse:items-center"
@@ -132,11 +136,7 @@ export function ApprovalRulesSettings() {
         ))}
       </div>
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
-      {loading ? (
-        <p className="mt-4 text-[13px] text-muted-foreground">
-          <Trans>Loading rules…</Trans>
-        </p>
-      ) : listedRules.length > 0 ? (
+      {listedRules.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {listedRules.map((rule) => (
             <li

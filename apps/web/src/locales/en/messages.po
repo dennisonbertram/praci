@@ -1048,7 +1048,6 @@ msgid "Address or ENS"
 msgstr "Address or ENS"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6095,10 +6094,6 @@ msgstr "Loading model catalog…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Loading preview…"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "Loading rules…"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"

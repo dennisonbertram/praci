@@ -136,6 +136,7 @@ import {
   useLocation,
   useMatch,
   useNavigate,
+  useNavigationType,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -863,7 +864,12 @@ export function ShellPage() {
     setMissingPath(path);
   }, []);
   // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
-  useEffect(() => setSettingsOpen(false), [pathname]);
+  // A replace (the Chief thread route settling on its bot or thread) is a redirect, not a visit.
+  const navigationType = useNavigationType();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new pathname closes Settings
+  useEffect(() => {
+    if (navigationType !== "REPLACE") setSettingsOpen(false);
+  }, [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
   /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
@@ -6187,7 +6193,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
+              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (

@@ -61,7 +61,7 @@ export function DataExportSection() {
       data-testid="data-export"
     >
       <div className="flex flex-col gap-0.5">
-        <h3 className="text-[15px] font-medium text-foreground">
+        <h3 className="text-[14px] font-normal text-foreground/75">
           <Trans>Export my data</Trans>
         </h3>
         {running && job ? (

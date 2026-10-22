@@ -1048,7 +1048,6 @@ msgid "Address or ENS"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6095,10 +6094,6 @@ msgstr "मॉडल कैटलॉग लोड हो रहा है…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "प्रीव्यू लोड हो रहा है…"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Loading rules…"
-msgstr "नियम लोड हो रहे हैं…"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
