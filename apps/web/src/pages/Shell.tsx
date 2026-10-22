@@ -6204,6 +6204,7 @@ export function ShellPage() {
                   : undefined
               }
               onRefreshed={refreshInboxUnread}
+              consentScope={userId && activeSpaceId ? `${userId}:${activeSpaceId}` : undefined}
               onOpenAgent={async (bot) => {
                 await refreshBots();
                 setFocusComposerBotId(bot.id);

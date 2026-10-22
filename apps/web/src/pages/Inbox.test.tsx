@@ -968,18 +968,26 @@ it("says sorting at once after Allow and keeps the rows back until the sort land
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
-it("remembers Not now on the sorting prompt in this browser", async () => {
+it("remembers Not now per user and space, and offers a way to bring the prompt back", async () => {
   const blocked = {
     enabled: false,
     triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
   };
   rpcMock.list.mockResolvedValue(list([row("a")], blocked));
-  const first = await render();
+  const first = await render(undefined, undefined, { consentScope: "u1:s1" });
   await click(byText(first, "Not now"));
   expect(first.querySelector("[data-consent-prompt]")).toBeNull();
-  const again = await render();
+  const again = await render(undefined, undefined, { consentScope: "u1:s1" });
   expect(again.querySelector("[data-consent-prompt]")).toBeNull();
-  localStorage.removeItem("rakazo.inboxConsentDismissed");
+  const other = await render(undefined, undefined, { consentScope: "u2:s1" });
+  expect(other.querySelector("[data-consent-prompt]")).not.toBeNull();
+  const otherSpace = await render(undefined, undefined, { consentScope: "u1:s2" });
+  expect(otherSpace.querySelector("[data-consent-prompt]")).not.toBeNull();
+  await click(byText(again, "Let Praci sort your mail"));
+  expect(again.querySelector("[data-consent-prompt]")).not.toBeNull();
+  const afterRecovery = await render(undefined, undefined, { consentScope: "u1:s1" });
+  expect(afterRecovery.querySelector("[data-consent-prompt]")).not.toBeNull();
+  localStorage.clear();
 });
 
 it("keeps rows still while a row menu is open and the first sort finishes", async () => {
