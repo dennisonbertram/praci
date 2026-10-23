@@ -1430,6 +1430,12 @@ describe("financeConnectionLineFor", () => {
     expect(line).toContain("Allow changes");
     expect(line).toContain("never say no bank is connected");
   });
+  it("links a bank without an agent to its own page, where Allow changes is confirmed", () => {
+    const line = financeConnectionLineFor([
+      { id: "srv1", endpoint: mercury, agentBotId: null, login: "connected" },
+    ]);
+    expect(line).toContain("[Open Mercury](/app/integrations/mcp/srv1)");
+  });
   it("hands a connected bank with an agent to that agent", () => {
     const line = financeConnectionLineFor([
       { endpoint: mercury, agentBotId: "bot", login: "connected" },

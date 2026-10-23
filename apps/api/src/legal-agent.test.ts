@@ -10,3 +10,8 @@ test("the removal instruction names the arguments legal_upsert_deadline requires
     'its current title, dueDate and kind, and status "dismissed"',
   );
 });
+
+test("the Legal agent offers the Inbox hand-off as a choice, not a phrase to type", () => {
+  expect(LEGAL_AGENT_INSTRUCTIONS).toContain('call ask_user with the question "Send this draft');
+  expect(LEGAL_AGENT_INSTRUCTIONS).toContain("never ask the user to type a phrase");
+});

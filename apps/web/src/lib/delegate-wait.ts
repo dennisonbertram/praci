@@ -1,14 +1,45 @@
 import type { MessageBlock } from "@rakazo/contracts";
 
-/** The agent this chat last messaged with no answer back yet, or null when nothing is awaited. */
-export function delegateWaitTarget(messages: readonly { blocks: readonly MessageBlock[] }[]) {
+/** Show the wait once the other agent has been silent this long. */
+export const DELEGATE_WAIT_SHOWN_AFTER_MS = 60_000;
+/** After this long the wait is reported as unanswered, with a way to ask again. */
+export const DELEGATE_WAIT_FAILED_AFTER_MS = 5 * 60_000;
+/** Older unanswered messages are history (the answer may have come another way), not a wait. */
+const DELEGATE_WAIT_FORGOTTEN_AFTER_MS = 60 * 60_000;
+
+/** The agent this chat last messaged with no answer back yet, and when, or null when nothing is awaited. */
+export function delegateWait(
+  messages: readonly { blocks: readonly MessageBlock[]; createdAt?: string }[],
+) {
   for (let i = messages.length - 1; i >= 0; i--) {
     const blocks = messages[i]?.blocks ?? [];
     if (blocks.some((block) => block.kind === "bot_message_received")) return null;
     const sent = blocks.find((block) => block.kind === "bot_message_sent");
-    if (sent?.kind === "bot_message_sent") return sent.toBotName;
+    if (sent?.kind === "bot_message_sent") {
+      return { name: sent.toBotName, at: Date.parse(messages[i]?.createdAt ?? "") };
+    }
   }
   return null;
+}
+
+/** The agent this chat last messaged with no answer back yet, or null when nothing is awaited. */
+export function delegateWaitTarget(messages: readonly { blocks: readonly MessageBlock[] }[]) {
+  return delegateWait(messages)?.name ?? null;
+}
+
+/** Whether to show a quiet wait, or an unanswered request, for an idle chat at `now`. */
+export function delegateWaitState(
+  messages: readonly { blocks: readonly MessageBlock[]; createdAt?: string }[],
+  now: number,
+): { name: string; state: "waiting" | "unanswered" } | null {
+  const wait = delegateWait(messages);
+  if (!wait || !Number.isFinite(wait.at)) return null;
+  const age = now - wait.at;
+  if (age < DELEGATE_WAIT_SHOWN_AFTER_MS || age >= DELEGATE_WAIT_FORGOTTEN_AFTER_MS) return null;
+  return {
+    name: wait.name,
+    state: age >= DELEGATE_WAIT_FAILED_AFTER_MS ? "unanswered" : "waiting",
+  };
 }
 
 /** The agents holding an approval for this chat's requests, once each, in the order they were asked. */

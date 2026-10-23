@@ -348,6 +348,7 @@ import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/co
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
 import { isStalePendingAskError } from "./shell/composer-error";
+import { DelegateWaitNotice } from "./shell/DelegateWaitNotice";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -4393,6 +4394,13 @@ export function ShellPage() {
                 <Trans>Open</Trans>
               </Button>
             </div>
+          ) : null}
+          {!transcriptRunning &&
+          pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).length === 0 ? (
+            <DelegateWaitNotice
+              messages={activeSnapshot?.messages ?? []}
+              onRetry={retryFailedRun}
+            />
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
             // Same side padding as the composer, and the toasts rise above it.

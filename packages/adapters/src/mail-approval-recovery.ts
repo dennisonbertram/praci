@@ -21,7 +21,7 @@ export function mailApprovalAgentNote(send: boolean, outcome?: Outcome): string 
       : "The user edited this email and saved it as a draft themselves from the approval card. Do not save it again.";
   }
   if (outcome === "failed") {
-    return `The user edited this ${what} on the approval card, but their ${send ? "send" : "save"} failed and nothing was ${send ? "sent" : "saved"}. Do not tell them it was ${send ? "sent" : "saved"}.`;
+    return `The user edited this ${what} on the approval card, but their ${send ? "send" : "save"} failed and nothing was ${send ? "sent" : "saved"}. Do not tell them it was ${send ? "sent" : "saved"}. Tell them in your next message that it failed and that the card keeps the draft to open in the composer.`;
   }
   return `The user edited this ${what} on the approval card and the outcome of their ${send ? "send" : "save"} is ${outcome === "unknown" ? "unknown" : "not known yet"}. Do not ${send ? "send" : "save"} it again; they should check ${send ? "Sent" : "Drafts"}.`;
 }

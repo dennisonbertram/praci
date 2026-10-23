@@ -1,6 +1,6 @@
 import type { MessageBlock } from "@rakazo/contracts";
 import { expect, it } from "vitest";
-import { delegateWaitTarget, pendingDelegateAgents } from "./delegate-wait";
+import { delegateWaitState, delegateWaitTarget, pendingDelegateAgents } from "./delegate-wait";
 
 const sent = { kind: "bot_message_sent", toBotId: "b2", toBotName: "Mercury agent", text: "x" };
 const received = {
@@ -32,4 +32,22 @@ it("lists each agent holding an approval once, in the order asked", () => {
     { id: "b3", name: "Inbox agent" },
   ]);
   expect(pendingDelegateAgents(undefined)).toEqual([]);
+});
+
+const at = (ms: number) => new Date(ms).toISOString();
+const sentAt = (ms: number) => ({ blocks: [sent as MessageBlock], createdAt: at(ms) });
+
+it("shows nothing for the first minute, then the wait, then an unanswered request", () => {
+  const messages = [sentAt(0)];
+  expect(delegateWaitState(messages, 59_000)).toBeNull();
+  expect(delegateWaitState(messages, 61_000)).toEqual({ name: "Mercury agent", state: "waiting" });
+  expect(delegateWaitState(messages, 5 * 60_000 + 1)).toEqual({
+    name: "Mercury agent",
+    state: "unanswered",
+  });
+});
+
+it("shows nothing once the answer arrived, or for an old unanswered message", () => {
+  expect(delegateWaitState([sentAt(0), msg(received)], 10 * 60_000)).toBeNull();
+  expect(delegateWaitState([sentAt(0)], 2 * 60 * 60_000)).toBeNull();
 });

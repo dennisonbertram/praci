@@ -968,7 +968,9 @@ export const Transcript = memo(function Transcript({
                 ? waitingLabel(activity.service)
                 : activity?.kind === "phase"
                   ? (runPhaseWaitingLabel(activity.phase) ?? undefined)
-                  : undefined
+                  : delegate
+                    ? waitingLabel(delegate)
+                    : undefined
             }
           />
         ) : null}
