@@ -6362,7 +6362,6 @@ msgstr "Mail from {0} is now marked important"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
-#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
@@ -6795,10 +6794,6 @@ msgstr "More"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
 msgstr "More {0} actions"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr "More {name} actions"
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name

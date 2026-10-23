@@ -6362,7 +6362,6 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr ""
 
-#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
@@ -6794,10 +6793,6 @@ msgstr "Ещё"
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
-msgstr ""
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
 msgstr ""
 
 #. placeholder {0}: attachment.filename
