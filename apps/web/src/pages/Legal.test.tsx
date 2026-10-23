@@ -34,7 +34,7 @@ vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { LegalGraphView, labelLines, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { LegalPage } from "./Legal";
+import { BuildingGraph, LegalPage } from "./Legal";
 import {
   consentFixture,
   contracts,
@@ -1236,6 +1236,19 @@ it("lists the deadlines marked done", async () => {
     deadlines[0]!.title,
   );
   expect(button("Show open")).toBeDefined();
+});
+
+it("keeps the graph placeholder text from covering the Try again button", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () => createRoot(container).render(<BuildingGraph />));
+  await act(async () => void vi.advanceTimersByTime(2_000));
+  const overlay = container.querySelector('[role="status"]');
+  expect(overlay?.textContent).toBe("Building graph…");
+  expect(overlay?.className).toContain("pointer-events-none");
+  vi.useRealTimers();
 });
 
 it("re-reads the contracts when the Legal agent stops answering", async () => {

@@ -13,7 +13,13 @@ vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray) => parts.join(""),
 }));
 
-import { OPENING_SLOW_MS, OpeningSpace, ThreadSkeleton } from "./ShellSkeleton";
+import {
+  OPENING_SLOW_MS,
+  OpeningSpace,
+  STILL_LOADING_MS,
+  StillLoading,
+  ThreadSkeleton,
+} from "./ShellSkeleton";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -46,4 +52,18 @@ it("shows message placeholders while a thread loads", async () => {
   expect(container.querySelector('[role="status"]')?.getAttribute("aria-label")).toBe(
     "Loading messages",
   );
+});
+
+it("shows Still loading and Try again only after 20 s", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const retry = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () => createRoot(container).render(<StillLoading onRetry={retry} />));
+  expect(container.textContent).toBe("");
+  await act(async () => void vi.advanceTimersByTime(STILL_LOADING_MS));
+  expect(container.textContent).toContain("Still loading…");
+  await act(async () => container.querySelector("button")?.click());
+  expect(retry).toHaveBeenCalledTimes(1);
 });

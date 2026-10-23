@@ -18,6 +18,7 @@ import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -627,7 +628,7 @@ function GraphTab() {
 }
 
 /** The graph's placeholder; after 2 seconds it says what is happening. */
-function BuildingGraph() {
+export function BuildingGraph() {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), 2_000);
@@ -639,11 +640,12 @@ function BuildingGraph() {
       {slow ? (
         <p
           role="status"
-          className="absolute inset-0 grid place-items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground"
         >
           <Trans>Building graph…</Trans>
         </p>
       ) : null}
+      <StillLoading />
     </div>
   );
 }
@@ -658,6 +660,7 @@ function LegalSkeleton() {
         ))}
       </div>
       <Skeleton className="h-56" />
+      <StillLoading />
     </div>
   );
 }
