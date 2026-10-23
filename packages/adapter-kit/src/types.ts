@@ -2,6 +2,7 @@ import type {
   CompanyEdgeImportInput,
   CompanyEntityImportInput,
   CompanyEventImportInput,
+  CompanyExtraction,
   CacheCapabilities as ConnectionCacheCapabilities,
   ConnectionCatalogItem,
   InboxCategory,
@@ -925,6 +926,14 @@ export type CompanyImportFact =
 export interface CompanyImportReadPage {
   items: CompanyImportReadItem[];
   facts: CompanyImportFact[];
+  extractions?: Array<{
+    sourceItemId: string;
+    contentHash: string;
+    sourceUrl?: string | null;
+    extraction: CompanyExtraction;
+    model: { provider: string; model: string };
+  }>;
+  reusedEvidenceIds?: string[];
   nextCursor: unknown | null;
   done: boolean;
 }
@@ -943,10 +952,7 @@ export interface CompanyImportWorkerContext {
   executeModelCall<T>(input: {
     inputTokenBound: number;
     maxOutputTokens: number;
-    invoke: (
-      model: AgentRunModel,
-      signal: AbortSignal,
-    ) => Promise<CompanyImportModelCallResult<T>>;
+    invoke: (model: AgentRunModel, signal: AbortSignal) => Promise<CompanyImportModelCallResult<T>>;
   }): Promise<CompanyImportModelCallResult<T>>;
 }
 
@@ -1206,6 +1212,8 @@ export interface MailAddress {
 export interface MailListRequest {
   /** Provider search syntax, passed through. Every adapter today speaks Gmail syntax. */
   query: string;
+  /** Native provider label ids, intersected with the query. */
+  labelIds?: string[];
   /** Inclusive lower bound, YYYY-MM-DD. Translated by the provider. */
   after?: string;
   /** Exclusive upper bound, YYYY-MM-DD. Translated by the provider. */

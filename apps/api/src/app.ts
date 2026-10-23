@@ -33,6 +33,7 @@ import {
   createBlueBubblesPollState,
   createCloudAgentConnection,
   createCompanyImportEngine,
+  createCompanySourceWorker,
   createConnectorStack,
   createDevinCallTool,
   createFinanceCallToolFor,
@@ -64,6 +65,7 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
+  LlmCompanyExtractor,
   LlmDataRoomClassifier,
   McpConnector,
   McpOAuthBroker,
@@ -594,6 +596,7 @@ export async function createApp(
     jobs,
     realtime,
     resolveModel: executor.resolveModel,
+    worker: createCompanySourceWorker({ prisma, mail, extractor: new LlmCompanyExtractor() }),
   });
   const jobHandlers = createBackgroundJobHandlers({
     executor,

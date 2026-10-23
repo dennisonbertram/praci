@@ -7,6 +7,7 @@ import type {
   CompanyEntityImportInput,
   CompanyEventEditInput,
   CompanyEventImportInput,
+  CompanyEvidenceInput,
   CompanyPartialDate,
   CompanyEdgeRecord as ContractCompanyEdgeRecord,
   CompanyEntityRecord as ContractCompanyEntityRecord,
@@ -22,6 +23,7 @@ import {
   CompanyEntityKindSchema,
   CompanyEventEditInputSchema,
   CompanyEventImportInputSchema,
+  CompanyEvidenceInputSchema,
   CompanyIdentityTypeSchema,
   CompanyMergeInputSchema,
   CompanyRejectInputSchema,
@@ -2484,7 +2486,39 @@ function writerFor(db: CompanyDb, actor: Actor) {
 }
 
 export function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
-  return writerFor(tx, actor);
+  return {
+    ...writerFor(tx, actor),
+    deferImportRelation: async (input: {
+      kind: "edge" | "event";
+      entityIds: string[];
+      proposedFact: unknown;
+      evidence: CompanyEvidenceInput;
+    }) => {
+      const scope = ownerOf(actor);
+      await requireMember(tx, scope);
+      const evidence = CompanyEvidenceInputSchema.parse(input.evidence);
+      if (evidence.sourceKind === "manual")
+        throw new IsolationError("Manual evidence requires owner input");
+      return createCandidate(tx, scope, {
+        kind: input.kind,
+        reason: "unresolved_import_subjects",
+        entityIds: input.entityIds,
+        proposedFact: input.proposedFact,
+        sourceKind: evidence.sourceKind,
+        connectionId: evidence.connectionId ?? null,
+        mcpServerId: evidence.mcpServerId ?? null,
+        dataRoomItemId: await linkedDataRoomItemId(tx, scope, evidence),
+        sourceItemId: evidence.sourceItemId,
+        sourceKey: sourceKey(
+          evidence,
+          createHash("sha256").update(JSON.stringify(input.proposedFact)).digest("hex"),
+        ),
+        quote: evidence.quote,
+        contentHash: evidence.contentHash,
+        importRunId: evidence.extractorRunId,
+      });
+    },
+  };
 }
 
 export function companyForActor(prisma: RootDb, actor: Actor) {
