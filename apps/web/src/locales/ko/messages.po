@@ -2388,10 +2388,6 @@ msgstr ""
 msgid "Check for updates"
 msgstr "업데이트 확인"
 
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr ""
-
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
 msgstr ""
