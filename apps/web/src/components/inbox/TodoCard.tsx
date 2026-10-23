@@ -70,7 +70,7 @@ export function TodoCard({
     <Card
       size="sm"
       role="region"
-      className="mb-5 gap-1 px-3.5"
+      className={`mb-5 gap-1 px-3.5 ${collapsed ? "gap-0 py-1.5" : ""}`}
       aria-labelledby="inbox-todo-heading"
     >
       <h2 id="inbox-todo-heading" className="text-xs font-semibold text-muted-foreground">
@@ -79,7 +79,7 @@ export function TodoCard({
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded(!expanded)}
-            className="-mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1.5 rounded-sm px-1 py-1.5 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="-mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1.5 rounded-sm px-1 py-2.5 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <Trans>To do</Trans>
             <span className="tabular-nums">{openCount}</span>
@@ -142,7 +142,7 @@ export function TodoCard({
                 </div>
                 {todo.dueOn && days !== null ? (
                   <span
-                    className={`whitespace-nowrap text-xs ${tone === "crit" && days < 0 ? "text-destructive" : tone !== "none" ? "text-warning" : "text-muted-foreground"}`}
+                    className={`whitespace-nowrap text-xs leading-5 ${tone === "crit" && days < 0 ? "text-destructive" : tone !== "none" ? "text-warning" : "text-muted-foreground"}`}
                   >
                     {dueLabel(todo.dueOn, now)}
                   </span>
