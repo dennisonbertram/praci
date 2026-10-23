@@ -101,7 +101,7 @@ Company dates are calendar dates. A hire date, a contract renewal and a funding 
 
 The resolver runs after extraction, in code first and a model second.
 
-1. **Deterministic keys.** People match on a work email, Slack id, GitHub login or Linear id. Organisations match on domain, then normalized legal name. Events match on kind, normalized title and date within the precision. A deterministic match merges silently and keeps all evidence.
+1. **Deterministic keys.** People match on a work email, Slack id, GitHub login or Linear id. Organisations match on domain, then an unambiguous normalized legal name. Events match on kind, normalized title, date and precision, plus sorted canonical subject IDs; exact raw subject/source keys take precedence over canonical keys after an explicit merge. Explicit merges canonicalize subjects while preserving original links and per-source replay keys. Subject corrections retain source-bound replay keys without making the old subject a global alias. If a new source matches multiple events after an explicit merge, it becomes an event candidate in Review instead of collapsing the records. Events without known subjects match only within the same stable source locator, independent of content hash.
 2. **Candidate pairs.** Same normalized name with no shared identifier, or the same email local part at different domains, become candidates. One cheap model call per small batch of candidates sees names, roles and snippet counts only (no message text) and answers merge, keep apart, or unsure.
 3. **Unsure and low-confidence merges** are never applied. They land in Review as "Same person?" with both records side by side.
 4. **Merge is reversible.** A merge writes a `mergedFrom` list on the survivor. "Split" in fact detail restores both rows and re-attaches evidence by `sourceItemId`.
@@ -171,7 +171,7 @@ Dedupe and merge as above, then a synthesis step: the coordinator drafts the com
 
 ### 7. Review queue
 
-Items below the threshold, merge candidates ("Same person?"), contradictions, and anything involving a never-auto category land in Review. Actions are Confirm, Edit and Reject, with a keyboard shortcut for each. The page badge shows the count.
+Items below the threshold, merge candidates ("Same person?"), contradictions, ambiguous event candidates, rejected name-only person claims, and anything involving a never-auto category land in Review. Ambiguous event and rejected name-only candidates retain their proposed fact and evidence metadata without creating a new fact; `importEvent` and `importEntity` return `{ deferred: true, record: null, candidateId }` for these paths, with resolution left to the next-phase Review action. Actions are Confirm, Edit and Reject, with a keyboard shortcut for each. The page badge shows the count.
 
 ### 8. Progress UI
 

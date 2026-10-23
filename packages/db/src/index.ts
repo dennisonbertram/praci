@@ -7,6 +7,7 @@ export * from "./bootstrap-user.js";
 export * from "./cancel-runs.js";
 export * from "./cap-table.js";
 export * from "./client.js";
+export * from "./company.js";
 export * from "./computers.js";
 export * from "./contacts.js";
 export * from "./credential-secrets.js";
