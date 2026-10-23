@@ -1,6 +1,7 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import {
+  AI_DISCLOSURE_VERSION,
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
   COMPANY_READ_TOOLS,
   companyAgentSpawnKey,
@@ -489,6 +490,8 @@ async function runIdentityExecutor({
           ? { userId: run.userId }
           : null,
       ),
+      // Chat consent is always granted here; these tests vary the Data Room consent read by findFirst.
+      findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })),
     },
     taughtSkill: { findMany: vi.fn(async () => []) },
     agentSecret: { findMany: vi.fn(async () => []) },
