@@ -20,12 +20,18 @@ const LEGAL_INSTRUCTIONS_BASE =
 const LEGAL_INSTRUCTIONS_EXTRA =
   ' For a contract that renews automatically, pass expirationDate as the renewal date the document states (a policy that renews on December 1 gets December 1, not the day after), so the notice deadline and its note agree. When a new contract names the same landlord or counterparty and the same property or subject as an older one, call legal_upsert_deadline with the old notice or renewal deadline\'s id, its current title, dueDate and kind, and status "dismissed" to propose its removal and list it in your reply; the founder decides. When the user asks you to send a drafted notice, send the draft to the Inbox agent with message_bot, then say you handed it over; you still send no mail yourself.';
 
-export const LEGAL_AGENT_INSTRUCTIONS = LEGAL_INSTRUCTIONS_BASE + LEGAL_INSTRUCTIONS_EXTRA;
+/** Offers the hand-off as a tappable choice, so the user never has to type a phrase. */
+const LEGAL_INSTRUCTIONS_OFFER =
+  ' After you draft a notice, call ask_user with the question "Send this draft to the Inbox agent?" and the options "Send to Inbox" and "Not now"; never ask the user to type a phrase. When they choose "Send to Inbox", send the draft to the Inbox agent with message_bot.';
+
+export const LEGAL_AGENT_INSTRUCTIONS =
+  LEGAL_INSTRUCTIONS_BASE + LEGAL_INSTRUCTIONS_EXTRA + LEGAL_INSTRUCTIONS_OFFER;
 
 /** The previous default, before the instruction about not sending mail; an agent still holding it is updated. */
 const NEVER_DISMISS =
   " You never dismiss a deadline and never lower a stored value unless a document date or figure contradicts it. If a deadline seems not to apply any more, the tools mark it for the founder to confirm; list each one in your reply.";
 const OLDER_AGENT_INSTRUCTIONS = [
+  LEGAL_INSTRUCTIONS_BASE + LEGAL_INSTRUCTIONS_EXTRA,
   LEGAL_INSTRUCTIONS_BASE,
   LEGAL_INSTRUCTIONS_BASE.replace(NEVER_DISMISS, ""),
   LEGAL_INSTRUCTIONS_BASE.replace(

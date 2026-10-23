@@ -224,7 +224,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
-import { pendingDelegateAgents } from "../lib/delegate-wait";
+import { delegateWaitTarget, pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
 import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -348,6 +348,7 @@ import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/co
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
 import { isStalePendingAskError } from "./shell/composer-error";
+import { DelegateWaitNotice } from "./shell/DelegateWaitNotice";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -4328,6 +4329,7 @@ export function ShellPage() {
                 onScrollRequestHandled={clearScrollRequest}
                 artifactTarget={transcriptArtifactTarget}
                 messages={transcriptMessages}
+                delegate={delegateWaitTarget(activeSnapshot?.messages ?? [])}
                 showToolActivity={showToolActivity}
                 olderCursor={activeSnapshot?.olderCursor ?? null}
                 loadingOlder={loadingOlder}
@@ -4434,6 +4436,10 @@ export function ShellPage() {
                 <Trans>Open</Trans>
               </Button>
             </div>
+          ) : null}
+          {!transcriptRunning &&
+          pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).length === 0 ? (
+            <DelegateWaitNotice messages={activeSnapshot?.messages ?? []} />
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
             // Same side padding as the composer, and the toasts rise above it.

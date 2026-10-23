@@ -292,6 +292,11 @@ msgstr ""
 msgid "{0} handling"
 msgstr ""
 
+#. placeholder {0}: wait.name
+#: src/pages/shell/DelegateWaitNotice.tsx
+msgid "{0} has not answered"
+msgstr ""
+
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
@@ -2451,6 +2456,10 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Choose an account"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account to send from."
 msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -10927,8 +10936,16 @@ msgstr ""
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "This draft was not saved. Check the account in Integrations, then open it in the composer."
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "This email isn't in your mail any more. It may have been deleted or moved."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "This email was not sent. Check the account in Integrations, then open it in the composer."
 msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
@@ -11810,7 +11827,9 @@ msgid "Waiting in line…"
 msgstr "कतार में प्रतीक्षा…"
 
 #. placeholder {0}: run.waitingOn
+#. placeholder {0}: wait.name
 #: src/pages/RoutineRunHistory.tsx
+#: src/pages/shell/DelegateWaitNotice.tsx
 msgid "Waiting on {0}"
 msgstr ""
 

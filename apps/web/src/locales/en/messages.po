@@ -292,6 +292,11 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
+#. placeholder {0}: wait.name
+#: src/pages/shell/DelegateWaitNotice.tsx
+msgid "{0} has not answered"
+msgstr "{0} has not answered"
+
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
@@ -2452,6 +2457,10 @@ msgstr "Choose a tool"
 #: src/components/MailApprovalCard.tsx
 msgid "Choose an account"
 msgstr "Choose an account"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account to send from."
+msgstr "Choose an account to send from."
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
@@ -10927,9 +10936,17 @@ msgstr "This connection no longer exists."
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr "This deletes all {0} versions of this artifact. This can't be undone."
 
+#: src/components/MailApprovalCard.tsx
+msgid "This draft was not saved. Check the account in Integrations, then open it in the composer."
+msgstr "This draft was not saved. Check the account in Integrations, then open it in the composer."
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "This email isn't in your mail any more. It may have been deleted or moved."
 msgstr "This email isn't in your mail any more. It may have been deleted or moved."
+
+#: src/components/MailApprovalCard.tsx
+msgid "This email was not sent. Check the account in Integrations, then open it in the composer."
+msgstr "This email was not sent. Check the account in Integrations, then open it in the composer."
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
@@ -11810,7 +11827,9 @@ msgid "Waiting in line…"
 msgstr "Waiting in line…"
 
 #. placeholder {0}: run.waitingOn
+#. placeholder {0}: wait.name
 #: src/pages/RoutineRunHistory.tsx
+#: src/pages/shell/DelegateWaitNotice.tsx
 msgid "Waiting on {0}"
 msgstr "Waiting on {0}"
 

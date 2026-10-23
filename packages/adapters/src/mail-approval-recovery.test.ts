@@ -1,5 +1,9 @@
 import { expect, it } from "vitest";
-import { approvedMailOutcome, failedMailToAgent } from "./mail-approval-recovery.js";
+import {
+  approvedMailOutcome,
+  failedMailToAgent,
+  mailApprovalAgentNote,
+} from "./mail-approval-recovery.js";
 
 it("tells the agent the send failed and the draft is kept, not that the original is missing", () => {
   const { error } = failedMailToAgent("mail_send", "Message not found");
@@ -7,4 +11,8 @@ it("tells the agent the send failed and the draft is kept, not that the original
   expect(error).toContain("the draft is kept");
   expect(error).toContain("do not say the original message was missing");
   expect(approvedMailOutcome("mail_send", { error: "Message not found" }).outcome).toBe("failed");
+});
+
+it("tells the agent to say a failed card send failed", () => {
+  expect(mailApprovalAgentNote(true, "failed")).toContain("Tell them in your next message");
 });

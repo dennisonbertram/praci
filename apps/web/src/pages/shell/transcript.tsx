@@ -82,7 +82,6 @@ import {
 import { SkillDraftCard } from "../../components/teach/SkillDraftCard";
 import { bubbleMeasure, UserTextBubble } from "../../components/UserTextBubble";
 import type { ArtifactTarget } from "../../lib/artifact-open";
-import { delegateWaitTarget } from "../../lib/delegate-wait";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
@@ -146,6 +145,7 @@ export const Transcript = memo(function Transcript({
   onScrollRequestHandled,
   artifactTarget,
   messages,
+  delegate = null,
   showToolActivity,
   olderCursor,
   loadingOlder,
@@ -187,6 +187,8 @@ export const Transcript = memo(function Transcript({
   onScrollRequestHandled: () => void;
   artifactTarget: ArtifactTarget;
   messages: ThreadMessage[];
+  /** The agent this chat is waiting on, worked out from the full thread (the display list drops handoff replies). */
+  delegate?: string | null;
   showToolActivity: boolean;
   olderCursor: number | null;
   loadingOlder: boolean;
@@ -317,7 +319,6 @@ export const Transcript = memo(function Transcript({
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
   // After this agent messages another and nothing has come back, the wait is on that agent.
-  const delegate = delegateWaitTarget(messages);
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -970,7 +971,9 @@ export const Transcript = memo(function Transcript({
                 ? waitingLabel(activity.service)
                 : activity?.kind === "phase"
                   ? (runPhaseWaitingLabel(activity.phase) ?? undefined)
-                  : undefined
+                  : delegate
+                    ? waitingLabel(delegate)
+                    : undefined
             }
           />
         ) : null}

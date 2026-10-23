@@ -262,9 +262,9 @@ export function MailApprovalCard({
         <span className="shrink-0 font-medium text-foreground">
           <Trans>Mail</Trans>
         </span>{" "}
-        <span className="shrink-0 text-muted-foreground">{statusText}</span>{" "}
-        {firstRecipient ? (
-          <span className="min-w-0 truncate text-muted-foreground">· {firstRecipient}</span>
+        <span className="shrink-0 text-muted-foreground">{statusText}</span>
+        {firstRecipient && !open ? (
+          <span className="min-w-0 truncate text-muted-foreground"> · {firstRecipient}</span>
         ) : null}
       </span>
       {answered && !open && mail.subject ? (
@@ -467,10 +467,11 @@ export function MailApprovalCard({
             </fieldset>
           ) : interactive ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   className="rounded-full"
                   disabled={busy || allowDisabled || needsAccount}
+                  aria-describedby={chooseAccount && !account ? `${confirmId}-hint` : undefined}
                   onClick={() => void submit("allow")}
                 >
                   {allowLabel ? (
@@ -497,6 +498,11 @@ export function MailApprovalCard({
                 >
                   <Trans>Discard</Trans>
                 </Button>
+                {chooseAccount && !account ? (
+                  <span id={`${confirmId}-hint`} className="text-[13px] text-muted-foreground">
+                    <Trans>Choose an account to send from.</Trans>
+                  </span>
+                ) : null}
               </div>
               {botName && onDisableTool ? (
                 <DropdownMenu>
@@ -534,9 +540,12 @@ export function MailApprovalCard({
               )}
             </p>
           ) : null}
-          {mail.outcome === "failed" && mail.error ? (
+          {mail.outcome === "failed" ? (
             <p role="status" className="pt-3 text-[13px] text-destructive">
-              {mail.error}
+              {mail.error ??
+                (draft
+                  ? t`This draft was not saved. Check the account in Integrations, then open it in the composer.`
+                  : t`This email was not sent. Check the account in Integrations, then open it in the composer.`)}
             </p>
           ) : null}
           {mail.outcome === "failed" && onOpenComposer ? (

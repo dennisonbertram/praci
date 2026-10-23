@@ -486,7 +486,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const older = LEGAL_AGENT_INSTRUCTIONS.replace(
       " If asked to send a notice or any email, say you do not send mail and that the Inbox agent can; never say email is not connected.",
       "",
-    );
+    ).replace(/ After you draft a notice.*$/, "");
     expect(older).not.toBe(LEGAL_AGENT_INSTRUCTIONS);
     await prisma.bot.update({ where: { id: bot.id }, data: { instructions: older } });
     expect((await ensureLegalAgent(api, c)).instructions).toBe(LEGAL_AGENT_INSTRUCTIONS);

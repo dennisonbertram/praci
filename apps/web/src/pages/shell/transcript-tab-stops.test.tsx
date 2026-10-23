@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import { act, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+import { delegateWaitTarget } from "../../lib/delegate-wait";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
@@ -50,7 +51,7 @@ function setup() {
   } as unknown as typeof ResizeObserver;
 }
 
-async function mount(list: ThreadMessage[]) {
+async function mount(list: ThreadMessage[], running = false) {
   const el = document.createElement("div");
   document.body.append(el);
   await act(async () =>
@@ -63,11 +64,12 @@ async function mount(list: ThreadMessage[]) {
           onScrollRequestHandled={noop}
           artifactTarget={{ botId: "bot_demo" }}
           messages={list}
+          delegate={delegateWaitTarget(list)}
           showToolActivity={false}
           olderCursor={null}
           loadingOlder={false}
           answerableAskMessageId={null}
-          running={false}
+          running={running}
           workingBots={[]}
           onLoadOlder={asyncNoop}
           onOpenBot={noop}
@@ -136,4 +138,35 @@ it("keeps a Tab stop when the newest messages are folded into a finance group", 
   const el = await mount([...messages, ...finance]);
   const more = [...el.querySelectorAll<HTMLElement>("[data-message-more]")];
   expect(more.filter((b) => b.tabIndex >= 0)).toHaveLength(1);
+});
+
+afterEach(() => vi.useRealTimers());
+
+it("says it is still waiting on the agent a request went to, once it stays quiet", async () => {
+  setup();
+  vi.useFakeTimers();
+  const sent: ThreadMessage = {
+    id: "message_sent",
+    threadId: "thread_demo",
+    seq: 1,
+    role: "bot",
+    botId: "bot_demo",
+    blocks: [
+      {
+        kind: "bot_message_sent",
+        toBotId: "bot_inbox",
+        toBotName: "Inbox agent",
+        text: "Send it",
+        intent: "request",
+      },
+    ],
+    createdAt: "2026-01-01T10:00:00.000Z",
+  };
+  const el = await mount([sent], true);
+  expect(el.textContent).toContain("Waiting on Inbox agent");
+  expect(el.querySelector("[data-testid=working-waiting]")).toBeNull();
+  await act(async () => vi.advanceTimersByTime(60_000));
+  expect(el.querySelector("[data-testid=working-waiting]")?.textContent).toContain(
+    "Still waiting on Inbox agent",
+  );
 });
