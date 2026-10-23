@@ -33,6 +33,7 @@ import {
   createBlueBubblesPollState,
   createCloudAgentConnection,
   createCompanyConnectionReader,
+  createCompanyDocumentReader,
   createCompanyImportEngine,
   createCompanySlackReader,
   createCompanySourceWorker,
@@ -601,6 +602,7 @@ export async function createApp(
   });
 
   const companyReader = createCompanyConnectionReader({ prisma, connectors: stack.connector, mcp });
+  const documentReader = createCompanyDocumentReader(companyReader);
   const slackReader = createCompanySlackReader(companyReader);
   const trackerReader = createCompanyTrackerReader(companyReader);
   companyImport = createCompanyImportEngine({
@@ -614,6 +616,7 @@ export async function createApp(
       extractor: new LlmCompanyExtractor(),
       slack: slackReader,
       tracker: trackerReader,
+      documents: documentReader,
     }),
   });
   const companyImportPage = createCompanyImportPage({
@@ -622,6 +625,7 @@ export async function createApp(
     reader: companyReader,
     slack: slackReader,
     tracker: trackerReader,
+    documents: documentReader,
   });
   const jobHandlers = createBackgroundJobHandlers({
     executor,

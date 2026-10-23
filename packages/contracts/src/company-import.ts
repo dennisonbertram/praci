@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { CompanySourceKindSchema } from "./company.js";
-import { CompanySlackChannelIdSchema, CompanyTrackerScopeSchema } from "./company-extraction.js";
+import {
+  CompanyGenericScopeSchema,
+  CompanyNotionScopeSchema,
+  CompanySlackChannelIdSchema,
+  CompanyTrackerScopeSchema,
+} from "./company-extraction.js";
+
+export const COMPANY_IMPORT_CURSOR_MAX_BYTES = 512 * 1024;
 
 const identifier = z.string().min(1).max(200);
 
@@ -27,6 +34,11 @@ export const CompanyImportSourceInputSchema = z
   )
   .refine((source) => {
     const reader = source.scope.reader;
+    if (source.sourceKind === "notion")
+      return CompanyNotionScopeSchema.safeParse(source.scope).success;
+    if (source.sourceKind === "composio")
+      return CompanyGenericScopeSchema.safeParse(source.scope).success;
+    if (reader === "notion" || reader === "generic") return false;
     if (source.sourceKind === "github")
       return (
         (reader === undefined || reader === "github") &&
@@ -118,11 +130,24 @@ export type CompanyImportModelConsentStatus = z.infer<typeof CompanyImportModelC
 export type CompanyImportGrantConsentInput = z.infer<typeof CompanyImportGrantConsentInputSchema>;
 export type CompanyImportConsentRecipient = z.infer<typeof CompanyImportConsentRecipientSchema>;
 
+export const CompanyImportReportedCostSchema = z.object({
+  description: z.string().min(1).max(1000),
+  discount: z.string().max(1000).optional(),
+});
+export const CompanyImportReadToolSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(5000),
+  inputSchema: z.record(z.string(), z.unknown()),
+  reportedCost: CompanyImportReportedCostSchema.optional(),
+});
 export const CompanyImportPlanSchema = z.object({
   itemCount: z.number().int().nonnegative().nullable(),
   tokensLower: z.number().int().nonnegative().safe(),
   tokensUpper: z.number().int().nonnegative().safe(),
   estimateBasis: z.enum(["budget_cap", "sample"]),
+  perCallCosts: z
+    .array(CompanyImportReportedCostSchema.extend({ toolName: z.string() }))
+    .optional(),
 });
 export const CompanyImportCatalogSourceSchema = z.object({
   key: identifier,
@@ -135,6 +160,7 @@ export const CompanyImportCatalogSourceSchema = z.object({
   itemCount: z.number().int().nonnegative().nullable(),
   defaultScope: z.record(z.string(), z.unknown()),
   connectPath: z.string().nullable(),
+  tools: z.array(CompanyImportReadToolSchema).optional(),
 });
 export const CompanyImportCatalogSchema = z.object({
   sources: z.array(CompanyImportCatalogSourceSchema),

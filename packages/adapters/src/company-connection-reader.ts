@@ -9,6 +9,8 @@ import type {
   ConnectorTool,
 } from "@rakazo/adapter-kit";
 import {
+  CompanyGenericScopeSchema,
+  CompanyNotionScopeSchema,
   companyImporterSpawnKey,
   companyPrivacySourceKey,
   integrationPresetForEndpoint,
@@ -16,6 +18,15 @@ import {
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { CompanyImportWorkerError } from "./company-import-engine.js";
+import {
+  COMPANY_NOTION_READ_TOOLS,
+  isCompanyGenericReadTool,
+  SAFE_NAME_VERBS,
+  toolNameTokens,
+  WRAPPER_NAME,
+  WRAPPER_NAME_PARTS,
+  WRITE_NAME_VERBS,
+} from "./company-read-policy.js";
 import { COMPANY_SLACK_READ_TOOLS, COMPANY_SLACK_WRITE_TOOLS } from "./company-slack-source.js";
 import { COMPANY_GITHUB_READ_TOOLS } from "./company-tracker-source.js";
 import { unwrapToolResult } from "./finance-call-tool.js";
@@ -30,105 +41,14 @@ type ReaderDeps = {
 };
 
 const MIN_RETRY_MS = 60_000;
-const WRAPPER_NAME =
-  /(?:execute|multi|batch|router|proxy|api_call|generic_api|tool_call|search[_-]?(?:tools|catalog)|list[_-]?tools|control|\bapi\b|\bhttp\b|request)/i;
-const WRAPPER_NAME_PARTS = new Set([
-  "api",
-  "batch",
-  "catalog",
-  "control",
-  "http",
-  "multi",
-  "proxy",
-  "request",
-  "router",
-  "tool",
-  "tools",
-]);
-const SAFE_NAME_VERBS = new Set([
-  "list",
-  "get",
-  "fetch",
-  "retrieve",
-  "read",
-  "search",
-  "find",
-  "lookup",
-  "describe",
-  "inspect",
-  "query",
-  "count",
-  "check",
-  "download",
-  "view",
-  "show",
-]);
-const WRITE_NAME_VERBS = new Set([
-  "accept",
-  "add",
-  "archive",
-  "assign",
-  "approve",
-  "buy",
-  "cancel",
-  "charge",
-  "checkout",
-  "close",
-  "commit",
-  "connect",
-  "copy",
-  "create",
-  "delete",
-  "deploy",
-  "disable",
-  "deny",
-  "disconnect",
-  "enable",
-  "edit",
-  "execute",
-  "forward",
-  "grant",
-  "insert",
-  "invite",
-  "join",
-  "link",
-  "mark",
-  "merge",
-  "modify",
-  "move",
-  "open",
-  "patch",
-  "pay",
-  "post",
-  "publish",
-  "purchase",
-  "put",
-  "register",
-  "react",
-  "reject",
-  "remove",
-  "rename",
-  "replace",
-  "reply",
-  "reset",
-  "revoke",
-  "run",
-  "schedule",
-  "send",
-  "set",
-  "share",
-  "start",
-  "stop",
-  "submit",
-  "subscribe",
-  "trigger",
-  "unassign",
-  "unlink",
-  "unsubscribe",
-  "update",
-  "upload",
-  "write",
-  "upsert",
+const GENERIC_PAGINATION_ARGS = new Set([
+  "start_cursor",
+  "cursor",
+  "page_token",
+  "after",
+  "page_size",
+  "limit",
+  "per_page",
 ]);
 
 function denied(message = "Company source access is not available"): never {
@@ -163,14 +83,6 @@ function slackToolAllowed(name: string) {
   return (COMPANY_SLACK_READ_TOOLS as readonly string[]).includes(name);
 }
 
-function toolNameTokens(name: string) {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-}
-
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
   if (!value || typeof value !== "object") return value;
@@ -199,6 +111,8 @@ function managedRouteMatches(tool: ConnectorTool, row: { id: string; connectorId
   );
 }
 
+export { COMPANY_NOTION_READ_TOOLS, isCompanyGenericReadTool } from "./company-read-policy.js";
+
 function readToolAllowed(
   source: CompanyImportSourceDescriptor,
   tool: ConnectorTool,
@@ -211,6 +125,17 @@ function readToolAllowed(
       tool.route?.connectorId === "composio" &&
       (COMPANY_GITHUB_READ_TOOLS as readonly string[]).includes(tool.name)
     );
+  }
+  if (source.sourceKind === "notion") {
+    return (
+      tool.route?.connectorId === "composio" &&
+      COMPANY_NOTION_READ_TOOLS.includes(tool.name as (typeof COMPANY_NOTION_READ_TOOLS)[number])
+    );
+  }
+  if (source.sourceKind === "composio") {
+    // Generic sources may never fall back to names: raw Composio tags must
+    // explicitly classify the currently offered tool as read-only.
+    return isCompanyGenericReadTool(tool);
   }
   if (
     source.sourceKind === "slack" ||
@@ -262,6 +187,7 @@ function connectionContext(
     displayName: string;
     providerRef: string | null;
   },
+  companyReadOnly = false,
 ): AdapterContext {
   const connected: ConnectedConnector = {
     id: row.id,
@@ -274,6 +200,7 @@ function connectionContext(
     ...context,
     connectedConnections: [connected],
     connectedAppAgentConnectionId: row.id,
+    ...(companyReadOnly ? { companyImportReadOnly: true } : {}),
   };
 }
 
@@ -318,6 +245,21 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
     if (!["composio", "pipedream"].includes(row.connectorId)) denied();
     if (source.sourceKind === "slack" && !["slack", "slack_v2"].includes(row.provider)) denied();
     if (source.sourceKind === "github" && row.provider !== "github") denied();
+    if (
+      source.sourceKind === "notion" &&
+      (row.connectorId !== "composio" || row.provider.toLowerCase() !== "notion")
+    )
+      denied();
+    if (source.sourceKind === "composio") {
+      const provider = row.provider.toLowerCase();
+      if (
+        row.connectorId !== "composio" ||
+        ["gmail", "slack", "slack_v2", "github", "linear", "notion"].includes(provider) ||
+        !row.providerRef?.trim() ||
+        row.providerRef.trim().toLowerCase() === provider
+      )
+        denied("Generic Company sources require an authenticated Composio connection");
+    }
     return row;
   }
 
@@ -356,7 +298,11 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
 
   async function listManaged(source: CompanyImportSourceDescriptor, context: AdapterContext) {
     const row = await managedConnection(source, context);
-    const scoped = connectionContext(context, row);
+    const scoped = connectionContext(
+      context,
+      row,
+      source.sourceKind === "notion" || source.sourceKind === "composio",
+    );
     const tools = await deps.connectors.discoverTools(scoped, [row.connectorId]);
     return {
       row,
@@ -485,6 +431,25 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
     const listed = await listManaged(source, context);
     const tool = listed.tools.find((candidate) => candidate.name === name);
     if (!tool) denied("Company tool is not an approved read");
+    if (source.sourceKind === "composio") {
+      const parsed = CompanyGenericScopeSchema.safeParse(source.scope);
+      const selected = parsed.success
+        ? parsed.data.tools.find((candidate) => candidate.name === name)
+        : undefined;
+      if (!selected) denied("Company tool was not selected by the owner");
+      for (const [key, value] of Object.entries(selected.args)) {
+        if (stableValue(args[key]) !== stableValue(value)) denied("Company tool arguments changed");
+      }
+      if (
+        Object.keys(args).some(
+          (key) => !(key in selected.args) && !GENERIC_PAGINATION_ARGS.has(key),
+        )
+      )
+        denied("Company tool arguments are not owner-approved");
+    } else if (source.sourceKind === "notion") {
+      if (!CompanyNotionScopeSchema.safeParse(source.scope).success)
+        denied("Notion source scope is invalid");
+    }
     if (
       tool.route &&
       (tool.route.connectorId !== listed.row.connectorId ||

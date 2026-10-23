@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CompanyImportCatalogSource, CompanyImportSession } from "@rakazo/contracts";
+import { CompanyGenericScopeSchema } from "@rakazo/contracts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,11 +49,17 @@ function trackerSource(source: { sourceKind: string; scope: Record<string, unkno
   return (
     source.sourceKind === "github" ||
     source.sourceKind === "linear" ||
+    source.sourceKind === "notion" ||
     source.scope.reader === "github" ||
     source.scope.reader === "linear"
   );
 }
 function scopeName(source: { sourceKind: string; scope: Record<string, unknown> }) {
+  if (source.sourceKind === "notion") return t`Shared pages`;
+  if (source.sourceKind === "composio") {
+    const count = Array.isArray(source.scope.tools) ? source.scope.tools.length : 0;
+    return count === 1 ? t`1 read tool` : count ? t`${count} read tools` : t`Choose read tools`;
+  }
   if (trackerSource(source)) return t`All accessible items`;
   if (source.sourceKind === "slack" || source.scope.reader === "slack") {
     const count =
@@ -112,7 +119,7 @@ export function CompanyImportPage({
           current ??
           Object.fromEntries(
             data.sources
-              .filter((source) => source.available)
+              .filter((source) => source.available && source.sourceKind !== "composio")
               .map((source) => [source.key, source.defaultScope]),
           ),
       );
@@ -363,7 +370,20 @@ export function CompanyImportPage({
             />
           </label>
           <div className="flex justify-end">
-            <Button type="submit" disabled={busy || !validCap || !Object.keys(selected).length}>
+            <Button
+              type="submit"
+              disabled={
+                busy ||
+                !validCap ||
+                !Object.keys(selected).length ||
+                catalog.data.sources.some(
+                  (source) =>
+                    source.sourceKind === "composio" &&
+                    selected[source.key] &&
+                    !CompanyGenericScopeSchema.safeParse(selected[source.key]).success,
+                )
+              }
+            >
               <Trans>Review</Trans>
             </Button>
           </div>
@@ -453,6 +473,19 @@ export function CompanyImportPage({
                           ? t`From sample`
                           : t`Cap-limited; sample pending`}
                       </p>
+                      {source.plan.perCallCosts?.length ? (
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>
+                            <Trans>Published call rates · total unknown</Trans>
+                          </p>
+                          {source.plan.perCallCosts.map((cost) => (
+                            <p key={cost.toolName} className="break-words">
+                              {cost.toolName}: {maskCurrencyWhenHidden(cost.description)}
+                              {cost.discount ? ` · ${maskCurrencyWhenHidden(cost.discount)}` : ""}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

@@ -17,6 +17,7 @@ import type {
 } from "@rakazo/contracts";
 import {
   AI_DISCLOSURE_VERSION,
+  COMPANY_IMPORT_CURSOR_MAX_BYTES,
   CompanyEdgeImportInputSchema,
   CompanyEntityImportInputSchema,
   CompanyEventImportInputSchema,
@@ -119,6 +120,28 @@ function boundConsentKey(
     .digest("hex");
 }
 
+function isBoundedCursor(value: unknown) {
+  try {
+    const json = JSON.stringify(value);
+    return typeof json === "string" && Buffer.byteLength(json) <= COMPANY_IMPORT_CURSOR_MAX_BYTES;
+  } catch {
+    return false;
+  }
+}
+
+function isCompanySampleResumeCursor(
+  value: unknown,
+): value is { companySampleResume: true; cursor: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const cursor = value as Record<string, unknown>;
+  return (
+    Object.keys(cursor).length === 2 &&
+    cursor.companySampleResume === true &&
+    Object.hasOwn(cursor, "cursor") &&
+    cursor.cursor !== null
+  );
+}
+
 function assertSafePage(
   page: unknown,
   maxUnits = MAX_DISCOVERY_UNITS,
@@ -138,15 +161,8 @@ function assertSafePage(
     throw new CompanyImportWorkerError("invalid_discovery_page");
   }
   const seen = new Set<string>();
-  const serialized = (value: unknown) => {
-    try {
-      const json = JSON.stringify(value);
-      return typeof json === "string" && Buffer.byteLength(json) <= 16_384;
-    } catch {
-      return false;
-    }
-  };
-  if (!serialized(candidate.nextCursor)) throw new CompanyImportWorkerError("cursor_too_large");
+  if (!isBoundedCursor(candidate.nextCursor))
+    throw new CompanyImportWorkerError("cursor_too_large");
   for (const unit of candidate.units) {
     if (
       !unit ||
@@ -159,7 +175,7 @@ function assertSafePage(
     }
     const key = (unit as { unitKey: string }).unitKey;
     if (key.startsWith("discover:")) throw new CompanyImportWorkerError("reserved_discovery_unit");
-    if (!serialized((unit as { cursor?: unknown }).cursor)) {
+    if (!isBoundedCursor((unit as { cursor?: unknown }).cursor)) {
       throw new CompanyImportWorkerError("cursor_too_large");
     }
     if (seen.has(key)) throw new CompanyImportWorkerError("duplicate_discovery_unit");
@@ -176,6 +192,7 @@ function assertSafeReadPage(
     items?: unknown;
     facts?: unknown;
     extractions?: unknown;
+    nextCursor?: unknown;
     done?: unknown;
   };
   if (
@@ -189,6 +206,10 @@ function assertSafeReadPage(
   ) {
     throw new CompanyImportWorkerError("invalid_read_page");
   }
+  if (!Object.hasOwn(candidate, "nextCursor") || candidate.nextCursor === undefined)
+    throw new CompanyImportWorkerError("invalid_read_page");
+  if (!isBoundedCursor(candidate.nextCursor))
+    throw new CompanyImportWorkerError("cursor_too_large");
   let bytes = 0;
   for (const item of candidate.items) {
     if (
@@ -602,7 +623,10 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         name: "company.import.unit",
         payload,
         availableAt,
-        replaceKey: `company-import-unit:${actor.spaceId}:${actor.userId}:${unit.id}`,
+        replaceKey:
+          unit.status === "claimed"
+            ? `company-import-unit-recovery:${actor.spaceId}:${actor.userId}:${unit.id}:${unit.claimExpiresAt?.getTime() ?? "unknown"}`
+            : `company-import-unit:${actor.spaceId}:${actor.userId}:${unit.id}`,
         keepExisting: true,
         maxAttempts: 1,
       });
@@ -670,11 +694,13 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         });
       } else {
         const maxItems = sample ? MAX_SAMPLE_READ_ITEMS : MAX_READ_ITEMS;
+        const readCursor =
+          !sample && isCompanySampleResumeCursor(claim.cursor) ? claim.cursor.cursor : claim.cursor;
         const page = await worker.read(
           {
             source: sourceDescriptor,
             unitKey: claim.unitKey,
-            cursor: claim.cursor,
+            cursor: readCursor,
             maxBytes: MAX_READ_BYTES,
             maxItems,
           },
@@ -682,10 +708,21 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         );
         assertSafeReadPage(page, maxItems);
         assertFactProvenance(page, source.sourceKind, source.connectionId, source.mcpServerId);
+        let nextCursor = page.nextCursor;
+        let done = page.done;
+        if (sample && page.items.length > 0) {
+          if (!page.done && page.nextCursor === null)
+            throw new CompanyImportWorkerError("invalid_read_page");
+          nextCursor = page.done
+            ? null
+            : { companySampleResume: true as const, cursor: page.nextCursor };
+          done = true;
+          if (!isBoundedCursor(nextCursor)) throw new CompanyImportWorkerError("cursor_too_large");
+        }
         await completeCompanyImportUnit(deps.prisma, actor, {
           ...claimInput,
-          nextCursor: page.nextCursor,
-          done: page.done,
+          nextCursor,
+          done,
           itemsDiscovered: 0,
           itemsRead: page.items.length,
           facts: page.facts,

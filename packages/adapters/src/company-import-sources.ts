@@ -11,12 +11,16 @@ import type {
 } from "@rakazo/adapter-kit";
 import {
   CompanyDataRoomScopeSchema,
+  CompanyGenericScopeSchema,
   CompanyMailScopeSchema,
+  CompanyNotionScopeSchema,
   CompanySlackScopeSchema,
   CompanyTrackerScopeSchema,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import * as z from "zod";
+import type { CompanyDocumentReader } from "./company-document-source.js";
+import { isCompanyDocumentSource } from "./company-document-source.js";
 import { skipCompanyMail, validateCompanyExtraction } from "./company-extraction-safety.js";
 import { CompanyImportWorkerError } from "./company-import-engine.js";
 import type { CompanySlackReader } from "./company-slack-source.js";
@@ -62,6 +66,8 @@ export function companySourceScope(kind: string, raw: Record<string, unknown>, n
   const slack = isCompanySlackSource({ sourceKind: kind, scope: raw });
   const tracker = isCompanyTrackerSource({ sourceKind: kind, scope: raw });
   if (tracker) return CompanyTrackerScopeSchema.parse(raw);
+  if (kind === "notion") return CompanyNotionScopeSchema.parse(raw);
+  if (kind === "composio") return CompanyGenericScopeSchema.parse(raw);
   if (kind !== "gmail" && !slack) return raw;
   const scope = slack ? CompanySlackScopeSchema.parse(raw) : CompanyMailScopeSchema.parse(raw);
   if (scope.allTime || scope.after) return scope;
@@ -77,6 +83,7 @@ export function createCompanySourceWorker(deps: {
   extractor: CompanyExtractor;
   slack?: CompanySlackReader;
   tracker?: CompanyTrackerReader;
+  documents?: CompanyDocumentReader;
 }): CompanyImportWorker {
   // Narrow the capability object at construction, not by trusting a model's instructions.
   const mail = deps.mail
@@ -261,6 +268,10 @@ export function createCompanySourceWorker(deps: {
 
   return {
     async discover({ source, cursor, maxUnits }, context) {
+      if (isCompanyDocumentSource(source)) {
+        if (!deps.documents) throw new CompanyImportWorkerError("unsupported_reader");
+        return deps.documents.discover(source, cursor, maxUnits, contextFor(context));
+      }
       if (isCompanyTrackerSource(source)) {
         if (!deps.tracker) throw new CompanyImportWorkerError("unsupported_reader");
         return deps.tracker.discover(source, cursor, maxUnits, contextFor(context));
@@ -333,6 +344,26 @@ export function createCompanySourceWorker(deps: {
       };
     },
     async read({ source, cursor, maxBytes }, context) {
+      if (isCompanyDocumentSource(source)) {
+        if (!deps.documents) throw new CompanyImportWorkerError("unsupported_reader");
+        const page = await deps.documents.read(source, cursor, contextFor(context));
+        if (!page.document)
+          return {
+            ...noFacts,
+            nextCursor: page.nextCursor,
+            done: page.done,
+            cooldownMs: page.cooldownMs,
+          };
+        if (Buffer.byteLength(`${page.document.title}\n${page.document.text}`) > maxBytes)
+          throw new CompanyImportWorkerError("source_item_too_large");
+        const result = await extract(source, page.document, maxBytes, context);
+        return {
+          ...result,
+          nextCursor: page.nextCursor,
+          done: page.done,
+          cooldownMs: page.cooldownMs,
+        };
+      }
       if (isCompanyTrackerSource(source)) {
         if (!deps.tracker) throw new CompanyImportWorkerError("unsupported_reader");
         const page = await deps.tracker.read(source, cursor, contextFor(context));

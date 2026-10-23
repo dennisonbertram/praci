@@ -25,6 +25,50 @@ function renderScope(args: Parameters<typeof CompanyImportScope>[0]) {
   );
 }
 export const DataRoom: Story = { render: renderScope };
+export const ConnectedApp: Story = {
+  render: renderScope,
+  args: {
+    source: {
+      key: "composio:workspace",
+      sourceKind: "composio",
+      connectionId: "workspace",
+      label: "Connected workspace",
+      available: true,
+      reason: null,
+      itemCount: null,
+      defaultScope: { reader: "generic", tools: [] },
+      connectPath: null,
+      tools: [
+        {
+          name: "WORKSPACE_LIST_DOCUMENTS",
+          description: "Read shared company documents.",
+          inputSchema: {
+            type: "object",
+            properties: { folder: { type: "string" } },
+            required: ["folder"],
+          },
+          reportedCost: { description: "$0.01 per successful call" },
+        },
+        {
+          name: "WORKSPACE_GET_TEAM",
+          description: "Read the team directory.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
+    },
+    scope: { reader: "generic", tools: [] },
+  },
+};
+export const SelectedReadTool: Story = {
+  ...ConnectedApp,
+  args: {
+    ...ConnectedApp.args,
+    scope: {
+      reader: "generic",
+      tools: [{ name: "WORKSPACE_LIST_DOCUMENTS", args: { folder: "company" } }],
+    },
+  },
+};
 export const Gmail: Story = {
   render: renderScope,
   args: { source: importCatalog.sources[1]!, scope: { after: "2023-10-21", labelIds: ["INBOX"] } },

@@ -19,6 +19,7 @@ import {
   createBackgroundJobHandlers,
   createCloudAgentConnection,
   createCompanyConnectionReader,
+  createCompanyDocumentReader,
   createCompanyImportEngine,
   createCompanySlackReader,
   createCompanySourceWorker,
@@ -265,6 +266,7 @@ async function main() {
   });
 
   const companyReader = createCompanyConnectionReader({ prisma, connectors: stack.connector, mcp });
+  const documentReader = createCompanyDocumentReader(companyReader);
   const slackReader = createCompanySlackReader(companyReader);
   const trackerReader = createCompanyTrackerReader(companyReader);
   companyImport = createCompanyImportEngine({
@@ -278,6 +280,7 @@ async function main() {
       extractor: new LlmCompanyExtractor(),
       slack: slackReader,
       tracker: trackerReader,
+      documents: documentReader,
     }),
   });
   const jobHandlers = createBackgroundJobHandlers({

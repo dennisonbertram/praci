@@ -123,3 +123,25 @@ export const CompanyTrackerScopeSchema = z.strictObject({
   reader: z.enum(["github", "linear"]).optional(),
   allTime: z.literal(true).default(true),
 });
+
+export const CompanyNotionScopeSchema = z.strictObject({
+  reader: z.literal("notion").default("notion"),
+  allTime: z.literal(true).default(true),
+});
+
+export const CompanyGenericScopeSchema = z.strictObject({
+  reader: z.literal("generic"),
+  tools: z
+    .array(
+      z.strictObject({
+        name: z.string().min(1).max(200),
+        args: z.record(z.string(), z.unknown()).default({}),
+      }),
+    )
+    .min(1)
+    .max(20)
+    .refine(
+      (tools) => new Set(tools.map((tool) => tool.name)).size === tools.length,
+      "Choose each tool once",
+    ),
+});

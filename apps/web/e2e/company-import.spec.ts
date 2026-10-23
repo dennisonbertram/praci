@@ -3,6 +3,122 @@ import type { CompanyImportSession } from "@rakazo/contracts";
 import { importCatalog, importConsent, importSession } from "../src/pages/company-import-fixtures";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
+test("Company generic tools require an explicit selection and retain reported call rates", async ({
+  page,
+}, testInfo) => {
+  let session: CompanyImportSession | null = null;
+  let createInput: Record<string, unknown> | undefined;
+  const source = {
+    key: "composio:workspace",
+    sourceKind: "composio",
+    connectionId: "workspace",
+    label: "Connected workspace",
+    available: true,
+    reason: null,
+    itemCount: null,
+    defaultScope: { reader: "generic", tools: [] },
+    connectPath: null,
+    tools: [
+      {
+        name: "WORKSPACE_LIST_DOCUMENTS",
+        description: "Read company documents.",
+        inputSchema: {
+          type: "object",
+          properties: { folder: { type: "string" } },
+          required: ["folder"],
+        },
+        reportedCost: { description: "$0.01 per successful call" },
+      },
+      {
+        name: "WORKSPACE_GET_TEAM",
+        description: "Read team directory.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
+  };
+  await page.route("**/rpc/companyImport/**", async (route) => {
+    const method = new URL(route.request().url()).pathname.split("/").at(-1);
+    const input = route.request().postDataJSON()?.json;
+    let result: unknown = null;
+    if (method === "catalog") result = { sources: [source], folders: [] };
+    if (method === "session") result = session;
+    if (method === "create") {
+      createInput = input;
+      session = structuredClone(importSession);
+      session.sources[0] = {
+        ...session.sources[0]!,
+        sourceKind: "composio",
+        label: source.label,
+        connectionId: source.connectionId,
+        scope: input.sources[0].scope,
+        plan: {
+          ...session.sources[0]!.plan,
+          perCallCosts: [
+            { toolName: source.tools[0]!.name, description: "$0.01 per successful call" },
+          ],
+        },
+      };
+      result = session.progress;
+    }
+    if (method === "consentStatus") result = { ...importConsent, allowed: false };
+    if (method === "subscribe") {
+      await route.abort();
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ json: result, meta: [] }),
+    });
+  });
+  await signup(
+    page,
+    `company-generic-${Date.now()}@rakazo.test`,
+    "password12",
+    "Generic Import User",
+  );
+  await completeOnboarding(page);
+  await page.goto("/app/company/import");
+  await expect(
+    page.getByRole("checkbox", { name: "Connected workspace", exact: true }),
+  ).not.toBeChecked();
+  await page.getByRole("checkbox", { name: "Connected workspace", exact: true }).check();
+  await expect(page.getByRole("button", { name: "Review", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: /Choose read tools/ }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "WORKSPACE_LIST_DOCUMENTS", exact: true }),
+  ).not.toBeChecked();
+  await page.getByRole("checkbox", { name: "WORKSPACE_LIST_DOCUMENTS", exact: true }).check();
+  await page
+    .getByRole("textbox", { name: "Arguments for WORKSPACE_LIST_DOCUMENTS" })
+    .fill('{"folder":"company"}');
+  await expect(
+    page.getByRole("checkbox", { name: "WORKSPACE_GET_TEAM", exact: true }),
+  ).not.toBeChecked();
+  await captureScreenshot(page, testInfo, "company-selected-read-tools");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await expect
+    .poll(() => createInput)
+    .toMatchObject({
+      sources: [
+        {
+          sourceKind: "composio",
+          scope: {
+            reader: "generic",
+            tools: [{ name: "WORKSPACE_LIST_DOCUMENTS", args: { folder: "company" } }],
+          },
+        },
+      ],
+    });
+  await expect(
+    page.getByText("Published call rates · total unknown", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("WORKSPACE_LIST_DOCUMENTS: $0.01 per successful call", { exact: true }),
+  ).toBeVisible();
+  await captureScreenshot(page, testInfo, "company-published-call-rates");
+});
+
 test("Company tracker catalog uses the fixed all-access scope", async ({ page }, testInfo) => {
   const sources = [
     {

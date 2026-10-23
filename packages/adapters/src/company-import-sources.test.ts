@@ -185,6 +185,54 @@ describe("company source worker", () => {
     });
   });
 
+  it("routes Notion and generic document sources through the shared pipeline", async () => {
+    const source = {
+      id: "notion-source",
+      sourceKind: "notion",
+      connectionId: "notion-connection",
+      scope: { reader: "notion", allTime: true },
+    };
+    const documents = {
+      discover: vi.fn(async () => ({
+        units: [{ unitKey: "notion:page", cursor: { pageId: "page" } }],
+        nextCursor: null,
+        done: true,
+      })),
+      read: vi.fn(async () => ({
+        document: {
+          id: "notion:page",
+          title: "Launch",
+          text: "Launch date 2026-01-02",
+          snippet: "Launch date 2026-01-02",
+          sourceUrl: "https://www.notion.so/page",
+        },
+        nextCursor: null,
+        done: true,
+      })),
+    };
+    const extract = vi.fn(async () => ({
+      extraction: { entities: [], edges: [], events: [] },
+      model: { provider: "scripted", model: "document-test" },
+    }));
+    const worker = createCompanySourceWorker({
+      prisma: prisma(),
+      extractor: { relevant: vi.fn(async () => true), extract },
+      documents: documents as never,
+    });
+    const workerContext = context();
+    await worker.discover({ source, cursor: null, maxUnits: 1 }, workerContext);
+    await worker.read(
+      { source, unitKey: "notion:page", cursor: { pageId: "page" }, maxBytes: 1000 },
+      workerContext,
+    );
+    expect(documents.discover).toHaveBeenCalled();
+    expect(documents.read).toHaveBeenCalled();
+    expect(extract).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "notion:page", title: "Launch" }),
+      expect.anything(),
+    );
+  });
+
   it("scopes data-room discovery to the owner and de-duplicates selected IDs", async () => {
     const findMany = vi.fn(async () => [{ id: "item-1" }]);
     const worker = createCompanySourceWorker({

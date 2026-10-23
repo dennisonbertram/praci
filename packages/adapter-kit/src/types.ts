@@ -44,6 +44,8 @@ export interface AdapterContext {
   onRetry?: (retry: { reason: "rate_limited" | "retry"; attempt: number }) => void;
   /** Called as tool discovery connects to a server, with the name a person knows it by. */
   onConnecting?: (service: string) => void;
+  /** Preserve provider metadata for the server-owned Company read boundary only. */
+  companyImportReadOnly?: boolean;
 }
 
 export interface ConnectedConnector {
@@ -264,6 +266,8 @@ export interface ConnectorTool {
   inputSchema: Record<string, unknown>;
   /** Declared effect. `false` forces approval; `true` never relaxes the name-based gate. */
   readOnly?: boolean;
+  /** Provider-reported display-only pricing metadata. */
+  reportedCost?: { description: string; discount?: string };
   /** In-process routing metadata. It is never exposed to the model. */
   route?: ConnectorRoute;
 }

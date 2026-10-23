@@ -1,8 +1,10 @@
 import type {
+  CompanyDocumentReader,
   CompanyImportEngine,
   CompanySlackReader,
   CompanyTrackerReader,
 } from "@rakazo/adapters";
+import { CompanyImportWorkerError } from "@rakazo/adapters";
 import type { Actor, CompanyImportChannelsInput } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
@@ -364,5 +366,288 @@ describe("Company import page sample", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("Company document imports", () => {
+  it("catalogs only safe generic tools and exposes their reported rates", async () => {
+    const tools = [
+      {
+        name: "ACME_LIST_RECORDS",
+        description: "Read records",
+        readOnly: true,
+        inputSchema: { type: "object", properties: { status: { type: "string" } } },
+        reportedCost: { description: "Synthetic rate", discount: "Synthetic discount" },
+      },
+      {
+        name: "ACME_CREATE_RECORD",
+        description: "Create records",
+        readOnly: false,
+        inputSchema: { type: "object", properties: {} },
+      },
+    ];
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      dataRoomItem: { count: async () => 0 },
+      dataRoomFolder: { findMany: async () => [] },
+      connection: {
+        findMany: async () => [
+          {
+            id: "notion-1",
+            provider: "notion",
+            displayName: "Notion",
+            status: "connected",
+            allAgents: true,
+            privateByDefault: false,
+          },
+          {
+            id: "crm-1",
+            provider: "acme_crm",
+            displayName: "Acme CRM",
+            status: "connected",
+            allAgents: true,
+            privateByDefault: false,
+          },
+        ],
+      },
+      mcpServer: { findMany: async () => [] },
+    } as unknown as PrismaClient;
+    const notionTools = [
+      "NOTION_SEARCH_NOTION_PAGE",
+      "NOTION_RETRIEVE_PAGE",
+      "NOTION_FETCH_BLOCK_CONTENTS",
+    ].map((name) => ({
+      name,
+      description: `Read with ${name}`,
+      inputSchema: { type: "object", properties: {} },
+      route: { connectorId: "composio", toolName: name },
+    }));
+    const documents = {
+      listTools: async (source: { sourceKind: string }) =>
+        source.sourceKind === "notion" ? notionTools : tools,
+    } as unknown as CompanyDocumentReader;
+    const result = await createCompanyImportPage({
+      prisma,
+      engine: {} as CompanyImportEngine,
+      documents,
+    }).catalog(actor);
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        sourceKind: "composio",
+        available: true,
+        defaultScope: { reader: "generic", tools: [] },
+        tools: [
+          expect.objectContaining({
+            name: "ACME_LIST_RECORDS",
+            reportedCost: { description: "Synthetic rate", discount: "Synthetic discount" },
+          }),
+        ],
+      }),
+    );
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        sourceKind: "notion",
+        available: true,
+        tools: expect.arrayContaining([
+          expect.objectContaining({
+            name: "NOTION_SEARCH_NOTION_PAGE",
+            description: expect.stringContaining("may be incomplete"),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("validates fresh selected tools before creation and stores server-reported rates", async () => {
+    const reportedCost = { description: "Synthetic rate", discount: "Synthetic discount" };
+    const validate = vi.fn(async () => ({
+      tools: [{ name: "ACME_LIST_RECORDS", reportedCost }],
+    }));
+    const createRun = vi.fn(async () => ({ runId: "run-1" }));
+    const updateSource = vi.fn(async () => undefined);
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      connection: {
+        findFirst: async () => ({
+          provider: "acme_crm",
+          status: "connected",
+          allAgents: true,
+          privateByDefault: false,
+        }),
+      },
+      companyImportSource: {
+        findMany: async () => [
+          {
+            id: "source-1",
+            sourceKind: "composio",
+            connectionId: "crm-1",
+            mcpServerId: null,
+          },
+        ],
+        update: updateSource,
+      },
+    } as unknown as PrismaClient;
+    const documents = { validate } as unknown as CompanyDocumentReader;
+    const page = createCompanyImportPage({
+      prisma,
+      engine: { create: createRun } as unknown as CompanyImportEngine,
+      documents,
+    });
+    const input = {
+      tokenCap: 10_000,
+      mode: "sample" as const,
+      sources: [
+        {
+          sourceKind: "composio" as const,
+          connectionId: "crm-1",
+          scope: {
+            reader: "generic" as const,
+            tools: [{ name: "ACME_LIST_RECORDS", args: { status: "active" } }],
+          },
+        },
+      ],
+    };
+
+    await expect(page.create(actor, input)).resolves.toEqual({ runId: "run-1" });
+    expect(validate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceKind: "composio",
+        scope: input.sources[0]!.scope,
+      }),
+      expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+    );
+    expect(updateSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          plan: expect.objectContaining({
+            perCallCosts: [{ toolName: "ACME_LIST_RECORDS", ...reportedCost }],
+          }),
+        },
+      }),
+    );
+
+    validate.mockRejectedValueOnce(new Error("source_tool_arguments_invalid"));
+    await expect(page.create(actor, input)).rejects.toThrow("source_tool_arguments_invalid");
+    expect(createRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns safe client errors for write and incomplete generic selections", async () => {
+    const dispatch = vi.fn();
+    const createRun = vi.fn();
+    const validate = vi.fn(
+      async (source: { scope: { tools: Array<{ name: string; args: object }> } }) => {
+        const selection = source.scope.tools[0];
+        if (selection?.name === "ACME_CREATE_RECORD") {
+          const error = new CompanyImportWorkerError("source_tool_unavailable");
+          error.message = "provider secret details";
+          throw error;
+        }
+        if (selection?.name === "ACME_GET_RECORD")
+          throw new CompanyImportWorkerError("source_tool_arguments_invalid");
+        return [];
+      },
+    );
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      connection: {
+        findFirst: async () => ({
+          provider: "acme_crm",
+          status: "connected",
+          allAgents: true,
+          privateByDefault: false,
+        }),
+      },
+    } as unknown as PrismaClient;
+    const result = createCompanyImportPage({
+      prisma,
+      engine: { create: createRun } as unknown as CompanyImportEngine,
+      documents: { validate, callTool: dispatch } as unknown as CompanyDocumentReader,
+    });
+    const inputFor = (name: string) =>
+      ({
+        tokenCap: 10_000,
+        mode: "sample" as const,
+        sources: [
+          {
+            sourceKind: "composio" as const,
+            connectionId: "crm-1",
+            scope: { reader: "generic" as const, tools: [{ name, args: {} }] },
+          },
+        ],
+      }) as never;
+
+    await expect(result.create(actor, inputFor("ACME_CREATE_RECORD"))).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+    await expect(result.create(actor, inputFor("ACME_GET_RECORD"))).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(createRun).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(validate).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves reported tool rates when sample plans are re-estimated", async () => {
+    const perCallCosts = [{ toolName: "ACME_LIST_RECORDS", description: "Synthetic rate" }];
+    const updateSource = vi.fn(async () => undefined);
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companyImportRun: {
+        findFirst: async () => ({
+          id: "run-1",
+          mode: "sample",
+          tokenCap: 10_000,
+          sources: [
+            {
+              id: "source-1",
+              sourceKind: "composio",
+              connectionId: "crm-1",
+              mcpServerId: null,
+              scope: { reader: "generic", tools: [{ name: "ACME_LIST_RECORDS", args: {} }] },
+              plan: {
+                itemCount: null,
+                tokensLower: 0,
+                tokensUpper: 10_000,
+                estimateBasis: "budget_cap",
+                perCallCosts,
+              },
+            },
+          ],
+        }),
+      },
+      companyImportUnit: {
+        aggregate: async () => ({
+          _sum: { itemsRead: 0, inputTokensUsed: 0n, outputTokensUsed: 0n },
+        }),
+      },
+      companyImportSource: { update: updateSource },
+      connection: { findMany: async () => [] },
+    } as unknown as PrismaClient;
+    const engine = {
+      progress: async () => ({
+        runId: "run-1",
+        status: "paused",
+        tokenCap: 10_000,
+        reservedTokens: 0,
+        inputTokensUsed: 0,
+        outputTokensUsed: 0,
+        budgetWarning: false,
+        counts: {},
+        sources: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }),
+    } as unknown as CompanyImportEngine;
+
+    const result = await createCompanyImportPage({ prisma, engine }).session(actor, "run-1");
+    expect(result?.sources[0]?.plan.perCallCosts).toEqual(perCallCosts);
+    expect(updateSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { plan: expect.objectContaining({ perCallCosts }) },
+      }),
+    );
   });
 });

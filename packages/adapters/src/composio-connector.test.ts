@@ -31,9 +31,13 @@ const composioSdkState = vi.hoisted(() => ({
   executeResult: null as null | { data: Record<string, unknown>; error: string | null },
   failTools: null as null | string[],
   githubReadOnlyHint: undefined as boolean | undefined,
+  offeredReadOnly: undefined as boolean | undefined,
+  offeredReadOnlyHint: undefined as boolean | undefined,
+  extraOfferedNames: [] as string[],
   slackToolName: "SLACK_FETCH_CONVERSATION_HISTORY",
   slackReadOnlyHint: undefined as boolean | undefined,
   slackDestructiveHint: undefined as boolean | undefined,
+  rawTools: [] as unknown[],
   logIds: null as null | string[],
   connectedAccounts: {
     list: async (_query?: Record<string, unknown>) => ({ items: [] as Array<{ id: string }> }),
@@ -70,6 +74,9 @@ const composioSdkState = vi.hoisted(() => ({
 
 vi.mock("@composio/core", () => ({
   Composio: class {
+    readonly tools = {
+      getRawToolRouterSessionTools: async () => composioSdkState.rawTools,
+    };
     readonly sessions = {
       use: async (sessionId: string) => {
         const session = composioSdkState.sessions.get(sessionId);
@@ -113,6 +120,7 @@ vi.mock("@composio/core", () => ({
 
       const scopedToCanonicalGithub = toolkits.includes("GITHUB");
       const scopedToSlack = toolkits.includes("SLACK");
+      const scopedToAcme = toolkits.includes("ACME");
       const session = {
         sessionId: scopedToCanonicalGithub
           ? "github-session"
@@ -158,7 +166,31 @@ vi.mock("@composio/core", () => ({
                     },
                   },
                 ]
-              : [],
+              : scopedToAcme
+                ? [
+                    {
+                      slug: "ACME_LIST_RECORDS",
+                      description: "Synthetic list",
+                      inputParameters: { type: "object", properties: {} },
+                      ...(composioSdkState.offeredReadOnly === undefined
+                        ? {}
+                        : { readOnly: composioSdkState.offeredReadOnly }),
+                      ...(composioSdkState.offeredReadOnlyHint === undefined
+                        ? {}
+                        : { annotations: { readOnlyHint: composioSdkState.offeredReadOnlyHint } }),
+                    },
+                    {
+                      slug: "ACME_CREATE_RECORD",
+                      description: "Synthetic create",
+                      inputParameters: { type: "object", properties: {} },
+                    },
+                    ...composioSdkState.extraOfferedNames.map((slug) => ({
+                      slug,
+                      description: "Synthetic list",
+                      inputParameters: { type: "object", properties: {} },
+                    })),
+                  ]
+                : [],
         execute: async (tool: string, args: Record<string, unknown>) => {
           composioSdkState.executions.push({ tool, args });
           const failed = composioSdkState.failTools?.includes(tool) ?? false;
@@ -216,6 +248,248 @@ describe("composio tool mapping", () => {
     expect(write?.readOnly).toBe(false);
     expect(unknown?.readOnly).toBeUndefined();
     expect(destructive?.readOnly).toBe(false);
+  });
+
+  it("uses fresh raw Company tags, blocks tag mutations, and retains reported prices", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    composioSdkState.rawTools = [
+      {
+        slug: "ACME_LIST_RECORDS",
+        toolkit: { slug: "acme" },
+        description: "List CRM records",
+        inputParameters: {
+          type: "object",
+          properties: { query: { type: "string" } },
+        },
+        tags: { readOnlyHint: true },
+      },
+      {
+        slug: "ACME_CREATE_RECORD",
+        toolkit: { slug: "acme" },
+        inputParameters: { type: "object", properties: {} },
+        tags: { readOnlyHint: true, createHint: true },
+      },
+    ];
+    const restoreAccounts = stubActiveAccounts(["ca-acme"]);
+    const previousFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  slug: "ACME_LIST_RECORDS",
+                  instant: {
+                    price: { description: "Synthetic $0.01/call", discount: "Synthetic rate" },
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const context: AdapterContext = {
+      operationId: "company-generic",
+      traceId: "company-generic",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: new AbortController().signal,
+      companyImportReadOnly: true,
+      connectedConnections: [
+        {
+          id: "connection-acme",
+          connectorId: "composio",
+          externalId: "acme",
+          displayName: "Synthetic",
+          providerRef: "ca-acme",
+        },
+      ],
+    };
+    try {
+      const connector = new ComposioConnector("synthetic-key");
+      const tools = await connector.discoverTools(context);
+      expect(tools).toContainEqual(
+        expect.objectContaining({
+          name: "ACME_LIST_RECORDS",
+          readOnly: true,
+          description: "List CRM records",
+          inputSchema: {
+            type: "object",
+            properties: { query: { type: "string" } },
+          },
+          reportedCost: { description: "Synthetic $0.01/call", discount: "Synthetic rate" },
+        }),
+      );
+      expect(tools.find((tool) => tool.name === "ACME_CREATE_RECORD")?.readOnly).toBe(false);
+
+      composioSdkState.rawTools[0] = {
+        ...(composioSdkState.rawTools[0] as Record<string, unknown>),
+        tags: { readOnlyHint: true, updateHint: true },
+      };
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        {
+          tool: "ACME_LIST_RECORDS",
+          args: {},
+          executionId: "company-generic-write-mutation",
+          route: {
+            connectorId: "composio",
+            connectionId: "connection-acme",
+            toolName: "ACME_LIST_RECORDS",
+            discoveredReadOnly: true,
+          },
+        },
+        context,
+      ))
+        events.push(event);
+      expect(events).toContainEqual(expect.objectContaining({ type: "error" }));
+      expect(composioSdkState.executions).toEqual([]);
+    } finally {
+      globalThis.fetch = previousFetch;
+      restoreAccounts();
+      composioSdkState.rawTools = [];
+      composioSdkState.sessions.clear();
+    }
+  });
+
+  it("does not upgrade an explicitly denied offered tool from raw read tags", async () => {
+    const restoreAccounts = stubActiveAccounts(["ca-acme"]);
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({ items: [] }), { status: 200 });
+    try {
+      for (const form of ["readOnly", "annotation"] as const) {
+        composioSdkState.created.length = 0;
+        composioSdkState.executions.length = 0;
+        composioSdkState.sessions.clear();
+        composioToolkitDirectory.invalidate();
+        composioSdkState.offeredReadOnly = form === "readOnly" ? false : undefined;
+        composioSdkState.offeredReadOnlyHint = form === "annotation" ? false : undefined;
+        composioSdkState.rawTools = [
+          {
+            slug: "ACME_LIST_RECORDS",
+            toolkit: { slug: "acme" },
+            inputParameters: { type: "object", properties: {} },
+            tags: { readOnlyHint: true },
+          },
+        ];
+        const connector = new ComposioConnector("synthetic-key");
+        const context: AdapterContext = {
+          operationId: `company-read-only-${form}`,
+          traceId: `company-read-only-${form}`,
+          spaceId: "workspace",
+          userId: "user-1",
+          signal: new AbortController().signal,
+          companyImportReadOnly: true,
+          connectedConnections: [
+            {
+              id: "connection-acme",
+              connectorId: "composio",
+              externalId: "acme",
+              displayName: "Synthetic",
+              providerRef: "ca-acme",
+            },
+          ],
+        };
+        const tools = await connector.discoverTools(context);
+        expect(tools.find((tool) => tool.name === "ACME_LIST_RECORDS")?.readOnly).toBe(false);
+        const events: ConnectorEvent[] = [];
+        for await (const event of connector.execute(
+          {
+            tool: "ACME_LIST_RECORDS",
+            args: {},
+            executionId: `company-read-only-${form}`,
+            route: {
+              connectorId: "composio",
+              connectionId: "connection-acme",
+              toolName: "ACME_LIST_RECORDS",
+              discoveredReadOnly: true,
+            },
+          },
+          context,
+        ))
+          events.push(event);
+        expect(events).toContainEqual(expect.objectContaining({ type: "error" }));
+        expect(composioSdkState.executions).toEqual([]);
+      }
+    } finally {
+      composioSdkState.offeredReadOnly = undefined;
+      composioSdkState.offeredReadOnlyHint = undefined;
+      composioSdkState.rawTools = [];
+      composioSdkState.sessions.clear();
+      globalThis.fetch = previousFetch;
+      restoreAccounts();
+    }
+  });
+
+  it("bounds pricing metadata requests, follows cancellation, and ignores off-batch slugs", async () => {
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const extraNames = Array.from({ length: 49 }, (_, index) => `ACME_LIST_${index}`);
+    const outsideBatch = extraNames.at(-1)!;
+    composioSdkState.extraOfferedNames = extraNames;
+    composioSdkState.rawTools = ["ACME_LIST_RECORDS", "ACME_CREATE_RECORD", ...extraNames].map(
+      (slug) => ({
+        slug,
+        toolkit: { slug: "acme" },
+        inputParameters: { type: "object", properties: {} },
+        tags: { readOnlyHint: true },
+      }),
+    );
+    const previousFetch = globalThis.fetch;
+    const signals: AbortSignal[] = [];
+    let requests = 0;
+    globalThis.fetch = async (_input, init) => {
+      signals.push(init?.signal as AbortSignal);
+      const items =
+        requests++ === 0
+          ? [
+              {
+                slug: outsideBatch,
+                instant: { price: { description: "Unrequested price" } },
+              },
+            ]
+          : [];
+      return new Response(JSON.stringify({ items }), { status: 200 });
+    };
+    const controller = new AbortController();
+    controller.abort();
+    const context: AdapterContext = {
+      operationId: "company-pricing-abort",
+      traceId: "company-pricing-abort",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: controller.signal,
+      companyImportReadOnly: true,
+      connectedConnections: [
+        {
+          id: "connection-acme",
+          connectorId: "composio",
+          externalId: "acme",
+          displayName: "Synthetic",
+          providerRef: "ca-acme",
+        },
+      ],
+    };
+    const restoreAccounts = stubActiveAccounts(["ca-acme"]);
+    try {
+      const tools = await new ComposioConnector("synthetic-key").discoverTools(context);
+      expect(requests).toBe(2);
+      expect(signals).toHaveLength(2);
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+      expect(tools.find((tool) => tool.name === outsideBatch)?.reportedCost).toBeUndefined();
+    } finally {
+      composioSdkState.extraOfferedNames = [];
+      composioSdkState.rawTools = [];
+      composioSdkState.sessions.clear();
+      globalThis.fetch = previousFetch;
+      restoreAccounts();
+    }
   });
 
   it("retains provider route metadata independently of the tool name", async () => {

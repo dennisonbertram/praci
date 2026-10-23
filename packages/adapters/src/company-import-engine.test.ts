@@ -7,7 +7,7 @@ import type {
   RealtimeFanout,
 } from "@rakazo/adapter-kit";
 import type { Actor, CompanyImportProgress } from "@rakazo/contracts";
-import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -125,6 +125,8 @@ function createHarness(options?: {
   sourceScope?: Record<string, unknown>;
   ownedItemIds?: string[];
   runStatus?: string;
+  runMode?: "sample" | "full";
+  readPage?: CompanyImportReadPage;
 }) {
   let consentGranted = true;
   let modelId = "synthetic-model";
@@ -147,20 +149,22 @@ function createHarness(options?: {
     };
   });
   const secondInvoke = vi.fn();
+  const readCursors: unknown[] = [];
   const worker: CompanyImportWorker = {
     discover: async (): Promise<CompanyImportDiscoveryPage> => ({
       units: [],
       nextCursor: null,
       done: true,
     }),
-    read: async (_input, context) => {
+    read: async (input, context) => {
+      readCursors.push(input.cursor);
       await context.executeModelCall({
         inputTokenBound: 10,
         maxOutputTokens: 5,
         invoke,
       });
       secondInvoke();
-      return page;
+      return options?.readPage ?? page;
     },
   };
   const prisma = {
@@ -173,7 +177,9 @@ function createHarness(options?: {
         run: { ...source.run, status: options?.runStatus ?? source.run.status },
       })),
     },
-    companyImportRun: { findFirst: vi.fn(async () => ({ mode: "full" })) },
+    companyImportRun: {
+      findFirst: vi.fn(async () => ({ mode: options?.runMode ?? "full" })),
+    },
     dataRoomItem: {
       count: vi.fn(async (input: { where: { id: { in: string[] } } }) => {
         const owned = new Set(options?.ownedItemIds ?? []);
@@ -202,7 +208,7 @@ function createHarness(options?: {
     resolveModel: async () => ({ provider: "synthetic", id: modelId }),
     worker,
   });
-  return { engine, invoke, jobs, realtime, secondInvoke };
+  return { engine, invoke, jobs, realtime, secondInvoke, readCursors };
 }
 
 describe("company import engine", () => {
@@ -245,6 +251,132 @@ describe("company import engine", () => {
     );
     expect(jobs.enqueue).toHaveBeenCalledTimes(2);
     expect(realtime.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("pauses nonempty sample reads and unwraps their saved cursor on continue", async () => {
+    const savedCursor = { page: "next" };
+    const samplePage = { ...page, nextCursor: savedCursor, done: false };
+    const sample = createHarness({ runMode: "sample", readPage: samplePage });
+
+    await sample.engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+
+    expect(db.completeCompanyImportUnit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        nextCursor: { companySampleResume: true, cursor: savedCursor },
+        done: true,
+      }),
+    );
+
+    vi.clearAllMocks();
+    db.claimCompanyImportUnit.mockResolvedValue({
+      id: "unit-1",
+      unitKey: "read:synthetic",
+      cursor: { companySampleResume: true, cursor: savedCursor },
+      claimToken: "fence-2",
+      source,
+    });
+    const full = createHarness({ readPage: page });
+    await full.engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(full.readCursors).toEqual([savedCursor]);
+  });
+
+  it("rejects missing sample continuations and oversized read cursors", async () => {
+    const missing = createHarness({
+      runMode: "sample",
+      readPage: { ...page, nextCursor: null, done: false },
+    });
+    await missing.engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(db.failCompanyImportUnit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ errorCode: "invalid_read_page" }),
+    );
+
+    vi.clearAllMocks();
+    db.claimCompanyImportUnit.mockResolvedValue({
+      id: "unit-1",
+      unitKey: "read:synthetic",
+      cursor: null,
+      claimToken: "fence-1",
+      source,
+    });
+    const undefinedContinuation = createHarness({
+      runMode: "sample",
+      readPage: { ...page, nextCursor: undefined, done: false },
+    });
+    await undefinedContinuation.engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(db.failCompanyImportUnit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ errorCode: "invalid_read_page" }),
+    );
+
+    vi.clearAllMocks();
+    db.claimCompanyImportUnit.mockResolvedValue({
+      id: "unit-1",
+      unitKey: "read:synthetic",
+      cursor: null,
+      claimToken: "fence-1",
+      source,
+    });
+    const tooLarge = createHarness({
+      readPage: {
+        ...page,
+        nextCursor: { value: "x".repeat(COMPANY_IMPORT_CURSOR_MAX_BYTES) },
+        done: false,
+      },
+    });
+    await tooLarge.engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(db.failCompanyImportUnit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ errorCode: "cursor_too_large" }),
+    );
+  });
+
+  it("accepts read cursors larger than the owner scope limit", async () => {
+    const nextCursor = { value: "x".repeat(20_000) };
+    const { engine } = createHarness({
+      readPage: { ...page, nextCursor, done: false },
+    });
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(db.completeCompanyImportUnit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ nextCursor, done: false }),
+    );
   });
 
   it("schedules units at the later of their availability and source backoff", async () => {
@@ -293,6 +425,33 @@ describe("company import engine", () => {
         availableAt: claimedUntil,
       }),
     );
+  });
+
+  it("does not let a pending lease recovery delay a successful next page", async () => {
+    const { engine, jobs } = createHarness();
+    const now = new Date();
+    const claimExpiresAt = new Date(now.getTime() + 120_000);
+    const unit = {
+      id: "unit-1",
+      sourceId: "source-1",
+      availableAt: now,
+      source: { backoffUntil: null },
+    };
+    db.getCompanyImportRunForScheduling.mockResolvedValue({ status: "running" });
+    db.listCompanyImportUnitsForScheduling.mockResolvedValue([
+      { ...unit, status: "claimed", claimExpiresAt },
+    ]);
+    const payload = { spaceId: actor.spaceId, userId: actor.userId, runId: "run-1" };
+    await engine.runJob(payload);
+    db.listCompanyImportUnitsForScheduling.mockResolvedValue([
+      { ...unit, status: "waiting", claimExpiresAt: null },
+    ]);
+    await engine.runJob(payload);
+    const [recovery, nextPage] = vi.mocked(jobs.enqueue).mock.calls.map(([job]) => job);
+    expect(recovery?.availableAt).toEqual(claimExpiresAt);
+    expect(nextPage?.availableAt).toEqual(now);
+    expect(nextPage?.replaceKey).not.toEqual(recovery?.replaceKey);
+    expect(nextPage?.keepExisting).toBe(true);
   });
 
   it.each([
