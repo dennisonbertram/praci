@@ -18,6 +18,7 @@ import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -53,6 +54,7 @@ export function LegalPage({
   onConsentChange,
   onOpenSettings,
   settingsOpen = false,
+  agentBusy = false,
   spaces,
   spaceId,
   onSwitchSpace,
@@ -70,6 +72,8 @@ export function LegalPage({
   onOpenSettings?: () => void;
   /** Settings is open over the page; the page re-reads its state when it closes. */
   settingsOpen?: boolean;
+  /** The Legal agent is answering; the page re-reads what it recorded when it stops. */
+  agentBusy?: boolean;
 }) {
   return (
     <FinanceChromeProvider
@@ -81,6 +85,7 @@ export function LegalPage({
             selfName={spaces?.find((space) => space.id === spaceId)?.name}
             onOpenSettings={onOpenSettings}
             settingsOpen={settingsOpen}
+            agentBusy={agentBusy}
             onAskAbout={onAskAbout}
             onConsentChange={onConsentChange}
           />
@@ -94,6 +99,7 @@ function Legal({
   selfName,
   onOpenSettings,
   settingsOpen,
+  agentBusy,
   onAskAbout,
   onConsentChange,
 }: {
@@ -101,6 +107,7 @@ function Legal({
   selfName?: string;
   onOpenSettings?: () => void;
   settingsOpen: boolean;
+  agentBusy: boolean;
   onAskAbout?: (question: string) => void;
   onConsentChange?: (missing: boolean) => void;
 }) {
@@ -213,6 +220,12 @@ function Legal({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
+  // A chat turn can end a contract or change a deadline, so re-read when the agent stops answering.
+  const wasBusy = useRef(agentBusy);
+  useEffect(() => {
+    if (wasBusy.current && !agentBusy) reload.current.overview();
+    wasBusy.current = agentBusy;
+  }, [agentBusy]);
   const settingsWasOpen = useRef(false);
   useEffect(() => {
     if (settingsWasOpen.current && !settingsOpen) {
@@ -330,14 +343,11 @@ function Legal({
     <>
       {/* Hidden while scanning (the progress line says it) and until Legal may read documents. */}
       {counts.unreviewedDocuments > 0 && !running && !setupMissing ? (
-        <p className="mb-4 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-muted-foreground">
           {plural(counts.unreviewedDocuments, {
             one: "# Data room document not yet checked by Legal",
             other: "# Data room documents not yet checked by Legal",
           })}
-          <Button size="sm" variant="outline" onClick={() => void scan()}>
-            <Trans>Check now</Trans>
-          </Button>
         </p>
       ) : null}
     </>
@@ -618,7 +628,7 @@ function GraphTab() {
 }
 
 /** The graph's placeholder; after 2 seconds it says what is happening. */
-function BuildingGraph() {
+export function BuildingGraph() {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), 2_000);
@@ -630,11 +640,12 @@ function BuildingGraph() {
       {slow ? (
         <p
           role="status"
-          className="absolute inset-0 grid place-items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground"
         >
           <Trans>Building graph…</Trans>
         </p>
       ) : null}
+      <StillLoading />
     </div>
   );
 }
@@ -649,6 +660,7 @@ function LegalSkeleton() {
         ))}
       </div>
       <Skeleton className="h-56" />
+      <StillLoading />
     </div>
   );
 }

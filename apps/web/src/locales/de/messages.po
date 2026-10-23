@@ -309,10 +309,6 @@ msgstr ""
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
-msgid "{0} non-USD <0>transactions </0>not counted"
-msgstr ""
-
-#. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD transactions not counted"
 msgstr ""
@@ -711,6 +707,7 @@ msgid "* Month to date"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "* So far"
 msgstr ""
 
@@ -732,9 +729,6 @@ msgid "0x… or name.eth"
 msgstr ""
 
 #: src/pages/Finance.tsx
-msgid "1 non-USD <0>transaction </0>not counted"
-msgstr ""
-
 #: src/pages/finance/FinanceSpend.tsx
 msgid "1 non-USD transaction not counted"
 msgstr ""
@@ -1309,6 +1303,7 @@ msgstr ""
 msgid "Always allowed"
 msgstr "Immer erlaubt"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1663,6 +1658,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "um {timeSelect}"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2388,10 +2387,6 @@ msgstr ""
 msgid "Check for updates"
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr ""
-
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
 msgstr ""
@@ -2436,6 +2431,10 @@ msgstr "Wähle eine Bot-Form und Farbe oder lade ein Bild hoch"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Choose a bot…"
+msgstr ""
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -6588,6 +6587,10 @@ msgstr ""
 msgid "Memory"
 msgstr "Erinnerungen"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Memory provider"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Memory scope"
 msgstr "Erinnerungsbereich"
@@ -7565,6 +7568,10 @@ msgid "Not tagged yet. Allow Praci to read your documents above."
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+msgid "Not tagged. No model is set up to read documents."
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr ""
 
@@ -7942,10 +7949,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
-msgstr ""
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Outside memory service"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -8985,6 +8988,7 @@ msgid "Replace API key"
 msgstr "API-Schlüssel ersetzen"
 
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Replace file"
 msgstr ""
@@ -10445,6 +10449,7 @@ msgid "Still has access to: {0}"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Still loading…"
 msgstr ""
 
@@ -12179,6 +12184,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Your mail is taking longer than usual to load."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx

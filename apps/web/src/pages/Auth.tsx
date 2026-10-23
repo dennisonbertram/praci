@@ -359,8 +359,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   ) : null}
                 </div>
               ) : null}
-              {/* Always present with room for one line, so an error moves no field. */}
-              <p role="alert" className="mt-1 min-h-5 w-full text-sm text-destructive">
+              {/* Always present with room for one line, so an error moves no field; Reset has one field and keeps the sign-up gap instead. */}
+              <p
+                role="alert"
+                className={`mt-1 w-full text-sm text-destructive ${mode === "forgot" ? "" : "min-h-5"}`}
+              >
                 {error}
               </p>
               <Button type="submit" size="lg" disabled={pending} className={submitClass}>

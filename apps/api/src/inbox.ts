@@ -67,7 +67,7 @@ export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const SEARCH_PAGE_SIZE = 50;
 
 const FILTER_QUERY = {
-  unread: "is:unread",
+  unread: "in:inbox is:unread",
   starred: "is:starred",
   important: "is:important",
   attachment: "has:attachment",

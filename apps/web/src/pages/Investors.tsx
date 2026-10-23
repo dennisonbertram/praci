@@ -74,6 +74,7 @@ import { ActionItems } from "../components/investors/ActionItems";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { SectionCard } from "../components/SectionCard";
+import { StillLoading } from "../components/ShellSkeleton";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { shareCount, shortDay, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -165,7 +166,7 @@ function Summary({
       .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
   const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
-  const raisedUsd = equityRaisedUsd(snapshot.holders, safes, snapshot.amountRaisedUsd);
+  const raisedUsd = equityRaisedUsd(snapshot.holders, safes);
   const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
   // Until the first SAFE list answers, a dash would read as "nothing raised".
   // A running sync is still filling in the figures, so an unknown total is not final either.
@@ -441,14 +442,14 @@ function UpdatesSection({
 }
 
 /** The Portal column: when the latest link went out, when it was opened, or that access was revoked. */
-function portalLabel(contact: Contact): string {
+function portalLabel(contact: Contact): string | null {
   const day = (iso: string) => shortDay(iso.slice(0, 10), new Date(), i18n.locale || "en");
   const { portalLinkSentAt: sent, portalLastSeenAt: seen, portalBlockedAt: blocked } = contact;
   if (blocked) return t`Revoked`;
   if (seen && !sent) return t`Unblocked · send a link`;
   if (seen && sent && seen >= sent) return t`Opened ${day(seen)}`;
   if (sent) return t`Invited ${day(sent)}`;
-  return DASH;
+  return null;
 }
 
 /** One contact in the Contacts section: name, organization and email, with Edit and Delete. */
@@ -494,7 +495,7 @@ function ContactRow({
           {[contact.organization, contact.email].filter(Boolean).join(" · ")}
         </span>
       </button>
-      {portal ? (
+      {portal && portalLabel(contact) ? (
         <span
           data-portal-state
           className={`shrink-0 text-xs ${blocked ? "text-destructive" : "text-muted-foreground"}`}
@@ -1241,6 +1242,7 @@ export function InvestorsPage({
               {[0, 1, 2].map((n) => (
                 <Skeleton key={n} className="h-9 w-full" />
               ))}
+              <StillLoading />
             </div>
           ) : (
             <>

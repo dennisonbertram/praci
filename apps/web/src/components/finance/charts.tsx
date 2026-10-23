@@ -183,6 +183,25 @@ export function axisTicks(labels: readonly string[], every: number): (string | n
   });
 }
 
+/** The last tick is always named. When it hangs left of the point (near the right edge), a kept tick less than 80px before it would nearly touch it, so that tick is dropped. */
+export function dropCrowdedTick(
+  ticks: (string | null)[],
+  x: (i: number) => number,
+  width: number,
+): (string | null)[] {
+  const last = ticks.length - 1;
+  const before = ticks.findLastIndex((text, i) => i < last && text !== null);
+  if (before < 0 || x(last) <= width - 24 || x(last) - x(before) >= 80) return ticks;
+  // The dropped tick may carry a year change ('27); the last tick takes it over.
+  const year = ticks[before]?.match(/'\d\d$/)?.[0];
+  return ticks.map((text, i) => {
+    if (i === before) return null;
+    return i === last && text && year && !text.endsWith(year) && !text.includes("•")
+      ? `${text} ${year}`
+      : text;
+  });
+}
+
 /**
  * A line over equally spaced points. Points after `solidUntil` are dashed, `endMarker` draws a hollow
  * dot on the last point (a projection that reaches zero). Without axes it is a bare trend line.
@@ -242,7 +261,7 @@ export function LineChart({
                   bottom={bottom}
                   scale={scale}
                 />
-                {axisTicks(labels, every).map((text, i) =>
+                {dropCrowdedTick(axisTicks(labels, every), x, width).map((text, i) =>
                   text !== null ? (
                     <text
                       key={i}
@@ -865,6 +884,7 @@ export function MonthBars({
                     fontSize={12}
                   >
                     {item.label}
+                    {item.partial ? "*" : ""}
                   </text>
                 </g>
               );
