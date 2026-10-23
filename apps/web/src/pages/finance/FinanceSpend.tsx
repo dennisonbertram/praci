@@ -209,6 +209,9 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
                 height={160}
                 label={t`Monthly spend`}
               />
+              <div className="text-xs text-muted-foreground">
+                <Trans>* So far</Trans>
+              </div>
             </Section>
           ) : null}
           {/* One vendor repeats the total and the transaction rows below. */}

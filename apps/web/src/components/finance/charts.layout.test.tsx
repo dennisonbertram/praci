@@ -449,3 +449,24 @@ it("keeps one Financing label on the first row after the chart is measured again
   done();
   globalThis.ResizeObserver = savedRO;
 });
+
+it("keeps the last axis label clear of the one before it", async () => {
+  const days = Array.from({ length: 30 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`);
+  const labels = days.map((d) => `Oct ${Number(d.slice(8))}`);
+  const { el, done } = await mount(
+    600,
+    <LineChart
+      values={days.map((_, i) => 1000 + i)}
+      labels={labels}
+      height={200}
+      label="Balance"
+    />,
+  );
+  const ticks = [...el.querySelectorAll("text")].filter((t) =>
+    /^Oct \d+$/.test(t.textContent ?? ""),
+  );
+  done();
+  const xs = ticks.map((t) => Number(t.getAttribute("x")));
+  expect(ticks.at(-1)?.textContent).toBe("Oct 30");
+  expect(xs.at(-1)! - xs.at(-2)!).toBeGreaterThanOrEqual(80);
+});

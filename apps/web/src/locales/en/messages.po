@@ -304,10 +304,6 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
-msgid "{0} non-USD <0>transactions </0>not counted"
-msgstr "{0} non-USD <0>transactions </0>not counted"
-
-#. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD transactions not counted"
 msgstr "{0} non-USD transactions not counted"
@@ -706,6 +702,7 @@ msgid "* Month to date"
 msgstr "* Month to date"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "* So far"
 msgstr "* So far"
 
@@ -727,9 +724,6 @@ msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
 
 #: src/pages/Finance.tsx
-msgid "1 non-USD <0>transaction </0>not counted"
-msgstr "1 non-USD <0>transaction </0>not counted"
-
 #: src/pages/finance/FinanceSpend.tsx
 msgid "1 non-USD transaction not counted"
 msgstr "1 non-USD transaction not counted"

@@ -286,7 +286,7 @@ export function FinanceAccountsPage({
               onClose={() => setConnecting(null)}
             />
           ) : null}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3 [&>:only-child]:col-span-full">
             {sourceName ? (
               <Kpi
                 title={t`${sourceName} cash`}

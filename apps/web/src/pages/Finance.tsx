@@ -489,17 +489,12 @@ function Overview({
                 </Tooltip>
               </CompanyMenu>
               {data.excludedNonUsdCount > 0 ? (
-                // Outside the status link; it wraps to a second line rather than cutting the warning short.
-                <span className="min-w-0">
+                // A phone shows it above the figures instead, so the header stays two rows.
+                <span className="min-w-0 max-sm:hidden">
                   {data.excludedNonUsdCount === 1 ? (
-                    <Trans>
-                      1 non-USD <span className="max-sm:hidden">transaction </span>not counted
-                    </Trans>
+                    <Trans>1 non-USD transaction not counted</Trans>
                   ) : (
-                    <Trans>
-                      {data.excludedNonUsdCount} non-USD{" "}
-                      <span className="max-sm:hidden">transactions </span>not counted
-                    </Trans>
+                    <Trans>{data.excludedNonUsdCount} non-USD transactions not counted</Trans>
                   )}
                 </span>
               ) : null}
@@ -552,6 +547,13 @@ function Overview({
         <DashboardSkeleton />
       ) : (
         <div className="flex flex-col gap-3">
+          {data.excludedNonUsdCount > 0 ? (
+            <p className="text-xs text-muted-foreground sm:hidden">
+              {data.excludedNonUsdCount === 1
+                ? t`1 non-USD transaction not counted`
+                : t`${data.excludedNonUsdCount} non-USD transactions not counted`}
+            </p>
+          ) : null}
           <div
             // Two per row when narrow, the odd last card taking the whole row. Five cards go 3 + 2
             // (three-sixths wide, then the last two half each) from 28rem, so the Ask panel never

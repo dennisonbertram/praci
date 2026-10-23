@@ -185,6 +185,7 @@ function McpCard({
         }
         to={managePath}
       />
+      <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         {keyLine && keyStatus ? (
           <GranolaStatusLine status={keyStatus} />
@@ -210,7 +211,6 @@ function McpCard({
           {reconnect.error}
         </p>
       ) : null}
-      <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
@@ -266,6 +266,9 @@ function AppCard({
         sub={accounts || description || undefined}
         to={to}
       />
+      {app.status === "failed" || app.status === "connecting" ? null : (
+        <UsedBy bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)} />
+      )}
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={app.status} quiet />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
@@ -301,9 +304,7 @@ function AppCard({
         <p className="text-xs text-muted-foreground">
           <Trans>Waiting for you to finish signing in.</Trans>
         </p>
-      ) : (
-        <UsedBy bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)} />
-      )}
+      ) : null}
     </Card>
   );
 }
