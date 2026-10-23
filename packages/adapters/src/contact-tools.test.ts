@@ -224,8 +224,7 @@ describe("contact tools", () => {
     expect(read.capTable.holders.map((h) => [h.name, h.ownershipPercent])).toEqual([
       ["Maya", 50],
       ["River", 30],
-      ["Quill SAFE", null],
-    ]);
+    ]); // the SAFE holder is not a table row, as on the Investors page
   });
 
   it("cap_table_update validates, then saves for the run's owner", async () => {

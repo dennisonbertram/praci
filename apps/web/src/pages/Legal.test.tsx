@@ -797,12 +797,13 @@ it("starts a scan from the unchecked documents line and opens Deadlines on the o
   });
   await render(<LegalPage />);
   expect(container.textContent).toContain("3 Data room documents not yet checked by Legal");
-  // The line carries its own action, which is the same scan as the header's Scan now.
+  // The count is text; the header's Scan now is the one control that starts a scan.
+  expect(button("Check now")).toBeUndefined();
   expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
   rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
-  await click(button("Check now"));
+  await click(button("Scan now"));
   // While the scan runs the line is gone, so there is one progress statement.
-  expect(button("Check now")).toBeUndefined();
+  expect(container.textContent).not.toContain("not yet checked");
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
   await act(async () => root.unmount());
@@ -1248,4 +1249,25 @@ it("keeps the graph placeholder text from covering the Try again button", async 
   expect(overlay?.textContent).toBe("Building graph…");
   expect(overlay?.className).toContain("pointer-events-none");
   vi.useRealTimers();
+});
+
+it("re-reads the contracts when the Legal agent stops answering", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage agentBusy />);
+  expect(rpcMock.overview).toHaveBeenCalledTimes(1);
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    contracts: overview.contracts.map((c, i) => (i === 0 ? { ...c, status: "terminated" } : c)),
+  });
+  await render(<LegalPage agentBusy={false} />);
+  expect(rpcMock.overview).toHaveBeenCalledTimes(2);
+  expect(container.textContent).toContain("Terminated");
+});
+
+it("labels the amount on a narrow contract card", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage />);
+  expect(container.querySelector('ul[aria-label="Contracts"]')?.textContent).toContain(
+    "Value$50,000",
+  );
 });

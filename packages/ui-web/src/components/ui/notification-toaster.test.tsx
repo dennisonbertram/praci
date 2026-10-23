@@ -331,7 +331,7 @@ it("reserves the peek of the rear sheets above the front toast", async () => {
 it("sits at the bottom, clear of the page header and its buttons", async () => {
   await mount();
   const classes = viewport()?.className ?? "";
-  expect(classes).toContain("bottom-[max(6rem,");
+  expect(classes).toContain("bottom-[max(1rem,");
   expect(classes).not.toMatch(/(^|\s)(max-sm:)?top-/);
 });
 
@@ -428,8 +428,8 @@ it("pads the page by the toast height when no composer is under it, and marks a 
   viewport()!.getBoundingClientRect = () =>
     ({ top: 600, bottom: 672, left: 100, right: 500, height: 72, width: 400 }) as DOMRect;
   await add(1, { href: "/app/legal" });
-  // innerHeight 768 - 600 + 8
-  expect(document.documentElement.style.getPropertyValue("--toast-page-reserve")).toBe("176px");
+  // innerHeight 768 - 600: the card's height plus its offset from the window edge, nothing more.
+  expect(document.documentElement.style.getPropertyValue("--toast-page-reserve")).toBe("168px");
   const chevron = document.querySelector('[data-slot="notification-toast"] button svg');
   expect(chevron).not.toBeNull();
   // On touch the 44px Dismiss target covers the corner; the chevron must sit left of it.

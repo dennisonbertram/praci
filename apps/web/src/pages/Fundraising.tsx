@@ -306,6 +306,7 @@ export function FundraisingPage({
                 <SafeList
                   safes={overview.safes}
                   round={round}
+                  contacts={contacts ?? []}
                   onOpen={openSafe}
                   onAssign={setAssigning}
                   onUnassign={(safe) =>

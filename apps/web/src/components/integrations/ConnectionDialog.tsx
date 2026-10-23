@@ -7,9 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
 } from "@rakazo/ui-web";
 import type { FormEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
 
@@ -42,6 +43,7 @@ export function ConnectionDialog({
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const formId = useId();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -69,14 +71,14 @@ export function ConnectionDialog({
           </DialogHeader>
           {fields.map((field, index) => (
             <div key={field.id} className="flex flex-col gap-1">
+              <Label htmlFor={`${formId}-${field.id}`}>{field.label}</Label>
               <Input
+                id={`${formId}-${field.id}`}
                 autoFocus={index === 0}
                 required
                 type={field.type ?? "text"}
                 autoComplete="off"
                 spellCheck={false}
-                aria-label={field.label}
-                placeholder={field.label}
                 value={values[field.id] ?? ""}
                 onChange={(e) => setValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
               />

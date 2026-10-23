@@ -1304,6 +1304,7 @@ msgstr "Always allow this"
 msgid "Always allowed"
 msgstr "Always allowed"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1658,6 +1659,10 @@ msgstr "Assign to contact"
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "at {timeSelect}"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr "At cap"
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2383,10 +2388,6 @@ msgstr "Check for receipt"
 msgid "Check for updates"
 msgstr "Check for updates"
 
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr "Check now"
-
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
 msgstr "Check queue"
@@ -2432,6 +2433,10 @@ msgstr "Choose a bot shape, color, or upload an image"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Choose a bot…"
 msgstr "Choose a bot…"
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
+msgstr "Choose a contact"
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Choose a Google Sheet"
@@ -6578,6 +6583,10 @@ msgstr "Memo"
 msgid "Memory"
 msgstr "Memory"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Memory provider"
+msgstr "Memory provider"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Memory scope"
 msgstr "Memory scope"
@@ -7933,10 +7942,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Outside memory service"
-msgstr "Outside memory service"
 
 #: src/pages/Board.tsx
 msgid "Owner"
@@ -12175,6 +12180,10 @@ msgstr "Your data in {name} is not deleted."
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
 msgstr "Your mail didn't load"
+
+#: src/pages/Inbox.tsx
+msgid "Your mail is taking longer than usual to load."
+msgstr "Your mail is taking longer than usual to load."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"

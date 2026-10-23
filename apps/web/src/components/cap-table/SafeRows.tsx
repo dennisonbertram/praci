@@ -31,13 +31,18 @@ export function SafeRows({ safes }: { safes: readonly Safe[] }) {
           {percent(atCapSum(shown))}
         </span>
       </div>
+      <div className="flex items-center gap-2 py-0.5 text-xs text-muted-foreground">
+        <span className="flex-1" />
+        <span className="w-20 text-end">{t`Amount`}</span>
+        <span className="w-14 text-end">{t`At cap`}</span>
+      </div>
       <ul>
         {shown.map((safe) => (
           <li key={safe.id} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
             <span className="min-w-0 flex-1 truncate" title={safe.investorName}>
               {safe.investorName}
             </span>
-            <span className="tabular-nums">
+            <span className="w-20 text-end tabular-nums">
               {usdFigure(safe.amountCents / 100, 0, i18n.locale || "en")}
             </span>
             <span className="w-14 text-end tabular-nums">{percent(atCapPercent(safe))}</span>

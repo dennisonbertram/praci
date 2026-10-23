@@ -357,7 +357,7 @@ it("shows each investor's portal state: none, invited, opened, revoked, unblocke
     }),
   ]);
   await show();
-  expect(portalCell("c1")).toBe("—");
+  expect(portalCell("c1")).toBeUndefined();
   expect(portalCell("c2")).toBe("Invited Oct 12");
   expect(portalCell("c3")).toBe("Opened Oct 13");
   expect(portalCell("c4")).toBe("Revoked");
@@ -830,7 +830,7 @@ it("counts only Funded SAFEs in Equity raised and shows Sent and Signed ones as 
   expect(container.textContent).not.toContain("Dee Newcomer");
 });
 
-it("shows the Carta company total in Equity raised when no holder has an amount, without adding Funded SAFEs", async () => {
+it("ignores the Carta company total in Equity raised and counts Funded SAFEs only", async () => {
   rpcMock.capTable.mockResolvedValue(
     state({
       ...carta,
@@ -842,7 +842,7 @@ it("shows the Carta company total in Equity raised when no holder has an amount,
     safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
   ]);
   await show();
-  expect(container.textContent).toContain("Equity raised$350,000");
+  expect(container.textContent).toContain("Equity raised$25,000");
 });
 
 it("shows Equity raised from SAFEs when the cap table is empty", async () => {

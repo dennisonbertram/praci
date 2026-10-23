@@ -680,6 +680,7 @@ describe("Mercury", () => {
     const row = (id: string) => container.querySelector(`[data-safe-id=${id}]`);
     expect(row("m1")?.textContent).toContain("Assign to contact");
     expect(row("m2")?.textContent).not.toContain("Assign to contact");
+    expect(row("m2")?.textContent).toContain("Priya Investor");
     expect(row("n1")?.textContent).not.toContain("Assign to contact");
     await click(
       [...(row("m1")?.querySelectorAll("button") ?? [])].find(
@@ -689,7 +690,7 @@ describe("Mercury", () => {
     const options = [...document.querySelectorAll("#assign-contact option")].map(
       (o) => o.textContent,
     );
-    expect(options).toEqual(["", "Priya Investor", "Ada Fund"]);
+    expect(options).toEqual(["Choose a contact", "Priya Investor", "Ada Fund"]);
     const select = document.getElementById("assign-contact") as HTMLSelectElement;
     await act(async () => {
       select.value = "p1";
