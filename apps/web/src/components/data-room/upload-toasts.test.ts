@@ -82,15 +82,15 @@ it("ignores an upload that finishes after the session changed", async () => {
   expect(names()).toEqual([]);
 });
 
-it("dismisses a failed upload by itself after a while", async () => {
+it("keeps a failed upload's toast until it is dismissed", async () => {
   setUploadScope("u1");
   hoisted.upload.mockRejectedValue(new DataRoomUploadError("failed"));
   uploadFilesToDataRoom([file("big.bin")]);
   await flush();
   expect(names()).toEqual(["big.bin"]);
-  await vi.advanceTimersByTimeAsync(7_000);
+  await vi.advanceTimersByTimeAsync(60_000);
   expect(names()).toEqual(["big.bin"]);
-  await vi.advanceTimersByTimeAsync(1_500);
+  dismissUploadToast(getUploadToasts()[0]?.id ?? 0);
   expect(names()).toEqual([]);
 });
 
