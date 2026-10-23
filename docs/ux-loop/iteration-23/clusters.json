@@ -1,0 +1,714 @@
+[
+ {
+  "id": "C1",
+  "title": "Phone chat: the per-message '...' button sits on top of card controls and user bubbles, so a first-run user cannot dismiss the first-question card",
+  "severity": "P1",
+  "rank": 1,
+  "effort": "S",
+  "reopens": "iteration-22 C13 (the lone-row part was fixed, this is the regression it left)",
+  "finding_ids": [
+   "R2-23-01 (R2)",
+   "V1-01 (V1)",
+   "V2-02 (V2)",
+   "V2-15 (V2)"
+  ],
+  "root_cause": "On coarse pointers the message action button (44x44, aria-label 'More') is positioned by MessageHoverMetadata and the 'hover:none' classes in the transcript. It is drawn for every block, including cards that have their own controls (first-question card, Email thread card) and it overlaps the corner of user bubbles. R2 measured the card's Dismiss X (x 265, y 334) under the '...' (x 274, y 317), so tapping the visible X opens React/Reply/Copy/Remember. The tour starts only after that card is dismissed.",
+  "verification": "OBSERVED by R2 with measured rects (touch emulation), V2 (button over bubble text, stray '...' under a card with no message), V1 (own row per message, older state). CONFIRMED in code that one action row is rendered per message with the [@media(hover:none)] variants (apps/web/src/pages/shell/transcript.tsx:832-913, :1170-1290); which blocks get the button was not traced.",
+  "files_to_change": [
+   "apps/web/src/pages/shell/transcript.tsx (do not render the action row for rows that are only a card, and place it on the timestamp line, not over bubble content, at touch widths)",
+   "apps/web/src/components/MessageHoverMetadata.tsx",
+   "first-question card component (find with grep 'What should I work on first') so its Dismiss X keeps a clear 44 px target",
+   "apps/web/src/pages/shell/transcript.test.tsx (touch layout: no overlap between '...' and the card's Dismiss)"
+  ],
+  "reach": "Every new phone user (first-run card blocks the tour) and every phone chat with cards.",
+  "acceptance_criteria": [
+   "At 375 px with pointer: coarse, the first-question card's Dismiss X rect does not intersect any 'More' button rect, and a tap on the X dismisses the card (script, measured).",
+   "No 'More' button rect intersects a user bubble's text box; no 'More' button exists for a row with no message.",
+   "Thread height does not grow by an extra row per message compared with the fine-pointer layout."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none (C6 and C7 touch other files)."
+ },
+ {
+  "id": "C2",
+  "title": "Settings deep link still fails on a slow roster: /app/settings and /app?settings=privacy ended on the chat with no dialog in most loads for R1",
+  "severity": "P2",
+  "rank": 2,
+  "effort": "S",
+  "reopens": "iteration-22 C4, iteration-21 C16",
+  "finding_ids": [
+   "R1-23-01 (R1)"
+  ],
+  "root_cause": "Shell consumes the 'settings' query in an effect (Shell.tsx:2585-2594: openSettings, then delete the param with a replace). Another effect closes Settings on any pathname change while useNavigationType() is POP (Shell.tsx:896-899). On a slow roster the first-thread redirect changes the pathname after the dialog opened, so the open state is lost while the query is already gone. The pass-22 fix carried the query through the redirects but did not cover this ordering.",
+  "verification": "OBSERVED by R1: dialog opened in 2 of 4 and 0 of 3 loads on /app/settings, 1 of 3 on /app?settings=privacy, with loads of 6 to 14 s on a loaded machine. R2/R3/V1/FLOW saw it open on an idle stack. Mechanism SUSPECTED (the two effects are CONFIRMED in code, the order of events was not traced). Kept at P2: Settings is reachable from the account menu.",
+  "files_to_change": [
+   "apps/web/src/pages/Shell.tsx (hold the requested settings section in a ref until the first-thread redirect has settled; do not let the POP-close effect at :896 act on the redirect's pathname change)",
+   "apps/web/src/pages/Shell.test.tsx (load /app?settings=privacy with the roster delayed 3 s: dialog open on Privacy and approvals, URL ends on a chat without the query)"
+  ],
+  "reach": "Anyone following an agent's Settings link (missing AI consent links use it).",
+  "acceptance_criteria": [
+   "With the bots list delayed 3 s, /app?settings=privacy ends with Settings open on Privacy and approvals and a chat URL without the query (unit test).",
+   "/app/settings opens General in 5 of 5 scripted cold loads on a throttled stack."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C16 and C19 edit Shell.tsx in other regions."
+ },
+ {
+  "id": "C3",
+  "title": "Phone drawer hides the warnings that matter: Pages start collapsed, and unread, overdue and failed counts do not keep their row visible",
+  "severity": "P2",
+  "rank": 3,
+  "effort": "S",
+  "reopens": "iteration-22 C12 (the collapse was the pass-22 design; this asks only that warnings survive it)",
+  "finding_ids": [
+   "J3-01 (J3)"
+  ],
+  "root_cause": "On a phone Pages starts collapsed (Shell.tsx:482-497). A collapsed row stays visible only when 'notified' (SidebarPageLink.tsx:58), and sidebar-glance.tsx sets notified only for unseen items (:33, :46). Inbox with 14 unread, Legal with 1 overdue and Data room with a red failed-file badge are therefore hidden, and Inbox takes 3 taps instead of 2.",
+  "verification": "OBSERVED by J3 on a fresh phone user. CONFIRMED in code at the three locations. R2 passed C12 on the design as decided; the new part is only the hidden warnings.",
+  "files_to_change": [
+   "apps/web/src/components/sidebar-glance.tsx (notified also when failed > 0 or overdue > 0; consider unread > 0 for Inbox)",
+   "apps/web/src/components/SidebarPageLink.tsx:58 (no change if notified covers it)",
+   "apps/web/src/components/sidebar-glance.test.tsx"
+  ],
+  "reach": "Every phone user with a failed file, an overdue deadline or unread mail.",
+  "acceptance_criteria": [
+   "With a failed Data room file and an overdue Legal deadline, a fresh phone drawer shows those two page rows without expanding Pages.",
+   "Inbox is reachable in 2 taps when it has unread mail."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none."
+ },
+ {
+  "id": "C4",
+  "title": "Legal on a phone: tab labels collide, contract titles are cut without an ellipsis, deadline rows lay out differently",
+  "severity": "P2",
+  "rank": 4,
+  "effort": "S",
+  "reopens": "none (new on touch emulation)",
+  "finding_ids": [
+   "J3-02 (J3)",
+   "V2-01 (V2)",
+   "J3-03 (J3)",
+   "V2-08 (V2)",
+   "V2-10 (V2)"
+  ],
+  "root_cause": "Three causes. (1) The Legal tab strip (Legal.tsx:499-518, overflow-x-auto, px-2 triggers, the overdue span inline in the Deadlines trigger) is wider than 337 px under pointer: coarse, where every [role=tab] gets min-height 44 and min-width 44 (apps/web/src/styles.css:85-96); J3 measured about 108 px per tab, not traced. (2) Contract titles use 'rk-tap min-w-0 truncate' (LegalContracts.tsx:69) and .rk-tap is display:inline-flex under coarse pointers (styles.css:101-106), which disables text-overflow. (3) Deadline rows show the date in different slots.",
+  "verification": "OBSERVED by J3 and V2 independently at 375 px with touch emulation (labels drawn over each other, Deadlines content 131 px in a 111 px tab). Cause (2) CONFIRMED in code (inline-flex plus truncate). Cause (1) SUSPECTED (tab width not traced). Rated P2, not P1: all three tabs stay tappable and the page works.",
+  "files_to_change": [
+   "apps/web/src/pages/Legal.tsx:499-518 (let triggers shrink; show a red dot plus count for overdue on phones; no horizontal scroll)",
+   "apps/web/src/pages/legal/LegalContracts.tsx:69 (truncate on an inner block span, or wrap to two lines on phones)",
+   "apps/web/src/pages/legal/LegalDeadlines.tsx (date once, same slot for every row)",
+   "apps/web/src/styles.css:94-96 only if the tab min-width rule is the cause"
+  ],
+  "reach": "Phone users of Legal.",
+  "acceptance_criteria": [
+   "At 375 px with pointer: coarse, no two tab labels intersect and the strip has no horizontal scroll.",
+   "A contract title longer than the row ends in an ellipsis or wraps; no mid-letter cut.",
+   "Every deadline row shows its date once, in the same place."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C5 and C9 (LegalDeadlines.tsx, Legal.tsx)."
+ },
+ {
+  "id": "C5",
+  "title": "Legal Deadlines after a scan: 'Replaced by ... Keep' is unclear, the same obligation shows as up to three rows, and closed rows do not say Done or Dismissed",
+  "severity": "P2",
+  "rank": 5,
+  "effort": "M",
+  "reopens": "iteration-22 C6 (scan control part met)",
+  "finding_ids": [
+   "J2-03 (J2)",
+   "V2-09 (V2)",
+   "J2-14 (J2)"
+  ],
+  "root_cause": "A scan proposes removal of a hand-added deadline when a derived one replaces it, and shows 'Replaced by ... on <date>.' with a bare 'Keep' button (LegalDeadlines.tsx:269-281). The only way to resolve the pair is to Dismiss each row. Ask agent, Done and Dismiss have equal weight. Closed rows (Show closed) show only title, date and Reopen.",
+  "verification": "OBSERVED by J2 (9 to 19 deadlines, three rows for one insurance renewal) and V2 (375 and 1440). CONFIRMED the 'Replaced by' and 'Keep' text in code (LegalDeadlines.tsx:269,281). The scan itself behaves as designed in pass 22.",
+  "files_to_change": [
+   "apps/web/src/pages/legal/LegalDeadlines.tsx (wording 'Keep this deadline' next to 'Remove this one'; one click leaves one row; the proposal on its own line so Done/Dismiss do not compete; closed rows show Done or Dismissed and the date)",
+   "apps/web/src/pages/legal/LegalDeadlines.test.tsx",
+   "packages/db/src/legal.ts and apps/api router only if the Remove action needs a new mutation (it can reuse the dismiss mutation)"
+  ],
+  "reach": "Founders who add a deadline by hand and then scan (common on the first Legal use).",
+  "acceptance_criteria": [
+   "A row with 'Replaced by' offers 'Keep this deadline' and 'Remove this one'; Remove closes the row in one click and leaves one row for the obligation.",
+   "Show closed lists each row with Done or Dismissed and the date."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C4 (LegalDeadlines.tsx)."
+ },
+ {
+  "id": "C6",
+  "title": "Legal re-scan can silently replace extracted contract values (Office lease $90,000 became $9,000)",
+  "severity": "P2",
+  "rank": 6,
+  "effort": "M",
+  "reopens": "none",
+  "finding_ids": [
+   "J2-02 (J2)"
+  ],
+  "root_cause": "LegalRepos.upsertContract keeps stored fields only when the new extraction is empty; 'A different value still replaces it, since a document can be amended' (packages/db/src/legal.ts:191-210). It does not compare the item's revision with the stored analyzedRevision, so a re-scan of an unchanged file with a different (model-noisy) extraction overwrites money values and dates with no notice.",
+  "verification": "OBSERVED by J2 once (before/after screenshots: $90,000 to $9,000, $30,000 to $3,000, titles lost the MOCK prefix, a start date moved). Overwrite rule CONFIRMED in code (db/legal.ts:191-210, legal-tools.ts:353-395). The demo model is scripted and non-deterministic, so real-model behaviour is UNVERIFIED. Rated P2 for that reason; raise to P1 if a real-model run reproduces it.",
+  "files_to_change": [
+   "packages/db/src/legal.ts (when input.revision equals stored.analyzedRevision and a stored value differs, keep the stored value and return the proposed one as a change; replace only when the revision is newer)",
+   "packages/adapters/src/legal-tools.ts:353-395 (surface 'proposed change' in the tool result so the agent tells the user)",
+   "packages/db/src/legal.test.ts (same revision with a different value keeps the stored value; newer revision replaces it)"
+  ],
+  "reach": "Everyone who re-scans Legal; the numbers are money on a contract list.",
+  "acceptance_criteria": [
+   "Same-revision upsert with a different valueCents keeps the stored value (unit test).",
+   "A newer revision with a different value replaces it and the agent's result lists the change."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none. Depends on nothing."
+ },
+ {
+  "id": "C7",
+  "title": "Mail approval card: a failed send says only 'Message not found', stays failed after the same draft is sent from the composer, and the '...' button orphans onto a third line on a phone",
+  "severity": "P2",
+  "rank": 7,
+  "effort": "M",
+  "reopens": "iteration-22 C1 (default reason line met; this is the live cause and the stale card)",
+  "finding_ids": [
+   "J1-01 (J1)",
+   "J1-02 (J1)",
+   "J3-06 (J3)",
+   "R1-23-06 / R2-23-05 are in C8"
+  ],
+  "root_cause": "mapStatus turns every 404 into MailProviderError('not_found', 'Message not found') (packages/adapters/src/gmail-mail-provider.ts:934), which the card prints as bare red text. Why the approval-card send hits 404 while the composer send works is not traced (J1 suspects the emulator at composio-emulator.ts:599 does not know the reply-to message id for a freshly connected account). The card never listens for the thread gaining the outgoing message, so after 'Open in composer' sent it, the card still shows failed and the agent's 'wasn't sent' message stays.",
+  "verification": "OBSERVED by J1 (demo only; real Gmail UNVERIFIED) and J3 (orphan '...' at 375). Wording mapping CONFIRMED in code. The 404 cause is SUSPECTED. Rated P2: 'Open in composer' recovers.",
+  "files_to_change": [
+   "packages/adapters/src/gmail-mail-provider.ts:934 and the reply path in packages/adapters/src/mail-tools.ts (find why the approved-draft send resolves the reply target differently from the composer; fix, or map not_found on a send to 'Could not send. Open it in the composer.')",
+   "apps/web/src/components/MailApprovalCard.tsx (mark the card Sent, or hide 'Open in composer', when the thread gains the outgoing message; keep '...' on the Send/Discard line at 375 px)",
+   "apps/web/src/components/MailApprovalCard.test.tsx"
+  ],
+  "reach": "Everyone who approves an agent email.",
+  "acceptance_criteria": [
+   "A 404 on an approved send shows a sentence with the next step, not the bare provider text (unit test with a mocked 404).",
+   "After the same draft is sent from the composer, the card shows Sent and the failed line is gone.",
+   "At 375 px the '...' stays on the same line as Send/Discard."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C1 only if it edits MailApprovalCard (it does not)."
+ },
+ {
+  "id": "C8",
+  "title": "An agent says 'Sent to Priya' for an external email with no approval card, no tool record and no mail evidence in the thread",
+  "severity": "P2",
+  "rank": 8,
+  "effort": "S",
+  "reopens": "iteration-6 decision (ask before sending external email defaults on)",
+  "finding_ids": [
+   "R1-23-06 (R1)",
+   "R2-23-05 (R2)"
+  ],
+  "root_cause": "Two walkers saw delegated Inbox-agent replies say 'Sent to Priya' with no approval card. Either the demo founder has 'Ask before sending external email' off, or the reply is scripted mock-model text, or the agent reports a send before a send result exists. Not traced.",
+  "verification": "OBSERVED twice on shared threads; cause UNCONFIRMED. Investigate first, change only if a real path reports 'sent' without a send result.",
+  "files_to_change": [
+   "First: read the demo founder's setting and the thread's tool records; check the tool-result path in packages/adapters/src/executor.ts that feeds 'Sent' wording (find the delegate/relay reply)",
+   "Only if the agent reports sent without a result: the relay prompt in executor.ts (say 'sent' only after a send result, else 'waiting for your approval')"
+  ],
+  "reach": "Anyone delegating a mail send; trust in the main write action.",
+  "acceptance_criteria": [
+   "With the setting on, a delegated external send produces an approval card and no 'Sent' text before approval (mocked executor test).",
+   "If the cause is the demo's scripted model, the cluster closes with a note and no code change."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C7 (mail wording), C10 (executor.ts)."
+ },
+ {
+  "id": "C9",
+  "title": "Cold load: the workspace skeleton can sit for 20 to 30 s with no 'Try again', and /sign-in first paints a plain 'Loading...'",
+  "severity": "P2",
+  "rank": 9,
+  "effort": "S",
+  "reopens": "iteration-22 C3",
+  "finding_ids": [
+   "V3-01 (V3)",
+   "J2-07 (J2)",
+   "R1-23-04 (R1)",
+   "R1-23-03 (R1)"
+  ],
+  "root_cause": "Pass-22 added a slow state to ShellSkeleton (ShellSkeleton.tsx:65-95 now contains OpeningSpace). V3 (2 of 7 direct loads, 24 s) and J2 (30 s, once in 25) still saw skeletons with no retry past 20 s, and R1 saw 8 to 25 s. R1 could not delay the bootstrap request to see the 20 s state. Separately the /sign-in route's lazy-load fallback is 'Loading...' (App.tsx:159).",
+  "verification": "OBSERVED by V3, J2, R1 on a stack shared by about 10 walkers (load average up to 57), so durations are environment-inflated; the missing retry past 20 s is the defect. R1 'unobserved' means the pass-22 criterion is only PARTLY verified. Fix is not proven to be missing: first reproduce with the bootstrap request blocked.",
+  "files_to_change": [
+   "apps/web/src/components/ShellSkeleton.tsx and apps/web/src/App.tsx (reproduce with a blocked /bootstrap call in a test; make sure the 20 s line and Try again appear on every skeleton route, including /app/contacts and /app/artifacts)",
+   "apps/web/src/App.tsx:159 (make the sign-in fallback the form frame, or import the sign-in route eagerly)",
+   "apps/web/src/components/ShellSkeleton.test.tsx"
+  ],
+  "reach": "Any user on a slow connection; first impression.",
+  "acceptance_criteria": [
+   "With the bootstrap request blocked, every /app route shows a still-loading sentence and Try again within 20 s (test with fake timers).",
+   "/sign-in paints the form frame in the first paint."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C2 (App.tsx and Shell.tsx are near, different regions)."
+ },
+ {
+  "id": "C10",
+  "title": "Mercury and Brex agents: replies after a denial or with changes off tell the person to ask the agent they are already talking to; a raw code value ('pendingApproval') shows in prose",
+  "severity": "P2",
+  "rank": 10,
+  "effort": "S",
+  "reopens": "iteration-22 C23, iteration-15 refusal-without-direction item",
+  "finding_ids": [
+   "J2-01 (J2)",
+   "J2-05 (J2)"
+  ],
+  "root_cause": "The Finance peer prompt ends 'If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly' (packages/adapters/src/executor.ts:8703). DENIED_ACTION_MESSAGE (approval-effect.ts:364) tells the model not to retry but not to avoid redirecting the person. J2 saw this text in the Mercury agent's own chat after a denial, and 'I couldn't message the Mercury agent ... Open Integrations' with the switch off. The fake tool returns status 'pendingApproval' (finance-fake-tools.ts:132) and the approved-payment note tells the model to quote the status exactly.",
+  "verification": "OBSERVED by J2 (m10-m15). The prompt text and the status string are CONFIRMED in code; that the peer text reaches the Mercury agent's own prompt is SUSPECTED. What turned 'Allow changes in Mercury' off while J2 worked is unknown (R3 saw the same off switch with a pending $1,200 approval); another walker may have. Rated P2, not P1: with the switch on, the flow worked.",
+  "files_to_change": [
+   "packages/adapters/src/executor.ts:8703 (peer text only for agents that are not the Mercury or Brex agent; give those agents their own failure wording: changes are off with a link to the Allow changes switch at /app/integrations/mcp/{id}, no matching recipient, denied)",
+   "packages/adapters/src/approval-effect.ts:364 and the approvedPaymentResult note (paraphrase status codes in words: 'waiting for approval in Mercury')",
+   "packages/adapters/src/executor-approval-replay.test.ts (new cases)"
+  ],
+  "reach": "Anyone paying a bill through an agent; writes are off by default, so the writes-off reply is the first one a new user meets.",
+  "acceptance_criteria": [
+   "With writes off, the Mercury agent's reply says changes are off and links to the Allow changes switch; it never says 'ask the Mercury agent'.",
+   "After a denial the reply says it was not submitted and offers no redirect.",
+   "No reply contains the literal 'pendingApproval'."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C8 (executor.ts, different regions)."
+ },
+ {
+  "id": "C11",
+  "title": "Data room failures leave no record: the upload error toast disappears after 8 s, an untagged file's preview gives no reason, a stuck read gives no hint",
+  "severity": "P2",
+  "rank": 11,
+  "effort": "S",
+  "reopens": "iteration-22 C5 (failed row met; untagged reason not met)",
+  "finding_ids": [
+   "J2-04 (J2)",
+   "R1-23-02 (R1)",
+   "V3-04 (V3)",
+   "J2-11 (J2)"
+  ],
+  "root_cause": "Error toasts go through dismissLater with FAILED_TOAST_MS = 8_000 (upload-toasts.ts:71, 164, 200), so a looked-away user never learns a zip was rejected. UntaggedNote (Preview.tsx:197-235) says nothing for a settled file with no type (R1: row says Not tagged; the status value was not read). Processing strip stays 'Reading X' for about 12 minutes before 'Reading took too long'.",
+  "verification": "OBSERVED: J2 (toast gone at 10 s, measured), R1 and V3 (untagged preview), J2 (12 minutes). Toast timing and the UntaggedNote path CONFIRMED in code; the untagged status value is SUSPECTED.",
+  "files_to_change": [
+   "apps/web/src/components/data-room/upload-toasts.ts (error toasts stay until dismissed; success keeps auto-dismiss)",
+   "apps/web/src/components/data-room/Preview.tsx:197-235 and :381 (show 'Type: Not tagged' with a one-line reason and one action for any settled file with no type)",
+   "apps/web/src/components/data-room/ProcessingStrip.tsx ('Taking longer than usual' after about 1 minute)",
+   "apps/web/src/components/data-room/upload-toasts.test.ts"
+  ],
+  "reach": "Anyone uploading to the Data room.",
+  "acceptance_criteria": [
+   "A rejected upload's toast is still visible after 60 s and goes only with its X.",
+   "An untagged settled file's preview states why it has no type and offers one action, whatever the consent state.",
+   "A read running over 60 s shows 'Taking longer than usual'."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C12 (Data room components)."
+ },
+ {
+  "id": "C12",
+  "title": "Data room polish: Type column too narrow, duplicate waiting text, strip count off the gutter, blank PDF tile, empty folder after Auto-sort",
+  "severity": "P3",
+  "rank": 12,
+  "effort": "S",
+  "reopens": "iteration-22 C14 (name column part met)",
+  "finding_ids": [
+   "R2-23-04 (R2)",
+   "V3-02 (V3)",
+   "V3-03 (V3)",
+   "J2-10 (J2)",
+   "V3-05 (V3)",
+   "J2-12 (J2)"
+  ],
+  "root_cause": "Type column width in ItemRows.tsx truncates 'Investor docume...' while Name has spare width. While the consent card shows, the processing strip adds 'Waiting for permission to read' (same fact) and moves content 36 px between views. ProcessingStrip.tsx:51 count is at x=1424 against a 1412 gutter. A PDF with a blank thumbnail gets a white tile with no icon. Auto-sort leaves its emptied folder.",
+  "verification": "OBSERVED by R2, V3, J2 (screens named in their files). Code locations other than ProcessingStrip.tsx:51 are suspected.",
+  "files_to_change": [
+   "apps/web/src/components/data-room/ItemRows.tsx (Type about w-36)",
+   "apps/web/src/components/data-room/ProcessingStrip.tsx (hide while the consent card shows; align count to the gutter)",
+   "grid tile component (file icon when the thumbnail has no content)",
+   "Auto-sort apply (remove or offer to remove emptied folders)"
+  ],
+  "reach": "Data room users; cosmetic.",
+  "acceptance_criteria": [
+   "Type shows 'Investor document' in full at 1440 and 1280.",
+   "No strip text repeats the consent card, and list/grid/stats content starts at the same y.",
+   "A blank thumbnail shows the file icon."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C11 (same folder)."
+ },
+ {
+  "id": "C13",
+  "title": "Inbox: hover toolbar covers the subject, Ask agent panel moves the dialog off centre and drops Archive, unread dot floats off the row on touch, collapsed To do card is 56 px, Cleanup note reads as advice to archive",
+  "severity": "P2",
+  "rank": 13,
+  "effort": "M",
+  "reopens": "iteration-22 C11 (3 of 4 met), iteration-10 C13",
+  "finding_ids": [
+   "V2-12 (V2)",
+   "V2-03 (V2)",
+   "J3-05 (J3)",
+   "V2-14 (V2)",
+   "R2-23-02 (R2)",
+   "J1-07 (J1)"
+  ],
+  "root_cause": "InboxRow draws four 16 px action icons over the subject on hover or focus (V2 saw 'draft for your re'). InboxMessageDialog widens to 8 px from the window edge with the Ask agent panel and drops Archive from the toolbar. The unread dot uses pointer-coarse:translate-x-2.5 pointer-coarse:-translate-y-3 (InboxRow.tsx:320). The collapsed To do card is 56 px at 375 (criterion was 48). CleanupSenderRow.tsx:36-40 prints 'You read most of these' under an Archive button.",
+  "verification": "OBSERVED by V2, J3, R2, J1. InboxRow.tsx:320 and CleanupSenderRow.tsx:36-40 CONFIRMED in code; the dialog and hover-toolbar locations are suspected.",
+  "files_to_change": [
+   "apps/web/src/components/inbox/InboxRow.tsx (reserve space for the toolbar; dot inline before the sender on touch)",
+   "apps/web/src/components/inbox/InboxMessageDialog.tsx (stay centred, keep the toolbar, Archive in '...' only when narrow)",
+   "apps/web/src/pages/Inbox.tsx (collapsed To do padding at phone width)",
+   "apps/web/src/components/inbox/CleanupSenderRow.tsx:36-40 (neutral wording: 'You read most of these, so keep them unless you are sure')"
+  ],
+  "reach": "Daily Inbox users.",
+  "acceptance_criteria": [
+   "Hover toolbar never overlaps subject text at 1440 with and without the agent panel.",
+   "Opening Ask agent keeps equal side gutters and the same toolbar buttons.",
+   "Collapsed To do card is at most 48 px at 375.",
+   "Cleanup read-heavy rows do not read as a reason to archive."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none."
+ },
+ {
+  "id": "C14",
+  "title": "Finance on a phone: Spend rows squeeze the name, Category bar labels collide, Burn has no y scale, Crypto rows break mid-label, sub-page headers waste a row",
+  "severity": "P2",
+  "rank": 14,
+  "effort": "M",
+  "reopens": "none",
+  "finding_ids": [
+   "V2-04 (V2)",
+   "V2-05 (V2)",
+   "V2-06 (V2)",
+   "V2-07 (V2)",
+   "V2-13 (V2)"
+  ],
+  "root_cause": "Layouts keep desktop column structure at 375 px: Date takes 70 px beside Counterparty in the Spend list; seven '$7,500' bar labels touch; the Burn chart hides its y axis under a width breakpoint while Accounts and Runway keep theirs; wallet rows break 'Safe . 2 of 3' and 'Self-custody'; the space picker pushes 'Ask' and 'Add account' to a second row.",
+  "verification": "OBSERVED by V2 at 375 with touch emulation. Component files suspected (apps/web/src/pages/finance/).",
+  "files_to_change": [
+   "apps/web/src/pages/finance/FinanceSpend.tsx (date under the counterparty on phones)",
+   "Finance Category chart (abbreviate to $7.5k or label the selected bar only)",
+   "Finance Burn chart (keep a two-tick y axis on phones)",
+   "Finance Crypto rows (type on its own line, shared amount and menu columns)",
+   "Finance sub-page header (space picker out of the title row on phones)"
+  ],
+  "reach": "Phone users of Finance (a core page).",
+  "acceptance_criteria": [
+   "At 375 px no counterparty wraps beyond two lines; bar labels do not touch; Burn shows a y scale; crypto rows share one amount column; Ask stays on the title line."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C15 (Finance files)."
+ },
+ {
+  "id": "C15",
+  "title": "Finance 1440 polish: Accounts range control unframed, Subscriptions table spans 1040 px, two money-out figures on the first screen, uneven cards, legend marker",
+  "severity": "P3",
+  "rank": 15,
+  "effort": "S",
+  "reopens": "iteration-22 C21 (two items not met), iteration-11 C26, iteration-12 C23",
+  "finding_ids": [
+   "R3-23-01 (R3)",
+   "R3-23-02 (R3)",
+   "FLOW-07 (FLOW)",
+   "V2-18 (V2)"
+  ],
+  "root_cause": "FinanceAccounts.tsx:327 uses PeriodTabs in the card action instead of the overview's framed range bar; the subscription table spans the whole card (vendor to amount about 880 px apart; capped width was a pass-11 and pass-22 criterion). Overview shows 'Monthly burn $67,621' and 'Spent so far $20,484' 120 px apart with the period row looking like a section title. Breakdown and Upcoming heights differ (owner decided natural heights in pass 22, so only the legend marker is raised).",
+  "verification": "OBSERVED by R3, FLOW, V2. FinanceAccounts.tsx:327 per R3 (not re-read). Breakdown/Upcoming height difference is a recorded decision and is excluded.",
+  "files_to_change": [
+   "apps/web/src/pages/finance/FinanceAccounts.tsx:327",
+   "apps/web/src/pages/Finance.tsx and apps/web/src/pages/finance/FinanceSpend.tsx (max-w-3xl subscription table)",
+   "Finance overview period row (label it as a filter or move it into the chart header)",
+   "Burn legend marker (triangle for Financing)"
+  ],
+  "reach": "Finance users; cosmetic.",
+  "acceptance_criteria": [
+   "Accounts and overview use the same framed range control.",
+   "Subscriptions vendor to amount distance is under 500 px at 1440.",
+   "The burn legend uses the same marker as the chart."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C14 (Finance files)."
+ },
+ {
+  "id": "C16",
+  "title": "Sidebar: a new bot's row is below the fold, an inactive space holding only page agents is listed as a section, page-agent counts change by page, the list ends short of the footer",
+  "severity": "P2",
+  "rank": 16,
+  "effort": "M",
+  "reopens": "iteration-22 C25, iteration-21 C11",
+  "finding_ids": [
+   "J2-06 (J2)",
+   "R3-23-04 (R3)",
+   "V3-07 (V3)",
+   "J1-08 (J1)",
+   "V2-17 (V2)"
+  ],
+  "root_cause": "(1) After Create > New bot the list scrolls inside a 345 px box and the active row stays under '+11 more'; no scroll-into-view; only a top fade exists (Shell.tsx:5038-5042). (2) space-sidebar.ts builds sections from 'root' bots that include page agents, then 'if (sections.length > 0) return sections' (space-sidebar.ts:185-189) before the empty-space check at :190, so an inactive space with only auto-created Legal and Investors agents is shown, against the pass-22 decision. (3) The Page agents count read 2, 1, 1, 1 by page. (4) The scroller ends 40 to 90 px above the footer.",
+  "verification": "OBSERVED by J2, R3, V3 (suspected on a shared stack), J1, V2. (2) CONFIRMED in code. Others suspected.",
+  "files_to_change": [
+   "apps/web/src/pages/shell/space-sidebar.ts:185-190 (page agents do not count toward a non-empty inactive space)",
+   "apps/web/src/pages/Shell.tsx:5038 (scroll the active row into view on create/navigate; bottom fade; fill remaining height; start at scrollTop 0)",
+   "page-agent count (count agents that have a chat, on every page)",
+   "apps/web/src/pages/shell/space-sidebar.test.ts"
+  ],
+  "reach": "Everyone who creates bots; spaces with page agents.",
+  "acceptance_criteria": [
+   "After creating a bot its row is visible without scrolling.",
+   "An inactive space whose only bots are untouched page agents is absent from the sidebar and present in the switcher (unit test).",
+   "The Page agents count is the same on every page."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C2 (Shell.tsx, other regions)."
+ },
+ {
+  "id": "C17",
+  "title": "First-run tour opens at an unpredictable moment: not on landing, then over the Gmail card the person just clicked",
+  "severity": "P2",
+  "rank": 17,
+  "effort": "S",
+  "reopens": "iteration-11 C-tour trigger decision, iteration-13 C4",
+  "finding_ids": [
+   "J1-03 (J1)"
+  ],
+  "root_cause": "On two fresh sign-ups the tour did not open for 24 s with the first-question card untouched, did not open after 'Run my company', and opened about 20 s after landing only when Gmail Connect was clicked. After Dismiss it opened within 3 s. The open condition treats 'card answered' differently from 'card dismissed' (FirstRunTour.tsx and its caller in Shell.tsx; condition not read).",
+  "verification": "OBSERVED by J1 twice; R2 saw the dismiss path work. Code location suspected.",
+  "files_to_change": [
+   "apps/web/src/components/tour/FirstRunTour.tsx and its caller in apps/web/src/pages/Shell.tsx"
+  ],
+  "reach": "Every new user.",
+  "acceptance_criteria": [
+   "The tour opens within 3 s of the first-question card being answered or dismissed, and never on an unrelated click."
+  ],
+  "needs_product_decision": true,
+  "decision_question": "Should the tour open as soon as the first-question card is answered ('Run my company'), or only after Dismiss or an idle period? (Passes 11, 13 and 14 held it until connect cards were answered.)",
+  "depends_on_conflicts": "Conflicts: C1 (the card must be dismissible on phones first)."
+ },
+ {
+  "id": "C18",
+  "title": "Settings, auth and Create menu polish",
+  "severity": "P3",
+  "rank": 18,
+  "effort": "S",
+  "reopens": "none",
+  "finding_ids": [
+   "V1-05 (V1)",
+   "V1-06 (V1)",
+   "V1-07 (V1)",
+   "V1-08 (V1)",
+   "V1-13 (V1)",
+   "V1-12 (V1)",
+   "R2-23-06 (R2)",
+   "V1-10 (V1)",
+   "V1-11 (V1)",
+   "J2-13 (J2)"
+  ],
+  "root_cause": "Small, separate defects in single files: reserved error row makes 'Forgot password?' float 54 px under the field (Auth.tsx about 345-365); Models and Voice tabs use different list widths and disabled styles (ModelSettingsOverlay.tsx); 'Your bots use OpenAI' while OpenRouter shows the check; Kraken dialog help link has no underline and 'Connect' is enabled with empty fields (ExchangeConnectDialog.tsx about 30-34); 'Delete account' is as prominent as the primary; the Create popover is a listbox named 'Suggestions'; off-switch contrast not measured; Integrations search is narrower than the grid; a connected card moves 188 px with no cue; the routine skill select loses its label.",
+  "verification": "OBSERVED by V1, R2, J2; locations from the walkers, not re-read.",
+  "files_to_change": [
+   "apps/web/src/pages/Auth.tsx",
+   "apps/web/src/pages/ModelSettingsOverlay.tsx",
+   "apps/web/src/components/integrations/ExchangeConnectDialog.tsx",
+   "Settings General account card",
+   "Create popover in apps/web/src/pages/Shell.tsx (role=menu)",
+   "apps/web/src/pages/RoutineEditor.tsx (Skill label)",
+   "packages/ui-web switch (3:1 off-state border if below)"
+  ],
+  "reach": "All users; cosmetic.",
+  "acceptance_criteria": [
+   "Each listed item matches its proposed fix; the Kraken Connect button is disabled until both fields have text; the Create popover exposes role=menu."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C16 and C2 (Shell.tsx)."
+ },
+ {
+  "id": "C19",
+  "title": "Bot header and bot settings: a long name is clipped without an ellipsis, rename changes the sidebar time, 'Saved' shows with no change",
+  "severity": "P3",
+  "rank": 19,
+  "effort": "S",
+  "reopens": "none",
+  "finding_ids": [
+   "V1-02 (V1)",
+   "V1-03 (V1)",
+   "V1-04 (V1)"
+  ],
+  "root_cause": "Header title lacks truncate and the Name field has no length limit; the sidebar time uses the bot's update time, so a rename reads as activity; the settings panel saves on blur even when the value equals the stored one.",
+  "verification": "OBSERVED by V1; causes suspected.",
+  "files_to_change": [
+   "apps/web/src/pages/Shell.tsx (header title truncate with title attribute; sidebar time from the last message)",
+   "bot settings panel (skip save and the Saved badge when unchanged; cap the name at about 60 characters)"
+  ],
+  "reach": "Bot owners; cosmetic.",
+  "acceptance_criteria": [
+   "A 90-character name ends in an ellipsis in the header.",
+   "Rename does not change the sidebar time.",
+   "Focus leaving an untouched Name field shows no Saved badge."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C16, C18 (Shell.tsx)."
+ },
+ {
+  "id": "C20",
+  "title": "Phone text fields under 16 px: the chat composer is 15.5 px and the Settings section select is 14 px",
+  "severity": "P2",
+  "rank": 20,
+  "effort": "S",
+  "reopens": "none",
+  "finding_ids": [
+   "J3-04 (J3)"
+  ],
+  "root_cause": "iOS Safari zooms the page when a focused field has a font size under 16 px. composer.tsx:1128 uses text-[15.5px]; SettingsOverlay.tsx:260-282 uses a NativeSelect at 14 px.",
+  "verification": "Sizes CONFIRMED in code (composer.tsx:1128). The zoom itself is not observed on a real iPhone (J3 used Chromium).",
+  "files_to_change": [
+   "apps/web/src/pages/shell/composer.tsx:1128 (16 px on coarse pointers)",
+   "apps/web/src/pages/SettingsOverlay.tsx:260,282 (16 px on coarse pointers)"
+  ],
+  "reach": "Every iPhone Safari user of chat.",
+  "acceptance_criteria": [
+   "Computed font size is at least 16 px for the composer textarea and the Settings select under pointer: coarse (test or measured)."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none."
+ },
+ {
+  "id": "C21",
+  "title": "Integrations connected cards use two layouts; Popular cards a third",
+  "severity": "P3",
+  "rank": 21,
+  "effort": "S",
+  "reopens": "iteration-22 C22 (not met)",
+  "finding_ids": [
+   "R3-23-03 (R3)",
+   "J2-09 (J2)",
+   "FLOW-05 (FLOW)"
+  ],
+  "root_cause": "IntegrationsHome.tsx renders 'Used by' (line 108) above the action on Gmail and Carta but below it on Mercury, Brex and Blockscout; Coinbase has no 'Used by'; Popular puts the action at the bottom (action tops measured 15, 65 and 81 px). Only some connected cards have a '...' menu.",
+  "verification": "OBSERVED by R3, J2, FLOW; the pass-22 criterion (same place) is not met. Line 108 CONFIRMED.",
+  "files_to_change": [
+   "apps/web/src/components/integrations/IntegrationsHome.tsx (one body: title, description, footer row with 'Used by' left and the action right, for both groups)"
+  ],
+  "reach": "Integrations visitors; cosmetic.",
+  "acceptance_criteria": [
+   "The action button's top offset inside the card is identical for every connected and popular card at 1440."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none."
+ },
+ {
+  "id": "C22",
+  "title": "Investors and Fundraising: a dash-only Invested column, two empty cards above the only card with data, SAFEs not linked to the matching contact",
+  "severity": "P3",
+  "rank": 22,
+  "effort": "S",
+  "reopens": "iteration-21 V3-06 (deferred 'product look')",
+  "finding_ids": [
+   "FLOW-02 (FLOW)",
+   "FLOW-04 (FLOW)",
+   "FLOW-03 (FLOW)"
+  ],
+  "root_cause": "HoldingsTable.tsx:61 always renders the Invested column; Fundraising shows 'Start a round' and 'No prospects yet' before the SAFEs card; SafeList.tsx:259,311 offers 'Assign to contact' whenever no contact is stored, with no name match. Another session owns the Investors and Fundraising redesign.",
+  "verification": "OBSERVED by FLOW (9 dashes; 240 px of empty cards). Suggestions, not defects blocking a task.",
+  "files_to_change": [
+   "apps/web/src/components/cap-table/HoldingsTable.tsx:61",
+   "apps/web/src/components/fundraising/SafeList.tsx",
+   "Fundraising page order"
+  ],
+  "reach": "Fundraising users.",
+  "acceptance_criteria": [
+   "Invested column hidden when no holder has an amount.",
+   "SAFEs card first when there are no prospects and no round.",
+   "A SAFE holder matching exactly one contact's organisation shows that contact."
+  ],
+  "needs_product_decision": true,
+  "decision_question": "Should a SAFE be linked to a contact automatically when exactly one contact's organisation equals the holder's name? Is the other session's redesign finished so these files can change?",
+  "depends_on_conflicts": "Conflicts: another session's Investors and Fundraising work."
+ },
+ {
+  "id": "C23",
+  "title": "Empty space home: the 'No bots yet' heading and the New bot button sit 450 px apart",
+  "severity": "P3",
+  "rank": 23,
+  "effort": "S",
+  "reopens": "iteration-22 C25",
+  "finding_ids": [
+   "R3-23-06 (R3)"
+  ],
+  "root_cause": "The empty-space pane in Shell.tsx puts a small heading top-left and the button alone near the vertical middle.",
+  "verification": "OBSERVED by R3 (33-empty-home.png); location suspected.",
+  "files_to_change": [
+   "empty-space pane in apps/web/src/pages/Shell.tsx"
+  ],
+  "reach": "Users with an empty space.",
+  "acceptance_criteria": [
+   "Heading and New bot button sit together in one centred empty state."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: C16, C19 (Shell.tsx)."
+ },
+ {
+  "id": "C24",
+  "title": "Artifacts: versioned card title is cut beside the badge, list columns far apart, split panes stop 130 px short of the window bottom",
+  "severity": "P3",
+  "rank": 24,
+  "effort": "S",
+  "reopens": "iteration-22 C20",
+  "finding_ids": [
+   "R2-23-03 (R2)",
+   "V3-06 (V3)",
+   "V2-11 (V2)"
+  ],
+  "root_cause": "Card title line-clamp-1 sits beside the v2 chip (touch has no hover title); list Name is about 800 px from Type and Added; the split pane has a fixed or content height (ends at y=767 of 900).",
+  "verification": "OBSERVED by R2, V3, V2 (artifact-ui-1440.png).",
+  "files_to_change": [
+   "apps/web/src/pages/Artifacts.tsx"
+  ],
+  "reach": "Artifacts users.",
+  "acceptance_criteria": [
+   "Version chip on the description row or title wraps to two lines at 72 px card height.",
+   "Split panes fill the viewport height."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none."
+ },
+ {
+  "id": "C25",
+  "title": "Storybook smoke fails on one story: shell-delegate-wait-notice--first-minute renders nothing",
+  "severity": "P3",
+  "rank": 25,
+  "effort": "XS",
+  "reopens": "none",
+  "finding_ids": [
+   "R3-23-05 (R3)"
+  ],
+  "root_cause": "FirstMinute renders null by design, and the smoke test treats an empty render as a failure (1812 of 1813).",
+  "verification": "OBSERVED by R3 with a local build; CONFIRMED in code (DelegateWaitNotice.stories.tsx:25 has no visible-root decorator).",
+  "files_to_change": [
+   "apps/web/src/pages/shell/DelegateWaitNotice.stories.tsx:25 (decorators: [withVisibleRoot('No notice in the first minute')] from apps/web/src/stories/decorators.tsx)"
+  ],
+  "reach": "Repository gate (design-system smoke), no user effect.",
+  "acceptance_criteria": [
+   "node .storybook/smoke.mjs in apps/web renders 1813 of 1813 stories."
+  ],
+  "needs_product_decision": false,
+  "decision_question": "",
+  "depends_on_conflicts": "Conflicts: none. Smallest change, do first."
+ }
+]

@@ -1,0 +1,45 @@
+# Walk J1: long journeys (first run, Monday inbox, runway before a board meeting)
+
+Session uxl23-J1, 1440x900, mock-data demo stack. A fresh invented user (Maya Chen, northwind.example.test) was signed up on the demo sign-up page, so the walk is a true first run. Screenshots are kept outside the repo (names below are file names only).
+
+## Verdicts
+
+| Story | Verdict | Steps actual / ideal | Note |
+|---|---|---|---|
+| STORY-APP-209 first day, sign-up to "when do we run out?" | PASS with 2 findings | about 13 actions plus 9 optional tour clicks / 14 | Sign-up, Run my company, one-click Gmail, consent Allow, Open Finance, Add account, Mercury, Runway all worked. Chief's reply pointed to Finance and gave an "Open Finance" link. |
+| STORY-APP-309 sign-up to first answer with a subscription model | BLOCKED | n/a | The demo has a default model, so the "Connect a model" step never appears (STORY-APP-307 path). ChatGPT/OpenRouter popups are real third-party steps. |
+| STORY-APP-319 first-day journey: model, Connect your apps, tour, first question | PARTLY BLOCKED, tour and first question walked | tour 9 stops, first question 2 actions | "Connect your apps" never appeared (server integrations are configured on the demo). Gmail was connected from Chief's card instead. Tour: 1/9 to 9/9 with Next, Back, Skip tour, Done and the "Ask Chief" chip. |
+| STORY-INB-022 first morning, empty Inbox to clear Inbox | PASS with 2 findings | reached sorted Inbox in 3 actions; replied in 5 | Not walked: file an attachment into the Data room, `?` shortcuts, hover "Mark noise". Mail set differs from the catalog (M1 to M11 not present). |
+| STORY-APP-211 / STORY-APP-203 runway check before a board meeting | PARTLY PASS | Finance, Runway, Ask, Hide amounts = 6 actions | Cap table and Legal deadline steps are empty for a fresh user (no Carta, no contracts); Investors, Legal and Data room empty states were checked and read clearly. Hide amounts walked. |
+
+## What worked well (observed)
+
+- Sign-up goes straight into Chief with a greeting and one card, "What should I work on first?". No model or integrations wall on this server.
+- After "Run my company", Chief offers Gmail and Calendar cards; Gmail turned to "Connected" in one click.
+- The AI-consent card appears at the moment of the first question, with Allow and Not now. One Allow also covered the Finance agent and Inbox agent later (no repeat prompts).
+- Chief with no bank connected said to add a bank account in Finance and gave an "Open Finance" link: a good dead-end avoidance.
+- Finance after Mercury: Cash $1,622,421, Burn $65,858, Runway 24.6 mo, run-out Nov 11, 2028. Upcoming 30 days total (-$77,358) equals the four rows. Runway page and the Finance agent card agree with the dashboard (cash / burn = 24.6).
+- Hide amounts: money masked as $•••, "Amounts hidden · Show" in the header, runway months and dates left visible, persists across reload, the Runway chart drops its dollar axis.
+- Inbox: skeleton with "First sync can take a minute", then "Sorting your mail…", then a collapsed To do card, Needs reply capped at five rows with "Show N more". After the reply was sent, the mail moved out of Needs reply into Other mail today (the catalog's old hesitation at step 13 is resolved).
+- Email agent: "Ask agent", "Draft a reply" chip, then a mail approval card with Send, Discard, Edit, "Show more". "Open in composer" recovery works and the composer reply sent ("Sent 9:19 AM" in the thread).
+- Empty states of Investors, Legal and Data room each give one clear next action.
+
+## Findings
+
+| id | page / story | sev | category | what happened vs expected | evidence | suspected code | fix |
+|---|---|---|---|---|---|---|---|
+| J1-01 | Inbox email agent, STORY-INB-022 / STORY-APP-212 | P1 | bug | Observed: clicking Send on the agent's mail approval card for a reply to "[MOCK] Q3 investor update" failed with the bare red text "Message not found". The agent then said the reply was not sent. The same reply sent fine from the composer. Expected: the approved draft sends, or the error says what to do. Observed on the demo only; whether real Gmail does this is unverified. | 24-sent-after.png, 28-compose-after.png | Suspected: the not-found mapping in packages/adapters/src/gmail-mail-provider.ts:934 and the send/reply path in packages/adapters/src/mail-tools.ts; the demo emulator (composio-emulator.ts:599) may not know the reply-to message id for a freshly connected account. | Find why the approval-card send resolves the reply target differently from the composer, and make the failure text say "Could not send, open in composer". |
+| J1-02 | Mail approval card, after J1-01 | P2 | flow | Observed: after the draft was sent through "Open in composer", the old card still shows red "Message not found" and an "Open in composer" button, and the agent's "The reply wasn't sent" message stays. Expected: the card shows Sent once the same draft went out, so Maya does not send a second copy. | 28-compose-after.png | Suspected: apps/web/src/components/MailApprovalCard.tsx keeps its failed state; it does not listen for a sent reply to the same thread. | Mark the approval card Sent (or hide "Open in composer") when the thread gains the outgoing message. |
+| J1-03 | First-run tour, STORY-APP-317/319 | P2 | flow | Observed on two fresh sign-ups: the tour does not open on landing. With the first-question card left alone, no tour for 24 s; after I clicked "Run my company" it was still absent at +5 s and then opened on top of the chat only after I clicked Connect on the Gmail card, about 20 s after landing. After "Dismiss" on the card it opened within 3 s (matches the pass-11 decision). Expected: one predictable trigger. A popover appearing mid-task over the thing Maya just clicked looks like a glitch. | 06-gmail-connect.png, 41-b-dismissed.png | Suspected: the open condition in apps/web/src/components/tour/FirstRunTour.tsx / its caller in Shell.tsx treats "card answered" differently from "card dismissed". | Open the tour on answering the card too, or wait until the thread is idle; do not open it on an unrelated click. |
+| J1-04 | Tour popover | P3 | visual | Observed: the popover is a fixed three-line-tall box; with one-line text (steps 5 to 7) there is an empty gap above Back/Next. | tour-montage.png | Suspected: fixed min-height in apps/web/src/components/tour/TourPopover.tsx. | Let the card size to its text. |
+| J1-05 | Inbox first sync | P3 | perf | Observed: after the first open of Inbox, blank skeleton rows for between 16 and 36 s, then mail, then "Sorting your mail…" for roughly 15 s more. The copy "First sync can take a minute" sets expectation. Expected: ideally show the first mail rows as they arrive. Demo emulator timing, real Gmail may differ. | 16-inbox-t6.png, 18-inbox-t36.png, 19-inbox-sorted.png | Suspected: the first sync blocks the list until the whole page is cached (apps/web inbox list). | Stream the first batch of rows into the list. |
+| J1-06 | Finance agent answer, STORY-APP-203 | P3 | copy | Observed: asked "How long is our runway, and what month do we run out?", the prose reply gave a date (Nov 11, 2028) but not the 24.6 months; the figure is only in the stat card above. The reply also says "based on July to September 2026" without saying that is the 3-month burn average. The demo model is scripted, so wording may not be representative. | 14-finance-answer.png | Suspected: Finance agent prompt, not UI. | Have the answer state months and date in one sentence. |
+| J1-07 | Cleanup, STORY-INB-101 | P3 | copy | Observed: Cleanup lists "Riley Testwell, 6 emails, 83% read" with the note "You read most of these", under an Archive button. For a bookkeeper Maya reads, the note reads as a reason to archive while meaning the opposite. Expected: a neutral reason or no row. The Archive button also looks greyed with nothing selected, so its state is unclear. | 30-cleanup.png | apps/web/src/components/inbox/CleanupSenderRow.tsx:38 | Word it "You read most of these, so keep unless you are sure", or drop read-heavy senders from the list; show the Archive button plainly disabled. |
+| J1-08 | Sidebar "Page agents" row | P3 | consistency | Observed: the count read 2 on Inbox and 1 on Finance, Legal and Data room, depending on the open page. Expected: a count that does not change with the page. This matches the rule that an empty auto-created agent is hidden, so it may be by design. | 34c.png | Suspected: sidebar page-agent filter in Shell.tsx. | Count only agents that have a chat, on every page. |
+
+## Not covered
+
+- Real model sign-in popups, Connect your apps (not offered on the demo), and the Carta cap table path for a fresh user.
+- Phone width (390 px with touch emulation), Cmd+K, Legal deadlines with data, Data room attachment filing, and the keyboard shortcuts dialog.
+- geometry-audit.js was run once, on the Inbox: no page overflow and no wrapped controls. The three "uneven rows" it reported are mixed-size controls by design; the 28 px "spill" is the page container, not visible content.
+- Console: no errors during the walk.
