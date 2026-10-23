@@ -6289,7 +6289,6 @@ msgstr "음성 서비스를 불러오는 중…"
 msgid "Loading Zernio queue…"
 msgstr ""
 
-#: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/RowsSkeleton.tsx

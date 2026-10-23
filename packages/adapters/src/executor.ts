@@ -6893,6 +6893,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 deps.prisma,
                 run,
                 bot.id,
+                bot.spawnKey,
                 bot.audience === "external" ? bot.externalMessageTargets : undefined,
               );
 
@@ -8557,6 +8558,7 @@ async function loadBotDirectory(
   prisma: PrismaClient,
   run: { spaceId: string; userId: string },
   selfBotId: string,
+  selfSpawnKey: string | null | undefined,
   /** An external bot sees only the internal bots its owner chose. */
   externalTargets?: readonly string[],
 ): Promise<string | undefined> {
@@ -8588,7 +8590,7 @@ async function loadBotDirectory(
       title: peer.title,
       spawnKey: peer.spawnKey,
       description: [
-        directoryDescription(peer),
+        directoryDescription(peer, isIntegrationAgentSpawnKey(selfSpawnKey)),
         isInboxAgentSpawnKey(peer.spawnKey) ? ownsLine("Gmail") : owns.get(peer.id),
       ]
         .filter(Boolean)
@@ -8688,19 +8690,23 @@ const CONSENT_LINK_GUIDANCE =
  * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged
  * by other bots: they answer with their own data and the asking bot passes it on to the user.
  */
-export function directoryDescription(peer: {
-  id?: string;
-  name?: string;
-  description: string;
-  spawnKey: string | null;
-}): string {
+export function directoryDescription(
+  peer: {
+    id?: string;
+    name?: string;
+    description: string;
+    spawnKey: string | null;
+  },
+  /** The reader is the Mercury or Brex agent, which is who payments are sent to: no redirect. */
+  forBankAgent = false,
+): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
     return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself, speaking to them as "you" (say "your mail", never the user's name). Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none, except when the user denied the request or the reason is a payee with no matching recipient: then give no link; never reply only that the request could not be completed.${peer.id ? ` If its answer says the user must approve a payment or other change, tell the user in one line to approve it in the ${peer.name ?? "agent"} chat and end with [Open ${peer.name ?? "the agent"}](/app/${peer.id}), never with an Integrations link.` : ""}${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. When the user denied the request, say it was not submitted and add no link; when a payee has no matching recipient, say to add it at the bank and add no link. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). ${forBankAgent ? "" : `If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. When the user denied the request, say it was not submitted and add no link; when a payee has no matching recipient, say to add it at the bank and add no link. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so. `}Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
