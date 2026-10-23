@@ -59,6 +59,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import { ArtifactFileCard } from "../../components/ArtifactFileCard";
@@ -254,13 +255,17 @@ export const Transcript = memo(function Transcript({
     reactionView.reactions.has(id),
   );
   // Only messages rendered on their own have a More button; grouped voice and finance cards do not.
-  const actionIds = items.flatMap((item) =>
-    item.kind === "message" &&
-    !item.message.id.startsWith("progress:") &&
-    !isPeerReceiptBlocks(item.message.blocks) &&
-    messageHasVisibleBlocks(item.message.blocks, showToolActivity)
-      ? [item.message.id]
-      : [],
+  const touch = useIsTouch();
+  const actionIds = reachableMoreIds(
+    items.flatMap((item) =>
+      item.kind === "message" &&
+      !item.message.id.startsWith("progress:") &&
+      !isPeerReceiptBlocks(item.message.blocks) &&
+      messageHasVisibleBlocks(item.message.blocks, showToolActivity)
+        ? [item.message]
+        : [],
+    ),
+    touch,
   );
   const tabbableMoreId = moreId && actionIds.includes(moreId) ? moreId : actionIds.at(-1);
   const separatorIds = timeSeparatorIds(
@@ -790,9 +795,7 @@ export const Transcript = memo(function Transcript({
           // A mail approval card leaves less than the hover rail's width beside it, so its rail sits below too.
           const mailCard = message.blocks.some((block) => block.kind === "ask" && block.mail);
           // On touch a message that is only cards (first-question, mail, approvals) gets no More button: it would sit over the card's own controls.
-          const cardOnly =
-            !message.blocks.some((block) => block.kind === "text" || block.kind === "progress") &&
-            message.blocks.some((block) => CARD_CONTROL_KINDS.has(block.kind));
+          const cardOnly = isCardOnlyMessage(message);
           return (
             <Fragment key={message.id}>
               {separatorIds.has(message.id) ? (
@@ -815,7 +818,10 @@ export const Transcript = memo(function Transcript({
                     ? "relative py-0.5"
                     : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
                       // hover time above and the actions below need room of their own.
-                      "group/message relative hover:z-20 @max-md:[@media(hover:hover)]:pt-4 @max-sm:[@media(hover:hover)]:pb-5"
+                      `group/message relative hover:z-20 @max-md:[@media(hover:hover)]:pt-4 @max-sm:[@media(hover:hover)]:pb-5 ${
+                        // A full-width row has no gutter, so touch reserves a line under it for the rail.
+                        (fullWidth || mailCard) && !cardOnly ? "[@media(hover:none)]:pb-11" : ""
+                      }`
                 }
               >
                 <div
@@ -1134,6 +1140,31 @@ const QuoteSelectionButton = memo(function QuoteSelectionButton({
   );
 });
 
+/** Touch hides the More button on a message that is only cards: it would sit over their own controls. */
+export function isCardOnlyMessage(message: ThreadMessage): boolean {
+  return (
+    !message.blocks.some((block) => block.kind === "text" || block.kind === "progress") &&
+    message.blocks.some((block) => CARD_CONTROL_KINDS.has(block.kind))
+  );
+}
+
+const subscribeTouch = (notify: () => void) => {
+  const query = window.matchMedia("(hover: none)");
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+const useIsTouch = () =>
+  useSyncExternalStore(
+    subscribeTouch,
+    () => window.matchMedia("(hover: none)").matches,
+    () => false,
+  );
+
+/** Message ids that render a More button the person can reach: on touch, card-only messages have none. */
+export function reachableMoreIds(messages: ThreadMessage[], touch: boolean): string[] {
+  return messages.filter((m) => !(touch && isCardOnlyMessage(m))).map((m) => m.id);
+}
+
 const CARD_CONTROL_KINDS: ReadonlySet<string> = new Set([
   "ask",
   "choice",
@@ -1270,7 +1301,11 @@ function MessageHoverActions({
                 ...(event.currentTarget
                   .closest("[data-transcript]")
                   ?.querySelectorAll<HTMLElement>("[data-message-more]") ?? []),
-              ];
+              ].filter(
+                (el) =>
+                  getComputedStyle(el.closest("[data-testid=message-hover-rail]") ?? el).display !==
+                  "none",
+              );
               const next =
                 all[all.indexOf(event.currentTarget) + (event.key === "ArrowUp" ? -1 : 1)];
               if (!next) return;
@@ -1924,7 +1959,7 @@ const MessageView = memo(function MessageView({
             <div
               key={i}
               data-testid="computer-card"
-              className="w-[340px] rounded-[18px] border border-border bg-muted px-[18px] py-4"
+              className="w-[340px] max-w-full rounded-[18px] border border-border bg-muted px-[18px] py-4"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[15px] font-medium text-foreground">

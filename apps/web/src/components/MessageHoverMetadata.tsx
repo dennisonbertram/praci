@@ -40,8 +40,12 @@ export function MessageHoverMetadata({
           ? "[@media(hover:hover)]:top-full [@media(hover:hover)]:mt-6 [@media(hover:hover)]:bottom-auto"
           : "@max-sm:[@media(hover:hover)]:top-full @max-sm:[@media(hover:hover)]:mt-6 @max-sm:[@media(hover:hover)]:bottom-auto"
       } ${reveal} [@media(hover:none)]:p-0 ${
-        // A card has its own controls, and a full-width row has no gutter, so touch gets no rail there.
-        below || hideOnTouch ? "[@media(hover:none)]:hidden" : ""
+        // A card-only message has its own controls, so touch gets no rail there. A full-width row has no gutter, so its rail sits in the line reserved under it.
+        hideOnTouch
+          ? "[@media(hover:none)]:hidden"
+          : below
+            ? "[@media(hover:none)]:top-full [@media(hover:none)]:bottom-auto"
+            : ""
       }`}
     >
       {children}

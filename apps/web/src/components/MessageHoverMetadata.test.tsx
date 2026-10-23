@@ -59,7 +59,11 @@ describe("MessageHoverMetadata", () => {
     expect(text).not.toContain("[@media(hover:none)]:hidden");
     expect(text).toContain("[@media(hover:none)]:p-0");
     expect(render({ hideOnTouch: true })).toContain("[@media(hover:none)]:hidden");
-    expect(render({ below: true })).toContain("[@media(hover:none)]:hidden");
+    // A mixed full-width message keeps its rail, in the line reserved under the row.
+    const mixed = render({ below: true });
+    expect(mixed).not.toContain("[@media(hover:none)]:hidden");
+    expect(mixed).toContain("[@media(hover:none)]:top-full");
+    expect(render({ below: true, hideOnTouch: true })).toContain("[@media(hover:none)]:hidden");
   });
 
   it("pins the rail open while a nested menu is active", () => {
