@@ -427,7 +427,10 @@ async function requireApprovedGtmEmail(deps: ComposeDeps, actor: Actor, input: C
   if (item.status === "parked" || !item.approvedAt) {
     throw new ORPCError("BAD_REQUEST", { message: "Approve this email before sending it." });
   }
-  const checks = emailCompliance(input.html ? htmlToText(input.html) : input.body);
+  // The text that will actually be sent, as draftOf builds it.
+  const checks = emailCompliance(
+    input.html === undefined ? input.body : htmlToText(sanitizeComposeHtml(input.html)),
+  );
   if (!checks.unsubscribe || !checks.postalAddress) {
     throw new ORPCError("BAD_REQUEST", {
       message: "Add an unsubscribe line and a postal address to the email before sending it.",

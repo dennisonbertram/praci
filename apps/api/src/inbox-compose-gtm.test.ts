@@ -41,6 +41,21 @@ describe("inboxComposeSend for a GTM email item", () => {
     );
   });
 
+  it("checks the text that will be sent, after sanitizing", async () => {
+    const ok = { status: "open", approvedAt: new Date() };
+    const hidden = depsWith(ok);
+    await expect(
+      inboxComposeSend(hidden.deps, actor, {
+        ...fields("ignored"),
+        html: `<p>Hi</p><script>${compliant}</script>`,
+      }),
+    ).rejects.toThrow(/unsubscribe/);
+    const empty = depsWith(ok);
+    await expect(
+      inboxComposeSend(empty.deps, actor, { ...fields(compliant), html: "" }),
+    ).rejects.toThrow(/unsubscribe/);
+  });
+
   it("lets a compliant approved item continue to the send", async () => {
     const ok = depsWith({ status: "open", approvedAt: new Date() });
     await expect(inboxComposeSend(ok.deps, actor, fields(compliant))).rejects.toThrow(

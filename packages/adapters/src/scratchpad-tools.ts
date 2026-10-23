@@ -447,7 +447,16 @@ async function updateScratchpadItem(
       where: { idempotencyKey: existing.proof },
       select: { spaceId: true, status: true },
     });
-    if (inFlight && inFlight.spaceId === input.spaceId && inFlight.status === "executing") {
+    // ponytail: 10 minutes is a fixed ceiling (dispatch takes seconds); a crashed attempt
+    // that left no terminal effect becomes re-approvable after it. Tune if dispatch slows.
+    const stale = (deps.now?.() ?? new Date()).getTime() - existing.updatedAt.getTime() > 600_000;
+    const status = inFlight
+      ? inFlight.spaceId === input.spaceId
+        ? inFlight.status
+        : "other"
+      : null;
+    const settled = status === "uncertain" || status === "failed";
+    if (!settled && !((status === null || status === "intended") && stale)) {
       return { error: "This post is still being sent; try again shortly." };
     }
     return applyScratchpadUpdate(

@@ -833,7 +833,7 @@ describe("scratchpad tools store", () => {
       updateMany: vi.fn(async () => ({ count: 1 })),
     });
     await updateScratchpadItemFromUser(
-      { prisma: reapprove as never },
+      { prisma: reapprove as never, now: () => new Date(now.getTime() + 11 * 60_000) },
       {
         ...scope,
         itemId: stamped.id,
@@ -846,21 +846,30 @@ describe("scratchpad tools store", () => {
         data: expect.objectContaining({ status: "open", proof: null, approvedBy: "user" }),
       }),
     );
-    for (const status of ["executing", "uncertain", "failed"]) {
+    const newClock = () => new Date(now.getTime() + 60_000);
+    const oldClock = () => new Date(now.getTime() + 11 * 60_000);
+    for (const [status, clock, allowed] of [
+      ["executing", oldClock, false],
+      ["intended", newClock, false],
+      [null, newClock, false],
+      ["uncertain", newClock, true],
+      ["failed", newClock, true],
+      ["intended", oldClock, true],
+      [null, oldClock, true],
+    ] as const) {
       const racing = prismaWith({
         findFirst: vi.fn(async () => stamped),
         updateMany: vi.fn(async () => ({ count: 1 })),
       });
-      racing.externalEffect.findUnique.mockResolvedValue({ spaceId: "ws", status });
+      racing.externalEffect.findUnique.mockResolvedValue(status ? { spaceId: "ws", status } : null);
       const result = await updateScratchpadItemFromUser(
-        { prisma: racing as never },
+        { prisma: racing as never, now: clock },
         { ...scope, itemId: stamped.id, reapprove: true, updatedAt: now.toISOString() },
       );
-      if (status === "executing") {
+      if (allowed) expect(result).toMatchObject({ item: { status: "open" } });
+      else {
         expect(result).toMatchObject({ error: expect.stringContaining("still being sent") });
         expect(racing.scratchpadItem.updateMany).not.toHaveBeenCalled();
-      } else {
-        expect(result).toMatchObject({ item: { status: "open" } });
       }
     }
     for (const proof of ["zernio:post-1", "https://social.example/post/1"]) {
@@ -971,7 +980,7 @@ describe("scratchpad tools store", () => {
     }
   });
 
-  it("returns a conflict when approval uses a version made stale by an already-applied approval", async () => {
+  it("returns a conflict when approval uses a version made oldClock by an already-applied approval", async () => {
     const current = row({
       status: "open",
       approvedAt: new Date(now.getTime() + 1_000),
