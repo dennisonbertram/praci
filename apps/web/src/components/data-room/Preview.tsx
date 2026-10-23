@@ -239,12 +239,9 @@ function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks:
   if (!consent.allowed || consent.recipients.length === 0)
     return <p className={note}>{t`Not tagged. No model is set up to read documents.`}</p>;
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      <p className={note}>
-        <Trans>Praci read this file but couldn't tell what kind of document it is.</Trans>
-      </p>
-      <ReplaceFile item={item} />
-    </div>
+    <p className={note}>
+      <Trans>Praci read this file but couldn't tell what kind of document it is.</Trans>
+    </p>
   );
 }
 

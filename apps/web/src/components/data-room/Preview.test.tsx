@@ -198,7 +198,7 @@ it("opens a readable PDF in the browser, and says an untagged file has no type y
     );
   });
   expect(container.textContent).toContain("couldn't tell what kind of document it is");
-  expect(container.textContent).toContain("Replace file");
+  expect(container.textContent).not.toContain("Replace file");
   act(() => icon("Open in new tab").click());
   expect(openItem).toHaveBeenCalledWith(pdf);
 });
