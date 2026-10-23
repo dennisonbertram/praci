@@ -7033,9 +7033,12 @@ msgid "New folder…"
 msgstr "New folder…"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "New group"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr "New group chat"
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -10383,6 +10386,10 @@ msgstr "Start recording"
 msgid "Starting"
 msgstr "Starting"
 
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr "Starting up"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10444,9 +10451,18 @@ msgstr "Still looking. This can take a minute."
 msgid "Still opening…"
 msgstr "Still opening…"
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr "Still starting up"
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
+msgstr "Still waiting on the model"
 
 #: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
@@ -10748,10 +10764,6 @@ msgstr "The Carta agent reads your cap table from Carta and answers questions ab
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr "The Carta agent will be able to change your Carta data. It asks before each change."
 
-#: src/lib/run-phase.ts
-msgid "the computer"
-msgstr "the computer"
-
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
@@ -10784,10 +10796,6 @@ msgstr "The last scan thinks this no longer applies."
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
 msgstr "The member who connected Devin left this space. Alerts are paused."
-
-#: src/lib/run-phase.ts
-msgid "the model"
-msgstr "the model"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "The model could not sort your files."
@@ -11778,10 +11786,6 @@ msgstr "Waiting for sign-in"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "Waiting for the API to come back…"
-
-#: src/lib/run-phase.ts
-msgid "Waiting for the computer"
-msgstr "Waiting for the computer"
 
 #: src/lib/run-phase.ts
 msgid "Waiting for the model"

@@ -6,7 +6,7 @@ export function runPhaseLine(phase: RunPhase): string | null {
   const name = phase.name;
   switch (phase.kind) {
     case "computer_wait":
-      return t`Waiting for the computer`;
+      return t`Starting up`;
     case "computer_start":
       return t`Getting ready`;
     case "connecting":
@@ -20,16 +20,18 @@ export function runPhaseLine(phase: RunPhase): string | null {
   }
 }
 
-/** The service or resource named in "Still waiting on ...", or null when nothing specific is awaited. */
-export function runPhaseWaitingOn(phase: RunPhase): string | null {
+/** The slow-run line, such as "Still waiting on Gmail", or null when nothing specific is awaited. */
+export function runPhaseWaitingLabel(phase: RunPhase): string | null {
   switch (phase.kind) {
     case "computer_wait":
     case "computer_start":
-      return t`the computer`;
-    case "connecting":
-      return phase.name ?? t`tools`;
+      return t`Still starting up`;
+    case "connecting": {
+      const service = phase.name ?? t`tools`;
+      return t`Still waiting on ${service}`;
+    }
     case "model_wait":
-      return t`the model`;
+      return t`Still waiting on the model`;
     default:
       return null;
   }

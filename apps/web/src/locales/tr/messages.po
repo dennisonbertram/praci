@@ -7033,9 +7033,12 @@ msgid "New folder…"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "Yeni grup"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr ""
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -10383,6 +10386,10 @@ msgstr "Kaydı başlat"
 msgid "Starting"
 msgstr "Başlıyor"
 
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10444,8 +10451,17 @@ msgstr ""
 msgid "Still opening…"
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr ""
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
 msgstr ""
 
 #: src/components/ai/primitives.tsx
@@ -10748,10 +10764,6 @@ msgstr ""
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr ""
 
-#: src/lib/run-phase.ts
-msgid "the computer"
-msgstr ""
-
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Bağlantı zaman aşımına uğradı."
@@ -10783,10 +10795,6 @@ msgstr ""
 
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
-msgstr ""
-
-#: src/lib/run-phase.ts
-msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -11777,10 +11785,6 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
-msgstr ""
-
-#: src/lib/run-phase.ts
-msgid "Waiting for the computer"
 msgstr ""
 
 #: src/lib/run-phase.ts
