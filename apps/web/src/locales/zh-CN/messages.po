@@ -12184,6 +12184,10 @@ msgstr ""
 msgid "Your mail didn't load"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Your mail is taking longer than usual to load."
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"
 msgstr ""

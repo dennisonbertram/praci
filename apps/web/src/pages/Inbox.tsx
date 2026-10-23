@@ -145,8 +145,7 @@ function saveConsentDismissed(scope: string | undefined, value: string | null) {
 }
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
-// A first sort that runs this long shows the unsorted rows, dimmed, instead of grey bars.
-const SORT_ROWS_AFTER_MS = 15_000;
+// A load still waiting after this long offers Try again.
 const LOAD_STUCK_MS = 20_000;
 /** Needs reply lists this many rows first, then "Show N more". */
 const NEEDS_REPLY_SHOWN = 5;
@@ -810,16 +809,9 @@ function InboxListPage({
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
-  // The first sort shows grey bars for its first seconds, since rows would regroup and the To do
-  // card would push them down. After SORT_ROWS_AFTER_MS the unsorted rows show, dimmed.
+  // While sorting, the unsorted rows stay readable, dimmed; grey bars show only with no rows yet.
   const sortActive = sorting || firstSort;
-  const [unsortedShown, setUnsortedShown] = useState(false);
-  useEffect(() => {
-    if (!sortActive) return setUnsortedShown(false);
-    const timer = setTimeout(() => setUnsortedShown(true), SORT_ROWS_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [sortActive]);
-  const sortingRows = sortActive && !stalled && !unsortedShown;
+  const sortingRows = sortActive && !stalled && !shown?.rows.length;
   const loading =
     !shown ||
     sortingRows ||
@@ -1739,7 +1731,7 @@ function InboxListPage({
                 <Trans>Sorting your mail…</Trans>
               </p>
             ) : null}
-            {synced || sortingRows || consentPrompt ? null : (
+            {synced || sortingRows ? null : (
               <p role="status" className="text-sm text-muted-foreground">
                 {slowSync && !everSynced && data && !data.syncedAt ? (
                   <Trans>First sync can take a minute</Trans>
@@ -1749,15 +1741,12 @@ function InboxListPage({
               </p>
             )}
             {loadStuck ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mb-2"
-                disabled={retrying}
-                onClick={retry}
-              >
-                <Trans>Try again</Trans>
-              </Button>
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+                <Trans>Your mail is taking longer than usual to load.</Trans>
+                <Button variant="outline" size="sm" disabled={retrying} onClick={retry}>
+                  <Trans>Try again</Trans>
+                </Button>
+              </div>
             ) : null}
             {/* Real rows are 57px apart with no gap, so the list does not jump when they arrive.
                 Beside the consent card, blank bars look stalled, so only the card shows. */}
@@ -1831,7 +1820,7 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
-            ) : sorting && unsortedShown ? (
+            ) : sorting ? (
               <p
                 role="status"
                 className="mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
@@ -1975,7 +1964,7 @@ function InboxListPage({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="mb-5 -mt-3 text-muted-foreground"
+                      className="mb-5 -mt-3 ms-7 px-0 text-muted-foreground @md:ms-10"
                       onClick={() => setAllReplies(true)}
                     >
                       <Trans>Show {hiddenReplies} more</Trans>
