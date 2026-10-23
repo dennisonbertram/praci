@@ -147,19 +147,28 @@ export async function isSortingMail(deps: TriageReadinessDeps, scope: Scope): Pr
     select: { id: true },
   });
   if (unsorted) return true;
-  const unsynced = await deps.prisma.cachedMailMessage.findFirst({
-    where: {
-      ...base,
-      triagedAt: { gte: new Date(Date.now() - SYNC_GRACE_MS) },
-      isSpam: false,
-      alreadyHandled: false,
-      todoText: { not: null },
-      OR: [{ needsReply: true }, { category: { in: [...TODO_CATEGORIES] } }],
-      inboxTodos: { none: {} },
-    },
-    select: { id: true },
-  });
-  return unsynced !== null;
+  const [unsynced, feedback] = await Promise.all([
+    deps.prisma.cachedMailMessage.findMany({
+      where: {
+        ...base,
+        triagedAt: { gte: new Date(Date.now() - SYNC_GRACE_MS) },
+        isSpam: false,
+        alreadyHandled: false,
+        todoText: { not: null },
+        OR: [{ needsReply: true }, { category: { in: [...TODO_CATEGORIES] } }],
+        inboxTodos: { none: {} },
+      },
+      select: { fromAddress: true },
+      take: 50,
+    }),
+    deps.prisma.inboxSenderFeedback.findMany({
+      where: scope,
+      select: { senderAddress: true, mark: true },
+    }),
+  ]);
+  // Same rule as the to-do sync: a sender marked noise never gets a to-do.
+  const marks = senderMarkMap(feedback);
+  return unsynced.some((m) => marks.get(m.fromAddress.toLowerCase()) !== "noise");
 }
 
 /** A run that finds the user busy looks again after this, in case mail arrived since the holder read its list. */

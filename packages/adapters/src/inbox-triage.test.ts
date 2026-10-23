@@ -231,17 +231,30 @@ describe("triageStatus says why triage cannot run", () => {
 });
 
 describe("isSortingMail", () => {
-  // `results` answers the unsorted query first, then the stamped-but-no-to-do query.
-  const withMail = (found: boolean | boolean[], options: Parameters<typeof setup>[0] = {}) => {
+  // `found` answers the unsorted query; `pending` lists senders of stamped messages with no to-do.
+  const withMail = (
+    found: boolean,
+    options: Parameters<typeof setup>[0] = {},
+    pending: string[] = [],
+    noise: string[] = [],
+  ) => {
     const { deps } = setup(options);
-    const results = [found].flat();
-    const findFirst = vi.fn(async () => (results.shift() ? { id: "m1" } : null));
+    const findFirst = vi.fn(async () => (found ? { id: "m1" } : null));
+    const findMany = vi.fn(async () => pending.map((fromAddress) => ({ fromAddress })));
+    const feedback = vi.fn(async () =>
+      noise.map((senderAddress) => ({ senderAddress, mark: "noise" })),
+    );
     return {
       deps: {
         ...deps,
-        prisma: { ...(deps.prisma as object), cachedMailMessage: { findFirst } } as never,
+        prisma: {
+          ...(deps.prisma as object),
+          cachedMailMessage: { findFirst, findMany },
+          inboxSenderFeedback: { findMany: feedback },
+        } as never,
       },
       findFirst,
+      findMany,
     };
   };
 
@@ -256,15 +269,20 @@ describe("isSortingMail", () => {
   });
 
   it("is false once every message is sorted", async () => {
-    expect(await isSortingMail(withMail([false, false]).deps, scope)).toBe(false);
+    expect(await isSortingMail(withMail(false).deps, scope)).toBe(false);
   });
 
   it("stays true after the stamps are written until the to-do sync has made the to-do", async () => {
-    const { deps, findFirst } = withMail([false, true]);
+    const { deps, findMany } = withMail(false, {}, ["a@x.com"]);
     expect(await isSortingMail(deps, scope)).toBe(true);
-    expect(findFirst).toHaveBeenLastCalledWith(
+    expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ inboxTodos: { none: {} } }) }),
     );
+  });
+
+  it("ignores stamped messages from a sender marked noise, which never get a to-do", async () => {
+    const { deps } = withMail(false, {}, ["Noisy@x.com"], ["noisy@x.com"]);
+    expect(await isSortingMail(deps, scope)).toBe(false);
   });
 
   it("is false when triage cannot run, so Chief does not promise a sort", async () => {
