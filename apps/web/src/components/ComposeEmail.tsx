@@ -29,7 +29,6 @@ import { Paperclip, Trash2, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clientLocale, fileToBase64, prefillHtml, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
-import { announceComposerSent } from "../lib/composer-sent";
 import { formatBytes } from "../lib/format-bytes";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { holdDiscard, holdSend } from "../lib/outbox";
@@ -543,15 +542,9 @@ export function ComposeEmail({
       holdSend(async () => {
         try {
           const result = await rpc.inbox.compose.send(request, spaceContext);
-          if (result.status === "sent") {
-            announceComposerSent({
-              connectionId: request.connectionId,
-              subject: request.subject,
-              to: request.to,
-            });
-            return null;
-          }
-          return notSent(problemText(result, true), result.status);
+          return result.status === "sent"
+            ? null
+            : notSent(problemText(result, true), result.status);
         } catch (cause) {
           return notSent(errorText(cause));
         }

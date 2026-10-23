@@ -5,7 +5,6 @@ import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { announceComposerSent } from "../lib/composer-sent";
 import { MailApprovalCard } from "./MailApprovalCard";
 
 vi.mock("@lingui/core/macro", () => ({
@@ -507,27 +506,6 @@ it("moves focus into the disable confirmation, and back to More on cancel or fai
   await click(button("Turn off"));
   expect(host.querySelector("[role=alert]")?.textContent).toContain("nope");
   expect(document.activeElement).toBe(host.querySelector("[aria-label=More]"));
-});
-
-it("turns a failed send into Sent once the composer sends the same draft", async () => {
-  const failed = {
-    ...mail,
-    connectionId: "conn-1",
-    outcome: "failed" as const,
-    error: "Could not send. Open it in the composer to send it.",
-  };
-  await render({ status: "answered", answer: "allow", mail: failed, onOpenComposer: vi.fn() });
-  expect(host.textContent).toContain("Could not send");
-  await act(async () =>
-    announceComposerSent({ connectionId: "conn-1", subject: "Other", to: "jana@example.test" }),
-  );
-  expect(host.textContent).toContain("Could not send");
-  await act(async () =>
-    announceComposerSent({ connectionId: "conn-1", subject: "Friday", to: "jana@example.test" }),
-  );
-  expect(header()).toContain("Sent");
-  expect(host.textContent).not.toContain("Could not send");
-  expect(button("Open in composer")).toBeUndefined();
 });
 
 it("keeps the More button on the Send and Discard line when the account hint shows", async () => {

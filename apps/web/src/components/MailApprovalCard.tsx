@@ -16,7 +16,6 @@ import {
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { isSameDraft, onComposerSent } from "../lib/composer-sent";
 import { parseRecipient, splitEntries } from "../lib/recipients";
 import { errorText } from "../lib/user-error";
 import { invalidAddressText } from "./compose/RecipientField";
@@ -59,7 +58,7 @@ function Row({
  * the fields the person changed; Discard denies it. The server checks the edits again.
  */
 export function MailApprovalCard({
-  mail: approvalMail,
+  mail,
   status,
   answer,
   canAnswer,
@@ -97,17 +96,6 @@ export function MailApprovalCard({
   accountsStatus?: "loading" | "error" | "ready";
   onRetryAccounts?: () => void;
 }) {
-  // A failed send the person then sent from the composer is Sent: no failure line, no second try.
-  const [sentFromComposer, setSentFromComposer] = useState(false);
-  useEffect(() => {
-    if (approvalMail.outcome !== "failed" || approvalMail.tool !== "mail_send") return;
-    return onComposerSent((sent) => {
-      if (isSameDraft(approvalMail, sent)) setSentFromComposer(true);
-    });
-  }, [approvalMail]);
-  const mail: MailApproval = sentFromComposer
-    ? { ...approvalMail, outcome: "sent", error: undefined }
-    : approvalMail;
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
   const [account, setAccount] = useState("");
