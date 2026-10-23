@@ -412,8 +412,6 @@ export function BurnLines({
       m.financingCents > scale.top ||
       (m.financingCents > 0 && (granularity === "quarter" || granularity === "year")),
   ).length;
-  // Where the last label on each row ends (lower row first); filled in as the labels are drawn.
-  const rowEnd = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
   const top = labelled > 1 ? 42 : clipped || named ? 28 : 10;
   // Each month is a control and must be 44 px wide on touch: a narrow phone scrolls the chart.
   const minWidth =
@@ -421,6 +419,9 @@ export function BurnLines({
   return (
     <Chart height={height} label={label} minWidth={minWidth}>
       {(width) => {
+        // Where the last label on each row ends (lower row first). It lives in this callback, which
+        // Chart runs again on every resize: a value kept outside would push the one label up a row.
+        const rowEnd = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
         const slot = (width - left - right) / Math.max(series.length, minSlots);
         // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
