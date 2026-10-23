@@ -507,3 +507,17 @@ it("moves focus into the disable confirmation, and back to More on cancel or fai
   expect(host.querySelector("[role=alert]")?.textContent).toContain("nope");
   expect(document.activeElement).toBe(host.querySelector("[aria-label=More]"));
 });
+
+it("keeps the More button on the Send and Discard line when the account hint shows", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "a", address: "a@example.test" },
+    { connectionId: "c2", label: "b", address: "b@example.test" },
+  ];
+  await render({ mail: { ...mail, account: undefined }, accounts, accountsStatus: "ready" });
+  const hint = [...host.querySelectorAll("p")].find((p) =>
+    p.textContent?.includes("Choose an account to send from."),
+  );
+  const row = button("Send")?.parentElement?.parentElement as HTMLElement;
+  expect(row.contains(hint as Node)).toBe(false);
+  expect(row.contains(host.querySelector("[aria-label=More]"))).toBe(true);
+});
