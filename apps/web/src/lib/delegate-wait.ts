@@ -11,16 +11,20 @@ const DELEGATE_WAIT_FORGOTTEN_AFTER_MS = 60 * 60_000;
 export function delegateWait(
   messages: readonly { blocks: readonly MessageBlock[]; createdAt?: string }[],
 ) {
+  const answered = new Set<string>();
   for (let i = messages.length - 1; i >= 0; i--) {
     const blocks = messages[i]?.blocks ?? [];
-    if (blocks.some((block) => block.kind === "bot_message_received")) return null;
-    const sent = blocks.find((block) => block.kind === "bot_message_sent");
-    // Only a request or question (a missing intent means request) waits for an answer; a result, status or FYI sent back does not.
-    if (sent?.kind === "bot_message_sent") {
-      const intent = sent.intent ?? "request";
-      if (intent !== "request" && intent !== "question") return null;
-      return { name: sent.toBotName, at: Date.parse(messages[i]?.createdAt ?? "") };
+    for (const block of blocks) {
+      if (block.kind === "bot_message_received") answered.add(block.fromBotId);
     }
+    const sent = blocks.find((block) => block.kind === "bot_message_sent");
+    if (sent?.kind !== "bot_message_sent") continue;
+    // Only a request or question (a missing intent means request) waits for an answer; a result,
+    // status or FYI sent back does not, and a request ends only when that same agent answers.
+    const intent = sent.intent ?? "request";
+    if (intent !== "request" && intent !== "question") continue;
+    if (answered.has(sent.toBotId)) continue;
+    return { name: sent.toBotName, at: Date.parse(messages[i]?.createdAt ?? "") };
   }
   return null;
 }

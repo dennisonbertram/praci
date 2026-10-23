@@ -224,7 +224,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
-import { pendingDelegateAgents } from "../lib/delegate-wait";
+import { delegateWaitTarget, pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
 import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -4288,6 +4288,7 @@ export function ShellPage() {
                 onScrollRequestHandled={clearScrollRequest}
                 artifactTarget={transcriptArtifactTarget}
                 messages={transcriptMessages}
+                delegate={delegateWaitTarget(activeSnapshot?.messages ?? [])}
                 showToolActivity={showToolActivity}
                 olderCursor={activeSnapshot?.olderCursor ?? null}
                 loadingOlder={loadingOlder}

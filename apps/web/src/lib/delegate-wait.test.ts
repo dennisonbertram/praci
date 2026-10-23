@@ -77,3 +77,14 @@ it("waits on a question or a message with no intent", () => {
     ).not.toBeNull();
   }
 });
+
+it("keeps waiting on a request when a later FYI goes to another agent", () => {
+  const fyi = { ...sent, toBotId: "b3", toBotName: "Inbox agent", intent: "fyi" };
+  expect(delegateWaitTarget([msg(sent), msg(fyi)])).toBe("Mercury agent");
+});
+
+it("ends a request only when that same agent answers", () => {
+  const other = { ...received, fromBotId: "b3", fromBotName: "Inbox agent" };
+  expect(delegateWaitTarget([msg(sent), msg(other)])).toBe("Mercury agent");
+  expect(delegateWaitTarget([msg(sent), msg(received)])).toBeNull();
+});
