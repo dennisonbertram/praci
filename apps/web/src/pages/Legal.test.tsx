@@ -1160,6 +1160,7 @@ it("reopens a done deadline from Show done", async () => {
   await click(tab("Deadlines"));
   await click(button("Show closed"));
   rpcMock.doneDeadlines.mockResolvedValue([]);
+  expect(container.textContent).toContain("Done");
   await click(button("Reopen"));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "open" });
   expect(container.textContent).toContain("No closed deadlines.");

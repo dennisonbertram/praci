@@ -1,10 +1,87 @@
+// @vitest-environment jsdom
+
+import type { ReactNode } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@lingui/core/macro", () => ({
+  t: (parts: TemplateStringsArray, ...values: unknown[]) =>
+    parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
+  msg: (parts: TemplateStringsArray) => parts[0] ?? "",
+  plural: (value: number, forms: { one: string; other: string }) =>
+    (value === 1 ? forms.one : forms.other).replace("#", String(value)),
+}));
+vi.mock("@lingui/react/macro", () => ({
+  Trans: ({ children }: { children: ReactNode }) => children,
+  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts[0] ?? "" }),
+}));
+vi.mock("../../components/tour/FirstRunTour", () => ({
+  FirstRunTour: ({
+    open,
+    onSkip,
+    onClose,
+  }: {
+    open: boolean;
+    onSkip?: () => void;
+    onClose: (me: null, byEscape: boolean) => void;
+  }) =>
+    open
+      ? createElement(
+          "div",
+          null,
+          createElement(
+            "button",
+            {
+              type: "button",
+              "data-testid": "tour-skip",
+              onClick: () => {
+                onSkip?.();
+                onClose(null, false);
+              },
+            },
+            "Skip",
+          ),
+          createElement(
+            "button",
+            {
+              type: "button",
+              "data-testid": "tour-close",
+              onClick: () => onClose(null, false),
+            },
+            "Close",
+          ),
+        )
+      : null,
+}));
+vi.mock("../ActivityList", () => ({ ActivityList: () => null }));
+
 import {
   activeSpaceFirst,
   commitSpaceRename,
   sidebarGroupsForSpaces,
   spaceHoldingChat,
 } from "./space-sidebar";
+import { SidebarFixture } from "./space-sidebar.stories";
+
+function CurrentPath() {
+  return createElement("output", { "data-testid": "current-path" }, useLocation().pathname);
+}
+
+function stubSidebarObservers() {
+  let frame = 0;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.stubGlobal("requestAnimationFrame", () => ++frame);
+  vi.stubGlobal("cancelAnimationFrame", () => undefined);
+}
 
 function chat(id: string, name: string) {
   return {
@@ -266,4 +343,580 @@ describe("spaceHoldingChat", () => {
   it("ignores the current space, whose chats the page already checked", () => {
     expect(spaceHoldingChat(spaces, "s1", "b1")).toBeNull();
   });
+});
+
+it("shows Devin's needs-you count and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderSidebar = (devinConnected: boolean) =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(
+        "div",
+        null,
+        createElement(SidebarFixture, {
+          mode: "expanded",
+          devinMode: true,
+          devinConnected,
+          devinNeedsYou: 2,
+        }),
+        createElement(CurrentPath),
+      ),
+    );
+  try {
+    await act(async () => {
+      root.render(renderSidebar(false));
+    });
+
+    expect(container.querySelector('[data-testid="sidebar-devin"]')).toBeNull();
+    const pageOptions = () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="Page options"]');
+    await act(async () => pageOptions()?.click());
+    expect(document.body.textContent).not.toContain("Devin");
+    await act(async () => pageOptions()?.click());
+
+    await act(async () => root.render(renderSidebar(true)));
+    await act(async () => pageOptions()?.click());
+    expect(document.body.textContent).toContain("Devin");
+    await act(async () => pageOptions()?.click());
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-devin"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    expect(link?.getAttribute("aria-label")).toBe("Devin, 2 need you");
+    expect(link?.querySelector('[data-testid="glance-value"]')?.textContent).toBe("2");
+
+    await act(async () => {
+      link?.click();
+    });
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/app/devin");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("shows GTM's needs-you count and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderSidebar = () =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(
+        "div",
+        null,
+        createElement(SidebarFixture, {
+          mode: "expanded",
+          gtmMode: true,
+          gtmNeedsYou: 2,
+        }),
+        createElement(CurrentPath),
+      ),
+    );
+  try {
+    await act(async () => root.render(renderSidebar()));
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-gtm"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    expect(link?.getAttribute("aria-label")).toBe("GTM, 2 need you");
+    expect(link?.querySelector('[data-testid="glance-value"]')?.textContent).toBe("2");
+
+    await act(async () => {
+      link?.click();
+    });
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/app/gtm");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("marks Investors as current and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(
+            "div",
+            null,
+            createElement(SidebarFixture, { mode: "expanded", investorsMode: true }),
+            createElement(CurrentPath),
+          ),
+        ),
+      );
+    });
+
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-investors"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+
+    await act(async () => link?.click());
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(
+      "/app/investors",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("marks Fundraising as current and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(
+            "div",
+            null,
+            createElement(SidebarFixture, { mode: "expanded", fundraisingMode: true }),
+            createElement(CurrentPath),
+          ),
+        ),
+      );
+    });
+
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-fundraising"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    const scrollArea = link?.closest(".max-lg\\:overflow-y-auto");
+    expect(scrollArea).not.toBeNull();
+    expect(scrollArea?.querySelector(".rk-scroll")?.className).toContain("lg:overflow-y-auto");
+    expect(scrollArea?.querySelector(".rk-scroll")?.className).toContain("lg:snap-proximity");
+
+    await act(async () => link?.click());
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(
+      "/app/fundraising",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("forwards tour skip and close callbacks", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const onTourSkip = vi.fn();
+  const onTourEnd = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(SidebarFixture, {
+            mode: "expanded",
+            tourOpen: true,
+            onTourSkip,
+            onTourEnd,
+          }),
+        ),
+      );
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="tour-skip"]')?.click();
+    });
+    expect(onTourSkip).toHaveBeenCalledOnce();
+    expect(onTourEnd).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="tour-close"]')?.click();
+    });
+    expect(onTourEnd).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("closes the mobile sidebar when opening Settings", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(MemoryRouter, null, createElement(SidebarFixture, { mode: "expanded" })),
+      );
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="user-menu-trigger"]')?.click();
+    });
+    await act(async () => {
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Settings"]')?.click();
+    });
+
+    expect(container.querySelector('[data-testid="bots-sidebar"]')?.className).toContain(
+      "-translate-x-full",
+    );
+    expect(container.textContent).toContain("Open navigation");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("navigates to Integrations from the account menu", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(
+            "div",
+            null,
+            createElement(SidebarFixture, { mode: "expanded" }),
+            createElement(CurrentPath),
+          ),
+        ),
+      );
+    });
+
+    const menuTrigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="user-menu-trigger"]',
+    );
+    await act(async () => menuTrigger?.click());
+    const integrations = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="menu-integrations"]',
+    );
+    expect(integrations?.textContent).toContain("Integrations");
+
+    await act(async () => integrations?.click());
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(
+      "/app/integrations",
+    );
+    expect(document.body.querySelector('[data-testid="menu-integrations"]')).toBeNull();
+    expect(container.querySelector('[data-testid="bots-sidebar"]')?.className).toContain(
+      "-translate-x-full",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("hides an unused idle page agent and reveals it when active", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderFixture = (activePageAgent: boolean) =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(SidebarFixture, {
+        mode: "expanded",
+        pageAgents: true,
+        singlePageAgent: true,
+        activePageAgent,
+      }),
+    );
+  try {
+    await act(async () => root.render(renderFixture(false)));
+
+    expect(container.querySelector('[data-testid="sidebar-page-agents"]')).toBeNull();
+    expect(container.textContent).not.toContain("Inbox agent");
+
+    await act(async () => root.render(renderFixture(true)));
+    const activeToggle = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-page-agents"]',
+    );
+    expect(activeToggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Inbox agent");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("returns from Activity to chats", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const toggleActivityMode = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(SidebarFixture, {
+            mode: "expanded",
+            activityMode: true,
+            toggleActivityMode,
+          }),
+        ),
+      );
+    });
+
+    const back = container.querySelector<HTMLButtonElement>('[data-testid="activity-back"]');
+    expect(back?.textContent).toContain("Back to chats");
+    await act(async () => back?.click());
+    expect(toggleActivityMode).toHaveBeenCalledOnce();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("folds email chats separately and reveals the active email chat", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderFixture = (activeEmailChat: boolean) =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(SidebarFixture, {
+        mode: "expanded",
+        pageAgents: true,
+        emailChats: true,
+        activeEmailChat,
+      }),
+    );
+  try {
+    await act(async () => root.render(renderFixture(false)));
+
+    const pageAgents = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-page-agents"]',
+    );
+    const emailChats = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-email-chats"]',
+    );
+    expect(pageAgents).toBeNull();
+    expect(emailChats?.textContent).toContain("Email chats");
+    expect(emailChats?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Client email");
+
+    await act(async () => emailChats?.click());
+    expect(emailChats?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Client email");
+    expect(container.querySelector('[data-testid="sidebar-page-agents"]')).toBeNull();
+
+    await act(async () => emailChats?.click());
+    expect(emailChats?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Client email");
+
+    await act(async () => root.render(renderFixture(true)));
+    const activeEmailChats = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-email-chats"]',
+    );
+    expect(activeEmailChats?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Client email");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps the first and focused roster rows tabbable and moves focus down with ArrowDown", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const rows = () => [...container.querySelectorAll<HTMLButtonElement>("[data-roster-row]")];
+  const tabStops = () => rows().filter((row) => row.tabIndex === 0);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(MemoryRouter, null, createElement(SidebarFixture, { mode: "expanded" })),
+      );
+    });
+
+    expect(tabStops()).toHaveLength(2);
+    const [current] = tabStops();
+    expect(current).toBe(rows()[0]);
+    if (!current) throw new Error("Expected the first tabbable roster row");
+    const next = rows()[rows().indexOf(current) + 1];
+    expect(next).toBeDefined();
+
+    await act(async () => {
+      current.focus();
+      current.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+
+    expect(document.activeElement).toBe(next);
+    expect(tabStops()).toEqual([current, next]);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("opens the command palette from expanded and rail Search", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = (mode: "expanded" | "rail", key: string) =>
+    createElement(MemoryRouter, null, createElement(SidebarFixture, { mode, key }));
+  try {
+    await act(async () => root.render(render("expanded", "click")));
+    const input = container.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input');
+    await act(async () => input?.click());
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+
+    await act(async () => root.render(render("expanded", "enter")));
+    const enterInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="sidebar-search"] input',
+    );
+    await act(async () => {
+      enterInput?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+
+    await act(async () => root.render(render("expanded", "space")));
+    const spaceInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="sidebar-search"] input',
+    );
+    await act(async () => {
+      spaceInput?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    });
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+
+    await act(async () => root.render(render("rail", "rail")));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="sidebar-search-rail"]')?.click();
+    });
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="bots-sidebar"]')?.getAttribute("data-rail")).toBe(
+      "true",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
 });

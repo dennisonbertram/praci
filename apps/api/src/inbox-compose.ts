@@ -22,6 +22,7 @@ import type {
   ComposeResult,
 } from "@rakazo/contracts";
 import {
+  emailCompliance,
   MAX_COMPOSE_ATTACHMENT_BYTES,
   MAX_COMPOSE_ATTACHMENT_MB,
   MAX_COMPOSE_HTML,
@@ -411,12 +412,39 @@ async function forwardedFiles(
   return files;
 }
 
+/** A send whose client id is a GTM email item needs the founder's approval and a compliant body. */
+async function requireApprovedGtmEmail(deps: ComposeDeps, actor: Actor, input: ComposeFields) {
+  const item = await deps.prisma.scratchpadItem.findFirst({
+    where: {
+      id: input.clientId,
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      category: "outbound_email",
+    },
+    select: { status: true, approvedAt: true },
+  });
+  if (!item) return;
+  if (item.status === "parked" || !item.approvedAt) {
+    throw new ORPCError("BAD_REQUEST", { message: "Approve this email before sending it." });
+  }
+  // The text that will actually be sent, as draftOf builds it.
+  const checks = emailCompliance(
+    input.html === undefined ? input.body : htmlToText(sanitizeComposeHtml(input.html)),
+  );
+  if (!checks.unsubscribe || !checks.postalAddress) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Add an unsubscribe line and a postal address to the email before sending it.",
+    });
+  }
+}
+
 export async function inboxComposeSend(
   deps: ComposeDeps,
   actor: Actor,
   input: ComposeFields,
 ): Promise<ComposeResult> {
   if (deps.mailWritesDisabled) return { status: "disabled" };
+  await requireApprovedGtmEmail(deps, actor, input);
   // The send runs to its end even if the browser leaves, so its outcome is always recorded.
   const context = mailContext(actor, "inbox.compose.send", AbortSignal.timeout(SEND_DEADLINE_MS));
   const account = await ownAccount(deps, actor, input.connectionId, context);

@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
   name: "RakazoAPI",
+  platforms: [.iOS("26.0")],
   products: [
     .library(name: "RakazoAPI", targets: ["RakazoAPI"])
   ],

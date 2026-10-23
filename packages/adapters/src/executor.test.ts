@@ -118,6 +118,9 @@ describe("bot tool permissions", () => {
       expect(offered.includes("request_takeover")).toBe(
         trigger === "user" || trigger === "follow_up",
       );
+      expect(offered.includes("request_secret")).toBe(
+        trigger === "user" || trigger === "follow_up",
+      );
       for (const name of [
         "mail_send",
         "computer_observe",

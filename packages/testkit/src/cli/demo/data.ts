@@ -1486,7 +1486,7 @@ export const DEMO_CAP_TABLE = {
       organization: null,
       security: "Common",
       shares: 4_000_000,
-      amountUsd: null,
+      amountUsd: 2_500,
       percent: 40,
     },
     {
@@ -1495,7 +1495,7 @@ export const DEMO_CAP_TABLE = {
       organization: null,
       security: "Common",
       shares: 3_000_000,
-      amountUsd: null,
+      amountUsd: 12_500,
       percent: 30,
     },
     {

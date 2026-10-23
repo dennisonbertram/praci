@@ -69,9 +69,13 @@ function prismaWith(overrides: Record<string, unknown> = {}) {
     count: vi.fn(async () => 0),
     create: vi.fn(async () => ({})),
   };
+  const externalEffect = { findUnique: vi.fn(async (_args: unknown) => null as unknown) };
+  const composeSend = { findUnique: vi.fn(async (_args: unknown) => null as unknown) };
   const tx = { scratchpadItem, scratchpadApproval, $executeRaw: executeRaw, $queryRaw: queryRaw };
   return {
     scratchpadItem,
+    externalEffect,
+    composeSend,
     scratchpadApproval,
     executeRaw,
     queryRaw,
@@ -485,7 +489,7 @@ describe("scratchpad tools store", () => {
       completeScratchpadItemFromTool({ prisma: prisma as never }, { ...scope, itemId: gated.id }),
     ).resolves.toMatchObject({ error: expect.any(String) });
     const postWithUrl = prismaWith({
-      findFirst: vi.fn(async () => gated),
+      findFirst: vi.fn(async () => ({ ...gated, proof: "zernio:post-0" })),
       updateMany: vi.fn(async () => ({ count: 1 })),
     });
     await expect(
@@ -611,14 +615,8 @@ describe("scratchpad tools store", () => {
     },
   );
 
-  it("allows public-post proof to progress from null or effect stamp through Zernio to URL", async () => {
-    for (const [oldProof, proof] of [
-      [undefined, "zernio:post-1"],
-      [null, "https://social.example/post/1"],
-      [effectKey, "zernio:post-1"],
-      [effectKey, "https://social.example/post/1"],
-      ["zernio:post-1", "https://social.example/post/1"],
-    ] as const) {
+  it("lets the agent turn server-written Zernio proof into the live URL, and nothing else", async () => {
+    for (const [oldProof, proof] of [["zernio:post-1", "https://social.example/post/1"]] as const) {
       const existing = row({ proof: oldProof, status: "open", approvedAt: now });
       const prisma = prismaWith({
         findFirst: vi.fn(async () => existing),
@@ -632,6 +630,49 @@ describe("scratchpad tools store", () => {
       ).resolves.toMatchObject({ item: { proof } });
     }
   });
+
+  it.each([
+    [
+      "A: re-parked stamped post, URL",
+      { status: "parked", proof: effectKey },
+      "https://social.example/post/1",
+    ],
+    [
+      "B: fresh parked post, effect-key shaped",
+      { status: "parked", proof: null },
+      `zernio:x:${"b".repeat(64)}`,
+    ],
+    [
+      "C: approved open post with null proof, done + URL",
+      { status: "open", proof: null, approvedAt: now },
+      "https://social.example/post/1",
+      "done",
+    ],
+    [
+      "D: open stamped post, made-up zernio",
+      { status: "open", proof: effectKey, approvedAt: now },
+      "zernio:made-up",
+    ],
+    [
+      "E: open post null proof, zernio",
+      { status: "open", proof: null, approvedAt: now },
+      "zernio:post-1",
+    ],
+  ] as [string, Record<string, unknown>, string, string?][])(
+    "agent cannot forge post proof: %s",
+    async (_name, partial, proof, status) => {
+      const existing = row(partial);
+      const updateMany = vi.fn(async () => ({ count: 1 }));
+      const prisma = prismaWith({ findFirst: vi.fn(async () => existing), updateMany });
+      await expect(
+        updateScratchpadItemFromTool(
+          { prisma: prisma as never },
+          { ...scope, itemId: existing.id, proof, ...(status ? { status } : {}) },
+        ),
+      ).resolves.toMatchObject({ error: expect.any(String) });
+      expect(updateMany).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects proof downgrade, clear, arbitrary stamps, and repark with changed proof", async () => {
     const rejected = [
@@ -792,7 +833,7 @@ describe("scratchpad tools store", () => {
       updateMany: vi.fn(async () => ({ count: 1 })),
     });
     await updateScratchpadItemFromUser(
-      { prisma: reapprove as never },
+      { prisma: reapprove as never, now: () => new Date(now.getTime() + 11 * 60_000) },
       {
         ...scope,
         itemId: stamped.id,
@@ -805,6 +846,32 @@ describe("scratchpad tools store", () => {
         data: expect.objectContaining({ status: "open", proof: null, approvedBy: "user" }),
       }),
     );
+    const newClock = () => new Date(now.getTime() + 60_000);
+    const oldClock = () => new Date(now.getTime() + 11 * 60_000);
+    for (const [status, clock, allowed] of [
+      ["executing", oldClock, false],
+      ["intended", newClock, false],
+      [null, newClock, false],
+      ["uncertain", newClock, true],
+      ["failed", newClock, true],
+      ["intended", oldClock, true],
+      [null, oldClock, true],
+    ] as const) {
+      const racing = prismaWith({
+        findFirst: vi.fn(async () => stamped),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      });
+      racing.externalEffect.findUnique.mockResolvedValue(status ? { spaceId: "ws", status } : null);
+      const result = await updateScratchpadItemFromUser(
+        { prisma: racing as never, now: clock },
+        { ...scope, itemId: stamped.id, reapprove: true, updatedAt: now.toISOString() },
+      );
+      if (allowed) expect(result).toMatchObject({ item: { status: "open" } });
+      else {
+        expect(result).toMatchObject({ error: expect.stringContaining("still being sent") });
+        expect(racing.scratchpadItem.updateMany).not.toHaveBeenCalled();
+      }
+    }
     for (const proof of ["zernio:post-1", "https://social.example/post/1"]) {
       const cannotClear = prismaWith({
         findFirst: vi.fn(async () => row({ status: "parked", proof })),
@@ -871,20 +938,49 @@ describe("scratchpad tools store", () => {
       ),
       updateMany: vi.fn(async () => ({ count: 1 })),
     });
-    await expect(
+    const done = () =>
       updateScratchpadItemFromUser(
         { prisma: email as never },
-        {
-          ...scope,
-          itemId: "item-1",
-          status: "done",
-          proof: "gmail:item-1",
-        },
-      ),
-    ).resolves.toMatchObject({ item: expect.any(Object) });
+        { ...scope, itemId: "item-1", status: "done", proof: "gmail:item-1" },
+      );
+    await expect(done()).resolves.toMatchObject({ error: expect.any(String) });
+    email.composeSend.findUnique.mockResolvedValue({ state: "pending" });
+    await expect(done()).resolves.toMatchObject({ error: expect.any(String) });
+    email.composeSend.findUnique.mockResolvedValue({ state: "sent" });
+    await expect(done()).resolves.toMatchObject({ item: expect.any(Object) });
+    expect(email.composeSend.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { spaceId_userId_clientId: { spaceId: "ws", userId: "user", clientId: "item-1" } },
+      }),
+    );
   });
 
-  it("returns a conflict when approval uses a version made stale by an already-applied approval", async () => {
+  it("refuses to approve an outbound email without an unsubscribe line and postal address", async () => {
+    const compliant =
+      "Hi.\nReply unsubscribe to stop these emails.\nPostal address: 1 Example Road, Sample City";
+    for (const [notes, approved] of [
+      ["Join our beta.", false],
+      [compliant, true],
+    ] as const) {
+      const prisma = prismaWith({
+        findFirst: vi.fn(async () =>
+          row({ category: "outbound_email", channel: "email", status: "parked", notes }),
+        ),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      });
+      const result = await updateScratchpadItemFromUser(
+        { prisma: prisma as never },
+        { ...scope, itemId: "item-1", status: "open", updatedAt: now.toISOString() },
+      );
+      if (approved) expect(result).toMatchObject({ item: { status: "open" } });
+      else {
+        expect(result).toMatchObject({ error: expect.stringContaining("unsubscribe") });
+        expect(prisma.scratchpadItem.updateMany).not.toHaveBeenCalled();
+      }
+    }
+  });
+
+  it("returns a conflict when approval uses a version made oldClock by an already-applied approval", async () => {
     const current = row({
       status: "open",
       approvedAt: new Date(now.getTime() + 1_000),
