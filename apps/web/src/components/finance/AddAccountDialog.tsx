@@ -80,11 +80,14 @@ export function AddAccountDialog({
   initialStep = "type",
   onPickCrypto,
   onImported,
+  onConnected,
   onClose,
 }: {
   initialStep?: Step;
   onPickCrypto?: (choice: CryptoChoice) => void;
   onImported: () => void;
+  /** A bank is connected and synced; the page is about to reload its accounts. */
+  onConnected?: () => void;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -116,6 +119,7 @@ export function AddAccountDialog({
         // Read the new accounts before the page reloads, so it shows them, not an empty list. A
         // failed sync still connected; the dashboard shows the sync error and retries.
         await rpc.finance.refresh().catch(() => {});
+        onConnected?.();
         onImported();
         onClose();
       }
@@ -151,7 +155,7 @@ export function AddAccountDialog({
                     key={provider}
                     icon={<AppLogo name={name} logo={logo} />}
                     title={name}
-                    line={bankLine[provider]}
+                    line={busy === provider ? t`Connecting…` : bankLine[provider]}
                     connected={sources.find((s) => s.provider === provider)?.status === "ok"}
                     disabled={busy !== null}
                     onClick={() => void connect(provider)}

@@ -193,6 +193,11 @@ function Dashboard() {
   // The add dialogs live here, above the empty and loaded states: the first import turns the empty
   // state into the dashboard, and the dialog must stay open on its results until Done.
   const [adding, setAdding] = useState<"type" | "bank" | null>(null);
+  // From picking a bank until the overview that includes it arrives, the stale empty state would
+  // read "No accounts yet" and invite a second connection.
+  const [connecting, setConnecting] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new overview (or its error) ends the wait
+  useEffect(() => setConnecting(false), [overview.data, overview.error]);
   const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   const dialogs = (
     <>
@@ -201,6 +206,10 @@ function Dashboard() {
           initialStep={adding}
           onPickCrypto={setCrypto}
           onImported={overview.reload}
+          onConnected={() => {
+            setConnecting(true);
+            overview.reload();
+          }}
           onClose={() => setAdding(null)}
         />
       ) : null}
@@ -226,7 +235,14 @@ function Dashboard() {
     <>
       {/* Accounts fed by uploaded statements have no source to connect, but they are data. */}
       {!connected && !data.hasCashAccounts ? (
-        <EmptyState cryptoCents={data.crypto?.totalCents ?? null} onAdd={() => setAdding("type")} />
+        connecting ? (
+          <DashboardSkeleton connecting />
+        ) : (
+          <EmptyState
+            cryptoCents={data.crypto?.totalCents ?? null}
+            onAdd={() => setAdding("type")}
+          />
+        )
       ) : (
         <Overview
           data={data}
@@ -283,9 +299,14 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   );
 }
 
-function DashboardSkeleton() {
+function DashboardSkeleton({ connecting = false }: { connecting?: boolean }) {
   return (
     <div aria-busy="true" className="flex flex-col gap-3">
+      {connecting ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          <Trans>Connecting…</Trans>
+        </p>
+      ) : null}
       <Skeleton className="h-7 w-32" />
       <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
         {[0, 1, 2, 3].map((n) => (
@@ -368,7 +389,9 @@ function Overview({
   // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
     !p.previousCents || p.previousCents === p.currentCents || p.currentCents === 0;
-  const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
+  // Non-breaking spaces keep "Oct 1 – 22" together, so a narrow line never strands the "22".
+  const range = (r: { start: string; end: string }) =>
+    dayRange(r.start, lastDayOf(r.end)).replace(/[ \u2009]/g, "\u00a0");
   const spentRange = range(totals);
   // A quarter or year that has just begun covers the same days as the month; say it is partial.
   const quarter = Math.floor((Number(totals.start.slice(5, 7)) - 1) / 3) + 1;
@@ -422,7 +445,7 @@ function Overview({
                     aria-hidden="true"
                     className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                   />
-                  <span className="truncate">
+                  <span>
                     {lapsed.length > 0 ? (
                       // One status for a lapsed sign-in, the same words as Fundraising and Integrations.
                       t`Reconnect ${lapsedNames}`
@@ -466,8 +489,8 @@ function Overview({
                 </Tooltip>
               </CompanyMenu>
               {data.excludedNonUsdCount > 0 ? (
-                // Outside the status link so it never wraps inside it; a phone drops "transactions" to keep one line.
-                <span className="min-w-0 truncate">
+                // Outside the status link; it wraps to a second line rather than cutting the warning short.
+                <span className="min-w-0">
                   {data.excludedNonUsdCount === 1 ? (
                     <Trans>
                       1 non-USD <span className="max-sm:hidden">transaction </span>not counted
