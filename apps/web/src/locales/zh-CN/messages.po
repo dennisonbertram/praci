@@ -516,10 +516,6 @@ msgstr ""
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr ""
 
-#: src/components/inbox/TodoCard.tsx
-msgid "{hiddenCount} more"
-msgstr ""
-
 #: src/lib/relative-time.ts
 msgid "{hours}h ago"
 msgstr "{hours} 小时前"
@@ -7855,10 +7851,6 @@ msgstr ""
 msgid "Opening an email"
 msgstr ""
 
-#: src/components/ShellSkeleton.tsx
-msgid "Opening Praci…"
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -9821,6 +9813,10 @@ msgstr ""
 msgid "Sent to {forwardedName}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Sent. Moved out of Needs reply"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
 msgstr ""
@@ -9960,7 +9956,6 @@ msgstr ""
 msgid "Show in sidebar"
 msgstr ""
 
-#: src/components/inbox/TodoCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"

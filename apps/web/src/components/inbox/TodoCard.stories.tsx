@@ -57,6 +57,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/** One line until opened, with the count of open to-dos. */
 export const Default: Story = { args: { todos } };
 
 /** Titles with a cached email open it. */
@@ -67,8 +68,13 @@ export const OpensEmail: Story = {
   },
 };
 
-/** On a phone one open to-do shows, with the count of the rest, so the first mail starts higher. */
-export const Compact: Story = { args: { todos, compact: true } };
+/** Opened: the heading row stays, with the list under it. */
+export const Expanded: Story = {
+  args: { todos },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole("button", { name: /To do/ }));
+  },
+};
 
 export const SingleTodo: Story = { args: { todos: todos.slice(1, 2) } };
 

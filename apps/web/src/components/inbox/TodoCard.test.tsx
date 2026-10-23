@@ -45,29 +45,17 @@ const hiddenTexts = () =>
     .map((li) => li.textContent);
 const toggle = () => document.querySelector("button[aria-expanded]") as HTMLButtonElement | null;
 
-it("collapses open to-dos beyond two and expands them", () => {
+it("shows one line with the open count until opened", () => {
   const todos = [1, 2, 3, 4, 5].map((n) => todo(n));
   act(() =>
     root.render(<TodoCard todos={[...todos, todo(6, "2026-10-01")]} onChange={() => {}} />),
   );
-  expect(hiddenTexts()).toEqual(["Todo 3", "Todo 4", "Todo 5"]);
-  expect(toggle()?.textContent).toBe("3 more");
+  expect(hiddenTexts()).toHaveLength(6);
+  expect(toggle()?.textContent).toBe("To do5");
   act(() => toggle()?.click());
   expect(hiddenTexts()).toEqual([]);
-  expect(toggle()?.textContent).toBe("Show less");
-});
-
-it("shows one open to-do first on a phone", () => {
-  act(() =>
-    root.render(<TodoCard todos={[1, 2, 3].map((n) => todo(n))} compact onChange={() => {}} />),
-  );
-  expect(hiddenTexts()).toEqual(["Todo 2", "Todo 3"]);
-  expect(toggle()?.textContent).toBe("2 more");
-});
-
-it("shows no toggle when two or fewer are open", () => {
-  act(() => root.render(<TodoCard todos={[todo(1), todo(2)]} onChange={() => {}} />));
-  expect(toggle()).toBeNull();
+  act(() => toggle()?.click());
+  expect(hiddenTexts()).toHaveLength(6);
 });
 
 const texts = () => [...document.querySelectorAll("li")].map((li) => li.textContent);
@@ -79,9 +67,6 @@ it("keeps a ticked to-do in its place, struck through, until the next visit", ()
   act(() => root.render(<TodoCard todos={ticked} onChange={() => {}} />));
   expect(texts()).toEqual(["Todo 1", "Todo 2", "Todo 3"]);
   expect(document.querySelector("li div div")?.className).toContain("line-through");
-  // Todo 3 is still the one collapsed, and the count says so.
-  expect(hiddenTexts()).toEqual(["Todo 3"]);
-  expect(toggle()?.textContent).toBe("1 more");
 });
 
 it("opens the email a to-do came from", () => {
@@ -128,7 +113,9 @@ it("shows a meeting to-do as plain text with only the checkbox to act on, and a 
   act(() =>
     root.render(<TodoCard todos={[meetingTodo(1)]} onChange={() => {}} onOpen={() => {}} />),
   );
-  expect(document.querySelectorAll("button:not([role=checkbox])")).toHaveLength(0);
+  expect(
+    document.querySelectorAll("button:not([role=checkbox]):not([aria-expanded])"),
+  ).toHaveLength(0);
   expect(document.querySelector("li")?.textContent).toContain("Todo 1");
   expect(document.querySelector("li")?.textContent).toContain("Planning, Oct 19");
   // The 16px box is padded by 8px above and below, so its target is 32px tall.
