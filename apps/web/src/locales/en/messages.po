@@ -9629,6 +9629,10 @@ msgid "Security"
 msgstr "Security"
 
 #: src/pages/Shell.tsx
+msgid "See all in Artifacts"
+msgstr "See all in Artifacts"
+
+#: src/pages/Shell.tsx
 msgid "See all in Data room"
 msgstr "See all in Data room"
 

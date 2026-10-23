@@ -29,6 +29,7 @@ async function mount(
   onSelectPage = vi.fn(),
   searchLinks?: ComponentProps<typeof CommandPalette>["searchLinks"],
   actions?: ComponentProps<typeof CommandPalette>["actions"],
+  searchOnlyBots?: Bot[],
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
@@ -57,6 +58,7 @@ async function mount(
           bot("b2", "Inbox agent"),
           bot("b3", "Finance agent"),
         ]}
+        searchOnlyBots={searchOnlyBots}
         onSelectBot={() => undefined}
         pages={[
           { id: "finance", label: "Finance" },
@@ -461,4 +463,13 @@ it("ends a group that has more results with a row that opens them", async () => 
     await new Promise((resolve) => setTimeout(resolve, 300));
   });
   expect(listText()).toContain("See all in Data room");
+});
+
+it("lists a search-only agent only once something is typed", async () => {
+  await mount(vi.fn(), undefined, undefined, [bot("b9", "Legal agent")]);
+  expect(document.querySelector("[data-testid=command-palette-bot-b9]")).toBeNull();
+  await search("legal");
+  expect(document.querySelector("[data-testid=command-palette-bot-b9]")).not.toBeNull();
+  // It has no number: the shortcuts follow the listed bots.
+  expect(document.querySelector("[data-testid=command-palette-bot-b9] kbd")).toBeNull();
 });

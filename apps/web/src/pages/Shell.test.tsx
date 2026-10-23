@@ -1251,13 +1251,13 @@ describe("showsComputerCaption", () => {
     const live = {
       kind: undefined,
       state: "running" as const,
-      hasScreen: true,
+      screenLoaded: true,
       hasError: false,
       open: false,
     };
     expect(showsComputerCaption(live)).toBe(true);
     expect(showsComputerCaption({ ...live, state: "suspended" })).toBe(false);
-    expect(showsComputerCaption({ ...live, hasScreen: false })).toBe(false);
+    expect(showsComputerCaption({ ...live, screenLoaded: false })).toBe(false);
     expect(showsComputerCaption({ ...live, open: true })).toBe(false);
     expect(showsComputerCaption({ ...live, hasError: true })).toBe(false);
     expect(showsComputerCaption({ ...live, kind: "desktop" })).toBe(false);
