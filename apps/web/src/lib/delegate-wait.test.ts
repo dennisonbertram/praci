@@ -68,3 +68,12 @@ it("does not wait on a result, status or FYI this chat sent back", () => {
     ).toBeNull();
   }
 });
+
+it("waits on a question or a message with no intent", () => {
+  const { intent: _, ...bare } = sent;
+  for (const block of [{ ...sent, intent: "question" }, bare]) {
+    expect(
+      delegateWaitState([{ blocks: [block as MessageBlock], createdAt: at(0) }], 2 * 60_000),
+    ).not.toBeNull();
+  }
+});

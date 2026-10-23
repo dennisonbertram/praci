@@ -15,9 +15,10 @@ export function delegateWait(
     const blocks = messages[i]?.blocks ?? [];
     if (blocks.some((block) => block.kind === "bot_message_received")) return null;
     const sent = blocks.find((block) => block.kind === "bot_message_sent");
-    // Only a request waits for an answer; a result, status or FYI sent back does not.
+    // Only a request or question (a missing intent means request) waits for an answer; a result, status or FYI sent back does not.
     if (sent?.kind === "bot_message_sent") {
-      if (sent.intent !== "request") return null;
+      const intent = sent.intent ?? "request";
+      if (intent !== "request" && intent !== "question") return null;
       return { name: sent.toBotName, at: Date.parse(messages[i]?.createdAt ?? "") };
     }
   }
