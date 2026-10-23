@@ -101,3 +101,10 @@ it("shows a failed mark while the roster records a run error", () => {
   expect(rowStatusKind("done", null)).toBe("done");
   expect(rowStatusKind(undefined, "run-1")).toBeUndefined();
 });
+
+it("marks a row with a waiting count as notified so a collapsed Pages group still shows it", () => {
+  expect(
+    glanceBadge({ unseen: 0, value: "2", valueLabel: "2 overdue", rail: false }).notified,
+  ).toBe(true);
+  expect(glanceBadge({ unseen: 0, rail: false }).notified).toBeUndefined();
+});

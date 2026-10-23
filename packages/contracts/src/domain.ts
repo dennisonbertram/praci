@@ -226,6 +226,7 @@ export const SpaceBotSchema = BotSchema.pick({
   position: true,
   unread: true,
   parentBotId: true,
+  spawnKey: true,
   preview: true,
   status: true,
   runPhase: true,
