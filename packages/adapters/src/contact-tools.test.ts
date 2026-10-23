@@ -284,6 +284,28 @@ describe("contact tools", () => {
     expect(bad).toEqual({ error: expect.stringContaining("ledger") });
   });
 
+  it("cap_table_update gives a holder's ledger total to one row when it has several securities", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
+    await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      {
+        companyName: "Example Co",
+        asOf: "2026-01-31",
+        fullyDilutedShares: 1000,
+        shareClasses: [],
+        holders: [
+          { name: "Fund A", security: "Common", shares: 10 },
+          { name: "Fund A", security: "Series Seed Prime Preferred", shares: 10 },
+        ],
+        ledger: [{ type: "issuance", holder: "Fund A", amountUsd: 1000 }],
+      },
+    );
+    const saved = JSON.stringify(updateMany.mock.calls[0]);
+    expect(saved.match(/"amountUsd":1000/g)).toHaveLength(1);
+  });
+
   it("cap_table_update writes as the sheet for the Investors agent and refuses a table of another source", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const prisma = { capTableSnapshot: { updateMany } } as never;

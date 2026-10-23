@@ -131,12 +131,15 @@ export async function contactToolFromTool(
       if (!ledger.success) return { error: `ledger: ${ledger.error.issues[0]?.message}` };
       // Holders in the ledger get its cash; SAFEs stay with Mercury and are never given an amount here.
       const invested = investedByHolder(ledger.data);
+      // Carta lists a holder once per security; the total goes on the first row only, so it counts once.
+      const given = new Set<string>();
       const holders = Array.isArray(rest.holders)
-        ? rest.holders.map((h: { name?: string; security?: string }) =>
-            h.name && invested.has(h.name) && !isSafeSecurity(String(h.security))
-              ? { ...h, amountUsd: invested.get(h.name) }
-              : h,
-          )
+        ? rest.holders.map((h: { name?: string; security?: string }) => {
+            if (!h.name || !invested.has(h.name) || isSafeSecurity(String(h.security))) return h;
+            if (given.has(h.name)) return { ...h, amountUsd: null };
+            given.add(h.name);
+            return { ...h, amountUsd: invested.get(h.name) };
+          })
         : rest.holders;
       const input = CapTableSnapshotInputSchema.safeParse({ ...rest, holders, source: writer });
       if (!input.success)
