@@ -381,7 +381,7 @@ import {
   imessageToolsAllowed,
   resolveIMessageTarget,
 } from "./imessage-tools.js";
-import { triageStatus } from "./inbox-triage.js";
+import { isSortingMail, triageStatus } from "./inbox-triage.js";
 import {
   auditRequestToolFromTool,
   INVESTOR_UPDATE_TOOL_NAMES,
@@ -2509,6 +2509,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
               .filter(Boolean)
               .join("\n\n")
           : undefined;
+        const mailSortingLine =
+          voiceAgent || restrictedContext
+            ? undefined
+            : (await isSortingMail(
+                  { prisma: deps.prisma, resolveModel },
+                  { userId: run.userId, spaceId: run.spaceId },
+                ).catch(() => false))
+              ? MAIL_SORTING_LINE
+              : undefined;
+
         if (heldForTakeover) {
           const held = await deps.prisma.run.findUnique({
             where: { id: runId },
@@ -7002,6 +7012,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     pluginLine,
                     mailSearchGuidance: mailSkill.guidance,
                     financeConnectionLine,
+                    mailSortingLine,
                     dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
                     agentSkillsLine: restrictedContext ? undefined : agentSkillsLine,
                     taughtSkillsLine: restrictedContext ? undefined : taughtSkillsLine,
@@ -8693,7 +8704,7 @@ export function directoryDescription(peer: {
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
-  'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names. Name an email by its subject and a record by its name, never by its id.';
+  'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names. Name an email by its subject and a record by its name, never by its id. Speak to the user as "you", never by their name or as "the user".';
 
 export const NOT_CONNECTED_GUIDANCE =
   'If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say "Add a bank account in Finance" and end with [Open Finance](/app/finance); do not mention Integrations in that reply. The same goes for a question about cash, balance, spending or runway with no bank connected. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).';
@@ -8755,6 +8766,10 @@ export async function loadFinanceConnectionLine(
   );
 }
 
+/** Shown while the first mail sort runs, so an empty To do list is not read as "no tasks". */
+export const MAIL_SORTING_LINE =
+  "Facts: the user's mail is still being sorted into To do, Needs reply and the other piles. If asked what to do, what is open or what needs attention, do not say there are no tasks and do not say you cannot recommend anything. Say the mail is still being sorted, that the To do list will appear in the Inbox in a minute, and end with [Open Inbox](/app/inbox).";
+
 export function userTurnInstructions(parts: {
   botInstructions: string;
   voiceAgent?: boolean;
@@ -8775,6 +8790,8 @@ export function userTurnInstructions(parts: {
   mailSearchGuidance?: string | undefined;
   /** The user's connected banks, from server state; see financeConnectionLine. */
   financeConnectionLine?: string | undefined;
+  /** Set while the mail sort has not finished; see MAIL_SORTING_LINE. */
+  mailSortingLine?: string | undefined;
   /** add_to_data_room is offered in this run. */
   dataRoomEnabled?: boolean;
   agentSkillsLine: string | undefined;
@@ -8798,6 +8815,7 @@ export function userTurnInstructions(parts: {
     PLAIN_CAPABILITY_GUIDANCE,
     NOT_CONNECTED_GUIDANCE,
     parts.financeConnectionLine,
+    parts.mailSortingLine,
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "create_space",

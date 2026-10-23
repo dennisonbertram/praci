@@ -38,7 +38,7 @@ const CLASSIFIER_TIMEOUT_MS = 60_000;
 type Scope = { userId: string; spaceId: string };
 
 export interface TriageReadinessDeps {
-  prisma: Pick<PrismaClient, "bot" | "aiDataConsent">;
+  prisma: Pick<PrismaClient, "bot" | "aiDataConsent" | "cachedMailMessage">;
   /** The executor's resolver; without it no model can be resolved. */
   resolveModel?: (scope: Scope & { botId?: string }) => Promise<AgentRunModel>;
   /** Optional first-pass classifier. It is used only after the user consents to its recipient. */
@@ -119,6 +119,26 @@ export async function triageReadiness(
   scope: Scope,
 ): Promise<Ready | null> {
   return (await triageStatus(deps, scope)).ready;
+}
+
+/**
+ * True while the user's mail is waiting for its sort: triage can run and at least one inbox
+ * message the job would pick has no sort yet. Chief uses it to say so instead of "no tasks".
+ */
+export async function isSortingMail(deps: TriageReadinessDeps, scope: Scope): Promise<boolean> {
+  if (!(await triageReadiness(deps, scope))) return false;
+  const row = await deps.prisma.cachedMailMessage.findFirst({
+    where: {
+      ...scope,
+      inInbox: true,
+      fromSelf: false,
+      receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
+      connection: { status: "connected" },
+      OR: [{ triagedAt: null }, { triageVersion: { lt: TRIAGE_VERSION } }],
+    },
+    select: { id: true },
+  });
+  return row !== null;
 }
 
 /** A run that finds the user busy looks again after this, in case mail arrived since the holder read its list. */

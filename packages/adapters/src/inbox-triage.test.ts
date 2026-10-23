@@ -2,7 +2,7 @@ import type { AgentRunModel, InboxClassifierProvider } from "@rakazo/adapter-kit
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { aiRecipient } from "./ai-consent.js";
-import { triageReadiness, triageStatus } from "./inbox-triage.js";
+import { isSortingMail, triageReadiness, triageStatus } from "./inbox-triage.js";
 
 const scope = { userId: "user-1", spaceId: "space-1" };
 const keyFor = (provider: string, modelId: string, baseUrl?: string) =>
@@ -227,5 +227,39 @@ describe("triageStatus says why triage cannot run", () => {
     );
     expect(status.blocked).toBeNull();
     expect(status.ready?.classifier).toBeNull();
+  });
+});
+
+describe("isSortingMail", () => {
+  const withMail = (found: boolean, options: Parameters<typeof setup>[0] = {}) => {
+    const { deps } = setup(options);
+    const findFirst = vi.fn(async () => (found ? { id: "m1" } : null));
+    return {
+      deps: {
+        ...deps,
+        prisma: { ...(deps.prisma as object), cachedMailMessage: { findFirst } } as never,
+      },
+      findFirst,
+    };
+  };
+
+  it("is true while connected inbox mail has no sort yet", async () => {
+    const { deps, findFirst } = withMail(true);
+    expect(await isSortingMail(deps, scope)).toBe(true);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ ...scope, connection: { status: "connected" } }),
+      }),
+    );
+  });
+
+  it("is false once every message is sorted", async () => {
+    expect(await isSortingMail(withMail(false).deps, scope)).toBe(false);
+  });
+
+  it("is false when triage cannot run, so Chief does not promise a sort", async () => {
+    const { deps, findFirst } = withMail(true, { consented: false });
+    expect(await isSortingMail(deps, scope)).toBe(false);
+    expect(findFirst).not.toHaveBeenCalled();
   });
 });
