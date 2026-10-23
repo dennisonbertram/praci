@@ -11,6 +11,8 @@ const loaded = (extra: Record<string, unknown> = {}) =>
     "models.credentials": mockModelCredentials,
     me: mockMe,
     "models.backups": [],
+    "models.embeddingModel": { modelId: "sample/embedding-v1" },
+    "models.setEmbeddingModel": (input: { modelId: string | null }) => input,
     ...extra,
   });
 
@@ -23,7 +25,7 @@ const meta = {
   component: ModelSettingsOverlay,
   parameters: {
     layout: "fullscreen",
-    docs: { description: { component: "Also shows: ModelPicker, ModelOption" } },
+    docs: { description: { component: "Also shows: EmbeddingModelField, AutoFileEmailField" } },
   },
   args: { onClose: () => undefined, embedded: true },
   decorators: [
@@ -52,7 +54,7 @@ export const OwnModelOpened: Story = {
 };
 
 export const WithModelPickerOpen: Story = {
-  name: "Model picker open (ModelPicker, ModelOption)",
+  name: "Model picker open",
   play: async () => {
     await userEvent.click(await screen.findByRole("combobox", { name: "Model" }));
     await screen.findByRole("listbox");
@@ -63,6 +65,13 @@ export const ModelPickerNoMatch: Story = {
   play: async () => {
     await userEvent.click(await screen.findByRole("combobox", { name: "Model" }));
     await userEvent.type(await screen.findByRole("combobox", { name: "Search models" }), "zzzz");
+  },
+};
+
+export const DataRoomSearchModel: Story = {
+  play: async () => {
+    await userEvent.click(await screen.findByText("Data room search model"));
+    await userEvent.click(await screen.findByRole("combobox", { name: "Embedding model" }));
   },
 };
 

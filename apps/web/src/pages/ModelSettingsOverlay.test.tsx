@@ -221,6 +221,47 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+it("saves a typed Data room embedding id unchanged and resets it to the default", async () => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    configurable: true,
+    value: vi.fn(),
+  });
+  models.setEmbeddingModel.mockImplementation(async ({ modelId }: { modelId: string | null }) => ({
+    modelId,
+  }));
+  const view = await renderSettings();
+  const trigger = view.container.querySelector<HTMLButtonElement>("#data-room-embedding-model")!;
+  trigger.closest("details")!.open = true;
+  await act(async () => trigger.click());
+  await typeInto(
+    document.querySelector<HTMLInputElement>('input[aria-label="Model id"]')!,
+    "sample/embedding-v2",
+  );
+  await act(async () => {
+    document
+      .querySelector("input[aria-label='Model id']")!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  expect(models.setEmbeddingModel).toHaveBeenLastCalledWith({ modelId: "sample/embedding-v2" });
+  expect(trigger.textContent).toContain("sample/embedding-v2");
+  await act(async () => trigger.click());
+  const reset = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
+    (option) => option.textContent === "Default",
+  )!;
+  await act(async () => reset.click());
+  expect(models.setEmbeddingModel).toHaveBeenLastCalledWith({ modelId: null });
+  await view.unmount();
+  vi.unstubAllGlobals();
+});
+
 it("shows a stored BYOK key when provider settings reopen", async () => {
   models.credentials.mockResolvedValue([
     {

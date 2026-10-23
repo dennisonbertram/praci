@@ -71,6 +71,7 @@ const credentials = [
 
 let container: HTMLDivElement;
 let root: Root;
+let scrollIntoViewDescriptor: PropertyDescriptor | undefined;
 
 function button(name: string): HTMLButtonElement {
   const found = [...container.querySelectorAll("button")].find(
@@ -86,22 +87,25 @@ function backupRows(): string[] {
   );
 }
 
+function pickerTrigger(): HTMLButtonElement {
+  const trigger = container.querySelector<HTMLButtonElement>(
+    '[role="combobox"][aria-label="Add connected model"]',
+  );
+  if (!trigger) throw new Error("Missing connected model picker");
+  return trigger;
+}
+
 async function clickButton(name: string): Promise<void> {
   await act(async () => button(name).click());
 }
 
 async function pickConnectedModel(label: string): Promise<void> {
-  const select = container.querySelector<HTMLSelectElement>(
-    'select[aria-label="Add connected model"]',
+  await act(async () => pickerTrigger().click());
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((item) =>
+    item.textContent?.includes(label),
   );
-  if (!select) throw new Error("Missing connected model picker");
-  const option = [...select.options].find((item) => item.textContent?.trim() === label);
   if (!option) throw new Error(`Missing model option: ${label}`);
-  await act(async () => {
-    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
-    setter?.call(select, option.value);
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await act(async () => option.click());
 }
 
 async function flush(): Promise<void> {
@@ -113,6 +117,19 @@ async function flush(): Promise<void> {
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    configurable: true,
+    value: vi.fn(),
+  });
   backupApi.me.mockReset().mockResolvedValue({ userId: scope.userId, spaceId: scope.spaceId });
   backupApi.backups.mockReset().mockResolvedValue([]);
   backupApi.setBackups.mockReset().mockResolvedValue({ ok: true });
@@ -125,6 +142,11 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  if (scrollIntoViewDescriptor) {
+    Object.defineProperty(Element.prototype, "scrollIntoView", scrollIntoViewDescriptor);
+  } else {
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  }
   vi.unstubAllGlobals();
 });
 
@@ -154,7 +176,7 @@ describe("ModelBackupsSettings", () => {
     });
     await flush();
     expect(container.querySelector('[role="alert"]')?.textContent).toBe("Backups are unavailable");
-    expect(container.querySelector<HTMLSelectElement>("select")?.disabled).toBe(true);
+    expect(pickerTrigger().disabled).toBe(true);
     expect(button("Add").disabled).toBe(true);
     expect(button("Save backups").disabled).toBe(true);
     expect(backupApi.setBackups).not.toHaveBeenCalled();
@@ -162,7 +184,7 @@ describe("ModelBackupsSettings", () => {
     await flush();
     expect(backupApi.backups).toHaveBeenCalledTimes(2);
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(container.querySelector<HTMLSelectElement>("select")?.disabled).toBe(false);
+    expect(pickerTrigger().disabled).toBe(false);
     await pickConnectedModel("Anthropic · Claude Sonnet");
     expect(button("Add").disabled).toBe(false);
   });
@@ -186,7 +208,7 @@ describe("ModelBackupsSettings", () => {
     await flush();
 
     expect(container.textContent).toContain("Connect a provider to add backups.");
-    expect(container.querySelector("select")).toBeNull();
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
     expect(container.textContent).not.toContain("Save backups");
   });
 
@@ -322,14 +344,12 @@ describe("ModelBackupsSettings", () => {
       "Could not load backup models",
     );
     expect(container.querySelector('[data-testid="model-backup-1"]')).toBeNull();
-    const select = container.querySelector<HTMLSelectElement>(
-      'select[aria-label="Add connected model"]',
-    );
-    expect(select?.disabled).toBe(true);
+    expect(pickerTrigger().disabled).toBe(true);
     expect(button("Add").disabled).toBe(true);
     expect(button("Save backups").disabled).toBe(true);
 
-    await pickConnectedModel("Anthropic · Claude Sonnet");
+    await act(async () => pickerTrigger().click());
+    expect(document.querySelector('[role="option"]')).toBeNull();
     await clickButton("Add");
     await clickButton("Save backups");
     await flush();
