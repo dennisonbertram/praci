@@ -1792,7 +1792,10 @@ function EmbeddingModelField() {
           loading={!loaded}
           disabled={saving || Boolean(failed && !loaded)}
           allowCustom
-          onChange={(value) => void save(value)}
+          onChange={(next) => {
+            setValue(next);
+            void save(next);
+          }}
           className="h-8 max-w-xs rounded-lg px-3"
         />
       </div>
