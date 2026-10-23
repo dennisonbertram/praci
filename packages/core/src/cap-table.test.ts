@@ -108,6 +108,16 @@ describe("equityRaisedUsd", () => {
     ).toBe(100_000);
   });
 
+  it("shows the company total from the source when no holder has an amount, without adding SAFEs", () => {
+    const holders = [holder("A", 100, null), holder("Fund", null, 9, "SAFE")];
+    const safes = [{ status: "funded", amountCents: 15_000_000 }] as const;
+    expect(equityRaisedUsd(holders, safes, 350_000)).toBe(350_000);
+    expect(equityRaisedUsd([], [], 350_000)).toBe(350_000);
+    // Holder amounts win over the stored total, as before.
+    expect(equityRaisedUsd([holder("A", 100, 100_000)], safes, 350_000)).toBe(250_000);
+    expect(equityRaisedUsd(holders, [], null)).toBeNull();
+  });
+
   it("is null when nothing is known to add up", () => {
     expect(
       equityRaisedUsd([holder("A", 100, null), holder("Fund", null, 9, "SAFE")], []),

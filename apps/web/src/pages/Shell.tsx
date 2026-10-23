@@ -84,6 +84,7 @@ import {
   CalendarClock,
   ChartColumn,
   ChevronDown,
+  ChevronLeft,
   CircleAlert,
   CodeXml,
   Compass,
@@ -1013,7 +1014,8 @@ export function ShellPage() {
     // The list scrolls on a tall desktop; the pane around it scrolls on a phone and a short screen.
     sidebarScrollRef.current?.scrollTo({ top: 0 });
     sidebarPaneRef.current?.scrollTo({ top: 0 });
-  }, [activityMode]);
+    // Again once the runs arrive and add content above the chats.
+  }, [activityMode, activityBotIds.size > 0]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
@@ -3900,7 +3902,9 @@ export function ShellPage() {
       if (panel === "computer" || panel === "settings" || panel === "group-settings") {
         const carried = panel === "computer" ? "computer" : inGroup ? "group-settings" : "settings";
         pendingPanelRestore.current = null;
-        if (carried !== panel) setPanelState(carried);
+        // Below the docked breakpoint the panel covers the chat (and any approval in it): close it.
+        if (!wideScreen()) setPanelState(null);
+        else if (carried !== panel) setPanelState(carried);
         setRestoredPanelKey(null);
         return;
       }
@@ -4946,9 +4950,20 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
-            className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+            className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
+              {activityMode && !rail ? (
+                <button
+                  type="button"
+                  data-testid="activity-back"
+                  onClick={() => setActivityMode(false)}
+                  className="flex snap-start items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-start text-[13px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                >
+                  <ChevronLeft size={14} strokeWidth={1.8} aria-hidden="true" />
+                  <Trans>Back to chats</Trans>
+                </button>
+              ) : null}
               {activityMode && !rail ? (
                 <ActivityList
                   onListedBots={setActivityBotIds}
@@ -5110,7 +5125,7 @@ export function ShellPage() {
                           data-roster-item={group.key}
                           className={
                             group.title && hasSpaceActions
-                              ? "grid pt-3 pb-0.5"
+                              ? `grid pt-3 pb-0.5${group.showLock ? " mt-3" : ""}`
                               : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
                           }
                         >
@@ -5123,13 +5138,7 @@ export function ShellPage() {
                               data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
-                              onClick={() => {
-                                if (group.emptySpaceId) {
-                                  openSpaceChat(group.emptySpaceId, "/app");
-                                  return;
-                                }
-                                toggleSidebarSection(group.key);
-                              }}
+                              onClick={() => toggleSidebarSection(group.key)}
                               onContextMenu={
                                 hasSpaceActions
                                   ? (event) => {
@@ -5142,13 +5151,11 @@ export function ShellPage() {
                                     }
                                   : undefined
                               }
-                              aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                              aria-expanded={!collapsed}
                               aria-label={
-                                group.emptySpaceId
-                                  ? t`Open ${group.title}`
-                                  : collapsed
-                                    ? t`Expand ${sidebarHeader.name}`
-                                    : t`Collapse ${sidebarHeader.name}`
+                                collapsed
+                                  ? t`Expand ${sidebarHeader.name}`
+                                  : t`Collapse ${sidebarHeader.name}`
                               }
                             >
                               <span className="flex min-w-0 items-center gap-1.5">
@@ -5166,18 +5173,16 @@ export function ShellPage() {
                                   {group.title}
                                 </span>
                               </span>
-                              {group.emptySpaceId ? null : (
-                                <ChevronDown
-                                  size={14}
-                                  strokeWidth={1.8}
-                                  className={
-                                    collapsed
-                                      ? "-rotate-90 transition-transform"
-                                      : "transition-transform"
-                                  }
-                                  aria-hidden="true"
-                                />
-                              )}
+                              <ChevronDown
+                                size={14}
+                                strokeWidth={1.8}
+                                className={
+                                  collapsed
+                                    ? "-rotate-90 transition-transform"
+                                    : "transition-transform"
+                                }
+                                aria-hidden="true"
+                              />
                             </button>
                           ) : null}
                           {hasSpaceActions ? (
@@ -6047,7 +6052,8 @@ export function ShellPage() {
                     >
                       {inGroup
                         ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                        : (active?.name ?? (opening ? "" : t`Select a bot`))}
+                        : (active?.name ??
+                          (opening ? "" : bots.length === 0 ? t`No bots yet` : t`Select a bot`))}
                     </span>
                   </span>
                   {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}

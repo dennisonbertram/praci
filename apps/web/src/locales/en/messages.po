@@ -1819,6 +1819,10 @@ msgstr "Back"
 msgid "Back to artifacts"
 msgstr "Back to artifacts"
 
+#: src/pages/Shell.tsx
+msgid "Back to chats"
+msgstr "Back to chats"
+
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Back to email"
 msgstr "Back to email"
@@ -3042,11 +3046,13 @@ msgstr "Connecting to {name}"
 msgid "Connecting to tools"
 msgstr "Connecting to tools"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
+#: src/pages/Finance.tsx
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -7167,6 +7173,10 @@ msgstr "No bot activity yet."
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr "No bot uses {0} yet. Choose bots on its page."
 
+#: src/pages/Shell.tsx
+msgid "No bots yet"
+msgstr "No bots yet"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
@@ -7547,6 +7557,10 @@ msgid "Not tagged"
 msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
+msgid "Not tagged yet. Allow Praci to read your documents above."
+msgstr "Not tagged yet. Allow Praci to read your documents above."
+
+#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr "Not tagged. Praci can't read your documents."
 
@@ -7672,8 +7686,8 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: agent.name
-#. placeholder {0}: group.title
 #. placeholder {0}: ref.name
+#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx
@@ -8986,6 +9000,12 @@ msgstr "Replace key"
 msgid "Replace value"
 msgstr "Replace value"
 
+#. placeholder {0}: maskCurrencyWhenHidden(replacement.title)
+#. placeholder {1}: fullDay(replacement.dueDate)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Replaced by {0} on {1}."
+msgstr "Replaced by {0} on {1}."
+
 #: src/components/AskCard.tsx
 msgid "Replaced by a newer request"
 msgstr "Replaced by a newer request"
@@ -9450,6 +9470,14 @@ msgstr "Scan is still running. Check back shortly."
 #: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr "Scan now"
+
+#: src/pages/Legal.tsx
+msgid "Scanning for {minutes} min"
+msgstr "Scanning for {minutes} min"
+
+#: src/pages/Legal.tsx
+msgid "Scanning now"
+msgstr "Scanning now"
 
 #: src/pages/Legal.tsx
 msgid "Scanning…"

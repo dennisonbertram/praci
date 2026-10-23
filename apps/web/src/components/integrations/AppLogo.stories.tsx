@@ -44,3 +44,13 @@ export const GlyphApps: Story = {
     </div>
   ),
 };
+
+/** The same app keeps one tile and mark whether its logo comes from the catalog or the connection. */
+export const SameTileEitherSource: Story = {
+  render: () => (
+    <div className="flex items-end gap-3">
+      <AppLogo name="Gmail" logo="https://cdn.simpleicons.org/gmail" />
+      <AppLogo name="Gmail" logo="https://logos.example.test/gmail.svg" />
+    </div>
+  ),
+};
