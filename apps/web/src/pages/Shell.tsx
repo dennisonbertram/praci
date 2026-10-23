@@ -2545,10 +2545,12 @@ export function ShellPage() {
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
 
-  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch;
+  // any other value (e.g. /app/settings redirecting to ?settings=general) opens General.
   useEffect(() => {
-    if (searchParams.get("settings") !== "privacy") return;
-    openSettings("privacy");
+    const section = settingsSectionFromParam(searchParams.get("settings"));
+    if (!section) return;
+    openSettings(section);
     const next = new URLSearchParams(searchParams);
     next.delete("settings");
     setSearchParams(next, { replace: true });
@@ -7546,6 +7548,11 @@ export function ShellPage() {
 }
 
 /** Whether the pane is still waiting for its chat: the bot list loads, or the route's bot is not in it yet. */
+export function settingsSectionFromParam(value: string | null): SettingsSection | null {
+  if (value === null) return null;
+  return value === "privacy" ? "privacy" : "general";
+}
+
 export function chatIsOpening(input: {
   hasChat: boolean;
   botsLoaded: boolean;

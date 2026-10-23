@@ -62,6 +62,7 @@ import {
   findDocumentsAndArtifacts,
   isRoutinesOnlyPanel,
   retryAfterStop,
+  settingsSectionFromParam,
   showsComputerCaption,
   Transcript,
 } from "./Shell";
@@ -76,6 +77,13 @@ afterEach(() => {
   container?.remove();
   root = null;
   container = null;
+});
+
+it("maps ?settings= to a settings section", () => {
+  expect(settingsSectionFromParam(null)).toBeNull();
+  expect(settingsSectionFromParam("privacy")).toBe("privacy");
+  expect(settingsSectionFromParam("general")).toBe("general");
+  expect(settingsSectionFromParam("nope")).toBe("general");
 });
 
 const bob: ComposerMention = { kind: "bot", id: "bot-2", name: "Bob" };
