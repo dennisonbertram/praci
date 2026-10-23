@@ -87,7 +87,7 @@ export function CompanyCalendar({
       <Link
         key={item.id}
         to="/app/legal?view=deadlines"
-        className="block break-words py-1 text-start text-sm underline underline-offset-4"
+        className="block truncate py-1 text-start text-xs underline underline-offset-4 sm:text-sm"
       >
         {content(item)}
       </Link>
@@ -95,7 +95,7 @@ export function CompanyCalendar({
       <button
         key={item.id}
         type="button"
-        className="block w-full break-words py-1 text-start text-sm underline underline-offset-4"
+        className="block w-full truncate py-1 text-start text-xs underline underline-offset-4 sm:text-sm"
         onClick={() => void open(item)}
       >
         {content(item)}
@@ -182,15 +182,15 @@ export function CompanyCalendar({
             ))}
           </ul>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-140 table-fixed border-collapse" aria-label={month}>
+          <div>
+            <table className="w-full table-fixed border-collapse" aria-label={month}>
               <thead>
                 <tr>
                   {Array.from({ length: 7 }, (_, day) => (
                     <th
                       key={day}
                       scope="col"
-                      className="p-2 text-start text-xs font-normal text-muted-foreground"
+                      className="p-1 text-start text-xs font-normal text-muted-foreground sm:p-2"
                     >
                       {new Intl.DateTimeFormat(undefined, {
                         weekday: "short",
@@ -207,7 +207,7 @@ export function CompanyCalendar({
                       const day = week * 7 + weekday - bounds.offset + 1;
                       const date = `${month}-${String(day).padStart(2, "0")}`;
                       return (
-                        <td key={weekday} className="h-24 border p-2 align-top">
+                        <td key={weekday} className="h-16 overflow-hidden border p-1 align-top sm:h-24 sm:p-2">
                           {day > 0 && day <= bounds.days && (
                             <>
                               <time dateTime={date} className="text-xs text-muted-foreground">

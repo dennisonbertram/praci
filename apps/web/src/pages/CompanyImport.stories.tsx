@@ -22,6 +22,7 @@ function mocks(status?: string) {
       factsFound: 8,
       inputTokensUsed: 1200,
       outputTokensUsed: 200,
+      lastError: status === "partial" ? "company_extraction_invalid_quote" : null,
     };
     session.progress.inputTokensUsed = 1200;
     session.progress.outputTokensUsed = 200;

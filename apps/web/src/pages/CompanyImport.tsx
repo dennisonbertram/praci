@@ -45,6 +45,9 @@ function statusName(status: string) {
   };
   return names[status] ?? status.replaceAll("_", " ");
 }
+function errorName(code: string) {
+  return code === "lease_expired" ? t`Import was interrupted` : t`Some files couldn't be read`;
+}
 function trackerSource(source: { sourceKind: string; scope: Record<string, unknown> }) {
   return (
     source.sourceKind === "github" ||
@@ -553,7 +556,7 @@ export function CompanyImportPage({
                     </div>
                     {source.lastError && (
                       <p className="text-sm text-destructive">
-                        {source.lastError.replaceAll("_", " ")}
+                        {errorName(source.lastError)}
                       </p>
                     )}
                   </div>

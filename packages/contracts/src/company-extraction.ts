@@ -145,3 +145,23 @@ export const CompanyGenericScopeSchema = z.strictObject({
       "Choose each tool once",
     ),
 });
+
+const compactName = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * The company profile is the space's own company. A model may label a customer or
+ * vendor named in the same document as the company; those become plain organisations.
+ */
+export function keepOwnCompany(extraction: CompanyExtraction, spaceName: string): CompanyExtraction {
+  const own = compactName(spaceName);
+  return {
+    ...extraction,
+    entities: extraction.entities.map((fact) => {
+      if (fact.entity.kind !== "company") return fact;
+      const name = compactName(fact.entity.displayName);
+      if (own && name && (name.startsWith(own) || own.startsWith(name))) return fact;
+      const { displayName, confidence } = fact.entity;
+      return { ...fact, entity: { kind: "organisation", displayName, confidence, attrs: {} } };
+    }),
+  };
+}

@@ -44,6 +44,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Month: Story = {};
+export const Phone: Story = { globals: { viewport: { value: "mobile1" } } };
 export const Agenda: Story = { args: { initialView: "agenda" } };
 export const Empty: Story = { beforeEach: () => mockRpc({ "company.calendar": [] }) };
 export const ErrorState: Story = {

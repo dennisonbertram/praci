@@ -111,7 +111,11 @@ vi.mock("@rakazo/db", () => ({
   updateCompanyImportRun: vi.fn(),
 }));
 
-import { CompanyImportWorkerError, createCompanyImportEngine } from "./company-import-engine.js";
+import {
+  CompanyImportWorkerError,
+  createCompanyImportEngine,
+  importFailureCode,
+} from "./company-import-engine.js";
 
 const actor: Actor = {
   spaceId: "space-1",
@@ -822,4 +826,18 @@ describe("company import engine", () => {
       expect(db.awaitCompanyImportConsent).toHaveBeenCalledTimes(1);
     },
   );
+});
+
+describe("importFailureCode", () => {
+  it("stores a short safe reason instead of a generic failure", () => {
+    expect(importFailureCode(new Error("company_extraction_invalid_quote"))).toBe(
+      "company_extraction_invalid_quote",
+    );
+    expect(importFailureCode(new SyntaxError("Unexpected token in secret document text"))).toBe(
+      "company_extraction_invalid_response",
+    );
+    expect(importFailureCode(new Error("connect ECONNREFUSED with document text"))).toBe(
+      "worker_failed",
+    );
+  });
 });

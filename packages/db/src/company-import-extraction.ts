@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { CompanyImportReadPage } from "@rakazo/adapter-kit";
 import type { Actor, CompanyEvidenceInput } from "@rakazo/contracts";
-import { CompanyExtractionSchema } from "@rakazo/contracts";
+import { CompanyExtractionSchema, keepOwnCompany } from "@rakazo/contracts";
 import type { Prisma } from "./client.js";
 import { companyWriter } from "./company.js";
 
@@ -46,7 +46,11 @@ export async function persistCompanyExtraction(
     runId: string;
   },
 ) {
-  const extraction = CompanyExtractionSchema.parse(input.extraction);
+  const space = await tx.space.findUniqueOrThrow({
+    where: { id: actor.spaceId },
+    select: { name: true },
+  });
+  const extraction = keepOwnCompany(CompanyExtractionSchema.parse(input.extraction), space.name);
   const writer = companyWriter(tx, actor);
   const refs = new Map<string, string>();
   const suppressed = new Set<string>();

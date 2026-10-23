@@ -227,6 +227,7 @@ export function SidebarFixture({
     investorsMode,
     fundraisingMode,
     contactsMode: false,
+    companyMode: false,
     dataRoomMode: false,
     artifactsMode: false,
     sidebarLayout: { folders: ["folder_workspace"], containers: { [ROOT_CONTAINER]: [] } },

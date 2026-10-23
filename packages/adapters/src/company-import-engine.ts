@@ -26,6 +26,7 @@ import {
   companyImporterSpawnKey,
 } from "@rakazo/contracts";
 import type { NotificationEvents, PrismaClient } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import {
   awaitCompanyImportConsent,
   awaitCompanyRefreshConsent,
@@ -102,6 +103,18 @@ export class CompanyImportWorkerError extends Error {
 }
 
 class CompanyImportConsentRequired extends Error {}
+
+/** A short stored reason for a failed unit. Never includes document or model text. */
+export function importFailureCode(error: unknown): string {
+  if (error instanceof CompanyImportWorkerError) return error.code;
+  if (error instanceof Error) {
+    // Extraction guards throw their own snake_case codes as the message.
+    if (/^company_[a-z0-9_]{1,60}$/.test(error.message)) return error.message;
+    if (error.name === "ZodError" || error.name === "SyntaxError")
+      return "company_extraction_invalid_response";
+  }
+  return "worker_failed";
+}
 
 type Model = AgentRunModel;
 
@@ -1070,7 +1083,14 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         await notifyRunCompletion(actor, payload.runId);
         return;
       }
-      const code = error instanceof CompanyImportWorkerError ? error.code : "worker_failed";
+      const code = importFailureCode(error);
+      // Code and error class only: error messages can quote document or model text.
+      getLogger().warn("company import unit failed", {
+        "company.import.run_id": payload.runId,
+        "company.import.unit_id": claimInput.unitId,
+        "company.import.error_code": code,
+        "company.import.error_name": error instanceof Error ? error.name : typeof error,
+      });
       await failCompanyImportUnit(deps.prisma, actor, {
         ...claimInput,
         errorCode: code,

@@ -72,6 +72,7 @@ import {
 import {
   ArrowLeft,
   BookUser,
+  Building2,
   CalendarClock,
   ChartColumn,
   CodeXml,
@@ -2305,6 +2306,7 @@ export function ShellPage() {
         keywords: t`safe, round, raise`,
         icon: <HandCoins {...icon} />,
       },
+      { id: "company", label: t`Company`, icon: <Building2 {...icon} /> },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
@@ -4604,6 +4606,7 @@ export function ShellPage() {
         investorsMode={investorsMode}
         fundraisingMode={fundraisingMode}
         contactsMode={contactsMode}
+        companyMode={companyMode}
         dataRoomMode={dataRoomMode}
         artifactsMode={artifactsMode}
         hiddenPages={hiddenPages}
