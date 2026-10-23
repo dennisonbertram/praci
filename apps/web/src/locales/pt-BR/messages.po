@@ -3522,6 +3522,10 @@ msgstr ""
 msgid "Could not load the cap table, so holdings are missing."
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not load the embedding model"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr ""
@@ -6274,6 +6278,13 @@ msgstr ""
 msgid "Loading model catalog…"
 msgstr "Carregando catálogo de modelos..."
 
+#: src/pages/ModelBackupsSettings.tsx
+#: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "Loading models…"
+msgstr ""
+
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Carregando Visualização…"
@@ -6725,10 +6736,6 @@ msgstr "O modelo \"{modelId}\" não foi listado."
 #: src/pages/Onboarding.tsx
 msgid "Model id"
 msgstr "ID do modelo"
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Model options"
-msgstr "Opções do modelo"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Model spend uses your provider keys."
@@ -7305,7 +7312,10 @@ msgstr ""
 msgid "No matching artifacts on this page."
 msgstr ""
 
+#: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "No matching models"
 msgstr ""
 
@@ -9598,7 +9608,10 @@ msgstr ""
 msgid "Search mail, e.g. from:sam has:attachment"
 msgstr ""
 
+#: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "Search models"
 msgstr ""
 

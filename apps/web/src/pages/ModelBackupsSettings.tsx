@@ -7,7 +7,8 @@ import {
   moveBackupChoice,
   sameBackupChoices,
 } from "@rakazo/contracts";
-import { Button, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import { Button } from "@rakazo/ui-web";
+import { ModelPicker } from "@rakazo/ui-web/components/ui/model-picker";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { rpc, selectedSpaceId } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -339,42 +340,42 @@ export function ModelBackupsSettings({
                 <label htmlFor="model-backup-picker">
                   <Trans>Add connected model</Trans>
                 </label>
-                <NativeSelect
+                <ModelPicker
                   id="model-backup-picker"
-                  aria-label={t`Add connected model`}
+                  label={t`Add connected model`}
+                  searchLabel={t`Search models`}
+                  emptyLabel={t`No matching models`}
+                  loadingLabel={t`Loading models…`}
                   className="mt-1.5 w-full text-foreground"
                   value={addableKey}
+                  options={[
+                    { value: "", label: t`Select a connected model` },
+                    ...addableOptions.map((option) => ({
+                      ...option,
+                      id: option.modelId,
+                      value: backupChoiceKey(option),
+                      label: `${option.providerName} · ${option.label}`,
+                    })),
+                  ]}
                   disabled={
                     !editable ||
                     currentState.draft.length >= MAX_MODEL_BACKUPS ||
                     addableOptions.length === 0
                   }
-                  onChange={(event) => {
+                  onChange={(value) => {
                     if (!editable) return;
                     setState((previous) =>
                       previous.scopeKey === activeScopeKey
                         ? {
                             ...previous,
-                            selectedKey: event.target.value,
+                            selectedKey: value,
                             error: null,
                             notice: null,
                           }
                         : previous,
                     );
                   }}
-                >
-                  <NativeSelectOption value="">
-                    <Trans>Select a connected model</Trans>
-                  </NativeSelectOption>
-                  {addableOptions.map((option) => (
-                    <NativeSelectOption
-                      key={backupChoiceKey(option)}
-                      value={backupChoiceKey(option)}
-                    >
-                      {option.providerName} · {option.label}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                />
               </div>
               <Button
                 type="button"

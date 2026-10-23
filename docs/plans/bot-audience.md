@@ -216,7 +216,7 @@ Principle (`AGENTS.md`): every visible word is UI; reveal only when relevant.
    - Why necessary: the owner has to be able to set it; the helper appears only when the choice changes behaviour. Removing the helper would hide that tools were just turned off; showing it always repeats the interface.
 2. **Connector warning,** shown only on switching to External when the bot still has explicit connector access: "Still has access to: {connector names}". One line, no dialog.
 3. **Bot header chip:** small "External" tag next to the bot name, shown only for External bots. Internal bots show nothing. Needed so the owner can tell, in a list of bots, which ones are public-facing.
-4. **Approval card for a private read** in a marked run: reuse the existing approval card. No new buttons. The card's existing reason line gets a fixed addition only in marked runs: "Requested by an external bot". 
+4. **Approval card for a private read** in a marked run: reuse the existing approval card. No new buttons. The card's existing reason line gets a fixed addition only in marked runs: "Requested by an external bot".
 5. **Held share card:** title "Share with {name}?" (name of the External bot), body is the exact text, buttons "Share" and "Don't share". Reuses the approval card component.
 6. **Messages.** The existing "Messaged X" row is unchanged. The External bot's fixed reply text (server-written) is: "This needs the owner's approval before it can be shared." and, on decline, "That isn't available."
 
