@@ -654,6 +654,7 @@ describe("GTM executor gates", () => {
       "mail_send",
       "gtm_post",
       "request_takeover",
+      "request_secret",
     ]) {
       expect(names).not.toContain(name);
     }

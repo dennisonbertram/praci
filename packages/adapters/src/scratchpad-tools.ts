@@ -1,5 +1,6 @@
 import type { ScratchpadCategory, ScratchpadChannel } from "@rakazo/contracts";
 import {
+  emailCompliance,
   ScratchpadCategorySchema,
   ScratchpadChannelSchema,
   ScratchpadDateTimeSchema,
@@ -20,6 +21,8 @@ const GATED_CATEGORIES = new Set<ScratchpadCategory>([
   "outbound_email",
 ]);
 const DRAFT_ONLY_CHANNELS = new Set<ScratchpadChannel>(["reddit", "hn", "producthunt"]);
+export const EMAIL_COMPLIANCE_ERROR =
+  "Add an unsubscribe line and a postal address to the email before approving it.";
 const TITLE_MAX = 200;
 const NOTES_MAX = 4_000;
 const TARGET_MAX = 200;
@@ -111,6 +114,11 @@ function parseAbsoluteDateTime(value: unknown): Date | null {
   return parsed.success ? new Date(parsed.data) : null;
 }
 
+function emailIsCompliant(body: string): boolean {
+  const checks = emailCompliance(body);
+  return checks.unsubscribe && checks.postalAddress;
+}
+
 function isEffectKey(value: unknown): value is string {
   return typeof value === "string" && value.length <= 300 && EFFECT_KEY.test(value);
 }
@@ -144,7 +152,7 @@ function isValidActorProof(
   itemId: string,
   founder: boolean,
 ): boolean {
-  if (category === "public_post") return isZernioProof(proof) || isHttpUrl(proof);
+  if (category === "public_post") return isHttpUrl(proof);
   if (category === "create_account") return isHttpUrl(proof);
   if (founder && category === "draft") return isHttpUrl(proof);
   if (founder && category === "outbound_email" && isEmailProof(proof, itemId)) return true;
@@ -159,10 +167,12 @@ function canReplaceActorProof(
   founder: boolean,
 ): boolean {
   if (!isValidActorProof(category, nextProof, itemId, founder)) return false;
-  if (previousProof === null) return true;
-  if (category !== "public_post") return false;
-  if (isEffectKey(previousProof)) return isZernioProof(nextProof) || isHttpUrl(nextProof);
-  return isZernioProof(previousProof) && isHttpUrl(nextProof);
+  // Only server code (gtm-posting) writes effect stamps and zernio: proof; a post's
+  // proof may only move from a server-written zernio:<id> to its live URL.
+  if (category === "public_post") {
+    return isZernioProof(previousProof) && !isEffectKey(previousProof);
+  }
+  return previousProof === null;
 }
 
 function updatedAtAfter(existing: ScratchpadRow, now: Date): Date {
@@ -433,6 +443,13 @@ async function updateScratchpadItem(
     ) {
       return { error: "Re-approve requires the current version of an uncertain post stamp." };
     }
+    const inFlight = await deps.prisma.externalEffect.findUnique({
+      where: { idempotencyKey: existing.proof },
+      select: { spaceId: true, status: true },
+    });
+    if (inFlight && inFlight.spaceId === input.spaceId && inFlight.status === "executing") {
+      return { error: "This post is still being sent; try again shortly." };
+    }
     return applyScratchpadUpdate(
       deps.prisma,
       existing,
@@ -482,6 +499,9 @@ async function updateScratchpadItem(
     if (category === "create_account" && existing.channel === "directory") {
       return approveDirectoryItem(deps, input, existing, true);
     }
+    if (category === "outbound_email" && !emailIsCompliant(existing.notes)) {
+      return { error: EMAIL_COMPLIANCE_ERROR };
+    }
     return applyScratchpadUpdate(
       deps.prisma,
       existing,
@@ -503,6 +523,21 @@ async function updateScratchpadItem(
       category === "outbound_email" ? isEmailProof(proof, existing.id) : isHttpUrl(proof);
     if (!hasCompletionProof) {
       return { error: "A valid proof is required to complete this item." };
+    }
+    if (category === "outbound_email") {
+      const sent = await deps.prisma.composeSend.findUnique({
+        where: {
+          spaceId_userId_clientId: {
+            spaceId: input.spaceId,
+            userId: input.userId,
+            clientId: existing.id,
+          },
+        },
+        select: { state: true },
+      });
+      if (sent?.state !== "sent" && sent?.state !== "unknown") {
+        return { error: "A sent email is required to complete this item." };
+      }
     }
     if (!founder && (existing.status !== "open" || !existing.approvedAt)) {
       return { error: "A gated item must be approved and open before an agent can complete it." };
