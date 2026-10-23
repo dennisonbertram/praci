@@ -165,7 +165,7 @@ import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
-import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
+import { OpeningSpace } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
@@ -4319,7 +4319,7 @@ export function ShellPage() {
                 onAsk={(text) => void sendMessage(text, [], newClientId())}
               />
             ) : !activeSnapshot ? (
-              <ThreadSkeleton />
+              <OpeningSpace />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}
