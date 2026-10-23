@@ -264,7 +264,7 @@ export function PreviewActions({
         <Download aria-hidden="true" />
       </IconAction>
       {onFullScreen ? (
-        <IconAction label={t`Full screen`} onClick={onFullScreen}>
+        <IconAction label={t`Full screen`} className={phoneButtons} onClick={onFullScreen}>
           <Maximize2 aria-hidden="true" />
         </IconAction>
       ) : null}
