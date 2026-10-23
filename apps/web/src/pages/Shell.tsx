@@ -184,7 +184,7 @@ import { glanceBadge, rowStatusKind, StatusMark } from "../components/sidebar-gl
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
+import { focusQuestionOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { clearTourStep, tourInProgress } from "../components/tour/TourPopover";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
@@ -2092,6 +2092,10 @@ export function ShellPage() {
       "",
       bootstrapMe?.spaceId,
       alone ? null : t`Personal`,
+      (bot) =>
+        (isPageOrIntegrationAgent(bot.spawnKey) || isGtmAgentSpawnKey(bot.spawnKey)) &&
+        !bot.preview &&
+        bot.status === "idle",
     );
   }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
@@ -2158,6 +2162,15 @@ export function ShellPage() {
     if (!bootstrapMe?.spaceId) return;
     document.querySelector("[data-sidebar-current]")?.scrollIntoView?.({ block: "nearest" });
   }, [bootstrapMe?.spaceId]);
+
+  // A bot just made or opened from elsewhere can sit under "+N more"; bring its row into view.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: also when the row first appears
+  useEffect(() => {
+    if (!botId) return;
+    sidebarRef.current
+      ?.querySelector(`[data-roster-bot-id="${CSS.escape(botId)}"]`)
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [botId, listedBots.length]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -2588,10 +2601,15 @@ export function ShellPage() {
     const section = settingsSectionFromParam(searchParams.get("settings"));
     if (!section) return;
     openSettings(section);
+    // The redirect from /app to the first chat mounts the page again and drops its state, so the
+    // query stays until the redirect has happened; the new page then opens Settings from it.
+    if (pathname === "/app" && !(initialBotsLoaded && firstThreadRoute(bots, groups) === "/app")) {
+      return;
+    }
     const next = new URLSearchParams(searchParams);
     next.delete("settings");
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, pathname, initialBotsLoaded, bots, groups]);
 
   useEffect(() => {
     const messageId = searchParams.get("m");
@@ -2892,20 +2910,12 @@ export function ShellPage() {
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
   // Contacts and Artifacts have no agent of their own: their Ask opens Chief, the first bot.
   const chiefId = bots.find((bot) => bot.spawnKey === FIRST_BOT_SPAWN_KEY && !bot.archivedAt)?.id;
-  // Chief's app cards come first; the tour starts once one is connected or another page is open.
-  const connectCardsWaiting =
-    active?.id === chiefId &&
-    snapshot?.botId === chiefId &&
-    connectCardsOpen(snapshot?.messages ?? []);
+  // The tour opens as soon as the first-question card is answered or dismissed, not when apps connect.
   // Not before the account loads: the sidebar pages render only then, and the tour lists its stops once.
   const tourOpen =
     bootstrapMe !== undefined &&
     (tourRestart ||
-      (bootstrapMe?.tourSeen === false &&
-        !tourEnded &&
-        bots.length > 0 &&
-        !firstQuestionOpen &&
-        !connectCardsWaiting));
+      (bootstrapMe?.tourSeen === false && !tourEnded && bots.length > 0 && !firstQuestionOpen));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
   // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
   // (for this session only; the saved preference is unchanged).
@@ -5113,12 +5123,13 @@ export function ShellPage() {
                       isIntegrationAgentSpawnKey(rowKey(row)));
                   const foldable = !rail && !folder && group.kind !== "pinned";
                   // A page makes its agent when opened; it is listed once it has a message or a run.
-                  const unusedPageAgent = (row: (typeof nestedRows)[number]) =>
+                  const untouchedPageAgent = (row: (typeof nestedRows)[number]) =>
                     row.item.kind === "bot" &&
                     isPageAgent(row) &&
                     !row.item.chat.preview &&
-                    row.item.chat.status === "idle" &&
-                    row.item.chat.id !== active?.id;
+                    row.item.chat.status === "idle";
+                  const unusedPageAgent = (row: (typeof nestedRows)[number]) =>
+                    untouchedPageAgent(row) && row.item.chat.id !== active?.id;
                   const inActivity = (row: (typeof nestedRows)[number]) =>
                     activityMode &&
                     !rail &&
@@ -5333,7 +5344,8 @@ export function ShellPage() {
                                   label={email ? t`Email chats` : t`Page agents`}
                                   testId={email ? "sidebar-email-chats" : undefined}
                                   open={email ? showEmailChats : showPageAgents}
-                                  count={rows.length}
+                                  // The open page's own agent is listed but not counted, so the count is the same on every page.
+                                  count={rows.filter((row) => !untouchedPageAgent(row)).length}
                                   needsYou={
                                     heldFor !== null ||
                                     rows.some(
