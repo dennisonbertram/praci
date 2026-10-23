@@ -353,7 +353,10 @@ function Legal({
             <span className="min-w-0 text-[11px]">
               {needsConsent ? null : running ? (
                 (() => {
-                  const minutes = Math.floor((Date.now() - scanStart.current) / 60_000);
+                  // scanStart is 0 until the effect below runs, so show no elapsed time before then.
+                  const minutes = scanStart.current
+                    ? Math.floor((Date.now() - scanStart.current) / 60_000)
+                    : 0;
                   return minutes > 0 ? (
                     <Trans>Scanning for {minutes} min</Trans>
                   ) : (

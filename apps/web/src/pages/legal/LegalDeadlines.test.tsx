@@ -134,3 +134,14 @@ it("names the deadline that replaced a flagged one", async () => {
   expect(container.textContent).toContain("Replaced by");
   expect(container.textContent).toContain("Renewal notice deadline");
 });
+
+it("does not call a deadline of another kind a replacement", async () => {
+  const old = { ...mk("old"), kind: "notice", removalProposed: true };
+  const other = { ...mk("pay"), title: "Payment due", kind: "payment", removalProposed: false };
+  const container = await mount([
+    old as unknown as LegalDeadline,
+    other as unknown as LegalDeadline,
+  ]);
+  expect(container.textContent).not.toContain("Replaced by");
+  expect(container.textContent).toContain("The last scan thinks this no longer applies.");
+});

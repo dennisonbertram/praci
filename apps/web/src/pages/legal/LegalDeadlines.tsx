@@ -203,7 +203,7 @@ export function LegalDeadlines({
           const late = -days;
           // The visible title includes the contract, so the button names do too.
           const name = fullTitle(deadline);
-          // The open deadline of the same contract and date that the scan kept: the one to keep instead.
+          // The open deadline of the same contract, kind and date that the scan kept: the one to keep instead.
           const replacement = deadline.removalProposed
             ? deadlines.find(
                 (other) =>
@@ -211,7 +211,8 @@ export function LegalDeadlines({
                   other.id !== deadline.id &&
                   other.dueDate === deadline.dueDate &&
                   other.dataRoomItemId === deadline.dataRoomItemId &&
-                  other.contractTitle === deadline.contractTitle,
+                  other.contractTitle === deadline.contractTitle &&
+                  other.kind === deadline.kind,
               )
             : undefined;
           return (
