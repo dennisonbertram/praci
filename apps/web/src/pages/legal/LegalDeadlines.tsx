@@ -262,26 +262,6 @@ export function LegalDeadlines({
                     {maskCurrencyWhenHidden(deadline.sourceQuote)}
                   </blockquote>
                 ) : null}
-                {deadline.removalProposed ? (
-                  <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                    {replacement ? (
-                      <Trans>
-                        Replaced by {maskCurrencyWhenHidden(replacement.title)} on{" "}
-                        {fullDay(replacement.dueDate)}.
-                      </Trans>
-                    ) : (
-                      <Trans>The last scan thinks this no longer applies.</Trans>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={t`Keep ${name}`}
-                      onClick={() => void keep(deadline)}
-                    >
-                      <Trans>Keep</Trans>
-                    </Button>
-                  </p>
-                ) : null}
                 {rowNote(deadline.notes) ? (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {maskCurrencyWhenHidden(rowNote(deadline.notes))}
@@ -317,17 +297,47 @@ export function LegalDeadlines({
                   >
                     <Trans>Done</Trans>
                   </Button>
+                  {deadline.removalProposed ? null : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title={t`Not a real deadline: hide it`}
+                      aria-label={t`Dismiss ${name}`}
+                      onClick={() => void close(deadline, "dismissed")}
+                    >
+                      <Trans>Dismiss</Trans>
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {deadline.removalProposed ? (
+                <div className="flex basis-full flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  {replacement ? (
+                    <Trans>
+                      Replaced by {maskCurrencyWhenHidden(replacement.title)} on{" "}
+                      {fullDay(replacement.dueDate)}.
+                    </Trans>
+                  ) : (
+                    <Trans>The last scan thinks this no longer applies.</Trans>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t`Keep ${name}`}
+                    onClick={() => void keep(deadline)}
+                  >
+                    <Trans>Keep this deadline</Trans>
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    title={t`Not a real deadline: hide it`}
-                    aria-label={t`Dismiss ${name}`}
+                    aria-label={t`Remove ${name}`}
                     onClick={() => void close(deadline, "dismissed")}
                   >
-                    <Trans>Dismiss</Trans>
+                    <Trans>Remove this one</Trans>
                   </Button>
                 </div>
-              </div>
+              ) : null}
             </li>
           );
         })}

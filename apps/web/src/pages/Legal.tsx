@@ -32,7 +32,6 @@ import { LegalDeadlines } from "./legal/LegalDeadlines";
 
 const VIEWS = ["contracts", "deadlines", "graph"] as const;
 type View = (typeof VIEWS)[number];
-const LEGAL_PATH = "/app/legal";
 
 const deadlineKey = (d: LegalDeadline) => [d.title, d.dueDate, d.notes].join("|");
 const deadlineQuestion = (deadline: LegalDeadline) => {
@@ -496,22 +495,26 @@ function Legal({
       ) : (
         <>
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
-            <TabsList
-              className="max-w-full justify-start overflow-x-auto rounded-full"
-              aria-label={t`View`}
-            >
-              <TabsTrigger value="contracts" className="rounded-full px-2 sm:px-3">
+            <TabsList className="max-w-full justify-start rounded-full" aria-label={t`View`}>
+              <TabsTrigger value="contracts" className="rounded-full px-3">
                 <Trans>Contracts</Trans> {counts.contracts}
               </TabsTrigger>
-              <TabsTrigger value="deadlines" className="rounded-full px-2 sm:px-3">
+              <TabsTrigger value="deadlines" className="rounded-full px-3">
                 <Trans>Deadlines</Trans> {counts.openDeadlines}
                 {overdue > 0 ? (
-                  <span className="ms-1 text-destructive">
-                    <Trans>{overdue} overdue</Trans>
-                  </span>
+                  <>
+                    <span className="ms-1 hidden text-destructive sm:inline">
+                      <Trans>{overdue} overdue</Trans>
+                    </span>
+                    {/* On a phone the strip has no room for the words: a dot, with the words for screen readers. */}
+                    <span className="ms-1 size-1.5 shrink-0 rounded-full bg-destructive sm:hidden" />
+                    <span className="sr-only sm:hidden">
+                      <Trans>{overdue} overdue</Trans>
+                    </span>
+                  </>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="graph" className="rounded-full px-2 sm:px-3">
+              <TabsTrigger value="graph" className="rounded-full px-3">
                 <Trans>Graph</Trans>
               </TabsTrigger>
             </TabsList>
@@ -598,11 +601,9 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
                   ? `${deadline.title}: ${deadline.contractTitle}`
                   : deadline.title,
               )}
-              {deadline.status === "dismissed" ? (
-                <span className="ms-2 font-normal text-muted-foreground">
-                  <Trans>Dismissed</Trans>
-                </span>
-              ) : null}
+              <span className="ms-2 font-normal text-muted-foreground">
+                {deadline.status === "dismissed" ? <Trans>Dismissed</Trans> : <Trans>Done</Trans>}
+              </span>
             </span>
             <span className="flex items-center gap-2">
               <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
