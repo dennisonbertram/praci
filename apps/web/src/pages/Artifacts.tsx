@@ -46,6 +46,7 @@ import { Tip } from "../components/data-room/FilterBar";
 import { PickFilter, SearchField } from "../components/ListControls";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { artifactDisplayName as displayName } from "../lib/artifact-name";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -493,6 +494,7 @@ function BrowsingPane({
         {[0, 1, 2, 3].map((n) => (
           <Skeleton key={n} className="h-8 w-full" />
         ))}
+        <StillLoading />
       </div>
     );
   }

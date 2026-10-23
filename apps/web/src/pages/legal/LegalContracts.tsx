@@ -131,12 +131,19 @@ export function LegalContracts({
             <li
               key={contract.id}
               onClick={open(contract)}
-              className="cursor-pointer border-t border-border py-2.5 text-sm"
+              className="cursor-pointer border-t border-border py-2 text-sm"
             >
               <div className="flex items-center justify-between gap-3">
                 <Title contract={contract} />
                 <span className="flex shrink-0 items-center gap-2">
-                  {showValue ? <span className="tabular-nums">{value(contract)}</span> : null}
+                  {showValue ? (
+                    <span className="tabular-nums">
+                      <span className="me-1 text-xs text-muted-foreground">
+                        <Trans>Value</Trans>
+                      </span>
+                      {value(contract)}
+                    </span>
+                  ) : null}
                   <Status status={contract.status} />
                 </span>
               </div>

@@ -144,8 +144,11 @@ function OverTime({
   const top = niceScale(Math.max(...buckets.map((b) => b.count))).top;
   return (
     <div>
-      <div className="flex h-32 items-stretch gap-px">
-        <span className="me-1 self-start text-xs text-muted-foreground tabular-nums">{top}</span>
+      <div className="flex h-32 items-stretch gap-px border-b border-border">
+        <span className="me-1 flex flex-col justify-between text-xs text-muted-foreground tabular-nums">
+          <span>{top}</span>
+          <span>0</span>
+        </span>
         {buckets.map((bucket) => (
           <Tip key={bucket.key} label={`${bucketLabel(bucket.key)}: ${bucket.count}`}>
             <button

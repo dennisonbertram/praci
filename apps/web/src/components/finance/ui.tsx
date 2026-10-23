@@ -50,6 +50,7 @@ import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
 import { ShowAmountsButton } from "../HideAmountsToggle";
 import { PageNavButton } from "../PageHeader";
+import { StillLoading } from "../ShellSkeleton";
 
 export type FinanceSpace = { id: string; name: string };
 
@@ -509,6 +510,7 @@ export function DetailPage({
             <Skeleton className="h-7 w-48" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-48 w-full" />
+            <StillLoading onRetry={onRetry} />
           </div>
         ) : (
           <>

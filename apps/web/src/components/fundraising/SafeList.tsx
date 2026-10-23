@@ -201,6 +201,7 @@ export function AttentionStrip({
 function SafeRow({
   safe,
   round,
+  contactName,
   onOpen,
   onMark,
   onCancel,
@@ -210,6 +211,7 @@ function SafeRow({
 }: {
   safe: Safe;
   round: FundraiseRound | null;
+  contactName?: string;
   onOpen: () => void;
   onMark: (step: SafeStep) => void;
   onCancel: () => void;
@@ -228,6 +230,7 @@ function SafeRow({
         : t`Post-money cap ${usd(safe.capCents)}`
       : null,
     native ? null : t`from Mercury`,
+    contactName && contactName !== safe.investorName ? contactName : null,
   ].filter(Boolean);
   return (
     <li data-safe-id={safe.id} className="flex min-h-13 items-center gap-2 border-t border-border">
@@ -328,6 +331,7 @@ function SafeRow({
 export function SafeList({
   safes,
   round,
+  contacts = [],
   onOpen,
   onMark,
   onCancel,
@@ -337,6 +341,8 @@ export function SafeList({
 }: {
   safes: readonly Safe[];
   round: FundraiseRound | null;
+  /** Names a Mercury row's assigned contact. */
+  contacts?: readonly { id: string; name: string }[];
   onOpen: (safe: Safe) => void;
   onMark: (safe: Safe, step: SafeStep) => void;
   onCancel: (safe: Safe) => void;
@@ -358,6 +364,7 @@ export function SafeList({
           key={safe.id}
           safe={safe}
           round={round}
+          contactName={contacts.find((c) => c.id === safe.contactId)?.name}
           onOpen={() => onOpen(safe)}
           onMark={(step) => onMark(safe, step)}
           onCancel={() => onCancel(safe)}

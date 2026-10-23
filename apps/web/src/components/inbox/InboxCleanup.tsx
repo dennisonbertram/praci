@@ -294,7 +294,7 @@ export function InboxCleanup({
                 </Trans>
               </p>
               {newsletters > 0 && onOpenNewsletters ? (
-                <Button variant="outline" size="sm" onClick={onOpenNewsletters}>
+                <Button variant="outline" size="sm" className="mt-2" onClick={onOpenNewsletters}>
                   <Trans>Open Newsletters</Trans>
                 </Button>
               ) : null}

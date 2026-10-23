@@ -6211,6 +6211,7 @@ export function ShellPage() {
               onConsentChange={setLegalConsentMissing}
               onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
+              agentBusy={transcriptRunning}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}
               onSwitchSpace={(spaceId) => {
