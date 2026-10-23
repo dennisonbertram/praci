@@ -42,6 +42,7 @@ targets:
     info:
       path: Praci-Info.plist
       properties:
+        UILaunchScreen: {}
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - rakazo
