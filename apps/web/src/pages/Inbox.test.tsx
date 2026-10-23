@@ -580,6 +580,15 @@ it("says so when a sent reply moves its mail out of Needs reply", async () => {
   expect(c.textContent).toContain("Sent. Moved out of Needs reply");
 });
 
+it("does not say Sent when a Needs reply mail is archived instead of sent", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:inbox-changed")));
+  await dwell(100);
+  expect(c.textContent).not.toContain("Sent. Moved out of Needs reply");
+});
+
 it("archives the selected row with e, moves the selection on, and keeps it out of the list", async () => {
   const c = await render();
   await press("j");
@@ -1064,6 +1073,9 @@ it("does not say First sync while the list query has not answered, and offers Tr
       await vi.advanceTimersByTimeAsync(15_000);
     });
     expect(tryAgain()).toBeDefined();
+    const before = rpcMock.todos.mock.calls.length;
+    await act(async () => tryAgain()?.click());
+    expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
   } finally {
     vi.useRealTimers();
   }

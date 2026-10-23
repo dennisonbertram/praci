@@ -384,21 +384,25 @@ function InboxListPage({
   const repliesWhenSent = useRef<string[] | null>(null);
   const needsReplyIds = useRef<string[]>([]);
   useEffect(() => {
+    const onChanged = () => {
+      setReload((n) => n + 1);
+      onRefreshed();
+    };
+    // Only an actual send arms the "Sent. Moved out of Needs reply" confirmation.
     const onSent = () => {
       repliesWhenSent.current = needsReplyIds.current;
       // A row archived much later is not an answer to this send.
       setTimeout(() => {
         repliesWhenSent.current = null;
       }, 20_000);
-      setReload((n) => n + 1);
-      onRefreshed();
+      onChanged();
     };
     window.addEventListener(MAIL_SENT_EVENT, onSent);
     // An agent card archived or marked a message: the list shows it at once.
-    window.addEventListener(INBOX_CHANGED_EVENT, onSent);
+    window.addEventListener(INBOX_CHANGED_EVENT, onChanged);
     return () => {
       window.removeEventListener(MAIL_SENT_EVENT, onSent);
-      window.removeEventListener(INBOX_CHANGED_EVENT, onSent);
+      window.removeEventListener(INBOX_CHANGED_EVENT, onChanged);
     };
   }, [onRefreshed]);
 
@@ -799,6 +803,7 @@ function InboxListPage({
     restartSortWatch();
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
+    setTodoRefresh((n) => n + 1);
   };
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));

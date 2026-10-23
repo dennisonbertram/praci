@@ -103,9 +103,9 @@ export const SaveFails: Story = {
     });
   },
   play: async ({ canvasElement }) => {
-    await userEvent.click(
-      within(canvasElement).getByRole("checkbox", { name: "Confirm the demo meeting" }),
-    );
+    const card = within(canvasElement);
+    await userEvent.click(card.getByRole("button", { expanded: false }));
+    await userEvent.click(card.getByRole("checkbox", { name: "Confirm the demo meeting" }));
   },
 };
 
