@@ -1304,6 +1304,7 @@ msgstr ""
 msgid "Always allowed"
 msgstr "始终允许"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1658,6 +1659,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "{timeSelect}"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2432,6 +2437,10 @@ msgstr "选择机器人形状和颜色，或上传图片"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Choose a bot…"
 msgstr "选择 Bot…"
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
+msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Choose a Google Sheet"
