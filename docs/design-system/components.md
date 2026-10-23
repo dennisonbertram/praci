@@ -3,9 +3,15 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
+<<<<<<< HEAD
 - Web and shared component files with stories: 280 of 280
 - Web and shared components: 738
 - Mobile components: 138 in 95 files, mobile — native story pending
+=======
+- Web and shared component files with stories: 279 of 279
+- Web and shared components: 737
+- Mobile components: 140 in 97 files, mobile — native story pending
+>>>>>>> origin/devin/1792529933-native-data-room
 - SwiftUI views: 3 in 2 files, native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -418,6 +424,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | ArtifactsScreen, Chip, ArtifactRow | [apps/mobile/app/artifacts.tsx](../../apps/mobile/app/artifacts.tsx) | mobile — native story pending | mobile |
 | BotSettingsScreen | [apps/mobile/app/bot-settings.tsx](../../apps/mobile/app/bot-settings.tsx) | mobile — native story pending | mobile |
 | Computer, ComputerReleaseActions, ScreenWebView | [apps/mobile/app/computer.tsx](../../apps/mobile/app/computer.tsx) | mobile — native story pending | mobile |
+| DataRoomItemScreen | [apps/mobile/app/data-room-item.tsx](../../apps/mobile/app/data-room-item.tsx) | mobile — native story pending | mobile |
+| DataRoomScreen | [apps/mobile/app/data-room.tsx](../../apps/mobile/app/data-room.tsx) | mobile — native story pending | mobile |
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
 | InboxAttachmentScreen | [apps/mobile/app/inbox-attachment.tsx](../../apps/mobile/app/inbox-attachment.tsx) | mobile — native story pending | mobile |
