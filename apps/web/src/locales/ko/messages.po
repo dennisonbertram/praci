@@ -1819,6 +1819,10 @@ msgstr "뒤로"
 msgid "Back to artifacts"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Back to chats"
+msgstr ""
+
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Back to email"
 msgstr ""
@@ -7167,6 +7171,10 @@ msgstr "아직 봇 활동이 없습니다."
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "No bots yet"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr "아직 연결된 채팅 앱이 없습니다."
@@ -7672,8 +7680,8 @@ msgid "Open"
 msgstr "열기"
 
 #. placeholder {0}: agent.name
-#. placeholder {0}: group.title
 #. placeholder {0}: ref.name
+#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx

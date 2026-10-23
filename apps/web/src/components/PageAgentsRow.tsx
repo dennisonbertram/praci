@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
 import { ChevronDown } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { needsAnswerLabel } from "../lib/roster-status";
 
 /**
@@ -26,12 +27,20 @@ export function PageAgentsRow({
   onToggle: () => void;
 }) {
   const { t } = useLingui();
+  const rowRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(open);
+  // Opening adds rows below the fold, behind the "+N more" bar: put the header at the top so they show.
+  useEffect(() => {
+    if (open && !wasOpen.current) rowRef.current?.scrollIntoView?.({ block: "start" });
+    wasOpen.current = open;
+  }, [open]);
   return (
     <button
       type="button"
       data-testid={testId}
       data-roster-fold=""
       aria-expanded={open}
+      ref={rowRef}
       onClick={onToggle}
       className="mb-1 flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-start text-[13px] font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
