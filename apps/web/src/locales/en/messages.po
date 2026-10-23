@@ -12163,8 +12163,8 @@ msgid "You have control"
 msgstr "You have control"
 
 #: src/components/inbox/CleanupSenderRow.tsx
-msgid "You read most of these"
-msgstr "You read most of these"
+msgid "You read most of these, so keep them unless you are sure"
+msgstr "You read most of these, so keep them unless you are sure"
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
