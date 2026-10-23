@@ -3,6 +3,13 @@ import * as z from "zod";
 /** Optional sidebar pages a user can add. `available: false` templates cannot be added yet. */
 export const SIDEBAR_PAGE_TEMPLATES = [
   {
+    key: "company",
+    route: "/app/company",
+    platforms: ["web", "desktop"],
+    available: false,
+    ownerOnly: true,
+  },
+  {
     key: "team-health",
     route: "/app/team-health",
     platforms: ["web", "desktop"],

@@ -29,6 +29,11 @@ import {
   CapTableStateSchema,
 } from "./carta.js";
 import {
+  CompanyEdgeEditInputSchema,
+  CompanyEntityEditInputSchema,
+  CompanyEventEditInputSchema,
+} from "./company.js";
+import {
   CompanyImportActionInputSchema,
   CompanyImportConsentInputSchema,
   CompanyImportCreateInputSchema,
@@ -38,6 +43,7 @@ import {
   CompanyImportProgressSchema,
   CompanyImportRunIdInputSchema,
 } from "./company-import.js";
+import { CompanyFactRefSchema, CompanyFactSchema, CompanyPageSchema } from "./company-page.js";
 import {
   ContactLinkedSchema,
   ContactListInputSchema,
@@ -1480,6 +1486,15 @@ export const appContract = {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
+  },
+  company: {
+    page: oc.output(CompanyPageSchema),
+    fact: oc.input(CompanyFactRefSchema).output(CompanyFactSchema.nullable()),
+    confirm: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
+    reject: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
+    editEntity: oc.input(CompanyEntityEditInputSchema).output(z.object({ ok: z.literal(true) })),
+    editEdge: oc.input(CompanyEdgeEditInputSchema).output(z.object({ ok: z.literal(true) })),
+    editEvent: oc.input(CompanyEventEditInputSchema).output(z.object({ ok: z.literal(true) })),
   },
   companyImport: {
     create: oc.input(CompanyImportCreateInputSchema).output(CompanyImportProgressSchema),

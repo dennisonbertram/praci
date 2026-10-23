@@ -273,6 +273,7 @@ import { useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { workingActivity } from "../lib/working-activity";
 import type { ContextMenuPosition } from "./BotContextMenu";
+import { CompanyPage } from "./Company";
 import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
 import { DevinPage } from "./Devin";
@@ -1121,6 +1122,7 @@ export function ShellPage() {
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
   const gtmMode = useMatch("/app/gtm") != null;
+  const companyMode = useMatch("/app/company/*") != null;
   const devinMode = useMatch("/app/devin") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
@@ -1136,6 +1138,7 @@ export function ShellPage() {
     financeMode ||
     legalMode ||
     gtmMode ||
+    companyMode ||
     devinMode ||
     investorsMode ||
     fundraisingMode ||
@@ -1171,7 +1174,7 @@ export function ShellPage() {
     namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
-    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
+    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode || companyMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -4881,6 +4884,8 @@ export function ShellPage() {
                 if (selectSpace(spaceId)) window.location.assign("/app/finance");
               }}
             />
+          ) : companyMode ? (
+            <CompanyPage />
           ) : legalMode ? (
             <LegalPage
               onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
