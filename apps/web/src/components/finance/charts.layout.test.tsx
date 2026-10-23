@@ -497,3 +497,17 @@ it("abbreviates bar amounts that would touch at phone width", async () => {
   expect(wide.el.textContent).toContain("$7,500");
   wide.done();
 });
+
+it("paints the y axis labels of a burn chart after its lines", async () => {
+  const days = Array.from({ length: 5 }, (_, i) => day(i + 1));
+  const { el, done } = await mount(
+    600,
+    <BurnLines label="Burn" height={200} granularity="day" series={days} onOpen={() => {}} />,
+  );
+  const nodes = [...el.querySelectorAll("svg *")];
+  const line = nodes.indexOf(el.querySelector("[data-testid=burn-out-line]") as Element);
+  const tick = nodes.indexOf(el.querySelector("svg text") as Element);
+  expect(line).toBeGreaterThan(-1);
+  expect(tick).toBeGreaterThan(line);
+  done();
+});

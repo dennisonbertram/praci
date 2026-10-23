@@ -497,7 +497,9 @@ export function DetailPage({
           title={notFound || error || loading ? undefined : title}
           actions={
             <>
-              {action ? <span className="max-sm:order-2">{action}</span> : null}
+              {action ? (
+                <span className="flex items-center gap-2 max-sm:order-2">{action}</span>
+              ) : null}
               <span className="max-sm:ms-auto">
                 <AskAgentButton />
               </span>

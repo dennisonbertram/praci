@@ -129,7 +129,10 @@ function Grid({
   top,
   bottom,
   scale,
+  layer,
 }: {
+  /** Draw only the gridlines or only the axis labels, so a chart can paint its series between them. */
+  layer?: "lines" | "labels";
   width: number;
   height: number;
   left: number;
@@ -151,15 +154,17 @@ function Grid({
         const y = top + (height - top - bottom) * (1 - (v - floor) / (scale.top - floor));
         return (
           <g key={v}>
-            <line
-              x1={left}
-              x2={width - right}
-              y1={y}
-              y2={y}
-              className="stroke-border"
-              strokeWidth={1}
-            />
-            {hidden ? null : (
+            {layer === "labels" ? null : (
+              <line
+                x1={left}
+                x2={width - right}
+                y1={y}
+                y2={y}
+                className="stroke-border"
+                strokeWidth={1}
+              />
+            )}
+            {hidden || layer === "lines" ? null : (
               <text
                 x={left - 6 + scrollX}
                 y={y + 3}
@@ -541,6 +546,7 @@ export function BurnLines({
               top={top}
               bottom={bottom}
               scale={scale}
+              layer="lines"
             />
             {series.length > 1 ? (
               <>
@@ -579,6 +585,16 @@ export function BurnLines({
                 ) : null}
               </>
             ) : null}
+            <Grid
+              width={width}
+              height={height}
+              left={left}
+              right={right}
+              top={top}
+              bottom={bottom}
+              scale={scale}
+              layer="labels"
+            />
             {single
               ? [
                   { key: "out", cents: series[0]?.outCents ?? 0, tone: "foreground" },
