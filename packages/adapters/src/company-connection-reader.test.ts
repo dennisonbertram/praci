@@ -209,6 +209,31 @@ function harness(
 describe("Company connection reader", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("authorizes only documented GitHub reads without annotations", async () => {
+    const github = { ...source, sourceKind: "github", scope: { reader: "github", allTime: true } };
+    let readOnly: boolean | undefined;
+    const state = harness({
+      provider: "github",
+      discover: () => [
+        managedTool("GITHUB_GET_A_USER", readOnly),
+        managedTool("GITHUB_CREATE_AN_ISSUE", true),
+        managedTool("GITHUB_RUN_QUERY_OR_MUTATION", true),
+      ],
+    });
+    expect((await state.reader.listTools(github, context)).map((tool) => tool.name)).toEqual([
+      "GITHUB_GET_A_USER",
+    ]);
+    await state.reader.callTool(github, "GITHUB_GET_A_USER", { query: "synthetic" }, context);
+    expect(state.calls[0]?.authorizeUnannotatedRead?.(managedTool("GITHUB_GET_A_USER"))).toBe(true);
+    readOnly = false;
+    expect(await state.reader.listTools(github, context)).toEqual([]);
+    await expect(
+      state.reader.callTool(github, "GITHUB_GET_A_USER", { query: "synthetic" }, context),
+    ).rejects.toThrow();
+    expect(state.calls).toHaveLength(1);
+    await expect(harness().reader.listTools(github, context)).rejects.toThrow();
+  });
+
   it.each(["composio", "pipedream"])("pins one %s account for direct read tools", async (id) => {
     const state = harness({ connectorId: id });
     const result = await state.reader.callTool(

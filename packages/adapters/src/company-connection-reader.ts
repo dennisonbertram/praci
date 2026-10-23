@@ -17,6 +17,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { CompanyImportWorkerError } from "./company-import-engine.js";
 import { COMPANY_SLACK_READ_TOOLS, COMPANY_SLACK_WRITE_TOOLS } from "./company-slack-source.js";
+import { COMPANY_GITHUB_READ_TOOLS } from "./company-tracker-source.js";
 import { unwrapToolResult } from "./finance-call-tool.js";
 import { assertConnectorToolArgs } from "./lazy-tool-catalog.js";
 import type { McpConnector } from "./mcp-connector.js";
@@ -205,6 +206,12 @@ function readToolAllowed(
 ) {
   if (tool.route?.discoveredReadOnly === false) return false;
   if (tool.readOnly === false) return false;
+  if (source.sourceKind === "github") {
+    return (
+      tool.route?.connectorId === "composio" &&
+      (COMPANY_GITHUB_READ_TOOLS as readonly string[]).includes(tool.name)
+    );
+  }
   if (
     source.sourceKind === "slack" ||
     (source.sourceKind === "mcp" && source.scope.reader === "slack")
@@ -310,6 +317,7 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
     if (!row) denied("Connected source access is denied");
     if (!["composio", "pipedream"].includes(row.connectorId)) denied();
     if (source.sourceKind === "slack" && !["slack", "slack_v2"].includes(row.provider)) denied();
+    if (source.sourceKind === "github" && row.provider !== "github") denied();
     return row;
   }
 

@@ -3,6 +3,82 @@ import type { CompanyImportSession } from "@rakazo/contracts";
 import { importCatalog, importConsent, importSession } from "../src/pages/company-import-fixtures";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
+test("Company tracker catalog uses the fixed all-access scope", async ({ page }, testInfo) => {
+  const sources = [
+    {
+      key: "github:tracker-connection",
+      sourceKind: "github",
+      connectionId: "tracker-connection",
+      label: "GitHub",
+      available: true,
+      reason: null,
+      itemCount: null,
+      defaultScope: { reader: "github", allTime: true },
+      connectPath: "/app/integrations",
+    },
+    {
+      key: "mcp:tracker-server",
+      sourceKind: "mcp",
+      connectionId: null,
+      mcpServerId: "tracker-server",
+      label: "Linear MCP",
+      available: true,
+      reason: null,
+      itemCount: null,
+      defaultScope: { reader: "linear", allTime: true },
+      connectPath: "/app/integrations",
+    },
+  ];
+  let createInput: Record<string, unknown> | undefined;
+  await page.route("**/rpc/companyImport/**", async (route) => {
+    const method = new URL(route.request().url()).pathname.split("/").at(-1);
+    let result: unknown = null;
+    if (method === "catalog") result = { sources, folders: [] };
+    if (method === "create") {
+      createInput = route.request().postDataJSON()?.json;
+      result = { runId: "tracker-run" };
+    }
+    if (method === "subscribe") {
+      await route.abort();
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ json: result, meta: [] }),
+    });
+  });
+  await signup(
+    page,
+    `company-trackers-${Date.now()}@rakazo.test`,
+    "password12",
+    "Tracker Import User",
+  );
+  await completeOnboarding(page);
+  await page.goto("/app/company/import");
+  await expect(page.getByRole("checkbox", { name: "GitHub", exact: true })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Linear MCP", exact: true })).toBeChecked();
+  await expect(page.getByText("All accessible items", { exact: true })).toHaveCount(2);
+  await captureScreenshot(page, testInfo, "company-tracker-sources");
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await expect
+    .poll(() => createInput)
+    .toMatchObject({
+      mode: "sample",
+      sources: [
+        {
+          sourceKind: "github",
+          connectionId: "tracker-connection",
+          scope: { reader: "github", allTime: true },
+        },
+        {
+          sourceKind: "mcp",
+          mcpServerId: "tracker-server",
+          scope: { reader: "linear", allTime: true },
+        },
+      ],
+    });
+});
+
 test("Company Slack scope defaults public and requires each private channel choice", async ({
   page,
 }, testInfo) => {

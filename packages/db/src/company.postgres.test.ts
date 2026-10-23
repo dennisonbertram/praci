@@ -228,6 +228,192 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect((await company.detail(entityId(first)))?.attrs).toMatchObject({ timezone: "UTC" });
   });
 
+  it("matches projects by exact tracker URL and keeps ambiguous or tenant-local identities separate", async () => {
+    const company = companyForActor(prisma, actor);
+    const otherOwner = companyForActor(prisma, otherActor);
+    const otherSpace = companyForActor(prisma, otherSpaceActor);
+    const firstUrl = `https://github.example.test/orgs/northwind/projects/${"x".repeat(350)}`;
+    const secondUrl = "https://github.example.test/orgs/northwind/projects/second";
+    const correctedUrl = "https://github.example.test/orgs/northwind/projects/corrected";
+    const project = (
+      name: string,
+      trackerUrl: string | undefined,
+      sourceId: string,
+      hash: string,
+    ) => ({
+      entity: {
+        kind: "project" as const,
+        displayName: name,
+        attrs: trackerUrl ? { trackerUrl } : {},
+        confidence: 0.9,
+      },
+      evidence: {
+        ...evidence(sourceId, hash),
+        sourceKind: "github" as const,
+        quote: `Project ${name} tracker identity.`,
+      },
+    });
+
+    const first = persisted(
+      await company.importEntity(project("Orion", firstUrl, "project-1", "h1")),
+    );
+    const renamed = persisted(
+      await company.importEntity(project("Orion Launch", firstUrl, "project-2", "h2")),
+    );
+    const distinct = persisted(
+      await company.importEntity(project("Orion Launch", secondUrl, "project-3", "h3")),
+    );
+    expect(renamed.id).toBe(first.id);
+    expect(renamed.displayName).toBe("Orion Launch");
+    expect(distinct.id).not.toBe(first.id);
+    expect(distinct.attrs).toMatchObject({ trackerUrl: secondUrl });
+    expect(
+      await prisma.companyIdentity.findFirst({
+        where: { spaceId, ownerUserId: userId, entityId: first.id, identityType: "tracker" },
+        select: { identityValue: true },
+      }),
+    ).toEqual({ identityValue: firstUrl });
+
+    const mergedRootUrl = "https://linear.example.test/project/merged-root";
+    const mergedRoot = persisted(
+      await company.importEntity(
+        project("Merged legacy project", mergedRootUrl, "merged-root", "h9"),
+      ),
+    );
+    const mergedChild = persisted(
+      await company.importEntity(
+        project("Merged legacy project", undefined, "merged-child", "h10"),
+      ),
+    );
+    await company.merge(mergedChild.id, mergedRoot.id);
+    const sameNameDifferentUrl = persisted(
+      await company.importEntity(
+        project(
+          "Merged legacy project",
+          "https://linear.example.test/project/different",
+          "different-merged-project",
+          "h11",
+        ),
+      ),
+    );
+    expect(sameNameDifferentUrl.id).not.toBe(mergedRoot.id);
+    expect(sameNameDifferentUrl.id).not.toBe(mergedChild.id);
+
+    const exactLegacyUrl = "https://linear.example.test/project/legacy-url";
+    const exactLegacy = persisted(
+      await company.importEntity(
+        project("Legacy URL project", exactLegacyUrl, "legacy-url", "h12"),
+      ),
+    );
+    await prisma.companyIdentity.deleteMany({
+      where: { spaceId, ownerUserId: userId, entityId: exactLegacy.id, identityType: "tracker" },
+    });
+    const exactLegacyReplay = persisted(
+      await company.importEntity(
+        project("Renamed legacy URL project", exactLegacyUrl, "legacy-url-replay", "h13"),
+      ),
+    );
+    expect(exactLegacyReplay.id).toBe(exactLegacy.id);
+    expect(
+      await prisma.companyIdentity.findFirst({
+        where: { spaceId, ownerUserId: userId, entityId: exactLegacy.id, identityType: "tracker" },
+        select: { identityValue: true },
+      }),
+    ).toEqual({ identityValue: exactLegacyUrl });
+
+    const ambiguousOne = persisted(
+      await company.importEntity(
+        project(
+          "Ambiguous legacy project",
+          "https://linear.example.test/project/one",
+          "amb-one",
+          "h14",
+        ),
+      ),
+    );
+    const ambiguousTwo = persisted(
+      await company.importEntity(
+        project(
+          "Ambiguous legacy project",
+          "https://linear.example.test/project/two",
+          "amb-two",
+          "h15",
+        ),
+      ),
+    );
+    await prisma.companyIdentity.deleteMany({
+      where: {
+        spaceId,
+        ownerUserId: userId,
+        entityId: { in: [ambiguousOne.id, ambiguousTwo.id] },
+        identityType: "tracker",
+      },
+    });
+    await prisma.companyEntity.updateMany({
+      where: { spaceId, ownerUserId: userId, id: { in: [ambiguousOne.id, ambiguousTwo.id] } },
+      data: { attrs: {} },
+    });
+    const ambiguousReplay = await company.importEntity(
+      project("Ambiguous legacy project", undefined, "ambiguous-replay", "h16"),
+    );
+    expect("deferred" in ambiguousReplay).toBe(false);
+    if (!("deferred" in ambiguousReplay) && !("suppressed" in ambiguousReplay)) {
+      expect(ambiguousReplay.id).not.toBe(ambiguousOne.id);
+      expect(ambiguousReplay.id).not.toBe(ambiguousTwo.id);
+    }
+    expect(
+      (await company.candidates()).some(
+        (candidate) =>
+          candidate.reason === "conflicting_strong_identities" &&
+          candidate.entityIds.includes(ambiguousOne.id) &&
+          candidate.entityIds.includes(ambiguousTwo.id),
+      ),
+    ).toBe(true);
+
+    const legacy = persisted(
+      await company.importEntity(project("Legacy Tracker", undefined, "legacy-project", "h4")),
+    );
+    const adopted = persisted(
+      await company.importEntity(
+        project(
+          "Legacy Tracker",
+          "https://linear.example.test/project/legacy",
+          "legacy-linked",
+          "h5",
+        ),
+      ),
+    );
+    expect(adopted.id).toBe(legacy.id);
+    expect(adopted.attrs).toMatchObject({
+      trackerUrl: "https://linear.example.test/project/legacy",
+    });
+
+    await company.edit({
+      entityId: first.id,
+      kind: "project",
+      attrs: { trackerUrl: correctedUrl },
+    });
+    const lockedReplay = persisted(
+      await company.importEntity(project("Provider Rename", firstUrl, "project-1", "h6")),
+    );
+    expect(lockedReplay.id).toBe(first.id);
+    expect(lockedReplay.attrs).toMatchObject({ trackerUrl: correctedUrl });
+    expect(lockedReplay.evidence).toEqual(
+      expect.arrayContaining([expect.objectContaining({ contentHash: "h6" })]),
+    );
+
+    const sameUrlOtherOwner = persisted(
+      await otherOwner.importEntity(project("Other owner", firstUrl, "owner-project", "h7")),
+    );
+    const sameUrlOtherSpace = persisted(
+      await otherSpace.importEntity(project("Other space", firstUrl, "space-project", "h8")),
+    );
+    expect([first.id, distinct.id, legacy.id]).not.toContain(sameUrlOtherOwner.id);
+    expect([first.id, distinct.id, legacy.id]).not.toContain(sameUrlOtherSpace.id);
+    expect(sameUrlOtherOwner.displayName).toBe("Other owner");
+    expect(sameUrlOtherSpace.displayName).toBe("Other space");
+  });
+
   it("replays same-source name-only claims after content changes without merging source items", async () => {
     const company = companyForActor(prisma, actor);
     const input = {

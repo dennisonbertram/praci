@@ -4,8 +4,12 @@ import {
   CompanyEntityImportInputSchema,
   CompanyEntityRecordSchema,
   CompanyEvidenceInputSchema,
+  CompanyIdentityRecordSchema,
   CompanyPartialDateSchema,
+  companyEntityIdentifiers,
 } from "./company.js";
+import { CompanyTrackerScopeSchema } from "./company-extraction.js";
+import { CompanyImportSourceInputSchema } from "./company-import.js";
 
 const entity = {
   kind: "person" as const,
@@ -99,6 +103,63 @@ describe("company contracts", () => {
     ).toBe(false);
     expect(
       CompanyPartialDateSchema.safeParse({ date: "2025-04-01", precision: "quarter" }).success,
+    ).toBe(true);
+  });
+
+  it("keeps tracker scopes strict and matches the reader to its source kind", () => {
+    expect(CompanyTrackerScopeSchema.parse({})).toEqual({ allTime: true });
+    expect(CompanyTrackerScopeSchema.parse({ reader: "linear" })).toEqual({
+      reader: "linear",
+      allTime: true,
+    });
+    expect(CompanyTrackerScopeSchema.safeParse({ allTime: false }).success).toBe(false);
+    expect(CompanyTrackerScopeSchema.safeParse({ after: "2025-01-01" }).success).toBe(false);
+    expect(
+      CompanyImportSourceInputSchema.safeParse({
+        sourceKind: "github",
+        connectionId: "github-connection",
+        scope: { reader: "github", allTime: true },
+      }).success,
+    ).toBe(true);
+    expect(
+      CompanyImportSourceInputSchema.safeParse({
+        sourceKind: "github",
+        connectionId: "github-connection",
+        scope: { reader: "linear" },
+      }).success,
+    ).toBe(false);
+    expect(
+      CompanyImportSourceInputSchema.safeParse({
+        sourceKind: "mcp",
+        mcpServerId: "linear-server",
+        scope: { reader: "linear" },
+      }).success,
+    ).toBe(true);
+    expect(
+      CompanyImportSourceInputSchema.safeParse({
+        sourceKind: "linear",
+        connectionId: "linear-connection",
+        scope: { reader: "linear" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("uses the exact tracker URL for project identity without truncating identity records", () => {
+    const trackerUrl = `https://linear.example.test/project/${"x".repeat(700)}`;
+    expect(
+      companyEntityIdentifiers({
+        kind: "project",
+        displayName: "Same project",
+        attrs: { trackerUrl },
+        confidence: 0.9,
+      }),
+    ).toEqual([`tracker:${trackerUrl}`]);
+    expect(
+      CompanyIdentityRecordSchema.safeParse({
+        id: "identity-1",
+        identityType: "tracker",
+        identityValue: trackerUrl,
+      }).success,
     ).toBe(true);
   });
 

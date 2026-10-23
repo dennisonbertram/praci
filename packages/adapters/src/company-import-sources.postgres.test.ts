@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   AdapterContext,
+  CompanyConnectionReader,
   CompanyExtractor,
   CompanyImportWorkerContext,
   ConnectorCall,
@@ -12,6 +13,7 @@ import type {
   RealtimeFanout,
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
+import { companyImporterSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { companyForActor, createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +21,7 @@ import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { createCompanyImportEngine } from "./company-import-engine.js";
 import { createCompanySourceWorker } from "./company-import-sources.js";
 import { COMPANY_SLACK_READ_TOOLS, createCompanySlackReader } from "./company-slack-source.js";
+import { createCompanyTrackerReader } from "./company-tracker-source.js";
 import type { EmulatedMessage } from "./gmail-api-emulator.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
@@ -301,9 +304,10 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     engine: Awaited<ReturnType<typeof createEngine>>,
     runId: string,
     advanceClock = false,
+    alreadyStarted = false,
   ) {
     const payload = { spaceId, userId, runId };
-    await engine.start(actor, runId);
+    if (!alreadyStarted) await engine.start(actor, runId);
     let lastProgress: unknown;
     for (let step = 0; step < 30; step++) {
       await engine.runJob(payload);
@@ -827,6 +831,392 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     expect(slackCalls.length).toBeGreaterThan(0);
     expect(slackCalls.every((name) => COMPANY_SLACK_READ_TOOLS.includes(name as never))).toBe(true);
     expect(gmailEmulator.requests.every((request) => request.method === "GET")).toBe(true);
+  });
+
+  it("merges mail, GitHub, and Linear identities through the tracker source pipeline", async () => {
+    const email = "morgan@northwind.example";
+    const gmailAccountRef = `morgan-tracker-mailbox-${suffix}`;
+    const gmailEmulator = new GmailApiEmulator({
+      now: new Date("2026-04-03T12:00:00.000Z"),
+      mailboxes: {
+        [gmailAccountRef]: {
+          address: "owner@example.test",
+          messages: [
+            {
+              id: "tracker-mail-1",
+              date: "2026-04-02T12:00:00.000Z",
+              labels: ["INBOX"],
+              from: `Morgan Vale <${email}>`,
+              to: "owner@example.test",
+              subject: "Morgan's work identity",
+              snippet: `Work email: ${email}`,
+              text: `Morgan Vale's Work email: ${email}. GitHub login: morgan.`,
+            },
+          ],
+        },
+      },
+    });
+    const gmailConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "emulator",
+        provider: "gmail",
+        displayName: "Synthetic tracker mailbox",
+        status: "connected",
+        providerRef: gmailAccountRef,
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const githubConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "github",
+        displayName: "Synthetic GitHub",
+        status: "connected",
+        providerRef: "synthetic-github-account",
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const mcpServer = await prisma.mcpServer.create({
+      data: {
+        spaceId,
+        userId,
+        slug: `linear-${suffix}`,
+        name: "Synthetic Linear",
+        transport: "http",
+        endpoint: "https://linear.example.test/mcp",
+      },
+    });
+    const importer = await prisma.bot.create({
+      data: {
+        spaceId,
+        userId,
+        name: "Company importer",
+        color: "company",
+        spawnKey: companyImporterSpawnKey(userId),
+      },
+    });
+    await prisma.botMcpServer.create({
+      data: { spaceId, botId: importer.id, serverId: mcpServer.id, userId },
+    });
+    const githubDefinitions: Record<string, string[]> = {
+      GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER: ["page", "per_page"],
+      GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER: [
+        "page",
+        "per_page",
+        "sort",
+        "direction",
+        "type",
+      ],
+      GITHUB_LIST_ORGANIZATION_MEMBERS: ["org", "page", "per_page"],
+      GITHUB_GET_A_USER: ["username"],
+      GITHUB_GET_A_REPOSITORY: ["owner", "repo"],
+      GITHUB_LIST_MILESTONES: ["owner", "repo", "page", "per_page", "state"],
+      GITHUB_LIST_REPOSITORY_ISSUES: [
+        "owner",
+        "repo",
+        "page",
+        "per_page",
+        "state",
+        "sort",
+        "direction",
+      ],
+      GITHUB_LIST_ORGANIZATION_PROJECTS: ["org", "after", "per_page"],
+    };
+    const linearDefinitions: Record<string, string[]> = {
+      list_users: ["limit", "cursor"],
+      list_teams: ["limit", "cursor"],
+      list_projects: ["limit", "cursor"],
+      get_project: ["query"],
+      list_issues: ["limit", "cursor"],
+      get_issue: ["id"],
+      list_milestones: ["project", "limit", "cursor"],
+    };
+    const makeTool = (name: string, args: string[], connectorId: "composio" | "mcp") => ({
+      name,
+      description: name === "list_milestones" ? "List all milestones in a Linear project." : name,
+      readOnly: true,
+      inputSchema: {
+        type: "object",
+        properties: Object.fromEntries(
+          args.map((key) => [
+            key,
+            key === "per_page" || key === "limit"
+              ? { type: "integer", minimum: 1, maximum: 100 }
+              : key === "page"
+                ? { type: "integer", minimum: 1 }
+                : key === "after" && connectorId === "composio"
+                  ? { type: "string" }
+                  : key === "after" || key === "cursor"
+                    ? { type: ["string", "null"] }
+                    : { type: "string" },
+          ]),
+        ),
+        required:
+          connectorId === "composio"
+            ? name === "GITHUB_LIST_ORGANIZATION_MEMBERS" ||
+              name === "GITHUB_LIST_ORGANIZATION_PROJECTS"
+              ? ["org"]
+              : name === "GITHUB_GET_A_USER"
+                ? ["username"]
+                : name === "GITHUB_GET_A_REPOSITORY" ||
+                    name === "GITHUB_LIST_MILESTONES" ||
+                    name === "GITHUB_LIST_REPOSITORY_ISSUES"
+                  ? ["owner", "repo"]
+                  : []
+            : name === "get_project" || name === "get_issue"
+              ? [args[0]!]
+              : name === "list_milestones"
+                ? ["project"]
+                : args,
+      },
+      route: { connectorId, toolName: name },
+    });
+    const githubTools = Object.entries(githubDefinitions).map(([name, args]) =>
+      makeTool(name, args, "composio"),
+    );
+    const linearTools = Object.entries(linearDefinitions).map(([name, args]) =>
+      makeTool(name, args, "mcp"),
+    );
+    const trackerCalls: string[] = [];
+    let memberReadAttempts = 0;
+    const genericReader: CompanyConnectionReader = {
+      listTools: async (source) => (source.sourceKind === "mcp" ? linearTools : githubTools),
+      callTool: async (source, name: string, _args: Record<string, unknown>) => {
+        trackerCalls.push(`${source.sourceKind}:${name}`);
+        if (name === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER")
+          return { organizations: [{ id: 501, login: "northwind" }], has_next: false };
+        if (name === "GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER")
+          return { repositories: [], has_next: false };
+        if (name === "GITHUB_LIST_ORGANIZATION_MEMBERS") {
+          memberReadAttempts++;
+          if (memberReadAttempts === 1)
+            throw Object.assign(new Error("HTTP 429 rate limit"), { status: 429 });
+          return { members: [{ id: 77, login: "morgan" }], has_next: false };
+        }
+        if (name === "GITHUB_LIST_ORGANIZATION_PROJECTS")
+          return {
+            organization: {
+              projectsV2: { nodes: [], pageInfo: { hasNextPage: false } },
+            },
+          };
+        if (name === "GITHUB_GET_A_USER")
+          return {
+            user: {
+              id: 77,
+              login: "morgan",
+              name: "Morgan Vale",
+              email: "personal@example.test",
+              bio: "private profile text",
+              html_url: "https://github.example.test/morgan",
+            },
+          };
+        if (name === "list_users")
+          return {
+            users: [{ id: "linear-user-1", name: "Morgan Vale", email }],
+            pageInfo: { hasNextPage: false },
+          };
+        if (name === "list_teams" || name === "list_projects" || name === "list_issues")
+          return { [name.slice(5)]: [], pageInfo: { hasNextPage: false } };
+        throw new Error(`Unexpected tracker call: ${source.sourceKind}:${name}`);
+      },
+    };
+    const tracker = createCompanyTrackerReader(genericReader);
+    const mailConnector = {
+      proxy: async (request: ConnectorProxyRequest) =>
+        gmailEmulator.handle(request.accountRef, request.url, request.method, request.body),
+    } as unknown as ManagedConnectorProvider;
+    const mail = createMailProvider({
+      prisma,
+      connectors: { managed: () => mailConnector },
+      sleep: async () => undefined,
+      random: () => 0,
+    });
+    const extractedDocuments: string[] = [];
+    const completion: CompanyCompletion = async (request, model) => {
+      if (request.instructions.startsWith("Classify"))
+        return {
+          text: JSON.stringify({ relevant: true }),
+          valid: true,
+          provider: model.provider,
+          model: model.id,
+          usage: { inputTokens: 10, outputTokens: 2 },
+        };
+      const document = JSON.parse(request.prompt).untrustedSource as {
+        title: string;
+        text: string;
+      };
+      extractedDocuments.push(document.text);
+      const emailSource = document.text.includes(`Work email: ${email}`);
+      const githubSource = document.text.toLowerCase().includes("login: morgan");
+      const linearSource = document.text.includes("User ID: linear-user-1");
+      const attrs = {
+        ...(emailSource ? { workEmails: [email] } : {}),
+        ...(githubSource ? { githubLogin: "morgan" } : {}),
+        ...(linearSource ? { linearId: "linear-user-1" } : {}),
+      };
+      const quote = document.text.includes("GitHub login: morgan")
+        ? "GitHub login: morgan"
+        : githubSource
+          ? "Login: morgan"
+          : `Work email: ${email}`;
+      return {
+        text: JSON.stringify({
+          entities: [
+            {
+              ref: "morgan",
+              entity: {
+                kind: "person",
+                displayName: "Morgan Vale",
+                attrs,
+                confidence: 0.95,
+              },
+              quote,
+            },
+          ],
+          edges: [],
+          events: [],
+        }),
+        valid: true,
+        provider: model.provider,
+        model: model.id,
+        usage: { inputTokens: 100, outputTokens: 40 },
+      };
+    };
+    const worker = createCompanySourceWorker({
+      prisma,
+      mail,
+      extractor: new LlmCompanyExtractor(completion),
+      tracker,
+    });
+    const jobs: JobPublisher = {
+      enqueue: async () => undefined,
+      cancel: async () => undefined,
+      close: async () => undefined,
+    };
+    const engine = createCompanyImportEngine({
+      prisma,
+      jobs,
+      realtime: { publish: async () => undefined } as unknown as RealtimeFanout,
+      resolveModel: async () => ({ provider: "synthetic", id: "synthetic-model" }),
+      worker,
+    });
+    const created = await engine.create(actor, {
+      tokenCap: 1_000_000,
+      sources: [
+        { sourceKind: "gmail", connectionId: gmailConnection.id, scope: { allTime: true } },
+        {
+          sourceKind: "github",
+          connectionId: githubConnection.id,
+          scope: { reader: "github", allTime: true },
+        },
+        {
+          sourceKind: "mcp",
+          mcpServerId: mcpServer.id,
+          scope: { reader: "linear", allTime: true },
+        },
+      ],
+    });
+    await grantAll(engine, created.runId);
+    const payload = { spaceId, userId, runId: created.runId };
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let progress: Awaited<ReturnType<typeof engine.progress>>;
+    try {
+      await engine.start(actor, created.runId);
+      let rateLimitedUnitId: string | undefined;
+      for (let step = 0; step < 10 && !rateLimitedUnitId; step++) {
+        await engine.runJob(payload);
+        const waiting = await prisma.companyImportUnit.findMany({
+          where: { runId: created.runId, spaceId, ownerUserId: userId, status: "waiting" },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            availableAt: true,
+            source: { select: { backoffUntil: true } },
+          },
+        });
+        for (const unit of waiting) {
+          const availableAt = Math.max(
+            unit.availableAt.getTime(),
+            unit.source.backoffUntil?.getTime() ?? 0,
+          );
+          if (availableAt > Date.now()) vi.setSystemTime(new Date(availableAt));
+          await engine.unitJob({ ...payload, unitId: unit.id });
+          const rateLimited = await prisma.companyImportUnit.findFirst({
+            where: {
+              id: unit.id,
+              runId: created.runId,
+              spaceId,
+              ownerUserId: userId,
+              status: "waiting",
+              lastError: "source_rate_limited",
+            },
+            select: {
+              id: true,
+              availableAt: true,
+              source: { select: { backoffUntil: true } },
+            },
+          });
+          if (rateLimited) {
+            rateLimitedUnitId = rateLimited.id;
+            const now = Date.now();
+            expect(rateLimited.availableAt.getTime() - now).toBeGreaterThanOrEqual(60_000);
+            expect(rateLimited.source.backoffUntil!.getTime() - now).toBeGreaterThanOrEqual(60_000);
+            const attemptsBeforeImmediateRetry = memberReadAttempts;
+            await engine.unitJob({ ...payload, unitId: rateLimited.id });
+            expect(memberReadAttempts).toBe(attemptsBeforeImmediateRetry);
+            const retryAt = Math.max(
+              rateLimited.availableAt.getTime(),
+              rateLimited.source.backoffUntil!.getTime(),
+            );
+            vi.setSystemTime(new Date(retryAt));
+            await engine.unitJob({ ...payload, unitId: rateLimited.id });
+            expect(memberReadAttempts).toBe(attemptsBeforeImmediateRetry + 1);
+            break;
+          }
+        }
+      }
+      expect(rateLimitedUnitId).toBeDefined();
+      progress = await runToCompletion(engine, created.runId, true, true);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(progress.status).toBe("completed");
+
+    const people = await prisma.companyEntity.findMany({
+      where: { spaceId, ownerUserId: userId, kind: "person", displayName: "Morgan Vale" },
+      select: { id: true, attrs: true },
+    });
+    expect(people).toHaveLength(1);
+    const person = people[0]!;
+    expect(person.attrs).toMatchObject({
+      workEmails: [email],
+      githubLogin: "morgan",
+      linearId: "linear-user-1",
+    });
+    const evidence = await prisma.companyEvidence.findMany({
+      where: { spaceId, ownerUserId: userId, factKind: "entity", factId: person.id },
+      select: { sourceKind: true, sourceItemId: true },
+    });
+    expect(new Set(evidence.map((item) => item.sourceKind))).toEqual(
+      new Set(["gmail", "github", "mcp"]),
+    );
+    expect(extractedDocuments).toHaveLength(3);
+    expect(extractedDocuments.join("\n")).not.toContain("personal@example.test");
+    expect(extractedDocuments.join("\n")).not.toContain("private profile text");
+    expect(trackerCalls).toEqual(
+      expect.arrayContaining([
+        "github:GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER",
+        "github:GITHUB_LIST_ORGANIZATION_MEMBERS",
+        "github:GITHUB_GET_A_USER",
+        "mcp:list_users",
+      ]),
+    );
   });
 
   it("samples 25 real Data Room items then continues the same run without rereading them", async () => {

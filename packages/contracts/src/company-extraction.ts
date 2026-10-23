@@ -118,3 +118,8 @@ export const CompanySlackScopeSchema = z
       scope.privateChannelIds.length > 0,
     "Choose a channel",
   );
+
+export const CompanyTrackerScopeSchema = z.strictObject({
+  reader: z.enum(["github", "linear"]).optional(),
+  allTime: z.literal(true).default(true),
+});

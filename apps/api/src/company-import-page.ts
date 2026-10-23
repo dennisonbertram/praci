@@ -1,6 +1,10 @@
 import { ORPCError } from "@orpc/server";
 import type { AdapterContext, CompanyConnectionReader } from "@rakazo/adapter-kit";
-import type { CompanyImportEngine, CompanySlackReader } from "@rakazo/adapters";
+import type {
+  CompanyImportEngine,
+  CompanySlackReader,
+  CompanyTrackerReader,
+} from "@rakazo/adapters";
 import { companySourceScope } from "@rakazo/adapters";
 import type {
   Actor,
@@ -17,6 +21,7 @@ import {
   CompanyDataRoomScopeSchema,
   CompanyImportPlanSchema,
   CompanySourceKindSchema,
+  CompanyTrackerScopeSchema,
   companyPrivacySourceKey,
 } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "@rakazo/db";
@@ -29,6 +34,7 @@ type PageDeps = {
   engine: CompanyImportEngine;
   reader?: CompanyConnectionReader;
   slack?: CompanySlackReader;
+  tracker?: CompanyTrackerReader;
 };
 
 function sourceKind(provider: string): CompanyImportCatalog["sources"][number]["sourceKind"] {
@@ -226,10 +232,12 @@ export function createCompanyImportPage(deps: PageDeps) {
       const kind = sourceKind(connection.provider);
       const gmail = kind === "gmail";
       const slack = kind === "slack";
+      const github = kind === "github";
       hasGmail ||= gmail;
       const access = availableConnection(connection);
       const isSourceBlocked = blocked(kind, connection.id);
       let slackSupported = false;
+      let trackerSupported = false;
       if (slack && access && !isSourceBlocked && deps.slack) {
         try {
           slackSupported = await deps.slack.supports(
@@ -251,27 +259,72 @@ export function createCompanyImportPage(deps: PageDeps) {
           slackSupported = false;
         }
       }
+      if (github && access && !isSourceBlocked && deps.tracker) {
+        try {
+          trackerSupported = await deps.tracker.supports(
+            {
+              id: `catalog:${connection.id}`,
+              sourceKind: "github",
+              connectionId: connection.id,
+              scope: { reader: "github", allTime: true },
+            },
+            {
+              operationId: "company.import.catalog",
+              traceId: `company.import.catalog:${connection.id}`,
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              signal: new AbortController().signal,
+            },
+          );
+        } catch {
+          trackerSupported = false;
+        }
+      }
       sources.push({
         key: `${kind}:${connection.id}`,
         sourceKind: kind,
         connectionId: connection.id,
         label: connection.displayName,
-        available: (gmail || slackSupported) && access && !isSourceBlocked,
+        available: (gmail || slackSupported || trackerSupported) && access && !isSourceBlocked,
         reason:
           isSourceBlocked || !access
             ? "access_denied"
-            : gmail || slackSupported
+            : gmail || slackSupported || trackerSupported
               ? null
               : "unsupported",
         itemCount: null,
-        defaultScope: {},
+        defaultScope: github ? CompanyTrackerScopeSchema.parse({ reader: "github" }) : {},
         connectPath: gmail ? null : "/app/integrations",
       });
     }
     for (const server of mcpServers) {
       let mcpSupported = false;
+      let mcpReader: "slack" | "linear" = "slack";
       const isSourceBlocked = blocked("mcp", null, server.id);
-      if (server.enabled && deps.slack && !isSourceBlocked) {
+      if (server.enabled && deps.tracker && !isSourceBlocked) {
+        try {
+          mcpSupported = await deps.tracker.supports(
+            {
+              id: `catalog:${server.id}`,
+              sourceKind: "mcp",
+              connectionId: null,
+              mcpServerId: server.id,
+              scope: CompanyTrackerScopeSchema.parse({ reader: "linear" }),
+            },
+            {
+              operationId: "company.import.catalog",
+              traceId: `company.import.catalog:${server.id}`,
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              signal: new AbortController().signal,
+            },
+          );
+          if (mcpSupported) mcpReader = "linear";
+        } catch {
+          mcpSupported = false;
+        }
+      }
+      if (!mcpSupported && server.enabled && deps.slack && !isSourceBlocked) {
         try {
           mcpSupported = await deps.slack.supports(
             {
@@ -307,7 +360,10 @@ export function createCompanyImportPage(deps: PageDeps) {
               ? null
               : "unsupported",
         itemCount: null,
-        defaultScope: { reader: "slack" },
+        defaultScope:
+          mcpReader === "linear"
+            ? CompanyTrackerScopeSchema.parse({ reader: "linear" })
+            : { reader: mcpReader },
         connectPath: "/app/integrations",
       });
     }
@@ -353,16 +409,17 @@ export function createCompanyImportPage(deps: PageDeps) {
         source.sourceKind !== "data_room" &&
         source.sourceKind !== "gmail" &&
         source.sourceKind !== "slack" &&
+        source.sourceKind !== "github" &&
         source.sourceKind !== "mcp"
       ) {
         throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
       }
       if (source.sourceKind === "mcp") {
+        const trackerSource = source.scope.reader === "linear";
         if (
           !source.mcpServerId ||
           source.connectionId ||
-          source.scope.reader !== "slack" ||
-          !deps.slack
+          (trackerSource ? !deps.tracker : source.scope.reader !== "slack" || !deps.slack)
         ) {
           throw new ORPCError("FORBIDDEN", { message: "MCP source access is denied" });
         }
@@ -376,22 +433,39 @@ export function createCompanyImportPage(deps: PageDeps) {
           select: { id: true },
         });
         if (!server) throw new ORPCError("FORBIDDEN", { message: "MCP source access is denied" });
-        const supported = await deps.slack.supports(
-          {
-            id: `create:${server.id}`,
-            sourceKind: "mcp",
-            connectionId: null,
-            mcpServerId: server.id,
-            scope: source.scope,
-          },
-          {
-            operationId: "company.import.create",
-            traceId: `company.import.create:${server.id}`,
-            spaceId: actor.spaceId,
-            userId: actor.userId,
-            signal: new AbortController().signal,
-          },
-        );
+        const supported = trackerSource
+          ? await deps.tracker!.supports(
+              {
+                id: `create:${server.id}`,
+                sourceKind: "mcp",
+                connectionId: null,
+                mcpServerId: server.id,
+                scope: source.scope,
+              },
+              {
+                operationId: "company.import.create",
+                traceId: `company.import.create:${server.id}`,
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                signal: new AbortController().signal,
+              },
+            )
+          : await deps.slack!.supports(
+              {
+                id: `create:${server.id}`,
+                sourceKind: "mcp",
+                connectionId: null,
+                mcpServerId: server.id,
+                scope: source.scope,
+              },
+              {
+                operationId: "company.import.create",
+                traceId: `company.import.create:${server.id}`,
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                signal: new AbortController().signal,
+              },
+            );
         if (!supported)
           throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
       }
@@ -425,6 +499,47 @@ export function createCompanyImportPage(deps: PageDeps) {
           {
             id: `create:${source.connectionId}`,
             sourceKind: "slack",
+            connectionId: source.connectionId,
+            scope: source.scope,
+          },
+          {
+            operationId: "company.import.create",
+            traceId: `company.import.create:${source.connectionId}`,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            signal: new AbortController().signal,
+          },
+        );
+        if (!supported)
+          throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
+      }
+      if (source.sourceKind === "github") {
+        if (!source.connectionId || !deps.tracker)
+          throw new ORPCError("PRECONDITION_FAILED", { message: "GitHub is not connected" });
+        const connection = await deps.prisma.connection.findFirst({
+          where: {
+            id: source.connectionId,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            status: "connected",
+          },
+          select: {
+            provider: true,
+            status: true,
+            allAgents: true,
+            privateByDefault: true,
+          },
+        });
+        if (
+          !connection ||
+          sourceKind(connection.provider) !== "github" ||
+          !availableConnection(connection)
+        )
+          throw new ORPCError("FORBIDDEN", { message: "GitHub source access is denied" });
+        const supported = await deps.tracker.supports(
+          {
+            id: `create:${source.connectionId}`,
+            sourceKind: "github",
             connectionId: source.connectionId,
             scope: source.scope,
           },

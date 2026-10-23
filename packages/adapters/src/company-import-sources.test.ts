@@ -77,6 +77,114 @@ describe("company source worker", () => {
     });
   });
 
+  it("routes tracker documents through the shared bounded extraction and evidence-reuse path", async () => {
+    const source = {
+      id: "github-source",
+      sourceKind: "github",
+      connectionId: "github-connection",
+      scope: { reader: "github", allTime: true },
+    };
+    const tracker = {
+      discover: vi.fn(async () => ({
+        units: [{ unitKey: "github:issue:1", cursor: { kind: "repository", id: 1 } }],
+        nextCursor: null,
+        done: true,
+      })),
+      read: vi.fn(async () => ({
+        document: {
+          id: "github:issue:1",
+          title: "Issue 1",
+          text: "The Orion project starts on 2026-01-02.",
+          snippet: "The Orion project starts on 2026-01-02.",
+          sourceUrl: "https://github.example.test/issues/1",
+        },
+        nextCursor: { kind: "repository", id: 1, page: 2 },
+        done: false,
+        cooldownMs: 60_000,
+      })),
+    };
+    const findEvidence = vi.fn(async () => []);
+    const relevant = vi.fn(async () => true);
+    const extract = vi.fn(async () => ({
+      extraction: { entities: [], edges: [], events: [] },
+      model: { provider: "scripted", model: "tracker-test" },
+    }));
+    const worker = createCompanySourceWorker({
+      prisma: prisma({ companyEvidence: { findMany: findEvidence } }),
+      extractor: { relevant, extract },
+      tracker: tracker as never,
+    });
+    const workerContext = context();
+
+    const discovered = await worker.discover({ source, cursor: null, maxUnits: 1 }, workerContext);
+    const read = await worker.read(
+      { source, unitKey: "github:issue:1", cursor: { kind: "repository", id: 1 }, maxBytes: 1000 },
+      workerContext,
+    );
+
+    expect(discovered.units).toEqual([
+      { unitKey: "github:issue:1", cursor: { kind: "repository", id: 1 } },
+    ]);
+    expect(tracker.discover).toHaveBeenCalledWith(
+      source,
+      null,
+      1,
+      expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+    );
+    expect(tracker.read).toHaveBeenCalledWith(
+      source,
+      { kind: "repository", id: 1 },
+      expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+    );
+    expect(findEvidence).toHaveBeenCalledWith({
+      where: {
+        spaceId: actor.spaceId,
+        ownerUserId: actor.userId,
+        sourceKind: "github",
+        connectionId: "github-connection",
+        mcpServerId: null,
+        sourceItemId: "github:issue:1",
+        contentHash: expect.any(String),
+      },
+      select: { id: true },
+    });
+    expect(relevant).toHaveBeenCalledWith(
+      {
+        title: "Issue 1",
+        text: "The Orion project starts on 2026-01-02.",
+      },
+      expect.anything(),
+    );
+    expect(extract).toHaveBeenCalledWith(
+      {
+        id: "github:issue:1",
+        title: "Issue 1",
+        text: "The Orion project starts on 2026-01-02.",
+        snippet: "The Orion project starts on 2026-01-02.",
+        sourceUrl: "https://github.example.test/issues/1",
+      },
+      expect.anything(),
+    );
+    expect(read).toMatchObject({
+      items: [
+        {
+          sourceItemId: "github:issue:1",
+          content: "Issue 1\nThe Orion project starts on 2026-01-02.",
+        },
+      ],
+      extractions: [
+        {
+          sourceItemId: "github:issue:1",
+          sourceUrl: "https://github.example.test/issues/1",
+          model: { provider: "scripted", model: "tracker-test" },
+        },
+      ],
+      nextCursor: { kind: "repository", id: 1, page: 2 },
+      done: false,
+      cooldownMs: 60_000,
+    });
+  });
+
   it("scopes data-room discovery to the owner and de-duplicates selected IDs", async () => {
     const findMany = vi.fn(async () => [{ id: "item-1" }]);
     const worker = createCompanySourceWorker({

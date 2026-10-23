@@ -66,6 +66,52 @@ function mocks(status?: string) {
   });
 }
 export const Sources: Story = { beforeEach: () => mocks() };
+export const Trackers: Story = {
+  beforeEach: () => {
+    mocks();
+    mockRpc({
+      "companyImport.catalog": {
+        ...importCatalog,
+        sources: [
+          {
+            key: "github:tracker-connection",
+            sourceKind: "github",
+            connectionId: "tracker-connection",
+            label: "GitHub",
+            available: true,
+            reason: null,
+            itemCount: null,
+            defaultScope: { reader: "github", allTime: true },
+            connectPath: "/app/integrations",
+          },
+          {
+            key: "mcp:tracker-server",
+            sourceKind: "mcp",
+            connectionId: null,
+            mcpServerId: "tracker-server",
+            label: "Linear MCP",
+            available: true,
+            reason: null,
+            itemCount: null,
+            defaultScope: { reader: "linear", allTime: true },
+            connectPath: "/app/integrations",
+          },
+          {
+            key: "linear:unsupported-tracker",
+            sourceKind: "linear",
+            connectionId: "unsupported-tracker",
+            label: "Linear · Composio",
+            available: false,
+            reason: "unsupported",
+            itemCount: null,
+            defaultScope: {},
+            connectPath: "/app/integrations",
+          },
+        ],
+      },
+    });
+  },
+};
 export const Review: Story = { beforeEach: () => mocks("draft") };
 export const Running: Story = { beforeEach: () => mocks("running") };
 export const Paused: Story = { beforeEach: () => mocks("paused") };

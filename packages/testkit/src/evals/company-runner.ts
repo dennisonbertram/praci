@@ -62,6 +62,24 @@ export async function runCompanyEval(prisma: PrismaClient) {
         });
     }
     const scope = { spaceId: actor.spaceId, ownerUserId: actor.userId };
+    const connectionIds = new Map<string, string>();
+    for (const sourceKind of kinds.filter((kind) => kind !== "data_room")) {
+      const connection = await prisma.connection.create({
+        data: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          connectorId: "emulator",
+          provider: sourceKind,
+          providerRef: `${id}-${sourceKind}`,
+          displayName: "Synthetic recorded source",
+          status: "connected",
+          allAgents: true,
+          privateByDefault: false,
+        },
+        select: { id: true },
+      });
+      connectionIds.set(sourceKind, connection.id);
+    }
     const corpus = createNorthwindCompanyFixture();
     const initialCorpus = structuredClone(corpus);
     for (const item of corpus.filter((item) => item.sourceKind === "data_room")) {
@@ -154,6 +172,8 @@ export async function runCompanyEval(prisma: PrismaClient) {
           where: {
             ...scope,
             sourceKind: item.sourceKind,
+            connectionId: source.connectionId ?? null,
+            mcpServerId: source.mcpServerId ?? null,
             sourceItemId: item.sourceItemId,
             contentHash: item.contentHash,
           },
@@ -193,6 +213,7 @@ export async function runCompanyEval(prisma: PrismaClient) {
         tokenCap: 1_000_000,
         sources: kinds.map((sourceKind) => ({
           sourceKind,
+          connectionId: connectionIds.get(sourceKind),
           scope: sourceKind === "gmail" ? { allTime: true } : {},
         })),
       });
