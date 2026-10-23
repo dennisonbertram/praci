@@ -12,7 +12,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: unknown }) => children,
 }));
 
-import { glanceBadge, StatusMark } from "./sidebar-glance";
+import { glanceBadge, rowStatusKind, StatusMark } from "./sidebar-glance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -92,4 +92,12 @@ it("gives each agent its own animation phase", () => {
   };
   expect(phase("bot-1")).not.toEqual(phase("bot-2"));
   expect(phase("bot-1")).toEqual(phase("bot-1"));
+});
+
+it("shows a failed mark only while the latest run failed", () => {
+  expect(rowStatusKind("failed", "failed")).toBe("failed");
+  expect(rowStatusKind("failed", "running")).toBeUndefined();
+  expect(rowStatusKind("failed", "completed")).toBeUndefined();
+  expect(rowStatusKind("done", "running")).toBe("done");
+  expect(rowStatusKind(undefined, "failed")).toBeUndefined();
 });

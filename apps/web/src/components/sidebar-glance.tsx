@@ -58,6 +58,14 @@ export function glanceBadge({
   };
 }
 
+/** A failed mark belongs to the latest run: once a later run has started or succeeded it no longer shows. */
+export function rowStatusKind(
+  kind: NotificationKind | undefined,
+  runStatus: string | undefined,
+): NotificationKind | undefined {
+  return kind === "failed" && runStatus !== "failed" ? undefined : kind;
+}
+
 const KIND_LABEL: Record<NotificationKind, () => React.ReactNode> = {
   urgent: () => <Trans> (urgent)</Trans>,
   needs_input: () => <Trans> (needs your answer)</Trans>,

@@ -49,6 +49,11 @@ msgstr ", {0} already imported"
 msgid "(opens in Devin)"
 msgstr "(opens in Devin)"
 
+#. placeholder {0}: visible.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {# change} other {# changes}}"
+msgstr "{0, plural, one {# change} other {# changes}}"
+
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -2754,6 +2759,7 @@ msgstr "Committed"
 msgid "Compact"
 msgstr "Compact"
 
+#: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 msgid "Company"
 msgstr "Company"
@@ -4408,6 +4414,10 @@ msgstr "Disabled tools"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr "Discard"
+
+#: src/components/ComposeEmail.tsx
+msgid "Discard draft?"
+msgstr "Discard draft?"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Discarded"
@@ -9949,10 +9959,6 @@ msgstr "Show closed"
 #: src/pages/Investors.tsx
 msgid "Show done"
 msgstr "Show done"
-
-#: src/components/finance/ui.tsx
-msgid "Show finances for"
-msgstr "Show finances for"
 
 #: src/components/SidebarPagesGroup.tsx
 msgid "Show in sidebar"
