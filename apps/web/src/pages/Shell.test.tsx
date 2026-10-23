@@ -62,6 +62,7 @@ import {
   findDocumentsAndArtifacts,
   isRoutinesOnlyPanel,
   retryAfterStop,
+  settingsSectionFromParam,
   showsComputerCaption,
   Transcript,
 } from "./Shell";
@@ -76,6 +77,15 @@ afterEach(() => {
   container?.remove();
   root = null;
   container = null;
+});
+
+it("maps ?settings= to a settings section", () => {
+  expect(settingsSectionFromParam(null)).toBeNull();
+  expect(settingsSectionFromParam("privacy")).toBe("privacy");
+  expect(settingsSectionFromParam("general")).toBe("general");
+  expect(settingsSectionFromParam("models")).toBe("models");
+  expect(settingsSectionFromParam("voice")).toBe("voice");
+  expect(settingsSectionFromParam("nope")).toBe("general");
 });
 
 const bob: ComposerMention = { kind: "bot", id: "bot-2", name: "Bob" };
@@ -1251,13 +1261,13 @@ describe("showsComputerCaption", () => {
     const live = {
       kind: undefined,
       state: "running" as const,
-      hasScreen: true,
+      screenLoaded: true,
       hasError: false,
       open: false,
     };
     expect(showsComputerCaption(live)).toBe(true);
     expect(showsComputerCaption({ ...live, state: "suspended" })).toBe(false);
-    expect(showsComputerCaption({ ...live, hasScreen: false })).toBe(false);
+    expect(showsComputerCaption({ ...live, screenLoaded: false })).toBe(false);
     expect(showsComputerCaption({ ...live, open: true })).toBe(false);
     expect(showsComputerCaption({ ...live, hasError: true })).toBe(false);
     expect(showsComputerCaption({ ...live, kind: "desktop" })).toBe(false);

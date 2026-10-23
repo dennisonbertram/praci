@@ -39,7 +39,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArtifactPreview } from "../components/ArtifactPreview";
 import { AskBotButton } from "../components/AskBotButton";
 import { Tip } from "../components/data-room/FilterBar";
@@ -127,7 +127,16 @@ export function ArtifactsPage({
   // Bots that own at least one artifact. Only grows, so filtering to one bot keeps the others listed.
   const [ownerBotIds, setOwnerBotIds] = useState<ReadonlySet<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
-  const [searchQuery, setSearchQuery] = useState("");
+  // The palette's "See all in Artifacts" arrives as ?q=.
+  const urlQuery = useSearchParams()[0].get("q") ?? "";
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+  useEffect(() => {
+    if (!urlQuery) return;
+    // Show every match: an earlier bot or date filter would hide some of them.
+    setSearchQuery(urlQuery);
+    setDateFilter("all");
+    setActiveBotId(null);
+  }, [urlQuery]);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [maximized, setMaximized] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ArtifactSummary | null>(null);

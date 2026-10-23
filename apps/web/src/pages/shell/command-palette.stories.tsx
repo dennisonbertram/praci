@@ -95,6 +95,18 @@ export const SearchFindsPage: Story = {
   },
 };
 
+/** Page agents have no row in the empty palette; typing their name finds them. */
+export const PageAgentFoundBySearch: Story = {
+  args: {
+    searchOnlyBots: [
+      { ...(detailedBots[0] ?? ({} as never)), id: "legal_agent", name: "Legal agent" },
+    ],
+  },
+  play: async () => {
+    await userEvent.type(await screen.findByTestId("command-palette-search"), "legal");
+  },
+};
+
 export const SearchFindsContactsAndChats: Story = {
   name: "Search shows why a contact and a chat matched",
   args: {
