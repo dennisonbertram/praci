@@ -415,3 +415,37 @@ it("keeps a Financing label inside the chart when financing equals the scale top
   expect(Number(text.getAttribute("y"))).toBeGreaterThanOrEqual(12);
   done();
 });
+
+it("keeps one Financing label on the first row after the chart is measured again", async () => {
+  const cbs: (() => void)[] = [];
+  const savedRO = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class {
+    constructor(cb: () => void) {
+      cbs.push(cb);
+    }
+    observe() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[{ ...day(1, 1_000_000), outCents: 900_000 }]}
+      onOpen={() => {}}
+    />,
+  );
+  // A resize re-runs the chart's render callback without re-rendering BurnLines.
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 601,
+  });
+  await act(async () => {
+    for (const cb of cbs) cb();
+  });
+  const text = el.querySelector("[data-testid=financing-clipped]") as SVGTextElement;
+  expect(Number(text.getAttribute("y"))).toBeGreaterThanOrEqual(14);
+  done();
+  globalThis.ResizeObserver = savedRO;
+});
