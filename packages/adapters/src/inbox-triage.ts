@@ -38,7 +38,7 @@ const CLASSIFIER_TIMEOUT_MS = 60_000;
 type Scope = { userId: string; spaceId: string };
 
 export interface TriageReadinessDeps {
-  prisma: Pick<PrismaClient, "bot" | "aiDataConsent" | "cachedMailMessage">;
+  prisma: Pick<PrismaClient, "bot" | "aiDataConsent" | "cachedMailMessage" | "inboxSenderFeedback">;
   /** The executor's resolver; without it no model can be resolved. */
   resolveModel?: (scope: Scope & { botId?: string }) => Promise<AgentRunModel>;
   /** Optional first-pass classifier. It is used only after the user consents to its recipient. */
