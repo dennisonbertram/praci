@@ -49,10 +49,10 @@ function AuditRow({
   return (
     <li
       data-audit-id={audit.id}
-      className="flex min-h-11 items-center gap-2 border-t border-border first:border-t-0"
+      className="flex min-h-11 flex-wrap items-center gap-x-2 border-t border-border first:border-t-0 sm:flex-nowrap"
     >
-      <div className="min-w-0 flex-1 py-1.5">
-        <span className="block truncate text-sm font-medium" title={audit.fund}>
+      <div className="min-w-0 basis-full py-1.5 sm:flex-1 sm:basis-0">
+        <span className="line-clamp-2 text-sm font-medium" title={audit.fund}>
           {t`Audit request · ${audit.fund}`}
         </span>
         <span className="block truncate text-xs text-muted-foreground">
@@ -144,10 +144,10 @@ export function ActionItems({
         {drafts.map((draft) => (
           <li
             key={draft.id}
-            className="flex min-h-11 items-center gap-2 border-t border-border first:border-t-0"
+            className="flex min-h-11 flex-wrap items-center gap-x-2 border-t border-border first:border-t-0 sm:flex-nowrap"
           >
-            <div className="min-w-0 flex-1 py-1.5">
-              <span className="block truncate text-sm font-medium" title={draft.subject}>
+            <div className="min-w-0 basis-full py-1.5 sm:flex-1 sm:basis-0">
+              <span className="line-clamp-2 text-sm font-medium" title={draft.subject}>
                 {draft.subject}
               </span>
               <span className="block truncate text-xs text-muted-foreground">

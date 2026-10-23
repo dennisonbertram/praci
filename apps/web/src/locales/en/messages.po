@@ -1304,6 +1304,7 @@ msgstr "Always allow this"
 msgid "Always allowed"
 msgstr "Always allowed"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1658,6 +1659,10 @@ msgstr "Assign to contact"
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "at {timeSelect}"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr "At cap"
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2432,6 +2437,10 @@ msgstr "Choose a bot shape, color, or upload an image"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Choose a bot…"
 msgstr "Choose a bot…"
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
+msgstr "Choose a contact"
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Choose a Google Sheet"
