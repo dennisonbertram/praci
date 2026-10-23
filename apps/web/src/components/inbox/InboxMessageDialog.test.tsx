@@ -364,7 +364,8 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   // that the panel overlays and the email column reserves its width.
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
   expect(popup).toContain("min-[1280px]:w-[min(1152px,calc(50vw+376px))]!");
-  expect(popup).toContain("min-[1280px]:left-[calc(50%-384px)]!");
+  // Stays centred (equal side gutters): no left override.
+  expect(popup).not.toContain("min-[1280px]:left-");
   expect(document.querySelector("[data-slot=dialog-content] > div")?.className).toContain(
     "md:pe-96",
   );

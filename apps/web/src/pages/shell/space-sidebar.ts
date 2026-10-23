@@ -79,6 +79,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   currentSpaceId?: string,
   /** Header label for the only space; null leaves the only space without a heading or menu. */
   soleSpaceTitle?: string | null,
+  /** A page agent nobody has used: it is no reason to list another space. */
+  untouched?: (chat: TBot) => boolean,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
@@ -90,9 +92,12 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         : (soleSpaceTitle ?? space.name);
     // No heading means no menu and nothing to collapse: the chats list on their own.
     const headless = spaceLabel === null;
-    const visibleBots = space.bots.filter((bot) =>
-      `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
-    );
+    const otherSpace = showSpaceNames && space.id !== currentSpaceId;
+    const visibleBots = space.bots
+      .filter((bot) => !(otherSpace && untouched?.(bot)))
+      .filter((bot) =>
+        `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
+      );
     const visibleGroups = space.groups.filter((group) =>
       `${group.name} ${group.preview ?? ""}`.toLowerCase().includes(needle),
     );
@@ -111,8 +116,9 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const { pinned, root, ...rest } = sidebarSections(placed, space.botSections);
     const folders = rest.folders
       .map(({ section, items }) => ({ section, bots: items }))
-      // A search shows only the folders it found something in.
-      .filter(({ bots }) => !needle || bots.length > 0);
+      // A search shows only the folders it found something in; another space whose
+      // chats were all filtered out lists nothing, not an empty folder.
+      .filter(({ bots }) => !(needle || (otherSpace && placed.length === 0)) || bots.length > 0);
     const key = (base: string) => (showSpaceNames ? `space:${space.id}:${base}` : base);
     const shared = {
       relabeled: false,

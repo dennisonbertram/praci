@@ -35,6 +35,31 @@ function space(
 }
 
 describe("sidebarGroupsForSpaces", () => {
+  it("leaves out another space that holds only untouched page agents, but keeps the current one", () => {
+    const agent = chat("legal", "Legal");
+    const spaces = [space("a", "Acme"), space("b", "Side", { bots: [agent] })];
+    const untouched = (bot: { id: string }) => bot.id === "legal";
+    expect(
+      sidebarGroupsForSpaces(spaces, "", "a", "Personal", untouched).map((g) => g.spaceId),
+    ).toEqual(["a"]);
+    expect(
+      sidebarGroupsForSpaces(spaces, "", "b", "Personal", untouched).map((g) => g.spaceId),
+    ).toContain("b");
+  });
+
+  it("leaves out another space whose only chat is filtered out, even with a saved folder", () => {
+    const agent = { ...chat("legal", "Legal"), sectionId: "f1" };
+    const side = {
+      ...space("b", "Side", { bots: [agent] }),
+      botSections: [{ id: "f1", name: "Work" }],
+    };
+    const spaces = [space("a", "Acme"), side];
+    const untouched = (bot: { id: string }) => bot.id === "legal";
+    expect(
+      sidebarGroupsForSpaces(spaces, "", "a", "Personal", untouched).map((g) => g.spaceId),
+    ).toEqual(["a"]);
+  });
+
   it("names the only space above its chats, beside its actions", () => {
     const [group] = sidebarGroupsForSpaces([space("space-1", "Personal", { canRename: true })], "");
 

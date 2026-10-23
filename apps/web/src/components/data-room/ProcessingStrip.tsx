@@ -1,8 +1,9 @@
 import { plural, t } from "@lingui/core/macro";
 import type { DataRoomApiProcessing } from "@rakazo/contracts";
+import { DATA_ROOM_STUCK_MS } from "@rakazo/contracts";
 import { Button, cn, Spinner } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
 import { Shimmer } from "../ai/primitives";
 
@@ -36,6 +37,14 @@ export function ProcessingStrip({
 }) {
   const [open, setOpen] = useState(false);
   const remaining = processingRemaining(processing);
+  // The file being read has not changed for a minute, even if the list has not caught up.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (remaining === 0) return;
+    const timer = setTimeout(() => setSlow(true), DATA_ROOM_STUCK_MS);
+    return () => clearTimeout(timer);
+  }, [processing.current, remaining]);
   // One or two files show their own Reading badge in the list; a strip would repeat it.
   if (total <= 2 && !importing) return null;
   const row = "border-b border-border px-3 py-1.5 text-xs text-muted-foreground";
@@ -76,7 +85,7 @@ export function ProcessingStrip({
           <span className="shrink-0">
             {waitingForPermission ? (
               t`Waiting for permission to read`
-            ) : stalled ? (
+            ) : stalled || slow ? (
               t`Taking longer than usual`
             ) : (
               <Shimmer>
@@ -90,7 +99,12 @@ export function ProcessingStrip({
             {t`Try again`}
           </Button>
         ) : null}
-        {remaining > 0 && !waitingForPermission && !stalled && processing.current && doing ? (
+        {remaining > 0 &&
+        !waitingForPermission &&
+        !stalled &&
+        !slow &&
+        processing.current &&
+        doing ? (
           <span className="min-w-0 truncate">
             {doing} {maskCurrencyWhenHidden(processing.current)}
           </span>

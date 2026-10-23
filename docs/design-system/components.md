@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 279 of 279
-- Web and shared components: 736
+- Web and shared components: 737
 - Mobile components: 140 in 97 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -395,7 +395,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| PortalApp, App, SessionApp, LegacySetupRedirect, CapTableRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| PortalApp, App, SessionApp, LegacySetupRedirect, CapTableRedirect, SignInRedirect, SessionUnavailable, AppFailed, AuthFrame, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 
