@@ -6578,6 +6578,10 @@ msgstr "Memo"
 msgid "Memory"
 msgstr "Memory"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Memory provider"
+msgstr "Memory provider"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Memory scope"
 msgstr "Memory scope"
@@ -7933,10 +7937,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Outside memory service"
-msgstr "Outside memory service"
 
 #: src/pages/Board.tsx
 msgid "Owner"
