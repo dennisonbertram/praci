@@ -32,7 +32,7 @@ msgstr ""
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid " (unread)"
 msgstr " (अपठित)"
 
@@ -75,7 +75,7 @@ msgid "{0, plural, one {# email} other {# emails}}"
 msgstr ""
 
 #. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "{0, plural, one {# file failed} other {# files failed}}"
 msgstr ""
 
@@ -98,12 +98,12 @@ msgstr "{0, plural, one {# मॉडल} other {# मॉडल}}"
 #. placeholder {0}: glance.gtmNeedsYou
 #. placeholder {0}: needsYou.length
 #: src/pages/Gtm.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
 msgstr ""
 
 #. placeholder {0}: glance.legalDueSoon
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
 msgstr ""
 
@@ -276,6 +276,11 @@ msgstr ""
 msgid "{0} did not accept the sign-in."
 msgstr ""
 
+#. placeholder {0}: source.evidenceCount
+#: src/pages/CompanyPrivacy.tsx
+msgid "{0} evidence records"
+msgstr ""
+
 #. placeholder {0}: failed.length
 #. placeholder {0}: failed[0]?.name ?? ""
 #: src/pages/Investors.tsx
@@ -295,6 +300,11 @@ msgstr ""
 #. placeholder {0}: wait.name
 #: src/pages/shell/DelegateWaitNotice.tsx
 msgid "{0} has not answered"
+msgstr ""
+
+#. placeholder {0}: source.itemCount
+#: src/pages/CompanyImport.tsx
+msgid "{0} items"
 msgstr ""
 
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
@@ -330,6 +340,11 @@ msgstr ""
 #. placeholder {3}: policy.dailyCap
 #: src/pages/gtm/GtmChannels.tsx
 msgid "{0} of {1} approvals before auto · {2} of {3} today"
+msgstr ""
+
+#. placeholder {0}: run.sources.find((item) => item.id === source.id)?.label ?? source.sourceKind
+#: src/pages/CompanyImport.tsx
+msgid "{0} progress"
 msgstr ""
 
 #. placeholder {0}: sender.name
@@ -450,8 +465,16 @@ msgstr ""
 msgid "{count} / 3,000"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "{count} channels"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} days"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "{count} folders"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -460,6 +483,10 @@ msgstr ""
 
 #: src/components/data-room/SelectionBar.tsx
 msgid "{count} of {total} selected"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "{count} read tools"
 msgstr ""
 
 #: src/pages/Fundraising.tsx
@@ -530,7 +557,7 @@ msgstr "{hours} घंटे पहले"
 msgid "{imported, plural, one {Imported # file} other {Imported # files}}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
@@ -716,7 +743,7 @@ msgstr ""
 msgid "* So far"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "+{hiddenRows} more"
 msgstr ""
 
@@ -733,9 +760,21 @@ msgstr ""
 msgid "0x… or name.eth"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "1 channel"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "1 folder"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "1 non-USD transaction not counted"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "1 read tool"
 msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
@@ -809,6 +848,10 @@ msgstr ""
 msgid "About spaces"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Access denied"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Access token"
 msgstr ""
@@ -866,7 +909,7 @@ msgstr ""
 #: src/components/investors/ActionItems.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Investors.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Actions for {0}"
 msgstr "{0} के लिए कार्रवाइयां"
 
@@ -893,7 +936,7 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 #: src/pages/ActivityList.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Activity"
 msgstr "गतिविधि"
 
@@ -1124,6 +1167,10 @@ msgstr ""
 msgid "Advisor"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
+msgid "Agenda"
+msgstr ""
+
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Agent"
@@ -1145,6 +1192,10 @@ msgstr ""
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
 msgid "All"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "All accessible items"
 msgstr ""
 
 #. placeholder {0}: item.name
@@ -1172,6 +1223,11 @@ msgstr ""
 msgid "All files processed"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "All folders"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -1189,8 +1245,18 @@ msgstr ""
 msgid "All providers"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "All public channels"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -1208,6 +1274,12 @@ msgstr "{0} कार्रवाइयों को बिना पूछे �
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} connector without asking"
 msgstr "{0} कनेक्टर को बिना पूछे अनुमति दें"
+
+#. placeholder {0}: source.label
+#. placeholder {1}: current?.recipient?.name ?? "model"
+#: src/pages/CompanyImport.tsx
+msgid "Allow {0} to {1}"
+msgstr ""
 
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
@@ -1331,6 +1403,14 @@ msgstr "इस प्रोवाइडर के लिए API कुंजी 
 
 #: src/components/ContactDeleteConfirm.tsx
 msgid "and"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "Anniversaries"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "Anniversary"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -1512,7 +1592,7 @@ msgstr "आर्काइव किया गया"
 #: src/components/EmailCards.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Archived"
 msgstr "आर्काइव किया गया"
 
@@ -1540,9 +1620,22 @@ msgstr ""
 msgid "Archived. Chat, memory, and files kept."
 msgstr "आर्काइव किया गया। चैट, मेमोरी और फ़ाइलें सुरक्षित रखी गईं।"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Argument schema"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Arguments"
 msgstr "आर्ग्युमेंट"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Arguments (JSON)"
+msgstr ""
+
+#. placeholder {0}: tool.name
+#: src/pages/CompanyImportScope.tsx
+msgid "Arguments for {0}"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Artifact"
@@ -1550,6 +1643,7 @@ msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Artifacts"
 msgstr ""
 
@@ -1824,7 +1918,7 @@ msgstr ""
 msgid "Back to artifacts"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Back to chats"
 msgstr ""
 
@@ -1912,6 +2006,10 @@ msgstr ""
 #: src/pages/shell/bot-credentials.tsx
 msgid "Bearer token"
 msgstr "बियरर टोकन"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Before"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "bill"
@@ -2102,6 +2200,8 @@ msgid "Cadence"
 msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/Gtm.tsx
 msgid "Calendar"
 msgstr ""
@@ -2154,6 +2254,10 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Fundraising.tsx
 #: src/pages/Gtm.tsx
@@ -2192,6 +2296,7 @@ msgstr "रद्द"
 
 #: src/components/AskCard.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Cancelled"
 msgstr "रद्द किया गया"
 
@@ -2201,6 +2306,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "cap table, equity, ownership, Carta"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Cap-limited; sample pending"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -2224,6 +2333,7 @@ msgid "Carta"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
+#: src/pages/Company.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Cash"
@@ -2320,9 +2430,14 @@ msgstr "बदला जा रहा है…"
 msgid "Channel"
 msgstr ""
 
+#: src/pages/CompanyImportScope.tsx
 #: src/pages/gtm/GtmChannels.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Channels"
+msgstr ""
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Channels unavailable"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -2364,6 +2479,7 @@ msgid "Chat settings"
 msgstr ""
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Chats"
 msgstr ""
 
@@ -2454,6 +2570,10 @@ msgstr "नया पासवर्ड चुनें"
 msgid "Choose a tool"
 msgstr ""
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Choose a valid scope"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Choose an account"
 msgstr ""
@@ -2474,6 +2594,19 @@ msgstr ""
 msgid "Choose how apps connect for everyone on this server."
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Choose read tools"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "Choose scope"
+msgstr ""
+
+#: src/pages/CompanyReview.tsx
+msgid "Choose subjects"
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
 msgstr ""
@@ -2484,6 +2617,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Choose which account to send from."
+msgstr ""
+
+#: src/pages/CompanyReview.tsx
+msgid "Choose…"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -2621,7 +2758,7 @@ msgstr "छवि प्रीव्यू बंद करें"
 msgid "Close memory settings"
 msgstr "मेमोरी सेटिंग्स बंद करें"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Close menu"
 msgstr ""
 
@@ -2694,7 +2831,7 @@ msgstr ""
 
 #. placeholder {0}: item.chat.name
 #. placeholder {0}: sidebarHeader.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Collapse {0}"
 msgstr ""
 
@@ -2704,6 +2841,14 @@ msgstr ""
 
 #: src/components/SidebarPagesGroup.tsx
 msgid "Collapse {title}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Collapse Company agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Collapse Company importer"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2769,7 +2914,31 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Company"
+msgstr ""
+
+#: src/pages/Company.tsx
+msgid "Company actions"
+msgstr ""
+
+#: src/pages/Company.tsx
+msgid "Company agent"
+msgstr ""
+
+#: src/pages/CompanyHistory.tsx
+msgid "Company history"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Company importer"
+msgstr ""
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Company privacy"
 msgstr ""
 
 #. placeholder {0}: current.name
@@ -2839,6 +3008,11 @@ msgstr "कंप्यूटर बंद हैं। SANDBOX_PROVIDER=docker 
 msgid "Configure API key"
 msgstr ""
 
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
+msgid "Confirm"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "डिलीट की पुष्टि करें"
@@ -2852,6 +3026,15 @@ msgstr "पासवर्ड की पुष्टि करें"
 msgid "Confirm the URL is reachable from this browser session, then test again."
 msgstr "पुष्टि करें कि यह URL इस ब्राउज़र सत्र से पहुँच योग्य है, फिर फिर से परीक्षण करें।"
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Confirmed"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
+msgid "Conflicting evidence"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -2864,6 +3047,7 @@ msgstr "पुष्टि करें कि यह URL इस ब्राउ
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
@@ -2900,6 +3084,7 @@ msgstr ""
 msgid "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub."
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
 #: src/pages/Onboarding.tsx
 msgid "Connect a model"
 msgstr "एक मॉडल कनेक्ट करें"
@@ -3044,6 +3229,10 @@ msgstr "{0} कनेक्ट किया गया।"
 msgid "Connected and using {0}."
 msgstr "{0} कनेक्ट किया गया और उपयोग में है।"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Connected Data Room sources require manual re-import."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connected. Its tools are available from your next message."
 msgstr "कनेक्टेड। इसके टूल आपके अगले संदेश से उपलब्ध हैं।"
@@ -3079,6 +3268,10 @@ msgstr "कनेक्शन परीक्षण विफल रहा।"
 msgid "Connects Devin for everyone in this space. Read-only."
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Consent required"
+msgstr ""
+
 #: src/components/fundraising/MercuryDialogs.tsx
 msgid "Contact"
 msgstr ""
@@ -3086,6 +3279,7 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Contacts"
 msgstr ""
 
@@ -3298,6 +3492,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Company agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3986,8 +4184,8 @@ msgstr ""
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/tour/FirstRunTour.tsx
 #: src/pages/Board.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Create"
 msgstr "बनाएं"
 
@@ -4024,6 +4222,14 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Create an app in the provider's developer settings with this callback URL."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Create Company agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Create Company importer"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4137,6 +4343,11 @@ msgstr ""
 msgid "Customer support"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
+msgid "Customers"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Customize bot avatar"
 msgstr "बॉट अवतार अनुकूलित करें"
@@ -4152,7 +4363,12 @@ msgstr "डार्क"
 #: src/components/tour/FirstRunTour.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Data room"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Data Room"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4166,6 +4382,10 @@ msgstr ""
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Date"
+msgstr ""
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Date window"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -4222,9 +4442,9 @@ msgstr "डिफ़ॉल्ट ({0})"
 #: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Delete"
 msgstr "डिलीट करें"
 
@@ -4240,8 +4460,8 @@ msgstr ""
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.name
 #. placeholder {0}: item.text
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-pins.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Delete {0}"
 msgstr "{0} डिलीट करें"
 
@@ -4303,6 +4523,10 @@ msgstr ""
 msgid "Delete this update?"
 msgstr ""
 
+#: src/pages/CompanyPrivacy.tsx
+msgid "Delete your company facts, import history, corrections and exclusions. Documents and integrations stay connected. This cannot be undone."
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "deleted"
 msgstr "डिलीट किया गया"
@@ -4342,6 +4566,7 @@ msgid "Deposit in Finance"
 msgstr ""
 
 #: src/pages/Board.tsx
+#: src/pages/CompanyFactDetail.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Description"
@@ -4370,11 +4595,13 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
+#: src/pages/CompanyReview.tsx
 msgid "Details"
 msgstr ""
 
 #: src/pages/Devin.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Devin"
 msgstr ""
 
@@ -4422,6 +4649,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/gtm/GtmPlan.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
@@ -4431,11 +4659,17 @@ msgstr ""
 msgid "Discard draft?"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Discard this import?"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Discarded"
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -4456,6 +4690,14 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "Disconnect sign-in"
+msgstr ""
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Disconnect source?"
+msgstr ""
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Disconnected"
 msgstr ""
 
 #. placeholder {0}: selected.providerName ?? selected.provider
@@ -4566,6 +4808,7 @@ msgstr ""
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/Gtm.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Legal.tsx
@@ -4752,6 +4995,8 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Gtm.tsx
 #: src/pages/gtm/GtmPlan.tsx
@@ -4795,7 +5040,7 @@ msgid "Email and calendar"
 msgstr ""
 
 #: src/components/integrations/parts.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Email chats"
 msgstr ""
 
@@ -4945,9 +5190,21 @@ msgstr ""
 msgid "Equity raised"
 msgstr ""
 
+#: src/pages/CompanyPrivacy.tsx
+msgid "Erase"
+msgstr ""
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Erase company map"
+msgstr ""
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Erase company map?"
+msgstr ""
+
 #: src/lib/devin-format.ts
 #: src/lib/roster-status.ts
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Error"
 msgstr ""
 
@@ -4996,13 +5253,25 @@ msgstr ""
 msgid "Exchange"
 msgstr ""
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Exclude"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Exclude person"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Exclude person?"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
 msgstr "विस्तृत करें"
 
 #. placeholder {0}: item.chat.name
 #. placeholder {0}: sidebarHeader.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Expand {0}"
 msgstr ""
 
@@ -5027,6 +5296,10 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Export"
 msgstr "एक्सपोर्ट करें"
+
+#: src/pages/Company.tsx
+msgid "Export JSON"
+msgstr ""
 
 #: src/components/DataExport.tsx
 msgid "Export my data"
@@ -5055,6 +5328,14 @@ msgstr "अतिरिक्त उच्च"
 msgid "Extra high"
 msgstr "अतिरिक्त उच्च"
 
+#: src/pages/CompanyCalendar.tsx
+msgid "Fact unavailable"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Facts"
+msgstr ""
+
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
 msgstr "असफल"
@@ -5066,6 +5347,7 @@ msgstr "असफल"
 #: src/components/integrations/parts.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Failed"
 msgstr "विफल"
@@ -5137,6 +5419,7 @@ msgstr ""
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Finance"
 msgstr ""
 
@@ -5228,6 +5511,7 @@ msgid "Folder"
 msgstr ""
 
 #: src/components/data-room/FolderTree.tsx
+#: src/pages/CompanyImportScope.tsx
 msgid "Folders"
 msgstr ""
 
@@ -5270,6 +5554,7 @@ msgstr ""
 #: src/components/gtm/EmailItemCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImportScope.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "From"
 msgstr ""
@@ -5306,6 +5591,10 @@ msgstr ""
 msgid "From routine: {0}"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "From sample"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr ""
@@ -5329,8 +5618,14 @@ msgstr ""
 msgid "Funded"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
+msgid "Funding"
+msgstr ""
+
 #: src/pages/Fundraising.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Fundraising"
 msgstr ""
 
@@ -5369,6 +5664,10 @@ msgstr ""
 msgid "Git event"
 msgstr ""
 
+#: src/pages/CompanyRefresh.tsx
+msgid "GitHub lists do not provide a complete change feed."
+msgstr ""
+
 #: src/pages/Gtm.tsx
 msgid "Give the GTM agent a goal"
 msgstr ""
@@ -5387,6 +5686,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Gmail filter limit reached"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Gmail history expired. Re-import to establish a new checkpoint."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -5501,6 +5804,7 @@ msgstr ""
 
 #: src/pages/Gtm.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "GTM"
 msgstr ""
 
@@ -5578,7 +5882,7 @@ msgstr ""
 msgid "Hide password"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Hide sidebar"
 msgstr ""
 
@@ -5597,7 +5901,17 @@ msgid "High"
 msgstr "उच्च"
 
 #: src/components/inbox/CleanupHistory.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyHistory.tsx
 msgid "History"
+msgstr ""
+
+#: src/pages/CompanyHistory.tsx
+msgid "History timeline; plus or minus to zoom"
+msgstr ""
+
+#: src/pages/CompanyHistory.tsx
+msgid "History zoom"
 msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
@@ -5631,6 +5945,10 @@ msgstr "घंटा"
 #: src/pages/RoutineSchedule.tsx
 msgid "hours"
 msgstr "घंटे"
+
+#: src/pages/Shell.tsx
+msgid "How is my import going?"
+msgstr ""
 
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
@@ -5724,6 +6042,7 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/pages/Company.tsx
 msgid "Import"
 msgstr ""
 
@@ -5732,12 +6051,20 @@ msgstr ""
 msgid "Import {0}"
 msgstr ""
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Import a source to set up refresh."
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Import anyway"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Import company"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -5752,6 +6079,10 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Import in progress"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
@@ -5760,6 +6091,10 @@ msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Imported"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Importing"
 msgstr ""
 
 #. placeholder {0}: importing.done
@@ -5805,6 +6140,7 @@ msgstr ""
 #: src/components/tour/FirstRunTour.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Inbox"
 msgstr ""
 
@@ -5816,8 +6152,16 @@ msgstr ""
 msgid "Inbox & email"
 msgstr ""
 
+#: src/pages/CompanyImportScope.tsx
+msgid "INBOX, SENT"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Included"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Increase token cap"
 msgstr ""
 
 #: src/components/data-room/ProcessingStrip.tsx
@@ -5877,6 +6221,7 @@ msgstr ""
 #: src/components/integrations/McpDetail.tsx
 #: src/components/tour/FirstRunTour.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Integrations"
 msgstr ""
 
@@ -5921,6 +6266,7 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Investors"
 msgstr ""
 
@@ -5954,6 +6300,7 @@ msgid "Italic"
 msgstr ""
 
 #: src/components/data-room/ItemRows.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Items"
 msgstr ""
 
@@ -5985,6 +6332,10 @@ msgstr ""
 msgid "just now"
 msgstr "अभी-अभी"
 
+#: src/pages/CompanyImport.tsx
+msgid "Keep"
+msgstr ""
+
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Keep {name}"
 msgstr ""
@@ -6001,6 +6352,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "मेमोरी रखें"
+
+#: src/pages/CompanyReview.tsx
+msgid "Keep separate"
+msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Keep this deadline"
@@ -6026,6 +6381,10 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
+msgstr ""
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Label IDs"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -6055,6 +6414,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Last charge"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Last completed"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -6098,6 +6461,10 @@ msgstr ""
 msgid "Last scan failed: The AI key was rejected."
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Last three years"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Later"
 msgstr ""
@@ -6114,6 +6481,10 @@ msgstr ""
 #. placeholder {1}: card.count
 #: src/components/FinanceCards.tsx
 msgid "Latest {0} of {1}"
+msgstr ""
+
+#: src/pages/Company.tsx
+msgid "Latest events"
 msgstr ""
 
 #: src/pages/portal/PortalHome.tsx
@@ -6135,8 +6506,11 @@ msgstr ""
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Legal"
 msgstr ""
 
@@ -6258,6 +6632,10 @@ msgstr ""
 msgid "Loading activity…"
 msgstr "गतिविधि लोड हो रही है…"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Loading channels…"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations"
 msgstr ""
@@ -6288,6 +6666,10 @@ msgstr ""
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "प्रीव्यू लोड हो रहा है…"
+
+#: src/pages/CompanyImport.tsx
+msgid "Loading recipients"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
@@ -6332,8 +6714,12 @@ msgstr ""
 msgid "Local Server Settings"
 msgstr ""
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Locked fields"
+msgstr ""
+
 #: src/pages/Paywall.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Log out"
 msgstr "लॉग आउट"
 
@@ -6383,6 +6769,10 @@ msgstr ""
 msgid "Mail from {0} is now marked important"
 msgstr ""
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Make private"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Make sure nothing is still running on this computer."
 msgstr "सुनिश्चित करें कि इस कंप्यूटर पर कुछ भी चल नहीं रहा है।"
@@ -6401,6 +6791,10 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Manage messaging settings"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Manual re-import only"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6524,6 +6918,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Marked unread"
+msgstr ""
+
+#: src/pages/CompanyReview.tsx
+msgid "Match"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6732,10 +7130,18 @@ msgstr "मॉडल"
 msgid "Model \"{modelId}\" was not listed."
 msgstr "मॉडल \"{modelId}\" सूची में नहीं था।"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Model consent needed"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Model id"
 msgstr "मॉडल आईडी"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Model options"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Model spend uses your provider keys."
@@ -6769,6 +7175,8 @@ msgid "month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Month"
@@ -6837,12 +7245,20 @@ msgstr ""
 msgid "More Blockscout actions"
 msgstr ""
 
+#: src/pages/CompanyImportScope.tsx
+msgid "More channels"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
+msgstr ""
+
+#: src/pages/CompanyImportScope.tsx
+msgid "More private channels"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -6929,6 +7345,8 @@ msgstr "म्यूट करें"
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6938,6 +7356,10 @@ msgstr "म्यूट करें"
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "नाम"
+
+#: src/pages/CompanyReview.tsx
+msgid "Name or title"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
@@ -7065,6 +7487,10 @@ msgstr "नया समूह"
 msgid "New group chat"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "New import"
+msgstr ""
+
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
 msgstr ""
@@ -7118,6 +7544,10 @@ msgstr ""
 msgid "Next attachment"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Next dates"
+msgstr ""
+
 #: src/pages/legal/LegalContracts.tsx
 msgid "Next deadline"
 msgstr ""
@@ -7125,6 +7555,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Next refresh"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -7212,6 +7646,10 @@ msgstr ""
 msgid "No closing balance found to check against"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "No company facts yet"
+msgstr ""
+
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 msgid "No contacts yet"
@@ -7228,6 +7666,14 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/pages/CompanyHistory.tsx
+msgid "No dated facts"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "No dates"
 msgstr ""
 
 #: src/pages/Devin.tsx
@@ -7250,6 +7696,14 @@ msgstr ""
 msgid "no email"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "No extraction model"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "No facts in this sample"
+msgstr ""
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
@@ -7266,6 +7720,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
+msgstr ""
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "No imported sources"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -7362,6 +7820,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "कोई प्रोवाइडर नहीं मिला।"
+
+#: src/pages/CompanyImport.tsx
+msgid "No read-only importer"
+msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "No receipt"
@@ -7485,6 +7947,14 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Not checked"
+msgstr ""
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyHistory.tsx
+#: src/pages/CompanyReview.tsx
+msgid "Not confirmed"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -7634,6 +8104,10 @@ msgstr ""
 msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 msgstr ""
 
+#: src/pages/CompanyReview.tsx
+msgid "Nothing to review"
+msgstr ""
+
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Notice deadlines are derived from the expiration date and the notice period."
 msgstr ""
@@ -7643,6 +8117,10 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "सूचनाएं"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Notion search does not guarantee complete or immediate change detection."
+msgstr ""
 
 #. placeholder {0}: selected.label
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7686,6 +8164,10 @@ msgstr "{0} के साथ कॉल पर"
 
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
+msgstr ""
+
+#: src/pages/CompanyHistory.tsx
+msgid "Ongoing"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7747,6 +8229,10 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Open again"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Open Company"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -7855,6 +8341,10 @@ msgstr "शेल खोलें"
 msgid "Open sign-in"
 msgstr ""
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Open source"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "खुला कार्य"
@@ -7910,6 +8400,10 @@ msgstr "या एक API कुंजी पेस्ट करें"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Organic"
+msgstr ""
+
+#: src/pages/Company.tsx
+msgid "Organisations"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
@@ -7970,6 +8464,10 @@ msgstr ""
 msgid "Out"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Overview"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -7981,7 +8479,7 @@ msgid "Page"
 msgstr ""
 
 #: src/components/PageAgentsRow.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Page agents"
 msgstr ""
 
@@ -7998,8 +8496,8 @@ msgstr ""
 msgid "Page options"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Pages"
 msgstr ""
 
@@ -8013,6 +8511,11 @@ msgstr "पार्क करें"
 
 #: src/components/UiArtifactView.tsx
 msgid "Part of this can't be shown."
+msgstr ""
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyImport.tsx
+msgid "Partial import"
 msgstr ""
 
 #: src/components/data-room/ItemRows.tsx
@@ -8066,6 +8569,10 @@ msgstr ""
 msgid "Past due"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Past members"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste a replacement key"
@@ -8103,6 +8610,11 @@ msgstr "अपनी API कुंजी पेस्ट करें, फिर
 msgid "Path"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Pause"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr ""
@@ -8119,6 +8631,12 @@ msgstr ""
 #: src/components/fundraising/RoundCard.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
+msgid "People"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -8357,6 +8875,10 @@ msgstr "{0} का प्रीव्यू"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Preview sample"
+msgstr ""
+
 #: src/components/inbox/MailAttachments.tsx
 msgid "Previous attachment"
 msgstr ""
@@ -8368,6 +8890,10 @@ msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx
 msgid "Previous week"
+msgstr ""
+
+#: src/pages/CompanyReview.tsx
+msgid "Previously rejected name"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -8382,8 +8908,17 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
+#: src/pages/Company.tsx
+#: src/pages/CompanyImport.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
+msgstr ""
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Private channels and DMs"
 msgstr ""
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
@@ -8400,6 +8935,15 @@ msgstr ""
 
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Processing"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyHistory.tsx
+msgid "Product"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Progress"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -8450,8 +8994,16 @@ msgstr ""
 msgid "Providers"
 msgstr "प्रोवाइडर्स"
 
+#: src/pages/CompanyImport.tsx
+msgid "Public and selected private channels"
+msgstr ""
+
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Public URL"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Published call rates · total unknown"
 msgstr ""
 
 #: src/components/CloudAgentCard.tsx
@@ -8464,6 +9016,7 @@ msgid "Q{quarter} so far"
 msgstr ""
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyHistory.tsx
 msgid "Quarter"
 msgstr ""
 
@@ -8491,12 +9044,24 @@ msgstr ""
 msgid "Quote"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Raised"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Rarely read, and you never wrote to them"
 msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Re-approve"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Re-import"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Re-import to establish a checkpoint."
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -8508,6 +9073,7 @@ msgid "Reactions"
 msgstr "प्रतिक्रियाएँ"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Read"
 msgstr ""
 
@@ -8541,6 +9107,10 @@ msgstr ""
 msgid "Read replies aloud"
 msgstr "उत्तर पढ़कर सुनाएं"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Read tools"
+msgstr ""
+
 #: src/components/tour/FirstRunTour.tsx
 msgid "Read your mail sorted by what needs you, and send replies you approve."
 msgstr ""
@@ -8552,6 +9122,7 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Reading"
 msgstr ""
 
@@ -8672,6 +9243,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/Devin.tsx
 #: src/pages/Finance.tsx
 msgid "Reconnect"
@@ -8705,10 +9277,18 @@ msgstr ""
 msgid "Reconnect needed"
 msgstr ""
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Reconnect this source before importing."
+msgstr ""
+
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Reconnecting"
 msgstr "पुनः कनेक्ट हो रहा है"
+
+#: src/pages/Company.tsx
+msgid "Reconstructed"
+msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -8778,12 +9358,22 @@ msgstr ""
 #: src/components/ErrorBoundary.tsx
 #: src/components/fundraising/MercuryLine.tsx
 #: src/components/gtm/GtmCalendar.tsx
+#: src/pages/CompanyRefresh.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "रीफ़्रेश करें"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Refresh needs attention"
+msgstr ""
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyRefresh.tsx
+msgid "Refresh sources"
+msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
@@ -8796,6 +9386,11 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Registration is closed"
 msgstr "पंजीकरण बंद है"
+
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
+msgid "Reject"
+msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Relations of {selectedLabel}"
@@ -8815,6 +9410,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Relevance"
+msgstr ""
+
+#: src/pages/CompanyReview.tsx
+msgid "Reload"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -8930,8 +9529,16 @@ msgstr "स्किल {0} हटाएं"
 msgid "Remove the {0} – {1} statement?"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Remove this import’s evidence and facts that have no other evidence."
+msgstr ""
+
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Remove this one"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Remove this person and their relationships, and stop collecting their facts. Events about other people stay. Matching names and known identities will be excluded from future imports."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -9087,6 +9694,10 @@ msgstr ""
 msgid "Resend link"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Reserved"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Reset"
@@ -9133,6 +9744,10 @@ msgstr "पैनल का आकार बदलें"
 msgid "Resize sidebar"
 msgstr ""
 
+#: src/pages/CompanyReview.tsx
+msgid "Resolve identity"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Restart the Praci server to start using iMessage."
 msgstr ""
@@ -9142,7 +9757,7 @@ msgid "Restart to update"
 msgstr ""
 
 #: src/pages/Legal.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Restore"
 msgstr "बहाल करें"
 
@@ -9162,6 +9777,10 @@ msgstr ""
 msgid "Restoring your workspace"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Resume"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/data-room/AutoSortDialog.tsx
@@ -9169,6 +9788,12 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+#: src/pages/CompanyPrivacy.tsx
+#: src/pages/CompanyRefresh.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -9176,6 +9801,10 @@ msgstr ""
 #: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "फिर कोशिश करें"
+
+#: src/pages/CompanyImport.tsx
+msgid "Retry failed"
+msgstr ""
 
 #: src/App.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -9198,6 +9827,11 @@ msgstr "Praci पर लौटें"
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
+msgstr ""
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyImport.tsx
+msgid "Review"
 msgstr ""
 
 #: src/components/gtm/EmailItemCard.tsx
@@ -9227,6 +9861,15 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Robot"
+msgstr ""
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+msgid "Role"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Roles over time"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
@@ -9351,6 +9994,22 @@ msgstr ""
 msgid "SAFEs, if converted at cap"
 msgstr ""
 
+#: src/pages/CompanyReview.tsx
+msgid "Same person?"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Sample · up to 25 items per source"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Sample facts"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Sample ready"
+msgstr ""
+
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr ""
@@ -9366,6 +10025,8 @@ msgstr ""
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyImportScope.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/Gtm.tsx
@@ -9542,9 +10203,8 @@ msgstr ""
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
-#: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Search"
 msgstr "खोजें"
 
@@ -9908,6 +10568,7 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Settings"
 msgstr "सेटिंग्स"
 
@@ -9929,6 +10590,10 @@ msgstr ""
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Share {0}"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Share with team"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -9953,6 +10618,14 @@ msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Shared pages"
+msgstr ""
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Shared with team"
 msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
@@ -10013,6 +10686,10 @@ msgstr ""
 msgid "Show more"
 msgstr "और दिखाएँ"
 
+#: src/pages/Shell.tsx
+msgid "Show my import plan"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Show open"
 msgstr ""
@@ -10030,6 +10707,7 @@ msgid "Show settings"
 msgstr "सेटिंग्स दिखाएं"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Show sidebar"
 msgstr ""
 
@@ -10053,7 +10731,7 @@ msgstr ""
 msgid "Showing the emails it found"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Sidebar"
 msgstr ""
 
@@ -10162,6 +10840,10 @@ msgstr ""
 msgid "Similar to {0}"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Since"
+msgstr ""
+
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
@@ -10246,6 +10928,10 @@ msgstr ""
 msgid "Slack and your calendar"
 msgstr ""
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Slack history does not reliably include edits to older messages."
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr ""
@@ -10313,7 +10999,15 @@ msgid "Source"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyPrivacy.tsx
 msgid "Sources"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Sources and model recipients"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -10416,6 +11110,10 @@ msgstr ""
 msgid "Start a round"
 msgstr ""
 
+#: src/pages/CompanyImport.tsx
+msgid "Start import"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
 msgstr "रिकॉर्डिंग शुरू करें"
@@ -10512,6 +11210,10 @@ msgstr ""
 msgid "Stop"
 msgstr "रोकें"
 
+#: src/pages/CompanyPrivacy.tsx
+msgid "Stop Company imports from this source and remove its evidence. Facts without other evidence are removed; your edits stay. Your integration stays connected."
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Stop speaking"
 msgstr "बोलना रोकें"
@@ -10530,6 +11232,10 @@ msgstr "जवाब स्ट्रीम करें"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Streamable HTTP"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "Streams"
 msgstr ""
 
 #: src/components/data-room/ItemRows.tsx
@@ -10640,7 +11346,7 @@ msgstr ""
 msgid "Take control"
 msgstr "नियंत्रण लें"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Take the tour"
 msgstr ""
 
@@ -10662,6 +11368,7 @@ msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Task board"
 msgstr ""
 
@@ -10857,6 +11564,10 @@ msgstr ""
 msgid "The provider is rate-limiting requests."
 msgstr "प्रोवाइडर अनुरोधों की दर सीमित कर रहा है।"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "The selected Linear reader does not provide a complete change feed."
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "चयनित मेमोरी प्रोवाइडर इस बिल्ड में उपलब्ध नहीं है।"
@@ -11022,6 +11733,10 @@ msgstr "इस प्रोवाइडर का परीक्षण सह�
 msgid "This provider is not connected yet."
 msgstr "यह प्रोवाइडर अभी कनेक्ट नहीं है।"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "This reader has no verified incremental change feed."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
 msgstr ""
@@ -11136,6 +11851,30 @@ msgstr "आज"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Token budget reached"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Token cap"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Token cap nearly reached"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Token cap reached"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Token estimate"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Tokens"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
@@ -11383,6 +12122,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/devin-format.ts
+#: src/pages/CompanyImport.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
@@ -11776,6 +12516,14 @@ msgstr ""
 msgid "View chat"
 msgstr "चैट देखें"
 
+#: src/pages/CompanyReview.tsx
+msgid "View evidence"
+msgstr ""
+
+#: src/pages/CompanyRefresh.tsx
+msgid "View progress"
+msgstr ""
+
 #: src/components/gtm/GtmCalendar.tsx
 msgid "View proof"
 msgstr ""
@@ -11797,6 +12545,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
 msgstr "थोड़ी देर रुकें और फिर से परीक्षण करें।"
+
+#: src/pages/CompanyImport.tsx
+msgid "Waiting"
+msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {days}d"
@@ -11932,6 +12684,10 @@ msgstr ""
 msgid "What bots remember by default"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "What dates are coming up?"
+msgstr ""
+
 #: src/components/PageAgentIntro.tsx
 msgid "What deadlines are coming up?"
 msgstr ""
@@ -11979,6 +12735,11 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "क्या लौटाना है"
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+msgid "What we do"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "What were the biggest payments this month?"
@@ -12032,6 +12793,10 @@ msgstr ""
 msgid "Which documents mention renewal?"
 msgstr ""
 
+#: src/pages/CompanyReview.tsx
+msgid "Which event?"
+msgstr ""
+
 #: src/lib/investors-agent.ts
 #: src/pages/Shell.tsx
 msgid "Who are our investors?"
@@ -12040,6 +12805,10 @@ msgstr ""
 #: src/components/PageAgentIntro.tsx
 #: src/lib/investors-agent.ts
 msgid "Who owns what in the company?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Who works here?"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -12131,6 +12900,7 @@ msgid "year"
 msgstr ""
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyHistory.tsx
 msgid "Year"
 msgstr ""
 
