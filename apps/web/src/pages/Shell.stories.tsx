@@ -6,9 +6,9 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { makeBot, mockBots, mockMe, mockSections } from "../stories/fixtures";
-import { overview as gtmOverview, page as gtmPage } from "./gtm/fixtures";
 import { companyFixture } from "./company-fixtures";
 import { importCatalog } from "./company-import-fixtures";
+import { overview as gtmOverview, page as gtmPage } from "./gtm/fixtures";
 import { ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */

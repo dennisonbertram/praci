@@ -182,8 +182,8 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
-import { recoverComposerDraft } from "../lib/composer-accounts";
 import { findCompanyAgent } from "../lib/company-agent";
+import { recoverComposerDraft } from "../lib/composer-accounts";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -1202,13 +1202,13 @@ export function ShellPage() {
               ? findDataRoomAgent(bots, userId)
               : legalMode
                 ? findLegalAgent(bots, userId)
-              : gtmMode
-                ? findGtmAgent(bots, userId)
-                : devinMode
-                  ? bots.find((bot) => bot.id === devinAgentId)
-                  : investorsMode || fundraisingMode
-                    ? findInvestorsAgent(bots, userId)
-                    : routeBot.bot;
+                : gtmMode
+                  ? findGtmAgent(bots, userId)
+                  : devinMode
+                    ? bots.find((bot) => bot.id === devinAgentId)
+                    : investorsMode || fundraisingMode
+                      ? findInvestorsAgent(bots, userId)
+                      : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
   useEffect(() => {
     // The snapshot can still be the previous thread's for a render after the bot opens.
@@ -3694,36 +3694,36 @@ export function ShellPage() {
                   createLabel: t`Create Legal agent`,
                   creating: creatingLegalAgent,
                   error: legalAgentError,
-              }
-            : gtmMode
-              ? {
-                  name: "gtm-agent",
-                  testId: "gtm-agent-panel",
-                  open: gtmAgentOpen,
-                  collapse: () => setGtmAgentOpen(false),
-                  collapseLabel: t`Collapse GTM agent`,
-                  create: createGtmAgent,
-                  createLabel: t`Create GTM agent`,
-                  creating: creatingGtmAgent,
-                  error: gtmAgentError,
-                  suggestions: [t`Help me find our first 50 design partners`],
                 }
-              : investorsAgentPage
+              : gtmMode
                 ? {
-                    name: "investors-agent",
-                    testId: "investors-agent-panel",
-                    // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                    open: investorsPanel.open,
-                    collapse: () => setCartaAgentCollapsedPref(true),
-                    collapseLabel: t`Collapse Investors agent`,
-                    // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                    create: investorsAgentError ? createInvestorsAgent : undefined,
-                    createLabel: t`Try again`,
-                    creating: creatingInvestorsAgent,
-                    error: investorsAgentError,
-                    suggestions: investorsAgentSuggestions(),
+                    name: "gtm-agent",
+                    testId: "gtm-agent-panel",
+                    open: gtmAgentOpen,
+                    collapse: () => setGtmAgentOpen(false),
+                    collapseLabel: t`Collapse GTM agent`,
+                    create: createGtmAgent,
+                    createLabel: t`Create GTM agent`,
+                    creating: creatingGtmAgent,
+                    error: gtmAgentError,
+                    suggestions: [t`Help me find our first 50 design partners`],
                   }
-                : null;
+                : investorsAgentPage
+                  ? {
+                      name: "investors-agent",
+                      testId: "investors-agent-panel",
+                      // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+                      open: investorsPanel.open,
+                      collapse: () => setCartaAgentCollapsedPref(true),
+                      collapseLabel: t`Collapse Investors agent`,
+                      // A failed creation is retried from the panel; the agent otherwise appears by itself.
+                      create: investorsAgentError ? createInvestorsAgent : undefined,
+                      createLabel: t`Try again`,
+                      creating: creatingInvestorsAgent,
+                      error: investorsAgentError,
+                      suggestions: investorsAgentSuggestions(),
+                    }
+                  : null;
   // The toaster skips an approval toast for the agent whose panel is open.
   const dockedAgentId = agentPanel?.open ? active?.id : undefined;
   useEffect(() => {
