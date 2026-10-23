@@ -10,6 +10,8 @@ import type {
   CompanyEventImportInput,
   CompanyEvidenceInput,
   CompanyExport,
+  CompanyFact,
+  CompanyFactUpsertInput,
   CompanyPartialDate,
   CompanyPrivacy,
   CompanySourceLocator,
@@ -22,13 +24,16 @@ import {
   CompanyConfirmInputSchema,
   CompanyEdgeEditInputSchema,
   CompanyEdgeImportInputSchema,
+  CompanyEdgeInputSchema,
   CompanyEntityEditInputSchema,
   CompanyEntityImportInputSchema,
   CompanyEntityInputSchema,
   CompanyEntityKindSchema,
   CompanyEventEditInputSchema,
   CompanyEventImportInputSchema,
+  CompanyEventInputSchema,
   CompanyEvidenceInputSchema,
+  CompanyFactUpsertInputSchema,
   CompanyIdentityTypeSchema,
   CompanyMergeInputSchema,
   CompanyRejectInputSchema,
@@ -158,6 +163,50 @@ function composeEntityGroup(root: EntityGroupMember, members: readonly EntityGro
 
 function hash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function normalizeSnapshot(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeSnapshot);
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, normalizeSnapshot(item)]),
+    );
+  }
+  return value;
+}
+
+export function stableCompanySnapshot(value: unknown): string {
+  return JSON.stringify(normalizeSnapshot(value));
+}
+
+export function companyFactApprovalSnapshot(fact: CompanyFact): unknown {
+  const semantic = { ...fact.record } as Record<string, unknown>;
+  delete semantic.evidence;
+  if (fact.kind === "entity") {
+    delete semantic.edges;
+    delete semantic.events;
+  }
+  const completeEvidence = [...fact.record.evidence].sort((left, right) =>
+    left.id.localeCompare(right.id),
+  );
+  const evidenceMetadata = completeEvidence
+    .map(
+      ({ quote: _quote, extractorModel: _extractorModel, ...item }: CompanyEvidenceRecord) => item,
+    )
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return {
+    kind: fact.kind,
+    record: {
+      ...semantic,
+      evidence: evidenceMetadata,
+      evidenceFingerprint: createHash("sha256")
+        .update(stableCompanySnapshot(completeEvidence))
+        .digest("hex"),
+    },
+  };
 }
 
 function dateValue(value: CompanyPartialDate | null | undefined): Date | null {
@@ -960,9 +1009,15 @@ async function importEntity(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEntityImportInput,
+  allowManual = false,
 ): Promise<CompanyWriteResult> {
-  const input = CompanyEntityImportInputSchema.parse(raw);
-  await assertSourceAllowed(db, scope, input.evidence);
+  const input = allowManual
+    ? {
+        entity: CompanyEntityInputSchema.parse(raw.entity),
+        evidence: CompanyEvidenceInputSchema.parse(raw.evidence),
+      }
+    : CompanyEntityImportInputSchema.parse(raw);
+  if (!allowManual) await assertSourceAllowed(db, scope, input.evidence);
   const identifiers = identityParts(input.entity);
   const strongIdentifiers = identifiers
     .filter(([, identityType]) => identityType !== "name")
@@ -1368,9 +1423,15 @@ async function importEdge(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEdgeImportInput,
+  allowManual = false,
 ): Promise<CompanyEdgeRecord | CompanySuppressedResult> {
-  const input = CompanyEdgeImportInputSchema.parse(raw);
-  await assertSourceAllowed(db, scope, input.evidence);
+  const input = allowManual
+    ? {
+        edge: CompanyEdgeInputSchema.parse(raw.edge),
+        evidence: CompanyEvidenceInputSchema.parse(raw.evidence),
+      }
+    : CompanyEdgeImportInputSchema.parse(raw);
+  if (!allowManual) await assertSourceAllowed(db, scope, input.evidence);
   const startsOn = dateValue(input.edge.startsOn);
   const endsOn = dateValue(input.edge.endsOn);
   const fingerprint = hash({
@@ -1493,9 +1554,15 @@ async function importEvent(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEventImportInput,
+  allowManual = false,
 ): Promise<CompanyEventRecord | CompanySuppressedResult | CompanyDeferredResult> {
-  const input = CompanyEventImportInputSchema.parse(raw);
-  await assertSourceAllowed(db, scope, input.evidence);
+  const input = allowManual
+    ? {
+        event: CompanyEventInputSchema.parse(raw.event),
+        evidence: CompanyEvidenceInputSchema.parse(raw.evidence),
+      }
+    : CompanyEventImportInputSchema.parse(raw);
+  if (!allowManual) await assertSourceAllowed(db, scope, input.evidence);
   const normalizedTitle = normalizeCompanyName(input.event.title);
   const canonicalEntityIds = await canonicalEventEntityIds(db, scope, input.event.entityIds);
   const subjectKey =
@@ -1754,12 +1821,14 @@ async function manualEvidence(
   fieldPath: string,
   value: unknown,
   confirmedByUserId?: string,
+  provenance?: string,
+  effectKey?: string,
 ): Promise<string> {
   const confirmedAt = confirmedByUserId ? new Date() : null;
   const contentHash = hash({ factKind, entityId, fieldPath, value, confirmedAt });
   const sourceKey = confirmedByUserId
     ? `manual:${factKind}:${entityId}:${fieldPath}:${confirmedAt!.getTime()}`
-    : `manual:${factKind}:${entityId}:${fieldPath}`;
+    : `manual:${factKind}:${entityId}:${fieldPath}${effectKey ? `:${effectKey}` : ""}`;
   const row = await db.companyEvidence.upsert({
     where: {
       spaceId_ownerUserId_factKind_factId_sourceKey_contentHash: {
@@ -1776,9 +1845,9 @@ async function manualEvidence(
       factId: entityId,
       stance: "supports",
       sourceKind: "manual",
-      sourceItemId: `manual:${entityId}`,
+      sourceItemId: effectKey ? `manual:${effectKey}` : `manual:${entityId}`,
       sourceKey,
-      quote: `Owner correction for ${fieldPath}`,
+      quote: provenance ?? `Owner correction for ${fieldPath}`,
       contentHash,
       extractedAt: new Date(),
       extractorModel: Prisma.JsonNull,
@@ -1796,6 +1865,8 @@ async function editEntity(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEntityEditInput,
+  provenance?: string,
+  effectKey?: string,
 ): Promise<CompanyEntityRecord> {
   const input = CompanyEntityEditInputSchema.parse(raw);
   const row = await db.companyEntity.findFirstOrThrow({
@@ -1877,7 +1948,9 @@ async function editEntity(
   }
   const lockedFields = [...new Set([...row.lockedFields, ...updates.map(([path]) => path)])];
   const evidenceIds = await Promise.all(
-    updates.map(([path, value]) => manualEvidence(db, scope, "entity", row.id, path, value)),
+    updates.map(([path, value]) =>
+      manualEvidence(db, scope, "entity", row.id, path, value, undefined, provenance, effectKey),
+    ),
   );
   await db.companyCorrection.createMany({
     data: updates.map(([fieldPath, value], index) => ({
@@ -2062,6 +2135,8 @@ async function editEdge(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEdgeEditInput,
+  provenance?: string,
+  effectKey?: string,
 ): Promise<CompanyEdgeRecord> {
   const input = CompanyEdgeEditInputSchema.parse(raw);
   const row = await db.companyEdge.findFirstOrThrow({ where: { ...scope, id: input.edgeId } });
@@ -2102,7 +2177,17 @@ async function editEdge(
   );
   await Promise.all(
     updates.map(([field, value]) =>
-      manualEvidence(db, scope, "edge", row.id, field, value ?? null),
+      manualEvidence(
+        db,
+        scope,
+        "edge",
+        row.id,
+        field,
+        value ?? null,
+        undefined,
+        provenance,
+        effectKey,
+      ),
     ),
   );
   const updated = await db.companyEdge.update({
@@ -2116,6 +2201,8 @@ async function editEvent(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEventEditInput,
+  provenance?: string,
+  effectKey?: string,
 ): Promise<CompanyEventRecord> {
   const input = CompanyEventEditInputSchema.parse(raw);
   const row = await db.companyEvent.findFirstOrThrow({ where: { ...scope, id: input.eventId } });
@@ -2168,9 +2255,33 @@ async function editEvent(
   const lockedFields = [...new Set([...row.lockedFields, ...lockedPaths])];
   await Promise.all([
     ...updates.map(([field, value]) =>
-      manualEvidence(db, scope, "event", row.id, field, value ?? null),
+      manualEvidence(
+        db,
+        scope,
+        "event",
+        row.id,
+        field,
+        value ?? null,
+        undefined,
+        provenance,
+        effectKey,
+      ),
     ),
-    ...(entityIds ? [manualEvidence(db, scope, "event", row.id, "entityIds", entityIds)] : []),
+    ...(entityIds
+      ? [
+          manualEvidence(
+            db,
+            scope,
+            "event",
+            row.id,
+            "entityIds",
+            entityIds,
+            undefined,
+            provenance,
+            effectKey,
+          ),
+        ]
+      : []),
   ]);
   if (entityIds) {
     await db.companyEventEntity.deleteMany({ where: { ...scope, eventId: row.id } });
@@ -3620,6 +3731,238 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
         }),
       );
     },
+    manualUpsert: (input: {
+      proposal: CompanyFactUpsertInput;
+      snapshot: unknown;
+      effectKey: string;
+    }) =>
+      write(async (tx) => {
+        const proposal = CompanyFactUpsertInputSchema.parse(input.proposal);
+        const detail = async (id: string) => {
+          const row = await tx.companyEntity.findFirst({
+            where: { ...scope, id },
+            include: ENTITY_INCLUDE,
+          });
+          return row ? mapEntity(tx, scope, row) : null;
+        };
+        const edgeDetail = async (id: string) => {
+          const row = await tx.companyEdge.findFirst({ where: { ...scope, id } });
+          return row ? mapEdgeRecord(tx, scope, row) : null;
+        };
+        const eventDetail = async (id: string) => {
+          const row = await tx.companyEvent.findFirst({ where: { ...scope, id } });
+          if (!row) return null;
+          const links = await tx.companyEventEntity.findMany({
+            where: { ...scope, eventId: id },
+            select: { entityId: true },
+          });
+          return mapEventRecord(
+            tx,
+            scope,
+            row,
+            links.map((link) => link.entityId),
+          );
+        };
+        const sourceItemId = `manual:${input.effectKey}`;
+        const contentHash = hash({ proposal, effectKey: input.effectKey });
+        const prior = await tx.companyEvidence.findFirst({
+          where: { ...scope, sourceKind: "manual", sourceItemId },
+          select: { factKind: true, factId: true, contentHash: true },
+        });
+        if (prior) {
+          if (proposal.operation === "create" && prior.contentHash !== contentHash)
+            throw new IsolationError(
+              "The approval key was already used for a different Company proposal.",
+            );
+          const record =
+            prior.factKind === "entity"
+              ? await detail(prior.factId)
+              : prior.factKind === "edge"
+                ? await edgeDetail(prior.factId)
+                : await eventDetail(prior.factId);
+          if (!record)
+            throw new IsolationError("The approved Company fact is no longer available.");
+          return { kind: prior.factKind, record, replayed: true };
+        }
+        const evidence = CompanyEvidenceInputSchema.parse({
+          stance: "supports",
+          sourceKind: "manual",
+          sourceItemId,
+          sourceUrl: null,
+          quote: proposal.provenance,
+          contentHash,
+          extractedAt: new Date().toISOString(),
+          extractorRunId: null,
+          extractorModel: null,
+          confidence: proposal.operation === "create" ? proposal.fact.confidence : 1,
+        });
+        if (proposal.operation === "edit") {
+          const id =
+            proposal.kind === "entity"
+              ? proposal.patch.entityId
+              : proposal.kind === "edge"
+                ? proposal.patch.edgeId
+                : proposal.patch.eventId;
+          const current =
+            proposal.kind === "entity"
+              ? await detail(id)
+              : proposal.kind === "edge"
+                ? await edgeDetail(id)
+                : await eventDetail(id);
+          const expected = input.snapshot as { kind?: unknown; current?: unknown } | null;
+          if (
+            !current ||
+            expected?.kind !== proposal.kind ||
+            stableCompanySnapshot(expected.current) !==
+              stableCompanySnapshot(
+                companyFactApprovalSnapshot({
+                  kind: proposal.kind,
+                  record: current,
+                } as CompanyFact),
+              )
+          ) {
+            throw new IsolationError(
+              "Company fact changed after approval. Review the proposal again.",
+            );
+          }
+          if (proposal.kind === "entity")
+            return {
+              kind: "entity",
+              record: await editEntity(
+                tx,
+                scope,
+                proposal.patch,
+                proposal.provenance,
+                input.effectKey,
+              ),
+            };
+          if (proposal.kind === "edge")
+            return {
+              kind: "edge",
+              record: await editEdge(
+                tx,
+                scope,
+                proposal.patch,
+                proposal.provenance,
+                input.effectKey,
+              ),
+            };
+          return {
+            kind: "event",
+            record: await editEvent(
+              tx,
+              scope,
+              proposal.patch,
+              proposal.provenance,
+              input.effectKey,
+            ),
+          };
+        }
+
+        if (proposal.kind === "entity") {
+          const fact = CompanyEntityInputSchema.parse(proposal.fact);
+          const existing = new Set(
+            (
+              await tx.companyEntity.findMany({
+                where: { ...scope, kind: fact.kind },
+                select: { id: true },
+              })
+            ).map((row) => row.id),
+          );
+          const result = await importEntity(
+            tx,
+            scope,
+            { entity: fact, evidence } as CompanyEntityImportInput,
+            true,
+          );
+          if ("suppressed" in result || "deferred" in result) return result;
+          if (existing.has(result.id))
+            throw new IsolationError(
+              "This proposal matches an existing entity. Propose an explicit edit.",
+            );
+          const lockFields = [
+            "displayName",
+            "confidence",
+            "contactId",
+            "legalContractId",
+            "dataRoomItemId",
+            ...Object.keys(fact.attrs).map((key) => `attrs.${key}`),
+          ];
+          await tx.companyEntity.updateMany({
+            where: { ...scope, id: result.id },
+            data: { status: "suggested", visibility: "private", lockedFields: lockFields },
+          });
+          return { kind: "entity", record: await detail(result.id) };
+        }
+
+        if (proposal.kind === "edge") {
+          const fact = CompanyEdgeInputSchema.parse(proposal.fact);
+          const existing = new Set(
+            (await tx.companyEdge.findMany({ where: scope, select: { id: true } })).map(
+              (row) => row.id,
+            ),
+          );
+          const result = await importEdge(
+            tx,
+            scope,
+            { edge: fact, evidence } as CompanyEdgeImportInput,
+            true,
+          );
+          if ("suppressed" in result) return result;
+          if (existing.has(result.id))
+            throw new IsolationError(
+              "This proposal matches an existing edge. Propose an explicit edit.",
+            );
+          const lockFields = [
+            "fromId",
+            "toId",
+            "relation",
+            "startsOn",
+            "endsOn",
+            "role",
+            "confidence",
+          ];
+          await tx.companyEdge.updateMany({
+            where: { ...scope, id: result.id },
+            data: { status: "suggested", visibility: "private", lockedFields: lockFields },
+          });
+          return { kind: "edge", record: await edgeDetail(result.id) };
+        }
+
+        const fact = CompanyEventInputSchema.parse(proposal.fact);
+        const existing = new Set(
+          (await tx.companyEvent.findMany({ where: scope, select: { id: true } })).map(
+            (row) => row.id,
+          ),
+        );
+        const result = await importEvent(
+          tx,
+          scope,
+          { event: fact, evidence } as CompanyEventImportInput,
+          true,
+        );
+        if ("suppressed" in result || "deferred" in result) return result;
+        if (existing.has(result.id))
+          throw new IsolationError(
+            "This proposal matches an existing event. Propose an explicit edit.",
+          );
+        const lockFields = [
+          "stream",
+          "kind",
+          "title",
+          "occursOn",
+          "endsOn",
+          "amountCents",
+          "currency",
+          "entityIds",
+          "confidence",
+        ];
+        await tx.companyEvent.updateMany({
+          where: { ...scope, id: result.id },
+          data: { status: "suggested", visibility: "private", lockedFields: lockFields },
+        });
+        return { kind: "event", record: await eventDetail(result.id) };
+      }),
     importEntity: (input: CompanyEntityImportInput) =>
       write((tx) => importEntity(tx, scope, input)),
     importEdge: (input: CompanyEdgeImportInput) => write((tx) => importEdge(tx, scope, input)),

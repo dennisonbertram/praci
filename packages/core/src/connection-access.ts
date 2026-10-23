@@ -2,6 +2,8 @@ import {
   inboxAgentSpawnKey,
   integrationAgentSpawnKey,
   isCartaAgentSpawnKey,
+  isCompanyAgentSpawnKey,
+  isCompanyImporterSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
@@ -97,13 +99,20 @@ export function botUsesConnectorTools(spawnKey: string | null | undefined): bool
     isDataRoomAgentSpawnKey(spawnKey) ||
     isVoiceAgentSpawnKey(spawnKey) ||
     isCartaAgentSpawnKey(spawnKey) ||
+    isCompanyAgentSpawnKey(spawnKey) ||
+    isCompanyImporterSpawnKey(spawnKey) ||
     isIntegrationAgentSpawnKey(spawnKey)
   );
 }
 
 /** Whether the bot is offered the built-in mail, calendar and Drive tools of native Google. */
 export function botUsesNativeGoogle(spawnKey: string | null | undefined): boolean {
-  return !(isIntegrationAgentSpawnKey(spawnKey) || isVoiceAgentSpawnKey(spawnKey));
+  return !(
+    isIntegrationAgentSpawnKey(spawnKey) ||
+    isVoiceAgentSpawnKey(spawnKey) ||
+    isCompanyAgentSpawnKey(spawnKey) ||
+    isCompanyImporterSpawnKey(spawnKey)
+  );
 }
 
 /** The rule the executor applies before access rows: can this bot's identity reach the connection. */

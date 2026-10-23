@@ -49,7 +49,12 @@ const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
 /** Built-in mail tools that write; the "email" approval category covers them. */
 const BUILTIN_MAIL_WRITE_TOOLS = new Set(["mail_draft", "mail_modify", "mail_send"]);
 /** Cannot be auto-reviewed or permanently allowed. imessage_send is a message to a person from the user's agent line. */
-const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set(["create_space", "imessage_send"]);
+const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set([
+  "create_space",
+  "imessage_send",
+  "company_fact_upsert",
+  "company_import_start",
+]);
 
 const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
   "browser_snapshot",
@@ -68,6 +73,10 @@ const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
   "search_data_room",
   "read_data_room_item",
   "add_to_data_room",
+  "company_search",
+  "company_get",
+  "timeline_query",
+  "calendar_query",
   "read_spreadsheet",
   "skill_read",
   "web_fetch",

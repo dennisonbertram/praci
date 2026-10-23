@@ -207,8 +207,13 @@ async function main() {
   const shutdown = new AbortController();
   const mail = createMailProvider({ prisma, connectors: stack.connector });
   const gmailPush = gmailPushConfigFromEnv(process.env, webOrigin);
+  let companyImport: ReturnType<typeof createCompanyImportEngine> | undefined;
   const executor = createRunExecutor({
     shutdownSignal: shutdown.signal,
+    companyImport: () => {
+      if (!companyImport) throw new Error("Company import engine is not initialized.");
+      return companyImport;
+    },
     prisma,
     mcpOAuth,
     runtime,
@@ -256,7 +261,7 @@ async function main() {
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
   });
 
-  const companyImport = createCompanyImportEngine({
+  companyImport = createCompanyImportEngine({
     prisma,
     jobs,
     realtime,

@@ -542,6 +542,7 @@ export async function createApp(
   // One cache serves models.list, selection validation, and run-time model
   // resolution alike, so a list call warms the run path in this process.
   const codexCatalog = new CodexCatalogCache();
+  let companyImport: ReturnType<typeof createCompanyImportEngine> | undefined;
   const executor = createRunExecutor({
     notificationEvents,
     contextStrategy,
@@ -590,9 +591,13 @@ export async function createApp(
     mail,
     mailWritesDisabled: env.mailWritesDisabled,
     shutdownSignal: shutdown.signal,
+    companyImport: () => {
+      if (!companyImport) throw new Error("Company import engine is not initialized.");
+      return companyImport;
+    },
   });
 
-  const companyImport = createCompanyImportEngine({
+  companyImport = createCompanyImportEngine({
     prisma,
     jobs,
     realtime,

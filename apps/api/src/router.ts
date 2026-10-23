@@ -160,6 +160,8 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
+  isCompanyAgentSpawnKey,
+  isCompanyImporterSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isGranolaEndpoint,
@@ -349,6 +351,7 @@ import {
   onMcpServerConnected,
   startCartaSync,
 } from "./carta-agent.js";
+import { ensureCompanyAgent, ensureCompanyImporter } from "./company-agent.js";
 import type { CompanyImportPage } from "./company-import-page.js";
 import { companyFact, companyPage } from "./company-page.js";
 import {
@@ -2246,6 +2249,8 @@ export function createRouter(deps: RouterDeps) {
           isLegalAgentSpawnKey(input.spawnKey) ||
           isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
+          isCompanyAgentSpawnKey(input.spawnKey) ||
+          isCompanyImporterSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
           isGtmAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
@@ -7301,6 +7306,11 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     company: {
+      agent: authed.company.agent.handler(({ context }) =>
+        ensureCompanyAgent({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
       privacy: authed.company.privacy.handler(({ context }) =>
         companyForActor(deps.prisma, context.actor).privacy(),
       ),
@@ -7373,6 +7383,11 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     companyImport: {
+      agent: authed.companyImport.agent.handler(({ context }) =>
+        ensureCompanyImporter({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
       catalog: authed.companyImport.catalog.handler(({ context }) =>
         deps.companyImportPage
           ? deps.companyImportPage.catalog(context.actor)

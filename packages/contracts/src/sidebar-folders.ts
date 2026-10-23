@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { isCartaAgentSpawnKey } from "./carta.js";
+import { isCompanyAgentSpawnKey, isCompanyImporterSpawnKey } from "./company-agent.js";
 import { isDataRoomAgentSpawnKey } from "./data-room.js";
 import { isFinanceAgentSpawnKey } from "./finance.js";
 import { Id } from "./ids.js";
@@ -73,6 +74,8 @@ export function autoGroupFolderName(item: {
     isLegalAgentSpawnKey(key) ||
     isDataRoomAgentSpawnKey(key) ||
     isCartaAgentSpawnKey(key) ||
+    isCompanyAgentSpawnKey(key) ||
+    isCompanyImporterSpawnKey(key) ||
     isInvestorsAgentSpawnKey(key)
   ) {
     return SIDEBAR_AUTO_FOLDERS.workspace;

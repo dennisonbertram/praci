@@ -11,6 +11,7 @@ const responses = {
   "carta.capTable": { snapshot: null, syncing: false },
 };
 export const Full: Story = {
+  args: { onAskAgent: () => {} },
   beforeEach: () => mockRpc({ ...responses, "company.page": companyFixture }),
 };
 export const Empty: Story = {

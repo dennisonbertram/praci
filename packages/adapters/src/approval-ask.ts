@@ -29,6 +29,7 @@ export function buildApprovalAskBlock(
   options?: {
     reviewReason?: string;
     fullMail?: boolean;
+    fullCompany?: boolean;
     integrationWriteTool?: string;
     /** Never offer "Always allow": the call asks every time (a run holding untrusted meeting text). */
     noAlwaysAllow?: boolean;
@@ -54,6 +55,7 @@ export function buildApprovalAskBlock(
     );
   const fullDetail =
     options?.fullMail ||
+    options?.fullCompany ||
     options?.integrationWriteTool !== undefined ||
     options?.imessage ||
     options?.schedule;
@@ -66,14 +68,16 @@ export function buildApprovalAskBlock(
         ? fullMailDetail(args, options.reviewReason)
         : isSendMoney(toolName)
           ? moneyDetail(args, options?.moneyNames, options?.reviewReason)
-          : options?.integrationWriteTool !== undefined
-            ? integrationWriteDetail(
-                toolName,
-                options.integrationWriteTool,
-                args,
-                options.reviewReason,
-              )
-            : formatApprovalDetail(toolName, args, options?.reviewReason);
+          : options?.fullCompany
+            ? JSON.stringify(args, null, 2)
+            : options?.integrationWriteTool !== undefined
+              ? integrationWriteDetail(
+                  toolName,
+                  options.integrationWriteTool,
+                  args,
+                  options.reviewReason,
+                )
+              : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -125,6 +129,7 @@ export function buildApprovalAskBlock(
                   : "Allow once",
             },
             ...(options?.fullMail ||
+            options?.fullCompany ||
             options?.integrationWriteTool !== undefined ||
             options?.noAlwaysAllow ||
             toolName === "imessage_send"

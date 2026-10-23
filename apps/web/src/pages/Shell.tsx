@@ -183,6 +183,7 @@ import {
   useOnPhoneWidth,
 } from "../lib/carta-agent";
 import { recoverComposerDraft } from "../lib/composer-accounts";
+import { findCompanyAgent } from "../lib/company-agent";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -653,6 +654,12 @@ export function ShellPage() {
   const [gtmAgentOpen, setGtmAgentOpen] = useState(false);
   const [creatingGtmAgent, setCreatingGtmAgent] = useState(false);
   const [gtmAgentError, setGtmAgentError] = useState("");
+  const [companyAgentOpen, setCompanyAgentOpen] = useState(false);
+  const [creatingCompanyAgents, setCreatingCompanyAgents] = useState({
+    agent: false,
+    importer: false,
+  });
+  const [companyAgentErrors, setCompanyAgentErrors] = useState({ agent: "", importer: "" });
   // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
   const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
@@ -1124,7 +1131,11 @@ export function ShellPage() {
   const legalMode = useMatch("/app/legal") != null;
   const gtmMode = useMatch("/app/gtm") != null;
   const companyMode = useMatch("/app/company/*") != null;
+  const companyImportMode = useMatch("/app/company/import") != null;
   const devinMode = useMatch("/app/devin") != null;
+  const companyRole = companyImportMode ? "importer" : "agent";
+  const creatingCompanyAgent = creatingCompanyAgents[companyRole];
+  const companyAgentError = companyAgentErrors[companyRole];
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
@@ -1160,6 +1171,11 @@ export function ShellPage() {
   useEffect(() => {
     if (!gtmMode) setGtmAgentOpen(false);
   }, [gtmMode]);
+    if (!companyMode) {
+      setCompanyAgentOpen(false);
+    }
+    setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
+  }, [companyMode, companyRole]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
   }, [devinMode]);
@@ -1175,16 +1191,18 @@ export function ShellPage() {
     namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
-    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode || companyMode
+    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
       ? undefined
-      : inboxMode
-        ? findInboxAgent(bots, userId)
-        : financeMode
-          ? findFinanceAgent(bots, userId)
-          : dataRoomMode
-            ? findDataRoomAgent(bots, userId)
-            : legalMode
-              ? findLegalAgent(bots, userId)
+      : companyMode
+        ? findCompanyAgent(bots, userId, companyImportMode)
+        : inboxMode
+          ? findInboxAgent(bots, userId)
+          : financeMode
+            ? findFinanceAgent(bots, userId)
+            : dataRoomMode
+              ? findDataRoomAgent(bots, userId)
+              : legalMode
+                ? findLegalAgent(bots, userId)
               : gtmMode
                 ? findGtmAgent(bots, userId)
                 : devinMode
@@ -3445,6 +3463,27 @@ export function ShellPage() {
     void createGtmAgent();
   });
 
+  async function createCompanyAgent() {
+    setCreatingCompanyAgents((creating) => ({ ...creating, [companyRole]: true }));
+    setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
+    try {
+      await (companyImportMode ? rpc.companyImport.agent() : rpc.company.agent());
+      await refreshBots();
+    } catch (error) {
+      setCompanyAgentErrors((errors) => ({
+        ...errors,
+        [companyRole]: errorText(error, t`Could not create the Company agent`),
+      }));
+    } finally {
+      setCreatingCompanyAgents((creating) => ({ ...creating, [companyRole]: false }));
+    }
+  }
+
+  function askCompanyAgent() {
+    setCompanyAgentOpen(true);
+    if (!active && !creatingCompanyAgent) void createCompanyAgent();
+  }
+
   /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
   function askLegalAgentAbout(question: string) {
     askLegalAgent();
@@ -3577,70 +3616,85 @@ export function ShellPage() {
     };
   }, [devinMode, bootstrapMe?.spaceId, refreshBots]);
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
-  const agentPanel = inboxMode
+  const agentPanel = companyMode
     ? {
-        name: "inbox-agent",
-        testId: "inbox-agent-panel",
-        open: !inboxAgentHidden,
-        collapse: () => setInboxAgentCollapsedPref(true),
-        collapseLabel: t`Collapse Inbox agent`,
-        create: createInboxAgent,
-        createLabel: t`Create Inbox agent`,
-        creating: creatingInboxAgent,
-        error: inboxAgentError,
-        // InboxAgentIntro is its empty thread, with its own questions.
-        suggestions: [],
+        name: companyImportMode ? "company-importer" : "company-agent",
+        testId: companyImportMode ? "company-importer-panel" : "company-agent-panel",
+        open: companyAgentOpen,
+        collapse: () => setCompanyAgentOpen(false),
+        collapseLabel: companyImportMode ? t`Collapse Company importer` : t`Collapse Company agent`,
+        create: createCompanyAgent,
+        createLabel: companyImportMode ? t`Create Company importer` : t`Create Company agent`,
+        creating: creatingCompanyAgent,
+        error: companyAgentError,
+        suggestions: companyImportMode
+          ? [t`Show my import plan`, t`How is my import going?`]
+          : [t`Who works here?`, t`What dates are coming up?`],
       }
-    : financeMode
+    : inboxMode
       ? {
-          name: "finance-agent",
-          testId: "finance-agent-panel",
-          open: financeAgentOpen,
-          collapse: () => setFinanceAgentOpen(false),
-          collapseLabel: t`Collapse Finance agent`,
-          create: createFinanceAgent,
-          createLabel: t`Create Finance agent`,
-          creating: creatingFinanceAgent,
-          error: financeAgentError,
-          suggestions: financeAgentSuggestions(),
+          name: "inbox-agent",
+          testId: "inbox-agent-panel",
+          open: !inboxAgentHidden,
+          collapse: () => setInboxAgentCollapsedPref(true),
+          collapseLabel: t`Collapse Inbox agent`,
+          create: createInboxAgent,
+          createLabel: t`Create Inbox agent`,
+          creating: creatingInboxAgent,
+          error: inboxAgentError,
+          // InboxAgentIntro is its empty thread, with its own questions.
+          suggestions: [],
         }
-      : dataRoomMode
+      : financeMode
         ? {
-            name: "data-room-agent",
-            testId: "data-room-agent-panel",
-            open: dataRoomAgentOpen,
-            collapse: () => setDataRoomAgentOpen(false),
-            collapseLabel: t`Collapse Data room agent`,
-            create: createDataRoomAgent,
-            createLabel: t`Create Data room agent`,
-            creating: creatingDataRoomAgent,
-            error: dataRoomAgentError,
-            suggestions: dataRoomAgentSuggestions(),
+            name: "finance-agent",
+            testId: "finance-agent-panel",
+            open: financeAgentOpen,
+            collapse: () => setFinanceAgentOpen(false),
+            collapseLabel: t`Collapse Finance agent`,
+            create: createFinanceAgent,
+            createLabel: t`Create Finance agent`,
+            creating: creatingFinanceAgent,
+            error: financeAgentError,
+            suggestions: financeAgentSuggestions(),
           }
-        : devinMode
+        : dataRoomMode
           ? {
-              name: "devin-agent",
-              testId: "devin-agent-panel",
-              open: devinAgentOpen,
-              collapse: () => setDevinAgentOpen(false),
-              collapseLabel: t`Collapse Devin agent`,
-              create: createDevinAgent,
-              createLabel: t`Create Devin agent`,
-              creating: creatingDevinAgent,
-              error: devinAgentError,
-              suggestions: [t`Anything merged today?`, t`What did Devin do this week?`],
+              name: "data-room-agent",
+              testId: "data-room-agent-panel",
+              open: dataRoomAgentOpen,
+              collapse: () => setDataRoomAgentOpen(false),
+              collapseLabel: t`Collapse Data room agent`,
+              create: createDataRoomAgent,
+              createLabel: t`Create Data room agent`,
+              creating: creatingDataRoomAgent,
+              error: dataRoomAgentError,
+              suggestions: dataRoomAgentSuggestions(),
             }
-          : legalMode
+          : devinMode
             ? {
-                name: "legal-agent",
-                testId: "legal-agent-panel",
-                open: legalAgentOpen,
-                collapse: () => setLegalAgentOpen(false),
-                collapseLabel: t`Collapse Legal agent`,
-                create: createLegalAgent,
-                createLabel: t`Create Legal agent`,
-                creating: creatingLegalAgent,
-                error: legalAgentError,
+                name: "devin-agent",
+                testId: "devin-agent-panel",
+                open: devinAgentOpen,
+                collapse: () => setDevinAgentOpen(false),
+                collapseLabel: t`Collapse Devin agent`,
+                create: createDevinAgent,
+                createLabel: t`Create Devin agent`,
+                creating: creatingDevinAgent,
+                error: devinAgentError,
+                suggestions: [t`Anything merged today?`, t`What did Devin do this week?`],
+              }
+            : legalMode
+              ? {
+                  name: "legal-agent",
+                  testId: "legal-agent-panel",
+                  open: legalAgentOpen,
+                  collapse: () => setLegalAgentOpen(false),
+                  collapseLabel: t`Collapse Legal agent`,
+                  create: createLegalAgent,
+                  createLabel: t`Create Legal agent`,
+                  creating: creatingLegalAgent,
+                  error: legalAgentError,
               }
             : gtmMode
               ? {
@@ -4890,9 +4944,10 @@ export function ShellPage() {
               <CompanyImportPage
                 onOpenSettings={() => openSettings("models")}
                 settingsOpen={settingsOpen}
+                onAskAgent={companyAgentOpen ? undefined : askCompanyAgent}
               />
             ) : (
-              <CompanyPage />
+              <CompanyPage onAskAgent={companyAgentOpen ? undefined : askCompanyAgent} />
             )
           ) : legalMode ? (
             <LegalPage

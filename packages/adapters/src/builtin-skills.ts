@@ -1,4 +1,4 @@
-import { devinSessionUrl } from "@rakazo/contracts";
+import { COMPANY_MAP_SKILL, devinSessionUrl } from "@rakazo/contracts";
 import { buildSkillMd } from "@rakazo/core";
 
 /**
@@ -9,6 +9,11 @@ import { buildSkillMd } from "@rakazo/core";
 export const INBOX_SEARCH_SKILL_NAME = "inbox-search";
 
 const SKILLS: Array<{ name: string; description: string; body: string }> = [
+  {
+    name: COMPANY_MAP_SKILL.name,
+    description: COMPANY_MAP_SKILL.description,
+    body: COMPANY_MAP_SKILL.content,
+  },
   {
     name: "Interrogate",
     description: "Adversarial review of a diff/PR/plan. Review only; never applies fixes.",

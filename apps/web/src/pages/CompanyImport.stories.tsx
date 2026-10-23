@@ -6,7 +6,7 @@ import { importCatalog, importConsent, importSession } from "./company-import-fi
 const meta = {
   title: "Company/Import",
   component: CompanyImportPage,
-  args: { onOpenSettings: () => {} },
+  args: { onOpenSettings: () => {}, onAskAgent: () => {} },
 } satisfies Meta<typeof CompanyImportPage>;
 export default meta;
 type Story = StoryObj<typeof meta>;
