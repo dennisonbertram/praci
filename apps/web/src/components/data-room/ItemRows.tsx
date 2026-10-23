@@ -208,10 +208,10 @@ function Columns({ status, snippets }: { status: boolean; snippets: boolean }) {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, snippets ? "w-28" : "w-40")} />
+      <col className={cn(MID_COLUMN, snippets ? "w-28" : "w-32")} />
       <col className={cn(MID_COLUMN, "w-24")} />
       {/* Search results carry snippets under the name, so Type and Parties give the Name the room. */}
-      <col className={cn(PARTIES_COLUMN, snippets ? "w-40" : "w-56 @min-[900px]/list:w-[30%]")} />
+      <col className={cn(PARTIES_COLUMN, snippets ? "w-40" : "w-48 @min-[900px]/list:w-[22%]")} />
       {status ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
       <col className="w-7" />
     </colgroup>
@@ -290,6 +290,32 @@ function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) 
   );
 }
 
+/** The one visible action under a failed file that a second read cannot fix. It never opens the preview. */
+function ReplaceButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
+  return (
+    <Button
+      variant="outline"
+      size="xs"
+      onClick={(event) => {
+        event.stopPropagation();
+        o.onAction("replace", item);
+      }}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <Trans>Replace file</Trans>
+    </Button>
+  );
+}
+
+/** Try again for a file that a second read can fix, else Replace file. */
+function FailedAction({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
+  return canRetryItem(item) ? (
+    <RetryButton item={item} o={o} />
+  ) : (
+    <ReplaceButton item={item} o={o} />
+  );
+}
+
 function ItemRow({
   item,
   snippets,
@@ -364,8 +390,7 @@ function ItemRow({
             >
               {item.name}
             </span>
-            {/* A failed file's folder is dropped: its reason (and Try again) takes that line, so the row stays short. */}
-            {(folder && item.status !== "failed") || stuck ? (
+            {folder || stuck ? (
               <span className="flex min-w-0 flex-wrap items-center gap-x-2">
                 {folder ? (
                   <span className="truncate text-xs text-muted-foreground">{folder}</span>
@@ -397,7 +422,7 @@ function ItemRow({
                     <Trans>Could not read this file. Delete it and upload it again.</Trans>
                   )}
                 </span>
-                {canRetryItem(item) ? <RetryButton item={item} o={o} /> : null}
+                <FailedAction item={item} o={o} />
               </span>
             ) : null}
             {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
@@ -708,7 +733,7 @@ export function GridView({
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
             triggerTabIndex={-1}
-            className="absolute top-3 right-3 rounded-full bg-card/80"
+            className="absolute top-3 right-3 rounded-full bg-background/80 ring-1 ring-border"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
           <span
@@ -748,7 +773,10 @@ export function GridView({
               </>
             )}
           </span>
-          {canRetryItem(item) ? <RetryButton item={item} o={o} /> : null}
+          {item.status === "failed" ? <FailedAction item={item} o={o} /> : null}
+          {item.status !== "failed" && canRetryItem(item) ? (
+            <RetryButton item={item} o={o} />
+          ) : null}
         </FileContext>
       ))}
     </ul>

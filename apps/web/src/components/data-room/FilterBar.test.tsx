@@ -217,7 +217,7 @@ const renderView = (statsView: boolean) =>
     ),
   );
 
-it("keeps the view switch outside the Filters panel and the first row's layout the same in Stats", () => {
+it("keeps the view switch outside the Filters panel and the chips at the left edge in Stats", () => {
   renderView(false);
   const first = () => container.firstElementChild?.firstElementChild?.className ?? "";
   expect(
@@ -227,7 +227,7 @@ it("keeps the view switch outside the Filters panel and the first row's layout t
   expect(first()).toContain("@min-[800px]/bd:w-80");
   renderView(true);
   expect(container.querySelector('[data-testid="view-switch"]')).not.toBeNull();
-  // The search box's room is held in Stats (a spacer with its classes), so nothing shifts.
+  // No search box and no spacer in Stats: the first thing in the row is the Filters button, at the left edge.
   expect(container.querySelector('input[name="data-room-search"]')).toBeNull();
-  for (const cls of ["flex-1", "basis-48", "@min-[800px]/bd:w-80"]) expect(first()).toContain(cls);
+  expect(first()).not.toContain("@min-[800px]/bd:w-80");
 });
