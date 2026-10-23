@@ -1819,6 +1819,10 @@ msgstr "Back"
 msgid "Back to artifacts"
 msgstr "Back to artifacts"
 
+#: src/pages/Shell.tsx
+msgid "Back to chats"
+msgstr "Back to chats"
+
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Back to email"
 msgstr "Back to email"
@@ -7169,6 +7173,10 @@ msgstr "No bot activity yet."
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr "No bot uses {0} yet. Choose bots on its page."
 
+#: src/pages/Shell.tsx
+msgid "No bots yet"
+msgstr "No bots yet"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
@@ -7678,8 +7686,8 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: agent.name
-#. placeholder {0}: group.title
 #. placeholder {0}: ref.name
+#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx
