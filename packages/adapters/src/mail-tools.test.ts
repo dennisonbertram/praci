@@ -781,6 +781,15 @@ describe("mail write tools", () => {
     });
   });
 
+  it("says what to do when Gmail cannot find the message being answered", async () => {
+    const { deps, gmail, sends } = withSends();
+    gmail.failNext(404, { urlIncludes: "messages/gone" });
+    const result = await run(deps, "mail_send", { ...message, replyToId: "gone" });
+    expect(result).toEqual({ error: "Could not send. Open it in the composer to send it." });
+    expect(sends[0]?.state).toBe("failed");
+    expect(gmail.sentOf("a")).toHaveLength(0);
+  });
+
   it("rejects a bad recipient before any state changes, and sends nothing when writes are off", async () => {
     const { deps, gmail, sends } = withSends();
     expect(await run(deps, "mail_send", { ...message, to: ["nope"] })).toHaveProperty("error");

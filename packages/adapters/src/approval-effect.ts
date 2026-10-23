@@ -362,7 +362,7 @@ export type ExternalEffectStore = {
 };
 
 export const DENIED_ACTION_MESSAGE =
-  'The person you are talking to denied this action. When you tell them, address them as "you" (say "you denied it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.';
+  'The person you are talking to denied this action. When you tell them, address them as "you" (say "you denied it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not submitted. Do not send them to another agent or page, and do not suggest asking anyone else; ask what they want instead. Try again only if the user asks again in a new message.';
 
 /**
  * Wording for a payment the person approved here. It never claims the payment went through:
@@ -371,7 +371,7 @@ export const DENIED_ACTION_MESSAGE =
 export function approvedPaymentResult(result: unknown, bank = "the bank"): unknown {
   return {
     result,
-    note: `The person's approval in Praci is recorded. Report ${bank}'s result exactly as returned (pending, rejected, unknown or accepted); do not say the payment was sent unless that result shows ${bank} accepted it, and if it says ${bank} still needs an approval, tell them to finish it in ${bank}. Do not ask them to approve again in Praci.`,
+    note: `The person's approval in Praci is recorded. Report ${bank}'s result in plain words (for example "waiting for approval in ${bank}", rejected, unknown or accepted) and never quote a code value such as pendingApproval; do not say the payment was sent unless that result shows ${bank} accepted it, and if it says ${bank} still needs an approval, tell them to finish it in ${bank}. Do not ask them to approve again in Praci.`,
   };
 }
 
