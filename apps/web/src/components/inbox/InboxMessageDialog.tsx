@@ -140,13 +140,13 @@ export function InboxMessageDialog({
         showCloseButton={false}
         className={cn(
           "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:transition-[left,width,transform] md:duration-200",
-          // The dialog's left edge and the email's first line stay put. From 1280px the dialog grows to
-          // the right, up to 1152px, and the panel sits beside the email. Below that the panel overlays
+          // From 1280px the dialog grows to up to 1152px, stays centred so both side gutters stay equal,
+          // and the panel sits beside the email. Below that the panel overlays
           // the dialog's right side and the email column reserves that space, so no text runs under it.
           // The `!` is needed because Tailwind emits an arbitrary min-width variant before `md`, which
           // would otherwise win.
           agentBot &&
-            "md:h-[85vh] min-[1280px]:w-[min(1152px,calc(50vw+376px))]! min-[1280px]:left-[calc(50%-384px)]! min-[1280px]:translate-x-0! min-[1280px]:flex-row min-[1280px]:gap-0",
+            "md:h-[85vh] min-[1280px]:w-[min(1152px,calc(50vw+376px))]! min-[1280px]:flex-row min-[1280px]:gap-0",
           composing && "invisible",
         )}
       >

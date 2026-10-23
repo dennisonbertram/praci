@@ -35,7 +35,7 @@ export function CleanupSenderRow({
       : sender.preselected
         ? t`Rarely read, and you never wrote to them`
         : readPercent >= 50
-          ? t`You read most of these`
+          ? t`You read most of these, so keep them unless you are sure`
           : null;
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the Checkbox component renders the input inside this label

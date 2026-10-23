@@ -70,7 +70,7 @@ export function TodoCard({
     <Card
       size="sm"
       role="region"
-      className={`mb-5 gap-1 px-3.5 ${collapsed ? "gap-0 py-1.5" : ""}`}
+      className={`mb-5 gap-1 px-3.5 ${collapsed ? "gap-0 py-1.5 pointer-coarse:py-0" : ""}`}
       aria-labelledby="inbox-todo-heading"
     >
       <h2 id="inbox-todo-heading" className="text-xs font-semibold text-muted-foreground">
