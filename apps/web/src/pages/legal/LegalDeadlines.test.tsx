@@ -122,7 +122,9 @@ it("offers Keep on a deadline a scan proposed removing, and Keep clears the prop
     ),
   );
   expect(container.textContent).toContain("The last scan thinks this no longer applies.");
-  const keep = [...container.querySelectorAll("button")].find((b) => b.textContent === "Keep this deadline");
+  const keep = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Keep this deadline",
+  );
   await act(async () => keep?.click());
   expect(update).toHaveBeenCalledWith({ id: "d9", keep: true });
 });

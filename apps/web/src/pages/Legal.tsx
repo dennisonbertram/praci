@@ -32,7 +32,6 @@ import { LegalDeadlines } from "./legal/LegalDeadlines";
 
 const VIEWS = ["contracts", "deadlines", "graph"] as const;
 type View = (typeof VIEWS)[number];
-const LEGAL_PATH = "/app/legal";
 
 const deadlineKey = (d: LegalDeadline) => [d.title, d.dueDate, d.notes].join("|");
 const deadlineQuestion = (deadline: LegalDeadline) => {
@@ -496,10 +495,7 @@ function Legal({
       ) : (
         <>
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
-            <TabsList
-              className="max-w-full justify-start rounded-full"
-              aria-label={t`View`}
-            >
+            <TabsList className="max-w-full justify-start rounded-full" aria-label={t`View`}>
               <TabsTrigger value="contracts" className="rounded-full px-3">
                 <Trans>Contracts</Trans> {counts.contracts}
               </TabsTrigger>
