@@ -16,6 +16,7 @@ import {
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { isSameDraft, onComposerSent } from "../lib/composer-sent";
 import { parseRecipient, splitEntries } from "../lib/recipients";
 import { errorText } from "../lib/user-error";
 import { invalidAddressText } from "./compose/RecipientField";
@@ -58,7 +59,7 @@ function Row({
  * the fields the person changed; Discard denies it. The server checks the edits again.
  */
 export function MailApprovalCard({
-  mail,
+  mail: approvalMail,
   status,
   answer,
   canAnswer,
@@ -96,6 +97,17 @@ export function MailApprovalCard({
   accountsStatus?: "loading" | "error" | "ready";
   onRetryAccounts?: () => void;
 }) {
+  // A failed send the person then sent from the composer is Sent: no failure line, no second try.
+  const [sentFromComposer, setSentFromComposer] = useState(false);
+  useEffect(() => {
+    if (approvalMail.outcome !== "failed" || approvalMail.tool !== "mail_send") return;
+    return onComposerSent((sent) => {
+      if (isSameDraft(approvalMail, sent)) setSentFromComposer(true);
+    });
+  }, [approvalMail]);
+  const mail: MailApproval = sentFromComposer
+    ? { ...approvalMail, outcome: "sent", error: undefined }
+    : approvalMail;
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
   const [account, setAccount] = useState("");
@@ -466,68 +478,72 @@ export function MailApprovalCard({
               </Button>
             </fieldset>
           ) : interactive ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  className="rounded-full"
-                  disabled={busy || allowDisabled || needsAccount}
-                  aria-describedby={chooseAccount && !account ? `${confirmId}-hint` : undefined}
-                  onClick={() => void submit("allow")}
-                >
-                  {allowLabel ? (
-                    allowLabel
-                  ) : pendingAction === "allow" ? (
-                    draft ? (
-                      <Trans>Saving…</Trans>
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="rounded-full"
+                    disabled={busy || allowDisabled || needsAccount}
+                    aria-describedby={chooseAccount && !account ? `${confirmId}-hint` : undefined}
+                    onClick={() => void submit("allow")}
+                  >
+                    {allowLabel ? (
+                      allowLabel
+                    ) : pendingAction === "allow" ? (
+                      draft ? (
+                        <Trans>Saving…</Trans>
+                      ) : (
+                        <Trans>Sending…</Trans>
+                      )
+                    ) : draft ? (
+                      <Trans>Save draft</Trans>
+                    ) : savedDraftSend ? (
+                      <Trans>Send saved draft</Trans>
                     ) : (
-                      <Trans>Sending…</Trans>
-                    )
-                  ) : draft ? (
-                    <Trans>Save draft</Trans>
-                  ) : savedDraftSend ? (
-                    <Trans>Send saved draft</Trans>
-                  ) : (
-                    <Trans>Send</Trans>
-                  )}
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="rounded-full"
-                  disabled={busy}
-                  onClick={() => void submit("deny")}
-                >
-                  <Trans>Discard</Trans>
-                </Button>
-                {chooseAccount && !account ? (
-                  <span id={`${confirmId}-hint`} className="text-[13px] text-muted-foreground">
-                    <Trans>Choose an account to send from.</Trans>
-                  </span>
+                      <Trans>Send</Trans>
+                    )}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="rounded-full"
+                    disabled={busy}
+                    onClick={() => void submit("deny")}
+                  >
+                    <Trans>Discard</Trans>
+                  </Button>
+                </div>
+                {botName && onDisableTool ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          ref={moreRef}
+                          variant="ghost"
+                          size="icon-sm"
+                          className="rounded-full"
+                          aria-label={t`More`}
+                          disabled={busy}
+                        />
+                      }
+                    >
+                      <MoreHorizontal aria-hidden="true" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setConfirmDisable(true)}>
+                        {draft
+                          ? t`Disable drafts for ${botName}`
+                          : t`Disable sending for ${botName}`}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 ) : null}
               </div>
-              {botName && onDisableTool ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        ref={moreRef}
-                        variant="ghost"
-                        size="icon-sm"
-                        className="rounded-full"
-                        aria-label={t`More`}
-                        disabled={busy}
-                      />
-                    }
-                  >
-                    <MoreHorizontal aria-hidden="true" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setConfirmDisable(true)}>
-                      {draft ? t`Disable drafts for ${botName}` : t`Disable sending for ${botName}`}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              {chooseAccount && !account ? (
+                <p id={`${confirmId}-hint`} className="pt-2 text-[13px] text-muted-foreground">
+                  <Trans>Choose an account to send from.</Trans>
+                </p>
               ) : null}
-            </div>
+            </>
           ) : null}
           {mail.outcome === "unknown" ? (
             <p role="status" className="pt-3 text-[13px] text-muted-foreground">
