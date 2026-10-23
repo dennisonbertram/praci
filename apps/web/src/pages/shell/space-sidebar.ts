@@ -187,20 +187,22 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       });
     }
     if (sections.length > 0) return sections;
-    // An empty space is reachable only from the space switcher: a header with no rows would
-    // let a click land the person in a space with nothing in it.
     if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
-    if (headless || showSpaceNames || (space.canRename !== true && space.canDelete !== true)) {
-      return [];
-    }
+    // An inactive empty space is reachable only from the space switcher: a header with no rows
+    // would let a click land the person in a space with nothing in it. The active one keeps its
+    // block so its Rename/Delete menu stays reachable (deleting needs an empty space).
+    if (headless || (showSpaceNames && space.id !== currentSpaceId)) return [];
+    if (!showSpaceNames && space.canRename !== true && space.canDelete !== true) return [];
     return [
       {
         ...shared,
         ...spaceHeaderMenu(space, true),
         kind: "space" as SidebarBlockKind,
-        key: `space:${space.id}:actions`,
-        title: null as string | null,
+        key: showSpaceNames ? `space:${space.id}:empty` : `space:${space.id}:actions`,
+        title: (showSpaceNames ? space.name : null) as string | null,
         bots: [] as typeof root,
+        showLock: showSpaceNames,
+        current: showSpaceNames,
       },
     ];
   });

@@ -162,6 +162,17 @@ describe("sidebarGroupsForSpaces", () => {
     expect(groups[0]).toMatchObject({ canRenameSpace: true, canDeleteSpace: false });
   });
 
+  it("keeps the active empty space's block so it can still be renamed or deleted", () => {
+    const spaces = [
+      space("space-1", "Personal"),
+      space("space-2", "Empty", { bots: [], canRename: true, canDelete: true }),
+    ];
+    const groups = sidebarGroupsForSpaces(spaces, "", "space-2");
+    expect(groups.map((g) => g.title)).toEqual(["Personal", "Empty"]);
+    expect(sidebarGroupsForSpaces(spaces, "", "space-1").map((g) => g.title)).toEqual(["Personal"]);
+    expect(groups[1]).toMatchObject({ canRenameSpace: true, canDeleteSpace: true, current: true });
+  });
+
   it("marks the space being shown only when several are listed", () => {
     const spaces = [space("space-1", "Personal"), space("space-2", "Empty", { bots: [] })];
     expect(sidebarGroupsForSpaces(spaces, "", "space-1").map((g) => g.current)).toEqual([true]);
