@@ -26,13 +26,6 @@ const isBlank = (value: unknown, field: string) =>
   (Array.isArray(value) && value.length === 0) ||
   (field === "status" && value === "unknown");
 
-const sameValue = (a: unknown, b: unknown) =>
-  a instanceof Date && b instanceof Date
-    ? a.getTime() === b.getTime()
-    : Array.isArray(a) && Array.isArray(b)
-      ? a.length === b.length && a.every((v, i) => v === b[i])
-      : a === b;
-
 const MAX_LIST = 500;
 const MAX_GRAPH_NODES = 2000;
 
@@ -166,18 +159,8 @@ export function createLegalRepos(prisma: PrismaClient) {
       return Number(row?.n ?? 0);
     },
 
-    /**
-     * Creates or replaces the analysis of one item and records the revision it was made at. A
-     * different value from a re-scan of the same revision is returned in `proposedChanges`, not stored.
-     */
-    async upsertContract(
-      actor: Actor,
-      input: LegalContractInput,
-    ): Promise<
-      LegalContractRecord & {
-        proposedChanges: Record<string, { stored: unknown; proposed: unknown }>;
-      }
-    > {
+    /** Creates or replaces the analysis of one item and records the revision it was made at. */
+    async upsertContract(actor: Actor, input: LegalContractInput): Promise<LegalContractRecord> {
       const item = await prisma.dataRoomItem.findFirst({
         where: { id: input.dataRoomItemId, ...scope(actor) },
         select: { id: true, revision: true },
@@ -207,38 +190,28 @@ export function createLegalRepos(prisma: PrismaClient) {
       const stored = await prisma.legalContract.findUnique({ where: key });
       // An extraction that comes back empty for a field never erases what is stored (a re-scan of a
       // thin or unreadable document would otherwise blank dates and values, and with them the
-      // deadlines derived from them). A different value replaces it only when the document has
-      // changed since (a newer revision, since a document can be amended); a re-scan of the same
-      // revision keeps the stored value and returns the other one as a proposed change.
-      // Switching to or from "not legal" is the one explicit reclassification.
+      // deadlines derived from them). A different value still replaces it, since a document can be
+      // amended. Switching to or from "not legal" is the one explicit reclassification.
       const keep =
         stored &&
         stored.contractType !== LEGAL_NOT_LEGAL_TYPE &&
         input.contractType !== LEGAL_NOT_LEGAL_TYPE;
-      const amended = !stored || input.revision > stored.analyzedRevision;
-      const proposedChanges: Record<string, { stored: unknown; proposed: unknown }> = {};
-      const merged = { ...data } as Record<string, unknown>;
-      if (keep) {
-        for (const field of Object.keys(data) as (keyof typeof data)[]) {
-          if (field === "analyzedRevision" || field === "analyzedAt") continue;
-          if (isBlank(stored[field], field)) continue;
-          if (isBlank(data[field], field)) merged[field] = stored[field];
-          else if (!amended && !sameValue(data[field], stored[field])) {
-            merged[field] = stored[field];
-            proposedChanges[field] = { stored: stored[field], proposed: data[field] };
+      const merged = keep
+        ? {
+            ...data,
+            ...Object.fromEntries(
+              (Object.keys(data) as (keyof typeof data)[])
+                .filter((field) => field !== "analyzedRevision" && field !== "analyzedAt")
+                .filter((field) => isBlank(data[field], field) && !isBlank(stored[field], field))
+                .map((field) => [field, stored[field]]),
+            ),
           }
-        }
-      }
-      const row = await prisma.legalContract.upsert({
+        : data;
+      return prisma.legalContract.upsert({
         where: key,
         create: { ...scope(actor), dataRoomItemId: input.dataRoomItemId, ...data },
-        // A stale (older) analysis must not lower the revision, or the next current scan would count as an amendment.
-        update: {
-          ...merged,
-          analyzedRevision: Math.max(input.revision, stored?.analyzedRevision ?? 0),
-        },
+        update: merged,
       });
-      return Object.assign(row, { proposedChanges });
     },
 
     /** `excludeConnectionIds`: contracts whose document came through those connections are left out. */

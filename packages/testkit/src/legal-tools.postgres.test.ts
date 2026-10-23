@@ -133,15 +133,6 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     await close();
   });
 
-  /** The document changed: returns its new revision. */
-  const amend = async (itemId: string) =>
-    (
-      await prisma.dataRoomItem.update({
-        where: { id: itemId },
-        data: { revision: { increment: 1 } },
-      })
-    ).revision;
-
   it("lists unreviewed documents, drops analyzed ones, and lists them again after a revision bump", async () => {
     const item = await addItem(a, "msa.txt", "Master services agreement between Acme Inc and Us.");
     const first = await legal(a, "legal_unreviewed_documents", {});
@@ -602,11 +593,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     await prisma.legalDeadline.update({ where: { id: noticeRow.id }, data: { status: "done" } });
 
     // A new title replaces the derived expiry deadline instead of duplicating it.
-    const renamed = await legal(a, "legal_upsert_contract", {
-      ...base,
-      title: "HQ lease",
-      revision: await amend(item.id),
-    });
+    const renamed = await legal(a, "legal_upsert_contract", { ...base, title: "HQ lease" });
     const open = (await legal(a, "legal_query", { view: "deadlines", contractId })).deadlines;
     expect(open.map((d: any) => d.title).sort()).toEqual(["Expires", "Insurance certificate"]);
     expect(renamed.derivedDeadlines.length).toBeGreaterThan(0);
@@ -619,7 +606,6 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       ...base,
       title: "HQ lease",
       status: "terminated",
-      revision: await amend(item.id),
     });
     const left = (await legal(a, "legal_query", { view: "deadlines", contractId })).deadlines;
     expect(left.map((d: any) => d.id).sort()).toEqual(
@@ -668,73 +654,6 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(open.map((d: any) => d.kind)).toEqual(["notice"]);
   });
 
-  it("keeps stored values when a re-scan of the same revision differs, and replaces them once the document changed", async () => {
-    const item = await addItem(a, "noisy.txt", "Office lease, $90,000.");
-    const base = {
-      dataRoomItemId: item.id,
-      revision: item.revision,
-      title: "MOCK Office lease",
-      contractType: "lease",
-      status: "active",
-      valueCents: "9000000",
-    };
-    const first = await legal(a, "legal_upsert_contract", base);
-    expect(first.proposedChanges).toBeUndefined();
-    const rescan = await legal(a, "legal_upsert_contract", {
-      ...base,
-      title: "Office lease",
-      valueCents: "900000",
-    });
-    expect(rescan.contract.title).toBe("MOCK Office lease");
-    expect(rescan.contract.valueCents).toBe("9000000");
-    expect(rescan.proposedChanges).toEqual({
-      title: { stored: "MOCK Office lease", proposed: "Office lease" },
-      valueCents: { stored: "9000000", proposed: "900000" },
-    });
-    const amended = await legal(a, "legal_upsert_contract", {
-      ...base,
-      valueCents: "1200000",
-      revision: await amend(item.id),
-    });
-    expect(amended.contract.valueCents).toBe("1200000");
-    expect(amended.proposedChanges).toBeUndefined();
-    // An older analysis arriving late neither changes values nor lowers the stored revision, so the
-    // next scan of the current revision is still a re-scan and cannot overwrite them.
-    const current = await amend(item.id);
-    await legal(a, "legal_upsert_contract", { ...base, valueCents: "1200000", revision: current });
-    await legal(a, "legal_upsert_contract", { ...base, valueCents: "300000" });
-    const again = await legal(a, "legal_upsert_contract", {
-      ...base,
-      valueCents: "400000",
-      revision: current,
-    });
-    expect(again.contract.valueCents).toBe("1200000");
-    expect(again.proposedChanges.valueCents).toEqual({ stored: "1200000", proposed: "400000" });
-  });
-
-  it("keeps a deadline's quote with its date when a same-revision re-scan proposes another notice period", async () => {
-    const item = await addItem(a, "notice.txt", "Lease, 90 days notice.");
-    const base = {
-      dataRoomItemId: item.id,
-      revision: item.revision,
-      title: "Lease",
-      contractType: "lease",
-      status: "active",
-      expirationDate: "2028-06-30",
-      autoRenews: false,
-      renewalNoticeDays: 90,
-      renewalQuote: "90 days written notice.",
-    };
-    await legal(a, "legal_upsert_contract", base);
-    const rescan = await legal(a, "legal_upsert_contract", {
-      ...base,
-      renewalNoticeDays: 30,
-      renewalQuote: "30 days written notice.",
-    });
-    expect(rescan.proposedChanges.renewalNoticeDays).toBeDefined();
-    for (const d of rescan.derivedDeadlines) expect(d.sourceQuote).toBe("90 days written notice.");
-  });
-
   it("keeps a contract whose title contains 'handbook' when the model classifies it as a contract", async () => {
     const item = await addItem(a, "handbook-deal.txt", "Handbook Publishing Agreement.");
     const result = await legal(a, "legal_upsert_contract", {
@@ -773,11 +692,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(await prisma.legalDeadline.count({ where: { contractId, kind: "notice" } })).toBe(1);
 
     // The contract was amended: the new notice date opens, the closed one stays as history.
-    await legal(a, "legal_upsert_contract", {
-      ...base,
-      expirationDate: "2031-06-30",
-      revision: await amend(item.id),
-    });
+    await legal(a, "legal_upsert_contract", { ...base, expirationDate: "2031-06-30" });
     const rows = await prisma.legalDeadline.findMany({
       where: { contractId, kind: "notice" },
       orderBy: { dueDate: "asc" },

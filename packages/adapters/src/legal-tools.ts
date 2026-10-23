@@ -396,36 +396,14 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
       currency: input.currency?.toUpperCase(),
       summary: input.summary,
     });
-    // The quote supports the new dates; when a differing date was rejected the stored quote still matches the stored date.
-    const keptDates = ["expirationDate", "renewalNoticeDays", "autoRenews"].some(
-      (field) => field in row.proposedChanges,
-    );
-    const derived = await deriveDeadlines(
-      tx,
-      row,
-      keptDates ? undefined : (input.renewalQuote ?? undefined),
-    );
+    const derived = await deriveDeadlines(tx, row, input.renewalQuote ?? undefined);
     return {
       contract: toLegalContract(row),
       derivedDeadlines: derived.upserted.map((d) => toLegalDeadline(d)),
       ...proposals(derived.proposed),
-      ...(Object.keys(row.proposedChanges).length
-        ? { proposedChanges: describeChanges(row.proposedChanges) }
-        : {}),
     };
   });
 }
-
-/** The same-revision extractions that differ from what is stored, in tool-result form. */
-const describeChanges = (changes: Record<string, { stored: unknown; proposed: unknown }>) =>
-  Object.fromEntries(
-    Object.entries(changes).map(([field, { stored, proposed }]) => [
-      field,
-      { stored: show(stored), proposed: show(proposed) },
-    ]),
-  );
-const show = (v: unknown) =>
-  v instanceof Date ? day(v) : typeof v === "bigint" ? v.toString() : v;
 
 /**
  * Keeps the expiration and notice-of-non-renewal deadlines of a contract in line with its dates, so
