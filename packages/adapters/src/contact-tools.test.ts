@@ -306,6 +306,56 @@ describe("contact tools", () => {
     expect(saved.match(/"amountUsd":1000/g)).toHaveLength(1);
   });
 
+  it("cap_table_update matches ledger names after trimming and counts a name once", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const base = {
+      companyName: "Example Co",
+      asOf: "2026-01-31",
+      fullyDilutedShares: 1000,
+      shareClasses: [],
+      ledger: [{ type: "issuance", holder: "Fund A", amountUsd: 1000 }],
+    };
+    await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      { ...base, holders: [{ name: " Fund A ", security: "Common", shares: 10 }] },
+    );
+    expect(JSON.stringify(updateMany.mock.calls[0]).match(/"amountUsd":1000/g)).toHaveLength(1);
+    updateMany.mockClear();
+    await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      {
+        ...base,
+        holders: [
+          { name: "Fund A", security: "Common", shares: 10 },
+          { name: "Fund A ", security: "Preferred", shares: 10 },
+        ],
+      },
+    );
+    expect(JSON.stringify(updateMany.mock.calls[0]).match(/"amountUsd":1000/g)).toHaveLength(1);
+  });
+
+  it("cap_table_update refuses a transfer ledger row with no recipient", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const result = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      {
+        companyName: "Example Co",
+        asOf: "2026-01-31",
+        fullyDilutedShares: 1000,
+        shareClasses: [],
+        holders: [],
+        ledger: [{ type: "transfer", holder: "Fund A", amountUsd: 5 }],
+      },
+    );
+    expect(result).toEqual({ error: expect.stringContaining("toHolder") });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
   it("cap_table_update writes as the sheet for the Investors agent and refuses a table of another source", async () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const prisma = { capTableSnapshot: { updateMany } } as never;

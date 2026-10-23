@@ -135,10 +135,11 @@ export async function contactToolFromTool(
       const given = new Set<string>();
       const holders = Array.isArray(rest.holders)
         ? rest.holders.map((h: { name?: string; security?: string }) => {
-            if (!h.name || !invested.has(h.name) || isSafeSecurity(String(h.security))) return h;
-            if (given.has(h.name)) return { ...h, amountUsd: null };
-            given.add(h.name);
-            return { ...h, amountUsd: invested.get(h.name) };
+            const name = typeof h.name === "string" ? h.name.trim() : "";
+            if (!invested.has(name) || isSafeSecurity(String(h.security))) return h;
+            if (given.has(name)) return { ...h, amountUsd: null };
+            given.add(name);
+            return { ...h, amountUsd: invested.get(name) };
           })
         : rest.holders;
       const input = CapTableSnapshotInputSchema.safeParse({ ...rest, holders, source: writer });
