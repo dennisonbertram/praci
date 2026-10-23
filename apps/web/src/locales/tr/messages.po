@@ -1819,6 +1819,10 @@ msgstr ""
 msgid "Back to artifacts"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Back to chats"
+msgstr ""
+
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Back to email"
 msgstr ""
@@ -3042,11 +3046,13 @@ msgstr ""
 msgid "Connecting to tools"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
+#: src/pages/Finance.tsx
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -7167,6 +7173,10 @@ msgstr "Henüz bot etkinliği yok."
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "No bots yet"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr ""
@@ -7547,6 +7557,10 @@ msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+msgid "Not tagged yet. Allow Praci to read your documents above."
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr ""
 
@@ -7672,8 +7686,8 @@ msgid "Open"
 msgstr "Aç"
 
 #. placeholder {0}: agent.name
-#. placeholder {0}: group.title
 #. placeholder {0}: ref.name
+#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx
@@ -8986,6 +9000,12 @@ msgstr "Anahtarı değiştir"
 msgid "Replace value"
 msgstr ""
 
+#. placeholder {0}: maskCurrencyWhenHidden(replacement.title)
+#. placeholder {1}: fullDay(replacement.dueDate)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Replaced by {0} on {1}."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Replaced by a newer request"
 msgstr ""
@@ -9449,6 +9469,14 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Scan now"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning for {minutes} min"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning now"
 msgstr ""
 
 #: src/pages/Legal.tsx

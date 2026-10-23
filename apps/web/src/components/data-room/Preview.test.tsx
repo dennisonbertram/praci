@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { DataRoomApiItem } from "@rakazo/contracts";
+import { Dialog, DialogContent } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -500,22 +501,54 @@ const needsConsent = {
 };
 const clickButton = (label: string) =>
   act(async () => {
-    [...container.querySelectorAll("button")]
+    [...document.body.querySelectorAll("button")]
       .find((b) => b.textContent === label)
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
-const renderUntagged = () =>
+const renderUntagged = (inDialog = true, pageAsksConsent = false) =>
   act(async () => {
+    const preview = (
+      <Preview
+        item={untagged}
+        folderPath=""
+        onAction={vi.fn()}
+        onClose={() => undefined}
+        inDialog={inDialog}
+        pageAsksConsent={pageAsksConsent}
+      />
+    );
     root.render(
-      <Preview item={untagged} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+      inDialog ? (
+        <Dialog open>
+          <DialogContent>{preview}</DialogContent>
+        </Dialog>
+      ) : (
+        preview
+      ),
     );
   });
+
+it("does not repeat the consent card in the side panel, where the page banner asks", async () => {
+  consent.mockResolvedValue(needsConsent);
+  await renderUntagged(false, true);
+  expect(container.textContent).not.toContain("sent to the AI model");
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Allow")).toBe(
+    false,
+  );
+  expect(container.textContent).toContain("Allow Praci to read your documents above");
+});
+
+it("stops pointing at the page banner once it is gone", async () => {
+  consent.mockResolvedValue(needsConsent);
+  await renderUntagged(false, false);
+  expect(container.textContent).not.toContain("documents above");
+});
 
 it("allows reading through the consent card with the reviewed key, version and space", async () => {
   consent.mockResolvedValue(needsConsent);
   consentGrant.mockResolvedValue({ ...needsConsent, allowed: true });
   await renderUntagged();
-  expect(container.textContent).toContain("sent to the AI model");
+  expect(document.body.textContent).toContain("sent to the AI model");
   await clickButton("Allow");
   expect(consentGrant).toHaveBeenCalledWith({
     key: "k1",
@@ -532,7 +565,7 @@ it("shows the error and reloads consent when the grant is rejected", async () =>
   consent.mockClear();
   consent.mockResolvedValue({ ...needsConsent, key: "k2" });
   await clickButton("Allow");
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Providers changed");
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("Providers changed");
   expect(consent).toHaveBeenCalledTimes(1);
 });
 

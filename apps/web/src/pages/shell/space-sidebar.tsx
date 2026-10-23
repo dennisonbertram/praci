@@ -25,6 +25,7 @@ import {
   BookUser,
   ChartColumn,
   ChevronDown,
+  ChevronLeft,
   CircleAlert,
   CodeXml,
   Compass,
@@ -220,7 +221,6 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const shared = {
       relabeled: false,
       showLock: false,
-      emptySpaceId: undefined as string | undefined,
       current: false,
       spaceId: space.id,
       spaceName: space.name,
@@ -291,11 +291,12 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       });
     }
     if (sections.length > 0) return sections;
-    // Keep empty spaces selectable; chat clicks are the only switch control.
     if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
-    if (headless || (!showSpaceNames && space.canRename !== true && space.canDelete !== true)) {
-      return [];
-    }
+    // An inactive empty space is reachable only from the space switcher: a header with no rows
+    // would let a click land the person in a space with nothing in it. The active one keeps its
+    // block so its Rename/Delete menu stays reachable (deleting needs an empty space).
+    if (headless || (showSpaceNames && space.id !== currentSpaceId)) return [];
+    if (!showSpaceNames && space.canRename !== true && space.canDelete !== true) return [];
     return [
       {
         ...shared,
@@ -305,8 +306,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         title: (showSpaceNames ? space.name : null) as string | null,
         bots: [] as typeof root,
         showLock: showSpaceNames,
-        emptySpaceId: showSpaceNames ? space.id : undefined,
-        current: showSpaceNames && space.id === currentSpaceId,
+        current: showSpaceNames,
       },
     ];
   });
@@ -547,9 +547,14 @@ export function SpaceSidebar({
 }: SpaceSidebarProps) {
   const { t } = useLingui();
   const sidebarPaneRef = useRef<HTMLDivElement>(null);
+  // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
+  const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
-    if (activityMode) sidebarPaneRef.current?.scrollTo?.({ top: 0 });
-  }, [activityMode]);
+    if (!activityMode) return;
+    sidebarScrollRef.current?.scrollTo?.({ top: 0 });
+    sidebarPaneRef.current?.scrollTo?.({ top: 0 });
+    // Again once the runs arrive and add content above the chats.
+  }, [activityMode, activityBotIds.size > 0]);
   useEffect(() => {
     if (mobileSidebarOpen) sidebarPaneRef.current?.scrollTo?.({ top: 0 });
   }, [mobileSidebarOpen]);
@@ -606,8 +611,6 @@ export function SpaceSidebar({
       mutate.disconnect();
     };
   }, [mobileSidebarOpen]);
-  // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
-  const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
   const [emailChatsOpen, setEmailChatsOpen] = useState(false);
   return (
@@ -1012,8 +1015,19 @@ export function SpaceSidebar({
         )}
         <div
           ref={sidebarScrollRef}
-          className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+          className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
         >
+          {activityMode && !rail ? (
+            <button
+              type="button"
+              data-testid="activity-back"
+              onClick={toggleActivityMode}
+              className="flex snap-start items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-start text-[13px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            >
+              <ChevronLeft size={14} strokeWidth={1.8} aria-hidden="true" />
+              <Trans>Back to chats</Trans>
+            </button>
+          ) : null}
           {activityMode && !rail ? (
             <ActivityList
               onListedBots={setActivityBotIds}
@@ -1168,7 +1182,7 @@ export function SpaceSidebar({
                       data-roster-item={group.key}
                       className={
                         group.title && hasSpaceActions
-                          ? "grid pt-3 pb-0.5"
+                          ? `grid pt-3 pb-0.5${group.showLock ? " mt-3" : ""}`
                           : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
                       }
                     >
@@ -1181,13 +1195,7 @@ export function SpaceSidebar({
                           data-sidebar-current={group.current ? "" : undefined}
                           title={group.relabeled ? group.spaceName : undefined}
                           className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
-                          onClick={() => {
-                            if (group.emptySpaceId) {
-                              openSpaceChat(group.emptySpaceId, "/app");
-                              return;
-                            }
-                            toggleSidebarSection(group.key);
-                          }}
+                          onClick={() => toggleSidebarSection(group.key)}
                           onContextMenu={
                             hasSpaceActions
                               ? (event) => {
@@ -1200,13 +1208,11 @@ export function SpaceSidebar({
                                 }
                               : undefined
                           }
-                          aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                          aria-expanded={!collapsed}
                           aria-label={
-                            group.emptySpaceId
-                              ? t`Open ${group.title}`
-                              : collapsed
-                                ? t`Expand ${sidebarHeader.name}`
-                                : t`Collapse ${sidebarHeader.name}`
+                            collapsed
+                              ? t`Expand ${sidebarHeader.name}`
+                              : t`Collapse ${sidebarHeader.name}`
                           }
                         >
                           <span className="flex min-w-0 items-center gap-1.5">
@@ -1224,18 +1230,14 @@ export function SpaceSidebar({
                               {group.title}
                             </span>
                           </span>
-                          {group.emptySpaceId ? null : (
-                            <ChevronDown
-                              size={14}
-                              strokeWidth={1.8}
-                              className={
-                                collapsed
-                                  ? "-rotate-90 transition-transform"
-                                  : "transition-transform"
-                              }
-                              aria-hidden="true"
-                            />
-                          )}
+                          <ChevronDown
+                            size={14}
+                            strokeWidth={1.8}
+                            className={
+                              collapsed ? "-rotate-90 transition-transform" : "transition-transform"
+                            }
+                            aria-hidden="true"
+                          />
                         </button>
                       ) : null}
                       {hasSpaceActions ? (

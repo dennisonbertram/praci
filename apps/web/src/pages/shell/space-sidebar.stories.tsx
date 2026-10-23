@@ -112,6 +112,8 @@ export function SidebarFixture({
   emailChats = false,
   activePageAgent = false,
   activeEmailChat = false,
+  activityMode = false,
+  toggleActivityMode = () => undefined,
 }: {
   mode: Mode;
   gtmMode?: boolean;
@@ -129,6 +131,8 @@ export function SidebarFixture({
   emailChats?: boolean;
   activePageAgent?: boolean;
   activeEmailChat?: boolean;
+  activityMode?: boolean;
+  toggleActivityMode?: () => void;
 }) {
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement>(null);
@@ -188,8 +192,8 @@ export function SidebarFixture({
     mobileSidebarOpen,
     setBotsSidebarCollapsedPref: () => undefined,
     onOpenSearch: () => setSearchOpen(true),
-    activityMode: false,
-    toggleActivityMode: () => undefined,
+    activityMode,
+    toggleActivityMode,
     setMobileSidebarOpen,
     createMenuOpen,
     setCreateMenuOpen,

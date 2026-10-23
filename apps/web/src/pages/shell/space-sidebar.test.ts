@@ -55,6 +55,7 @@ vi.mock("../../components/tour/FirstRunTour", () => ({
         )
       : null,
 }));
+vi.mock("../ActivityList", () => ({ ActivityList: () => null }));
 
 import {
   activeSpaceFirst,
@@ -233,21 +234,25 @@ describe("sidebarGroupsForSpaces", () => {
       "Personnel",
     );
 
-    expect(groups.map((group) => group.title)).toEqual(["Personal", "Support"]);
+    // Support has no chats, so it has no header; the space switcher is its only way in.
+    expect(groups.map((group) => group.title)).toEqual(["Personal"]);
     expect(groups[0]).toMatchObject({ canRenameSpace: true, canDeleteSpace: false });
-    expect(groups[1]).toMatchObject({
-      canRenameSpace: true,
-      canDeleteSpace: true,
-      emptySpaceId: "space-2",
-    });
   });
 
-  it("marks the space being shown, including an empty one, only when several are listed", () => {
+  it("keeps the active empty space's block so it can still be renamed or deleted", () => {
+    const spaces = [
+      space("space-1", "Personal"),
+      space("space-2", "Empty", { bots: [], canRename: true, canDelete: true }),
+    ];
+    const groups = sidebarGroupsForSpaces(spaces, "", "space-2");
+    expect(groups.map((g) => g.title)).toEqual(["Personal", "Empty"]);
+    expect(sidebarGroupsForSpaces(spaces, "", "space-1").map((g) => g.title)).toEqual(["Personal"]);
+    expect(groups[1]).toMatchObject({ canRenameSpace: true, canDeleteSpace: true, current: true });
+  });
+
+  it("marks the space being shown only when several are listed", () => {
     const spaces = [space("space-1", "Personal"), space("space-2", "Empty", { bots: [] })];
-    expect(sidebarGroupsForSpaces(spaces, "", "space-2").map((g) => g.current)).toEqual([
-      false,
-      true,
-    ]);
+    expect(sidebarGroupsForSpaces(spaces, "", "space-1").map((g) => g.current)).toEqual([true]);
     expect(sidebarGroupsForSpaces([space("space-1", "Personal")], "", "space-1")[0]?.current).toBe(
       false,
     );
@@ -687,6 +692,46 @@ it("hides an unused idle page agent and reveals it when active", async () => {
     );
     expect(activeToggle?.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("Inbox agent");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("returns from Activity to chats", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const toggleActivityMode = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(SidebarFixture, {
+            mode: "expanded",
+            activityMode: true,
+            toggleActivityMode,
+          }),
+        ),
+      );
+    });
+
+    const back = container.querySelector<HTMLButtonElement>('[data-testid="activity-back"]');
+    expect(back?.textContent).toContain("Back to chats");
+    await act(async () => back?.click());
+    expect(toggleActivityMode).toHaveBeenCalledOnce();
   } finally {
     await act(async () => root.unmount());
     container.remove();

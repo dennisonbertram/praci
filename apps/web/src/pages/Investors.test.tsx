@@ -830,6 +830,21 @@ it("counts only Funded SAFEs in Equity raised and shows Sent and Signed ones as 
   expect(container.textContent).not.toContain("Dee Newcomer");
 });
 
+it("shows the Carta company total in Equity raised when no holder has an amount, without adding Funded SAFEs", async () => {
+  rpcMock.capTable.mockResolvedValue(
+    state({
+      ...carta,
+      amountRaisedUsd: 350_000,
+      holders: carta.holders.map((h) => ({ ...h, amountUsd: null })),
+    }),
+  );
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+  ]);
+  await show();
+  expect(container.textContent).toContain("Equity raised$350,000");
+});
+
 it("shows Equity raised from SAFEs when the cap table is empty", async () => {
   rpcMock.capTable.mockResolvedValue(state({ ...carta, fullyDilutedShares: 0, holders: [] }));
   rpcMock.safesList.mockResolvedValue([

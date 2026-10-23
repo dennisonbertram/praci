@@ -50,14 +50,18 @@ export function ItemMenuItems<T extends { name: string }>({
   onSendToAgent?: (item: T, agent: SendTarget) => void;
 }) {
   const { Item, Separator } = PARTS[menu];
+  // A failed file has no text to send; one Try again cannot fix (unreadable) still offers Replace file.
+  const failed = (item as { status?: string }).status === "failed";
   return (
     <>
       {canRetry ? (
+        <Item onClick={() => onAction("retry", item)}>
+          <RotateCw aria-hidden="true" />
+          <Trans>Try again</Trans>
+        </Item>
+      ) : null}
+      {canRetry || failed ? (
         <>
-          <Item onClick={() => onAction("retry", item)}>
-            <RotateCw aria-hidden="true" />
-            <Trans>Try again</Trans>
-          </Item>
           <Item onClick={() => onAction("replace", item)}>
             <Upload aria-hidden="true" />
             <Trans>Replace file</Trans>

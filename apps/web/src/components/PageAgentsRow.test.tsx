@@ -31,3 +31,22 @@ it("shows a dot only when a page agent needs the person, and toggles", () => {
   expect(label()).toBe("New");
   container.remove();
 });
+
+it("scrolls to its own header only when the person opens it, not when a shared open flag flips", () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const scroll = vi.fn();
+  Element.prototype.scrollIntoView = scroll;
+  const root = createRoot(container);
+  act(() =>
+    root.render(<PageAgentsRow open={false} count={3} needsYou={false} onToggle={vi.fn()} />),
+  );
+  act(() => root.render(<PageAgentsRow open count={3} needsYou={false} onToggle={vi.fn()} />));
+  expect(scroll).not.toHaveBeenCalled();
+  act(() =>
+    root.render(<PageAgentsRow open={false} count={3} needsYou={false} onToggle={vi.fn()} />),
+  );
+  act(() => container.querySelector("button")?.click());
+  expect(scroll).toHaveBeenCalledOnce();
+  container.remove();
+});

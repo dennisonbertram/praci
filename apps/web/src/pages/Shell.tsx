@@ -899,12 +899,6 @@ export function ShellPage() {
   // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
   const [activityMode, setActivityMode] = useState(false);
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
-  // Activity sits above the chats: show it from its top, not from the row the list had settled on.
-  useEffect(() => {
-    if (!activityMode) return;
-    // The list scrolls on a tall desktop; the pane around it scrolls on a phone and a short screen.
-    sidebarScrollRef.current?.scrollTo({ top: 0 });
-  }, [activityMode]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
@@ -3791,7 +3785,9 @@ export function ShellPage() {
       if (panel === "computer" || panel === "settings" || panel === "group-settings") {
         const carried = panel === "computer" ? "computer" : inGroup ? "group-settings" : "settings";
         pendingPanelRestore.current = null;
-        if (carried !== panel) setPanelState(carried);
+        // Below the docked breakpoint the panel covers the chat (and any approval in it): close it.
+        if (!wideScreen()) setPanelState(null);
+        else if (carried !== panel) setPanelState(carried);
         setRestoredPanelKey(null);
         return;
       }
@@ -4678,7 +4674,8 @@ export function ShellPage() {
                     >
                       {inGroup
                         ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                        : (active?.name ?? (opening ? "" : t`Select a bot`))}
+                        : (active?.name ??
+                          (opening ? "" : bots.length === 0 ? t`No bots yet` : t`Select a bot`))}
                     </span>
                   </span>
                   {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
