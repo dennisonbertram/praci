@@ -145,6 +145,9 @@ function recipientFor(model: Model | null) {
   });
 }
 
+/** Company import consent rows start with this, so revoking a model can find and remove them. */
+export const COMPANY_IMPORT_CONSENT_KEY_PREFIX = "company:";
+
 function boundConsentKey(
   source: {
     sourceKind: string;
@@ -155,7 +158,7 @@ function boundConsentKey(
   recipientKey: string,
   model: Pick<Model, "provider" | "id">,
 ) {
-  return createHash("sha256")
+  const hash = createHash("sha256")
     .update(
       JSON.stringify([
         source.sourceKind,
@@ -168,6 +171,7 @@ function boundConsentKey(
       ]),
     )
     .digest("hex");
+  return `${COMPANY_IMPORT_CONSENT_KEY_PREFIX}${hash}`;
 }
 
 function isBoundedCursor(value: unknown) {

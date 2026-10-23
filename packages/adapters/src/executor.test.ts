@@ -1158,6 +1158,14 @@ describe("Company identity executor boundaries", () => {
       error: /direct owner-started foreground|not available/i,
     },
     {
+      label: "Elio routine Company read",
+      spawnKey: voiceAgentSpawnKey("user-1"),
+      trigger: "routine",
+      groupId: null,
+      call: { name: "company_search", args: { text: "Synthetic Example" } },
+      error: /not available/i,
+    },
+    {
       label: "ordinary group Company read",
       spawnKey: null,
       trigger: "user",
@@ -1174,7 +1182,7 @@ describe("Company identity executor boundaries", () => {
     });
     expect((toolResults[0]?.result as { error?: string })?.error).toMatch(error);
     expect(pauseRunForInput).not.toHaveBeenCalled();
-    if (groupId) {
+    if (groupId || label === "Elio routine Company read") {
       expect(request?.tools.map(({ name }) => name)).not.toContain(call.name);
     }
     if (label === "unattended Company mutation") {

@@ -748,6 +748,12 @@ describe("company import engine", () => {
     );
   });
 
+  it("keys import consent under the company: prefix so revoking a model can remove it", async () => {
+    const { engine } = createHarness();
+    const status = await engine.consentStatus(actor, "run-1", "source-1");
+    expect(status.consentKey?.startsWith("company:")).toBe(true);
+  });
+
   it("releases a reservation when consent is revoked before invocation", async () => {
     const { engine, invoke } = createHarness({ revokeConsentAfterReservation: true });
 

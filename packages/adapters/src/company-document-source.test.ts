@@ -10,7 +10,7 @@ import type {
 import { COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { createCompanyConnectionReader } from "./company-connection-reader.js";
-import { createCompanyDocumentReader } from "./company-document-source.js";
+import { createCompanyDocumentReader, genericDocument } from "./company-document-source.js";
 
 const context: AdapterContext = {
   operationId: "test",
@@ -759,5 +759,20 @@ describe("Company document reader", () => {
     }
     expect(documentsRead).toBe(451);
     expect(largestCursor).toBeGreaterThan(16_384);
+  });
+});
+
+describe("generic document URLs", () => {
+  it("drops query strings and fragments from the stored URL and the extraction text", () => {
+    const doc = genericDocument(
+      { name: "search" } as ConnectorTool,
+      {},
+      { id: "1", title: "Plan", url: "https://example.com/doc/1?token=abc#x" },
+      null,
+      0,
+    );
+    expect(doc.sourceUrl).toBe("https://example.com/doc/1");
+    expect(doc.text).not.toContain("token=abc");
+    expect(doc.text).toContain("https://example.com/doc/1");
   });
 });

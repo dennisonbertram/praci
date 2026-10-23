@@ -12,7 +12,7 @@ vi.mock("./thread-target.js", () => ({
   resolveThreadTarget: async () => ({ kind: "bot", botId: "bot" }),
 }));
 
-import { aiConsentStatus, allowAiConsent } from "./ai-consent.js";
+import { aiConsentStatus, allowAiConsent, revokeAiConsent } from "./ai-consent.js";
 import type { RouterDeps } from "./router.js";
 
 function setup() {
@@ -329,5 +329,24 @@ describe("document embedding recipient", () => {
       keys: [chat?.key as string],
     });
     expect(upsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("revokeAiConsent", () => {
+  it("also removes Company import grants when a model is revoked", async () => {
+    const deleteMany = vi.fn(async () => ({ count: 0 }));
+    const prisma = { aiDataConsent: { deleteMany } } as unknown as PrismaClient;
+    await revokeAiConsent(prisma, { userId: "user-1", spaceId: "space-1" } as Actor, "model-key");
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        spaceId: "space-1",
+        OR: [
+          { recipientKey: "model-key" },
+          { recipientKey: { startsWith: "data-room:" } },
+          { recipientKey: { startsWith: "company:" } },
+        ],
+      },
+    });
   });
 });

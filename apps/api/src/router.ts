@@ -331,7 +331,7 @@ import {
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { createAgentSkillsService } from "./agent-skills.js";
-import { aiConsentStatus, allowAiConsent } from "./ai-consent.js";
+import { aiConsentStatus, allowAiConsent, revokeAiConsent } from "./ai-consent.js";
 import {
   ArtifactListCursorError,
   createOwnedArtifact,
@@ -1449,18 +1449,7 @@ export function createRouter(deps: RouterDeps) {
         allowAiConsent(deps, context.actor, input),
       ),
       revoke: authed.aiConsent.revoke.handler(async ({ context, input }) => {
-        await deps.prisma.aiDataConsent.deleteMany({
-          where: {
-            userId: context.actor.userId,
-            spaceId: context.actor.spaceId,
-            // Taking a model back also takes back the document grants given on top of it.
-            ...(input.key
-              ? {
-                  OR: [{ recipientKey: input.key }, { recipientKey: { startsWith: "data-room:" } }],
-                }
-              : {}),
-          },
-        });
+        await revokeAiConsent(deps.prisma, context.actor, input.key);
         return aiConsentStatus(deps, context.actor);
       }),
     },

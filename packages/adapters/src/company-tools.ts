@@ -196,6 +196,20 @@ function matchesText(fact: CompanyFact, text: string) {
   return haystack.toLocaleLowerCase().includes(value);
 }
 
+/**
+ * An approved edit returns only which fact changed. The full record carries adjacent events and
+ * edges with raw evidence quotes that the read tools filter by consent.
+ */
+export function upsertOutcome(result: unknown) {
+  if (typeof result !== "object" || result === null || !("record" in result)) return result;
+  const { kind, record, replayed } = result as {
+    kind: string;
+    record: { id?: string } | null;
+    replayed?: boolean;
+  };
+  return { kind, id: record?.id ?? null, ...(replayed ? { replayed } : {}) };
+}
+
 function authorizedFacts(
   entities: CompanyEntityRecord[],
   edges: CompanyEdgeRecord[],
@@ -578,7 +592,7 @@ export async function companyToolFromTool(
         snapshot: replay.snapshot,
         effectKey: options.effectKey,
       });
-      return { untrusted: true, result };
+      return { untrusted: true, result: upsertOutcome(result) };
     }
     if (name === "company_import_plan") {
       if (!deps.companyImport) return { error: "Company import services are not configured." };

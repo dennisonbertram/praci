@@ -166,10 +166,15 @@ function safeUrl(value: unknown) {
     return undefined;
   try {
     const url = new URL(value);
-    return url.username || url.password ? undefined : value;
+    return url.username || url.password ? undefined : `${url.origin}${url.pathname}`;
   } catch {
     return undefined;
   }
+}
+
+/** A bare URL keeps its path only: query strings and fragments can carry tokens. */
+function withoutUrlCredentials(value: string) {
+  return /^https?:\/\/\S+$/i.test(value) ? (safeUrl(value) ?? "") : value;
 }
 
 function providerFailure(value: Record<string, unknown>): never {
@@ -234,7 +239,7 @@ function decodeToolResult(value: unknown) {
 function redact(value: unknown, key = "", depth = 0): unknown {
   if (SENSITIVE.test(key)) return undefined;
   if (depth > 12) fail("source_projection_overflow");
-  if (typeof value === "string") return boundedUtf8(value, MAX_VALUE_BYTES);
+  if (typeof value === "string") return boundedUtf8(withoutUrlCredentials(value), MAX_VALUE_BYTES);
   if (Array.isArray(value)) {
     if (value.length > MAX_ARRAY_ITEMS) fail("source_projection_overflow");
     return value.map((item) => redact(item, key, depth + 1));
@@ -385,7 +390,7 @@ function providerItemId(value: unknown) {
   return undefined;
 }
 
-function genericDocument(
+export function genericDocument(
   tool: ConnectorTool,
   ownerArgs: Record<string, unknown>,
   item: unknown,

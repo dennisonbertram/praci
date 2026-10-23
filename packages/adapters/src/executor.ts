@@ -3192,7 +3192,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : companyAgent || companyImporter
               ? [...companyRunTools, ...builtins]
               : voiceAgent
-                ? [...builtins, ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : [])]
+                ? [
+                    ...builtins,
+                    ...(companyReadAllowed && voiceWorkspaceReadAllowed
+                      ? companyToolsForRun(companyToolDeps)
+                      : []),
+                  ]
                 : [
                     ...builtins,
                     ...(companyReadToolsAllowed ? companyToolsForRun(companyToolDeps) : []),

@@ -10,7 +10,7 @@ import {
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { companyToolFromTool, companyToolsForRun } from "./company-tools.js";
+import { companyToolFromTool, companyToolsForRun, upsertOutcome } from "./company-tools.js";
 
 const companyStoreMock = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock("@rakazo/db", async (importOriginal) => ({
@@ -790,5 +790,20 @@ describe("Company tools", () => {
     );
     expect(result.error).toBeDefined();
     expect(dataRoomAllowed).not.toHaveBeenCalled();
+  });
+});
+
+describe("upsertOutcome", () => {
+  it("drops adjacent events and edges with their evidence quotes", () => {
+    const out = upsertOutcome({
+      kind: "entity",
+      record: {
+        id: "person-1",
+        events: [{ id: "e1", evidence: [{ sourceKind: "data_room", quote: "secret terms" }] }],
+        edges: [{ id: "g1", evidence: [{ sourceKind: "data_room", quote: "secret terms" }] }],
+      },
+    });
+    expect(out).toEqual({ kind: "entity", id: "person-1" });
+    expect(JSON.stringify(out)).not.toContain("secret terms");
   });
 });
