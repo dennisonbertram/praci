@@ -1,11 +1,18 @@
 import {
+  CapTableLedgerRowSchema,
   CapTableSnapshotInputSchema,
   ContactKindSchema,
   ContactSaveInputSchema,
   isCartaAgentSpawnKey,
   isInvestorsAgentSpawnKey,
 } from "@rakazo/contracts";
-import { atCapPercent, capTableMath, equityRaisedUsd, isSafeSecurity } from "@rakazo/core";
+import {
+  atCapPercent,
+  capTableMath,
+  equityRaisedUsd,
+  investedByHolder,
+  isSafeSecurity,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   addContactIfNew,
@@ -119,7 +126,23 @@ export async function contactToolFromTool(
     if (name === "cap_table_update") {
       // The writer comes from the agent, never from the model, so it cannot name another source.
       const writer = deps.writer ?? "carta";
-      const input = CapTableSnapshotInputSchema.safeParse({ ...args, source: writer });
+      const { ledger: rawLedger, ...rest } = args;
+      const ledger = CapTableLedgerRowSchema.array().safeParse(rawLedger ?? []);
+      if (!ledger.success) return { error: `ledger: ${ledger.error.issues[0]?.message}` };
+      // Holders in the ledger get its cash; SAFEs stay with Mercury and are never given an amount here.
+      const invested = investedByHolder(ledger.data);
+      // Carta lists a holder once per security; the total goes on the first row only, so it counts once.
+      const given = new Set<string>();
+      const holders = Array.isArray(rest.holders)
+        ? rest.holders.map((h: { name?: string; security?: string }) => {
+            const name = typeof h.name === "string" ? h.name.trim() : "";
+            if (!invested.has(name) || isSafeSecurity(String(h.security))) return h;
+            if (given.has(name)) return { ...h, amountUsd: null };
+            given.add(name);
+            return { ...h, amountUsd: invested.get(name) };
+          })
+        : rest.holders;
+      const input = CapTableSnapshotInputSchema.safeParse({ ...rest, holders, source: writer });
       if (!input.success)
         return {
           error: input.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),

@@ -1,4 +1,4 @@
-import type { SafeStatus } from "@rakazo/contracts";
+import type { CapTableLedgerRow, SafeStatus } from "@rakazo/contracts";
 import { countedSafes } from "./safes.js";
 
 /** A cap table holder as the math sees it. */
@@ -93,3 +93,22 @@ export const equityRaisedUsd = (
     counted.filter((s) => s.status === "funded").reduce((sum, s) => sum + s.amountCents / 100, 0)
   );
 };
+
+/**
+ * Cash each holder ever put in, from Carta's ledger rows. Money stays on the holder when their
+ * preferred converts to common, so a conversion row changes nothing.
+ */
+export function investedByHolder(ledger: readonly CapTableLedgerRow[]) {
+  const invested = new Map<string, number>();
+  const add = (name: string, usd: number) => invested.set(name, (invested.get(name) ?? 0) + usd);
+  for (const row of ledger) {
+    if (row.type === "issuance") add(row.holder, row.amountUsd);
+    else if (row.type === "cancellation") add(row.holder, -row.amountUsd);
+    else if (row.type === "transfer" && row.toHolder) {
+      add(row.holder, -row.amountUsd);
+      add(row.toHolder, row.amountUsd);
+    }
+  }
+  for (const [name, usd] of invested) invested.set(name, Math.max(0, usd));
+  return invested;
+}

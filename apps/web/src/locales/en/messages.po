@@ -4568,6 +4568,7 @@ msgstr "Don't share"
 #: src/pages/ActivityList.tsx
 #: src/pages/Gtm.tsx
 #: src/pages/investors/UpdateEditor.tsx
+#: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
@@ -5985,10 +5986,6 @@ msgid "just now"
 msgstr "just now"
 
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Keep"
-msgstr "Keep"
-
-#: src/pages/legal/LegalDeadlines.tsx
 msgid "Keep {name}"
 msgstr "Keep {name}"
 
@@ -6004,6 +6001,10 @@ msgstr "Keep editing"
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "Keep memories"
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Keep this deadline"
+msgstr "Keep this deadline"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Keep your contracts here and see which are due soon."
@@ -8868,6 +8869,10 @@ msgstr "Remove {0}?"
 msgid "Remove {full}"
 msgstr "Remove {full}"
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Remove {name}"
+msgstr "Remove {name}"
+
 #: src/components/finance/ExchangeGroup.tsx
 msgid "Remove {name}?"
 msgstr "Remove {name}?"
@@ -8924,6 +8929,10 @@ msgstr "Remove skill {0}"
 #: src/components/finance/StatementImport.tsx
 msgid "Remove the {0} – {1} statement?"
 msgstr "Remove the {0} – {1} statement?"
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Remove this one"
+msgstr "Remove this one"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capTableMath, equityRaisedUsd } from "./cap-table.js";
+import { capTableMath, equityRaisedUsd, investedByHolder } from "./cap-table.js";
 
 const holder = (
   name: string,
@@ -120,5 +120,34 @@ describe("equityRaisedUsd", () => {
       equityRaisedUsd([holder("A", 100, null), holder("Fund", null, 9, "SAFE")], []),
     ).toBeNull();
     expect(equityRaisedUsd([], [{ status: "draft", amountCents: 100 }])).toBeNull();
+  });
+});
+
+describe("investedByHolder", () => {
+  const ledger = [
+    { type: "issuance", holder: "Fund A", amountUsd: 1_000_000 },
+    { type: "issuance", holder: "Fund B", amountUsd: 500_000 },
+    { type: "issuance", holder: "Fund C", amountUsd: 200_000 },
+    // Fund A's Seed Preferred converts to Common: the money stays with Fund A.
+    { type: "conversion", holder: "Fund A", amountUsd: 1_000_000 },
+    { type: "issuance", holder: "Fund A", amountUsd: 0 },
+    // Fund B sells its certificate to Fund D, and Fund C's certificate is cancelled.
+    { type: "transfer", holder: "Fund B", toHolder: "Fund D", amountUsd: 500_000 },
+    { type: "cancellation", holder: "Fund C", amountUsd: 200_000 },
+  ] as const;
+
+  it("keeps converted money on the holder and moves it with a transfer", () => {
+    expect(Object.fromEntries(investedByHolder(ledger))).toEqual({
+      "Fund A": 1_000_000,
+      "Fund B": 0,
+      "Fund C": 0,
+      "Fund D": 500_000,
+    });
+  });
+
+  it("makes Equity raised the sum of the holder rows", () => {
+    const invested = investedByHolder(ledger);
+    const holders = [...invested].map(([name, amountUsd]) => holder(name, 1, amountUsd, "Common"));
+    expect(equityRaisedUsd(holders, [])).toBe(1_500_000);
   });
 });

@@ -343,6 +343,8 @@ The scheduler fix was merged separately in #769. A fresh current-main UI smoke a
 
 - **Round 4 (owner request).** Layout C may not fit every founder, so the agent arranges the page with live `gtm-*` blocks in its own page (Design 9, a new slice S5c; the earlier S5c was folded into S5b in round 2). OpenUI and AI SDK generative UI were considered and not adopted for the reasons in Design 9. The header, Calendar tab and full Needs you group (with failed-post items) stay fixed, and links, images and task lists are rejected on the GTM page, so approvals cannot be hidden or imitated.
 
+- **As built (owner accepted, 2026-10-23).** Posting goes through an app-owned `gtm_post` tool that calls Zernio's REST API (fixed URL, no redirects) with a Zernio API key stored in the secret store, instead of the MCP `posts_create`; the MCP connection is read-only, so OAuth alone cannot post. A post-build review then made post proof server-only (the agent may only turn `zernio:<id>` into its live URL), allowed Re-approve only once the post's effect is `uncertain` or `failed` (or a stale attempt left none), enforced the email checks on the server against the sanitized text that is sent, required a recorded send before an email is done, and removed `request_secret` from routine runs.
+
 ## Assumptions
 
 - Hourly cadence with one item per wakeup is enough throughput for a first epic.
