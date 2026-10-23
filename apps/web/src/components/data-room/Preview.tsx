@@ -194,7 +194,7 @@ function ReplaceFile({ item }: { item: DataRoomApiItem }) {
 }
 
 /** Why a finished file has no type: Praci cannot read that kind of file, or may not read documents yet. */
-function UntaggedNote({ item, inDialog }: { item: DataRoomApiItem; inDialog: boolean }) {
+function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks: boolean }) {
   const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
   const unsearchable = isUnsearchableType(item.mimeType);
   useEffect(() => {
@@ -212,7 +212,7 @@ function UntaggedNote({ item, inDialog }: { item: DataRoomApiItem; inDialog: boo
   if (unsearchable)
     return <p className={note}>{t`Won't be searchable. Praci can't read this kind of file.`}</p>;
   // The page banner already asks beside the side panel; a dialog covers it, so it asks itself.
-  if (consent && !consent.allowed && consent.recipients.length > 0 && !inDialog)
+  if (consent && !consent.allowed && consent.recipients.length > 0 && bannerAsks)
     return <p className={note}>{t`Not tagged yet. Allow Praci to read your documents above.`}</p>;
   if (consent && !consent.allowed && consent.recipients.length > 0)
     return (
@@ -254,9 +254,12 @@ export function Preview({
   agents,
   onSendToAgent,
   inDialog = false,
+  pageAsksConsent = false,
 }: {
   /** Shown inside a Dialog, which brings its own close button and title. */
   inDialog?: boolean;
+  /** The page banner is asking for permission to read documents right now. */
+  pageAsksConsent?: boolean;
   item: DataRoomApiItem;
   folderPath: string;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
@@ -375,7 +378,7 @@ export function Preview({
       ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status, !!item.previewText) && !facets.docType ? (
-        <UntaggedNote item={item} inDialog={inDialog} />
+        <UntaggedNote item={item} bannerAsks={!inDialog && pageAsksConsent} />
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] items-baseline gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}

@@ -4,7 +4,7 @@ import type { DataRoomApiFolder } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { Folder, FolderPlus, WandSparkles } from "lucide-react";
 import type { KeyboardEvent } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PAGE_GUTTER_START } from "../PageHeader";
 import type { FolderNode } from "./folders";
 import type { ItemAction } from "./ItemMenu";
@@ -32,6 +32,12 @@ export function FolderTree({
   onAutoSort?: () => void;
 }) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const list = useRef<HTMLDivElement>(null);
+  // Keeps the open folder clear of the footer below the list, only when the selection changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selected is the trigger
+  useEffect(() => {
+    list.current?.querySelector("[aria-selected=true]")?.scrollIntoView?.({ block: "nearest" });
+  }, [selected]);
   // The selected entry is the Tab stop; All items when the selection is not in the list.
   const stop = nodes.some(({ folder }) => folder.id === selected) ? selected : undefined;
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -54,8 +60,6 @@ export function FolderTree({
       <div
         key={id ?? "all"}
         role="treeitem"
-        // Keeps the open folder clear of the footer below the list (a no-op where already visible).
-        ref={selected === id ? (el) => el?.scrollIntoView?.({ block: "nearest" }) : undefined}
         tabIndex={stop === id ? 0 : -1}
         aria-level={depth + 1}
         aria-selected={selected === id}
@@ -108,6 +112,7 @@ export function FolderTree({
   return (
     <div className={cn("flex w-full min-w-0 flex-col", PAGE_GUTTER_START)}>
       <div
+        ref={list}
         role="tree"
         aria-label={t`Folders`}
         tabIndex={-1}

@@ -1045,6 +1045,7 @@ export function DataRoomPage({
             )}
             {shown && !narrow && !showStats ? (
               <Preview
+                pageAsksConsent={!!consent && !consent.allowed && consent.recipients.length > 0}
                 item={shown}
                 folderPath={folderPath(shown.folderId)}
                 onAction={interaction.onAction}

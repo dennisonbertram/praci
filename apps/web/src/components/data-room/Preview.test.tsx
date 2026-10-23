@@ -505,7 +505,7 @@ const clickButton = (label: string) =>
       .find((b) => b.textContent === label)
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
-const renderUntagged = (inDialog = true) =>
+const renderUntagged = (inDialog = true, pageAsksConsent = false) =>
   act(async () => {
     const preview = (
       <Preview
@@ -514,6 +514,7 @@ const renderUntagged = (inDialog = true) =>
         onAction={vi.fn()}
         onClose={() => undefined}
         inDialog={inDialog}
+        pageAsksConsent={pageAsksConsent}
       />
     );
     root.render(
@@ -529,12 +530,18 @@ const renderUntagged = (inDialog = true) =>
 
 it("does not repeat the consent card in the side panel, where the page banner asks", async () => {
   consent.mockResolvedValue(needsConsent);
-  await renderUntagged(false);
+  await renderUntagged(false, true);
   expect(container.textContent).not.toContain("sent to the AI model");
   expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Allow")).toBe(
     false,
   );
   expect(container.textContent).toContain("Allow Praci to read your documents above");
+});
+
+it("stops pointing at the page banner once it is gone", async () => {
+  consent.mockResolvedValue(needsConsent);
+  await renderUntagged(false, false);
+  expect(container.textContent).not.toContain("documents above");
 });
 
 it("allows reading through the consent card with the reviewed key, version and space", async () => {
