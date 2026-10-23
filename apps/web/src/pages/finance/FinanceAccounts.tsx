@@ -196,7 +196,7 @@ export function FinanceAccountsPage({
   const exchanges = exchangeQuery.data ?? [];
   const crypto = cryptoQuery.data;
   const data = q.data;
-  const [range, setRange] = useState<BalanceRange>("year");
+  const [range, setRange] = useState<BalanceRange>("month");
   const balance = useFinanceQuery(
     () => rpc.finance.balanceSeries({ range }),
     [range, balanceStamp],

@@ -875,6 +875,16 @@ it("shows a loading state, not a dash, until the SAFE list answers", async () =>
   expect(container.textContent).toContain("Equity raised$525,000");
 });
 
+it("keeps the loading state, not a dash, while a sync is still filling in the figures", async () => {
+  rpcMock.capTable.mockResolvedValue(
+    state({ ...carta, holders: carta.holders.map((h) => ({ ...h, amountUsd: null })) }, true),
+  );
+  rpcMock.safesList.mockResolvedValue([]);
+  await show();
+  expect(container.textContent).not.toContain("Equity raised—");
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+});
+
 it("offers Try again when the SAFE list cannot load", async () => {
   rpcMock.capTable.mockResolvedValue(state(carta));
   rpcMock.safesList.mockRejectedValue(new Error("down"));

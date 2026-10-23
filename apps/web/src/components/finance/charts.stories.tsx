@@ -263,7 +263,11 @@ export const Months: Story = {
   render: () => (
     <MonthBars
       label="Spend by month"
-      items={months.map((m, i) => ({ label: m.slice(5), cents: 120_000 + i * 45_000 }))}
+      items={months.map((m, i) => ({
+        label: m.slice(5),
+        cents: 120_000 + i * 45_000,
+        partial: i === months.length - 1,
+      }))}
     />
   ),
 };

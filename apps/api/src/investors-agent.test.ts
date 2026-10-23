@@ -11,6 +11,7 @@ import {
   cadenceOf,
   ensureInvestorsAgent,
   INVESTOR_UPDATE_ROUTINE_NAME,
+  INVESTORS_AGENT_INSTRUCTIONS,
   setInvestorsReminder,
 } from "./investors-agent.js";
 
@@ -169,6 +170,11 @@ describe("ensureInvestorsAgent", () => {
         }),
       ]);
     }
+  });
+
+  it("sends a SAFE to Mercury, never to a Carta write switch", () => {
+    expect(INVESTORS_AGENT_INSTRUCTIONS).toContain("SAFEs are recorded in Mercury");
+    expect(INVESTORS_AGENT_INSTRUCTIONS).not.toContain("Allow changes in Carta");
   });
 
   it("offers no mail_send and nothing that deletes; cap_table_update is for the sheet read", () => {

@@ -807,7 +807,7 @@ export function MonthBars({
   height = 200,
   label,
 }: {
-  items: { label: string; cents: number }[];
+  items: { label: string; cents: number; partial?: boolean }[];
   height?: number;
   label: string;
 }) {
@@ -844,7 +844,7 @@ export function MonthBars({
                     width={bw}
                     height={Math.max(height - bottom - y, 0)}
                     rx={2}
-                    className="fill-foreground"
+                    className={item.partial ? "fill-foreground/40" : "fill-foreground"}
                   />
                   {hidden ? null : (
                     <text

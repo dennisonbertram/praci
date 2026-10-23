@@ -103,7 +103,7 @@ it("asks for and names only the chosen source's spend, and keeps it across the f
   expect(chip?.getAttribute("href")).toContain("source=brex");
 });
 
-it("charts a category's last six full months, like a vendor's chart, with month labels", async () => {
+it("charts a category's last six full months and the month still running, with month labels", async () => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
   const months = Array.from(
     { length: 12 },
@@ -125,12 +125,17 @@ it("charts a category's last six full months, like a vendor's chart, with month 
     ),
   );
   await act(async () => {});
-  // The month still running (Oct) is left out, as on a vendor's chart.
-  expect(container.textContent).toContain("Monthly spend · Apr – Sep");
+  // The month still running (Oct) is the last, partial bar.
+  expect(container.textContent).toContain("Monthly spend · Apr – Oct");
   const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
     (n) => n.textContent,
   );
-  expect(labels.filter((l) => /^[A-Z][a-z]{2}/.test(l ?? ""))).toHaveLength(6);
+  expect(labels.filter((l) => /^[A-Z][a-z]{2}/.test(l ?? ""))).toHaveLength(7);
+  const bars = container.querySelectorAll('svg[aria-label="Monthly spend"] rect.fill-foreground');
+  expect(bars).toHaveLength(6);
+  expect(
+    container.querySelectorAll('svg[aria-label="Monthly spend"] rect.fill-foreground\\/40'),
+  ).toHaveLength(1);
   vi.restoreAllMocks();
 });
 
