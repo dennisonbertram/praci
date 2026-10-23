@@ -54,6 +54,8 @@ export function FolderTree({
       <div
         key={id ?? "all"}
         role="treeitem"
+        // Keeps the open folder clear of the footer below the list (a no-op where already visible).
+        ref={selected === id ? (el) => el?.scrollIntoView?.({ block: "nearest" }) : undefined}
         tabIndex={stop === id ? 0 : -1}
         aria-level={depth + 1}
         aria-selected={selected === id}

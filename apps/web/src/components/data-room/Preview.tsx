@@ -194,7 +194,7 @@ function ReplaceFile({ item }: { item: DataRoomApiItem }) {
 }
 
 /** Why a finished file has no type: Praci cannot read that kind of file, or may not read documents yet. */
-function UntaggedNote({ item }: { item: DataRoomApiItem }) {
+function UntaggedNote({ item, inDialog }: { item: DataRoomApiItem; inDialog: boolean }) {
   const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
   const unsearchable = isUnsearchableType(item.mimeType);
   useEffect(() => {
@@ -211,6 +211,9 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
   const note = "text-xs text-muted-foreground";
   if (unsearchable)
     return <p className={note}>{t`Won't be searchable. Praci can't read this kind of file.`}</p>;
+  // The page banner already asks beside the side panel; a dialog covers it, so it asks itself.
+  if (consent && !consent.allowed && consent.recipients.length > 0 && !inDialog)
+    return <p className={note}>{t`Not tagged yet. Allow Praci to read your documents above.`}</p>;
   if (consent && !consent.allowed && consent.recipients.length > 0)
     return (
       <DocumentsConsentCard
@@ -372,7 +375,7 @@ export function Preview({
       ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status, !!item.previewText) && !facets.docType ? (
-        <UntaggedNote item={item} />
+        <UntaggedNote item={item} inDialog={inDialog} />
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] items-baseline gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}

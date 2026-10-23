@@ -7547,6 +7547,10 @@ msgid "Not tagged"
 msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
+msgid "Not tagged yet. Allow Praci to read your documents above."
+msgstr "Not tagged yet. Allow Praci to read your documents above."
+
+#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr "Not tagged. Praci can't read your documents."
 
