@@ -11,6 +11,7 @@ import {
   cadenceOf,
   ensureInvestorsAgent,
   INVESTOR_UPDATE_ROUTINE_NAME,
+  INVESTORS_AGENT_INSTRUCTIONS,
   setInvestorsReminder,
 } from "./investors-agent.js";
 
@@ -130,6 +131,36 @@ describe("investor update routine", () => {
 });
 
 describe("ensureInvestorsAgent", () => {
+  it("upgrades stored instructions only while they are the earlier default", async () => {
+    const { prisma, jobs } = routineFakes();
+    const earlier = INVESTORS_AGENT_INSTRUCTIONS.replace(
+      / SAFEs are recorded in Mercury[^.]*\./,
+      "",
+    );
+    expect(earlier).not.toBe(INVESTORS_AGENT_INSTRUCTIONS);
+    const replaceBotInstructions = vi.fn(async () => undefined);
+    const run = (instructions: string) =>
+      ensureInvestorsAgent(
+        {
+          prisma,
+          jobs,
+          repos: {
+            createBot: async () => ({ id: "bot-1", instructions }) as Bot,
+            replaceBotInstructions,
+          },
+        } as never,
+        actor,
+      );
+    await run(earlier);
+    expect(replaceBotInstructions).toHaveBeenCalledWith(actor, "bot-1", {
+      from: earlier,
+      to: INVESTORS_AGENT_INSTRUCTIONS,
+    });
+    replaceBotInstructions.mockClear();
+    await run(`${earlier} Mine.`);
+    expect(replaceBotInstructions).not.toHaveBeenCalled();
+  });
+
   it("rewrites the old default description only, scoped to the actor", async () => {
     const { prisma, jobs } = routineFakes();
     const createBot = vi.fn(async () => ({ id: "bot-1" }) as Bot);
@@ -169,6 +200,11 @@ describe("ensureInvestorsAgent", () => {
         }),
       ]);
     }
+  });
+
+  it("sends a SAFE to Mercury, never to a Carta write switch", () => {
+    expect(INVESTORS_AGENT_INSTRUCTIONS).toContain("SAFEs are recorded in Mercury");
+    expect(INVESTORS_AGENT_INSTRUCTIONS).not.toContain("Allow changes in Carta");
   });
 
   it("offers no mail_send and nothing that deletes; cap_table_update is for the sheet read", () => {

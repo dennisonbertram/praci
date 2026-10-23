@@ -27,7 +27,7 @@ export type SheetReadDeps = {
     "run" | "capTableSnapshot" | "$transaction" | "routine" | "user" | "bot"
   >;
   jobs: Pick<JobPublisher, "enqueue" | "cancel">;
-  repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+  repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
   /** False when no model is set up, so a run would only fail. */
   hasModel: (actor: Actor) => Promise<boolean>;
   enqueueRun: (runId: string) => Promise<void>;
