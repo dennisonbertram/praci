@@ -760,3 +760,22 @@ it("reads 'Not read' in the Type cell of a failed file and offers no retry for a
   expect(container.textContent).toContain("Not read");
   expect(container.textContent).not.toContain("Try again");
 });
+
+it("shows a visible Replace file and the folder path on a failed row that a second read cannot fix", () => {
+  const failed = {
+    ...item("nda", null),
+    folderId: "f-legal",
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  } as DataRoomApiItem;
+  const onAction = vi.fn();
+  act(() =>
+    root.render(<ListView rows={[{ item: failed, snippets: [] }]} o={{ ...o(), onAction }} />),
+  );
+  expect(container.textContent).toContain("Legal");
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Replace file",
+  );
+  act(() => button?.click());
+  expect(onAction).toHaveBeenCalledWith("replace", failed);
+});

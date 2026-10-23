@@ -305,16 +305,10 @@ export function FilterBar({
     <div
       className={`flex flex-wrap items-start gap-1.5 pb-1.5 @min-[640px]/bd:pb-2.5 ${PAGE_GUTTER_X}`}
     >
-      {statsView ? (
-        // Stats count by the filters only. This keeps the search box's room, so the Filters button
-        // and the pills stay where they are in the list and grid.
-        <div
-          aria-hidden="true"
-          className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
-        />
-      ) : (
+      {/* Stats count by the filters only, so there is no search box; the Filters button and pills then start at the left edge. */}
+      {statsView ? null : (
         <SearchField
-          className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
+          className="order-1 min-w-0 flex-1 basis-48 pointer-coarse:h-11 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
           value={query}
           onChange={onQuery}
           placeholder={t`Search names and text`}

@@ -7555,6 +7555,10 @@ msgid "Not tagged yet. Allow Praci to read your documents above."
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+msgid "Not tagged. No model is set up to read documents."
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr ""
 
@@ -8975,6 +8979,7 @@ msgid "Replace API key"
 msgstr "替换 API 密钥"
 
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Replace file"
 msgstr ""
