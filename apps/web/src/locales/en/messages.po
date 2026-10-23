@@ -10392,10 +10392,6 @@ msgid "Starting"
 msgstr "Starting"
 
 #: src/lib/run-phase.ts
-msgid "starting up"
-msgstr "starting up"
-
-#: src/lib/run-phase.ts
 msgid "Starting up"
 msgstr "Starting up"
 
@@ -10460,9 +10456,18 @@ msgstr "Still looking. This can take a minute."
 msgid "Still opening…"
 msgstr "Still opening…"
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr "Still starting up"
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
+msgstr "Still waiting on the model"
 
 #: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
@@ -10796,10 +10801,6 @@ msgstr "The last scan thinks this no longer applies."
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
 msgstr "The member who connected Devin left this space. Alerts are paused."
-
-#: src/lib/run-phase.ts
-msgid "the model"
-msgstr "the model"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "The model could not sort your files."

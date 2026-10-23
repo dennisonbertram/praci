@@ -10392,10 +10392,6 @@ msgid "Starting"
 msgstr "Запуск"
 
 #: src/lib/run-phase.ts
-msgid "starting up"
-msgstr ""
-
-#: src/lib/run-phase.ts
 msgid "Starting up"
 msgstr ""
 
@@ -10460,8 +10456,17 @@ msgstr ""
 msgid "Still opening…"
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr ""
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
 msgstr ""
 
 #: src/components/ai/primitives.tsx
@@ -10795,10 +10800,6 @@ msgstr ""
 
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
-msgstr ""
-
-#: src/lib/run-phase.ts
-msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx

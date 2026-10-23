@@ -1,6 +1,6 @@
 import { i18n } from "@lingui/core";
 import { beforeAll, describe, expect, it } from "vitest";
-import { runPhaseLine, runPhaseWaitingOn } from "./run-phase";
+import { runPhaseLine, runPhaseWaitingLabel } from "./run-phase";
 
 const AT = "2026-01-01T00:00:00.000Z";
 
@@ -10,13 +10,13 @@ describe("run phase copy", () => {
   it("never names the model while waiting for it", () => {
     const phase = { kind: "model_wait", name: "vendor/secret-model-1", at: AT } as const;
     expect(runPhaseLine(phase)).toBe("Waiting for the model");
-    expect(runPhaseWaitingOn(phase)).toBe("the model");
+    expect(runPhaseWaitingLabel(phase)).toBe("Still waiting on the model");
   });
 
   it("does not call startup the computer", () => {
     const phase = { kind: "computer_wait", at: AT } as const;
     expect(runPhaseLine(phase)).toBe("Starting up");
-    expect(runPhaseWaitingOn(phase)).toBe("starting up");
+    expect(runPhaseWaitingLabel(phase)).toBe("Still starting up");
   });
 
   it("never shows why a run is retrying", () => {
@@ -28,6 +28,6 @@ describe("run phase copy", () => {
     expect(runPhaseLine({ kind: "connecting", name: "Notion", at: AT })).toBe(
       "Connecting to Notion",
     );
-    expect(runPhaseWaitingOn({ kind: "connecting", at: AT })).toBe("tools");
+    expect(runPhaseWaitingLabel({ kind: "connecting", at: AT })).toBe("Still waiting on tools");
   });
 });
