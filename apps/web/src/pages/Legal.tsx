@@ -619,7 +619,7 @@ function GraphTab() {
 }
 
 /** The graph's placeholder; after 2 seconds it says what is happening. */
-function BuildingGraph() {
+export function BuildingGraph() {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), 2_000);
@@ -631,7 +631,7 @@ function BuildingGraph() {
       {slow ? (
         <p
           role="status"
-          className="absolute inset-0 grid place-items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground"
         >
           <Trans>Building graph…</Trans>
         </p>
