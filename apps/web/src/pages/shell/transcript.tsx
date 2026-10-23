@@ -789,6 +789,10 @@ export const Transcript = memo(function Transcript({
           const fullWidth = message.blocks.some((block) => block.kind === "emails");
           // A mail approval card leaves less than the hover rail's width beside it, so its rail sits below too.
           const mailCard = message.blocks.some((block) => block.kind === "ask" && block.mail);
+          // On touch a message that is only cards (first-question, mail, approvals) gets no More button: it would sit over the card's own controls.
+          const cardOnly =
+            !message.blocks.some((block) => block.kind === "text" || block.kind === "progress") &&
+            message.blocks.some((block) => CARD_CONTROL_KINDS.has(block.kind));
           return (
             <Fragment key={message.id}>
               {separatorIds.has(message.id) ? (
@@ -834,7 +838,7 @@ export const Transcript = memo(function Transcript({
                                 ? "w-full max-w-full"
                                 : mailCard
                                   ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
-                                  : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
+                                  : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[84%]"
                           }`
                     }
                   >
@@ -876,6 +880,7 @@ export const Transcript = memo(function Transcript({
                         hasReactions={Boolean(messageReactions)}
                         side={message.role === "user" ? "start" : "end"}
                         below={fullWidth || mailCard}
+                        hideOnTouch={cardOnly}
                         onReply={onReply}
                         onReact={onReact}
                         remember={remember}
@@ -1129,6 +1134,14 @@ const QuoteSelectionButton = memo(function QuoteSelectionButton({
   );
 });
 
+const CARD_CONTROL_KINDS: ReadonlySet<string> = new Set([
+  "ask",
+  "choice",
+  "app_connect",
+  "mcp_approval",
+  "emails",
+]);
+
 function MessageHoverActions({
   message,
   side,
@@ -1137,12 +1150,14 @@ function MessageHoverActions({
   onReact,
   remember,
   below,
+  hideOnTouch,
   tabbable = true,
   onMoreFocus,
 }: {
   message: ThreadMessage;
   side: "start" | "end";
   below?: boolean;
+  hideOnTouch?: boolean;
   hasReactions?: boolean;
   onReply: (message: ThreadMessage) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
@@ -1175,6 +1190,7 @@ function MessageHoverActions({
       pinned={moreOpen || reactionsOpen}
       side={side}
       below={below}
+      hideOnTouch={hideOnTouch}
       hasReactions={hasReactions}
     >
       <div data-testid="message-hover-actions" className="flex items-center gap-0.5">
