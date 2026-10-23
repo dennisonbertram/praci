@@ -2918,6 +2918,8 @@ msgstr ""
 #: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 #: src/pages/CompanyImport.tsx
+#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Company"
 msgstr ""
 
@@ -6081,6 +6083,10 @@ msgstr ""
 
 #: src/pages/Company.tsx
 msgid "Import in progress"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Import was interrupted"
 msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
@@ -10955,6 +10961,10 @@ msgstr "소프트웨어 업데이트"
 
 #: src/components/integrations/parts.tsx
 msgid "Some"
+msgstr ""
+
+#: src/pages/CompanyImport.tsx
+msgid "Some files couldn't be read"
 msgstr ""
 
 #: src/pages/Devin.tsx

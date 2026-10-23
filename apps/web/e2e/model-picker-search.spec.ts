@@ -22,9 +22,9 @@ test("model dropdown search and provider group headers", async ({ page }, testIn
   await modelCombobox.click();
 
   const modelSearch = page.getByRole("combobox", { name: "Search models" });
-  const modelOptions = page.getByRole("listbox", { name: "Model options" });
+  const modelOptions = page.getByRole("listbox", { name: "Model", exact: true });
   await expect(modelSearch).toBeVisible();
-  await expect(modelSearch).toHaveAttribute("placeholder", "Search");
+  await expect(modelSearch).toHaveAttribute("placeholder", "Search models");
   await expect(modelOptions).toBeVisible();
   // A single provider group repeats the provider name already shown by the
   // picker, so the redundant section header stays hidden.

@@ -2918,6 +2918,8 @@ msgstr "Compact"
 #: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 #: src/pages/CompanyImport.tsx
+#: src/pages/Shell.tsx
+#: src/pages/shell/space-sidebar.tsx
 msgid "Company"
 msgstr "Company"
 
@@ -6082,6 +6084,10 @@ msgstr "Import from Google Drive"
 #: src/pages/Company.tsx
 msgid "Import in progress"
 msgstr "Import in progress"
+
+#: src/pages/CompanyImport.tsx
+msgid "Import was interrupted"
+msgstr "Import was interrupted"
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
@@ -10956,6 +10962,10 @@ msgstr "Software update"
 #: src/components/integrations/parts.tsx
 msgid "Some"
 msgstr "Some"
+
+#: src/pages/CompanyImport.tsx
+msgid "Some files couldn't be read"
+msgstr "Some files couldn't be read"
 
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
