@@ -19,7 +19,9 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -687,19 +689,17 @@ export function RoutineEditor({
             <Trans>Choose when it runs</Trans>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="bottom">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Clock />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
                 <Trans>On a schedule</Trans>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="min-w-[170px]">
-                {SCHEDULE_PRESETS.map((freq) => (
-                  <DropdownMenuItem key={freq} onClick={() => addSchedule(freq)}>
-                    {schedulePresetLabel(freq)}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+              </DropdownMenuLabel>
+              {SCHEDULE_PRESETS.map((freq) => (
+                <DropdownMenuItem key={freq} onClick={() => addSchedule(freq)}>
+                  <Clock />
+                  {schedulePresetLabel(freq)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
 
             {slackAvailable ? (
               <DropdownMenuItem

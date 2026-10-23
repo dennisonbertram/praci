@@ -180,6 +180,27 @@ describe("routine history", () => {
       messageId: "group-reply",
     });
   });
+  it("ends a finished run when the agent it asked finished", async () => {
+    const { prisma, runs, messages } = fixture();
+    runs.mockResolvedValue([
+      {
+        id: "run-0",
+        botId: "bot-1",
+        threadId: "thread-1",
+        thread: { groupId: null },
+        status: "completed",
+        createdAt: at,
+        startedAt: at,
+        completedAt: new Date(at.getTime() + 6_000),
+      },
+    ]);
+    messages
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ runId: "run-0", endedAt: new Date(at.getTime() + 40_000) }]);
+    const history = await listRoutineRuns(prisma, actor, "routine-1");
+    expect(history.runs[0]?.completedAt).toBe(new Date(at.getTime() + 40_000).toISOString());
+  });
   it("shows the first line of the reply text as a preview", async () => {
     const { prisma, runs, messages } = fixture();
     runs.mockResolvedValue([
