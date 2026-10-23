@@ -125,4 +125,7 @@ it("makes the Failed card a button that filters to failed files", () => {
   );
   act(() => card?.click());
   expect(onPick).toHaveBeenCalledWith({ status: "failed" });
+  // It looks clickable and red, as the other clickable cards look clickable.
+  expect(card?.className).toContain("cursor-pointer");
+  expect(card?.querySelector(".text-destructive")?.textContent).toBe("2");
 });

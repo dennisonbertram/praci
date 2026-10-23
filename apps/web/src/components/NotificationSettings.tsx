@@ -53,7 +53,13 @@ export function NotificationSettingsSection() {
   const channels = prefs?.channels ?? {};
 
   return (
-    <section aria-label={t`Notifications`} className="rounded-xl border border-border px-4 py-4">
+    <section
+      aria-labelledby={`${id}-heading`}
+      className="rounded-xl border border-border px-4 py-4"
+    >
+      <h3 id={`${id}-heading`} className="mb-3 text-[15px] font-medium text-foreground">
+        <Trans>Notifications</Trans>
+      </h3>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
@@ -77,7 +83,7 @@ export function NotificationSettingsSection() {
             </Label>
           </div>
           {prefs && browserBlocked ? (
-            <span className="block text-[13px] text-muted-foreground">
+            <span className="mt-1 block ps-11 text-[13px] text-muted-foreground">
               {permission === undefined ? (
                 <Trans>Not supported here</Trans>
               ) : (

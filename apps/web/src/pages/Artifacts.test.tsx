@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -241,6 +241,24 @@ it("keeps the search and filters to the list: phones hide them beside an open do
   }
 });
 
+it("puts a grid card's version badge on the title line so versioned cards are no taller", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  window.localStorage.removeItem("rakazo:artifacts-view-mode");
+  api.listSpace.mockResolvedValue({
+    items: [{ ...artifact("Alpha notes", "artifact-1"), version: 2, versionCount: 2 }],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts();
+  try {
+    const badge = [...page.container.querySelectorAll("a span")].find(
+      (el) => el.textContent === "v2",
+    );
+    expect(badge?.parentElement?.textContent).toContain("Alpha notes");
+  } finally {
+    await page.cleanup();
+  }
+});
+
 it("shows artifacts as a table in list view and as cards in grid view, and remembers the choice", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   window.localStorage.removeItem("rakazo:artifacts-view-mode");
@@ -263,6 +281,9 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
       "/app/artifacts/artifact-1",
     );
+    // Narrow panes hide the mid columns, so the row's delete button must not sit in a hidden cell.
+    const del = page.container.querySelector("tr button[aria-label^='Delete']");
+    expect(del?.closest("td")?.className).not.toMatch(/(^| )hidden/);
     // No size anywhere: "128 bytes" means nothing to a founder.
     expect(page.container.textContent).not.toMatch(/bytes|\b128 B\b/);
     expect(window.localStorage.getItem("rakazo:artifacts-view-mode")).toBe("list");
@@ -402,6 +423,10 @@ it("names the delete button after the title, without the file extension", async 
   try {
     const del = page.container.querySelector("button[aria-label^='Delete']");
     expect(del?.getAttribute("aria-label")).toBe("Delete Fundraising Plan");
+    // The confirm dialog names it the same way, not by the file name.
+    await act(async () => (del as HTMLElement).click());
+    const title = document.querySelector("[data-slot=alert-dialog-title]")?.textContent;
+    expect(title).toBe('Delete "Fundraising Plan"?');
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
@@ -425,6 +450,54 @@ it("keeps the view switch in the split view and returns to the full list when it
   } finally {
     await page.cleanup();
     window.localStorage.removeItem("rakazo:artifacts-view-mode");
+    vi.unstubAllGlobals();
+  }
+});
+
+it("clears the date filter when the palette applies a search", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Old report", "artifact-1", "2020-01-01T00:00:00.000Z")],
+    nextCursor: null,
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  let go: (to: string) => void = () => {};
+  function Nav() {
+    go = useNavigate();
+    return null;
+  }
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/artifacts"]}>
+        <Nav />
+        <Routes>
+          <Route path="/app/artifacts" element={<ArtifactsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  try {
+    const press = async (el: Element | null | undefined) =>
+      act(async () => {
+        el?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+        el?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        el?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+        (el as HTMLElement | null | undefined)?.click();
+      });
+    await press(button(container, "Added"));
+    await press(
+      [...document.body.querySelectorAll<HTMLElement>("[role^=menuitem]")].find((el) =>
+        el.textContent?.includes("Today"),
+      ),
+    );
+    expect(container.textContent).not.toContain("Old report");
+    await act(async () => go("/app/artifacts?q=report"));
+    expect(container.textContent).toContain("Old report");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
     vi.unstubAllGlobals();
   }
 });

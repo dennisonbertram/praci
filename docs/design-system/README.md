@@ -58,7 +58,7 @@ De-emphasized text, fills and hover states.
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
 | `muted` | `--muted` | `#f0f0ed` | `#252523` |
-| `mutedForeground` | `--muted-foreground` | `#6c6c70` | `#9c9a93` |
+| `mutedForeground` | `--muted-foreground` | `#666669` | `#9c9a93` |
 | `accent` | `--accent` | `#eaeae6` | `#2a2927` |
 | `accentForeground` | `--accent-foreground` | `#1a1a1a` | `#ecebe6` |
 

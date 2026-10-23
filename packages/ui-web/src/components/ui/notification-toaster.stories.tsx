@@ -191,6 +191,34 @@ export const OverPage: Story = {
   ),
 };
 
+/** No composer on the page: the page pads by the card plus its 1rem offset, so no empty band is left under it. */
+export const OverPageNoComposer: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <main
+        data-testid="page"
+        className="flex h-screen flex-col pb-[var(--toast-page-reserve,0px)]"
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {Array.from({ length: 30 }, (_, i) => (
+            <div key={i} className="border-b border-border px-4 py-4 text-sm">
+              Row {i + 1}
+            </div>
+          ))}
+        </div>
+      </main>
+      <Demo
+        items={[
+          { id: "help", title: "Ledger agent needs you", body: "Send $300.00?", withBot: true },
+        ]}
+      />
+    </>
+  ),
+};
+
 /** An open dialog hides the toast, so it never covers the dialog's content. */
 export const BehindDialog: Story = {
   args: { onOpen: () => {} },

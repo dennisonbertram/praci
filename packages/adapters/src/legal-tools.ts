@@ -314,6 +314,9 @@ export async function legalToolFromTool(
         ...(status ? { status } : {}),
         dueDate: parseLegalDay(dueDate) as Date,
       });
+      if (row.status === "done" || row.status === "dismissed") {
+        return { deadline: toLegalDeadline(row), note: "Closed by the founder; left unchanged." };
+      }
       return { deadline: toLegalDeadline(row) };
     }
     if (name === "legal_upsert_node") {

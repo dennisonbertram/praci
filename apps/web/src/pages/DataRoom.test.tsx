@@ -905,6 +905,27 @@ it("says a search covers only the open folder, and Search all items looks everyw
   expect(container.textContent).not.toContain("Searching in");
 });
 
+it("keeps ?q= in step with the search box, and clears it with the box", async () => {
+  let search = "";
+  function Location() {
+    search = useLocation().search;
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?q=lease"]}>
+        <DataRoomPage />
+        <Location />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  await typeSearch("rent");
+  expect(search).toBe("?q=rent");
+  await typeSearch("");
+  expect(search).toBe("");
+});
+
 it("says a linked document could not be found and drops it from the URL", async () => {
   rpcMock.item.mockRejectedValue(new ORPCError("NOT_FOUND"));
   let search = "";

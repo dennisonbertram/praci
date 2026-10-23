@@ -94,13 +94,9 @@ function ComputerModePicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(mode);
             }}
-            className={`h-auto min-h-8 whitespace-normal py-1.5 ${SELECTED_SEGMENT}`}
+            className={`h-auto min-h-8 whitespace-nowrap py-1.5 ${SELECTED_SEGMENT}`}
           >
-            {mode === "team" ? (
-              <Trans>Shared with your other bots</Trans>
-            ) : (
-              <Trans>Only this bot</Trans>
-            )}
+            {mode === "team" ? <Trans>Shared</Trans> : <Trans>Only this bot</Trans>}
           </Toggle>
         ))}
       </div>
@@ -489,6 +485,9 @@ export function BotSettings({
           value={name}
           maxLength={BOT_NAME_MAX_LENGTH}
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void enqueueSave();
+          }}
           onBlur={() => void enqueueSave()}
           autoFocus={focusName}
           onFocus={focusName ? (e) => e.currentTarget.select() : undefined}
@@ -550,7 +549,8 @@ export function BotSettings({
             </div>
             <Switch
               id={`${ids}-notify-finish`}
-              checked={notifyOnFinish}
+              checked={notifyOnFinish && !notificationsOff}
+              disabled={notificationsOff}
               aria-labelledby={`${ids}-notify-finish-label`}
               aria-describedby={`${ids}-notify-finish-desc`}
               onCheckedChange={(checked) => {

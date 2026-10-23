@@ -62,10 +62,19 @@ vi.mock("../lib/inbox-message-cache", () => ({
 }));
 const realDialog = vi.hoisted(() => ({ on: false }));
 vi.mock("../components/AiDataSharing", () => ({
-  InboxConsentPrompt: ({ onAllowed }: { onAllowed: () => void }) => (
+  InboxConsentPrompt: ({
+    onAllowed,
+    onDismiss,
+  }: {
+    onAllowed: () => void;
+    onDismiss?: () => void;
+  }) => (
     <div data-consent-prompt>
       <button type="button" onClick={onAllowed}>
         Allow sorting
+      </button>
+      <button type="button" onClick={onDismiss}>
+        Not now
       </button>
     </div>
   ),
@@ -561,6 +570,25 @@ it("refetches the to-dos when triage turns on without a new sync", async () => {
   expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
 });
 
+it("says so when a sent reply moves its mail out of Needs reply", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  expect(c.textContent).not.toContain("Moved out of Needs reply");
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(100);
+  expect(c.textContent).toContain("Sent. Moved out of Needs reply");
+});
+
+it("does not say Sent when a Needs reply mail is archived instead of sent", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:inbox-changed")));
+  await dwell(100);
+  expect(c.textContent).not.toContain("Sent. Moved out of Needs reply");
+});
+
 it("archives the selected row with e, moves the selection on, and keeps it out of the list", async () => {
   const c = await render();
   await press("j");
@@ -926,17 +954,16 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
-it("keeps the grey bars, not the unsorted rows, however long the first sort runs", async () => {
+it("shows the unsorted rows dimmed under the sorting note from the first second of the first sort", async () => {
   rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
-  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-  await dwell(16_000);
-  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-  expect(c.textContent).not.toContain("noise a");
+  expect(c.querySelector("[aria-busy=true]")).toBeNull();
+  expect(c.textContent).toContain("noise a");
   expect(c.textContent).toContain("Sorting your mail…");
+  expect(c.querySelector(".opacity-60")?.textContent).toContain("noise a");
 });
 
-it("says sorting at once after Allow and keeps the rows back until the sort lands", async () => {
+it("keeps the rows readable, dimmed, right after Allow", async () => {
   const blocked = {
     enabled: false,
     triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
@@ -944,16 +971,34 @@ it("says sorting at once after Allow and keeps the rows back until the sort land
   rpcMock.list.mockResolvedValue(list([row("a"), row("b")], blocked));
   const c = await render();
   expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
-  // The first sync after Allow has not queued triage yet; the to-dos are still loading.
   rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
   rpcMock.todos.mockReturnValue(new Promise(() => {}));
   await click(byText(c, "Allow sorting"));
   expect(c.textContent).toContain("Sorting your mail…");
-  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-  await dwell(16_000);
-  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-  expect(c.textContent).not.toContain("noise a");
-  expect(c.textContent).toContain("Sorting your mail…");
+  expect(c.textContent).toContain("noise a");
+  expect(c.querySelector(".opacity-60")?.textContent).toContain("noise a");
+});
+
+it("remembers Not now per user and space, and offers a way to bring the prompt back", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a")], blocked));
+  const first = await render(undefined, undefined, { consentScope: "u1:s1" });
+  await click(byText(first, "Not now"));
+  expect(first.querySelector("[data-consent-prompt]")).toBeNull();
+  const again = await render(undefined, undefined, { consentScope: "u1:s1" });
+  expect(again.querySelector("[data-consent-prompt]")).toBeNull();
+  const other = await render(undefined, undefined, { consentScope: "u2:s1" });
+  expect(other.querySelector("[data-consent-prompt]")).not.toBeNull();
+  const otherSpace = await render(undefined, undefined, { consentScope: "u1:s2" });
+  expect(otherSpace.querySelector("[data-consent-prompt]")).not.toBeNull();
+  await click(byText(again, "Let Praci sort your mail"));
+  expect(again.querySelector("[data-consent-prompt]")).not.toBeNull();
+  const afterRecovery = await render(undefined, undefined, { consentScope: "u1:s1" });
+  expect(afterRecovery.querySelector("[data-consent-prompt]")).not.toBeNull();
+  localStorage.clear();
 });
 
 it("keeps rows still while a row menu is open and the first sort finishes", async () => {
@@ -1003,6 +1048,32 @@ it("does not say First sync once a refresh reports an earlier sync", async () =>
   }
 });
 
+it("does not say First sync while the list query has not answered, and offers Try again after 20 s", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockReturnValue(new Promise(() => {}));
+    rpcMock.refresh.mockReturnValue(new Promise(() => {}));
+    const c = await render();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(c.textContent).not.toContain("First sync can take a minute");
+    const tryAgain = () =>
+      [...c.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+    expect(tryAgain()).toBeUndefined();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(tryAgain()).toBeDefined();
+    expect(c.textContent).toContain("Your mail is taking longer than usual to load.");
+    const before = rpcMock.todos.mock.calls.length;
+    await act(async () => tryAgain()?.click());
+    expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("keeps the sorting stall notice through the minute sync", async () => {
   vi.useFakeTimers();
   try {
@@ -1038,7 +1109,7 @@ it("says it is reading the mail during the first sync and asks the server a few 
   }
 });
 
-it("shows the consent prompt without loading text while the first sync runs", async () => {
+it("shows the consent prompt with a loading line while the first sync runs", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockResolvedValue(
@@ -1053,8 +1124,8 @@ it("shows the consent prompt without loading text while the first sync runs", as
     );
     rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
     const c = await render();
-    // The choice is the one thing to read before consent: no sync status beside it.
-    expect(c.textContent).not.toContain("Reading your mail");
+    // Never a card over a blank page: a quiet line says mail is loading.
+    expect(c.textContent).toContain("Reading your mail");
     expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
     // Blank bars beside the card look stalled: any skeleton left is hidden.
     for (const bar of c.querySelectorAll('[data-slot="skeleton"]'))
@@ -1062,18 +1133,17 @@ it("shows the consent prompt without loading text while the first sync runs", as
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
-    expect(c.textContent).not.toContain("First sync can take a minute");
+    expect(c.textContent).toContain("First sync can take a minute");
   } finally {
     vi.useRealTimers();
   }
 });
 
-it("shows nothing from the first sort until it and its to-dos have landed, then changes once", async () => {
+it("keeps the rows readable, dimmed, through the first sort, and the To do card waits until it ends", async () => {
   rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
   const sorting = () => c.textContent?.includes("Sorting your mail…");
-  // No row shows before the sort has landed, so none can move afterwards.
-  expect(c.querySelector("[data-row-id]")).toBeNull();
+  expect(c.querySelector("[data-row-id]")).not.toBeNull();
   const category = (id: string) =>
     c.querySelector<HTMLElement>(`[data-row-id="${id}"]`)?.dataset.category;
   // Part of the mail is sorted while sorting goes on: the rows show none of it yet.
@@ -1084,7 +1154,6 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   );
   await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
   expect(sorting()).toBe(true);
-  expect(c.querySelector("[data-row-id]")).toBeNull();
   // Sorting finished, and its to-dos are still loading: the page waits for them.
   let todosLoaded: (value: unknown) => void = () => {};
   rpcMock.todos.mockReturnValue(new Promise((resolve) => (todosLoaded = resolve)));
@@ -1093,7 +1162,6 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   );
   await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
   expect(sorting()).toBe(true);
-  expect(c.querySelector("[data-row-id]")).toBeNull();
   const todo = {
     id: "t1",
     connectionId: "c1",
@@ -1887,16 +1955,16 @@ describe("a list that holds still", () => {
   });
 });
 
-it("shows no rows during a slow first sort, so none can move, until the stall notice", async () => {
+it("shows the rows from the start of a slow first sort, and the stall notice later", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
     const c = await render();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(16_000);
+      await vi.advanceTimersByTimeAsync(10_000);
     });
-    expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-    expect(c.textContent).not.toContain("noise a");
+    expect(c.querySelector("[aria-busy=true]")).toBeNull();
+    expect(c.textContent).toContain("noise a");
     for (let i = 0; i < 14; i++)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5_000);

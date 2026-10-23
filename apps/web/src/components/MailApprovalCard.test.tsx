@@ -127,7 +127,7 @@ it("starts expanded while pending, with the status and first recipient in the he
   for (const part of ["From", "me@example.test", "To", "Jana <jana@example.test>"]) {
     expect(text).toContain(part);
   }
-  expect(header()).toBe("Mail Needs approval · jana@example.testEdit");
+  expect(header()).toBe("Mail Needs approvalEdit");
   expect(host.querySelector("h3")?.textContent).toBe("Friday");
   expect(text).toContain("See you then.");
   expect(text).not.toContain("Cc");
@@ -469,12 +469,25 @@ it("shows a locked card for sending a saved draft, with no recipient required", 
   expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
 });
 
-it("keeps the recipient in the pending header on a narrow panel", async () => {
+it("does not repeat the recipient in the header while the To row is showing", async () => {
   await render();
-  const recipient = [...host.querySelectorAll("span")].find((el) =>
-    el.textContent?.startsWith("· jana@"),
+  expect(header()).not.toContain("jana@example.test");
+});
+
+it("gives a failed send with no error text a reason and the next step", async () => {
+  const failed = { ...mail, connectionId: "conn-1", outcome: "failed" as const };
+  await render({ status: "answered", answer: "allow", mail: failed, onOpenComposer: vi.fn() });
+  expect(host.querySelector("p[role=status]")?.textContent).toBe(
+    "This email was not sent. Check the account in Integrations, then open it in the composer.",
   );
-  expect(recipient?.className).not.toContain("hidden");
+});
+
+it("says why Send is disabled until a sender is chosen", async () => {
+  const { account: _account, ...unnamed } = mail;
+  await render({ mail: unnamed, accounts });
+  expect(host.querySelector("[id$=-hint]")?.textContent).toBe("Choose an account to send from.");
+  await choose(select()!, "c2");
+  expect(host.querySelector("[id$=-hint]")).toBeNull();
 });
 
 it("moves focus into the disable confirmation, and back to More on cancel or failure", async () => {

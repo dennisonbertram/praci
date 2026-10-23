@@ -153,9 +153,9 @@ export function GeneralSettingsPanels({
         </section>
       ) : null}
 
-      {/* Two columns when the pane is wide, so General is not one long scroll. */}
-      <div className="grid items-start gap-5 @2xl:grid-cols-2 @2xl:grid-rows-[auto_1fr]">
-        <div className="min-w-0 space-y-5">
+      {/* Two fixed columns when the pane is wide, so General is not one long scroll and opening a card moves nothing in the other column. */}
+      <div className="grid gap-5 @2xl:grid-cols-2 @2xl:items-start">
+        <div className="grid min-w-0 gap-5">
           <section className="rounded-xl border border-border px-4 py-4">
             <h3 className="text-[15px] font-medium text-foreground">
               <Trans>Appearance</Trans>
@@ -305,8 +305,6 @@ export function GeneralSettingsPanels({
               </div>
             </div>
           </details>
-        </div>
-        <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
           {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
           <section className="rounded-xl border border-border px-4 py-4">
@@ -322,33 +320,38 @@ export function GeneralSettingsPanels({
               <TimezonePicker value={timezone} onChange={onTimezoneChange} />
             ) : null}
           </section>
+        </div>
+        <div className="grid min-w-0 gap-5">
           <NotificationSettingsSection />
           {children}
-        </div>
-        {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
+          {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
             Delete is last of all, so a destructive action is never the first thing on the page. */}
-        <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4 @2xl:col-start-1 @2xl:row-start-2">
-          <div className="py-3">
-            <h3 className="text-[15px] font-medium text-foreground">
-              <Trans>Account</Trans>
-            </h3>
-            <p className="mt-1 min-w-0 text-[14px] text-foreground/75">
-              {name}
-              {email ? (
-                <span title={email} className="block truncate text-[13px] text-muted-foreground/70">
-                  {email}
-                </span>
-              ) : null}
-            </p>
-          </div>
-          <DataExportSection />
-          {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
-            <ChangePasswordSection email={email} />
-          ) : null}
-          <div data-testid="account-access" className="pb-3">
-            <AccountAccess onSecurity={setAccountSecurity} />
-          </div>
-        </section>
+          <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4">
+            <div className="py-3">
+              <h3 className="text-[15px] font-medium text-foreground">
+                <Trans>Account</Trans>
+              </h3>
+              <p className="mt-1 min-w-0 text-[14px] text-foreground/75">
+                {name}
+                {email ? (
+                  <span
+                    title={email}
+                    className="block truncate text-[13px] text-muted-foreground/70"
+                  >
+                    {email}
+                  </span>
+                ) : null}
+              </p>
+            </div>
+            <DataExportSection />
+            {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
+              <ChangePasswordSection email={email} />
+            ) : null}
+            <div data-testid="account-access" className="pb-3">
+              <AccountAccess onSecurity={setAccountSecurity} />
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
@@ -383,12 +386,14 @@ export function UsageSettingsPanel({
       .then((credentials) => setHasOwnKey(credentials.length > 0))
       .catch(() => undefined);
   }, []);
+  // Nothing to report before the first task, and no keys to mention.
+  if (!hasOwnKey && !usage?.runs) return null;
   return (
     <section data-testid="usage-settings" className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
         <Trans>Usage</Trans>
       </h3>
-      {usage ? (
+      {usage?.runs ? (
         <p className="mt-3 text-[14px] text-foreground/75">
           <Plural
             value={usage.runs}

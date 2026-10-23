@@ -3,7 +3,7 @@
 import { Toast } from "@base-ui/react/toast";
 import { Button } from "@rakazo/ui-web/components/ui/button";
 import { cn } from "@rakazo/ui-web/lib/utils";
-import { XIcon } from "lucide-react";
+import { ChevronRightIcon, XIcon } from "lucide-react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -100,7 +100,7 @@ function ToastBody({
         </span>
         <Toast.Description
           render={<span />}
-          className="mt-1 line-clamp-3 max-sm:line-clamp-4 text-sm text-muted-foreground break-words"
+          className="mt-1 line-clamp-3 max-sm:line-clamp-4 text-sm text-muted-foreground break-words group-data-[compact]/viewport:hidden"
         />
       </span>
     </>
@@ -113,7 +113,7 @@ function ToastBody({
   return (
     <button
       type="button"
-      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-12 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-[4.75rem] text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
       onClick={async () => {
         const { href, onSeen } = toast.data ?? {};
         try {
@@ -127,6 +127,12 @@ function ToastBody({
       }}
     >
       {content}
+      {toast.data?.href ? (
+        <ChevronRightIcon
+          className="absolute right-3 bottom-3 size-4 text-muted-foreground pointer-coarse:right-14"
+          aria-hidden="true"
+        />
+      ) : null}
     </button>
   );
 }
@@ -190,9 +196,17 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
+      // A phone screen with no composer (a settings sheet, a detail page) has nothing to dock above:
+      // show the title alone so the card covers one line, not the content.
+      viewport.toggleAttribute("data-compact", isPhone() && lift === 0);
       // The toasts sit over the bottom of the thread above the composer; the thread pads by their height.
       const reserve = lift > 0 ? viewport.getBoundingClientRect().height + GAP_ABOVE_PX : 0;
       document.documentElement.style.setProperty("--toast-reserve", `${reserve}px`);
+      // With no composer the toasts cover the page itself; the main column pads by their height plus
+      // the 1rem they float above the window edge, so no empty band is left under them.
+      const pageReserve =
+        lift === 0 ? window.innerHeight - viewport.getBoundingClientRect().top : 0;
+      document.documentElement.style.setProperty("--toast-page-reserve", `${pageReserve}px`);
       const beside = besidePanel();
       if (beside === null) {
         viewport.style.removeProperty("--toast-shift");
@@ -210,9 +224,11 @@ function ToastList({
       clearInterval(timer);
       window.removeEventListener("resize", place);
       viewport.style.removeProperty("--toast-lift");
+      viewport.removeAttribute("data-compact");
       viewport.style.removeProperty("--toast-shift");
       viewport.style.removeProperty("--toast-max-width");
       document.documentElement.style.removeProperty("--toast-reserve");
+      document.documentElement.style.removeProperty("--toast-page-reserve");
     };
   }, [shownCount, viewportRef]);
   const [, tick] = useState(0);
@@ -380,7 +396,7 @@ export function NotificationToaster({
           // `data-toast-avoid` element it would cover, and is hidden while a dialog, menu or the
           // navigation drawer is open, since it would cover their content.
           className={cn(
-            "group/viewport pointer-events-none fixed right-[max(calc(1rem+var(--toast-shift,0px)),env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem),var(--toast-max-width,100vw))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
+            "group/viewport pointer-events-none fixed right-[max(calc(1rem+var(--toast-shift,0px)),env(safe-area-inset-right))] bottom-[max(1rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem),var(--toast-max-width,100vw))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
             COVERED_BY_OVERLAY,
           )}
         >

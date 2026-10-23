@@ -15,7 +15,7 @@ async function render(logo: string | null, name = "gmail") {
 }
 
 it("shows the catalog logo", async () => {
-  const { container } = await render("https://logos.example.test/gmail.svg");
+  const { container } = await render("https://logos.example.test/gmail.svg", "Acme");
   expect(container.querySelector("img")?.getAttribute("src")).toBe(
     "https://logos.example.test/gmail.svg",
   );
@@ -45,12 +45,19 @@ it("falls back to the initial when the image fails to load", async () => {
   expect(container.querySelector("[data-fallback]")).not.toBeNull();
 });
 
-it("serves bundled Simple Icons marks locally, as a glyph that inverts in dark mode", async () => {
-  const { container } = await render("https://cdn.simpleicons.org/brex");
+it("serves bundled marks locally on the same white tile, whatever logo URL the source gives", async () => {
+  const { container } = await render("https://cdn.simpleicons.org/brex", "Brex");
   const img = container.querySelector("img");
   expect(img?.getAttribute("src")).toBe("/logos/simple/brex.svg");
-  expect(img?.className).toContain("dark:invert");
-  expect(container.querySelector("[data-testid=app-logo]")?.className).toContain("bg-muted");
+  const tile = container.querySelector("[data-testid=app-logo]")?.className;
+  expect(tile).toContain("bg-white");
+  const other = await render("https://logos.example.test/gmail.svg", "Gmail");
+  expect(other.container.querySelector("img")?.getAttribute("src")).toBe("/logos/simple/gmail.svg");
+  expect(other.container.querySelector("[data-testid=app-logo]")?.className).toBe(
+    (await render("https://cdn.simpleicons.org/gmail", "Gmail")).container.querySelector(
+      "[data-testid=app-logo]",
+    )?.className,
+  );
 });
 
 it("never requests the Simple Icons CDN, even for marks that are not bundled", async () => {
@@ -65,4 +72,10 @@ it("gives a known app without a mark a glyph, never an unrelated letter", async 
     expect(container.querySelector("svg")).not.toBeNull();
     expect(container.textContent).toBe("");
   }
+});
+
+it("puts a glyph for an app with no mark (Carta) on the same white tile", async () => {
+  const { container } = await render(null, "Carta");
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.querySelector("[data-testid=app-logo]")?.className).toContain("bg-white");
 });

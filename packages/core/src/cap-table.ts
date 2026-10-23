@@ -79,14 +79,15 @@ const investedUsd = (holders: readonly CapTableMathHolder[]) =>
  * Equity raised, the one figure the Investors page and the agents' cap_table_read both show: the
  * table's invested money plus Funded SAFEs. Sent and Signed SAFEs are promises, not raised money.
  * Null when nothing is known to add up (no counted SAFE and no invested amount).
+ * The source's own company total is never used, so Investors, Fundraising and Finance agree.
  */
 export const equityRaisedUsd = (
   holders: readonly CapTableMathHolder[],
   safes: readonly { status: SafeStatus; amountCents: number }[],
 ) => {
   const counted = countedSafes(safes);
-  if (!counted.length && !holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
-    return null;
+  const hasHolderAmount = holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security));
+  if (!counted.length && !hasHolderAmount) return null;
   return (
     investedUsd(holders) +
     counted.filter((s) => s.status === "funded").reduce((sum, s) => sum + s.amountCents / 100, 0)

@@ -367,9 +367,9 @@ it("shows a connected Mercury once, under Connected, with its actions", async ()
   expect(container.querySelector('[data-testid="finance-tile-mercury"]')?.textContent).toContain(
     "Open Finance",
   );
-  // Every connected card has the same actions menu, and none repeats "Connected" under its heading.
+  // A card with no actions of its own has no menu (its name opens the page), and none repeats "Connected" under its heading.
   const mercury = container.querySelector('[data-testid="finance-tile-mercury"]');
-  expect(mercury?.querySelector('button[aria-label="More Mercury actions"]')).not.toBeNull();
+  expect(mercury?.querySelector('button[aria-label="More Mercury actions"]')).toBeNull();
   expect(mercury?.querySelector('[data-status="connected"]')).toBeNull();
   expect(container.querySelector('[data-testid="finance-tile-brex"]')).not.toBeNull();
   expect(inConnected("finance-tile-brex")).toBe(false);
@@ -460,6 +460,32 @@ it("lists every finance provider under Finance when nothing is connected", async
   for (const id of ["mercury", "brex", "crypto", "alchemy", "coinbase", "kraken"])
     expect(count(`finance-tile-${id}`)).toBe(1);
   expect(container.querySelector('[data-testid="finance-section"]')?.children).toHaveLength(6);
+});
+
+const lapsedMercury = () => {
+  const value = data(true, true);
+  value.financeSources = [
+    { provider: "mercury", serverId: "s1", status: "needs_reconnect", lastSyncedAt: null },
+  ];
+  return value;
+};
+
+it("keeps a lapsed bank's reconnect tile when the search matches it", async () => {
+  await show(lapsedMercury(), "/app/integrations?q=mercury");
+  expect(count("finance-tile-mercury")).toBe(1);
+});
+
+it("scrolls to the reconnect tile, not past it, from ?category=finance", async () => {
+  const scroll = vi.fn();
+  const saved = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = scroll;
+  try {
+    await show(lapsedMercury(), "/app/integrations?category=finance");
+  } finally {
+    Element.prototype.scrollIntoView = saved;
+  }
+  const target = scroll.mock.contexts[0] as Element;
+  expect(target.querySelector('[data-testid="finance-tile-mercury"]')).not.toBeNull();
 });
 
 it("hides the Finance heading when every provider is connected", async () => {

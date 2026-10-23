@@ -10,12 +10,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
-import { FolderInput, MoreHorizontal, Pencil, RotateCw, Share2, Trash2 } from "lucide-react";
+import {
+  FolderInput,
+  MoreHorizontal,
+  Pencil,
+  RotateCw,
+  Share2,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import type { ElementType } from "react";
 import type { SendTarget } from "./SendToAgent";
 import { SendToAgentMenu } from "./SendToAgent";
 
-export type ItemAction = "move" | "rename" | "delete" | "retry" | "share";
+export type ItemAction = "move" | "rename" | "delete" | "retry" | "replace" | "share";
 
 const PARTS = {
   dropdown: { Item: DropdownMenuItem, Separator: DropdownMenuSeparator },
@@ -42,22 +50,31 @@ export function ItemMenuItems<T extends { name: string }>({
   onSendToAgent?: (item: T, agent: SendTarget) => void;
 }) {
   const { Item, Separator } = PARTS[menu];
+  // A failed file has no text to send; one Try again cannot fix (unreadable) still offers Replace file.
+  const failed = (item as { status?: string }).status === "failed";
   return (
     <>
       {canRetry ? (
+        <Item onClick={() => onAction("retry", item)}>
+          <RotateCw aria-hidden="true" />
+          <Trans>Try again</Trans>
+        </Item>
+      ) : null}
+      {canRetry || failed ? (
         <>
-          <Item onClick={() => onAction("retry", item)}>
-            <RotateCw aria-hidden="true" />
-            <Trans>Try again</Trans>
+          <Item onClick={() => onAction("replace", item)}>
+            <Upload aria-hidden="true" />
+            <Trans>Replace file</Trans>
           </Item>
           <Separator />
         </>
-      ) : null}
-      <SendToAgentMenu
-        menu={menu}
-        agents={onSendToAgent ? agents : undefined}
-        onPick={(agent) => onSendToAgent?.(item, agent)}
-      />
+      ) : (
+        <SendToAgentMenu
+          menu={menu}
+          agents={onSendToAgent ? agents : undefined}
+          onPick={(agent) => onSendToAgent?.(item, agent)}
+        />
+      )}
       {/* Folders carry `parentId`; only a document can be shared with investors. */}
       {"parentId" in item ? null : (
         <Item onClick={() => onAction("share", item)}>

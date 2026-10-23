@@ -66,7 +66,7 @@ function Title({ contract }: { contract: LegalContract }) {
     <Link
       to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
       state={{ from: "legal" }}
-      className="rk-tap min-w-0 font-medium hover:underline"
+      className="rk-tap min-w-0 truncate font-medium hover:underline"
     >
       {contract.title}
     </Link>
@@ -122,7 +122,7 @@ export function LegalContracts({
   };
   return (
     <>
-      <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
+      <ul aria-label={t`Contracts`} className="flex flex-col @6xl:hidden">
         {contracts.map((contract) => {
           const parties = contract.counterparties.join(", ");
           const showValue = !hidden && contract.valueCents !== null;
@@ -131,12 +131,19 @@ export function LegalContracts({
             <li
               key={contract.id}
               onClick={open(contract)}
-              className="cursor-pointer border-t border-border py-2.5 text-sm"
+              className="cursor-pointer border-t border-border py-2 text-sm"
             >
               <div className="flex items-center justify-between gap-3">
                 <Title contract={contract} />
                 <span className="flex shrink-0 items-center gap-2">
-                  {showValue ? <span className="tabular-nums">{value(contract)}</span> : null}
+                  {showValue ? (
+                    <span className="tabular-nums">
+                      <span className="me-1 text-xs text-muted-foreground">
+                        <Trans>Value</Trans>
+                      </span>
+                      {value(contract)}
+                    </span>
+                  ) : null}
                   <Status status={contract.status} />
                 </span>
               </div>
@@ -155,7 +162,7 @@ export function LegalContracts({
           );
         })}
       </ul>
-      <Table compact className="hidden @4xl:table">
+      <Table compact className="hidden @6xl:table">
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>
@@ -187,21 +194,25 @@ export function LegalContracts({
             <TableRow
               key={contract.id}
               onClick={open(contract)}
-              className="cursor-pointer group-data-[compact]/table:h-12"
+              className="cursor-pointer group-data-[compact]/table:h-10"
             >
               <TableCell title={`${contract.title} (${contract.contractType})`}>
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-72 items-center gap-2">
                   <Title contract={contract} />
                   <Status status={contract.status} />
                 </div>
               </TableCell>
               <TableCell title={contract.counterparties.join(", ")}>
-                {contract.counterparties.join(", ") || dash}
+                <span className="block max-w-56 truncate">
+                  {contract.counterparties.join(", ") || dash}
+                </span>
               </TableCell>
               <TableCell className="whitespace-nowrap tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell title={renewal(contract)}>{renewal(contract)}</TableCell>
+              <TableCell className="whitespace-nowrap" title={renewal(contract)}>
+                {renewal(contract)}
+              </TableCell>
               <TableCell className="whitespace-nowrap text-end tabular-nums">
                 {value(contract)}
               </TableCell>

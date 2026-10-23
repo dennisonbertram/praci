@@ -16,6 +16,7 @@ import {
   BreakdownRows,
   BurnLegend,
   Chevron,
+  cashSubtitle,
   DetailPage,
   HereLink,
   Kpi,
@@ -312,16 +313,33 @@ export function FinanceRunwayPage() {
       {data ? (
         <>
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
-            <Kpi title={t`Cash`} value={money(data.cashCents)} to={financePath.accounts()} />
+            <Kpi
+              title={t`Cash`}
+              value={money(data.cashCents)}
+              sub={cashSubtitle(
+                undefined,
+                data.runwayCrypto === "all"
+                  ? "all"
+                  : data.runwayCrypto === "stablecoins"
+                    ? "stablecoins"
+                    : "none",
+              )}
+              to={financePath.accounts()}
+            />
             <Kpi
               title={t`Monthly burn`}
               value={data.monthlyBurnCents > 0 ? money(data.monthlyBurnCents) : "—"}
               sub={t`3-mo avg, after revenue`}
               to={financePath.burn()}
             />
-            <Kpi title={t`Runway`} value={runMonths === undefined ? "—" : t`${runMonths} mo`} />
+            <Kpi
+              title={t`Runway`}
+              value={runMonths === undefined ? "—" : t`${runMonths} mo`}
+              sub={data.runway.runOutDate ? t`Cash divided by burn` : t`Needs a monthly burn`}
+            />
             <Kpi
               title={t`Run-out`}
+              sub={t`At the current burn`}
               value={
                 <span className="whitespace-nowrap">
                   {data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}

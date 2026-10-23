@@ -401,7 +401,7 @@ export async function ensureIntegrationAgent(
       PrismaClient,
       "mcpServer" | "botMcpServer" | "bot" | "connection" | "$transaction"
     >;
-    repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+    repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
     /** Archives a bot this call created when it could not be linked. */
     archiveBot: (botId: string) => Promise<void>;
   },

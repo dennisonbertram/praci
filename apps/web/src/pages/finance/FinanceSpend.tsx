@@ -160,9 +160,8 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
   );
   const rowProps = useRowNavigate();
   const data = q.data;
-  // The last six full months, the same window as a vendor's chart (the month still running is left
-  // out, as there), so the bars and their amounts fit a phone.
-  const trend = data?.trend.slice(-7, -1) ?? [];
+  // The last six full months and the month still running, drawn as a lighter partial bar.
+  const trend = data?.trend.slice(-7) ?? [];
   // The total, the vendors and the transactions all cover this one window, named on the page.
   const windowName =
     data?.start && data.end
@@ -205,15 +204,19 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
                 items={trend.map((m, i) => ({
                   label: monthAxisLabels(trend.map((x) => x.month))[i] ?? "",
                   cents: m.cents,
+                  partial: i === trend.length - 1,
                 }))}
                 height={160}
                 label={t`Monthly spend`}
               />
+              <div className="text-xs text-muted-foreground">
+                <Trans>* So far</Trans>
+              </div>
             </Section>
           ) : null}
           {/* One vendor repeats the total and the transaction rows below. */}
           {data.vendors.length === 1 ? null : (
-            <Section title={t`Vendors · ${windowName}`}>
+            <Section title={t`Vendors`}>
               <Table compact>
                 <TableBody>
                   {data.vendors.map((vendor) => (
@@ -238,7 +241,8 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
               </Table>
             </Section>
           )}
-          <TransactionsSection title={t`Transactions · ${windowName}`} rows={data.recent} />
+          {/* The headline card above already names the window. */}
+          <TransactionsSection rows={data.recent} />
         </>
       ) : null}
     </DetailPage>

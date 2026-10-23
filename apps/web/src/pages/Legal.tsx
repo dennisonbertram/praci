@@ -18,9 +18,10 @@ import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
-import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -53,6 +54,7 @@ export function LegalPage({
   onConsentChange,
   onOpenSettings,
   settingsOpen = false,
+  agentBusy = false,
   spaces,
   spaceId,
   onSwitchSpace,
@@ -70,17 +72,20 @@ export function LegalPage({
   onOpenSettings?: () => void;
   /** Settings is open over the page; the page re-reads its state when it closes. */
   settingsOpen?: boolean;
+  /** The Legal agent is answering; the page re-reads what it recorded when it stops. */
+  agentBusy?: boolean;
 }) {
   return (
     <FinanceChromeProvider
       value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
     >
-      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7">
         <div className="mx-auto max-w-[1440px]">
           <Legal
             selfName={spaces?.find((space) => space.id === spaceId)?.name}
             onOpenSettings={onOpenSettings}
             settingsOpen={settingsOpen}
+            agentBusy={agentBusy}
             onAskAbout={onAskAbout}
             onConsentChange={onConsentChange}
           />
@@ -94,6 +99,7 @@ function Legal({
   selfName,
   onOpenSettings,
   settingsOpen,
+  agentBusy,
   onAskAbout,
   onConsentChange,
 }: {
@@ -101,6 +107,7 @@ function Legal({
   selfName?: string;
   onOpenSettings?: () => void;
   settingsOpen: boolean;
+  agentBusy: boolean;
   onAskAbout?: (question: string) => void;
   onConsentChange?: (missing: boolean) => void;
 }) {
@@ -126,17 +133,22 @@ function Legal({
     contracts: Map<string, string>;
     deadlines: Map<string, string>;
   } | null>(null);
+  useHideAmounts(); // re-render the masked scan summary when the switch flips
   const [scanResult, setScanResult] = useState("");
   // How many documents were unchecked when Scan now was pressed; the count falling is the progress.
-  // Deadlines the user closed, listed on request under Deadlines.
+  // Deadlines the user closed (done or dismissed), listed on request under Deadlines.
   const [showDone, setShowDone] = useState(false);
   const [scanTotal, setScanTotal] = useState(0);
   const status = granted ?? consent.data;
   const data = overview.data;
   const lastRun = data?.agent.lastScanRun ?? null;
   const finishedWaiting = lastRun?.id === waitingFor && lastRun?.status !== "running";
-  const running = lastRun?.status === "running" || (waitingFor !== null && !finishedWaiting);
+  // A failed refresh stops the wait: the Could not refresh notice offers Try again.
+  const running =
+    !overview.error && (lastRun?.status === "running" || (waitingFor !== null && !finishedWaiting));
 
+  // The header shows how long this scan has run (it re-renders on every poll), not the last scan's age.
+  const scanStart = useRef(0);
   const consentMissing = status?.allowed === false;
   const reportConsent = useRef(onConsentChange);
   reportConsent.current = onConsentChange;
@@ -167,14 +179,31 @@ function Legal({
       (d) => before.deadlines.get(d.id) !== deadlineKey(d),
     ).length;
     const suggested = data.deadlines.filter((d) => d.removalProposed).length;
+    // Name what changed, so the founder can find it without comparing lists.
+    const names = [
+      ...data.contracts
+        .filter((c) => before.contracts.get(c.id) !== c.analyzedAt)
+        .map((c) => c.title),
+      ...data.deadlines
+        .filter((d) => before.deadlines.get(d.id) !== deadlineKey(d))
+        .map((d) => d.title),
+    ];
+    const list = names.slice(0, 3).join(", ");
+    const more = names.length - 3;
+    const named =
+      names.length === 0
+        ? ""
+        : more > 0
+          ? ` ${t`Updated: ${list} and ${more} more.`}`
+          : ` ${t`Updated: ${list}.`}`;
     const changes =
       contractsChanged + deadlinesAdded === 0
         ? t`Scan finished: nothing changed.`
         : t`Scan finished: ${plural(contractsChanged, { one: "# contract", other: "# contracts" })} and ${plural(deadlinesAdded, { one: "# deadline", other: "# deadlines" })} added or updated.`;
     setScanResult(
       suggested === 0
-        ? changes
-        : `${changes} ${plural(suggested, { one: "# deadline may no longer apply: review it under Deadlines.", other: "# deadlines may no longer apply: review them under Deadlines." })}`,
+        ? `${changes}${named}`
+        : `${changes}${named} ${plural(suggested, { one: "# deadline may no longer apply: review it under Deadlines.", other: "# deadlines may no longer apply: review them under Deadlines." })}`,
     );
   }, [finishedWaiting, data, lastRun?.status]);
   // A key added in Settings, or a model changed in another tab, shows up when the user comes back.
@@ -191,6 +220,12 @@ function Legal({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
+  // A chat turn can end a contract or change a deadline, so re-read when the agent stops answering.
+  const wasBusy = useRef(agentBusy);
+  useEffect(() => {
+    if (wasBusy.current && !agentBusy) reload.current.overview();
+    wasBusy.current = agentBusy;
+  }, [agentBusy]);
   const settingsWasOpen = useRef(false);
   useEffect(() => {
     if (settingsWasOpen.current && !settingsOpen) {
@@ -210,6 +245,7 @@ function Legal({
   // While a scan runs, re-read the overview until it ends; give up after a few minutes.
   useEffect(() => {
     if (!running) return;
+    scanStart.current = Date.now();
     const poll = setInterval(() => reload.current.overview(), SCAN_POLL_MS);
     const stop = setTimeout(() => {
       clearInterval(poll);
@@ -299,7 +335,7 @@ function Legal({
       </p>
     ) : scanResult ? (
       <p role="status" className="mb-3 text-sm text-muted-foreground">
-        {scanResult}
+        {maskCurrencyWhenHidden(scanResult)}
       </p>
     ) : null;
   // A row, not a fifth tile. It sits below the tabs, so it going away after a scan never moves them.
@@ -307,14 +343,11 @@ function Legal({
     <>
       {/* Hidden while scanning (the progress line says it) and until Legal may read documents. */}
       {counts.unreviewedDocuments > 0 && !running && !setupMissing ? (
-        <p className="mb-4 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-muted-foreground">
           {plural(counts.unreviewedDocuments, {
             one: "# Data room document not yet checked by Legal",
             other: "# Data room documents not yet checked by Legal",
           })}
-          <Button size="sm" variant="outline" onClick={() => void scan()}>
-            <Trans>Check now</Trans>
-          </Button>
         </p>
       ) : null}
     </>
@@ -328,13 +361,25 @@ function Legal({
           <>
             <SpaceName />
             <span className="min-w-0 text-[11px]">
-              {needsConsent ? null : lastScan ? (
+              {needsConsent ? null : running ? (
+                (() => {
+                  // scanStart is 0 until the effect below runs, so show no elapsed time before then.
+                  const minutes = scanStart.current
+                    ? Math.floor((Date.now() - scanStart.current) / 60_000)
+                    : 0;
+                  return minutes > 0 ? (
+                    <Trans>Scanning for {minutes} min</Trans>
+                  ) : (
+                    <Trans>Scanning now</Trans>
+                  );
+                })()
+              ) : lastScan ? (
                 data.agent.dailyScanActive ? (
                   <Trans>Last scan {lastScan}. Scans daily.</Trans>
                 ) : (
                   <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
                 )
-              ) : running ? null : data.agent.dailyScanActive ? (
+              ) : data.agent.dailyScanActive ? (
                 <Trans>Not scanned yet</Trans>
               ) : (
                 <Trans>Not scanned yet. Daily scan paused.</Trans>
@@ -484,7 +529,7 @@ function Legal({
                 aria-pressed={showDone}
                 onClick={() => setShowDone(!showDone)}
               >
-                {showDone ? <Trans>Show open</Trans> : <Trans>Show done</Trans>}
+                {showDone ? <Trans>Show open</Trans> : <Trans>Show closed</Trans>}
               </Button>
             </div>
           ) : null}
@@ -518,7 +563,7 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
   if (done.data.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        <Trans>No deadlines marked done.</Trans>
+        <Trans>No closed deadlines.</Trans>
       </p>
     );
   }
@@ -541,7 +586,7 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
           {error}
         </p>
       ) : null}
-      <ul aria-label={t`Done deadlines`} className="flex flex-col">
+      <ul aria-label={t`Closed deadlines`} className="flex flex-col">
         {done.data.map((deadline) => (
           <li
             key={deadline.id}
@@ -553,13 +598,18 @@ function DoneDeadlines({ onChanged }: { onChanged: () => void }) {
                   ? `${deadline.title}: ${deadline.contractTitle}`
                   : deadline.title,
               )}
+              {deadline.status === "dismissed" ? (
+                <span className="ms-2 font-normal text-muted-foreground">
+                  <Trans>Dismissed</Trans>
+                </span>
+              ) : null}
             </span>
             <span className="flex items-center gap-2">
               <time dateTime={deadline.dueDate} className="tabular-nums text-muted-foreground">
                 {fullDay(deadline.dueDate)}
               </time>
               <Button size="sm" variant="ghost" onClick={() => void reopen(deadline.id)}>
-                <Trans>Reopen</Trans>
+                {deadline.status === "dismissed" ? <Trans>Restore</Trans> : <Trans>Reopen</Trans>}
               </Button>
             </span>
           </li>
@@ -578,7 +628,7 @@ function GraphTab() {
 }
 
 /** The graph's placeholder; after 2 seconds it says what is happening. */
-function BuildingGraph() {
+export function BuildingGraph() {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), 2_000);
@@ -590,11 +640,12 @@ function BuildingGraph() {
       {slow ? (
         <p
           role="status"
-          className="absolute inset-0 grid place-items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground"
         >
           <Trans>Building graph…</Trans>
         </p>
       ) : null}
+      <StillLoading />
     </div>
   );
 }
@@ -609,6 +660,7 @@ function LegalSkeleton() {
         ))}
       </div>
       <Skeleton className="h-56" />
+      <StillLoading />
     </div>
   );
 }

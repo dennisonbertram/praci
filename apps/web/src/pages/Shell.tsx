@@ -84,6 +84,7 @@ import {
   CalendarClock,
   ChartColumn,
   ChevronDown,
+  ChevronLeft,
   CircleAlert,
   CodeXml,
   Compass,
@@ -179,7 +180,7 @@ import {
   SortableRow,
 } from "../components/sidebar-folders/SidebarDnd";
 import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNotice";
-import { glanceBadge, StatusMark } from "../components/sidebar-glance";
+import { glanceBadge, rowStatusKind, StatusMark } from "../components/sidebar-glance";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
@@ -223,7 +224,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
-import { pendingDelegateAgents } from "../lib/delegate-wait";
+import { delegateWaitTarget, pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
 import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -259,6 +260,7 @@ import {
   needsAnswerLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterPreviewText,
   rosterStatusChanged,
   rosterWorkStatusLabel,
   waitingForApprovalLabel,
@@ -346,6 +348,7 @@ import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/co
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
 import { isStalePendingAskError } from "./shell/composer-error";
+import { DelegateWaitNotice } from "./shell/DelegateWaitNotice";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -358,7 +361,7 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./shell/roster-tab-stops";
-import { moreBarHeight, rowsBelow } from "./shell/rows-below";
+import { moreBarHeight, rowsBelow, scrollingList } from "./shell/rows-below";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import {
   activeSpaceFirst,
@@ -477,12 +480,33 @@ function toggleCollapsedIdSet(
 }
 
 function readCollapsedSidebarSections(userId: string | null | undefined): Set<string> {
-  return readCollapsedIdSet(collapsedSidebarSectionsStorageKey(userId));
+  const key = collapsedSidebarSectionsStorageKey(userId);
+  const saved = readCollapsedIdSet(key);
+  // On a phone the nine pages would fill the drawer and leave one chat visible, so Pages starts
+  // collapsed until the person has opened or closed any section themselves.
+  try {
+    if (
+      key &&
+      window.localStorage.getItem(key) === null &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      return new Set(["pages"]);
+    }
+  } catch {
+    // Storage blocked: keep the default.
+  }
+  return saved;
 }
 
 function readCollapsedRosterParents(userId: string | null | undefined): Set<string> {
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
+
+/** The same side inset as the transcript, so full-page content sits in the composer's column. */
+const CHAT_COLUMN_INSET = "md:px-[max(1.75rem,calc((100%-900px)/2))]";
+
+const isPageOrIntegrationAgent = (spawnKey: string | null | undefined) =>
+  pageAgentKind(spawnKey) !== null || isIntegrationAgentSpawnKey(spawnKey);
 
 /** A non-chat search result: a Data room document, artifact or contact. */
 type SearchLink = { id: string; label: string; detail?: string };
@@ -491,7 +515,7 @@ type SearchLink = { id: string; label: string; detail?: string };
 export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
-      rpc.dataRoom.search({ query, limit: 5 }),
+      rpc.dataRoom.search({ query, limit: 6 }),
       // Only for the folder line; a failure just leaves it off.
       rpc.dataRoom.folders().catch(() => []),
     ])
@@ -525,7 +549,8 @@ export async function findDocumentsAndArtifacts(query: string) {
       .then((result): SearchLink[] =>
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
-          .slice(0, 5)
+          // One more than is listed, to know whether Artifacts holds more.
+          .slice(0, 6)
           .map((item) => ({
             id: item.id,
             label: artifactDisplayName(item.name),
@@ -912,18 +937,21 @@ export function ShellPage() {
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
   // Keeps the chat list from ending on a half-cut row, as rows come and go and the window resizes.
   useEffect(() => {
-    const list = sidebarScrollRef.current;
-    if (!list) return;
+    // On a short screen or a phone the pages and the chats scroll together in the pane.
+    const lists = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
     const trim = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => endOnWholeRow(list));
+      frame = requestAnimationFrame(() => endOnWholeRow(lists));
     };
     trim();
     const resize = new ResizeObserver(trim);
-    resize.observe(list);
     const mutate = new MutationObserver(trim);
-    mutate.observe(list, { childList: true, subtree: true });
+    for (const el of lists) {
+      if (!el) continue;
+      resize.observe(el);
+      mutate.observe(el, { childList: true, subtree: true });
+    }
     return () => {
       cancelAnimationFrame(frame);
       resize.disconnect();
@@ -932,12 +960,17 @@ export function ShellPage() {
   }, [mobileSidebarOpen]);
   // "+N more" over the foot of the list while rows remain below the fold.
   const [hiddenRows, setHiddenRows] = useState(0);
+  // The list ends on a whole row; the bar fills the margin that leaves so "+N more" sits under it.
+  const [moreBarFill, setMoreBarFill] = useState(0);
   useEffect(() => {
     const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
     const measure = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setHiddenRows(rowsBelow(scrollers)));
+      frame = requestAnimationFrame(() => {
+        setHiddenRows(rowsBelow(scrollers));
+        setMoreBarFill(Number.parseFloat(scrollingList(scrollers)?.style.marginBottom ?? "") || 0);
+      });
     };
     measure();
     for (const el of scrollers) el?.addEventListener("scroll", measure, { passive: true });
@@ -1004,7 +1037,8 @@ export function ShellPage() {
     // The list scrolls on a tall desktop; the pane around it scrolls on a phone and a short screen.
     sidebarScrollRef.current?.scrollTo({ top: 0 });
     sidebarPaneRef.current?.scrollTo({ top: 0 });
-  }, [activityMode]);
+    // Again once the runs arrive and add content above the chats.
+  }, [activityMode, activityBotIds.size > 0]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
@@ -1237,7 +1271,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   useEffect(() => {
-    setGtmAgentOpen(gtmMode && window.matchMedia("(min-width: 768px)").matches);
+    if (!gtmMode) setGtmAgentOpen(false);
   }, [gtmMode]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
@@ -1251,6 +1285,7 @@ export function ShellPage() {
     loaded: initialBotsLoaded,
     seen: missingBotSeen.current,
     applied: botsListApplied.current,
+    namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
     inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
@@ -1441,7 +1476,7 @@ export function ShellPage() {
         const currentGroupId = routeGroupId.current;
         if (currentGroupId) {
           if (!groupList.some((group) => group.id === currentGroupId)) {
-            navigate(firstThreadRoute(list, groupList), { replace: true });
+            navigate(firstThreadRoute(list, groupList, window.location.search), { replace: true });
           }
           return;
         }
@@ -1457,7 +1492,7 @@ export function ShellPage() {
               return;
             }
           }
-          navigate(firstThreadRoute(list, groupList), { replace: true });
+          navigate(firstThreadRoute(list, groupList, window.location.search), { replace: true });
         }
       } finally {
         botsRefreshInFlight.current -= 1;
@@ -1728,9 +1763,22 @@ export function ShellPage() {
           markMissing(window.location.pathname);
           return;
         }
-        const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
+        // A page's auto-created agent is only opened when the address names it.
+        const threadBotId = bootstrap.thread?.botId;
+        const threadIsPageAgent = pageAgentKind(
+          bootstrap.bots.find((bot) => bot.id === threadBotId)?.spawnKey,
+        );
+        const selectedBotId =
+          threadBotId && (threadBotId === botId || !threadIsPageAgent)
+            ? threadBotId
+            : bootstrap.bots.find((bot) => pageAgentKind(bot.spawnKey) === null)?.id;
         if (selectedBotId && selectedBotId !== botId && !pageMode) {
-          navigate(`/app/${selectedBotId}`, { replace: true });
+          navigate(
+            firstThreadRoute([{ id: selectedBotId, spawnKey: null }], [], window.location.search),
+            {
+              replace: true,
+            },
+          );
         }
       })
       .catch(() => {
@@ -2010,6 +2058,10 @@ export function ShellPage() {
     () => bots.filter((bot) => listedInSidebar(bot, botId)),
     [bots, botId],
   );
+  // A space holding only a page's auto-created agent has no chat yet: it shows "No bots yet".
+  const noChatBots = !bots.some((bot) => pageAgentKind(bot.spawnKey) === null);
+  const rosterKind = (chat: { id: string; runErrorId?: string | null }) =>
+    rowStatusKind(glance.botKinds[chat.id], chat.runErrorId);
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
@@ -2385,7 +2437,12 @@ export function ShellPage() {
         {
           heading: t`Documents`,
           icon: <FileText size={16} strokeWidth={1.75} />,
-          entries: found.documents.map((doc) => ({
+          // The search asks for one more than is listed, to know whether Data room holds more.
+          more:
+            found.documents.length > 5
+              ? { id: `/app/data-room?q=${encodeURIComponent(q)}`, label: t`See all in Data room` }
+              : undefined,
+          entries: found.documents.slice(0, 5).map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
             detail: doc.detail,
@@ -2399,7 +2456,11 @@ export function ShellPage() {
         {
           heading: t`Artifacts`,
           icon: <Files size={16} strokeWidth={1.75} />,
-          entries: found.artifacts.map((item) => ({
+          more:
+            found.artifacts.length > 5
+              ? { id: `/app/artifacts?q=${encodeURIComponent(q)}`, label: t`See all in Artifacts` }
+              : undefined,
+          entries: found.artifacts.slice(0, 5).map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
             detail: item.detail,
@@ -2416,6 +2477,21 @@ export function ShellPage() {
       ];
     },
     [t],
+  );
+
+  const paletteBots = useMemo(
+    () =>
+      bots.filter(
+        (bot) => !isMailThreadAgentSpawnKey(bot.spawnKey) && !isGtmAgentSpawnKey(bot.spawnKey),
+      ),
+    [bots],
+  );
+  const [paletteMainBots, paletteSearchOnlyBots] = useMemo(
+    () => [
+      paletteBots.filter((bot) => !isPageOrIntegrationAgent(bot.spawnKey)),
+      paletteBots.filter((bot) => isPageOrIntegrationAgent(bot.spawnKey)),
+    ],
+    [paletteBots],
   );
 
   function openSearchResult(path: string) {
@@ -2506,10 +2582,12 @@ export function ShellPage() {
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
 
-  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch;
+  // any other value (e.g. /app/settings redirecting to ?settings=general) opens General.
   useEffect(() => {
-    if (searchParams.get("settings") !== "privacy") return;
-    openSettings("privacy");
+    const section = settingsSectionFromParam(searchParams.get("settings"));
+    if (!section) return;
+    openSettings(section);
     const next = new URLSearchParams(searchParams);
     next.delete("settings");
     setSearchParams(next, { replace: true });
@@ -2696,7 +2774,7 @@ export function ShellPage() {
     initialBotsLoaded &&
     (inGroup
       ? Boolean(activeGroup && activeSnapshot)
-      : bots.length === 0 || pageMode || Boolean(active && activeSnapshot));
+      : noChatBots || pageMode || Boolean(active && activeSnapshot));
   const refreshThreadRef = useRef(refreshThread);
   refreshThreadRef.current = refreshThread;
   const refreshGroupThreadRef = useRef(refreshGroupThread);
@@ -3727,7 +3805,10 @@ export function ShellPage() {
   async function createBot() {
     try {
       const bot = await rpc.bots.create({
-        name: t`New Bot`,
+        name: uniqueBotName(
+          t`New Bot`,
+          bots.map((item) => item.name),
+        ),
         title: "",
         description: "",
         instructions: "",
@@ -3886,7 +3967,9 @@ export function ShellPage() {
       if (panel === "computer" || panel === "settings" || panel === "group-settings") {
         const carried = panel === "computer" ? "computer" : inGroup ? "group-settings" : "settings";
         pendingPanelRestore.current = null;
-        if (carried !== panel) setPanelState(carried);
+        // Below the docked breakpoint the panel covers the chat (and any approval in it): close it.
+        if (!wideScreen()) setPanelState(null);
+        else if (carried !== panel) setPanelState(carried);
         setRestoredPanelKey(null);
         return;
       }
@@ -4048,6 +4131,8 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
+  // The address the preview frame has finished loading; the caption waits for it.
+  const [loadedScreenUrl, setLoadedScreenUrl] = useState<string | null>(null);
   // Without a screen to show (whatever the computer's state), the panel is just the bot's
   // routines: no heading over an empty box.
   const noComputerScreen = isRoutinesOnlyPanel({
@@ -4073,6 +4158,16 @@ export function ShellPage() {
         </Button>
       </div>
     ) : null;
+  const screenIframeMounted =
+    !computerOpen &&
+    computer?.kind !== "desktop" &&
+    computer?.state === "running" &&
+    Boolean(embeddedScreenUrl) &&
+    !computerScreenError;
+  // A load only counts for the iframe mount that reported it; forget it when the iframe goes away.
+  useEffect(() => {
+    if (!screenIframeMounted) setLoadedScreenUrl(null);
+  }, [screenIframeMounted]);
   const computerPreviewScreen =
     !computerOpen &&
     computer?.kind !== "desktop" &&
@@ -4166,6 +4261,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description=""
           suggestions={bankSuggestions}
+          className={CHAT_COLUMN_INSET}
           onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -4175,6 +4271,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description={cartaAgentIntro}
           suggestions={cartaSuggestions}
+          className={CHAT_COLUMN_INSET}
           onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -4232,6 +4329,7 @@ export function ShellPage() {
                 onScrollRequestHandled={clearScrollRequest}
                 artifactTarget={transcriptArtifactTarget}
                 messages={transcriptMessages}
+                delegate={delegateWaitTarget(activeSnapshot?.messages ?? [])}
                 showToolActivity={showToolActivity}
                 olderCursor={activeSnapshot?.olderCursor ?? null}
                 loadingOlder={loadingOlder}
@@ -4338,6 +4436,10 @@ export function ShellPage() {
                 <Trans>Open</Trans>
               </Button>
             </div>
+          ) : null}
+          {!transcriptRunning &&
+          pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).length === 0 ? (
+            <DelegateWaitNotice messages={activeSnapshot?.messages ?? []} />
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
             // Same side padding as the composer, and the toasts rise above it.
@@ -4600,7 +4702,7 @@ export function ShellPage() {
                   className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                     activityMode
                       ? "bg-sidebar-accent text-foreground"
-                      : "text-muted-foreground/70 hover:text-foreground/75"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
@@ -4608,7 +4710,7 @@ export function ShellPage() {
                 </button>
                 <button
                   type="button"
-                  className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 lg:inline-flex"
+                  className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground lg:inline-flex"
                   aria-label={t`Hide sidebar`}
                   title={t`Hide sidebar`}
                   data-testid="minimize-bots-sidebar"
@@ -4618,7 +4720,7 @@ export function ShellPage() {
                 </button>
                 <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                   <PopoverTrigger
-                    className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                    className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground hover:text-foreground"
                     title={t`Create`}
                     aria-label={t`Create`}
                     data-testid="create-menu-trigger"
@@ -4653,7 +4755,9 @@ export function ShellPage() {
                         setMobileSidebarOpen(false);
                         setPickerInfoTopic("group");
                       }}
-                      canCreateSpace={spaces.length > 1}
+                      canCreateSpace={
+                        spaces.length > 1 || (spaces.length === 1 && spaces[0]?.memberCount !== 1)
+                      }
                       onShowSpaceInfo={() => {
                         setCreateMenuOpen(false);
                         setMobileSidebarOpen(false);
@@ -4694,7 +4798,7 @@ export function ShellPage() {
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
         <div
           ref={sidebarPaneRef}
-          className="rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
         >
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
@@ -4705,7 +4809,8 @@ export function ShellPage() {
             >
               <SidebarPagesGroup
                 title={t`Pages`}
-                collapsed={collapsedSidebarSections.has("pages")}
+                // The tour points at page rows, so they stay open while it runs.
+                collapsed={collapsedSidebarSections.has("pages") && !tourOpen}
                 rail={rail}
                 onToggle={() => toggleSidebarSection("pages")}
                 pages={[
@@ -4930,9 +5035,22 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
-            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+            // The rows inside are the Tab stops; the scroller itself is not one.
+            tabIndex={-1}
+            className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
+              {activityMode && !rail ? (
+                <button
+                  type="button"
+                  data-testid="activity-back"
+                  onClick={() => setActivityMode(false)}
+                  className="flex snap-start items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-start text-[13px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                >
+                  <ChevronLeft size={14} strokeWidth={1.8} aria-hidden="true" />
+                  <Trans>Back to chats</Trans>
+                </button>
+              ) : null}
               {activityMode && !rail ? (
                 <ActivityList
                   onListedBots={setActivityBotIds}
@@ -4976,7 +5094,7 @@ export function ShellPage() {
                   const folderStatus = folder
                     ? NOTIFICATION_KINDS.find((kind) =>
                         group.bots.some(
-                          (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
+                          (item) => item.kind === "bot" && rosterKind(item.chat) === kind,
                         ),
                       )
                     : undefined;
@@ -5094,7 +5212,7 @@ export function ShellPage() {
                           data-roster-item={group.key}
                           className={
                             group.title && hasSpaceActions
-                              ? "grid pt-3 pb-0.5"
+                              ? `grid pt-3 pb-0.5${group.showLock ? " mt-3" : ""}`
                               : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
                           }
                         >
@@ -5103,16 +5221,11 @@ export function ShellPage() {
                               type="button"
                               aria-current={group.current ? "true" : undefined}
                               data-roster-row={group.key}
+                              data-roster-head=""
                               data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
-                              onClick={() => {
-                                if (group.emptySpaceId) {
-                                  openSpaceChat(group.emptySpaceId, "/onboarding");
-                                  return;
-                                }
-                                toggleSidebarSection(group.key);
-                              }}
+                              onClick={() => toggleSidebarSection(group.key)}
                               onContextMenu={
                                 hasSpaceActions
                                   ? (event) => {
@@ -5125,13 +5238,11 @@ export function ShellPage() {
                                     }
                                   : undefined
                               }
-                              aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                              aria-expanded={!collapsed}
                               aria-label={
-                                group.emptySpaceId
-                                  ? t`Open ${group.title}`
-                                  : collapsed
-                                    ? t`Expand ${sidebarHeader.name}`
-                                    : t`Collapse ${sidebarHeader.name}`
+                                collapsed
+                                  ? t`Expand ${sidebarHeader.name}`
+                                  : t`Collapse ${sidebarHeader.name}`
                               }
                             >
                               <span className="flex min-w-0 items-center gap-1.5">
@@ -5149,18 +5260,16 @@ export function ShellPage() {
                                   {group.title}
                                 </span>
                               </span>
-                              {group.emptySpaceId ? null : (
-                                <ChevronDown
-                                  size={14}
-                                  strokeWidth={1.8}
-                                  className={
-                                    collapsed
-                                      ? "-rotate-90 transition-transform"
-                                      : "transition-transform"
-                                  }
-                                  aria-hidden="true"
-                                />
-                              )}
+                              <ChevronDown
+                                size={14}
+                                strokeWidth={1.8}
+                                className={
+                                  collapsed
+                                    ? "-rotate-90 transition-transform"
+                                    : "transition-transform"
+                                }
+                                aria-hidden="true"
+                              />
                             </button>
                           ) : null}
                           {hasSpaceActions ? (
@@ -5228,8 +5337,7 @@ export function ShellPage() {
                                   needsYou={
                                     heldFor !== null ||
                                     rows.some(
-                                      (row) =>
-                                        row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                      (row) => row.item.chat.unread || rosterKind(row.item.chat),
                                     )
                                   }
                                   heldFor={heldFor}
@@ -5286,9 +5394,9 @@ export function ShellPage() {
                               ? compactStatusLabel
                               : (workStatusLabel ??
                                 (item.kind === "bot"
-                                  ? maskCurrencyWhenHidden(item.chat.preview) ||
+                                  ? maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                     (item.chat.status !== "idle" ? item.chat.status : "")
-                                  : maskCurrencyWhenHidden(item.chat.preview) ||
+                                  : maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                     item.chat.members.map((member) => member.name).join(", ")));
                             const rowDragEnabled =
                               dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
@@ -5528,9 +5636,9 @@ export function ShellPage() {
                                                 {/* Roomy rows show the status mark on the preview line, so a Working row keeps its height. */}
                                                 {compact &&
                                                 item.kind === "bot" &&
-                                                glance.botKinds[item.chat.id] ? (
+                                                rosterKind(item.chat) ? (
                                                   <StatusMark
-                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    kind={rosterKind(item.chat)!}
                                                     botId={item.chat.id}
                                                   />
                                                 ) : null}
@@ -5586,10 +5694,9 @@ export function ShellPage() {
                                                       : "text-muted-foreground"
                                                 }`}
                                               >
-                                                {item.kind === "bot" &&
-                                                glance.botKinds[item.chat.id] ? (
+                                                {item.kind === "bot" && rosterKind(item.chat) ? (
                                                   <StatusMark
-                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    kind={rosterKind(item.chat)!}
                                                     botId={item.chat.id}
                                                   />
                                                 ) : null}
@@ -5739,8 +5846,8 @@ export function ShellPage() {
             <button
               type="button"
               data-testid="sidebar-more-rows"
-              className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center bg-sidebar text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-              style={{ height: moreBarHeight() }}
+              className="absolute inset-x-0 bottom-0 z-10 flex items-start justify-center bg-sidebar pt-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              style={{ height: Math.max(moreBarHeight(), moreBarFill) }}
               onClick={() => {
                 const pane = sidebarPaneRef.current;
                 const list = sidebarScrollRef.current;
@@ -5947,7 +6054,7 @@ export function ShellPage() {
             setPaneDraggingFiles(false);
             if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
           }}
-          className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
+          className={`isolate flex min-w-0 flex-1 flex-col bg-background pb-[var(--toast-page-reserve,0px)] outline-none ${
             paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
@@ -5974,7 +6081,7 @@ export function ShellPage() {
             className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
               pageMode
                 ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed && desktopBridge() ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
-                : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
+                : TOP_BAR_HEIGHT
             }`}
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -6030,7 +6137,8 @@ export function ShellPage() {
                     >
                       {inGroup
                         ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                        : (active?.name ?? (opening ? "" : t`Select a bot`))}
+                        : (active?.name ??
+                          (opening ? "" : noChatBots ? t`No bots yet` : t`Select a bot`))}
                     </span>
                   </span>
                   {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
@@ -6151,6 +6259,7 @@ export function ShellPage() {
               onConsentChange={setLegalConsentMissing}
               onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
+              agentBusy={transcriptRunning}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}
               onSwitchSpace={(spaceId) => {
@@ -6204,6 +6313,7 @@ export function ShellPage() {
                   : undefined
               }
               onRefreshed={refreshInboxUnread}
+              consentScope={userId && activeSpaceId ? `${userId}:${activeSpaceId}` : undefined}
               onOpenAgent={async (bot) => {
                 await refreshBots();
                 setFocusComposerBotId(bot.id);
@@ -6332,30 +6442,42 @@ export function ShellPage() {
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div
-                className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 ${TOP_BAR_HEIGHT}`}
+                className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 ${TOP_BAR_HEIGHT}`}
               >
-                <span
-                  className="min-w-0 truncate text-[16px] font-medium text-foreground"
-                  title={panel === "settings" && active ? t`${active.name} settings` : undefined}
-                >
-                  {panel === "settings" ? (
-                    active ? (
-                      t`${active.name} settings`
+                {/* On a phone this panel covers the chat header, so it carries the way to the sidebar. */}
+                <div className="flex min-w-0 items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t`Open navigation`}
+                    onClick={() => setMobileSidebarOpen(true)}
+                    className="-ms-1.5 text-foreground/75 lg:hidden"
+                  >
+                    <Menu size={19} strokeWidth={1.7} />
+                  </Button>
+                  <span
+                    className="min-w-0 truncate text-[16px] font-medium text-foreground"
+                    title={panel === "settings" && active ? t`${active.name} settings` : undefined}
+                  >
+                    {panel === "settings" ? (
+                      active ? (
+                        t`${active.name} settings`
+                      ) : (
+                        <Trans>Settings</Trans>
+                      )
+                    ) : panel === "page" ? (
+                      <Trans>Page</Trans>
+                    ) : panel === "list" ? (
+                      <Trans>List</Trans>
+                    ) : active ? (
+                      computerScreenError || noComputerScreen ? null : (
+                        computerStateLabel(computer?.state)
+                      )
                     ) : (
-                      <Trans>Settings</Trans>
-                    )
-                  ) : panel === "page" ? (
-                    <Trans>Page</Trans>
-                  ) : panel === "list" ? (
-                    <Trans>List</Trans>
-                  ) : active ? (
-                    computerScreenError || noComputerScreen ? null : (
-                      computerStateLabel(computer?.state)
-                    )
-                  ) : (
-                    <Trans>Group</Trans>
-                  )}
-                </span>
+                      <Trans>Group</Trans>
+                    )}
+                  </span>
+                </div>
                 <div className="flex shrink-0 gap-1">
                   {active &&
                   panel === "computer" &&
@@ -6448,6 +6570,7 @@ export function ShellPage() {
                         <iframe
                           title={t`Bot screen preview`}
                           src={embeddedScreenUrl}
+                          onLoad={() => setLoadedScreenUrl(embeddedScreenUrl)}
                           sandbox={screenIframeSandbox(embeddedScreenUrl)}
                           className="h-full w-full border-0 bg-background"
                           allow="clipboard-read; clipboard-write"
@@ -6496,11 +6619,19 @@ export function ShellPage() {
                         </button>
                       ) : null}
                     </div>
-                    <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                      {/s$/i.test(active.name.trim())
-                        ? t`${active.name}' computer`
-                        : t`${active.name}'s computer`}
-                    </p>
+                    {showsComputerCaption({
+                      kind: computer?.kind,
+                      state: computer?.state,
+                      screenLoaded: loadedScreenUrl === embeddedScreenUrl,
+                      hasError: Boolean(computerScreenError),
+                      open: computerOpen,
+                    }) ? (
+                      <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
+                        {/s$/i.test(active.name.trim())
+                          ? t`${active.name}' computer`
+                          : t`${active.name}'s computer`}
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -7114,9 +7245,9 @@ export function ShellPage() {
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
           // An email's chat is found once, under Chats; the GTM page already opens the GTM agent.
-          bots={bots.filter(
-            (bot) => !isMailThreadAgentSpawnKey(bot.spawnKey) && !isGtmAgentSpawnKey(bot.spawnKey),
-          )}
+          // Page and integration agents open from their page's Ask button, so only a search lists them.
+          bots={paletteMainBots}
+          searchOnlyBots={paletteSearchOnlyBots}
           onSelectBot={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
@@ -7476,6 +7607,23 @@ export function ShellPage() {
 }
 
 /** Whether the pane is still waiting for its chat: the bot list loads, or the route's bot is not in it yet. */
+const SETTINGS_SECTIONS = [
+  "general",
+  "privacy",
+  "models",
+  "memory",
+  "voice",
+  "computer",
+  "billing",
+] as const satisfies readonly SettingsSection[];
+
+export function settingsSectionFromParam(value: string | null): SettingsSection | null {
+  if (value === null) return null;
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value)
+    ? (value as SettingsSection)
+    : "general";
+}
+
 export function chatIsOpening(input: {
   hasChat: boolean;
   botsLoaded: boolean;
@@ -7493,13 +7641,30 @@ export function knownBotId(
   return bots.some((bot) => bot.id === botId) || archivedBots.some((bot) => bot.id === botId);
 }
 
-function firstThreadRoute(
-  bots: readonly Pick<Bot, "id">[],
+/** `name`, or `name 2`, `name 3` ... when bots already use it, so new bots never share a sidebar row's text. */
+export function uniqueBotName(name: string, taken: readonly string[]): string {
+  if (!taken.includes(name)) return name;
+  let n = 2;
+  while (taken.includes(`${name} ${n}`)) n += 1;
+  return `${name} ${n}`;
+}
+
+/**
+ * Where a person with no usable route lands: the first chat. A page's auto-created agent is not a
+ * chat to land on, so a space holding only those stays at /app. A pending `?settings=` link is
+ * carried along, so the redirect cannot swallow it before the shell opens the dialog.
+ */
+export function firstThreadRoute(
+  bots: readonly Pick<Bot, "id" | "spawnKey">[],
   groups: readonly Pick<Group, "id">[],
+  search = "",
 ): string {
-  if (bots[0]) return `/app/${bots[0].id}`;
-  if (groups[0]) return `/app/g/${groups[0].id}`;
-  return "/app";
+  const settings = new URLSearchParams(search).get("settings");
+  const query = settings === null ? "" : `?${new URLSearchParams({ settings })}`;
+  const chat = bots.find((bot) => pageAgentKind(bot.spawnKey) === null);
+  if (chat) return `/app/${chat.id}${query}`;
+  if (groups[0]) return `/app/g/${groups[0].id}${query}`;
+  return `/app${query}`;
 }
 
 function applyThreadEvent(
@@ -7584,6 +7749,23 @@ export function isRoutinesOnlyPanel(input: {
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint
+  );
+}
+
+/** The "<bot>'s computer" caption names a live screen; under a placeholder, hint or a frame that has not loaded it labels nothing. */
+export function showsComputerCaption(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  state?: ComputerStatus["state"];
+  screenLoaded: boolean;
+  hasError: boolean;
+  open: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    input.state === "running" &&
+    input.screenLoaded &&
+    !input.hasError &&
+    !input.open
   );
 }
 

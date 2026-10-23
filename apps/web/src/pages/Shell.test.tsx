@@ -60,9 +60,13 @@ import {
   Composer,
   chatIsOpening,
   findDocumentsAndArtifacts,
+  firstThreadRoute,
   isRoutinesOnlyPanel,
   retryAfterStop,
+  settingsSectionFromParam,
+  showsComputerCaption,
   Transcript,
+  uniqueBotName,
 } from "./Shell";
 
 let root: Root | null = null;
@@ -75,6 +79,34 @@ afterEach(() => {
   container?.remove();
   root = null;
   container = null;
+});
+
+it("maps ?settings= to a settings section", () => {
+  expect(settingsSectionFromParam(null)).toBeNull();
+  expect(settingsSectionFromParam("privacy")).toBe("privacy");
+  expect(settingsSectionFromParam("general")).toBe("general");
+  expect(settingsSectionFromParam("models")).toBe("models");
+  expect(settingsSectionFromParam("voice")).toBe("voice");
+  expect(settingsSectionFromParam("nope")).toBe("general");
+});
+
+it("carries a pending ?settings= link through the first-chat redirect", () => {
+  const bots = [{ id: "b1", spawnKey: null }];
+  expect(firstThreadRoute(bots, [], "?settings=privacy")).toBe("/app/b1?settings=privacy");
+  expect(firstThreadRoute(bots, [], "?m=1")).toBe("/app/b1");
+  expect(firstThreadRoute([], [], "?settings=general")).toBe("/app?settings=general");
+});
+
+it("does not land on a page's auto-created agent, so a space holding only that stays empty", () => {
+  const legal = { id: "legal", spawnKey: "legal-agent:user-1" };
+  expect(firstThreadRoute([legal], [])).toBe("/app");
+  expect(firstThreadRoute([legal, { id: "b2", spawnKey: null }], [])).toBe("/app/b2");
+});
+
+it("names a second new bot New Bot 2", () => {
+  expect(uniqueBotName("New Bot", [])).toBe("New Bot");
+  expect(uniqueBotName("New Bot", ["New Bot"])).toBe("New Bot 2");
+  expect(uniqueBotName("New Bot", ["New Bot", "New Bot 2"])).toBe("New Bot 3");
 });
 
 const bob: ComposerMention = { kind: "bot", id: "bot-2", name: "Bob" };
@@ -1242,5 +1274,23 @@ describe("isRoutinesOnlyPanel", () => {
     expect(isRoutinesOnlyPanel({ ...withScreen, state: "stopped" })).toBe(true);
     expect(isRoutinesOnlyPanel({ ...withScreen, state: "suspended" })).toBe(false);
     expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasError: true })).toBe(false);
+  });
+});
+
+describe("showsComputerCaption", () => {
+  it("names the computer only above a live screen", () => {
+    const live = {
+      kind: undefined,
+      state: "running" as const,
+      screenLoaded: true,
+      hasError: false,
+      open: false,
+    };
+    expect(showsComputerCaption(live)).toBe(true);
+    expect(showsComputerCaption({ ...live, state: "suspended" })).toBe(false);
+    expect(showsComputerCaption({ ...live, screenLoaded: false })).toBe(false);
+    expect(showsComputerCaption({ ...live, open: true })).toBe(false);
+    expect(showsComputerCaption({ ...live, hasError: true })).toBe(false);
+    expect(showsComputerCaption({ ...live, kind: "desktop" })).toBe(false);
   });
 });

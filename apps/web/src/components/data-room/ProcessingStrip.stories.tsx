@@ -44,3 +44,13 @@ export const Done: Story = {
 export const WithImport: Story = {
   args: { importing: { done: 399, total: 1_104 } },
 };
+
+/** Documents are queued but Praci may not read them yet; the consent card above has Allow. */
+export const WaitingForPermission: Story = {
+  args: { waitingForPermission: true },
+};
+
+/** No progress for about a minute. */
+export const Stalled: Story = {
+  args: { stalled: true, onRetry: () => undefined },
+};

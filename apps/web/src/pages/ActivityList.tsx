@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@rakazo/ui-web";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
@@ -30,7 +30,8 @@ import { errorText } from "../lib/user-error";
 export function statusTone(status: RunActivityRow["status"], updatedAt?: string): string {
   if (status === "failed") return "text-destructive";
   if (status === "cancelled") return "text-muted-foreground";
-  if (status === "completed") return "text-success";
+  // A finished run needs nothing; colour stays for what needs the person or went wrong.
+  if (status === "completed") return "text-muted-foreground";
   if (status === "waiting_input" || status === "waiting_takeover") return "text-warning";
   if (updatedAt && isAgedStuckWork(status, updatedAt)) return "text-warning";
   return "text-foreground";
@@ -120,6 +121,10 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
   const filtersOn = activityFiltersActive(filters);
   const [showFilters, setShowFilters] = useState(false);
   const [showFinished, setShowFinished] = useState(false);
+  const finishedRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (showFinished) finishedRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [showFinished]);
   // What needs the person comes first; the rest of the active work follows as "Working".
   const needsYou = filteredActive.filter((run) => NEEDS_YOU.has(run.status));
   const working = filteredActive.filter((run) => !NEEDS_YOU.has(run.status));
@@ -137,6 +142,8 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
     if (!scroller) return;
     const fit = () => {
       scroller.style.maxHeight = "";
+      // Expanded finished runs are what the person asked for: show them all, and let the sidebar scroll.
+      if (showFinished) return;
       const top = scroller.getBoundingClientRect().top;
       const endOf = (row: Element) => row.getBoundingClientRect().bottom - top + scroller.scrollTop;
       // Everything waiting on the person always shows; the other runs share what is left of 30% of the window.
@@ -263,7 +270,11 @@ export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
             })}
           </Button>
         ) : (
-          <ActivitySection id="activity-recent-heading" title={<Trans>Finished</Trans>}>
+          <ActivitySection
+            id="activity-recent-heading"
+            title={<Trans>Finished</Trans>}
+            headingRef={finishedRef}
+          >
             {filteredRecent.map((run) => (
               <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
             ))}
@@ -281,11 +292,13 @@ function ActivitySection({
   id,
   title,
   titleHidden = false,
+  headingRef,
   children,
 }: {
   id: string;
   title: ReactNode;
   titleHidden?: boolean;
+  headingRef?: Ref<HTMLDivElement>;
   children: ReactNode[];
 }) {
   if (children.length === 0) return null;
@@ -293,6 +306,7 @@ function ActivitySection({
     <section className="mt-1 first:mt-0" aria-labelledby={id}>
       <div
         id={id}
+        ref={headingRef}
         className={
           titleHidden
             ? "sr-only"
@@ -512,7 +526,7 @@ function ActivityRow({
 }) {
   const { t } = useLingui();
   const title = run.groupName ? `${run.botName} · ${run.groupName}` : run.botName;
-  const label = statusLabel(run.status);
+  const label = statusLabel(run.status, run.needsApproval);
   const activityLabel = t`${title}, ${label}`;
   const tone = statusTone(run.status, run.updatedAt);
   return (
@@ -551,7 +565,7 @@ function ActivityRow({
   );
 }
 
-export function statusLabel(status: RunActivityRow["status"]): string {
+export function statusLabel(status: RunActivityRow["status"], needsApproval?: boolean): string {
   switch (status) {
     case "queued":
       return t`Queued`;
@@ -560,7 +574,7 @@ export function statusLabel(status: RunActivityRow["status"]): string {
     case "running":
       return t`Running`;
     case "waiting_input":
-      return needsAnswerLabel();
+      return needsApproval ? t`Needs approval` : needsAnswerLabel();
     case "waiting_takeover":
       return t`Needs takeover`;
     case "completed":

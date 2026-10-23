@@ -14,7 +14,7 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { StatusKind } from "../../lib/integrations";
 import { providerLabel } from "../../lib/integrations";
 import { AppLogo } from "./AppLogo";
@@ -66,17 +66,8 @@ export function StatusBadge({ status, quiet }: { status: StatusKind; quiet?: boo
   );
 }
 
-/** A connected tile's one overflow menu, in its top corner so every card's bottom row lines up. Children add actions; `manageTo` adds the card's page. */
-export function TileMenu({
-  label,
-  manageTo,
-  children,
-}: {
-  label: string;
-  manageTo?: string;
-  children?: ReactNode;
-}) {
-  const navigate = useNavigate();
+/** A connected tile's one overflow menu, in its top corner so every card's bottom row lines up. Needs children; a card whose name already opens its page gets no menu. */
+export function TileMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -91,14 +82,7 @@ export function TileMenu({
       >
         <MoreHorizontal aria-hidden="true" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {children}
-        {manageTo ? (
-          <DropdownMenuItem onClick={() => navigate(manageTo)}>
-            <Trans>Manage</Trans>
-          </DropdownMenuItem>
-        ) : null}
-      </DropdownMenuContent>
+      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
     </DropdownMenu>
   );
 }

@@ -5,7 +5,7 @@ import {
   isCartaAgentSpawnKey,
   isInvestorsAgentSpawnKey,
 } from "@rakazo/contracts";
-import { atCapPercent, equityRaisedUsd } from "@rakazo/core";
+import { atCapPercent, capTableMath, equityRaisedUsd, isSafeSecurity } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   addContactIfNew,
@@ -105,6 +105,11 @@ export async function contactToolFromTool(
       return {
         capTable: snapshot && {
           ...snapshot,
+          // The page computes percents from shares; the agent gets the same figures (null for SAFEs).
+          // SAFEs are listed under `safes`, as on the page, never as table holders.
+          holders: capTableMath(snapshot)
+            .holders.filter(({ holder }) => !isSafeSecurity(holder.security))
+            .map(({ holder, percent }) => ({ ...holder, ownershipPercent: percent })),
           amountRaisedUsd: equityRaisedUsd(snapshot.holders, allSafes),
           amountRaisedSource: "Invested by holders in the table plus Funded SAFEs",
         },

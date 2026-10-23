@@ -105,7 +105,7 @@ export function ResizableSidePanel({
         data-toast-panel=""
         data-panel={panel}
         style={{ "--panel-width": `${width}px` } as CSSProperties}
-        className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
+        className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background pb-[var(--toast-page-reserve,0px)] xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
       >
         <hr
           tabIndex={0}

@@ -63,7 +63,7 @@ public enum RakazoTokens {
         .chatUser: Color(red: 226/255, green: 226/255, blue: 220/255),
         .chatUserForeground: Color(red: 26/255, green: 26/255, blue: 26/255),
         .muted: Color(red: 240/255, green: 240/255, blue: 237/255),
-        .mutedForeground: Color(red: 108/255, green: 108/255, blue: 112/255),
+        .mutedForeground: Color(red: 102/255, green: 102/255, blue: 105/255),
         .accent: Color(red: 234/255, green: 234/255, blue: 230/255),
         .accentForeground: Color(red: 26/255, green: 26/255, blue: 26/255),
         .destructive: Color(red: 220/255, green: 38/255, blue: 38/255),

@@ -38,7 +38,7 @@ const CLASSIFIER_TIMEOUT_MS = 60_000;
 type Scope = { userId: string; spaceId: string };
 
 export interface TriageReadinessDeps {
-  prisma: Pick<PrismaClient, "bot" | "aiDataConsent">;
+  prisma: Pick<PrismaClient, "bot" | "aiDataConsent" | "cachedMailMessage" | "inboxSenderFeedback">;
   /** The executor's resolver; without it no model can be resolved. */
   resolveModel?: (scope: Scope & { botId?: string }) => Promise<AgentRunModel>;
   /** Optional first-pass classifier. It is used only after the user consents to its recipient. */
@@ -119,6 +119,56 @@ export async function triageReadiness(
   scope: Scope,
 ): Promise<Ready | null> {
   return (await triageStatus(deps, scope)).ready;
+}
+
+/** A stamped message with no to-do yet counts as unsynced only this long, so a to-do cut by the limit cannot hold the state forever. */
+const SYNC_GRACE_MS = 5 * 60_000;
+
+/**
+ * True while the user's mail is not fully sorted: triage can run and either an inbox message the
+ * job would pick has no sort yet, or a recently sorted message that should become a to-do has none
+ * yet (the to-do sync runs after the stamps are written). Chief uses it to say the To do list may
+ * be incomplete instead of "no tasks".
+ */
+export async function isSortingMail(deps: TriageReadinessDeps, scope: Scope): Promise<boolean> {
+  if (!(await triageReadiness(deps, scope))) return false;
+  const base = {
+    ...scope,
+    receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
+    connection: { status: "connected" as const },
+  };
+  const unsorted = await deps.prisma.cachedMailMessage.findFirst({
+    where: {
+      ...base,
+      inInbox: true,
+      fromSelf: false,
+      OR: [{ triagedAt: null }, { triageVersion: { lt: TRIAGE_VERSION } }],
+    },
+    select: { id: true },
+  });
+  if (unsorted) return true;
+  const [unsynced, feedback] = await Promise.all([
+    deps.prisma.cachedMailMessage.findMany({
+      where: {
+        ...base,
+        triagedAt: { gte: new Date(Date.now() - SYNC_GRACE_MS) },
+        isSpam: false,
+        alreadyHandled: false,
+        todoText: { not: null },
+        OR: [{ needsReply: true }, { category: { in: [...TODO_CATEGORIES] } }],
+        inboxTodos: { none: {} },
+      },
+      select: { fromAddress: true },
+      take: 50,
+    }),
+    deps.prisma.inboxSenderFeedback.findMany({
+      where: scope,
+      select: { senderAddress: true, mark: true },
+    }),
+  ]);
+  // Same rule as the to-do sync: a sender marked noise never gets a to-do.
+  const marks = senderMarkMap(feedback);
+  return unsynced.some((m) => marks.get(m.fromAddress.toLowerCase()) !== "noise");
 }
 
 /** A run that finds the user busy looks again after this, in case mail arrived since the holder read its list. */

@@ -33,7 +33,7 @@ export function WelcomePage() {
           </button>
           <Link
             to="/sign-in"
-            className="app-no-drag rounded-full px-[34px] py-4 text-[19px] text-foreground/75 transition hover:text-foreground"
+            className="app-no-drag rounded-full py-4 ps-[34px] text-[19px] text-foreground/75 transition hover:text-foreground"
           >
             <Trans>Sign in</Trans>
           </Link>

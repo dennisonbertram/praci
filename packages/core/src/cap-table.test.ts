@@ -108,6 +108,13 @@ describe("equityRaisedUsd", () => {
     ).toBe(100_000);
   });
 
+  it("ignores the source company total so every page agrees on Funded SAFEs", () => {
+    const holders = [holder("A", 100, null), holder("Fund", null, 9, "SAFE")];
+    const safes = [{ status: "funded", amountCents: 15_000_000 }] as const;
+    expect(equityRaisedUsd(holders, safes)).toBe(150_000);
+    expect(equityRaisedUsd([], [])).toBeNull();
+  });
+
   it("is null when nothing is known to add up", () => {
     expect(
       equityRaisedUsd([holder("A", 100, null), holder("Fund", null, 9, "SAFE")], []),

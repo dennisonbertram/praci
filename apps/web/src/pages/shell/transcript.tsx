@@ -82,12 +82,11 @@ import {
 import { SkillDraftCard } from "../../components/teach/SkillDraftCard";
 import { bubbleMeasure, UserTextBubble } from "../../components/UserTextBubble";
 import type { ArtifactTarget } from "../../lib/artifact-open";
-import { delegateWaitTarget } from "../../lib/delegate-wait";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
 import { quoteDraftForSelection } from "../../lib/quote-selection";
-import { runPhaseLine, runPhaseWaitingOn } from "../../lib/run-phase";
+import { runPhaseLine, runPhaseWaitingLabel } from "../../lib/run-phase";
 import {
   isToolOnlyNarration,
   messageHasVisibleBlocks,
@@ -146,6 +145,7 @@ export const Transcript = memo(function Transcript({
   onScrollRequestHandled,
   artifactTarget,
   messages,
+  delegate = null,
   showToolActivity,
   olderCursor,
   loadingOlder,
@@ -187,6 +187,8 @@ export const Transcript = memo(function Transcript({
   onScrollRequestHandled: () => void;
   artifactTarget: ArtifactTarget;
   messages: ThreadMessage[];
+  /** The agent this chat is waiting on, worked out from the full thread (the display list drops handoff replies). */
+  delegate?: string | null;
   showToolActivity: boolean;
   olderCursor: number | null;
   loadingOlder: boolean;
@@ -317,7 +319,6 @@ export const Transcript = memo(function Transcript({
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
   // After this agent messages another and nothing has come back, the wait is on that agent.
-  const delegate = delegateWaitTarget(messages);
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -583,12 +584,14 @@ export const Transcript = memo(function Transcript({
         element.scrollTop += offset - 24;
         dividerPinUntil.current = performance.now() + 1500;
       }
-      // A question waiting for an answer matters more than where the unread messages begin.
-      const ask = answerableAskMessageId
-        ? element?.querySelector<HTMLElement>(
-            `[data-stored-message][data-message-id="${CSS.escape(answerableAskMessageId)}"]`,
-          )
-        : null;
+      // A question waiting for an answer matters more than where the unread messages begin. A docked
+      // page-agent panel opens on its latest message instead, so an older card never holds the view.
+      const ask =
+        answerableAskMessageId && anchorToUnread
+          ? element?.querySelector<HTMLElement>(
+              `[data-stored-message][data-message-id="${CSS.escape(answerableAskMessageId)}"]`,
+            )
+          : null;
       if (element && ask) {
         const view = element.getBoundingClientRect();
         const box = ask.getBoundingClientRect();
@@ -792,6 +795,14 @@ export const Transcript = memo(function Transcript({
                 <TimeSeparator createdAt={message.createdAt} locale={i18n.locale || "en"} />
               ) : null}
               {showDividerId === message.id ? <UnreadDivider /> : null}
+              {message.routineName ? (
+                <p
+                  className="mb-1 truncate text-xs text-muted-foreground"
+                  data-testid="routine-label"
+                >
+                  {t`From routine: ${message.routineName}`}
+                </p>
+              ) : null}
               <div
                 data-message-id={message.id}
                 data-stored-message={isStoredMessage(message) ? "" : undefined}
@@ -958,9 +969,11 @@ export const Transcript = memo(function Transcript({
             waitingLabel={
               activity?.kind === "tool" && activity.service
                 ? waitingLabel(activity.service)
-                : activity?.kind === "phase" && runPhaseWaitingOn(activity.phase)
-                  ? waitingLabel(runPhaseWaitingOn(activity.phase) ?? "")
-                  : undefined
+                : activity?.kind === "phase"
+                  ? (runPhaseWaitingLabel(activity.phase) ?? undefined)
+                  : delegate
+                    ? waitingLabel(delegate)
+                    : undefined
             }
           />
         ) : null}

@@ -161,6 +161,17 @@ function useShareCount(item: DataRoomApiItem) {
 }
 
 /** Uploads another file into the same folder, then deletes the unreadable one it replaces. */
+export function replaceDataRoomFile(item: DataRoomApiItem, files: File[]) {
+  uploadFilesToDataRoom(files, item.folderId ?? undefined, (id) => {
+    // An identical re-upload resolves to this same item; deleting it would lose the file.
+    if (id === item.id) return;
+    void rpc.dataRoom
+      .itemDelete({ id: item.id })
+      .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
+      .catch(() => undefined);
+  });
+}
+
 function ReplaceFile({ item }: { item: DataRoomApiItem }) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -170,18 +181,7 @@ function ReplaceFile({ item }: { item: DataRoomApiItem }) {
         type="file"
         hidden
         onChange={(event) => {
-          uploadFilesToDataRoom(
-            Array.from(event.target.files ?? []),
-            item.folderId ?? undefined,
-            (id) => {
-              // An identical re-upload resolves to this same item; deleting it would lose the file.
-              if (id === item.id) return;
-              void rpc.dataRoom
-                .itemDelete({ id: item.id })
-                .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
-                .catch(() => undefined);
-            },
-          );
+          replaceDataRoomFile(item, Array.from(event.target.files ?? []));
           event.target.value = "";
         }}
       />
@@ -194,7 +194,7 @@ function ReplaceFile({ item }: { item: DataRoomApiItem }) {
 }
 
 /** Why a finished file has no type: Praci cannot read that kind of file, or may not read documents yet. */
-function UntaggedNote({ item }: { item: DataRoomApiItem }) {
+function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks: boolean }) {
   const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
   const unsearchable = isUnsearchableType(item.mimeType);
   useEffect(() => {
@@ -211,6 +211,9 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
   const note = "text-xs text-muted-foreground";
   if (unsearchable)
     return <p className={note}>{t`Won't be searchable. Praci can't read this kind of file.`}</p>;
+  // The page banner already asks beside the side panel; a dialog covers it, so it asks itself.
+  if (consent && !consent.allowed && consent.recipients.length > 0 && bannerAsks)
+    return <p className={note}>{t`Not tagged yet. Allow Praci to read your documents above.`}</p>;
   if (consent && !consent.allowed && consent.recipients.length > 0)
     return (
       <DocumentsConsentCard
@@ -231,9 +234,13 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
         }
       />
     );
+  // A file still being tagged may yet get a type; the ask still loading may change the reason.
+  if ((item.status !== "indexing" && item.status !== "ready") || !consent) return null;
+  if (!consent.allowed || consent.recipients.length === 0)
+    return <p className={note}>{t`Not tagged. No model is set up to read documents.`}</p>;
   return (
     <p className={note}>
-      <Trans>Not tagged yet.</Trans>
+      <Trans>Praci read this file but couldn't tell what kind of document it is.</Trans>
     </p>
   );
 }
@@ -247,9 +254,12 @@ export function Preview({
   agents,
   onSendToAgent,
   inDialog = false,
+  pageAsksConsent = false,
 }: {
   /** Shown inside a Dialog, which brings its own close button and title. */
   inDialog?: boolean;
+  /** The page banner is asking for permission to read documents right now. */
+  pageAsksConsent?: boolean;
   item: DataRoomApiItem;
   folderPath: string;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
@@ -368,7 +378,7 @@ export function Preview({
       ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status, !!item.previewText) && !facets.docType ? (
-        <UntaggedNote item={item} />
+        <UntaggedNote item={item} bannerAsks={!inDialog && pageAsksConsent} />
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] items-baseline gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}

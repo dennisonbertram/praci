@@ -12,8 +12,18 @@ import { showNoticeToast } from "./upload-toasts";
  * Without a model it says why nothing is read. Hidden once allowed or when the status cannot load.
  * Allowing shows a toast, so the page does not shift when the card goes.
  */
-export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) {
+export function DataRoomConsentPrompt({
+  onAllowed,
+  onStatus,
+}: {
+  onAllowed: () => void;
+  /** Told whenever the status is read, so the page can say that files wait for permission. */
+  onStatus?: (status: DataRoomConsentStatus) => void;
+}) {
   const [status, setStatus] = useState<DataRoomConsentStatus | null>(null);
+  useEffect(() => {
+    if (status) onStatus?.(status);
+  }, [status, onStatus]);
   // Read on open and whenever the user comes back, so a grant made in another tab or in Settings
   // removes the card without a reload.
   useEffect(() => {

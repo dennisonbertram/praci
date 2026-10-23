@@ -50,6 +50,7 @@ import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
 import { ShowAmountsButton } from "../HideAmountsToggle";
 import { PageNavButton } from "../PageHeader";
+import { StillLoading } from "../ShellSkeleton";
 
 export type FinanceSpace = { id: string; name: string };
 
@@ -125,7 +126,7 @@ export function SpaceName() {
           onValueChange={(next) => next !== current.id && onSwitchSpace(next as string)}
         >
           <DropdownMenuLabel>
-            <Trans>Show finances for</Trans>
+            <Trans>Company</Trans>
           </DropdownMenuLabel>
           {spaces.map((space) => (
             <DropdownMenuRadioItem key={space.id} value={space.id}>
@@ -407,10 +408,7 @@ export function CompanyMenu({ children, className }: { children?: ReactNode; cla
     // A switcher button is pulled back by its padding so its text lines up with the title. The pull
     // is on this wrapper: on the button it narrowed the wrapper and cut the name short.
     <span
-      className={cn(
-        "flex min-w-[min(100%,9rem)] shrink items-center gap-0.5 has-[button]:-ms-2",
-        className,
-      )}
+      className={cn("flex shrink flex-wrap items-center gap-x-0.5 has-[button]:-ms-2", className)}
     >
       <SpaceName />
       <span className="flex min-w-0 shrink items-center gap-0.5 text-xs text-muted-foreground">
@@ -512,6 +510,7 @@ export function DetailPage({
             <Skeleton className="h-7 w-48" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-48 w-full" />
+            <StillLoading onRetry={onRetry} />
           </div>
         ) : (
           <>
