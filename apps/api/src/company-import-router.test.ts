@@ -63,7 +63,7 @@ describe("company import RPC", () => {
       follow,
     } as unknown as CompanyImportEngine;
     const client = createRouterClient(
-      createRouter({ companyImport: engine } as unknown as RouterDeps),
+      createRouter({ companyImport: engine, env: {} } as unknown as RouterDeps),
       { context: { actor } },
     );
 
