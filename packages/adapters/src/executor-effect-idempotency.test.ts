@@ -38,7 +38,7 @@ vi.mock("./bot-messages.js", async (importOriginal) => ({
     botId: "specialist-1",
     name: "Analyst",
     delivered: "Verify the export label.",
-    note: "Sent to Analyst.",
+    note: "Message delivered to Analyst.",
   })),
 }));
 
@@ -317,7 +317,7 @@ describe("mutating tool effect idempotency keys", () => {
         ok: true,
         botId: "specialist-1",
         name: "Analyst",
-        note: "Sent to Analyst.",
+        note: "Message delivered to Analyst.",
       },
     ]);
     expect(botMessages.messageBot).toHaveBeenCalledOnce();
