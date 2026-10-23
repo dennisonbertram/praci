@@ -325,6 +325,7 @@ model Space {
   companyImportSources        CompanyImportSource[]
   companyImportUnits          CompanyImportUnit[]
   companyImportCalls          CompanyImportCall[]
+  companySourceBlocks         CompanySourceBlock[]
 
   @@unique([id, organizationId])
   @@index([organizationId, createdAt])
@@ -360,6 +361,7 @@ model SpaceMember {
   companyImportSources CompanyImportSource[] @relation("CompanyImportSourceOwner")
   companyImportUnits CompanyImportUnit[] @relation("CompanyImportUnitOwner")
   companyImportCalls CompanyImportCall[] @relation("CompanyImportCallOwner")
+  companySourceBlocks CompanySourceBlock[]
 
   @@unique([spaceId, userId])
   @@index([organizationId, userId])
@@ -3334,6 +3336,7 @@ model CompanyEntity {
   status            String          @default("suggested")
   visibility        String          @default("private")
   lockedFields      String[]        @default([])
+  sourceClaimKeys   String[]        @default([])
   confirmedAt       DateTime?
   confirmedByUserId String?
   contactId         String?
@@ -3556,12 +3559,30 @@ model CompanyRejection {
   fingerprint     String
   identityAliases String[]
   reason          String?
+  excludedPerson  Boolean     @default(false)
   createdAt       DateTime    @default(now())
 
   @@unique([id, spaceId, ownerUserId])
   @@unique([spaceId, ownerUserId, fingerprint])
   @@index([spaceId, ownerUserId])
   @@map("company_rejections")
+}
+
+model CompanySourceBlock {
+  id          String      @id @default(cuid())
+  spaceId     String
+  space       Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId String
+  owner       SpaceMember @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey   String
+  sourceKind  String
+  connectionId String?
+  mcpServerId String?
+  createdAt   DateTime    @default(now())
+
+  @@unique([spaceId, ownerUserId, sourceKey])
+  @@index([spaceId, ownerUserId, sourceKind])
+  @@map("company_source_blocks")
 }
 
 model CompanyMerge {

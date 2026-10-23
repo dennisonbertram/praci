@@ -39,6 +39,7 @@ function prisma(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => null),
     },
+    companySourceBlock: { findMany: vi.fn(async () => []) },
     companyEvidence: { findMany: vi.fn(async () => []) },
     connection: {
       findFirst: vi.fn(async () => ({
@@ -104,9 +105,141 @@ describe("company source worker", () => {
               spaceId: actor.spaceId,
               userId: actor.userId,
               sourceConnectionId: "connection-1",
+              sourceConnection: {
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                status: "connected",
+                allAgents: true,
+                privateByDefault: false,
+              },
               id: { in: ["item-1"] },
               folderId: { in: ["folder-1"] },
+              folder: { spaceId: actor.spaceId, userId: actor.userId },
             },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("blocks explicit and source-wide Data Room sources before discovery or reads", async () => {
+    const cases = [
+      {
+        connectionId: "connection-1",
+        blocks: [{ connectionId: "connection-1", mcpServerId: null }],
+      },
+      {
+        connectionId: null,
+        blocks: [{ connectionId: null, mcpServerId: null }],
+      },
+    ] as const;
+
+    for (const blockedSource of cases) {
+      const itemFindMany = vi.fn();
+      const itemFindFirst = vi.fn();
+      const textFindFirst = vi.fn();
+      const relevant = vi.fn();
+      const extract = vi.fn();
+      const executeModelCall = vi.fn();
+      const sourceBlockFindMany = vi.fn(async () => [...blockedSource.blocks]);
+      const worker = createCompanySourceWorker({
+        prisma: prisma({
+          dataRoomItem: { findMany: itemFindMany, findFirst: itemFindFirst },
+          dataRoomItemText: { findFirst: textFindFirst },
+          companySourceBlock: { findMany: sourceBlockFindMany },
+        }),
+        extractor: { relevant, extract },
+      });
+      const workerContext = { ...context(), executeModelCall };
+      const source = {
+        id: "source-1",
+        sourceKind: "data_room" as const,
+        connectionId: blockedSource.connectionId,
+        scope: {},
+      };
+
+      await expect(
+        worker.discover({ source, cursor: null, maxUnits: 10 }, workerContext),
+      ).rejects.toMatchObject({ code: "source_access_revoked" });
+      await expect(
+        worker.read(
+          {
+            source,
+            unitKey: "data_room:item-1",
+            cursor: { itemId: "item-1" },
+            maxBytes: 1_000,
+          },
+          workerContext,
+        ),
+      ).rejects.toMatchObject({ code: "source_access_revoked" });
+
+      expect(sourceBlockFindMany).toHaveBeenCalledWith({
+        where: {
+          spaceId: actor.spaceId,
+          ownerUserId: actor.userId,
+          sourceKind: "data_room",
+        },
+        select: { connectionId: true, mcpServerId: true },
+      });
+      expect(itemFindMany).not.toHaveBeenCalled();
+      expect(itemFindFirst).not.toHaveBeenCalled();
+      expect(textFindFirst).not.toHaveBeenCalled();
+      expect(relevant).not.toHaveBeenCalled();
+      expect(extract).not.toHaveBeenCalled();
+      expect(executeModelCall).not.toHaveBeenCalled();
+    }
+  });
+
+  it("excludes blocked connections from aggregate Data Room discovery", async () => {
+    const itemFindMany = vi.fn(async () => []);
+    const sourceBlockFindMany = vi.fn(async () => [
+      { connectionId: "blocked-connection", mcpServerId: null },
+      { connectionId: null, mcpServerId: "mcp-server" },
+    ]);
+    const worker = createCompanySourceWorker({
+      prisma: prisma({
+        dataRoomItem: { findMany: itemFindMany, findFirst: vi.fn() },
+        companySourceBlock: { findMany: sourceBlockFindMany },
+      }),
+      extractor: {} as never,
+    });
+
+    await worker.discover(
+      {
+        source: {
+          id: "source-1",
+          sourceKind: "data_room",
+          connectionId: null,
+          scope: {},
+        },
+        cursor: null,
+        maxUnits: 10,
+      },
+      context(),
+    );
+
+    expect(sourceBlockFindMany).toHaveBeenCalledWith({
+      where: {
+        spaceId: actor.spaceId,
+        ownerUserId: actor.userId,
+        sourceKind: "data_room",
+      },
+      select: { connectionId: true, mcpServerId: true },
+    });
+    expect(itemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            expect.objectContaining({
+              OR: [
+                { sourceConnectionId: null },
+                {
+                  sourceConnection: expect.objectContaining({
+                    id: { notIn: ["blocked-connection"] },
+                  }),
+                },
+              ],
+            }),
           ],
         },
       }),
@@ -428,6 +561,8 @@ describe("company source worker", () => {
         spaceId: actor.spaceId,
         userId: actor.userId,
         status: "connected",
+        allAgents: true,
+        privateByDefault: false,
       },
       select: {
         id: true,

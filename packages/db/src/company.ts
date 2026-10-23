@@ -5,10 +5,14 @@ import type {
   CompanyEdgeImportInput,
   CompanyEntityEditInput,
   CompanyEntityImportInput,
+  CompanyEntityInput,
   CompanyEventEditInput,
   CompanyEventImportInput,
   CompanyEvidenceInput,
+  CompanyExport,
   CompanyPartialDate,
+  CompanyPrivacy,
+  CompanySourceLocator,
   CompanyEdgeRecord as ContractCompanyEdgeRecord,
   CompanyEntityRecord as ContractCompanyEntityRecord,
   CompanyEventRecord as ContractCompanyEventRecord,
@@ -20,6 +24,7 @@ import {
   CompanyEdgeImportInputSchema,
   CompanyEntityEditInputSchema,
   CompanyEntityImportInputSchema,
+  CompanyEntityInputSchema,
   CompanyEntityKindSchema,
   CompanyEventEditInputSchema,
   CompanyEventImportInputSchema,
@@ -30,6 +35,8 @@ import {
   CompanyStatusSchema,
   CompanyVisibilitySchema,
   companyEntityIdentifiers,
+  companyExcludedPersonAliases,
+  companyPrivacySourceKey,
   normalizeCompanyName,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
@@ -45,6 +52,7 @@ export type CompanyEvidenceRecord = ContractCompanyEvidenceRecord;
 export type CompanyEdgeRecord = ContractCompanyEdgeRecord;
 export type CompanyEventRecord = ContractCompanyEventRecord;
 export type CompanyEntityRecord = ContractCompanyEntityRecord;
+export class CompanyPrivacyBusinessError extends Error {}
 
 export type CompanyCandidateRecord = {
   id: string;
@@ -747,6 +755,60 @@ async function findSuppression(
   return findFactSuppression(db, scope, "entity", aliases, entityKind);
 }
 
+function sourceLocatorWhere(locator: CompanySourceLocator) {
+  if (locator.connectionId) {
+    return { sourceKind: locator.sourceKind, connectionId: locator.connectionId };
+  }
+  if (locator.mcpServerId) {
+    return { sourceKind: locator.sourceKind, mcpServerId: locator.mcpServerId };
+  }
+  return { sourceKind: locator.sourceKind };
+}
+
+async function assertSourceAllowed(db: CompanyDb, scope: Scope, evidence: EvidenceLocator) {
+  if (evidence.sourceKind === "manual") return;
+  const locator = {
+    sourceKind: evidence.sourceKind as CompanySourceLocator["sourceKind"],
+    connectionId: evidence.connectionId ?? null,
+    mcpServerId: evidence.mcpServerId ?? null,
+  };
+  const exactKey = companyPrivacySourceKey(locator);
+  const keys = [exactKey];
+  if (evidence.sourceKind === "data_room") {
+    const dataRoomItemId = await linkedDataRoomItemId(db, scope, evidence);
+    if (dataRoomItemId) {
+      const item = await db.dataRoomItem.findFirst({
+        where: { id: dataRoomItemId, spaceId: scope.spaceId, userId: scope.ownerUserId },
+        select: { sourceConnectionId: true },
+      });
+      if (item?.sourceConnectionId) {
+        keys.push(
+          companyPrivacySourceKey({
+            sourceKind: "data_room",
+            connectionId: item.sourceConnectionId,
+            mcpServerId: null,
+          }),
+        );
+      }
+    }
+  }
+  const blocked = await db.companySourceBlock.findFirst({
+    where: {
+      ...scope,
+      OR: [
+        { sourceKey: { in: keys } },
+        {
+          sourceKind: evidence.sourceKind,
+          connectionId: null,
+          mcpServerId: null,
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  if (blocked) throw new IsolationError("Company source is disconnected");
+}
+
 async function createCandidate(
   db: CompanyDb,
   scope: Scope,
@@ -805,7 +867,13 @@ function strongEntityAliases(input: CompanyEntityImportInput["entity"]): string[
 function entityAliases(input: CompanyEntityImportInput["entity"], sourceKey: string): string[] {
   const strong = strongEntityAliases(input);
   if (input.kind === "person") {
-    return [...strong, `source:${sourceKey}`];
+    return [
+      ...new Set([
+        ...strong,
+        ...companyExcludedPersonAliases(input as CompanyEntityInput),
+        `source:${sourceKey}`,
+      ]),
+    ];
   }
   const aliases =
     strong.length > 0 ? strong : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
@@ -894,6 +962,7 @@ async function importEntity(
   raw: CompanyEntityImportInput,
 ): Promise<CompanyWriteResult> {
   const input = CompanyEntityImportInputSchema.parse(raw);
+  await assertSourceAllowed(db, scope, input.evidence);
   const identifiers = identityParts(input.entity);
   const strongIdentifiers = identifiers
     .filter(([, identityType]) => identityType !== "name")
@@ -909,6 +978,7 @@ async function importEntity(
       : {}),
   });
   const key = sourceKey(input.evidence, claimFingerprint);
+  const importId = `company_${hash({ scope, input: input.entity, key }).slice(0, 24)}`;
   const aliases = entityAliases(input.entity, key);
   const evidenceRows = await db.companyEvidence.findMany({
     where: {
@@ -932,7 +1002,20 @@ async function importEntity(
   const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
 
-  if (input.entity.kind === "person" && strongIdentifiers.length === 0 && !activeEvidence) {
+  const retainedClaim = activeEvidence
+    ? null
+    : await db.companyEntity.findFirst({
+        where: {
+          ...scope,
+          kind: input.entity.kind,
+          status: { not: "rejected" },
+          OR: [{ sourceClaimKeys: { has: key } }, { id: importId }],
+        },
+        select: { id: true },
+      });
+  const existingEvidence = activeEvidence ?? (retainedClaim ? { factId: retainedClaim.id } : null);
+
+  if (input.entity.kind === "person" && strongIdentifiers.length === 0 && !existingEvidence) {
     const sourceNameAlias = `person-source-name:${hash([
       sourceLocatorFromKey(key) ?? key,
       normalizeCompanyName(input.entity.displayName),
@@ -965,8 +1048,6 @@ async function importEntity(
       return { deferred: true, record: null, candidateId };
     }
   }
-
-  const existingEvidence = activeEvidence;
 
   const matchingIdentifiers =
     input.entity.kind === "organisation"
@@ -1132,7 +1213,7 @@ async function importEntity(
     const originalEntityId = entityId;
     const existingEntity = await db.companyEntity.findFirstOrThrow({
       where: { ...scope, id: originalEntityId },
-      select: { attrs: true, displayName: true, lockedFields: true },
+      select: { attrs: true, displayName: true, lockedFields: true, sourceClaimKeys: true },
     });
     const existingMerge = await db.companyMerge.findFirst({
       where: { ...scope, sourceEntityId: originalEntityId },
@@ -1206,6 +1287,7 @@ async function importEntity(
         normalizedName: normalizeCompanyName(displayName),
         attrs: updatedAttrs as Prisma.InputJsonValue,
         confidence: input.entity.confidence,
+        sourceClaimKeys: [...new Set([...existingEntity.sourceClaimKeys, key])],
       },
     });
     const persistedIdentifiers = identifiers.filter(([, identityType, identityValue]) => {
@@ -1241,7 +1323,7 @@ async function importEntity(
     return mapEntity(db, scope, row);
   }
 
-  const id = `company_${hash({ scope, input: input.entity, key }).slice(0, 24)}`;
+  const id = importId;
   const row = await db.companyEntity.create({
     data: {
       id,
@@ -1251,6 +1333,7 @@ async function importEntity(
       normalizedName: normalizeCompanyName(input.entity.displayName),
       attrs: input.entity.attrs as Prisma.InputJsonValue,
       confidence: input.entity.confidence,
+      sourceClaimKeys: [key],
       contactId: input.entity.contactId ?? null,
       legalContractId: input.entity.legalContractId ?? null,
       dataRoomItemId: input.entity.dataRoomItemId ?? null,
@@ -1287,6 +1370,7 @@ async function importEdge(
   raw: CompanyEdgeImportInput,
 ): Promise<CompanyEdgeRecord | CompanySuppressedResult> {
   const input = CompanyEdgeImportInputSchema.parse(raw);
+  await assertSourceAllowed(db, scope, input.evidence);
   const startsOn = dateValue(input.edge.startsOn);
   const endsOn = dateValue(input.edge.endsOn);
   const fingerprint = hash({
@@ -1411,6 +1495,7 @@ async function importEvent(
   raw: CompanyEventImportInput,
 ): Promise<CompanyEventRecord | CompanySuppressedResult | CompanyDeferredResult> {
   const input = CompanyEventImportInputSchema.parse(raw);
+  await assertSourceAllowed(db, scope, input.evidence);
   const normalizedTitle = normalizeCompanyName(input.event.title);
   const canonicalEntityIds = await canonicalEventEntityIds(db, scope, input.event.entityIds);
   const subjectKey =
@@ -1605,7 +1690,7 @@ async function importEvent(
     updateData.currency = input.event.currency ?? null;
   }
   if (!row.lockedFields.includes("confidence")) updateData.confidence = input.event.confidence;
-  const updated = await db.companyEvent.update({
+  await db.companyEvent.update({
     where: { id: row.id },
     data: updateData,
   });
@@ -1641,10 +1726,13 @@ async function importEvent(
     where: { ...scope, eventId: row.id },
     select: { entityId: true },
   });
+  const finalEvent = await db.companyEvent.findFirstOrThrow({
+    where: { ...scope, id: row.id },
+  });
   return mapEventRecord(
     db,
     scope,
-    updated,
+    finalEvent,
     links.map((link) => link.entityId),
   );
 }
@@ -1867,6 +1955,23 @@ async function confirmEntity(
   );
 }
 
+async function mergedEntityGroupIds(
+  db: CompanyDb,
+  scope: Scope,
+  entityId: string,
+): Promise<string[]> {
+  const parent = await db.companyMerge.findFirst({
+    where: { ...scope, sourceEntityId: entityId },
+    select: { survivorEntityId: true },
+  });
+  const rootId = parent?.survivorEntityId ?? entityId;
+  const children = await db.companyMerge.findMany({
+    where: { ...scope, survivorEntityId: rootId },
+    select: { sourceEntityId: true },
+  });
+  return [rootId, ...children.map((merge) => merge.sourceEntityId)];
+}
+
 async function rejectEntity(
   db: CompanyDb,
   scope: Scope,
@@ -1878,18 +1983,10 @@ async function rejectEntity(
     where: { ...scope, id: input.entityId },
     include: ENTITY_INCLUDE,
   });
-  const merges = await db.companyMerge.findMany({
-    where: { ...scope, OR: [{ survivorEntityId: row.id }, { sourceEntityId: row.id }] },
-    select: { sourceEntityId: true, survivorEntityId: true },
-  });
-  const groupIds = new Set([
-    row.id,
-    ...merges.map((merge) => merge.sourceEntityId),
-    ...merges.map((merge) => merge.survivorEntityId),
-  ]);
+  const groupIds = new Set(await mergedEntityGroupIds(db, scope, row.id));
   const groupRows = await db.companyEntity.findMany({
     where: { ...scope, id: { in: [...groupIds] } },
-    select: { id: true, kind: true, normalizedName: true },
+    select: { id: true, kind: true, normalizedName: true, sourceClaimKeys: true },
   });
   const identities = await db.companyIdentity.findMany({
     where: { ...scope, entityId: { in: [...groupIds] } },
@@ -1905,6 +2002,11 @@ async function rejectEntity(
     select: { factId: true, sourceKey: true },
   });
   const memberById = new Map(groupRows.map((member) => [member.id, member]));
+  sourceEvidence.push(
+    ...groupRows.flatMap((member) =>
+      member.sourceClaimKeys.map((sourceKey) => ({ factId: member.id, sourceKey })),
+    ),
+  );
   const strongAliases = identities
     .filter((identity) => identity.identityType !== "name")
     .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`);
@@ -2289,6 +2391,8 @@ async function eraseEntity(db: CompanyDb, scope: Scope, entityId: string): Promi
 }
 
 async function eraseMap(db: CompanyDb, scope: Scope): Promise<void> {
+  await db.companyImportRun.deleteMany({ where: scope });
+  await db.companySourceBlock.deleteMany({ where: scope });
   await db.companyMerge.deleteMany({ where: scope });
   await db.companyCandidate.deleteMany({ where: scope });
   await db.companyCorrection.deleteMany({ where: scope });
@@ -2330,6 +2434,604 @@ async function disconnectSource(
   };
   await db.companyCandidate.deleteMany({ where: candidateWhere });
   await db.companyEvidence.deleteMany({ where });
+}
+
+function sourceControlWhere(locator: CompanySourceLocator, scope: Scope) {
+  return { ...scope, ...sourceLocatorWhere(locator) };
+}
+
+async function validatePrivacyLocator(
+  db: CompanyDb,
+  scope: Scope,
+  locator: CompanySourceLocator,
+): Promise<void> {
+  if ((locator.sourceKind as string) === "manual")
+    throw new CompanyPrivacyBusinessError("Manual evidence cannot be disconnected");
+  if (locator.connectionId && locator.mcpServerId)
+    throw new CompanyPrivacyBusinessError("Choose one source connection");
+  if (locator.sourceKind === "mcp" && locator.connectionId)
+    throw new CompanyPrivacyBusinessError("MCP sources must use an MCP server");
+  if (locator.connectionId) {
+    const connection = await db.connection.findFirst({
+      where: { id: locator.connectionId, spaceId: scope.spaceId, userId: scope.ownerUserId },
+      select: { id: true },
+    });
+    if (!connection) throw new IsolationError("Company source not found");
+  }
+  if (locator.mcpServerId) {
+    if (locator.sourceKind !== "mcp")
+      throw new CompanyPrivacyBusinessError("MCP sources must use the mcp source kind");
+    const server = await db.mcpServer.findFirst({
+      where: { id: locator.mcpServerId, spaceId: scope.spaceId, userId: scope.ownerUserId },
+      select: { id: true },
+    });
+    if (!server) throw new IsolationError("Company source not found");
+  }
+}
+
+async function sourceControl(
+  db: CompanyDb,
+  scope: Scope,
+  locator: CompanySourceLocator,
+  connected: boolean,
+): Promise<void> {
+  await validatePrivacyLocator(db, scope, locator);
+  const sourceWhere = sourceControlWhere(locator, scope);
+  if (connected) {
+    await db.companySourceBlock.deleteMany({
+      where: { ...scope, sourceKey: companyPrivacySourceKey(locator) },
+    });
+    return;
+  }
+  const linkedDataRoomItems =
+    locator.sourceKind === "data_room" && locator.connectionId
+      ? await db.dataRoomItem.findMany({
+          where: {
+            spaceId: scope.spaceId,
+            userId: scope.ownerUserId,
+            sourceConnectionId: locator.connectionId,
+          },
+          select: { id: true },
+        })
+      : [];
+  const linkedDataRoomIds = linkedDataRoomItems.map((item) => item.id);
+  const affectedSources = await db.companyImportSource.findMany({
+    where: {
+      ...scope,
+      ...sourceLocatorWhere(locator),
+      run: { status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] } },
+    },
+    select: { id: true, runId: true },
+  });
+  const linkedDataRoomRuns =
+    linkedDataRoomIds.length > 0
+      ? await db.companyImportRun.findMany({
+          where: {
+            ...scope,
+            status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] },
+            sources: { some: { sourceKind: "data_room" } },
+          },
+          select: { id: true },
+        })
+      : [];
+  const runIds = [
+    ...new Set([
+      ...affectedSources.map((source) => source.runId),
+      ...linkedDataRoomRuns.map((run) => run.id),
+    ]),
+  ];
+  if (runIds.length) {
+    await db.companyImportRun.updateMany({
+      where: {
+        ...scope,
+        id: { in: runIds },
+        status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] },
+      },
+      data: { status: "cancelled", completedAt: new Date() },
+    });
+    await db.companyImportUnit.updateMany({
+      where: { ...scope, runId: { in: runIds }, status: { in: ["waiting", "claimed"] } },
+      data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
+    });
+  }
+  await db.companySourceBlock.upsert({
+    where: {
+      spaceId_ownerUserId_sourceKey: {
+        spaceId: scope.spaceId,
+        ownerUserId: scope.ownerUserId,
+        sourceKey: companyPrivacySourceKey(locator),
+      },
+    },
+    create: {
+      ...scope,
+      sourceKey: companyPrivacySourceKey(locator),
+      sourceKind: locator.sourceKind,
+      connectionId: locator.connectionId,
+      mcpServerId: locator.mcpServerId,
+    },
+    update: {},
+  });
+  await db.companyCandidate.deleteMany({ where: sourceWhere });
+  if (linkedDataRoomIds.length > 0) {
+    await db.companyCandidate.deleteMany({
+      where: { ...scope, sourceKind: "data_room", dataRoomItemId: { in: linkedDataRoomIds } },
+    });
+    await db.companyEvidence.deleteMany({
+      where: {
+        ...scope,
+        sourceKind: "data_room",
+        dataRoomItemId: { in: linkedDataRoomIds },
+        NOT: { sourceKind: "manual" },
+      },
+    });
+  }
+  await db.companyEvidence.deleteMany({
+    where: {
+      ...sourceWhere,
+      NOT: { sourceKind: "manual" },
+    },
+  });
+}
+
+async function privacy(db: CompanyDb, scope: Scope): Promise<CompanyPrivacy> {
+  const [evidence, sources, blocks] = await Promise.all([
+    db.companyEvidence.findMany({
+      where: { ...scope, NOT: { sourceKind: "manual" } },
+      select: { sourceKind: true, connectionId: true, mcpServerId: true },
+    }),
+    db.companyImportSource.findMany({
+      where: { ...scope, sourceKind: { not: "manual" }, run: { status: { not: "discarded" } } },
+      select: { sourceKind: true, connectionId: true },
+      distinct: ["sourceKind", "connectionId"],
+    }),
+    db.companySourceBlock.findMany({ where: scope }),
+  ]);
+  const locators = new Map<string, CompanySourceLocator>();
+  for (const row of evidence) {
+    const locator = {
+      sourceKind: row.sourceKind as CompanySourceLocator["sourceKind"],
+      connectionId: row.connectionId,
+      mcpServerId: row.mcpServerId,
+    };
+    locators.set(companyPrivacySourceKey(locator), locator);
+  }
+  for (const row of sources) {
+    const locator = {
+      sourceKind: row.sourceKind as CompanySourceLocator["sourceKind"],
+      connectionId: row.connectionId,
+      mcpServerId: null,
+    };
+    locators.set(companyPrivacySourceKey(locator), locator);
+  }
+  for (const block of blocks) {
+    const locator = {
+      sourceKind: block.sourceKind as CompanySourceLocator["sourceKind"],
+      connectionId: block.connectionId,
+      mcpServerId: block.mcpServerId,
+    };
+    locators.set(companyPrivacySourceKey(locator), locator);
+  }
+  const aggregateBlocks = new Set(
+    blocks
+      .filter((block) => block.connectionId === null && block.mcpServerId === null)
+      .map((block) => block.sourceKind),
+  );
+  return {
+    sources: await Promise.all(
+      [...locators.values()]
+        .filter(
+          (locator) =>
+            !(locator.connectionId || locator.mcpServerId) ||
+            !aggregateBlocks.has(locator.sourceKind),
+        )
+        .sort((a, b) => companyPrivacySourceKey(a).localeCompare(companyPrivacySourceKey(b)))
+        .map(async (locator) => {
+          const evidenceCount = await db.companyEvidence.count({
+            where: { ...scope, ...sourceLocatorWhere(locator), NOT: { sourceKind: "manual" } },
+          });
+          const connection = locator.connectionId
+            ? await db.connection.findFirst({
+                where: {
+                  id: locator.connectionId,
+                  spaceId: scope.spaceId,
+                  userId: scope.ownerUserId,
+                },
+                select: { displayName: true },
+              })
+            : null;
+          const server = locator.mcpServerId
+            ? await db.mcpServer.findFirst({
+                where: {
+                  id: locator.mcpServerId,
+                  spaceId: scope.spaceId,
+                  userId: scope.ownerUserId,
+                },
+                select: { name: true },
+              })
+            : null;
+          return {
+            ...locator,
+            label: locator.connectionId
+              ? (connection?.displayName ?? locator.sourceKind.replaceAll("_", " "))
+              : locator.mcpServerId
+                ? (server?.name ?? "MCP")
+                : locator.sourceKind.replaceAll("_", " "),
+            evidenceCount,
+            blocked: blocks.some(
+              (block) =>
+                block.sourceKey === companyPrivacySourceKey(locator) ||
+                (block.sourceKind === locator.sourceKind &&
+                  block.connectionId === null &&
+                  block.mcpServerId === null),
+            ),
+          };
+        }),
+    ),
+  };
+}
+
+async function exportMap(db: CompanyDb, scope: Scope): Promise<CompanyExport> {
+  const [entities, edges, events, evidence] = await Promise.all([
+    db.companyEntity.findMany({ where: scope, include: ENTITY_INCLUDE }),
+    db.companyEdge.findMany({ where: scope }),
+    db.companyEvent.findMany({ where: scope }),
+    db.companyEvidence.findMany({ where: scope }),
+  ]);
+  const eventLinks = await db.companyEventEntity.findMany({
+    where: scope,
+    select: { eventId: true, entityId: true },
+  });
+  const eventIds = new Map<string, string[]>();
+  for (const link of eventLinks)
+    eventIds.set(link.eventId, [...(eventIds.get(link.eventId) ?? []), link.entityId]);
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    entities: await Promise.all(
+      entities.map((row) =>
+        mapEntity(db, scope, row, { includeMerged: true, includeRejected: true }),
+      ),
+    ),
+    edges: await Promise.all(edges.map((row) => mapEdgeRecord(db, scope, row))),
+    events: await Promise.all(
+      events.map((row) => mapEventRecord(db, scope, row, eventIds.get(row.id) ?? [])),
+    ),
+    evidence: evidence.map(toEvidence),
+  };
+}
+
+async function setVisibility(
+  db: CompanyDb,
+  scope: Scope,
+  input: { kind: "entity" | "edge" | "event"; id: string; visibility: "private" | "team" },
+): Promise<void> {
+  if (input.kind === "entity") {
+    const row = await db.companyEntity.findFirst({ where: { ...scope, id: input.id } });
+    if (!row) throw new IsolationError("Company fact not found");
+    if (input.visibility === "team" && row.status !== "confirmed")
+      throw new CompanyPrivacyBusinessError("Confirm this fact first");
+    await db.companyEntity.update({
+      where: { id: row.id },
+      data: { visibility: input.visibility },
+    });
+    if (input.visibility === "private") {
+      await db.companyEdge.updateMany({
+        where: { ...scope, OR: [{ fromId: row.id }, { toId: row.id }], visibility: "team" },
+        data: { visibility: "private" },
+      });
+      const events = await db.companyEventEntity.findMany({
+        where: { ...scope, entityId: row.id },
+        select: { eventId: true },
+      });
+      await db.companyEvent.updateMany({
+        where: { ...scope, id: { in: events.map((event) => event.eventId) }, visibility: "team" },
+        data: { visibility: "private" },
+      });
+    }
+    return;
+  }
+  if (input.kind === "edge") {
+    const edge = await db.companyEdge.findFirst({ where: { ...scope, id: input.id } });
+    if (!edge) throw new IsolationError("Company fact not found");
+    if (input.visibility === "team") {
+      if (edge.status !== "confirmed")
+        throw new CompanyPrivacyBusinessError("Confirm this fact first");
+      const endpoints = await db.companyEntity.findMany({
+        where: { ...scope, id: { in: [edge.fromId, edge.toId] } },
+        select: { status: true, visibility: true },
+      });
+      if (
+        endpoints.length !== 2 ||
+        endpoints.some(
+          (endpoint) => endpoint.status !== "confirmed" || endpoint.visibility !== "team",
+        )
+      )
+        throw new CompanyPrivacyBusinessError("Share linked facts first");
+    }
+    await db.companyEdge.update({ where: { id: edge.id }, data: { visibility: input.visibility } });
+    return;
+  }
+  const event = await db.companyEvent.findFirst({ where: { ...scope, id: input.id } });
+  if (!event) throw new IsolationError("Company fact not found");
+  if (input.visibility === "team") {
+    if (event.status !== "confirmed")
+      throw new CompanyPrivacyBusinessError("Confirm this fact first");
+    const links = await db.companyEventEntity.findMany({
+      where: { ...scope, eventId: event.id },
+      select: { entityId: true },
+    });
+    const endpoints = await db.companyEntity.findMany({
+      where: { ...scope, id: { in: links.map((link) => link.entityId) } },
+      select: { status: true, visibility: true },
+    });
+    if (
+      endpoints.length !== links.length ||
+      endpoints.some(
+        (endpoint) => endpoint.status !== "confirmed" || endpoint.visibility !== "team",
+      )
+    )
+      throw new CompanyPrivacyBusinessError("Share linked facts first");
+  }
+  await db.companyEvent.update({ where: { id: event.id }, data: { visibility: input.visibility } });
+}
+
+async function excludePerson(db: CompanyDb, scope: Scope, entityId: string): Promise<void> {
+  const current = await db.companyEntity.findFirst({
+    where: { ...scope, id: entityId, kind: "person" },
+    select: { id: true, kind: true, displayName: true, attrs: true },
+  });
+  if (!current) throw new IsolationError("Company person not found");
+  const ids = await mergedEntityGroupIds(db, scope, current.id);
+  const members = await db.companyEntity.findMany({
+    where: { ...scope, id: { in: ids } },
+    select: { displayName: true, attrs: true, sourceClaimKeys: true },
+  });
+  const aliases = new Set<string>();
+  for (const member of members) {
+    for (const key of member.sourceClaimKeys) aliases.add(`source:${key}`);
+    for (const alias of companyExcludedPersonAliases({
+      kind: "person",
+      displayName: member.displayName,
+      confidence: 0,
+      attrs: member.attrs as Extract<CompanyEntityInput, { kind: "person" }>["attrs"],
+    }))
+      aliases.add(alias);
+  }
+  const identities = await db.companyIdentity.findMany({
+    where: { ...scope, entityId: { in: ids } },
+    select: { identityType: true, identityValue: true },
+  });
+  for (const identity of identities)
+    aliases.add(`person:${identity.identityType}:${identity.identityValue}`);
+  const sortedAliases = [...aliases].sort();
+  const aliasSet = new Set(sortedAliases);
+  const candidates = await db.companyCandidate.findMany({
+    where: {
+      ...scope,
+      OR: [
+        { kind: "person" },
+        { kind: { in: ["edge", "event"] }, reason: "unresolved_import_subjects" },
+      ],
+    },
+    select: { id: true, kind: true, entityIds: true, proposedFact: true },
+  });
+  const matchingCandidateIds = candidates
+    .filter((candidate) => {
+      if (candidate.entityIds.some((id) => ids.includes(id))) return true;
+      const proposed = candidate.proposedFact;
+      if (!proposed || typeof proposed !== "object" || Array.isArray(proposed)) return false;
+      const value = proposed as Record<string, unknown>;
+      const proposedEntities =
+        candidate.kind === "person"
+          ? [value.entity ?? value.person ?? proposed]
+          : Array.isArray(value.entities)
+            ? value.entities.flatMap((entry) =>
+                entry && typeof entry === "object" && !Array.isArray(entry)
+                  ? [(entry as Record<string, unknown>).entity]
+                  : [],
+              )
+            : [];
+      return proposedEntities.some((entity) => {
+        const parsed = CompanyEntityInputSchema.safeParse(entity);
+        return (
+          parsed.success &&
+          parsed.data.kind === "person" &&
+          companyExcludedPersonAliases(parsed.data).some((alias) => aliasSet.has(alias))
+        );
+      });
+    })
+    .map((candidate) => candidate.id);
+  const fingerprint = hash(["excluded-person", sortedAliases]);
+  await db.companyRejection.upsert({
+    where: { spaceId_ownerUserId_fingerprint: { ...scope, fingerprint } },
+    create: {
+      ...scope,
+      factKind: "entity",
+      entityKind: "person",
+      fingerprint,
+      identityAliases: sortedAliases,
+      reason: "excluded_person",
+      excludedPerson: true,
+    },
+    update: { identityAliases: sortedAliases, excludedPerson: true },
+  });
+  const linkedEvents = await db.companyEventEntity.findMany({
+    where: { ...scope, entityId: { in: ids } },
+    select: { eventId: true },
+  });
+  for (const eventId of [...new Set(linkedEvents.map((link) => link.eventId))]) {
+    const links = await db.companyEventEntity.findMany({
+      where: { ...scope, eventId },
+      select: { entityId: true },
+    });
+    if (links.every((link) => ids.includes(link.entityId)))
+      await db.companyEvent.deleteMany({ where: { ...scope, id: eventId } });
+  }
+  await db.companyEdge.deleteMany({
+    where: { ...scope, OR: [{ fromId: { in: ids } }, { toId: { in: ids } }] },
+  });
+  await db.companyCandidate.deleteMany({
+    where: {
+      ...scope,
+      OR: [{ entityIds: { hasSome: ids } }, { id: { in: matchingCandidateIds } }],
+    },
+  });
+  await db.companyEntity.deleteMany({ where: { ...scope, id: { in: ids } } });
+}
+
+async function teamFacts(
+  db: RootDb,
+  scope: Scope,
+  text?: string,
+): Promise<{
+  entities: CompanyEntityRecord[];
+  edges: CompanyEdgeRecord[];
+  events: CompanyEventRecord[];
+}> {
+  await requireMember(db, scope);
+  const memberRows = await db.spaceMember.findMany({
+    where: { spaceId: scope.spaceId },
+    select: { userId: true },
+  });
+  const otherMemberIds = memberRows
+    .map((member) => member.userId)
+    .filter((userId) => userId !== scope.ownerUserId);
+  const [hidden, owners] = await Promise.all([
+    db.companyMerge.findMany({
+      where: { spaceId: scope.spaceId, sourceEntity: { ownerUserId: { not: scope.ownerUserId } } },
+      select: { sourceEntityId: true, sourceEntity: { select: { ownerUserId: true } } },
+    }),
+    db.companyEntity.findMany({
+      where: {
+        spaceId: scope.spaceId,
+        ownerUserId: { in: otherMemberIds },
+        status: "confirmed",
+        visibility: "team",
+      },
+      orderBy: [{ normalizedName: "asc" }, { id: "asc" }],
+    }),
+  ]);
+  const hiddenKeys = new Set(
+    hidden.map((merge) => `${merge.sourceEntity.ownerUserId}:${merge.sourceEntityId}`),
+  );
+  const visibleOwners = owners.filter((row) => !hiddenKeys.has(`${row.ownerUserId}:${row.id}`));
+  const entities: CompanyEntityRecord[] = visibleOwners.map((row) => ({
+    readOnly: true,
+    id: row.id,
+    kind: row.kind as CompanyEntityRecord["kind"],
+    displayName: row.displayName,
+    normalizedName: row.normalizedName,
+    attrs: Object.fromEntries(
+      Object.entries(row.attrs as Record<string, unknown>).filter(([key]) => key !== "trackerUrl"),
+    ),
+    confidence: row.confidence,
+    status: row.status as CompanyEntityRecord["status"],
+    visibility: "team",
+    lockedFields: [],
+    confirmedAt: null,
+    confirmedByUserId: null,
+    identities: [],
+    evidence: [],
+    mergedFrom: [],
+    edges: [],
+    events: [],
+    contactId: null,
+    legalContractId: null,
+    dataRoomItemId: null,
+  }));
+  const ownerIds = [...new Set(otherMemberIds)];
+  const rows = ownerIds.length
+    ? await db.companyEdge.findMany({
+        where: {
+          spaceId: scope.spaceId,
+          ownerUserId: { in: ownerIds },
+          status: "confirmed",
+          visibility: "team",
+        },
+      })
+    : [];
+  const sharedIds = new Set(visibleOwners.map((owner) => `${owner.ownerUserId}:${owner.id}`));
+  const edges = await Promise.all(
+    rows
+      .filter(
+        (row) =>
+          sharedIds.has(`${row.ownerUserId}:${row.fromId}`) &&
+          sharedIds.has(`${row.ownerUserId}:${row.toId}`),
+      )
+      .map(async (row) => ({
+        ...(await mapEdgeRecord(db, { spaceId: row.spaceId, ownerUserId: row.ownerUserId }, row)),
+        readOnly: true,
+        evidence: [],
+        lockedFields: [],
+        confirmedByUserId: null,
+        confirmedAt: null,
+      })),
+  );
+  const eventRows = ownerIds.length
+    ? await db.companyEvent.findMany({
+        where: {
+          spaceId: scope.spaceId,
+          ownerUserId: { in: ownerIds },
+          status: "confirmed",
+          visibility: "team",
+        },
+      })
+    : [];
+  const links = eventRows.length
+    ? await db.companyEventEntity.findMany({
+        where: {
+          spaceId: scope.spaceId,
+          ownerUserId: { in: ownerIds },
+          eventId: { in: eventRows.map((row) => row.id) },
+        },
+        select: { eventId: true, entityId: true, ownerUserId: true },
+      })
+    : [];
+  const linkedByEvent = new Map<string, string[]>();
+  for (const link of links)
+    linkedByEvent.set(`${link.ownerUserId}:${link.eventId}`, [
+      ...(linkedByEvent.get(`${link.ownerUserId}:${link.eventId}`) ?? []),
+      link.entityId,
+    ]);
+  const events = await Promise.all(
+    eventRows
+      .filter((row) => {
+        const endpoints = linkedByEvent.get(`${row.ownerUserId}:${row.id}`) ?? [];
+        return endpoints.every((id) => sharedIds.has(`${row.ownerUserId}:${id}`));
+      })
+      .map(async (row) => ({
+        ...(await mapEventRecord(
+          db,
+          { spaceId: row.spaceId, ownerUserId: row.ownerUserId },
+          row,
+          linkedByEvent.get(`${row.ownerUserId}:${row.id}`) ?? [],
+        )),
+        readOnly: true,
+        evidence: [],
+        lockedFields: [],
+        confirmedByUserId: null,
+        confirmedAt: null,
+      })),
+  );
+  const needle = text?.trim().toLocaleLowerCase();
+  const normalizedNeedle = normalizeCompanyName(text ?? "");
+  return {
+    entities: needle
+      ? entities.filter(
+          (row) =>
+            row.displayName.toLocaleLowerCase().includes(needle) ||
+            row.normalizedName.includes(normalizedNeedle),
+        )
+      : entities,
+    edges: needle
+      ? edges.filter((row) =>
+          `${row.relation} ${row.role ?? ""}`.toLocaleLowerCase().includes(needle),
+        )
+      : edges,
+    events: needle
+      ? events.filter((row) => row.title.toLocaleLowerCase().includes(needle))
+      : events,
+  };
 }
 
 async function mergeEntities(
@@ -2453,17 +3155,57 @@ function writerFor(db: CompanyDb, actor: Actor) {
     ) => write((tx) => disconnectSource(tx, scope, { sourceKind, sourceItemId, ...sourceScope })),
     disconnectConnection: (connectionId: string) =>
       write(async (tx) => {
-        const candidates = await tx.companyEvidence.findMany({
-          where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
-          select: { sourceKind: true, sourceItemId: true },
-          distinct: ["sourceKind", "sourceItemId"],
-        });
+        const [evidenceSources, importSources] = await Promise.all([
+          tx.companyEvidence.findMany({
+            where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
+            select: { sourceKind: true },
+            distinct: ["sourceKind"],
+          }),
+          tx.companyImportSource.findMany({
+            where: { ...scope, connectionId },
+            select: { sourceKind: true, runId: true },
+          }),
+        ]);
+        const sourceKinds = [
+          ...new Set([...evidenceSources, ...importSources].map((source) => source.sourceKind)),
+        ];
+        for (const sourceKind of sourceKinds) {
+          const locator = {
+            sourceKind: sourceKind as CompanySourceLocator["sourceKind"],
+            connectionId,
+            mcpServerId: null,
+          };
+          const sourceKey = companyPrivacySourceKey(locator);
+          await tx.companySourceBlock.upsert({
+            where: { spaceId_ownerUserId_sourceKey: { ...scope, sourceKey } },
+            create: {
+              ...scope,
+              sourceKey,
+              sourceKind,
+              connectionId,
+              mcpServerId: null,
+            },
+            update: {},
+          });
+        }
+        const runIds = [...new Set(importSources.map((source) => source.runId))];
+        if (runIds.length) {
+          await tx.companyImportRun.updateMany({
+            where: { ...scope, id: { in: runIds }, status: { in: ["running", "paused"] } },
+            data: { status: "cancelled", completedAt: new Date() },
+          });
+          await tx.companyImportUnit.updateMany({
+            where: { ...scope, runId: { in: runIds }, status: { in: ["waiting", "claimed"] } },
+            data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
+          });
+        }
         await tx.companyCandidate.deleteMany({ where: { ...scope, connectionId } });
         await tx.companyEvidence.deleteMany({
           where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
         });
-        return candidates.length;
       }),
+    sourceControl: (locator: CompanySourceLocator, connected: boolean) =>
+      write((tx) => sourceControl(tx, scope, locator, connected)),
     disconnectMcpServer: (mcpServerId: string) =>
       write(async (tx) => {
         const candidates = await tx.companyEvidence.findMany({
@@ -2499,6 +3241,7 @@ export function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
       const evidence = CompanyEvidenceInputSchema.parse(input.evidence);
       if (evidence.sourceKind === "manual")
         throw new IsolationError("Manual evidence requires owner input");
+      await assertSourceAllowed(tx, scope, evidence);
       return createCandidate(tx, scope, {
         kind: input.kind,
         reason: "unresolved_import_subjects",
@@ -2523,14 +3266,20 @@ export function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
 
 export function companyForActor(prisma: RootDb, actor: Actor) {
   const scope = ownerOf(actor);
-  const write = async <T>(operation: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> => {
+  const write = async <T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+    isolationLevel?: Prisma.TransactionIsolationLevel,
+  ): Promise<T> => {
     await requireMember(prisma, scope);
+    const transaction = async (tx: Prisma.TransactionClient) => {
+      await requireMember(tx, scope);
+      await lockScope(tx, scope);
+      return operation(tx);
+    };
     return withTransactionRetry(() =>
-      prisma.$transaction(async (tx) => {
-        await requireMember(tx, scope);
-        await lockScope(tx, scope);
-        return operation(tx);
-      }),
+      isolationLevel
+        ? prisma.$transaction(transaction, { isolationLevel })
+        : prisma.$transaction(transaction),
     );
   };
   return {
@@ -2915,6 +3664,18 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
     merge: (sourceEntityId: string, survivorEntityId: string) =>
       write((tx) => mergeEntities(tx, scope, sourceEntityId, survivorEntityId)),
     split: (sourceEntityId: string) => write((tx) => splitEntity(tx, scope, sourceEntityId)),
+    privacy: () => write((tx) => privacy(tx, scope)),
+    sourceControl: (locator: CompanySourceLocator, connected: boolean) =>
+      write((tx) => sourceControl(tx, scope, locator, connected)),
+    excludePerson: (entityId: string) => write((tx) => excludePerson(tx, scope, entityId)),
+    export: () =>
+      write((tx) => exportMap(tx, scope), Prisma.TransactionIsolationLevel.RepeatableRead),
+    visibility: (input: {
+      kind: "entity" | "edge" | "event";
+      id: string;
+      visibility: "private" | "team";
+    }) => write((tx) => setVisibility(tx, scope, input)),
+    teamFacts: (text?: string) => teamFacts(prisma, scope, text),
     writer: (tx: Prisma.TransactionClient) => companyWriter(tx, actor),
   };
 }

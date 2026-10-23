@@ -211,6 +211,7 @@ import {
   CannotDeleteSpaceAsNonOwnerError,
   CannotRenameSpaceAsNonOwnerError,
   CapTableSourceError,
+  CompanyPrivacyBusinessError,
   ComputerLimitError,
   ContactEmailTakenError,
   changeCapTableSource,
@@ -219,6 +220,7 @@ import {
   closeAuditRequest,
   closeRound,
   companyForActor,
+  companyWriter,
   createExternalConversationRepos,
   createGroupRepos,
   createRepos,
@@ -6631,6 +6633,11 @@ export function createRouter(deps: RouterDeps) {
                   previousStatus: null as string | null,
                 };
               }
+              await companyWriter(tx, context.actor).disconnectConnection(row.id);
+              await companyWriter(tx, context.actor).sourceControl(
+                { sourceKind: "data_room", connectionId: row.id, mcpServerId: null },
+                false,
+              );
               // Unlink a provisioned agent under the same lock, so a begin that reuses the row
               // right after sees a clean row. The agent itself is archived once this commits.
               if (row.privateByDefault) {
@@ -7294,6 +7301,46 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     company: {
+      privacy: authed.company.privacy.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).privacy(),
+      ),
+      sourceControl: authed.company.sourceControl.handler(async ({ context, input }) => {
+        return companyForActor(deps.prisma, context.actor)
+          .sourceControl(input, input.connected)
+          .then(() => ({ ok: true as const }))
+          .catch((error) => {
+            if (error instanceof CompanyPrivacyBusinessError)
+              throw new ORPCError("BAD_REQUEST", { message: error.message });
+            throw error;
+          });
+      }),
+      excludePerson: authed.company.excludePerson.handler(async ({ context, input }) => {
+        return companyForActor(deps.prisma, context.actor)
+          .excludePerson(input.entityId)
+          .then(() => ({ ok: true as const }))
+          .catch((error) => {
+            if (error instanceof CompanyPrivacyBusinessError)
+              throw new ORPCError("BAD_REQUEST", { message: error.message });
+            throw error;
+          });
+      }),
+      erase: authed.company.erase.handler(async ({ context }) => {
+        await companyForActor(deps.prisma, context.actor).eraseMap();
+        return { ok: true as const };
+      }),
+      export: authed.company.export.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).export(),
+      ),
+      visibility: authed.company.visibility.handler(async ({ context, input }) => {
+        return companyForActor(deps.prisma, context.actor)
+          .visibility(input)
+          .then(() => ({ ok: true as const }))
+          .catch((error) => {
+            if (error instanceof CompanyPrivacyBusinessError)
+              throw new ORPCError("BAD_REQUEST", { message: error.message });
+            throw error;
+          });
+      }),
       page: authed.company.page.handler(({ context }) => companyPage(deps.prisma, context.actor)),
       fact: authed.company.fact.handler(({ context, input }) =>
         companyFact(deps.prisma, context.actor, input),
