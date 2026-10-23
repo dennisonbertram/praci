@@ -6290,7 +6290,6 @@ msgstr "Stimmanbieter werden geladen…"
 msgid "Loading Zernio queue…"
 msgstr ""
 
-#: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/RowsSkeleton.tsx
@@ -12172,7 +12171,7 @@ msgid "You have control"
 msgstr "Du hast die Kontrolle"
 
 #: src/components/inbox/CleanupSenderRow.tsx
-msgid "You read most of these"
+msgid "You read most of these, so keep them unless you are sure"
 msgstr ""
 
 #. placeholder {0}: item.name

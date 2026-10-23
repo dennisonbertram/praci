@@ -8895,6 +8895,7 @@ async function spaceNavigationDto(
         bots: spaceBots.map((bot) => ({
           id: bot.id,
           parentBotId: bot.parentBotId,
+          spawnKey: bot.spawnKey,
           spaceId: bot.spaceId,
           name: bot.name,
           title: bot.title,
