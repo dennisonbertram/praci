@@ -443,7 +443,7 @@ export async function messageConnectedAgent(
     ok: true,
     botId: target.id,
     name: target.name,
-    note: `Sent to ${target.name}. Delivery is async; a reply wakes you later as a new message.`,
+    note: `Message delivered to ${target.name}. Delivery is async; a reply wakes you later as a new message.`,
   };
 }
 
