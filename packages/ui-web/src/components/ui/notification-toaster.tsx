@@ -3,7 +3,7 @@
 import { Toast } from "@base-ui/react/toast";
 import { Button } from "@rakazo/ui-web/components/ui/button";
 import { cn } from "@rakazo/ui-web/lib/utils";
-import { XIcon } from "lucide-react";
+import { ChevronRightIcon, XIcon } from "lucide-react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -113,7 +113,7 @@ function ToastBody({
   return (
     <button
       type="button"
-      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-12 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-[4.75rem] text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
       onClick={async () => {
         const { href, onSeen } = toast.data ?? {};
         try {
@@ -127,6 +127,12 @@ function ToastBody({
       }}
     >
       {content}
+      {toast.data?.href ? (
+        <ChevronRightIcon
+          className="absolute right-3 bottom-3 size-4 text-muted-foreground pointer-coarse:right-14"
+          aria-hidden="true"
+        />
+      ) : null}
     </button>
   );
 }
@@ -196,6 +202,10 @@ function ToastList({
       // The toasts sit over the bottom of the thread above the composer; the thread pads by their height.
       const reserve = lift > 0 ? viewport.getBoundingClientRect().height + GAP_ABOVE_PX : 0;
       document.documentElement.style.setProperty("--toast-reserve", `${reserve}px`);
+      // With no composer the toasts cover the page itself; the main column pads by their height.
+      const pageReserve =
+        lift === 0 ? window.innerHeight - viewport.getBoundingClientRect().top + GAP_ABOVE_PX : 0;
+      document.documentElement.style.setProperty("--toast-page-reserve", `${pageReserve}px`);
       const beside = besidePanel();
       if (beside === null) {
         viewport.style.removeProperty("--toast-shift");
@@ -217,6 +227,7 @@ function ToastList({
       viewport.style.removeProperty("--toast-shift");
       viewport.style.removeProperty("--toast-max-width");
       document.documentElement.style.removeProperty("--toast-reserve");
+      document.documentElement.style.removeProperty("--toast-page-reserve");
     };
   }, [shownCount, viewportRef]);
   const [, tick] = useState(0);

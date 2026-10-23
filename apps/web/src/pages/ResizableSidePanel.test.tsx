@@ -57,3 +57,11 @@ it("Escape handled by an overlay above the panel leaves the panel open", () => {
   expect(onClose).not.toHaveBeenCalled();
   act(() => root.unmount());
 });
+
+it("keeps the panel content above the toast reserve", () => {
+  const { el, root } = setup(false);
+  expect(el.querySelector("[data-testid=side-panel]")?.className).toContain(
+    "pb-[var(--toast-page-reserve,0px)]",
+  );
+  act(() => root.unmount());
+});

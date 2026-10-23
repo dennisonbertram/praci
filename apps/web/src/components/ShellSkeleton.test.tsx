@@ -27,7 +27,8 @@ it("offers Try again once opening takes longer than the wait, and not before", a
   const container = document.createElement("div");
   document.body.append(container);
   await act(async () => createRoot(container).render(<OpeningSpace onRetry={reload} />));
-  expect(container.textContent).toContain("Opening Praci…");
+  expect(container.querySelector('[data-testid="thread-skeleton"]')).not.toBeNull();
+  expect(container.textContent).not.toContain("Opening");
   expect(container.querySelector("button")).toBeNull();
   await act(async () => void vi.advanceTimersByTime(OPENING_SLOW_MS));
   expect(container.textContent).toContain("Still opening…");

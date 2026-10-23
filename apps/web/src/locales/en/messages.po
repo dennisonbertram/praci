@@ -516,10 +516,6 @@ msgstr "{heldCount, plural, one {# new file} other {# new files}}"
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 
-#: src/components/inbox/TodoCard.tsx
-msgid "{hiddenCount} more"
-msgstr "{hiddenCount} more"
-
 #: src/lib/relative-time.ts
 msgid "{hours}h ago"
 msgstr "{hours}h ago"
@@ -6362,7 +6358,6 @@ msgstr "Mail from {0} is now marked important"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
-#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
@@ -6796,10 +6791,6 @@ msgstr "More"
 msgid "More {0} actions"
 msgstr "More {0} actions"
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr "More {name} actions"
-
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #. placeholder {0}: row.from
@@ -7038,9 +7029,12 @@ msgid "New folder…"
 msgstr "New folder…"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "New group"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr "New group chat"
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -7854,10 +7848,6 @@ msgstr "Opening {name}"
 #: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr "Opening an email"
-
-#: src/components/ShellSkeleton.tsx
-msgid "Opening Praci…"
-msgstr "Opening Praci…"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -9821,6 +9811,10 @@ msgstr "Sent to {count}"
 msgid "Sent to {forwardedName}"
 msgstr "Sent to {forwardedName}"
 
+#: src/pages/Inbox.tsx
+msgid "Sent. Moved out of Needs reply"
+msgstr "Sent. Moved out of Needs reply"
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
 msgstr "Serenity endpoint is required."
@@ -9960,7 +9954,6 @@ msgstr "Show finances for"
 msgid "Show in sidebar"
 msgstr "Show in sidebar"
 
-#: src/components/inbox/TodoCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"
@@ -10388,6 +10381,10 @@ msgstr "Start recording"
 msgid "Starting"
 msgstr "Starting"
 
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr "Starting up"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10449,9 +10446,18 @@ msgstr "Still looking. This can take a minute."
 msgid "Still opening…"
 msgstr "Still opening…"
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr "Still starting up"
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
+msgstr "Still waiting on the model"
 
 #: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
@@ -10753,10 +10759,6 @@ msgstr "The Carta agent reads your cap table from Carta and answers questions ab
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr "The Carta agent will be able to change your Carta data. It asks before each change."
 
-#: src/lib/run-phase.ts
-msgid "the computer"
-msgstr "the computer"
-
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
@@ -10789,10 +10791,6 @@ msgstr "The last scan thinks this no longer applies."
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
 msgstr "The member who connected Devin left this space. Alerts are paused."
-
-#: src/lib/run-phase.ts
-msgid "the model"
-msgstr "the model"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "The model could not sort your files."
@@ -11783,10 +11781,6 @@ msgstr "Waiting for sign-in"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "Waiting for the API to come back…"
-
-#: src/lib/run-phase.ts
-msgid "Waiting for the computer"
-msgstr "Waiting for the computer"
 
 #: src/lib/run-phase.ts
 msgid "Waiting for the model"

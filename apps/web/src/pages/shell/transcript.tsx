@@ -87,7 +87,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
 import { quoteDraftForSelection } from "../../lib/quote-selection";
-import { runPhaseLine, runPhaseWaitingOn } from "../../lib/run-phase";
+import { runPhaseLine, runPhaseWaitingLabel } from "../../lib/run-phase";
 import {
   isToolOnlyNarration,
   messageHasVisibleBlocks,
@@ -966,8 +966,8 @@ export const Transcript = memo(function Transcript({
             waitingLabel={
               activity?.kind === "tool" && activity.service
                 ? waitingLabel(activity.service)
-                : activity?.kind === "phase" && runPhaseWaitingOn(activity.phase)
-                  ? waitingLabel(runPhaseWaitingOn(activity.phase) ?? "")
+                : activity?.kind === "phase"
+                  ? (runPhaseWaitingLabel(activity.phase) ?? undefined)
                   : undefined
             }
           />

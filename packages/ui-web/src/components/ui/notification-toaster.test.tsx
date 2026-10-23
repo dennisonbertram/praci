@@ -422,3 +422,16 @@ it("keeps the front card's height following its content, so a wrapped body is ne
   expect(className).toContain("min-h-[var(--height)]");
   expect(className).not.toMatch(/(^|\s)h-\[var\(--height\)\]/);
 });
+
+it("pads the page by the toast height when no composer is under it, and marks a linked toast", async () => {
+  await mount();
+  viewport()!.getBoundingClientRect = () =>
+    ({ top: 600, bottom: 672, left: 100, right: 500, height: 72, width: 400 }) as DOMRect;
+  await add(1, { href: "/app/legal" });
+  // innerHeight 768 - 600 + 8
+  expect(document.documentElement.style.getPropertyValue("--toast-page-reserve")).toBe("176px");
+  const chevron = document.querySelector('[data-slot="notification-toast"] button svg');
+  expect(chevron).not.toBeNull();
+  // On touch the 44px Dismiss target covers the corner; the chevron must sit left of it.
+  expect(chevron?.getAttribute("class")).toContain("pointer-coarse:right-14");
+});

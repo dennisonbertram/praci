@@ -58,7 +58,7 @@ export function BotCreatePicker({
             >
               <Users size={16} strokeWidth={1.8} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">
-                <Trans>New group</Trans>
+                <Trans>New group chat</Trans>
               </span>
               <button
                 type="button"

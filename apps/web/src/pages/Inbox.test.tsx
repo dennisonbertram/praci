@@ -570,6 +570,25 @@ it("refetches the to-dos when triage turns on without a new sync", async () => {
   expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
 });
 
+it("says so when a sent reply moves its mail out of Needs reply", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  expect(c.textContent).not.toContain("Moved out of Needs reply");
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(100);
+  expect(c.textContent).toContain("Sent. Moved out of Needs reply");
+});
+
+it("does not say Sent when a Needs reply mail is archived instead of sent", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:inbox-changed")));
+  await dwell(100);
+  expect(c.textContent).not.toContain("Sent. Moved out of Needs reply");
+});
+
 it("archives the selected row with e, moves the selection on, and keeps it out of the list", async () => {
   const c = await render();
   await press("j");
@@ -1032,6 +1051,31 @@ it("does not say First sync once a refresh reports an earlier sync", async () =>
     });
     expect(c.textContent).not.toContain("First sync can take a minute");
     expect(c.textContent).toContain("Reading your mail…");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("does not say First sync while the list query has not answered, and offers Try again after 20 s", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockReturnValue(new Promise(() => {}));
+    rpcMock.refresh.mockReturnValue(new Promise(() => {}));
+    const c = await render();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(c.textContent).not.toContain("First sync can take a minute");
+    const tryAgain = () =>
+      [...c.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+    expect(tryAgain()).toBeUndefined();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(tryAgain()).toBeDefined();
+    const before = rpcMock.todos.mock.calls.length;
+    await act(async () => tryAgain()?.click());
+    expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
   } finally {
     vi.useRealTimers();
   }
