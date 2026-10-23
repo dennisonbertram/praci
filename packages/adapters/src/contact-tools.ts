@@ -110,8 +110,9 @@ export async function contactToolFromTool(
             ...holder,
             ownershipPercent: percent,
           })),
-          amountRaisedUsd: equityRaisedUsd(snapshot.holders, allSafes),
-          amountRaisedSource: "Invested by holders in the table plus Funded SAFEs",
+          amountRaisedUsd: equityRaisedUsd(snapshot.holders, allSafes, snapshot.amountRaisedUsd),
+          amountRaisedSource:
+            "Invested by holders in the table plus Funded SAFEs, or the source company total when no holder has an amount",
         },
         safes,
       };
