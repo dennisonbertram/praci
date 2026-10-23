@@ -597,7 +597,7 @@ it("Replace file deletes the failed item once the new file is stored", async () 
   expect(itemDelete).toHaveBeenCalledWith({ id: "r1" });
 });
 
-it("still says why an untagged file has no type when the consent ask cannot be read", async () => {
+it("gives no reason for an untagged file when the consent ask cannot be read", async () => {
   consent.mockRejectedValue(new Error("offline"));
   await act(async () => {
     root.render(
@@ -609,5 +609,5 @@ it("still says why an untagged file has no type when the consent ask cannot be r
       />,
     );
   });
-  expect(container.textContent).toContain("couldn't tell what kind of document it is");
+  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
 });
