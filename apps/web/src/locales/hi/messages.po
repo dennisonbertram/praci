@@ -6583,6 +6583,10 @@ msgstr ""
 msgid "Memory"
 msgstr "मेमोरी"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Memory provider"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Memory scope"
 msgstr "मेमोरी स्कोप"
@@ -7937,10 +7941,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
-msgstr ""
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Outside memory service"
 msgstr ""
 
 #: src/pages/Board.tsx

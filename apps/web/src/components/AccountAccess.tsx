@@ -121,7 +121,7 @@ export function AccountAccess({
               </div>
             ) : null
           ) : security.hasPassword ? (
-            <div>
+            <div className="grid gap-2">
               <Label htmlFor="delete-password">
                 <Trans>Current password</Trans>
               </Label>
@@ -175,7 +175,7 @@ export function AccountAccess({
                 </Button>
               ) : null}
               {sent ? (
-                <div>
+                <div className="grid gap-2">
                   <Label htmlFor="deletion-code">
                     <Trans>Deletion code</Trans>
                   </Label>
