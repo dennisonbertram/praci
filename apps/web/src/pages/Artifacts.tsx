@@ -836,7 +836,17 @@ function ArtifactCard({
           <ArtifactMimeIcon mimeType={artifact.mimeType} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="line-clamp-2 break-words text-[15px] font-semibold">{title}</div>
+          {/* The version badge shares the title's line so a versioned card is no taller than the rest. */}
+          <div className="flex items-start gap-2">
+            <div className="line-clamp-2 min-w-0 flex-1 break-words text-[15px] font-semibold">
+              {title}
+            </div>
+            {artifact.versionCount > 1 ? (
+              <span className="mt-0.5 shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
+                {`v${artifact.version}`}
+              </span>
+            ) : null}
+          </div>
           {artifact.description ? (
             <div className="line-clamp-1 text-[13px] text-muted-foreground max-md:hidden">
               {artifact.description}
@@ -852,11 +862,6 @@ function ArtifactCard({
             ) : (
               <span className="flex-1 max-md:hidden" />
             )}
-            {artifact.versionCount > 1 ? (
-              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
-                {`v${artifact.version}`}
-              </span>
-            ) : null}
             {showTime ? (
               <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
                 {formatRelativeTime(artifact.createdAt)}
