@@ -6,6 +6,7 @@ import { act, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
+import { delegateWaitTarget } from "../../lib/delegate-wait";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
@@ -63,6 +64,7 @@ async function mount(list: ThreadMessage[], running = false) {
           onScrollRequestHandled={noop}
           artifactTarget={{ botId: "bot_demo" }}
           messages={list}
+          delegate={delegateWaitTarget(list)}
           showToolActivity={false}
           olderCursor={null}
           loadingOlder={false}
@@ -150,7 +152,13 @@ it("says it is still waiting on the agent a request went to, once it stays quiet
     role: "bot",
     botId: "bot_demo",
     blocks: [
-      { kind: "bot_message_sent", toBotId: "bot_inbox", toBotName: "Inbox agent", text: "Send it" },
+      {
+        kind: "bot_message_sent",
+        toBotId: "bot_inbox",
+        toBotName: "Inbox agent",
+        text: "Send it",
+        intent: "request",
+      },
     ],
     createdAt: "2026-01-01T10:00:00.000Z",
   };
