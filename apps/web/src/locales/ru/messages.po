@@ -7038,9 +7038,12 @@ msgid "New folder…"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "Новая группа"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr ""
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -10388,6 +10391,14 @@ msgstr "Начать запись"
 msgid "Starting"
 msgstr "Запуск"
 
+#: src/lib/run-phase.ts
+msgid "starting up"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10751,10 +10762,6 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
-msgstr ""
-
-#: src/lib/run-phase.ts
-msgid "the computer"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -11783,10 +11790,6 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "Ждём возвращения API…"
-
-#: src/lib/run-phase.ts
-msgid "Waiting for the computer"
-msgstr ""
 
 #: src/lib/run-phase.ts
 msgid "Waiting for the model"

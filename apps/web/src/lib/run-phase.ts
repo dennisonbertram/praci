@@ -6,7 +6,7 @@ export function runPhaseLine(phase: RunPhase): string | null {
   const name = phase.name;
   switch (phase.kind) {
     case "computer_wait":
-      return t`Waiting for the computer`;
+      return t`Starting up`;
     case "computer_start":
       return t`Getting ready`;
     case "connecting":
@@ -25,7 +25,7 @@ export function runPhaseWaitingOn(phase: RunPhase): string | null {
   switch (phase.kind) {
     case "computer_wait":
     case "computer_start":
-      return t`the computer`;
+      return t`starting up`;
     case "connecting":
       return phase.name ?? t`tools`;
     case "model_wait":

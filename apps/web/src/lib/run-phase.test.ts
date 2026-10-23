@@ -13,6 +13,12 @@ describe("run phase copy", () => {
     expect(runPhaseWaitingOn(phase)).toBe("the model");
   });
 
+  it("does not call startup the computer", () => {
+    const phase = { kind: "computer_wait", at: AT } as const;
+    expect(runPhaseLine(phase)).toBe("Starting up");
+    expect(runPhaseWaitingOn(phase)).toBe("starting up");
+  });
+
   it("never shows why a run is retrying", () => {
     const phase = { kind: "retrying", name: "the database connection dropped", at: AT } as const;
     expect(runPhaseLine(phase)).toBe("Retrying");

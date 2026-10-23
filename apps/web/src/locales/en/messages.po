@@ -7038,9 +7038,12 @@ msgid "New folder…"
 msgstr "New folder…"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "New group"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr "New group chat"
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -10388,6 +10391,14 @@ msgstr "Start recording"
 msgid "Starting"
 msgstr "Starting"
 
+#: src/lib/run-phase.ts
+msgid "starting up"
+msgstr "starting up"
+
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr "Starting up"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10752,10 +10763,6 @@ msgstr "The Carta agent reads your cap table from Carta and answers questions ab
 #: src/components/integrations/McpDetail.tsx
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr "The Carta agent will be able to change your Carta data. It asks before each change."
-
-#: src/lib/run-phase.ts
-msgid "the computer"
-msgstr "the computer"
 
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
@@ -11783,10 +11790,6 @@ msgstr "Waiting for sign-in"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "Waiting for the API to come back…"
-
-#: src/lib/run-phase.ts
-msgid "Waiting for the computer"
-msgstr "Waiting for the computer"
 
 #: src/lib/run-phase.ts
 msgid "Waiting for the model"
