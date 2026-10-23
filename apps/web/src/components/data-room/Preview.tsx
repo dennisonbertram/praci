@@ -196,6 +196,7 @@ function ReplaceFile({ item }: { item: DataRoomApiItem }) {
 /** Why a finished file has no type: Praci cannot read that kind of file, or may not read documents yet. */
 function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks: boolean }) {
   const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
+  const [consentFailed, setConsentFailed] = useState(false);
   const unsearchable = isUnsearchableType(item.mimeType);
   useEffect(() => {
     if (unsearchable) return;
@@ -203,7 +204,8 @@ function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks:
     rpc.dataRoom
       .consent()
       .then((next) => live && setConsent(next))
-      .catch(() => undefined);
+      // Without the ask, the file still gets a reason below.
+      .catch(() => live && setConsentFailed(true));
     return () => {
       live = false;
     };
@@ -235,8 +237,9 @@ function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks:
       />
     );
   // A file still being tagged may yet get a type; the ask still loading may change the reason.
-  if ((item.status !== "indexing" && item.status !== "ready") || !consent) return null;
-  if (!consent.allowed || consent.recipients.length === 0)
+  if (item.status !== "indexing" && item.status !== "ready") return null;
+  if (!consent && !consentFailed) return null;
+  if (consent && (!consent.allowed || consent.recipients.length === 0))
     return <p className={note}>{t`Not tagged. No model is set up to read documents.`}</p>;
   return (
     <p className={note}>
