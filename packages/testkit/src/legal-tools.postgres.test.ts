@@ -483,10 +483,8 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     });
 
     // Instructions still equal to the previous default are updated; an edited prompt is kept.
-    const older = LEGAL_AGENT_INSTRUCTIONS.replace(
-      " If asked to send a notice or any email, say you do not send mail and that the Inbox agent can; never say email is not connected.",
-      "",
-    ).replace(/ After you draft a notice.*$/, "");
+    // The shipped default before the Inbox offer: the current text without its last sentence group.
+    const older = LEGAL_AGENT_INSTRUCTIONS.replace(/ After you draft a notice.*$/, "");
     expect(older).not.toBe(LEGAL_AGENT_INSTRUCTIONS);
     await prisma.bot.update({ where: { id: bot.id }, data: { instructions: older } });
     expect((await ensureLegalAgent(api, c)).instructions).toBe(LEGAL_AGENT_INSTRUCTIONS);
