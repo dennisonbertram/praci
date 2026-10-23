@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 278 of 278
-- Web and shared components: 735
+- Web and shared component files with stories: 279 of 279
+- Web and shared components: 736
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -380,6 +380,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | Highlight, CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | ComposerError | [apps/web/src/pages/shell/composer-error.tsx](../../apps/web/src/pages/shell/composer-error.tsx) | [composer-error.stories.tsx](../../apps/web/src/pages/shell/composer-error.stories.tsx) | web |
 | Composer | [apps/web/src/pages/shell/composer.tsx](../../apps/web/src/pages/shell/composer.tsx) | [composer.stories.tsx](../../apps/web/src/pages/shell/composer.stories.tsx) | web |
+| DelegateWaitNotice | [apps/web/src/pages/shell/DelegateWaitNotice.tsx](../../apps/web/src/pages/shell/DelegateWaitNotice.tsx) | [DelegateWaitNotice.stories.tsx](../../apps/web/src/pages/shell/DelegateWaitNotice.stories.tsx) | web |
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
 | GroupIntro | [apps/web/src/pages/shell/GroupIntro.tsx](../../apps/web/src/pages/shell/GroupIntro.tsx) | [GroupIntro.stories.tsx](../../apps/web/src/pages/shell/GroupIntro.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
