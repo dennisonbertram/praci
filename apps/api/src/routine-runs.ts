@@ -116,7 +116,11 @@ export async function listRoutineRuns(
       startedAt: run.startedAt?.toISOString() ?? null,
       completedAt: laterOf(run.completedAt, waitingOn.has(run.id) ? null : endedAt.get(run.id)),
       messageId: replyByRun.get(run.id)?.id ?? null,
-      preview: firstLine(replyByRun.get(run.id)?.blocks),
+      // After delegating, the latest message is the rewritten request to the other agent, not a result.
+      preview:
+        waitingOn.has(run.id) || endedAt.has(run.id)
+          ? null
+          : firstLine(replyByRun.get(run.id)?.blocks),
       waitingOn: waitingOn.get(run.id) ?? null,
     })),
   };

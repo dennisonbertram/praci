@@ -430,5 +430,8 @@ it("pads the page by the toast height when no composer is under it, and marks a 
   await add(1, { href: "/app/legal" });
   // innerHeight 768 - 600 + 8
   expect(document.documentElement.style.getPropertyValue("--toast-page-reserve")).toBe("176px");
-  expect(document.querySelector('[data-slot="notification-toast"] button svg')).not.toBeNull();
+  const chevron = document.querySelector('[data-slot="notification-toast"] button svg');
+  expect(chevron).not.toBeNull();
+  // On touch the 44px Dismiss target covers the corner; the chevron must sit left of it.
+  expect(chevron?.getAttribute("class")).toContain("pointer-coarse:right-14");
 });

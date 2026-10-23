@@ -113,7 +113,7 @@ function ToastBody({
   return (
     <button
       type="button"
-      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-12 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-[4.75rem] text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
       onClick={async () => {
         const { href, onSeen } = toast.data ?? {};
         try {
@@ -129,7 +129,7 @@ function ToastBody({
       {content}
       {toast.data?.href ? (
         <ChevronRightIcon
-          className="absolute right-3 bottom-3 size-4 text-muted-foreground pointer-coarse:right-4"
+          className="absolute right-3 bottom-3 size-4 text-muted-foreground pointer-coarse:right-14"
           aria-hidden="true"
         />
       ) : null}
