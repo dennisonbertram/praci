@@ -367,9 +367,9 @@ it("shows a connected Mercury once, under Connected, with its actions", async ()
   expect(container.querySelector('[data-testid="finance-tile-mercury"]')?.textContent).toContain(
     "Open Finance",
   );
-  // Every connected card has the same actions menu, and none repeats "Connected" under its heading.
+  // A card with no actions of its own has no menu (its name opens the page), and none repeats "Connected" under its heading.
   const mercury = container.querySelector('[data-testid="finance-tile-mercury"]');
-  expect(mercury?.querySelector('button[aria-label="More Mercury actions"]')).not.toBeNull();
+  expect(mercury?.querySelector('button[aria-label="More Mercury actions"]')).toBeNull();
   expect(mercury?.querySelector('[data-status="connected"]')).toBeNull();
   expect(container.querySelector('[data-testid="finance-tile-brex"]')).not.toBeNull();
   expect(inConnected("finance-tile-brex")).toBe(false);

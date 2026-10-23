@@ -160,9 +160,8 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
   );
   const rowProps = useRowNavigate();
   const data = q.data;
-  // The last six full months, the same window as a vendor's chart (the month still running is left
-  // out, as there), so the bars and their amounts fit a phone.
-  const trend = data?.trend.slice(-7, -1) ?? [];
+  // The last six full months and the month still running, drawn as a lighter partial bar.
+  const trend = data?.trend.slice(-7) ?? [];
   // The total, the vendors and the transactions all cover this one window, named on the page.
   const windowName =
     data?.start && data.end
@@ -205,6 +204,7 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
                 items={trend.map((m, i) => ({
                   label: monthAxisLabels(trend.map((x) => x.month))[i] ?? "",
                   cents: m.cents,
+                  partial: i === trend.length - 1,
                 }))}
                 height={160}
                 label={t`Monthly spend`}

@@ -143,12 +143,14 @@ function Summary({
   safes,
   safesLoaded,
   safesFailed,
+  syncing,
   onRetry,
 }: {
   snapshot: Snapshot;
   safes: readonly Safe[];
   safesLoaded: boolean;
   safesFailed: boolean;
+  syncing: boolean;
   onRetry: () => void;
 }) {
   useHideAmounts();
@@ -166,7 +168,8 @@ function Summary({
   const raisedUsd = equityRaisedUsd(snapshot.holders, safes, snapshot.amountRaisedUsd);
   const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
   // Until the first SAFE list answers, a dash would read as "nothing raised".
-  const loading = !safesLoaded && !safesFailed;
+  // A running sync is still filling in the figures, so an unknown total is not final either.
+  const loading = (!safesLoaded && !safesFailed) || (syncing && raisedUsd == null);
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure
@@ -1256,6 +1259,7 @@ export function InvestorsPage({
                         safes={safes}
                         safesLoaded={safesLoaded}
                         safesFailed={safesFailed}
+                        syncing={syncing}
                         onRetry={() => void loadCap()}
                       />
                     )}

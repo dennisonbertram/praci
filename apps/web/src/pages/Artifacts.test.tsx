@@ -241,6 +241,24 @@ it("keeps the search and filters to the list: phones hide them beside an open do
   }
 });
 
+it("puts a grid card's version badge on the title line so versioned cards are no taller", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  window.localStorage.removeItem("rakazo:artifacts-view-mode");
+  api.listSpace.mockResolvedValue({
+    items: [{ ...artifact("Alpha notes", "artifact-1"), version: 2, versionCount: 2 }],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts();
+  try {
+    const badge = [...page.container.querySelectorAll("a span")].find(
+      (el) => el.textContent === "v2",
+    );
+    expect(badge?.parentElement?.textContent).toContain("Alpha notes");
+  } finally {
+    await page.cleanup();
+  }
+});
+
 it("shows artifacts as a table in list view and as cards in grid view, and remembers the choice", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   window.localStorage.removeItem("rakazo:artifacts-view-mode");

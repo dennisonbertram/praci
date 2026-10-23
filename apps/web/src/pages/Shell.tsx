@@ -6006,7 +6006,7 @@ export function ShellPage() {
             setPaneDraggingFiles(false);
             if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
           }}
-          className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
+          className={`isolate flex min-w-0 flex-1 flex-col bg-background pb-[var(--toast-page-reserve,0px)] outline-none ${
             paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
