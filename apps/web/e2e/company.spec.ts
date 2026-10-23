@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { companyCalendarItems } from "@rakazo/core";
 import { companyFixture } from "../src/pages/company-fixtures";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
@@ -8,17 +9,82 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await page.setViewportSize({ width: 1500, height: 1000 });
   const data = structuredClone(companyFixture);
   let editRequests = 0;
+  let calendarRequests = 0;
+  let eventFactUnavailable = true;
+  let legalDone = false;
   data.edges[0]!.role = null;
   data.events[0]!.occursOn = { date: "2024-01-01", precision: "year" };
+  data.events.push({
+    ...data.events[0]!,
+    id: "board",
+    title: "Board meeting",
+    stream: "company",
+    kind: "other",
+    occursOn: { date: "2024-07-15", precision: "day" },
+  });
   await page.clock.setFixedTime(new Date("2024-07-01T12:00:00Z"));
   data.entities[0]!.attrs.description = "Raised $50,000 for warehouse robots.";
   await page.route("**/rpc/company/**", async (route) => {
     const method = new URL(route.request().url()).pathname.split("/").at(-1);
+    const input = (
+      route.request().postDataJSON() as {
+        json?: {
+          kind?: "entity" | "edge" | "event";
+          id?: string;
+          eventId?: string;
+          title?: string;
+        };
+      } | null
+    )?.json;
     if (method?.startsWith("edit")) editRequests++;
+    if (method === "calendar") calendarRequests++;
     if (method === "confirm") data.entities[0]!.status = "confirmed";
+    if (method === "editEvent" && input?.eventId === "board" && input.title) {
+      data.events.find((event) => event.id === "board")!.title = input.title;
+    }
+    let fact: unknown = null;
+    if (method === "fact" && input?.kind && input.id) {
+      const record =
+        input.kind === "entity"
+          ? data.entities.find((entity) => entity.id === input.id)
+          : input.kind === "edge"
+            ? data.edges.find((edge) => edge.id === input.id)
+            : data.events.find((event) => event.id === input.id);
+      if (record && (input.kind !== "event" || !eventFactUnavailable)) {
+        fact = { kind: input.kind, record };
+      }
+      if (input.kind === "event") eventFactUnavailable = false;
+    }
+    const calendar = [
+      ...companyCalendarItems(data, "2024-07"),
+      ...(!legalDone
+        ? [
+            {
+              id: "legal:notice",
+              title: "Renewal notice",
+              date: "2024-07-01",
+              stream: "legal",
+              status: "open",
+              anniversary: false,
+              fact: null,
+              legalDeadlineId: "notice",
+            },
+          ]
+        : []),
+    ];
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ json: method === "page" ? data : { ok: true }, meta: [] }),
+      body: JSON.stringify({
+        json:
+          method === "page"
+            ? data
+            : method === "calendar"
+              ? calendar
+              : method === "fact"
+                ? fact
+                : { ok: true },
+        meta: [],
+      }),
     });
   });
   await signup(page, `company-${Date.now()}@rakazo.test`, "password12", "Company User");
@@ -119,6 +185,62 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await touch.send("Emulation.setTouchEmulationEnabled", { enabled: false });
   await touch.detach();
   await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.getByRole("tab", { name: "Calendar", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Renewal notice" })).toBeVisible();
+  const calendarRegion = page.getByRole("region", { name: "Calendar", exact: true });
+  await expect(calendarRegion.getByRole("button", { name: /Board meeting/ })).toBeVisible();
+  await expect(calendarRegion.getByText("Not confirmed", { exact: true })).toBeVisible();
+  await expect(calendarRegion.getByText(data.events[0]!.title)).toHaveCount(0);
+  await expect(calendarRegion.getByRole("checkbox", { name: "Anniversaries" })).not.toBeChecked();
+  await captureScreenshot(page, testInfo, "company-calendar");
+  await calendarRegion.getByRole("button", { name: "Agenda", exact: true }).click();
+  await expect(calendarRegion.getByText("2024-07-01", { exact: true })).toBeVisible();
+  await calendarRegion.getByRole("button", { name: "Legal", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Renewal notice" })).toHaveCount(0);
+  await page.getByTestId("hide-amounts-toggle").click();
+  const boardMeeting = calendarRegion.getByRole("button", { name: /Board meeting/ });
+  await boardMeeting.click();
+  const unavailableFact = calendarRegion.getByRole("alert");
+  await expect(unavailableFact).toContainText("Fact unavailable");
+  await expect.poll(() => calendarRequests).toBeGreaterThan(1);
+  await expect(unavailableFact).toContainText("Fact unavailable");
+  await boardMeeting.click();
+  const eventDetail = page.getByRole("dialog", { name: "Board meeting" });
+  await expect(eventDetail).toBeVisible();
+  await expect(unavailableFact).toHaveCount(0);
+  await eventDetail.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(eventDetail).toHaveCount(0);
+  await expect(unavailableFact).toHaveCount(0);
+  eventFactUnavailable = true;
+  const calendarRequestsBeforeRetry = calendarRequests;
+  await boardMeeting.click();
+  await expect(unavailableFact).toContainText("Fact unavailable");
+  await expect.poll(() => calendarRequests).toBeGreaterThan(calendarRequestsBeforeRetry);
+  await expect(unavailableFact).toContainText("Fact unavailable");
+  await unavailableFact.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(unavailableFact).toHaveCount(0);
+  await boardMeeting.click();
+  await expect(eventDetail).toBeVisible();
+  await eventDetail.getByRole("button", { name: "Edit", exact: true }).click();
+  await eventDetail.getByLabel("Name", { exact: true }).fill("Board meeting updated");
+  await eventDetail.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(eventDetail).toHaveCount(0);
+  await expect(calendarRegion.getByRole("button", { name: /Board meeting updated/ })).toBeVisible();
+  await expect(calendarRegion.getByRole("button", { name: "Agenda", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(calendarRegion.getByRole("button", { name: "Legal", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(calendarRegion.getByLabel("Month", { exact: true })).toHaveValue("2024-07");
+  expect(editRequests).toBe(1);
+  await page.getByTestId("hide-amounts-toggle").click();
+  await calendarRegion.getByRole("button", { name: "Legal", exact: true }).click();
+  legalDone = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("link", { name: "Renewal notice" })).toHaveCount(0);
   await page.getByRole("tab", { name: "People", exact: true }).click();
   await expect(page.getByRole("cell", { name: "2024", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Alex Reed", exact: true }).click();
@@ -132,14 +254,15 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await personDetail.getByRole("button", { name: "Edit", exact: true }).click();
   await personDetail.getByRole("button", { name: "Save", exact: true }).click();
   await expect(personDetail).toHaveCount(0);
-  expect(editRequests).toBe(0);
+  const editsAfterEntityNoOp = editRequests;
+  expect(editsAfterEntityNoOp).toBe(1);
   await page.getByRole("button", { name: "—", exact: true }).click();
   const relationship = page.getByRole("dialog", { name: "works at" });
   await relationship.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(relationship.getByLabel("Role", { exact: true })).toHaveValue("");
   await relationship.getByRole("button", { name: "Save", exact: true }).click();
   await expect(relationship).toHaveCount(0);
-  expect(editRequests).toBe(0);
+  expect(editRequests).toBe(editsAfterEntityNoOp);
   data.entities = [];
   data.edges = [];
   data.events[0]!.entityIds = [];

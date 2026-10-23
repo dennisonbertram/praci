@@ -30,6 +30,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 import { todayIso } from "../lib/legal-format";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
+import { CompanyCalendar } from "./CompanyCalendar";
 import { CompanyFactDetail } from "./CompanyFactDetail";
 import { CompanyHistory } from "./CompanyHistory";
 import { CompanyPrivacy } from "./CompanyPrivacy";
@@ -43,6 +44,7 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
   const view = params.get("view") ?? "overview";
   const [fact, setFact] = useState<CompanyFact | null>(null);
   const [privacy, setPrivacy] = useState(false);
+  const [calendarRevision, setCalendarRevision] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   async function exportMap() {
@@ -71,6 +73,10 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
     const timer = setInterval(reload, 4000);
     return () => clearInterval(timer);
   }, [running, reload]);
+  const refreshCompany = () => {
+    setCalendarRevision((revision) => revision + 1);
+    reload();
+  };
   const people = data?.entities.filter((row) => row.kind === "person") ?? [];
   const organisations = data?.entities.filter((row) => row.kind === "organisation") ?? [];
   const profile = data?.entities.find((row) => row.kind === "company");
@@ -169,7 +175,7 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
           {exportError}
         </p>
       )}
-      {privacy && <CompanyPrivacy onClose={() => setPrivacy(false)} onChanged={page.reload} />}
+      {privacy && <CompanyPrivacy onClose={() => setPrivacy(false)} onChanged={refreshCompany} />}
       <Tabs value={view} onValueChange={(next) => setParams({ view: String(next) })}>
         <TabsList>
           <TabsTrigger value="overview">
@@ -183,6 +189,9 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
           </TabsTrigger>
           <TabsTrigger value="history">
             <Trans>History</Trans>
+          </TabsTrigger>
+          <TabsTrigger value="calendar">
+            <Trans>Calendar</Trans>
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -198,6 +207,9 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
       {data && (
         <div className="mt-6 space-y-8">
           {view === "history" && <CompanyHistory data={data} onOpen={setFact} />}
+          {view === "calendar" && (
+            <CompanyCalendar onOpen={setFact} refreshRevision={calendarRevision} />
+          )}
           {running && (
             <p role="status" className="text-sm text-muted-foreground">
               <Trans>Import in progress</Trans>
@@ -211,7 +223,7 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
                 <Trans>Partial import</Trans>
               </p>
             )}
-          {data.entities.length === 0 && data.events.length === 0 && (
+          {view === "overview" && data.entities.length === 0 && data.events.length === 0 && (
             <div className="py-16 text-center text-muted-foreground">
               <Trans>No company facts yet</Trans>
             </div>
@@ -388,7 +400,7 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
           onClose={() => setFact(null)}
           onChanged={() => {
             setFact(null);
-            reload();
+            refreshCompany();
           }}
         />
       )}

@@ -352,6 +352,7 @@ import {
   startCartaSync,
 } from "./carta-agent.js";
 import { ensureCompanyAgent, ensureCompanyImporter } from "./company-agent.js";
+import { companyCalendar } from "./company-calendar.js";
 import type { CompanyImportPage } from "./company-import-page.js";
 import { companyFact, companyPage } from "./company-page.js";
 import {
@@ -7353,6 +7354,9 @@ export function createRouter(deps: RouterDeps) {
           });
       }),
       page: authed.company.page.handler(({ context }) => companyPage(deps.prisma, context.actor)),
+      calendar: authed.company.calendar.handler(({ context, input }) =>
+        companyCalendar(deps.prisma, context.actor, input),
+      ),
       fact: authed.company.fact.handler(({ context, input }) =>
         companyFact(deps.prisma, context.actor, input),
       ),
