@@ -1057,6 +1057,9 @@ async function mailSend(
         .catch(() => undefined);
       return { error: "Mail needs to be reconnected in Praci before it can send." };
     }
+    // The message being answered (or the draft) is gone: the composer can still send it.
+    if (error instanceof MailProviderError && error.kind === "not_found")
+      return { error: "Could not send. Open it in the composer to send it." };
     throw error;
   }
 }
