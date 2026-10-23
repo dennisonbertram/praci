@@ -64,7 +64,7 @@ export function PageAgentsRow({
           className="size-2 shrink-0 rounded-full bg-primary"
         />
       ) : null}
-      <span className="text-[12px] tabular-nums">{count}</span>
+      {count > 0 ? <span className="text-[12px] tabular-nums">{count}</span> : null}
     </button>
   );
 }

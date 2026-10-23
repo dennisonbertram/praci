@@ -323,7 +323,11 @@ export function DetailHead({
     title === undefined ? null : (
       <h1 className="min-w-0 text-lg leading-7 font-semibold">{title}</h1>
     );
-  const end = actions ? <div className="ms-auto flex items-center gap-2">{actions}</div> : null;
+  // On a phone the actions join the title row's flex line (`contents`), so Ask stays beside the
+  // title and the company and the page's own action take the next line.
+  const end = actions ? (
+    <div className="ms-auto flex items-center gap-2 max-sm:contents">{actions}</div>
+  ) : null;
   return (
     <>
       <div
@@ -385,7 +389,7 @@ export function DetailHead({
         {/* On a phone the company takes what the row has left (and truncates). Beside a Back button it
             keeps room for its name and wraps to the next line, with Ask, rather than being cut to a few letters. */}
         <CompanyMenu
-          className={back ? undefined : "max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16"}
+          className={back ? "max-sm:order-1" : "max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16"}
         />
         {back ? end : null}
       </div>
@@ -493,8 +497,12 @@ export function DetailPage({
           title={notFound || error || loading ? undefined : title}
           actions={
             <>
-              {action}
-              <AskAgentButton />
+              {action ? (
+                <span className="flex items-center gap-2 max-sm:order-2">{action}</span>
+              ) : null}
+              <span className="max-sm:ms-auto">
+                <AskAgentButton />
+              </span>
             </>
           }
         />
@@ -711,7 +719,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
       className="group/row cursor-pointer"
       {...rowProps(financePath.transaction(row.id), { ...back, preview: row })}
     >
-      <TableCell className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
+      <TableCell className="hidden w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground @md:table-cell">
         {shortDay(txnDay(row))}
       </TableCell>
       <TableCell className="min-w-0 break-words">
@@ -722,6 +730,8 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
         >
           {row.counterparty}
         </Link>
+        {/* Narrow, the date sits under the name instead of taking a column from it. */}
+        <div className="text-xs text-muted-foreground @md:hidden">{shortDay(txnDay(row))}</div>
         {row.memo ? (
           <div className="line-clamp-1 text-xs text-muted-foreground">
             {maskCurrencyWhenHidden(row.memo)}
@@ -752,7 +762,7 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
     <>
       {/* The whole row toggles; the vendor button carries the accessible name and keyboard focus (its click bubbles here). */}
       <TableRow className="group/row cursor-pointer" onClick={() => setOpen((v) => !v)}>
-        <TableCell className="w-[4.5rem] pe-2">
+        <TableCell className="hidden w-[4.5rem] pe-2 @md:table-cell">
           <ChevronRight
             aria-hidden="true"
             className={cn("size-3.5 text-muted-foreground", open && "rotate-90")}
@@ -764,6 +774,13 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
             aria-expanded={open}
             className="text-start outline-none hover:underline focus-visible:underline"
           >
+            <ChevronRight
+              aria-hidden="true"
+              className={cn(
+                "me-1 inline size-3.5 text-muted-foreground @md:hidden",
+                open && "rotate-90",
+              )}
+            />
             {name}
           </button>
           <div className="text-xs text-muted-foreground">
@@ -802,7 +819,7 @@ export function TransactionTable({
       <TableHeader>
         <TableHeadRow>
           {/* Named in both views: an opened vendor's rows show their dates and status here. */}
-          <TableHead className="w-[4.5rem]">
+          <TableHead className="hidden w-[4.5rem] @md:table-cell">
             <Trans>Date</Trans>
           </TableHead>
           <TableHead>

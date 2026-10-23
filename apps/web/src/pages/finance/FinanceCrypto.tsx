@@ -102,10 +102,10 @@ function WalletRows({
             <TableRow key={wallet.id} className="first:border-t-0">
               <TableCell>
                 <span className="font-semibold">{name}</span>
-                <span className="ms-1.5 text-muted-foreground">
+                <div className="whitespace-nowrap text-xs text-muted-foreground">
                   {typeNames[wallet.type]}
                   {threshold ? ` · ${threshold}` : null}
-                </span>
+                </div>
                 {/* Which wallet this is: its ENS name, else its address, unless the name already is it. */}
                 {wallet.label ? (
                   <div className="text-xs text-muted-foreground">
@@ -116,7 +116,7 @@ function WalletRows({
               <TableCell className="text-end tabular-nums">
                 {money(cents.get(wallet.id) ?? 0)}
               </TableCell>
-              <TableCell className="w-8 text-end">
+              <TableCell className="w-6 pe-0 text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={

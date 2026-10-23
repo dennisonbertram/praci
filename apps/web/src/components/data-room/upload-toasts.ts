@@ -66,9 +66,8 @@ export type UploadToast = {
 
 /** An upload that reports no progress for this long is called slow, and can be cancelled or retried. */
 const UPLOAD_STALL_MS = 15_000;
-// Finished and failed toasts both clear after 8 s, so none lingers over the page.
+// A finished toast clears after 8 s. A failed one stays until its X: the user may have looked away.
 const DONE_TOAST_MS = 8_000;
-const FAILED_TOAST_MS = 8_000;
 /** Short: it only confirms, and it sits over the lower right of the page. */
 const DELETED_TOAST_MS = 5_000;
 /** The Auto-sort toast carries Undo, so it stays longer. */
@@ -160,8 +159,7 @@ async function followImport(id: number, importId: string, current: () => boolean
     if (row.finished) {
       // Nothing was filed and entries failed: the zip itself could not be read.
       if (row.done === 0) {
-        update(id, { kind: "error", reason: "zip-invalid" });
-        return dismissLater(id, FAILED_TOAST_MS);
+        return update(id, { kind: "error", reason: "zip-invalid" });
       }
       update(id, { kind: "imported", count: row.done });
       window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
@@ -197,7 +195,6 @@ async function uploadOne(
           }
         : undefined;
     update(id, { kind: "error", reason, ...(toTop ? { toTop } : {}) });
-    dismissLater(id, FAILED_TOAST_MS);
   };
   const controller = new AbortController();
   let fraction = 0;

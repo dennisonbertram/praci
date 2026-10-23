@@ -6300,7 +6300,6 @@ msgstr "음성 서비스를 불러오는 중…"
 msgid "Loading Zernio queue…"
 msgstr ""
 
-#: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/RowsSkeleton.tsx
@@ -12176,7 +12175,7 @@ msgid "You have control"
 msgstr "직접 조작 중"
 
 #: src/components/inbox/CleanupSenderRow.tsx
-msgid "You read most of these"
+msgid "You read most of these, so keep them unless you are sure"
 msgstr ""
 
 #. placeholder {0}: item.name

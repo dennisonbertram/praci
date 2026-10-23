@@ -119,6 +119,15 @@ it("shows the More menu trigger below md as well as on touch, since the inline a
   expect(more?.className).toContain("pointer-coarse:inline-flex");
 });
 
+it("reserves room for the inline toolbar only where a pointer can show it", async () => {
+  await show();
+  const subject = [...document.querySelectorAll("button[data-row-id] span")].find((el) =>
+    el.className.includes("@md:pointer-fine:pe-24"),
+  );
+  expect(subject).toBeTruthy();
+  expect(subject?.className).not.toMatch(/(^| )@md:pe-24/);
+});
+
 it("is a 56px row", async () => {
   await show();
   expect(document.querySelector("button[data-row-id]")?.className).toContain("h-14");

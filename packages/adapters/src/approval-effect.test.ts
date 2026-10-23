@@ -595,7 +595,8 @@ describe("payment outcome wording for the model", () => {
   ])("never claims success in the note: %s", (_name, result) => {
     const out = approvedPaymentResult(result, "Mercury") as { note: string };
     expect(out.note).toContain("approval in Praci is recorded");
-    expect(out.note).toContain("exactly as returned");
+    expect(out.note).toContain("in plain words");
+    expect(out.note).toContain("never quote a code value");
     expect(out.note).not.toMatch(/it was sent|was sent and|No further approval/);
     expect(out.note).toContain("do not say the payment was sent unless");
   });
@@ -603,6 +604,11 @@ describe("payment outcome wording for the model", () => {
   it("speaks to the person in the second person after a denial", () => {
     expect(DENIED_ACTION_MESSAGE).toContain("you denied");
     expect(DENIED_ACTION_MESSAGE).not.toMatch(/the user denied/i);
+  });
+
+  it("says it was not submitted and sends the person nowhere else", () => {
+    expect(DENIED_ACTION_MESSAGE).toContain("it was not submitted");
+    expect(DENIED_ACTION_MESSAGE).toContain("Do not send them to another agent");
   });
 });
 

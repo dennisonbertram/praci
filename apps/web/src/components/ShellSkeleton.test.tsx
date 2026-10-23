@@ -13,6 +13,7 @@ vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray) => parts.join(""),
 }));
 
+import { RowsSkeleton } from "./RowsSkeleton";
 import {
   OPENING_SLOW_MS,
   OpeningSpace,
@@ -66,4 +67,16 @@ it("shows Still loading and Try again only after 20 s", async () => {
   expect(container.textContent).toContain("Still loading…");
   await act(async () => container.querySelector("button")?.click());
   expect(retry).toHaveBeenCalledTimes(1);
+});
+
+it("RowsSkeleton, used by Contacts and the lazy page fallbacks, offers Try again after 20 s", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () => createRoot(container).render(<RowsSkeleton />));
+  expect(container.querySelector("button")).toBeNull();
+  await act(async () => void vi.advanceTimersByTime(STILL_LOADING_MS));
+  expect(container.textContent).toContain("Still loading…");
+  expect(container.querySelector("button")?.textContent).toBe("Try again");
 });

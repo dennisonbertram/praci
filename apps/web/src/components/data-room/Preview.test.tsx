@@ -596,3 +596,18 @@ it("Replace file deletes the failed item once the new file is stored", async () 
   onUploaded("new-id");
   expect(itemDelete).toHaveBeenCalledWith({ id: "r1" });
 });
+
+it("gives no reason for an untagged file when the consent ask cannot be read", async () => {
+  consent.mockRejectedValue(new Error("offline"));
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, name: "nda.pdf", mimeType: "application/pdf" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
+});
