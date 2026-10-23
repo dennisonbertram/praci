@@ -1,7 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CashPoint } from "@rakazo/contracts";
-import { useEffect, useId, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 import {
   axisMoney,
   dayAxisLabels,
@@ -60,6 +60,9 @@ function lineRange(min: number, max: number) {
 export const shade = (index: number) =>
   `color-mix(in srgb, var(--foreground) ${[100, 78, 60, 46, 34, 24, 16][index % 7]}%, var(--card))`;
 
+/** How far a sideways-scrolling chart is scrolled, so the y axis labels can stay at the left edge. */
+const ScrollX = createContext(0);
+
 /** An SVG drawn at the container's width, so text keeps a fixed size at any width. */
 export function Chart({
   height,
@@ -77,6 +80,7 @@ export function Chart({
   useHideAmounts();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [scrollX, setScrollX] = useState(0);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -89,10 +93,18 @@ export function Chart({
   }, []);
   const svgWidth = Math.max(width, minWidth);
   useEffect(() => {
-    if (ref.current && svgWidth > width) ref.current.scrollLeft = ref.current.scrollWidth;
+    if (ref.current && svgWidth > width) {
+      ref.current.scrollLeft = ref.current.scrollWidth;
+      setScrollX(ref.current.scrollLeft);
+    }
   }, [svgWidth, width]);
   return (
-    <div ref={ref} className="w-full overflow-x-auto" style={{ height }}>
+    <div
+      ref={ref}
+      className="w-full overflow-x-auto"
+      style={{ height }}
+      onScroll={(e) => setScrollX(e.currentTarget.scrollLeft)}
+    >
       {width > 0 ? (
         <svg
           role="img"
@@ -102,7 +114,7 @@ export function Chart({
           viewBox={`0 0 ${svgWidth} ${height}`}
           className="block max-w-none"
         >
-          {children(svgWidth)}
+          <ScrollX.Provider value={scrollX}>{children(svgWidth)}</ScrollX.Provider>
         </svg>
       ) : null}
     </div>
@@ -127,6 +139,7 @@ function Grid({
   scale: { step: number; top: number; floor?: number };
 }) {
   const hidden = useHideAmounts();
+  const scrollX = useContext(ScrollX);
   const floor = scale.floor ?? 0;
   const lines: number[] = [];
   // With nothing to plot every step rounds to "$0"; one $0 line is drawn instead of a stack of them.
@@ -148,10 +161,12 @@ function Grid({
             />
             {hidden ? null : (
               <text
-                x={left - 6}
+                x={left - 6 + scrollX}
                 y={y + 3}
                 textAnchor="end"
-                className="fill-muted-foreground"
+                className="fill-muted-foreground stroke-card"
+                strokeWidth={4}
+                paintOrder="stroke"
                 fontSize={12}
               >
                 {axisMoney(v)}
@@ -873,7 +888,7 @@ export function MonthBars({
                       className="fill-muted-foreground"
                       fontSize={12}
                     >
-                      {money(item.cents)}
+                      {slot < 52 ? axisMoney(item.cents) : money(item.cents)}
                     </text>
                   )}
                   <text

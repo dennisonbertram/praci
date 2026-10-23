@@ -9,7 +9,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { BurnLines, LineChart } from "./charts";
+import { BurnLines, LineChart, MonthBars } from "./charts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -469,4 +469,31 @@ it("keeps the last axis label clear of the one before it", async () => {
   const xs = ticks.map((t) => Number(t.getAttribute("x")));
   expect(ticks.at(-1)?.textContent).toBe("Oct 30");
   expect(xs.at(-1)! - xs.at(-2)!).toBeGreaterThanOrEqual(80);
+});
+
+it("keeps the y axis labels at the left edge of a chart scrolled sideways", async () => {
+  const { el, done } = await mount(
+    300,
+    <LineChart values={[0, 5_000_00, 10_000_00]} labels={["a", "b", "c"]} height={120} label="x" />,
+  );
+  const box = el.querySelector("div.overflow-x-auto") as HTMLElement;
+  const axis = () => el.querySelector("svg text") as SVGTextElement;
+  const before = Number(axis().getAttribute("x"));
+  await act(async () => {
+    box.scrollLeft = 80;
+    box.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+  expect(Number(axis().getAttribute("x"))).toBe(before + 80);
+  done();
+});
+
+it("abbreviates bar amounts that would touch at phone width", async () => {
+  const items = Array.from({ length: 7 }, (_, i) => ({ label: `M${i}`, cents: 750_000 }));
+  const narrow = await mount(327, <MonthBars items={items} label="x" />);
+  expect(narrow.el.textContent).toContain("$7.5k");
+  expect(narrow.el.textContent).not.toContain("$7,500");
+  narrow.done();
+  const wide = await mount(900, <MonthBars items={items} label="x" />);
+  expect(wide.el.textContent).toContain("$7,500");
+  wide.done();
 });
