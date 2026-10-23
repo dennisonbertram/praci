@@ -7290,6 +7290,51 @@ export function createRouter(deps: RouterDeps) {
         return loadAutoReviewSettings(deps, context.actor);
       }),
     },
+    companyImport: {
+      create: authed.companyImport.create.handler(({ context, input }) =>
+        deps.companyImport.create(context.actor, input),
+      ),
+      progress: authed.companyImport.progress.handler(({ context, input }) =>
+        deps.companyImport.progress(context.actor, input.runId),
+      ),
+      consentStatus: authed.companyImport.consentStatus.handler(({ context, input }) =>
+        deps.companyImport.consentStatus(context.actor, input.runId, input.sourceId),
+      ),
+      grantConsent: authed.companyImport.grantConsent.handler(({ context, input }) =>
+        deps.companyImport.grantConsent(context.actor, input),
+      ),
+      start: authed.companyImport.start.handler(({ context, input }) =>
+        deps.companyImport.start(context.actor, input.runId),
+      ),
+      action: authed.companyImport.action.handler(({ context, input }) =>
+        deps.companyImport.action(context.actor, input.runId, input.action, input.tokenCap),
+      ),
+      subscribe: authed.companyImport.subscribe.handler(async function* ({ context, input }) {
+        const stream = deps.companyImport.follow(context.actor, input.runId, context.signal);
+        const iterator = withHeartbeat(stream, {
+          signal: context.signal,
+          stillAuthorized: context.stillAuthorized,
+          heartbeatMs: HEARTBEAT_MS,
+          recheckMs: SESSION_RECHECK_MS,
+        })[Symbol.asyncIterator]();
+        let pending = iterator.next();
+        try {
+          yield await deps.companyImport.progress(context.actor, input.runId);
+          while (true) {
+            const next = await pending;
+            if (next.done) return;
+            if (next.value === HEARTBEAT) {
+              yield await deps.companyImport.progress(context.actor, input.runId);
+            } else {
+              yield next.value;
+            }
+            pending = iterator.next();
+          }
+        } finally {
+          await iterator.return?.(undefined);
+        }
+      }),
+    },
     dataRoom: {
       agent: authed.dataRoom.agent.handler(({ context }) =>
         ensureDataRoomAgent({ repos }, context.actor).catch((error: unknown) => {

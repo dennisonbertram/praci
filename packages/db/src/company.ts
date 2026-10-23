@@ -761,20 +761,28 @@ async function createCandidate(
     sourceKey: string;
     quote: string;
     contentHash: string;
+    importRunId?: string | null;
   },
 ): Promise<string> {
+  const importRun = data.importRunId
+    ? await db.companyImportRun.findFirst({
+        where: { ...scope, id: data.importRunId },
+        select: { id: true },
+      })
+    : null;
   const candidateData = {
     ...data,
+    importRunId: importRun?.id ?? null,
     proposedFact: data.proposedFact as Prisma.InputJsonValue,
   };
   const existing = await db.companyCandidate.findFirst({
     where: { ...scope, kind: data.kind, reason: data.reason, sourceKey: data.sourceKey },
-    select: { id: true },
+    select: { id: true, importRunId: true },
   });
   if (existing) {
     await db.companyCandidate.update({
       where: { id: existing.id },
-      data: candidateData,
+      data: { ...candidateData, importRunId: existing.importRunId },
     });
     return existing.id;
   }
@@ -850,6 +858,34 @@ async function evidenceCreateData(
   };
 }
 
+async function persistImportEvidence(
+  db: CompanyDb,
+  scope: Scope,
+  data: Awaited<ReturnType<typeof evidenceCreateData>>,
+) {
+  await db.companyEvidence.createMany({ data: [data], skipDuplicates: true });
+  const evidence = await db.companyEvidence.findFirst({
+    where: {
+      ...scope,
+      factKind: data.factKind,
+      factId: data.factId,
+      sourceKey: data.sourceKey,
+      contentHash: data.contentHash,
+    },
+    select: { id: true },
+  });
+  if (!evidence || !data.extractorRunId) return;
+  const run = await db.companyImportRun.findFirst({
+    where: { ...scope, id: data.extractorRunId },
+    select: { id: true },
+  });
+  if (!run) return;
+  await db.companyImportEvidence.createMany({
+    data: [{ ...scope, runId: run.id, evidenceId: evidence.id }],
+    skipDuplicates: true,
+  });
+}
+
 async function importEntity(
   db: CompanyDb,
   scope: Scope,
@@ -922,6 +958,7 @@ async function importEntity(
         sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
       return { deferred: true, record: null, candidateId };
     }
@@ -983,6 +1020,7 @@ async function importEntity(
       sourceKey: key,
       quote: input.evidence.quote,
       contentHash: input.evidence.contentHash,
+      importRunId: input.evidence.extractorRunId ?? null,
     });
   } else if (input.entity.kind === "company") {
     const company = await db.companyEntity.findFirst({
@@ -1032,6 +1070,7 @@ async function importEntity(
         sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
     }
   }
@@ -1082,6 +1121,7 @@ async function importEntity(
         sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
     }
   }
@@ -1135,10 +1175,7 @@ async function importEntity(
       claimFingerprint,
       contradictsLockedValue ? "contradicts" : input.evidence.stance,
     );
-    await db.companyEvidence.createMany({
-      data: [replayEvidence],
-      skipDuplicates: true,
-    });
+    await persistImportEvidence(db, scope, replayEvidence);
     if (contradictsLockedValue) {
       await db.companyEvidence.updateMany({
         where: {
@@ -1218,9 +1255,11 @@ async function importEntity(
     },
     include: ENTITY_INCLUDE,
   });
-  await db.companyEvidence.create({
-    data: await evidenceCreateData(db, scope, "entity", row.id, input.evidence, claimFingerprint),
-  });
+  await persistImportEvidence(
+    db,
+    scope,
+    await evidenceCreateData(db, scope, "entity", row.id, input.evidence, claimFingerprint),
+  );
   if (matchedGroups.length > 1) {
     // Conflicting identifiers remain candidates; none is attached to the new entity.
     return mapEntity(db, scope, row);
@@ -1348,10 +1387,7 @@ async function importEdge(
     fingerprint,
     contradicts ? "contradicts" : input.evidence.stance,
   );
-  await db.companyEvidence.createMany({
-    data: [edgeEvidence],
-    skipDuplicates: true,
-  });
+  await persistImportEvidence(db, scope, edgeEvidence);
   if (contradicts) {
     await db.companyEvidence.updateMany({
       where: {
@@ -1466,6 +1502,7 @@ async function importEvent(
         sourceKey: assertedSourceKey,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
       return { deferred: true, record: null, candidateId };
     }
@@ -1585,10 +1622,7 @@ async function importEvent(
     rawKey === key ? fingerprint : rawFingerprint,
     contradicts ? "contradicts" : input.evidence.stance,
   );
-  await db.companyEvidence.createMany({
-    data: [eventEvidence],
-    skipDuplicates: true,
-  });
+  await persistImportEvidence(db, scope, eventEvidence);
   if (contradicts) {
     await db.companyEvidence.updateMany({
       where: {

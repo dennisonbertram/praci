@@ -59,6 +59,9 @@ function handlers(): BackgroundJobHandlers {
     "dataroom.box.import": vi.fn(async () => undefined),
     "dataroom.box.file": vi.fn(async () => undefined),
     "dataroom.zip.unpack": vi.fn(async () => undefined),
+    "company.import.run": vi.fn(async () => undefined),
+    "company.import.unit": vi.fn(async () => undefined),
+    "company.import.recover": vi.fn(async () => undefined),
   };
 }
 

@@ -14,6 +14,7 @@ import type {
 import type {
   CloudAgentConnection,
   CodexLiveCatalog,
+  CompanyImportEngine,
   ComposioProvider,
   ConnectorRegistry,
   DevinCallTool,
@@ -53,6 +54,7 @@ export interface RouterDeps {
   events: ThreadEvents;
   boardEvents: BoardEvents;
   notificationEvents: NotificationEvents;
+  companyImport: CompanyImportEngine;
   ticketChanges: TicketChangeNotifier;
   auth: Auth;
   jobs: JobPublisher;

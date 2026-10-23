@@ -18,6 +18,7 @@ import {
   createArtifactStore,
   createBackgroundJobHandlers,
   createCloudAgentConnection,
+  createCompanyImportEngine,
   createConnectorStack,
   createDevinCallTool,
   createFinanceCallToolFor,
@@ -253,6 +254,12 @@ async function main() {
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
   });
 
+  const companyImport = createCompanyImportEngine({
+    prisma,
+    jobs,
+    realtime,
+    resolveModel: executor.resolveModel,
+  });
   const jobHandlers = createBackgroundJobHandlers({
     executor,
     prisma,
@@ -289,6 +296,7 @@ async function main() {
     mail,
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
     gmailPush,
+    companyImport,
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start
@@ -319,6 +327,7 @@ async function main() {
     reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
     reconcileDataRoom: () => reconcileDataRoom({ prisma, jobs }),
     reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
+    reconcileCompanyImports: () => companyImport.recoveryJob(),
   });
   reconciler.start();
 

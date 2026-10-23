@@ -2335,6 +2335,71 @@ describePostgres("company foundation (PostgreSQL)", () => {
     );
   });
 
+  it("preserves historical extractor provenance without attributing candidates to it", async () => {
+    const company = companyForActor(prisma, actor);
+    const legacyRunId = `historical-extractor-${suffix}`;
+    const saved = await company.importEntity({
+      ...person(
+        `Historical provenance ${suffix}`,
+        "historical-provenance-item",
+        "historical-provenance-hash",
+        `historical-provenance-${suffix}@example.test`,
+      ),
+      evidence: {
+        ...evidence("historical-provenance-item", "historical-provenance-hash"),
+        extractorRunId: legacyRunId,
+      },
+    });
+    const savedId = entityId(saved);
+    const historicalEvidence = await prisma.companyEvidence.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, factId: savedId, factKind: "entity" },
+    });
+    expect(historicalEvidence.extractorRunId).toBe(legacyRunId);
+
+    const initialCandidateInput = person(
+      `Historical candidate ${suffix}`,
+      "historical-candidate-item",
+      "historical-candidate-initial-hash",
+    );
+    const candidateEntity = entityId(await company.importEntity(initialCandidateInput));
+    await company.edit({
+      entityId: candidateEntity,
+      kind: "person",
+      attrs: { workEmails: [`historical-candidate-${suffix}@example.test`] },
+    });
+    await company.reject(candidateEntity, "Synthetic test rejection");
+    const candidateInput = {
+      ...initialCandidateInput,
+      evidence: {
+        ...initialCandidateInput.evidence,
+        quote: "A changed quotation after the identity edit.",
+      },
+    };
+    const first = await company.importEntity({
+      ...candidateInput,
+      evidence: {
+        ...candidateInput.evidence,
+        contentHash: "historical-candidate-first-hash",
+      },
+    });
+    if (!("deferred" in first)) throw new Error("Expected a deferred historical candidate");
+    const second = await company.importEntity({
+      ...candidateInput,
+      evidence: {
+        ...candidateInput.evidence,
+        contentHash: "historical-candidate-second-hash",
+        extractorRunId: legacyRunId,
+      },
+    });
+    if (!("deferred" in second)) throw new Error("Expected a deferred historical candidate");
+    expect(second.candidateId).toBe(first.candidateId);
+    const candidate = await prisma.companyCandidate.findUniqueOrThrow({
+      where: { id: second.candidateId },
+      select: { importRunId: true },
+    });
+    expect(candidate.importRunId).toBeNull();
+  });
+
   it("allows same-name people, separates employment periods, and reversibly merges references", async () => {
     const company = companyForActor(prisma, actor);
     const one = await company.importEntity({

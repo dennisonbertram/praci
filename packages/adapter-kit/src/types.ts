@@ -1,4 +1,7 @@
 import type {
+  CompanyEdgeImportInput,
+  CompanyEntityImportInput,
+  CompanyEventImportInput,
   CacheCapabilities as ConnectionCacheCapabilities,
   ConnectionCatalogItem,
   InboxCategory,
@@ -583,7 +586,8 @@ export type UsageOperationKind =
   | "retrieval"
   | "subagent"
   | "compaction"
-  | "triage";
+  | "triage"
+  | "company_import";
 
 export interface ModelCallObserver {
   beforeCall(call: {
@@ -768,6 +772,9 @@ export interface BackgroundJobPayloads {
   "mail.watch.renew": Record<string, never>;
   /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
   "devin.refresh": { serverId?: string };
+  "company.import.run": { spaceId: string; userId: string; runId: string };
+  "company.import.unit": { spaceId: string; userId: string; runId: string; unitId: string };
+  "company.import.recover": Record<string, never>;
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   /** Names exactly one source: a Connection or an MCP server. */
   "meetings.sync": {
@@ -885,6 +892,84 @@ export type BackgroundJob = {
 export type BackgroundJobHandlers = {
   [Name in BackgroundJobName]: (payload: BackgroundJobPayloads[Name]) => Promise<void>;
 };
+
+export interface CompanyImportSourceDescriptor {
+  id: string;
+  sourceKind: string;
+  connectionId: string | null;
+  scope: Record<string, unknown>;
+}
+
+export interface CompanyImportDiscoveredUnit {
+  unitKey: string;
+  cursor: unknown;
+}
+
+export interface CompanyImportDiscoveryPage {
+  units: CompanyImportDiscoveredUnit[];
+  nextCursor: unknown | null;
+  done: boolean;
+}
+
+export interface CompanyImportReadItem {
+  sourceItemId: string;
+  contentHash: string;
+  content: string;
+}
+
+export type CompanyImportFact =
+  | { kind: "entity"; input: CompanyEntityImportInput }
+  | { kind: "edge"; input: CompanyEdgeImportInput }
+  | { kind: "event"; input: CompanyEventImportInput };
+
+export interface CompanyImportReadPage {
+  items: CompanyImportReadItem[];
+  facts: CompanyImportFact[];
+  nextCursor: unknown | null;
+  done: boolean;
+}
+
+export interface CompanyImportModelCallResult<T> {
+  value: T;
+  provider: string;
+  model: string;
+  callId: string;
+  usage: AgentUsage;
+}
+
+export interface CompanyImportWorkerContext {
+  actor: { spaceId: string; userId: string };
+  signal: AbortSignal;
+  executeModelCall<T>(input: {
+    inputTokenBound: number;
+    maxOutputTokens: number;
+    invoke: (
+      model: AgentRunModel,
+      signal: AbortSignal,
+    ) => Promise<CompanyImportModelCallResult<T>>;
+  }): Promise<CompanyImportModelCallResult<T>>;
+}
+
+/** Provider-neutral, bounded source access. Implementations must never widen a supplied scope. */
+export interface CompanyImportWorker {
+  discover(
+    input: {
+      source: CompanyImportSourceDescriptor;
+      cursor: unknown | null;
+      maxUnits: number;
+    },
+    context: CompanyImportWorkerContext,
+  ): Promise<CompanyImportDiscoveryPage>;
+  read(
+    input: {
+      source: CompanyImportSourceDescriptor;
+      unitKey: string;
+      cursor: unknown | null;
+      maxBytes: number;
+    },
+    context: CompanyImportWorkerContext,
+  ): Promise<CompanyImportReadPage>;
+}
 
 export interface SecretRecord {
   id: string;

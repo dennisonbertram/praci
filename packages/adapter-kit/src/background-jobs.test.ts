@@ -51,10 +51,26 @@ function handlers(): BackgroundJobHandlers {
     "dataroom.box.import": vi.fn(async () => undefined),
     "dataroom.box.file": vi.fn(async () => undefined),
     "dataroom.zip.unpack": vi.fn(async () => undefined),
+    "company.import.run": vi.fn(async () => undefined),
+    "company.import.unit": vi.fn(async () => undefined),
+    "company.import.recover": vi.fn(async () => undefined),
   };
 }
 
 describe("background job contracts", () => {
+  it("validates and dispatches durable company import jobs", async () => {
+    const target = handlers();
+    const run = { spaceId: "space-1", userId: "user-1", runId: "run-1" };
+    const unit = { ...run, unitId: "unit-1" };
+    await dispatchBackgroundJob(target, "company.import.run", run);
+    await dispatchBackgroundJob(target, "company.import.unit", unit);
+    await dispatchBackgroundJob(target, "company.import.recover", {});
+    expect(target["company.import.run"]).toHaveBeenCalledWith(run);
+    expect(target["company.import.unit"]).toHaveBeenCalledWith(unit);
+    expect(target["company.import.recover"]).toHaveBeenCalledWith({});
+    expect(() => parseBackgroundJob("company.import.unit", { ...unit, userId: "" })).toThrow();
+  });
+
   it("validates and dispatches messaging.deliver", async () => {
     const target = handlers();
     await dispatchBackgroundJob(target, "messaging.deliver", { runId: "run-1" });
