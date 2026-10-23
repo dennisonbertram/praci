@@ -46,25 +46,24 @@ describe("MessageHoverMetadata", () => {
     expect(html).toContain("@max-sm:[@media(hover:hover)]:mt-6");
   });
 
-  it("places the rail just below the bubble's bottom corner on touch, adding no row to the thread", () => {
-    const bot = renderToStaticMarkup(
-      <MessageHoverMetadata side="end">
-        <div data-testid="message-actions" />
-      </MessageHoverMetadata>,
-    );
-    const user = renderToStaticMarkup(
-      <MessageHoverMetadata side="start">
-        <div data-testid="message-actions" />
-      </MessageHoverMetadata>,
-    );
-
-    for (const html of [bot, user]) {
-      expect(html).toContain("[@media(hover:none)]:end-0");
-      expect(html).toContain("[@media(hover:none)]:top-full");
-      expect(html).not.toContain("[@media(hover:none)]:-bottom-3.5");
-      expect(html).toContain("[@media(hover:none)]:p-0");
-      expect(html).not.toContain("[@media(hover:none)]:static");
-    }
+  it("keeps the rail in the gutter on touch and hides it on cards and full-width rows", () => {
+    const render = (props: { below?: boolean; hideOnTouch?: boolean }) =>
+      renderToStaticMarkup(
+        <MessageHoverMetadata side="end" {...props}>
+          <div data-testid="message-actions" />
+        </MessageHoverMetadata>,
+      );
+    const text = render({});
+    // No touch override moves it under the bubble, where it covered the next message and card controls.
+    expect(text).not.toContain("[@media(hover:none)]:top-full");
+    expect(text).not.toContain("[@media(hover:none)]:hidden");
+    expect(text).toContain("[@media(hover:none)]:p-0");
+    expect(render({ hideOnTouch: true })).toContain("[@media(hover:none)]:hidden");
+    // A mixed full-width message keeps its rail, in the line reserved under the row.
+    const mixed = render({ below: true });
+    expect(mixed).not.toContain("[@media(hover:none)]:hidden");
+    expect(mixed).toContain("[@media(hover:none)]:top-full");
+    expect(render({ below: true, hideOnTouch: true })).toContain("[@media(hover:none)]:hidden");
   });
 
   it("pins the rail open while a nested menu is active", () => {
