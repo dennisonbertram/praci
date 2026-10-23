@@ -203,6 +203,17 @@ export function LegalDeadlines({
           const late = -days;
           // The visible title includes the contract, so the button names do too.
           const name = fullTitle(deadline);
+          // The open deadline of the same contract and date that the scan kept: the one to keep instead.
+          const replacement = deadline.removalProposed
+            ? deadlines.find(
+                (other) =>
+                  !other.removalProposed &&
+                  other.id !== deadline.id &&
+                  other.dueDate === deadline.dueDate &&
+                  other.dataRoomItemId === deadline.dataRoomItemId &&
+                  other.contractTitle === deadline.contractTitle,
+              )
+            : undefined;
           return (
             <li
               key={deadline.id}
@@ -252,7 +263,14 @@ export function LegalDeadlines({
                 ) : null}
                 {deadline.removalProposed ? (
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                    <Trans>The last scan thinks this no longer applies.</Trans>
+                    {replacement ? (
+                      <Trans>
+                        Replaced by {maskCurrencyWhenHidden(replacement.title)} on{" "}
+                        {fullDay(replacement.dueDate)}.
+                      </Trans>
+                    ) : (
+                      <Trans>The last scan thinks this no longer applies.</Trans>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"

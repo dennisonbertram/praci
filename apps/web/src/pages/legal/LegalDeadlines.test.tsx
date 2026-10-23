@@ -126,3 +126,11 @@ it("offers Keep on a deadline a scan proposed removing, and Keep clears the prop
   await act(async () => keep?.click());
   expect(update).toHaveBeenCalledWith({ id: "d9", keep: true });
 });
+
+it("names the deadline that replaced a flagged one", async () => {
+  const old = { ...mk("old"), title: "Send non-renewal notice", removalProposed: true };
+  const kept = { ...mk("new"), title: "Renewal notice deadline", removalProposed: false };
+  const container = await mount([old as LegalDeadline, kept as LegalDeadline]);
+  expect(container.textContent).toContain("Replaced by");
+  expect(container.textContent).toContain("Renewal notice deadline");
+});

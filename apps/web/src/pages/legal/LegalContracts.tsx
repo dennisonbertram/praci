@@ -122,7 +122,7 @@ export function LegalContracts({
   };
   return (
     <>
-      <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
+      <ul aria-label={t`Contracts`} className="flex flex-col @6xl:hidden">
         {contracts.map((contract) => {
           const parties = contract.counterparties.join(", ");
           const showValue = !hidden && contract.valueCents !== null;
@@ -155,7 +155,7 @@ export function LegalContracts({
           );
         })}
       </ul>
-      <Table compact className="hidden @4xl:table">
+      <Table compact className="hidden @6xl:table">
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>

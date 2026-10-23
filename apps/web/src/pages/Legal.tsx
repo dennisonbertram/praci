@@ -140,6 +140,8 @@ function Legal({
   const running =
     !overview.error && (lastRun?.status === "running" || (waitingFor !== null && !finishedWaiting));
 
+  // The header shows how long this scan has run (it re-renders on every poll), not the last scan's age.
+  const scanStart = useRef(0);
   const consentMissing = status?.allowed === false;
   const reportConsent = useRef(onConsentChange);
   reportConsent.current = onConsentChange;
@@ -230,6 +232,7 @@ function Legal({
   // While a scan runs, re-read the overview until it ends; give up after a few minutes.
   useEffect(() => {
     if (!running) return;
+    scanStart.current = Date.now();
     const poll = setInterval(() => reload.current.overview(), SCAN_POLL_MS);
     const stop = setTimeout(() => {
       clearInterval(poll);
@@ -348,13 +351,22 @@ function Legal({
           <>
             <SpaceName />
             <span className="min-w-0 text-[11px]">
-              {needsConsent ? null : lastScan ? (
+              {needsConsent ? null : running ? (
+                (() => {
+                  const minutes = Math.floor((Date.now() - scanStart.current) / 60_000);
+                  return minutes > 0 ? (
+                    <Trans>Scanning for {minutes} min</Trans>
+                  ) : (
+                    <Trans>Scanning now</Trans>
+                  );
+                })()
+              ) : lastScan ? (
                 data.agent.dailyScanActive ? (
                   <Trans>Last scan {lastScan}. Scans daily.</Trans>
                 ) : (
                   <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
                 )
-              ) : running ? null : data.agent.dailyScanActive ? (
+              ) : data.agent.dailyScanActive ? (
                 <Trans>Not scanned yet</Trans>
               ) : (
                 <Trans>Not scanned yet. Daily scan paused.</Trans>
