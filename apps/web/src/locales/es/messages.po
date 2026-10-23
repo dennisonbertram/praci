@@ -1304,6 +1304,7 @@ msgstr ""
 msgid "Always allowed"
 msgstr "Siempre permitido"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1658,6 +1659,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "a las {timeSelect}"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2428,6 +2433,10 @@ msgstr "Elige una forma y color del bot, o sube una imagen"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Choose a bot…"
 msgstr "Elige un bot…"
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
+msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Choose a Google Sheet"
@@ -12169,6 +12178,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Your mail is taking longer than usual to load."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx

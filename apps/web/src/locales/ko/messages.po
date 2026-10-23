@@ -1304,6 +1304,7 @@ msgstr ""
 msgid "Always allowed"
 msgstr "항상 허용됨"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1658,6 +1659,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "{timeSelect}에"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2428,6 +2433,10 @@ msgstr "봇 모양과 색을 고르거나 이미지를 업로드하세요"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Choose a bot…"
 msgstr "Bot 선택…"
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
+msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Choose a Google Sheet"
@@ -12169,6 +12178,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Your mail is taking longer than usual to load."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
