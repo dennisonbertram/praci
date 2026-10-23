@@ -18,6 +18,7 @@ import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -635,6 +636,7 @@ function BuildingGraph() {
           <Trans>Building graph…</Trans>
         </p>
       ) : null}
+      <StillLoading />
     </div>
   );
 }
@@ -649,6 +651,7 @@ function LegalSkeleton() {
         ))}
       </div>
       <Skeleton className="h-56" />
+      <StillLoading />
     </div>
   );
 }

@@ -5,6 +5,30 @@ import { useEffect, useState } from "react";
 /** After this long the wait is no longer normal, so the line changes and offers a retry. */
 export const OPENING_SLOW_MS = 8000;
 
+/** A page skeleton that is still showing after this long is stuck, not slow. */
+export const STILL_LOADING_MS = 20_000;
+
+/** Goes beside any page skeleton: after 20 s it says so and offers Try again (default: reload the page). */
+export function StillLoading({
+  onRetry = () => window.location.reload(),
+}: {
+  onRetry?: () => void;
+}) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), STILL_LOADING_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return slow ? (
+    <div role="status" className="flex items-center gap-3 text-[13px] text-muted-foreground">
+      <Trans>Still loading…</Trans>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <Trans>Try again</Trans>
+      </Button>
+    </div>
+  ) : null;
+}
+
 /**
  * Message placeholders, shared by every wait between sign-in and the first chat.
  * A slow wait says "Still opening…" and offers Try again, which loads the page afresh.

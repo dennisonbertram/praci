@@ -10439,6 +10439,7 @@ msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Still loading…"
 msgstr "Still loading…"
 

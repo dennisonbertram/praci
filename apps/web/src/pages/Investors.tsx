@@ -74,6 +74,7 @@ import { ActionItems } from "../components/investors/ActionItems";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { SectionCard } from "../components/SectionCard";
+import { StillLoading } from "../components/ShellSkeleton";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { shareCount, shortDay, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -1241,6 +1242,7 @@ export function InvestorsPage({
               {[0, 1, 2].map((n) => (
                 <Skeleton key={n} className="h-9 w-full" />
               ))}
+              <StillLoading />
             </div>
           ) : (
             <>
