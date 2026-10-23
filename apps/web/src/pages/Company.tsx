@@ -112,6 +112,11 @@ export function CompanyPage() {
             <Trans>Reconstructed</Trans>
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          <Link to="/app/company/import" className="text-sm underline underline-offset-4">
+            <Trans>Import</Trans>
+          </Link>
+        </div>
       </header>
       <Tabs value={view} onValueChange={(next) => setParams({ view: String(next) })}>
         <TabsList>
@@ -143,7 +148,7 @@ export function CompanyPage() {
             </p>
           )}
           {data.latestRun &&
-            ["completed_with_failures", "paused", "budget_reached", "cancelled", "failed"].includes(
+            ["partial", "paused", "budget_reached", "cancelled", "failed"].includes(
               data.latestRun.status,
             ) && (
               <p role="status" className="text-sm text-muted-foreground">

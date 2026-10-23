@@ -347,6 +347,7 @@ import {
   onMcpServerConnected,
   startCartaSync,
 } from "./carta-agent.js";
+import type { CompanyImportPage } from "./company-import-page.js";
 import { companyFact, companyPage } from "./company-page.js";
 import {
   executionBlocksUserTakeover,
@@ -7325,8 +7326,21 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     companyImport: {
-      create: authed.companyImport.create.handler(({ context, input }) =>
-        deps.companyImport.create(context.actor, input),
+      catalog: authed.companyImport.catalog.handler(({ context }) =>
+        deps.companyImportPage
+          ? deps.companyImportPage.catalog(context.actor)
+          : { sources: [], folders: [] },
+      ),
+      session: authed.companyImport.session.handler(
+        ({ context, input }) => deps.companyImportPage?.session(context.actor, input.runId) ?? null,
+      ),
+      sample: authed.companyImport.sample.handler(
+        ({ context, input }) => deps.companyImportPage?.sample(context.actor, input.runId) ?? [],
+      ),
+      create: authed.companyImport.create.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.create(context.actor, input) ??
+          deps.companyImport.create(context.actor, input),
       ),
       progress: authed.companyImport.progress.handler(({ context, input }) =>
         deps.companyImport.progress(context.actor, input.runId),
@@ -7337,11 +7351,19 @@ export function createRouter(deps: RouterDeps) {
       grantConsent: authed.companyImport.grantConsent.handler(({ context, input }) =>
         deps.companyImport.grantConsent(context.actor, input),
       ),
-      start: authed.companyImport.start.handler(({ context, input }) =>
-        deps.companyImport.start(context.actor, input.runId),
+      start: authed.companyImport.start.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.start(context.actor, input.runId) ??
+          deps.companyImport.start(context.actor, input.runId),
       ),
-      action: authed.companyImport.action.handler(({ context, input }) =>
-        deps.companyImport.action(context.actor, input.runId, input.action, input.tokenCap),
+      action: authed.companyImport.action.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.action(
+            context.actor,
+            input.runId,
+            input.action,
+            input.tokenCap,
+          ) ?? deps.companyImport.action(context.actor, input.runId, input.action, input.tokenCap),
       ),
       subscribe: authed.companyImport.subscribe.handler(async function* ({ context, input }) {
         const stream = deps.companyImport.follow(context.actor, input.runId, context.signal);

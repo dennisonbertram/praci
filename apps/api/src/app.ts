@@ -129,6 +129,7 @@ import { cors } from "hono/cors";
 import { mountAccountExportDownload } from "./account-export.js";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
+import { createCompanyImportPage } from "./company-import-page.js";
 import { mountDataRoomRoutes } from "./data-room.js";
 import { mountEmailImageProxy } from "./email-image-proxy.js";
 import type { AppEnv } from "./env.js";
@@ -598,6 +599,7 @@ export async function createApp(
     resolveModel: executor.resolveModel,
     worker: createCompanySourceWorker({ prisma, mail, extractor: new LlmCompanyExtractor() }),
   });
+  const companyImportPage = createCompanyImportPage({ prisma, engine: companyImport });
   const jobHandlers = createBackgroundJobHandlers({
     executor,
     prisma,
@@ -665,6 +667,7 @@ export async function createApp(
     boardEvents,
     notificationEvents,
     companyImport,
+    companyImportPage,
     auth,
     jobs,
     sandbox,

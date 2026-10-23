@@ -35,6 +35,7 @@ import {
 } from "./company.js";
 import {
   CompanyImportActionInputSchema,
+  CompanyImportCatalogSchema,
   CompanyImportConsentInputSchema,
   CompanyImportCreateInputSchema,
   CompanyImportEventSchema,
@@ -42,6 +43,9 @@ import {
   CompanyImportModelConsentStatusSchema,
   CompanyImportProgressSchema,
   CompanyImportRunIdInputSchema,
+  CompanyImportSampleSchema,
+  CompanyImportSessionInputSchema,
+  CompanyImportSessionSchema,
 } from "./company-import.js";
 import { CompanyFactRefSchema, CompanyFactSchema, CompanyPageSchema } from "./company-page.js";
 import {
@@ -1497,6 +1501,11 @@ export const appContract = {
     editEvent: oc.input(CompanyEventEditInputSchema).output(z.object({ ok: z.literal(true) })),
   },
   companyImport: {
+    catalog: oc.output(CompanyImportCatalogSchema),
+    session: oc
+      .input(CompanyImportSessionInputSchema)
+      .output(CompanyImportSessionSchema.nullable()),
+    sample: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportSampleSchema),
     create: oc.input(CompanyImportCreateInputSchema).output(CompanyImportProgressSchema),
     progress: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
     consentStatus: oc

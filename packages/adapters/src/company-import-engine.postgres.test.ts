@@ -240,4 +240,169 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
     expect(progress.outputTokensUsed).toBe(2);
     expect(modelCalls).toBe(1);
   });
+
+  it("previews at most 25 sample items and continues the same run from its saved cursor", async () => {
+    const jobs = { enqueue: async () => undefined } as unknown as JobPublisher;
+    const realtime = { publish: async () => undefined } as unknown as RealtimeFanout;
+    const readCounts = new Map<string, number>();
+    const discoveryLimits: number[] = [];
+    const worker: CompanyImportWorker = {
+      discover: async ({ cursor, maxUnits }): Promise<CompanyImportDiscoveryPage> => {
+        discoveryLimits.push(maxUnits);
+        const start = Number((cursor as { offset?: number } | null)?.offset ?? 0);
+        const end = Math.min(start + maxUnits, 30);
+        return {
+          units: Array.from({ length: end - start }, (_, index) => {
+            const itemIndex = start + index;
+            return { unitKey: `read:${itemIndex}`, cursor: { itemIndex } };
+          }),
+          nextCursor: end < 30 ? { offset: end } : null,
+          done: end === 30,
+        };
+      },
+      read: async ({ cursor, maxItems }): Promise<CompanyImportReadPage> => {
+        const itemIndex = (cursor as { itemIndex: number }).itemIndex;
+        expect(maxItems).toBe(itemIndex < 25 ? 1 : 100);
+        const sourceItemId = `sample-item-${itemIndex}`;
+        readCounts.set(sourceItemId, (readCounts.get(sourceItemId) ?? 0) + 1);
+        return {
+          items: [{ sourceItemId, contentHash: `hash-${itemIndex}`, content: "Synthetic item." }],
+          facts: [],
+          nextCursor: null,
+          done: true,
+        };
+      },
+    };
+    const engine = createCompanyImportEngine({
+      prisma,
+      jobs,
+      realtime,
+      resolveModel: async () => ({ provider: "synthetic", id: "sample-model" }),
+      worker,
+    });
+    const created = await engine.create(actor, {
+      tokenCap: 2_500,
+      mode: "sample",
+      sources: [{ sourceKind: "slack", scope: {} }],
+    });
+    const source = await prisma.companyImportSource.findFirstOrThrow({
+      where: { runId: created.runId, spaceId, ownerUserId: userId },
+    });
+    const consent = await engine.consentStatus(actor, created.runId, source.id);
+    await engine.grantConsent(actor, {
+      runId: created.runId,
+      sourceId: source.id,
+      consentKey: consent.consentKey!,
+      version: consent.version,
+      sourceKind: consent.sourceKind,
+      recipient: consent.recipient!,
+    });
+
+    const payload = { spaceId, userId, runId: created.runId };
+    const processWaitingUnits = async () => {
+      await engine.runJob(payload);
+      const waiting = await prisma.companyImportUnit.findMany({
+        where: { runId: created.runId, spaceId, ownerUserId: userId, status: "waiting" },
+        orderBy: { unitKey: "asc" },
+        select: { id: true },
+      });
+      for (const unit of waiting) await engine.unitJob({ ...payload, unitId: unit.id });
+    };
+    await engine.start(actor, created.runId);
+    for (let step = 0; step < 10; step++) {
+      await processWaitingUnits();
+      if ((await engine.progress(actor, created.runId)).status === "preview_ready") break;
+    }
+    const preview = await engine.progress(actor, created.runId);
+    expect(preview.status).toBe("preview_ready");
+    expect(preview.sources[0]?.itemsRead).toBe(25);
+    expect(discoveryLimits).toEqual([25]);
+    expect(
+      (
+        await prisma.companyImportSource.findFirstOrThrow({
+          where: { id: source.id, spaceId, ownerUserId: userId },
+        })
+      ).cursor,
+    ).toEqual({ offset: 25 });
+
+    await engine.action(actor, created.runId, "continue");
+    for (let step = 0; step < 10; step++) {
+      await processWaitingUnits();
+      if ((await engine.progress(actor, created.runId)).status === "completed") break;
+    }
+    const completed = await engine.progress(actor, created.runId);
+    const unitsAfterContinue = await prisma.companyImportUnit.findMany({
+      where: { runId: created.runId, spaceId, ownerUserId: userId },
+      select: { unitKey: true, status: true, lastError: true },
+      orderBy: { unitKey: "asc" },
+    });
+    expect(completed.status, JSON.stringify(unitsAfterContinue)).toBe("completed");
+    expect(completed.tokenCap).toBe(2_500);
+    expect(completed.sources[0]?.itemsRead).toBe(30);
+    expect(discoveryLimits).toEqual([25, 100]);
+    expect([...readCounts.values()].every((count) => count === 1)).toBe(true);
+    expect(readCounts.size).toBe(30);
+  });
+
+  it("rejects an oversized sample read before persisting any facts", async () => {
+    const jobs = { enqueue: async () => undefined } as unknown as JobPublisher;
+    const realtime = { publish: async () => undefined } as unknown as RealtimeFanout;
+    const worker: CompanyImportWorker = {
+      discover: async (): Promise<CompanyImportDiscoveryPage> => ({
+        units: [{ unitKey: "read:oversized", cursor: null }],
+        nextCursor: null,
+        done: true,
+      }),
+      read: async (): Promise<CompanyImportReadPage> => ({
+        items: [
+          { sourceItemId: "oversized-1", contentHash: "hash-1", content: "First item." },
+          { sourceItemId: "oversized-2", contentHash: "hash-2", content: "Second item." },
+        ],
+        facts: [],
+        nextCursor: null,
+        done: true,
+      }),
+    };
+    const engine = createCompanyImportEngine({
+      prisma,
+      jobs,
+      realtime,
+      resolveModel: async () => ({ provider: "synthetic", id: "sample-model" }),
+      worker,
+    });
+    const created = await engine.create(actor, {
+      tokenCap: 2_500,
+      mode: "sample",
+      sources: [{ sourceKind: "slack", scope: {} }],
+    });
+    const source = await prisma.companyImportSource.findFirstOrThrow({
+      where: { runId: created.runId, spaceId, ownerUserId: userId },
+    });
+    const consent = await engine.consentStatus(actor, created.runId, source.id);
+    await engine.grantConsent(actor, {
+      runId: created.runId,
+      sourceId: source.id,
+      consentKey: consent.consentKey!,
+      version: consent.version,
+      sourceKind: consent.sourceKind,
+      recipient: consent.recipient!,
+    });
+    await engine.start(actor, created.runId);
+    const payload = { spaceId, userId, runId: created.runId };
+    await engine.runJob(payload);
+    const discovery = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId: created.runId, spaceId, ownerUserId: userId, unitKey: "discover:0" },
+    });
+    await engine.unitJob({ ...payload, unitId: discovery.id });
+    const read = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId: created.runId, spaceId, ownerUserId: userId, unitKey: "read:oversized" },
+    });
+    await engine.unitJob({ ...payload, unitId: read.id });
+    expect(
+      await prisma.companyImportEvidence.count({
+        where: { runId: created.runId, spaceId, ownerUserId: userId },
+      }),
+    ).toBe(0);
+    expect((await engine.progress(actor, created.runId)).sources[0]?.itemsRead).toBe(0);
+  });
 });

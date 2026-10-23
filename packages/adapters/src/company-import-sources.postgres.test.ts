@@ -91,6 +91,7 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
   const userId = `company-source-user-${suffix}`;
   const otherUserId = `company-source-other-user-${suffix}`;
   const itemId = `company-source-item-${suffix}`;
+  const deniedItemId = `company-source-denied-item-${suffix}`;
   const actor: Actor = {
     spaceId,
     userId,
@@ -100,6 +101,7 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
   let prisma: PrismaClient;
   let close: () => Promise<void>;
   let connectionId: string;
+  let deniedConnectionId: string;
   let gmail: GmailApiEmulator;
   let completionCalls = 0;
 
@@ -193,6 +195,38 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
         },
       })
     ).id;
+    deniedConnectionId = (
+      await prisma.connection.create({
+        data: {
+          spaceId,
+          userId,
+          connectorId: "emulator",
+          provider: "box",
+          displayName: "Private synthetic file source",
+          status: "connected",
+          providerRef: "private-file-source",
+          allAgents: false,
+          privateByDefault: true,
+        },
+      })
+    ).id;
+    await prisma.dataRoomItem.create({
+      data: {
+        id: deniedItemId,
+        spaceId,
+        userId,
+        source: "box",
+        sourceConnectionId: deniedConnectionId,
+        sha256: createHash("sha256").update("Private synthetic document.").digest("hex"),
+        name: "private-file.txt",
+        mimeType: "text/plain",
+        size: BigInt(Buffer.byteLength("Private synthetic document.")),
+        status: "ready",
+      },
+    });
+    await prisma.dataRoomItemText.create({
+      data: { itemId: deniedItemId, spaceId, userId, text: "Private synthetic document." },
+    });
     gmail = new GmailApiEmulator({
       now: new Date("2026-01-05T12:00:00.000Z"),
       mailboxes: { "mailbox-1": { address: "owner@example.test", messages: [message("gmail-1")] } },
@@ -407,6 +441,47 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
         foreignContext,
       ),
     ).rejects.toThrow("source_item_unavailable");
+    const ownerContext = {
+      actor: { spaceId, userId },
+      signal: AbortSignal.timeout(10_000),
+      executeModelCall: async () => {
+        throw new Error("Unexpected model execution");
+      },
+    } as unknown as CompanyImportWorkerContext;
+    await expect(
+      sourceWorker.read(
+        {
+          source: {
+            id: dataRoomSource.id,
+            sourceKind: "data_room",
+            connectionId: null,
+            scope: { itemIds: [deniedItemId] },
+          },
+          unitKey: `data_room:${deniedItemId}`,
+          cursor: { itemId: deniedItemId },
+          maxBytes: 1_000_000,
+        },
+        ownerContext,
+      ),
+    ).rejects.toThrow("source_item_unavailable");
+    const visibleDataRoom = await sourceWorker.discover(
+      {
+        source: {
+          id: dataRoomSource.id,
+          sourceKind: "data_room",
+          connectionId: null,
+          scope: {},
+        },
+        cursor: null,
+        maxUnits: 100,
+      },
+      ownerContext,
+    );
+    expect(
+      visibleDataRoom.units.some(
+        (unit) => (unit.cursor as { itemId?: unknown } | null)?.itemId === deniedItemId,
+      ),
+    ).toBe(false);
 
     const secondCreated = await engine.create(actor, {
       tokenCap: 1_000_000,
@@ -445,5 +520,82 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     await expect(
       engine.progress({ ...actor, userId: "different-owner" }, created.runId),
     ).rejects.toThrow();
+  });
+
+  it("samples 25 real Data Room items then continues the same run without rereading them", async () => {
+    const sampleItems = Array.from({ length: 30 }, (_, index) => {
+      const id = `company-source-sample-${suffix}-${index.toString().padStart(2, "0")}`;
+      const text = `Synthetic Data Room sample item ${index}. ${content}`;
+      return {
+        id,
+        text,
+        sha256: createHash("sha256").update(text).digest("hex"),
+      };
+    });
+    await prisma.dataRoomItem.createMany({
+      data: sampleItems.map((item) => ({
+        id: item.id,
+        spaceId,
+        userId,
+        source: "upload",
+        sha256: item.sha256,
+        name: `${item.id}.txt`,
+        mimeType: "text/plain",
+        size: BigInt(Buffer.byteLength(item.text)),
+        status: "ready",
+      })),
+    });
+    await prisma.dataRoomItemText.createMany({
+      data: sampleItems.map((item) => ({
+        itemId: item.id,
+        spaceId,
+        userId,
+        text: item.text,
+      })),
+    });
+
+    const engine = await createEngine();
+    const before = completionCalls;
+    const created = await engine.create(actor, {
+      tokenCap: 1_000_000,
+      mode: "sample",
+      sources: [
+        { sourceKind: "data_room", scope: { itemIds: sampleItems.map((item) => item.id) } },
+      ],
+    });
+    await grantAll(engine, created.runId);
+    const payload = { spaceId, userId, runId: created.runId };
+    const processWaiting = async () => {
+      await engine.runJob(payload);
+      const waiting = await prisma.companyImportUnit.findMany({
+        where: { runId: created.runId, spaceId, ownerUserId: userId, status: "waiting" },
+        orderBy: { unitKey: "asc" },
+        select: { id: true },
+      });
+      for (const unit of waiting) await engine.unitJob({ ...payload, unitId: unit.id });
+    };
+    await engine.start(actor, created.runId);
+    for (let step = 0; step < 10; step++) {
+      await processWaiting();
+      if ((await engine.progress(actor, created.runId)).status === "preview_ready") break;
+    }
+    const preview = await engine.progress(actor, created.runId);
+    expect(preview.status).toBe("preview_ready");
+    expect(preview.tokenCap).toBe(1_000_000);
+    expect(preview.sources[0]?.itemsDiscovered).toBe(25);
+    expect(preview.sources[0]?.itemsRead).toBe(25);
+    expect(completionCalls - before).toBe(50);
+
+    await engine.action(actor, created.runId, "continue");
+    for (let step = 0; step < 10; step++) {
+      await processWaiting();
+      if ((await engine.progress(actor, created.runId)).status === "completed") break;
+    }
+    const completed = await engine.progress(actor, created.runId);
+    expect(completed.status).toBe("completed");
+    expect(completed.tokenCap).toBe(1_000_000);
+    expect(completed.sources[0]?.itemsDiscovered).toBe(30);
+    expect(completed.sources[0]?.itemsRead).toBe(30);
+    expect(completionCalls - before).toBe(60);
   });
 });

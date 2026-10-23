@@ -57,6 +57,11 @@ async function lockRun(tx: Prisma.TransactionClient, scope: Scope, runId: string
 }
 
 async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Scope, runId: string) {
+  const run = await tx.companyImportRun.findFirst({
+    where: { ...scope, id: runId },
+    select: { mode: true },
+  });
+  if (!run) return;
   const pending = await tx.companyImportUnit.count({
     where: { ...scope, runId, status: { in: ["waiting", "claimed"] } },
   });
@@ -80,13 +85,23 @@ async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Sco
     });
     await tx.companyImportSource.update({
       where: { ...scope, id: source.id },
-      data: { status: sourceFailed > 0 ? "failed" : sourceDone > 0 ? "completed" : "failed" },
+      data: {
+        status: sourceFailed > 0 ? "failed" : sourceDone > 0 ? "completed" : "failed",
+        ...(sourceFailed === 0 ? { lastError: null } : {}),
+      },
     });
   }
   await tx.companyImportRun.updateMany({
     where: { ...scope, id: runId, status: { in: ["running", "paused", "budget_reached"] } },
     data: {
-      status: failed > 0 && done > 0 ? "partial" : failed > 0 ? "failed" : "completed",
+      status:
+        failed > 0 && done > 0
+          ? "partial"
+          : failed > 0
+            ? "failed"
+            : run.mode === "sample"
+              ? "preview_ready"
+              : "completed",
       completedAt: new Date(),
     },
   });
@@ -152,6 +167,7 @@ export async function createCompanyImportRun(
         data: {
           ...scope,
           status: "draft",
+          mode: input.mode ?? "full",
           tokenCap: BigInt(input.tokenCap),
           disclosureVersion: AI_DISCLOSURE_VERSION,
         },
@@ -285,7 +301,7 @@ export async function updateCompanyImportRun(
   actor: Actor,
   input: {
     runId: string;
-    action: "pause" | "resume" | "retry_failed" | "cancel" | "discard";
+    action: "pause" | "resume" | "continue" | "retry_failed" | "cancel" | "discard";
     tokenCap?: number;
   },
 ) {
@@ -298,7 +314,7 @@ export async function updateCompanyImportRun(
       if (!locked) throw new CompanyImportError("not_found");
       const run = await tx.companyImportRun.findFirst({
         where: { ...scope, id: input.runId },
-        select: { id: true, status: true, tokenCap: true },
+        select: { id: true, status: true, mode: true, tokenCap: true },
       });
       if (!run) throw new CompanyImportError("not_found");
       const now = new Date();
@@ -325,6 +341,44 @@ export async function updateCompanyImportRun(
             ...(input.tokenCap !== undefined ? { tokenCap: BigInt(input.tokenCap) } : {}),
           },
         });
+      } else if (input.action === "continue") {
+        if (run.status !== "preview_ready" || run.mode !== "sample") {
+          throw new CompanyImportError("invalid_state");
+        }
+        const sources = await tx.companyImportSource.findMany({
+          where: { ...scope, runId: run.id },
+          select: { id: true, cursor: true },
+        });
+        await tx.companyImportRun.update({
+          where: { ...scope, id: run.id },
+          data: { mode: "full", status: "running", completedAt: null },
+        });
+        for (const source of sources) {
+          if (source.cursor === null) continue;
+          await tx.companyImportUnit.updateMany({
+            where: {
+              ...scope,
+              runId: run.id,
+              sourceId: source.id,
+              unitKey: "discover:0",
+              status: "done",
+            },
+            data: {
+              status: "waiting",
+              attempts: 0,
+              claimToken: null,
+              claimExpiresAt: null,
+              availableAt: now,
+              lastError: null,
+              completedAt: null,
+            },
+          });
+          await tx.companyImportSource.update({
+            where: { ...scope, id: source.id },
+            data: { status: "running", lastError: null },
+          });
+        }
+        await finalizeCompanyImportRun(tx, scope, run.id);
       } else if (input.action === "retry_failed") {
         if (!["partial", "failed", "running", "paused"].includes(run.status)) {
           throw new CompanyImportError("invalid_state");
@@ -336,6 +390,10 @@ export async function updateCompanyImportRun(
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
           data: { status: "running", completedAt: null },
+        });
+        await tx.companyImportSource.updateMany({
+          where: { ...scope, runId: run.id, status: "failed" },
+          data: { status: "running", lastError: null },
         });
       } else {
         if (
@@ -989,6 +1047,21 @@ export async function completeCompanyImportUnit(
         select: { id: true, sourceKind: true, connectionId: true },
       });
       if (!unit || !run || !source) throw new CompanyImportError("stale_claim");
+      if (run.mode === "sample") {
+        const priorItems = await tx.companyImportEvidence.findMany({
+          where: {
+            ...scope,
+            runId: run.id,
+            evidence: { sourceKind: source.sourceKind, connectionId: source.connectionId },
+          },
+          select: { evidence: { select: { sourceItemId: true } } },
+        });
+        const distinctItems = new Set([
+          ...priorItems.map(({ evidence }) => evidence.sourceItemId),
+          ...(input.readItems ?? []).map((item) => item.sourceItemId),
+        ]);
+        if (distinctItems.size > 25) throw new CompanyImportError("invalid_state");
+      }
       const writer = companyWriter(tx, actor);
       let persistedFacts = 0;
       for (const fact of input.facts) {
@@ -1056,6 +1129,7 @@ export async function completeCompanyImportUnit(
           claimToken: null,
           claimExpiresAt: null,
           completedAt: input.done ? new Date() : null,
+          lastError: null,
           ...(input.nextCursor === null ? {} : { cursor: jsonInput(input.nextCursor) }),
           itemsDiscovered: { increment: input.itemsDiscovered },
           itemsRead: { increment: input.itemsRead },
@@ -1222,6 +1296,6 @@ export async function getCompanyImportRunForScheduling(
   await requireMember(prisma, scope);
   return prisma.companyImportRun.findFirst({
     where: { ...scope, id: runId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, mode: true },
   });
 }

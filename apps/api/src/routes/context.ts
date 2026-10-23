@@ -41,6 +41,7 @@ import type { createDataRoomService } from "../data-room.js";
 import type { FinanceCryptoDeps } from "../finance.js";
 import type { ParseStatement } from "../finance-statements.js";
 import type { GtmQueueReader } from "../gtm.js";
+import type { CompanyImportPage } from "../company-import-page.js";
 
 export interface RouterDeps {
   /** Transactional email for portal links; absent when the deployment has none. */
@@ -55,6 +56,7 @@ export interface RouterDeps {
   boardEvents: BoardEvents;
   notificationEvents: NotificationEvents;
   companyImport: CompanyImportEngine;
+  companyImportPage?: CompanyImportPage;
   ticketChanges: TicketChangeNotifier;
   auth: Auth;
   jobs: JobPublisher;

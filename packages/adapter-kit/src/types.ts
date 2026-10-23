@@ -972,6 +972,7 @@ export interface CompanyImportWorker {
       unitKey: string;
       cursor: unknown | null;
       maxBytes: number;
+      maxItems?: number;
     },
     context: CompanyImportWorkerContext,
   ): Promise<CompanyImportReadPage>;
