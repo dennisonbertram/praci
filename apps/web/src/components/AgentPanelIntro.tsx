@@ -12,15 +12,21 @@ export function AgentPanelIntro({
   onPick,
   disabled = false,
   onAddModel,
+  className = "",
 }: {
   description: string;
   suggestions: string[];
   onPick: (text: string) => void;
   disabled?: boolean;
   onAddModel?: () => void;
+  /** A full-page chat lines the intro up with the composer column. */
+  className?: string;
 }) {
   return (
-    <div data-testid="agent-panel-intro" className="flex flex-col gap-3 px-4 pt-2 pb-4">
+    <div
+      data-testid="agent-panel-intro"
+      className={`flex flex-col gap-3 px-4 pt-2 pb-4 ${className}`}
+    >
       {onAddModel ? (
         <>
           <p className="text-sm text-muted-foreground">

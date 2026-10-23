@@ -584,12 +584,14 @@ export const Transcript = memo(function Transcript({
         element.scrollTop += offset - 24;
         dividerPinUntil.current = performance.now() + 1500;
       }
-      // A question waiting for an answer matters more than where the unread messages begin.
-      const ask = answerableAskMessageId
-        ? element?.querySelector<HTMLElement>(
-            `[data-stored-message][data-message-id="${CSS.escape(answerableAskMessageId)}"]`,
-          )
-        : null;
+      // A question waiting for an answer matters more than where the unread messages begin. A docked
+      // page-agent panel opens on its latest message instead, so an older card never holds the view.
+      const ask =
+        answerableAskMessageId && anchorToUnread
+          ? element?.querySelector<HTMLElement>(
+              `[data-stored-message][data-message-id="${CSS.escape(answerableAskMessageId)}"]`,
+            )
+          : null;
       if (element && ask) {
         const view = element.getBoundingClientRect();
         const box = ask.getBoundingClientRect();

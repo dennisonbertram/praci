@@ -180,7 +180,7 @@ import {
   SortableRow,
 } from "../components/sidebar-folders/SidebarDnd";
 import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNotice";
-import { glanceBadge, StatusMark } from "../components/sidebar-glance";
+import { glanceBadge, rowStatusKind, StatusMark } from "../components/sidebar-glance";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
@@ -480,12 +480,30 @@ function toggleCollapsedIdSet(
 }
 
 function readCollapsedSidebarSections(userId: string | null | undefined): Set<string> {
-  return readCollapsedIdSet(collapsedSidebarSectionsStorageKey(userId));
+  const key = collapsedSidebarSectionsStorageKey(userId);
+  const saved = readCollapsedIdSet(key);
+  // On a phone the nine pages would fill the drawer and leave one chat visible, so Pages starts
+  // collapsed until the person has opened or closed any section themselves.
+  try {
+    if (
+      key &&
+      window.localStorage.getItem(key) === null &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      return new Set(["pages"]);
+    }
+  } catch {
+    // Storage blocked: keep the default.
+  }
+  return saved;
 }
 
 function readCollapsedRosterParents(userId: string | null | undefined): Set<string> {
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
+
+/** The same side inset as the transcript, so full-page content sits in the composer's column. */
+const CHAT_COLUMN_INSET = "md:px-[max(1.75rem,calc((100%-900px)/2))]";
 
 const isPageOrIntegrationAgent = (spawnKey: string | null | undefined) =>
   pageAgentKind(spawnKey) !== null || isIntegrationAgentSpawnKey(spawnKey);
@@ -1267,6 +1285,7 @@ export function ShellPage() {
     loaded: initialBotsLoaded,
     seen: missingBotSeen.current,
     applied: botsListApplied.current,
+    namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
     inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
@@ -1457,7 +1476,7 @@ export function ShellPage() {
         const currentGroupId = routeGroupId.current;
         if (currentGroupId) {
           if (!groupList.some((group) => group.id === currentGroupId)) {
-            navigate(firstThreadRoute(list, groupList), { replace: true });
+            navigate(firstThreadRoute(list, groupList, window.location.search), { replace: true });
           }
           return;
         }
@@ -1473,7 +1492,7 @@ export function ShellPage() {
               return;
             }
           }
-          navigate(firstThreadRoute(list, groupList), { replace: true });
+          navigate(firstThreadRoute(list, groupList, window.location.search), { replace: true });
         }
       } finally {
         botsRefreshInFlight.current -= 1;
@@ -1744,9 +1763,22 @@ export function ShellPage() {
           markMissing(window.location.pathname);
           return;
         }
-        const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
+        // A page's auto-created agent is only opened when the address names it.
+        const threadBotId = bootstrap.thread?.botId;
+        const threadIsPageAgent = pageAgentKind(
+          bootstrap.bots.find((bot) => bot.id === threadBotId)?.spawnKey,
+        );
+        const selectedBotId =
+          threadBotId && (threadBotId === botId || !threadIsPageAgent)
+            ? threadBotId
+            : bootstrap.bots.find((bot) => pageAgentKind(bot.spawnKey) === null)?.id;
         if (selectedBotId && selectedBotId !== botId && !pageMode) {
-          navigate(`/app/${selectedBotId}`, { replace: true });
+          navigate(
+            firstThreadRoute([{ id: selectedBotId, spawnKey: null }], [], window.location.search),
+            {
+              replace: true,
+            },
+          );
         }
       })
       .catch(() => {
@@ -2026,6 +2058,10 @@ export function ShellPage() {
     () => bots.filter((bot) => listedInSidebar(bot, botId)),
     [bots, botId],
   );
+  // A space holding only a page's auto-created agent has no chat yet: it shows "No bots yet".
+  const noChatBots = !bots.some((bot) => pageAgentKind(bot.spawnKey) === null);
+  const rosterKind = (chat: { id: string; runErrorId?: string | null }) =>
+    rowStatusKind(glance.botKinds[chat.id], chat.runErrorId);
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
@@ -2738,7 +2774,7 @@ export function ShellPage() {
     initialBotsLoaded &&
     (inGroup
       ? Boolean(activeGroup && activeSnapshot)
-      : bots.length === 0 || pageMode || Boolean(active && activeSnapshot));
+      : noChatBots || pageMode || Boolean(active && activeSnapshot));
   const refreshThreadRef = useRef(refreshThread);
   refreshThreadRef.current = refreshThread;
   const refreshGroupThreadRef = useRef(refreshGroupThread);
@@ -3769,7 +3805,10 @@ export function ShellPage() {
   async function createBot() {
     try {
       const bot = await rpc.bots.create({
-        name: t`New Bot`,
+        name: uniqueBotName(
+          t`New Bot`,
+          bots.map((item) => item.name),
+        ),
         title: "",
         description: "",
         instructions: "",
@@ -4222,6 +4261,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description=""
           suggestions={bankSuggestions}
+          className={CHAT_COLUMN_INSET}
           onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -4231,6 +4271,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description={cartaAgentIntro}
           suggestions={cartaSuggestions}
+          className={CHAT_COLUMN_INSET}
           onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -4768,7 +4809,8 @@ export function ShellPage() {
             >
               <SidebarPagesGroup
                 title={t`Pages`}
-                collapsed={collapsedSidebarSections.has("pages")}
+                // The tour points at page rows, so they stay open while it runs.
+                collapsed={collapsedSidebarSections.has("pages") && !tourOpen}
                 rail={rail}
                 onToggle={() => toggleSidebarSection("pages")}
                 pages={[
@@ -4993,6 +5035,8 @@ export function ShellPage() {
           )}
           <div
             ref={sidebarScrollRef}
+            // The rows inside are the Tab stops; the scroller itself is not one.
+            tabIndex={-1}
             className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
           >
             <>
@@ -5050,7 +5094,7 @@ export function ShellPage() {
                   const folderStatus = folder
                     ? NOTIFICATION_KINDS.find((kind) =>
                         group.bots.some(
-                          (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
+                          (item) => item.kind === "bot" && rosterKind(item.chat) === kind,
                         ),
                       )
                     : undefined;
@@ -5293,8 +5337,7 @@ export function ShellPage() {
                                   needsYou={
                                     heldFor !== null ||
                                     rows.some(
-                                      (row) =>
-                                        row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                      (row) => row.item.chat.unread || rosterKind(row.item.chat),
                                     )
                                   }
                                   heldFor={heldFor}
@@ -5593,9 +5636,9 @@ export function ShellPage() {
                                                 {/* Roomy rows show the status mark on the preview line, so a Working row keeps its height. */}
                                                 {compact &&
                                                 item.kind === "bot" &&
-                                                glance.botKinds[item.chat.id] ? (
+                                                rosterKind(item.chat) ? (
                                                   <StatusMark
-                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    kind={rosterKind(item.chat)!}
                                                     botId={item.chat.id}
                                                   />
                                                 ) : null}
@@ -5651,10 +5694,9 @@ export function ShellPage() {
                                                       : "text-muted-foreground"
                                                 }`}
                                               >
-                                                {item.kind === "bot" &&
-                                                glance.botKinds[item.chat.id] ? (
+                                                {item.kind === "bot" && rosterKind(item.chat) ? (
                                                   <StatusMark
-                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    kind={rosterKind(item.chat)!}
                                                     botId={item.chat.id}
                                                   />
                                                 ) : null}
@@ -6096,7 +6138,7 @@ export function ShellPage() {
                       {inGroup
                         ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
                         : (active?.name ??
-                          (opening ? "" : bots.length === 0 ? t`No bots yet` : t`Select a bot`))}
+                          (opening ? "" : noChatBots ? t`No bots yet` : t`Select a bot`))}
                     </span>
                   </span>
                   {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
@@ -6217,6 +6259,7 @@ export function ShellPage() {
               onConsentChange={setLegalConsentMissing}
               onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
+              agentBusy={transcriptRunning}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}
               onSwitchSpace={(spaceId) => {
@@ -7598,13 +7641,30 @@ export function knownBotId(
   return bots.some((bot) => bot.id === botId) || archivedBots.some((bot) => bot.id === botId);
 }
 
-function firstThreadRoute(
-  bots: readonly Pick<Bot, "id">[],
+/** `name`, or `name 2`, `name 3` ... when bots already use it, so new bots never share a sidebar row's text. */
+export function uniqueBotName(name: string, taken: readonly string[]): string {
+  if (!taken.includes(name)) return name;
+  let n = 2;
+  while (taken.includes(`${name} ${n}`)) n += 1;
+  return `${name} ${n}`;
+}
+
+/**
+ * Where a person with no usable route lands: the first chat. A page's auto-created agent is not a
+ * chat to land on, so a space holding only those stays at /app. A pending `?settings=` link is
+ * carried along, so the redirect cannot swallow it before the shell opens the dialog.
+ */
+export function firstThreadRoute(
+  bots: readonly Pick<Bot, "id" | "spawnKey">[],
   groups: readonly Pick<Group, "id">[],
+  search = "",
 ): string {
-  if (bots[0]) return `/app/${bots[0].id}`;
-  if (groups[0]) return `/app/g/${groups[0].id}`;
-  return "/app";
+  const settings = new URLSearchParams(search).get("settings");
+  const query = settings === null ? "" : `?${new URLSearchParams({ settings })}`;
+  const chat = bots.find((bot) => pageAgentKind(bot.spawnKey) === null);
+  if (chat) return `/app/${chat.id}${query}`;
+  if (groups[0]) return `/app/g/${groups[0].id}${query}`;
+  return `/app${query}`;
 }
 
 function applyThreadEvent(

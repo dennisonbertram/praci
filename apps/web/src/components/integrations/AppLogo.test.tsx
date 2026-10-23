@@ -73,3 +73,9 @@ it("gives a known app without a mark a glyph, never an unrelated letter", async 
     expect(container.textContent).toBe("");
   }
 });
+
+it("puts a glyph for an app with no mark (Carta) on the same white tile", async () => {
+  const { container } = await render(null, "Carta");
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.querySelector("[data-testid=app-logo]")?.className).toContain("bg-white");
+});

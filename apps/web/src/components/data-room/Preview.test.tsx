@@ -198,6 +198,7 @@ it("opens a readable PDF in the browser, and says an untagged file has no type y
     );
   });
   expect(container.textContent).toContain("couldn't tell what kind of document it is");
+  expect(container.textContent).not.toContain("Replace file");
   act(() => icon("Open in new tab").click());
   expect(openItem).toHaveBeenCalledWith(pdf);
 });
@@ -216,7 +217,7 @@ it("says nothing about the type while the file is still being tagged", async () 
   expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
 });
 
-it("gives no reason for an untagged file when no model is set up, since classification never ran", async () => {
+it("says why an untagged file has no type when no model is set up", async () => {
   consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
   await act(async () => {
     root.render(
@@ -228,7 +229,7 @@ it("gives no reason for an untagged file when no model is set up, since classifi
       />,
     );
   });
-  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
+  expect(container.textContent).toContain("Not tagged. No model is set up to read documents.");
 });
 
 it("says a file too large to read is not searchable inside, instead of not tagged yet", async () => {
