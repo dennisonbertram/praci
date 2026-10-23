@@ -62,6 +62,7 @@ import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import {
   changeText,
   dayRange,
@@ -315,6 +316,7 @@ function DashboardSkeleton({ connecting = false }: { connecting?: boolean }) {
       </div>
       <Skeleton className="h-56" />
       <Skeleton className="h-40" />
+      <StillLoading />
     </div>
   );
 }

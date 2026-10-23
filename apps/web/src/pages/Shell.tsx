@@ -144,7 +144,7 @@ import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageNavContext } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
-import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
+import { OpeningSpace } from "../components/ShellSkeleton";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
 import type { DropResult, SidebarLayout } from "../components/sidebar-folders/drop-target";
 import { ROOT_CONTAINER } from "../components/sidebar-folders/drop-target";
@@ -4209,7 +4209,7 @@ export function ShellPage() {
                 onAsk={(text) => void sendMessage(text, [], newClientId())}
               />
             ) : !activeSnapshot ? (
-              <ThreadSkeleton />
+              <OpeningSpace />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}

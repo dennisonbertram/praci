@@ -3374,6 +3374,8 @@ describe("bot model auth on save", () => {
       spaceModelPreference: { findFirst: preferenceFindFirst },
       userModelCredential: { findFirst: vi.fn(async () => null) },
       secret: { findFirst: secretFindFirst },
+      // listBots looks for delegate runs that wait for approval.
+      run: { findMany: vi.fn(async () => []) },
       $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
     };
     const deps = {

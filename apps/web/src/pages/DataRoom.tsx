@@ -49,6 +49,7 @@ import { useDataRoomList } from "../components/data-room/use-data-room-list";
 import { useDataRoomProcessing } from "../components/data-room/use-data-room-processing";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import {
   DATA_ROOM_CHANGED,
   fetchDataRoomBlob,
@@ -940,6 +941,7 @@ export function DataRoomPage({
                       {[0, 1, 2, 3].map((n) => (
                         <Skeleton key={n} className="h-8 w-full" />
                       ))}
+                      <StillLoading />
                     </div>
                   ) : rows.length === 0 && !list.error && !subfolders.length ? (
                     <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
