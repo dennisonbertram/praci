@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
 import { Skeleton } from "@rakazo/ui-web";
+import { StillLoading } from "./ShellSkeleton";
 
 /** Placeholder list rows (avatar and two lines) for any list that is still loading. */
 export function RowsSkeleton({ rows = 6, className = "" }: { rows?: number; className?: string }) {
@@ -15,6 +16,7 @@ export function RowsSkeleton({ rows = 6, className = "" }: { rows?: number; clas
           </div>
         </div>
       ))}
+      <StillLoading />
     </div>
   );
 }

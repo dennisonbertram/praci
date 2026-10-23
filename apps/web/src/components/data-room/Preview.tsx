@@ -203,6 +203,7 @@ function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks:
     rpc.dataRoom
       .consent()
       .then((next) => live && setConsent(next))
+      // Without the ask, the reason is unknown, so say nothing rather than guess.
       .catch(() => undefined);
     return () => {
       live = false;
@@ -235,8 +236,9 @@ function UntaggedNote({ item, bannerAsks }: { item: DataRoomApiItem; bannerAsks:
       />
     );
   // A file still being tagged may yet get a type; the ask still loading may change the reason.
-  if ((item.status !== "indexing" && item.status !== "ready") || !consent) return null;
-  if (!consent.allowed || consent.recipients.length === 0)
+  if (item.status !== "indexing" && item.status !== "ready") return null;
+  if (!consent) return null;
+  if (consent && (!consent.allowed || consent.recipients.length === 0))
     return <p className={note}>{t`Not tagged. No model is set up to read documents.`}</p>;
   return (
     <p className={note}>

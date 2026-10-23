@@ -182,3 +182,17 @@ it("says a stalled batch is taking longer than usual and offers Try again", () =
   act(() => retry?.click());
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
+
+it("says a read is taking longer than usual after a minute on the same file", () => {
+  vi.useFakeTimers();
+  try {
+    act(() => root.render(<ProcessingStrip processing={counts} total={1_104} />));
+    expect(container.textContent).not.toContain("Taking longer than usual");
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(container.textContent).toContain("Taking longer than usual");
+  } finally {
+    vi.useRealTimers();
+  }
+});
