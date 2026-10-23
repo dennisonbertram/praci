@@ -588,6 +588,12 @@ function Home() {
           onPress: () => router.push("/artifacts"),
         },
         {
+          type: "button" as const,
+          accessibilityLabel: t("Data room"),
+          icon: { type: "sfSymbol" as const, name: "folder" },
+          onPress: () => router.push("/data-room"),
+        },
+        {
           type: "menu" as const,
           accessibilityLabel: t("Create"),
           icon: { type: "sfSymbol" as const, name: "plus" },
@@ -745,6 +751,12 @@ function Home() {
               onPress={() => router.push("/artifacts")}
             >
               <NativeSymbol ios="square.stack.3d.up" android="layers-outline" size={17} />
+            </HeaderButton>
+            <HeaderButton
+              accessibilityLabel={t("Data room")}
+              onPress={() => router.push("/data-room")}
+            >
+              <NativeSymbol ios="folder" android="folder-outline" size={17} />
             </HeaderButton>
             <MenuView
               actions={[
