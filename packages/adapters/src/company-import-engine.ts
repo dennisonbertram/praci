@@ -21,6 +21,7 @@ import {
   CompanyEntityImportInputSchema,
   CompanyEventImportInputSchema,
   CompanyImportEventSchema,
+  companyImporterSpawnKey,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import {
@@ -97,6 +98,7 @@ function boundConsentKey(
   source: {
     sourceKind: string;
     connectionId: string | null;
+    mcpServerId?: string | null;
     scope: unknown;
   },
   recipientKey: string,
@@ -107,6 +109,7 @@ function boundConsentKey(
       JSON.stringify([
         source.sourceKind,
         source.connectionId,
+        source.mcpServerId ?? null,
         source.scope,
         recipientKey,
         model.provider,
@@ -221,6 +224,7 @@ function assertFactProvenance(
   page: CompanyImportReadPage,
   sourceKind: string,
   connectionId: string | null,
+  mcpServerId?: string | null,
 ) {
   if (
     page.extractions !== undefined &&
@@ -259,6 +263,7 @@ function assertFactProvenance(
     if (
       evidence.sourceKind !== sourceKind ||
       (evidence.connectionId ?? null) !== connectionId ||
+      (evidence.mcpServerId ?? null) !== (mcpServerId ?? null) ||
       !item ||
       item.contentHash !== evidence.contentHash
     ) {
@@ -315,7 +320,11 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       include: { run: { select: { status: true, disclosureVersion: true } } },
     });
     if (!source) throw new CompanyImportWorkerError("not_found");
-    const sourceKey = JSON.stringify([source.sourceKind, source.connectionId, null]);
+    const sourceKey = JSON.stringify([
+      source.sourceKind,
+      source.connectionId,
+      source.mcpServerId ?? null,
+    ]);
     const blocked = await deps.prisma.companySourceBlock.findFirst({
       where: {
         spaceId: actor.spaceId,
@@ -341,6 +350,45 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         select: { id: true },
       });
       if (!connection) throw new CompanyImportConsentRequired();
+    }
+    if (source.sourceKind === "mcp" && (!source.mcpServerId || source.connectionId)) {
+      throw new CompanyImportConsentRequired();
+    }
+    if (source.sourceKind !== "mcp" && source.mcpServerId) {
+      throw new CompanyImportConsentRequired();
+    }
+    if (source.sourceKind === "mcp") {
+      const [server, importer] = await Promise.all([
+        deps.prisma.mcpServer.findFirst({
+          where: {
+            id: source.mcpServerId!,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            enabled: true,
+          },
+          select: { id: true },
+        }),
+        deps.prisma.bot.findFirst({
+          where: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            spawnKey: companyImporterSpawnKey(actor.userId),
+            archivedAt: null,
+          },
+          select: { id: true },
+        }),
+      ]);
+      if (!server || !importer) throw new CompanyImportConsentRequired();
+      const assignment = await deps.prisma.botMcpServer.findFirst({
+        where: {
+          botId: importer.id,
+          serverId: server.id,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+        },
+        select: { id: true },
+      });
+      if (!assignment) throw new CompanyImportConsentRequired();
     }
     if (source.sourceKind === "data_room") {
       const sourceScope =
@@ -544,8 +592,12 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         runId,
         unitId: unit.id,
       };
-      const availableAt =
+      const unitAvailableAt =
         unit.status === "claimed" ? (unit.claimExpiresAt ?? new Date()) : unit.availableAt;
+      const availableAt =
+        unit.source.backoffUntil && unit.source.backoffUntil > unitAvailableAt
+          ? unit.source.backoffUntil
+          : unitAvailableAt;
       await deps.jobs.enqueue({
         name: "company.import.unit",
         payload,
@@ -587,6 +639,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         id: source.id,
         sourceKind: source.sourceKind,
         connectionId: source.connectionId,
+        mcpServerId: source.mcpServerId,
         scope: source.scope as Record<string, unknown>,
       };
       const run = await deps.prisma.companyImportRun.findFirst({
@@ -613,6 +666,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           itemsRead: 0,
           facts: [],
           discoveredUnits: page.units,
+          cooldownMs: page.cooldownMs,
         });
       } else {
         const maxItems = sample ? MAX_SAMPLE_READ_ITEMS : MAX_READ_ITEMS;
@@ -627,7 +681,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           context,
         );
         assertSafeReadPage(page, maxItems);
-        assertFactProvenance(page, source.sourceKind, source.connectionId);
+        assertFactProvenance(page, source.sourceKind, source.connectionId, source.mcpServerId);
         await completeCompanyImportUnit(deps.prisma, actor, {
           ...claimInput,
           nextCursor: page.nextCursor,
@@ -641,6 +695,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
             sourceItemId,
             contentHash,
           })),
+          cooldownMs: page.cooldownMs,
         });
       }
       await publish(actor, payload.runId);

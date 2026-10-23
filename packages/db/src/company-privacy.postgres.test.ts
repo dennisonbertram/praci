@@ -749,9 +749,20 @@ describePostgres("company privacy controls (PostgreSQL)", () => {
     expect(await company.detail(mcpFact.id)).toBeNull();
 
     async function claimRun(sourceKind: "slack" | "github") {
+      const connection = await prisma.connection.create({
+        data: {
+          spaceId,
+          userId: ownerId,
+          connectorId: "synthetic",
+          provider: sourceKind,
+          displayName: `Synthetic ${sourceKind}`,
+          status: "connected",
+          providerRef: `synthetic-${sourceKind}-${suffix}`,
+        },
+      });
       const run = await createCompanyImportRun(prisma, owner, {
         tokenCap: 100,
-        sources: [{ sourceKind, scope: {} }],
+        sources: [{ sourceKind, connectionId: connection.id, scope: {} }],
       });
       await startCompanyImportRun(prisma, owner, run.id);
       const unit = await prisma.companyImportUnit.findFirstOrThrow({
@@ -869,7 +880,7 @@ describePostgres("company privacy controls (PostgreSQL)", () => {
     );
     const run = await createCompanyImportRun(prisma, otherSpaceOwner, {
       tokenCap: 100,
-      sources: [{ sourceKind: "slack", scope: {} }],
+      sources: [{ sourceKind: "data_room", scope: {} }],
     });
     await prisma.space.delete({ where: { id: otherSpaceId } });
     expect(await prisma.companyEntity.findUnique({ where: { id: fact.id } })).toBeNull();

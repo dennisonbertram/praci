@@ -28,6 +28,7 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
   };
   let prisma: PrismaClient;
   let close: () => Promise<void>;
+  let slackConnectionId: string;
 
   beforeAll(async () => {
     const db = createDb(databaseUrl!);
@@ -67,6 +68,21 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
         createdAt: new Date(),
       },
     });
+    slackConnectionId = (
+      await prisma.connection.create({
+        data: {
+          spaceId,
+          userId,
+          connectorId: "synthetic",
+          provider: "slack",
+          displayName: "Synthetic Slack",
+          status: "connected",
+          providerRef: `synthetic-slack-${suffix}`,
+          allAgents: true,
+          privateByDefault: false,
+        },
+      })
+    ).id;
   });
 
   afterAll(async () => {
@@ -134,6 +150,7 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
                 evidence: {
                   stance: "supports",
                   sourceKind: "slack",
+                  connectionId: slackConnectionId,
                   sourceItemId: "synthetic-item",
                   quote: "Synthetic source quote.",
                   contentHash: "synthetic-hash",
@@ -158,7 +175,7 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
     });
     const created = await engine.create(actor, {
       tokenCap: 5,
-      sources: [{ sourceKind: "slack", scope: {} }],
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: {} }],
     });
     await prisma.companyImportRun.update({
       where: { id: created.runId },
@@ -283,7 +300,7 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
     const created = await engine.create(actor, {
       tokenCap: 2_500,
       mode: "sample",
-      sources: [{ sourceKind: "slack", scope: {} }],
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: {} }],
     });
     const source = await prisma.companyImportSource.findFirstOrThrow({
       where: { runId: created.runId, spaceId, ownerUserId: userId },
@@ -373,7 +390,7 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
     const created = await engine.create(actor, {
       tokenCap: 2_500,
       mode: "sample",
-      sources: [{ sourceKind: "slack", scope: {} }],
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: {} }],
     });
     const source = await prisma.companyImportSource.findFirstOrThrow({
       where: { runId: created.runId, spaceId, ownerUserId: userId },

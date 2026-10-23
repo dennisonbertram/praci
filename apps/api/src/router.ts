@@ -5334,6 +5334,7 @@ export function createRouter(deps: RouterDeps) {
               server.id,
               tx,
             );
+            await companyWriter(tx, context.actor).disconnectMcpServer(server.id);
             // The deleted row says which agent it had at that moment, so a concurrent relink is seen.
             const deleted = await tx.mcpServer.delete({ where: { id: server.id } });
             // Carta's agent is shared with the Cap table, and the Granola agent with the API key.
@@ -7392,6 +7393,13 @@ export function createRouter(deps: RouterDeps) {
         deps.companyImportPage
           ? deps.companyImportPage.catalog(context.actor)
           : { sources: [], folders: [] },
+      ),
+      channels: authed.companyImport.channels.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.channels(context.actor, input) ?? {
+            channels: [],
+            nextCursor: null,
+          },
       ),
       session: authed.companyImport.session.handler(
         ({ context, input }) => deps.companyImportPage?.session(context.actor, input.runId) ?? null,

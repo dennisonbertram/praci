@@ -18,7 +18,9 @@ import {
   createArtifactStore,
   createBackgroundJobHandlers,
   createCloudAgentConnection,
+  createCompanyConnectionReader,
   createCompanyImportEngine,
+  createCompanySlackReader,
   createCompanySourceWorker,
   createConnectorStack,
   createDevinCallTool,
@@ -261,12 +263,19 @@ async function main() {
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
   });
 
+  const companyReader = createCompanyConnectionReader({ prisma, connectors: stack.connector, mcp });
+  const slackReader = createCompanySlackReader(companyReader);
   companyImport = createCompanyImportEngine({
     prisma,
     jobs,
     realtime,
     resolveModel: executor.resolveModel,
-    worker: createCompanySourceWorker({ prisma, mail, extractor: new LlmCompanyExtractor() }),
+    worker: createCompanySourceWorker({
+      prisma,
+      mail,
+      extractor: new LlmCompanyExtractor(),
+      slack: slackReader,
+    }),
   });
   const jobHandlers = createBackgroundJobHandlers({
     executor,

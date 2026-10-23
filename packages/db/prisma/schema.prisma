@@ -3657,6 +3657,7 @@ model CompanyImportSource {
   sourceKey           String
   sourceKind          String
   connectionId        String?
+  mcpServerId         String?
   scope               Json               @default("{}")
   plan                Json               @default("{}")
   cursor              Json?
@@ -3675,6 +3676,7 @@ model CompanyImportSource {
   @@unique([id, spaceId, ownerUserId])
   @@unique([runId, sourceKey])
   @@index([spaceId, ownerUserId, runId, status])
+  @@index([mcpServerId])
   @@map("company_import_sources")
 }
 

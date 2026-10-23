@@ -468,7 +468,14 @@ async function snapshotImportPlan(deps: CompanyToolsDeps, runId: string) {
       outputTokensUsed: true,
       sources: {
         orderBy: { id: "asc" },
-        select: { id: true, sourceKind: true, connectionId: true, scope: true, plan: true },
+        select: {
+          id: true,
+          sourceKind: true,
+          connectionId: true,
+          mcpServerId: true,
+          scope: true,
+          plan: true,
+        },
       },
     },
   });
@@ -488,7 +495,11 @@ async function snapshotImportPlan(deps: CompanyToolsDeps, runId: string) {
     },
     sources: run.sources.map(({ plan, ...source }) => {
       const parsed = CompanyImportPlanSchema.safeParse(plan);
-      return { ...source, plan: parsed.success ? parsed.data : null };
+      return {
+        ...source,
+        mcpServerId: source.mcpServerId ?? null,
+        plan: parsed.success ? parsed.data : null,
+      };
     }),
     consents,
   };

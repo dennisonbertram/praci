@@ -2692,8 +2692,8 @@ async function privacy(db: CompanyDb, scope: Scope): Promise<CompanyPrivacy> {
     }),
     db.companyImportSource.findMany({
       where: { ...scope, sourceKind: { not: "manual" }, run: { status: { not: "discarded" } } },
-      select: { sourceKind: true, connectionId: true },
-      distinct: ["sourceKind", "connectionId"],
+      select: { sourceKind: true, connectionId: true, mcpServerId: true },
+      distinct: ["sourceKind", "connectionId", "mcpServerId"],
     }),
     db.companySourceBlock.findMany({ where: scope }),
   ]);
@@ -2710,7 +2710,7 @@ async function privacy(db: CompanyDb, scope: Scope): Promise<CompanyPrivacy> {
     const locator = {
       sourceKind: row.sourceKind as CompanySourceLocator["sourceKind"],
       connectionId: row.connectionId,
-      mcpServerId: null,
+      mcpServerId: row.mcpServerId,
     };
     locators.set(companyPrivacySourceKey(locator), locator);
   }
@@ -3319,11 +3319,53 @@ function writerFor(db: CompanyDb, actor: Actor) {
       write((tx) => sourceControl(tx, scope, locator, connected)),
     disconnectMcpServer: (mcpServerId: string) =>
       write(async (tx) => {
-        const candidates = await tx.companyEvidence.findMany({
-          where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
-          select: { sourceKind: true, sourceItemId: true },
-          distinct: ["sourceKind", "sourceItemId"],
-        });
+        const [evidenceSources, importSources, candidates] = await Promise.all([
+          tx.companyEvidence.findMany({
+            where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
+            select: { sourceKind: true },
+            distinct: ["sourceKind"],
+          }),
+          tx.companyImportSource.findMany({
+            where: { ...scope, mcpServerId },
+            select: { sourceKind: true, runId: true },
+          }),
+          tx.companyEvidence.findMany({
+            where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
+            select: { sourceKind: true, sourceItemId: true },
+            distinct: ["sourceKind", "sourceItemId"],
+          }),
+        ]);
+        const sourceKinds = [
+          ...new Set([...evidenceSources, ...importSources].map((source) => source.sourceKind)),
+        ];
+        for (const sourceKind of sourceKinds) {
+          const locator = {
+            sourceKind: sourceKind as CompanySourceLocator["sourceKind"],
+            connectionId: null,
+            mcpServerId,
+          };
+          const sourceKey = companyPrivacySourceKey(locator);
+          await tx.companySourceBlock.upsert({
+            where: { spaceId_ownerUserId_sourceKey: { ...scope, sourceKey } },
+            create: { ...scope, sourceKey, sourceKind, connectionId: null, mcpServerId },
+            update: {},
+          });
+        }
+        const runIds = [...new Set(importSources.map((source) => source.runId))];
+        if (runIds.length) {
+          await tx.companyImportRun.updateMany({
+            where: {
+              ...scope,
+              id: { in: runIds },
+              status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] },
+            },
+            data: { status: "cancelled", completedAt: new Date() },
+          });
+          await tx.companyImportUnit.updateMany({
+            where: { ...scope, runId: { in: runIds }, status: { in: ["waiting", "claimed"] } },
+            data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
+          });
+        }
         await tx.companyCandidate.deleteMany({ where: { ...scope, mcpServerId } });
         await tx.companyEvidence.deleteMany({
           where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
@@ -3996,12 +4038,7 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
         });
       }),
     disconnectMcpServer: (mcpServerId: string) =>
-      write(async (tx) => {
-        await tx.companyCandidate.deleteMany({ where: { ...scope, mcpServerId } });
-        await tx.companyEvidence.deleteMany({
-          where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
-        });
-      }),
+      writerFor(prisma, actor).disconnectMcpServer(mcpServerId),
     erase: (entityId: string) => write((tx) => eraseEntity(tx, scope, entityId)),
     eraseMap: () => write((tx) => eraseMap(tx, scope)),
     merge: (sourceEntityId: string, survivorEntityId: string) =>

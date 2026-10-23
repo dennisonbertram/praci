@@ -718,8 +718,16 @@ describe("thread stream authorization", () => {
 
 describe("MCP server deletion", () => {
   it("does not fail when a concurrent credential rotation already removed the old secret", async () => {
-    const deleteServer = vi.fn().mockResolvedValue({ id: "server-1" });
+    const cleanupOrder: string[] = [];
+    const deleteServer = vi.fn(async () => {
+      cleanupOrder.push("delete");
+      return { id: "server-1" };
+    });
     const deleteSecrets = vi.fn().mockResolvedValue({ count: 0 });
+    const findImportSources = vi.fn(async () => {
+      cleanupOrder.push("disconnect");
+      return [];
+    });
     const prisma = {
       devinConnectionState: { findUnique: vi.fn().mockResolvedValue(null) },
       mcpServer: {
@@ -728,6 +736,14 @@ describe("MCP server deletion", () => {
       },
       secret: { deleteMany: deleteSecrets },
       message: { findMany: vi.fn().mockResolvedValue([]) },
+      spaceMember: { findUnique: vi.fn().mockResolvedValue({ userId: "user-1" }) },
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      companyEvidence: {
+        findMany: vi.fn().mockResolvedValue([]),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      companyImportSource: { findMany: findImportSources },
+      companyCandidate: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run(prisma)),
     } as unknown as PrismaClient;
     const deps = {
@@ -761,6 +777,11 @@ describe("MCP server deletion", () => {
     expect(matched).toBe(true);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ json: { ok: true } });
+    expect(findImportSources).toHaveBeenCalledWith({
+      where: { spaceId: "workspace-1", ownerUserId: "user-1", mcpServerId: "server-1" },
+      select: { sourceKind: true, runId: true },
+    });
+    expect(cleanupOrder).toEqual(["disconnect", "delete"]);
     expect(deleteServer).toHaveBeenCalledWith({ where: { id: "server-1" } });
     expect(deleteSecrets).toHaveBeenCalledWith({
       where: {

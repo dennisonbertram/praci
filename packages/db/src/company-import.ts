@@ -109,7 +109,14 @@ async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Sco
 
 function importSourceKey(source: CompanyImportSourceInput): string {
   return createHash("sha256")
-    .update(JSON.stringify([source.sourceKind, source.connectionId ?? null, source.scope]))
+    .update(
+      JSON.stringify([
+        source.sourceKind,
+        source.connectionId ?? null,
+        source.mcpServerId ?? null,
+        source.scope,
+      ]),
+    )
     .digest("hex");
 }
 
@@ -140,6 +147,13 @@ export async function createCompanyImportRun(
   }
   const sourceKeys = new Set<string>();
   for (const source of input.sources) {
+    if (
+      (source.sourceKind === "mcp" && (!source.mcpServerId || source.connectionId)) ||
+      (source.sourceKind !== "mcp" && source.mcpServerId) ||
+      (source.sourceKind !== "mcp" && source.sourceKind !== "data_room" && !source.connectionId)
+    ) {
+      throw new CompanyImportError("invalid_state");
+    }
     assertBoundedJson(source.scope);
     const key = importSourceKey(source);
     if (sourceKeys.has(key)) throw new CompanyImportError("invalid_state");
@@ -147,6 +161,19 @@ export async function createCompanyImportRun(
   }
   await requireMember(prisma, scope);
   for (const source of input.sources) {
+    if (source.mcpServerId) {
+      const server = await prisma.mcpServer.findFirst({
+        where: {
+          id: source.mcpServerId,
+          spaceId: scope.spaceId,
+          userId: scope.ownerUserId,
+          enabled: true,
+        },
+        select: { id: true },
+      });
+      if (!server) throw new CompanyImportError("not_found");
+      continue;
+    }
     if (!source.connectionId) continue;
     const connection = await prisma.connection.findFirst({
       where: {
@@ -181,6 +208,7 @@ export async function createCompanyImportRun(
             sourceKey: importSourceKey(sourceInput),
             sourceKind: sourceInput.sourceKind,
             connectionId: sourceInput.connectionId ?? null,
+            mcpServerId: sourceInput.mcpServerId ?? null,
             scope: jsonInput(sourceInput.scope),
           },
           select: { id: true },
@@ -999,6 +1027,7 @@ export async function completeCompanyImportUnit(
     readItems?: { sourceItemId: string; contentHash: string }[];
     discoveredUnits?: { unitKey: string; cursor: unknown }[];
     nextSourceCursor?: unknown | null;
+    cooldownMs?: number;
   },
 ) {
   const scope = scopeOf(actor);
@@ -1018,6 +1047,14 @@ export async function completeCompanyImportUnit(
     input.itemsDiscovered < 0 ||
     !Number.isSafeInteger(input.itemsRead) ||
     input.itemsRead < 0
+  ) {
+    throw new CompanyImportError("invalid_state");
+  }
+  if (
+    input.cooldownMs !== undefined &&
+    (!Number.isSafeInteger(input.cooldownMs) ||
+      input.cooldownMs < 0 ||
+      input.cooldownMs > 86_400_000)
   ) {
     throw new CompanyImportError("invalid_state");
   }
@@ -1044,7 +1081,7 @@ export async function completeCompanyImportUnit(
       });
       const source = await tx.companyImportSource.findFirst({
         where: { ...scope, id: input.sourceId, runId: input.runId },
-        select: { id: true, sourceKind: true, connectionId: true },
+        select: { id: true, sourceKind: true, connectionId: true, mcpServerId: true },
       });
       if (!unit || !run || !source) throw new CompanyImportError("stale_claim");
       if (run.mode === "sample") {
@@ -1052,7 +1089,11 @@ export async function completeCompanyImportUnit(
           where: {
             ...scope,
             runId: run.id,
-            evidence: { sourceKind: source.sourceKind, connectionId: source.connectionId },
+            evidence: {
+              sourceKind: source.sourceKind,
+              connectionId: source.connectionId,
+              mcpServerId: source.mcpServerId,
+            },
           },
           select: { evidence: { select: { sourceItemId: true } } },
         });
@@ -1086,6 +1127,7 @@ export async function completeCompanyImportUnit(
         persistedFacts += await persistCompanyExtraction(tx, actor, extraction, {
           sourceKind: CompanySourceKindSchema.parse(source.sourceKind),
           connectionId: source.connectionId,
+          mcpServerId: source.mcpServerId,
           runId: run.id,
         });
       }
@@ -1097,6 +1139,7 @@ export async function completeCompanyImportUnit(
             id: { in: ids },
             sourceKind: source.sourceKind,
             connectionId: source.connectionId,
+            mcpServerId: source.mcpServerId,
             OR: input.readItems ?? [],
           },
           select: { id: true },
@@ -1136,6 +1179,17 @@ export async function completeCompanyImportUnit(
           factsFound: { increment: persistedFacts },
         },
       });
+      if (input.cooldownMs !== undefined) {
+        const until = new Date(Date.now() + input.cooldownMs);
+        await tx.companyImportSource.update({
+          where: { ...scope, id: input.sourceId },
+          data: { backoffUntil: until },
+        });
+        await tx.companyImportUnit.update({
+          where: { ...scope, id: unit.id },
+          data: { availableAt: until },
+        });
+      }
       await tx.companyImportSource.update({
         where: { ...scope, id: input.sourceId },
         data: {
@@ -1197,20 +1251,21 @@ export async function failCompanyImportUnit(
           : 0;
       const delay = Math.max(genericDelay, retryAfter);
       const failed = unit.attempts >= 3;
+      const retryAt = new Date(Date.now() + delay);
       await tx.companyImportUnit.update({
         where: { ...scope, id: unit.id },
         data: {
           status: failed ? "failed" : "waiting",
           claimToken: null,
           claimExpiresAt: null,
-          availableAt: new Date(Date.now() + delay),
+          availableAt: retryAt,
           lastError: errorCode,
         },
       });
       await tx.companyImportSource.update({
         where: { ...scope, id: input.sourceId },
         data: {
-          backoffUntil: failed ? null : new Date(Date.now() + delay),
+          backoffUntil: failed ? null : retryAt,
           lastError: errorCode,
         },
       });
@@ -1283,7 +1338,14 @@ export async function listCompanyImportUnitsForScheduling(
   await requireMember(prisma, scope);
   return prisma.companyImportUnit.findMany({
     where: { ...scope, runId, status: { in: ["waiting", "claimed"] } },
-    select: { id: true, sourceId: true, status: true, availableAt: true, claimExpiresAt: true },
+    select: {
+      id: true,
+      sourceId: true,
+      status: true,
+      availableAt: true,
+      claimExpiresAt: true,
+      source: { select: { backoffUntil: true } },
+    },
   });
 }
 

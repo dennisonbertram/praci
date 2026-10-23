@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { CompanyImportScope } from "./CompanyImportScope";
 import { importCatalog } from "./company-import-fixtures";
 
@@ -27,4 +28,42 @@ export const DataRoom: Story = { render: renderScope };
 export const Gmail: Story = {
   render: renderScope,
   args: { source: importCatalog.sources[1]!, scope: { after: "2023-10-21", labelIds: ["INBOX"] } },
+};
+export const Slack: Story = {
+  render: renderScope,
+  args: {
+    source: { ...importCatalog.sources[2]!, available: true, reason: null },
+    scope: { after: "2023-10-21" },
+  },
+  beforeEach: () =>
+    mockRpc({
+      "companyImport.channels": (input: { includePrivate: boolean }) => ({
+        channels: input.includePrivate
+          ? [
+              { id: "GSELECTED1", name: "project-planning", private: true, direct: false },
+              { id: "DSELECTED1", name: "DSELECTED1", private: true, direct: true },
+            ]
+          : [
+              { id: "CPUBLIC1", name: "general", private: false, direct: false },
+              { id: "CPUBLIC2", name: "launches", private: false, direct: false },
+            ],
+        nextCursor: null,
+      }),
+    }),
+};
+export const SlackPrivateSelection: Story = {
+  ...Slack,
+  args: {
+    ...Slack.args,
+    scope: { channelIds: ["CPUBLIC2"], privateChannelIds: ["GSELECTED1"], after: "2023-10-21" },
+  },
+};
+export const SlackUnavailable: Story = {
+  ...Slack,
+  beforeEach: () =>
+    mockRpc({
+      "companyImport.channels": () => {
+        throw new Error("Source unavailable");
+      },
+    }),
 };

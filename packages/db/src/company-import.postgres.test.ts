@@ -43,6 +43,7 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
   };
   let prisma: PrismaClient;
   let close: () => Promise<void>;
+  let slackConnectionId: string;
 
   beforeAll(async () => {
     const db = createDb(databaseUrl!);
@@ -109,6 +110,21 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         },
       ],
     });
+    slackConnectionId = (
+      await prisma.connection.create({
+        data: {
+          spaceId,
+          userId,
+          connectorId: "synthetic",
+          provider: "slack",
+          displayName: "Synthetic Slack",
+          status: "connected",
+          providerRef: "synthetic-slack",
+          allAgents: true,
+          privateByDefault: false,
+        },
+      })
+    ).id;
   });
 
   afterAll(async () => {
@@ -129,6 +145,7 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
       mode,
       sources: Array.from({ length: count }, (_, index) => ({
         sourceKind,
+        ...(sourceKind === "slack" ? { connectionId: slackConnectionId } : {}),
         scope: { index },
       })),
     });
@@ -206,6 +223,129 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         ],
       }),
     ).rejects.toMatchObject({ code: "invalid_state" });
+  });
+
+  it("keeps MCP import locators distinct and disconnects only the selected server", async () => {
+    const serverIds = [`company-import-mcp-a-${suffix}`, `company-import-mcp-b-${suffix}`];
+    await prisma.mcpServer.createMany({
+      data: serverIds.map((id, index) => ({
+        id,
+        spaceId,
+        userId,
+        slug: `company-import-mcp-${index}-${suffix}`,
+        name: `Synthetic MCP ${index}`,
+        transport: "streamable_http",
+        endpoint: "https://synthetic.example.test/mcp",
+        enabled: true,
+      })),
+    });
+    const runs = await Promise.all(
+      serverIds.map((mcpServerId) =>
+        createCompanyImportRun(prisma, actor, {
+          tokenCap: 100,
+          sources: [{ sourceKind: "mcp", mcpServerId, scope: { reader: "slack" } }],
+        }),
+      ),
+    );
+    const sources = await prisma.companyImportSource.findMany({
+      where: { runId: { in: runs.map((run) => run.id) }, spaceId, ownerUserId: userId },
+      orderBy: { mcpServerId: "asc" },
+      select: {
+        runId: true,
+        sourceKey: true,
+        sourceKind: true,
+        connectionId: true,
+        mcpServerId: true,
+      },
+    });
+    expect(sources).toHaveLength(2);
+    expect(new Set(sources.map((source) => source.sourceKey)).size).toBe(2);
+    expect(sources.map((source) => source.mcpServerId).sort()).toEqual([...serverIds].sort());
+    expect(
+      sources.every((source) => source.sourceKind === "mcp" && source.connectionId === null),
+    ).toBe(true);
+    await Promise.all(runs.map((run) => startCompanyImportRun(prisma, actor, run.id)));
+
+    await prisma.$transaction(async (tx) => {
+      await companyForActor(prisma, actor).writer(tx).disconnectMcpServer(serverIds[0]!);
+    });
+
+    expect(
+      await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runs[0]!.id } }),
+    ).toMatchObject({ status: "cancelled" });
+    expect(
+      await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runs[1]!.id } }),
+    ).toMatchObject({ status: "running" });
+    expect(
+      await prisma.companySourceBlock.findMany({
+        where: { spaceId, ownerUserId: userId, sourceKind: "mcp" },
+        select: { mcpServerId: true, connectionId: true },
+      }),
+    ).toEqual([{ mcpServerId: serverIds[0], connectionId: null }]);
+    expect(
+      await prisma.companyImportUnit.count({
+        where: { runId: runs[0]!.id, status: "cancelled", spaceId, ownerUserId: userId },
+      }),
+    ).toBe(1);
+  });
+
+  it("persists successful source cooldowns and prevents claims until both delays expire", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const startedAt = Date.now();
+    const completeInput = {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: false,
+      itemsDiscovered: 1,
+      itemsRead: 0,
+      facts: [],
+      discoveredUnits: [{ unitKey: "read:cooldown", cursor: null }],
+    };
+    await expect(
+      completeCompanyImportUnit(prisma, actor, { ...completeInput, cooldownMs: 86_400_001 }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await completeCompanyImportUnit(prisma, actor, { ...completeInput, cooldownMs: 5_000 });
+    const [sourceAfter, units] = await Promise.all([
+      prisma.companyImportSource.findUniqueOrThrow({ where: { id: claim.sourceId } }),
+      prisma.companyImportUnit.findMany({
+        where: { runId, sourceId: claim.sourceId, spaceId, ownerUserId: userId, status: "waiting" },
+      }),
+    ]);
+    expect(sourceAfter.backoffUntil!.getTime()).toBeGreaterThan(startedAt + 4_000);
+    expect(units).toHaveLength(2);
+    expect(units.find((unit) => unit.id === claim.id)!.availableAt).toEqual(
+      sourceAfter.backoffUntil,
+    );
+    expect(
+      await Promise.all(
+        units.map((unit) => claimCompanyImportUnit(prisma, actor, { runId, unitId: unit.id })),
+      ),
+    ).toEqual([null, null]);
+  });
+
+  it("persists rate-limit retry delays as source and unit backoff", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const startedAt = Date.now();
+    await failCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      errorCode: "rate_limited",
+      retryAfterMs: 5_000,
+    });
+    const [sourceAfter, unitAfter] = await Promise.all([
+      prisma.companyImportSource.findUniqueOrThrow({ where: { id: claim.sourceId } }),
+      prisma.companyImportUnit.findUniqueOrThrow({ where: { id: claim.id } }),
+    ]);
+    expect(sourceAfter.backoffUntil!.getTime()).toBeGreaterThan(startedAt + 4_000);
+    expect(unitAfter.availableAt).toEqual(sourceAfter.backoffUntil);
+    expect(await claimCompanyImportUnit(prisma, actor, { runId, unitId: claim.id })).toBeNull();
   });
 
   it("serializes reservations across sources and resumes after raising the cap", async () => {
@@ -575,6 +715,7 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
             evidence: {
               stance: "supports",
               sourceKind: "slack",
+              connectionId: slackConnectionId,
               sourceItemId: "preview-cancellation-item",
               quote: "Preview cancellation source quote.",
               contentHash: "preview-cancellation-hash",
@@ -778,6 +919,7 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     const baselineEvidence = (quote: string) => ({
       stance: "supports" as const,
       sourceKind: "slack" as const,
+      connectionId: slackConnectionId,
       sourceItemId,
       quote,
       contentHash,

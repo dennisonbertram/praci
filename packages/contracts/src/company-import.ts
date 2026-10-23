@@ -1,19 +1,30 @@
 import { z } from "zod";
 import { CompanySourceKindSchema } from "./company.js";
+import { CompanySlackChannelIdSchema } from "./company-extraction.js";
 
 const identifier = z.string().min(1).max(200);
 
-export const CompanyImportSourceInputSchema = z.strictObject({
-  sourceKind: CompanySourceKindSchema.exclude(["manual"]),
-  connectionId: identifier.nullable().optional(),
-  scope: z
-    .record(z.string(), z.unknown())
-    .default({})
-    .refine(
-      (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= 16_384,
-      "scope too large",
-    ),
-});
+export const CompanyImportSourceInputSchema = z
+  .strictObject({
+    sourceKind: CompanySourceKindSchema.exclude(["manual"]),
+    connectionId: identifier.nullable().optional(),
+    mcpServerId: identifier.nullable().optional(),
+    scope: z
+      .record(z.string(), z.unknown())
+      .default({})
+      .refine(
+        (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= 16_384,
+        "scope too large",
+      ),
+  })
+  .refine(
+    (source) =>
+      source.sourceKind === "mcp"
+        ? Boolean(source.mcpServerId) && !source.connectionId
+        : !source.mcpServerId &&
+          (source.sourceKind === "data_room" || Boolean(source.connectionId)),
+    "Choose one source connection",
+  );
 
 export const CompanyImportCreateInputSchema = z.strictObject({
   tokenCap: z.number().int().positive().safe(),
@@ -103,6 +114,7 @@ export const CompanyImportCatalogSourceSchema = z.object({
   key: identifier,
   sourceKind: CompanySourceKindSchema.exclude(["manual"]),
   connectionId: identifier.nullable(),
+  mcpServerId: identifier.nullable().optional(),
   label: z.string(),
   available: z.boolean(),
   reason: z.enum(["not_connected", "unsupported", "access_denied"]).nullable(),
@@ -124,6 +136,7 @@ export const CompanyImportSessionSchema = z.object({
       label: z.string(),
       sourceKind: CompanySourceKindSchema,
       connectionId: identifier.nullable(),
+      mcpServerId: identifier.nullable().optional(),
       scope: z.record(z.string(), z.unknown()),
       plan: CompanyImportPlanSchema,
     }),
@@ -154,3 +167,34 @@ export type CompanyImportCatalog = z.infer<typeof CompanyImportCatalogSchema>;
 export type CompanyImportCatalogSource = z.infer<typeof CompanyImportCatalogSourceSchema>;
 export type CompanyImportSession = z.infer<typeof CompanyImportSessionSchema>;
 export type CompanyImportSample = z.infer<typeof CompanyImportSampleSchema>;
+
+export const CompanyImportChannelsInputSchema = z
+  .strictObject({
+    sourceKind: z.enum(["slack", "mcp"]),
+    connectionId: identifier.nullable().optional(),
+    mcpServerId: identifier.nullable().optional(),
+    includePrivate: z.boolean().default(false),
+    cursor: z.string().max(4096).nullable().optional(),
+  })
+  .refine(
+    (input) =>
+      input.sourceKind === "mcp"
+        ? Boolean(input.mcpServerId) && !input.connectionId
+        : Boolean(input.connectionId) && !input.mcpServerId,
+    "Choose one source connection",
+  );
+export const CompanyImportChannelsSchema = z.object({
+  channels: z
+    .array(
+      z.object({
+        id: CompanySlackChannelIdSchema,
+        name: z.string().max(200),
+        private: z.boolean(),
+        direct: z.boolean(),
+      }),
+    )
+    .max(100),
+  nextCursor: z.string().max(4096).nullable(),
+});
+export type CompanyImportChannelsInput = z.infer<typeof CompanyImportChannelsInputSchema>;
+export type CompanyImportChannels = z.infer<typeof CompanyImportChannelsSchema>;

@@ -72,6 +72,11 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
 
 function explicitReadOnly(...items: Record<string, unknown>[]): boolean | undefined {
   for (const item of items) {
+    const annotations = asObject(item.annotations);
+    if (item.destructiveHint === true || annotations?.destructiveHint === true) return false;
+    if (item.readOnly === false || annotations?.readOnlyHint === false) return false;
+  }
+  for (const item of items) {
     if (typeof item.readOnly === "boolean") return item.readOnly;
     const annotations = asObject(item.annotations);
     if (typeof annotations?.readOnlyHint === "boolean") return annotations.readOnlyHint;
@@ -598,7 +603,7 @@ export class ComposioConnector implements ComposioProvider {
       if (call.route && (call.route.connectionId || call.route.discoveredReadOnly === true)) {
         // Fetched now, not at discovery: a read that has become a write must not run unasked.
         const offered = new Map(
-          asConnectorTools(await session.tools()).map((tool) => [tool.name, tool.readOnly]),
+          asConnectorTools(await session.tools()).map((tool) => [tool.name, tool]),
         );
         const requested =
           call.tool !== COMPOSIO_MULTI_EXECUTE_TOOL
@@ -620,7 +625,16 @@ export class ComposioConnector implements ComposioProvider {
         }
         if (
           call.route.discoveredReadOnly === true &&
-          requested.some((tool) => offered.get(tool) !== true)
+          requested.some((name) => {
+            const tool = offered.get(name);
+            return (
+              !tool ||
+              tool.readOnly === false ||
+              (tool.readOnly !== true &&
+                (call.tool === COMPOSIO_MULTI_EXECUTE_TOOL ||
+                  call.authorizeUnannotatedRead?.(tool) !== true))
+            );
+          })
         ) {
           yield { type: "error", message: CHANGED_TO_WRITE_MESSAGE };
           return;
