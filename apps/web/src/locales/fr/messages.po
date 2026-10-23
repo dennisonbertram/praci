@@ -2383,10 +2383,6 @@ msgstr ""
 msgid "Check for updates"
 msgstr "Rechercher des mises à jour"
 
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr ""
-
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
 msgstr ""
