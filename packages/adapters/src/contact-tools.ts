@@ -1,11 +1,18 @@
 import {
+  CapTableLedgerRowSchema,
   CapTableSnapshotInputSchema,
   ContactKindSchema,
   ContactSaveInputSchema,
   isCartaAgentSpawnKey,
   isInvestorsAgentSpawnKey,
 } from "@rakazo/contracts";
-import { atCapPercent, capTableMath, equityRaisedUsd, isSafeSecurity } from "@rakazo/core";
+import {
+  atCapPercent,
+  capTableMath,
+  equityRaisedUsd,
+  investedByHolder,
+  isSafeSecurity,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   addContactIfNew,
@@ -119,7 +126,19 @@ export async function contactToolFromTool(
     if (name === "cap_table_update") {
       // The writer comes from the agent, never from the model, so it cannot name another source.
       const writer = deps.writer ?? "carta";
-      const input = CapTableSnapshotInputSchema.safeParse({ ...args, source: writer });
+      const { ledger: rawLedger, ...rest } = args;
+      const ledger = CapTableLedgerRowSchema.array().safeParse(rawLedger ?? []);
+      if (!ledger.success) return { error: `ledger: ${ledger.error.issues[0]?.message}` };
+      // Holders in the ledger get its cash; SAFEs stay with Mercury and are never given an amount here.
+      const invested = investedByHolder(ledger.data);
+      const holders = Array.isArray(rest.holders)
+        ? rest.holders.map((h: { name?: string; security?: string }) =>
+            h.name && invested.has(h.name) && !isSafeSecurity(String(h.security))
+              ? { ...h, amountUsd: invested.get(h.name) }
+              : h,
+          )
+        : rest.holders;
+      const input = CapTableSnapshotInputSchema.safeParse({ ...rest, holders, source: writer });
       if (!input.success)
         return {
           error: input.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),

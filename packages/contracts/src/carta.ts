@@ -61,6 +61,18 @@ export const NATIVE_SECURITIES = ["Common", "Preferred", "Option", "Other"] as c
 export const CapTableSourceRefSchema = z.object({ driveFileId: Label, name: Label });
 export type CapTableSourceRef = z.infer<typeof CapTableSourceRefSchema>;
 
+/**
+ * One certificate-level row of Carta's ledger export. An issuance adds cash to the holder, a transfer
+ * moves it to `toHolder`, a cancellation removes it, and a conversion (preferred to common) moves nothing.
+ */
+export const CapTableLedgerRowSchema = z.object({
+  type: z.enum(["issuance", "transfer", "cancellation", "conversion"]),
+  holder: Label,
+  toHolder: Label.optional(),
+  amountUsd: Usd,
+});
+export type CapTableLedgerRow = z.infer<typeof CapTableLedgerRowSchema>;
+
 /** What the Carta agent saves with cap_table_update. Figures come from Carta; nothing is estimated. */
 export const CapTableSnapshotInputSchema = z.object({
   companyName: Label,

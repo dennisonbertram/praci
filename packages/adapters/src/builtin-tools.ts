@@ -1293,6 +1293,24 @@ export const builtinAgentTools: ConnectorTool[] = [
             required: ["name", "shares", "percent"],
           },
         },
+        ledger: {
+          type: "array",
+          description:
+            "Carta's ledger export rows, if you read them. The tool sums them into each holder's amountUsd by holder name. A conversion row (preferred to common) moves no money.",
+          items: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["issuance", "transfer", "cancellation", "conversion"],
+              },
+              holder: { type: "string" },
+              toHolder: { type: "string", description: "A transfer's new holder." },
+              amountUsd: { type: "number", description: "Cash paid for the certificate." },
+            },
+            required: ["type", "holder", "amountUsd"],
+          },
+        },
         holders: {
           type: "array",
           items: {
