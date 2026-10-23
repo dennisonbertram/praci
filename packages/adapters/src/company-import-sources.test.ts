@@ -33,13 +33,25 @@ function summary(
   };
 }
 
+function mailProvider(overrides: Record<string, unknown> = {}): MailProvider {
+  return {
+    getCursor: vi.fn(async () => "baseline"),
+    listChanges: vi.fn(async () => null),
+    listMessages: vi.fn(async () => ({ messages: [] })),
+    getMessage: vi.fn(async () => {
+      throw new Error("Unexpected message hydration");
+    }),
+    ...overrides,
+  } as unknown as MailProvider;
+}
+
 function prisma(overrides: Record<string, unknown> = {}) {
   return {
     dataRoomItem: {
       findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => null),
     },
-    companySourceBlock: { findMany: vi.fn(async () => []) },
+    companySourceBlock: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
     companyEvidence: { findMany: vi.fn(async () => []) },
     connection: {
       findFirst: vi.fn(async () => ({
@@ -74,6 +86,273 @@ describe("company source worker", () => {
     ).toEqual({ after: "2020-01-02", before: "2021-01-02" });
     expect(companySourceScope("gmail", { allTime: true }, new Date("2026-03-31"))).toEqual({
       allTime: true,
+    });
+  });
+
+  it("uses bounded Gmail history deltas and exposes manual-only provider reasons", async () => {
+    const source = {
+      id: "gmail-refresh",
+      sourceKind: "gmail",
+      connectionId: "connection-1",
+      scope: { allTime: true, labelIds: ["INBOX"] },
+    };
+    const mail = mailProvider({
+      getCursor: vi.fn(async () => "baseline"),
+      listChanges: vi.fn(async () => ({
+        cursor: "next",
+        changedIds: ["new-message", "changed-message"],
+        deletedIds: ["deleted-message"],
+      })),
+      listMessages: vi.fn(async (_account: unknown, { ids }: { ids?: string[] }) => ({
+        messages: (ids ?? []).map((id) => summary(id)),
+      })),
+      getMessage: vi.fn(async (_account: unknown, id: string) => ({
+        id,
+        threadId: `thread-${id}`,
+        subject: `Subject ${id}`,
+        from: { address: "sender@example.test" },
+        text: "A relevant update.",
+        truncated: false,
+      })),
+    });
+    const extract = vi.fn(async () => ({
+      extraction: { entities: [], edges: [], events: [] },
+      model: { provider: "synthetic", model: "refresh-test" },
+    }));
+    const worker = createCompanySourceWorker({
+      prisma: prisma(),
+      mail,
+      extractor: {
+        relevant: vi.fn(async () => true),
+        extract,
+      },
+    });
+    const begin = await worker.beginRefresh?.(
+      { source, mode: "full", checkpoint: null },
+      context(),
+    );
+    expect(begin?.baselineCheckpoint).toBe("baseline");
+    const page = await worker.discover(
+      {
+        source,
+        cursor: null,
+        maxUnits: 1,
+        refresh: { checkpoint: { cursor: "baseline" } },
+      },
+      context(),
+    );
+
+    expect(page.units).toEqual([
+      { unitKey: expect.stringContaining("gmail:"), cursor: { itemId: "new-message" } },
+    ]);
+    expect(page.nextCursor).toEqual({
+      refreshIds: ["new-message", "changed-message"],
+      refreshOffset: 1,
+      refreshCursor: "next",
+    });
+    expect(page.proposedCheckpoint).toEqual({ kind: "gmail_history", cursor: "next" });
+    expect(mail.listMessages).not.toHaveBeenCalled();
+    const read = await worker.read(
+      {
+        source,
+        unitKey: "gmail:changed",
+        cursor: { itemId: "changed-message" },
+        maxBytes: 10_000,
+      },
+      context(),
+    );
+    expect(mail.listMessages).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ ids: ["changed-message"], useCache: false }),
+      expect.anything(),
+    );
+    expect(mail.getMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      "changed-message",
+      expect.anything(),
+    );
+    expect(extract).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "A relevant update." }),
+      expect.anything(),
+    );
+    expect(read.extractions).toHaveLength(1);
+
+    expect(
+      worker.refreshCapability?.({
+        id: "notion",
+        sourceKind: "notion",
+        connectionId: "notion-connection",
+        scope: {},
+      }),
+    ).toEqual({
+      kind: "manual_only",
+      reason:
+        "notion_search_non_exhaustive_and_not_immediately_indexed_no_reliable_nested_change_feed",
+    });
+    for (const sourceKind of ["slack", "github", "linear", "mcp", "composio"]) {
+      expect(
+        worker.refreshCapability?.({
+          id: sourceKind,
+          sourceKind,
+          connectionId: "connection-1",
+          scope: {},
+        }).kind,
+      ).toBe("manual_only");
+    }
+  });
+
+  it("rejects an oversized Gmail refresh cursor before returning units", async () => {
+    const changedIds = Array.from(
+      { length: 2_000 },
+      (_, index) => `${String(index).padStart(4, "0")}-${"x".repeat(295)}`,
+    );
+    const worker = createCompanySourceWorker({
+      prisma: prisma(),
+      mail: mailProvider({
+        listChanges: vi.fn(async () => ({
+          cursor: "oversized-next",
+          changedIds,
+          deletedIds: [],
+        })),
+      }),
+      extractor: { relevant: vi.fn(), extract: vi.fn() },
+    });
+    await expect(
+      worker.discover(
+        {
+          source: {
+            id: "gmail-refresh",
+            sourceKind: "gmail",
+            connectionId: "connection-1",
+            scope: { allTime: true },
+          },
+          cursor: null,
+          maxUnits: 1,
+          refresh: { checkpoint: { cursor: "baseline" } },
+        },
+        context(),
+      ),
+    ).rejects.toMatchObject({ code: "refresh_change_limit_exceeded" });
+  });
+
+  it("does not replace an expired Gmail history cursor with a full scan", async () => {
+    const worker = createCompanySourceWorker({
+      prisma: prisma(),
+      mail: mailProvider({
+        getCursor: vi.fn(async () => "baseline"),
+        listChanges: vi.fn(async () => null),
+      }),
+      extractor: { relevant: vi.fn(), extract: vi.fn() },
+    });
+    await expect(
+      worker.discover(
+        {
+          source: {
+            id: "gmail-refresh",
+            sourceKind: "gmail",
+            connectionId: "connection-1",
+            scope: { allTime: true },
+          },
+          cursor: null,
+          maxUnits: 10,
+          refresh: { checkpoint: { cursor: "expired" } },
+        },
+        context(),
+      ),
+    ).rejects.toMatchObject({ code: "gmail_history_expired" });
+  });
+
+  it("rechecks Gmail source blocks before provider access", async () => {
+    const mail = mailProvider({ getCursor: vi.fn(async () => "baseline") });
+    const worker = createCompanySourceWorker({
+      prisma: prisma({
+        companySourceBlock: {
+          findMany: vi.fn(async () => []),
+          findFirst: vi.fn(async () => ({ id: "blocked-source" })),
+        },
+      }),
+      mail,
+      extractor: { relevant: vi.fn(), extract: vi.fn() },
+    });
+    await expect(
+      worker.beginRefresh?.(
+        {
+          source: {
+            id: "gmail-refresh",
+            sourceKind: "gmail",
+            connectionId: "connection-1",
+            scope: { allTime: true },
+          },
+          mode: "full",
+          checkpoint: null,
+        },
+        context(),
+      ),
+    ).rejects.toMatchObject({ code: "source_access_revoked" });
+    expect(mail.getCursor).not.toHaveBeenCalled();
+  });
+
+  it("discovers Data Room changes within one privacy-scoped fixed cutoff", async () => {
+    const base = { kind: "data_room_updated_at", updatedAt: "2026-01-01T00:00:00.000Z" };
+    const runCutoff = { kind: "data_room_updated_at", updatedAt: "2026-01-03T00:00:00.000Z" };
+    const findMany = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "changed-a", updatedAt: new Date("2026-01-02T00:00:00Z") }])
+      .mockResolvedValueOnce([]);
+    const worker = createCompanySourceWorker({
+      prisma: prisma({ dataRoomItem: { findMany, findFirst: vi.fn(async () => null) } }),
+      extractor: { relevant: vi.fn(), extract: vi.fn() },
+    });
+    const source = { id: "data-room", sourceKind: "data_room", connectionId: null, scope: {} };
+    const begin = await worker.beginRefresh?.(
+      { source, mode: "full", checkpoint: null },
+      context(),
+    );
+    expect(begin?.baselineCheckpoint).toMatchObject({ kind: "data_room_updated_at" });
+    const first = await worker.discover(
+      { source, cursor: null, maxUnits: 1, refresh: { checkpoint: base, runCutoff } },
+      context(),
+    );
+    expect(first.units).toEqual([
+      { unitKey: expect.stringContaining("data_room:"), cursor: { itemId: "changed-a" } },
+    ]);
+    expect(first.nextCursor).toEqual({
+      afterUpdatedAt: "2026-01-02T00:00:00.000Z",
+      afterId: "changed-a",
+    });
+    expect(first.proposedCheckpoint).toEqual(runCutoff);
+    const query = findMany.mock.calls[0]?.[0];
+    expect(query).toMatchObject({
+      where: {
+        AND: expect.arrayContaining([
+          expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+          { updatedAt: { gte: new Date(base.updatedAt), lte: new Date(runCutoff.updatedAt) } },
+        ]),
+      },
+      orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+      take: 1,
+      select: { id: true, updatedAt: true },
+    });
+    await worker.discover(
+      {
+        source,
+        cursor: first.nextCursor,
+        maxUnits: 1,
+        refresh: { checkpoint: base, runCutoff },
+      },
+      context(),
+    );
+    expect(findMany.mock.calls[1]?.[0]).toMatchObject({
+      where: {
+        AND: expect.arrayContaining([
+          {
+            OR: [
+              { updatedAt: { gt: new Date("2026-01-02T00:00:00.000Z") } },
+              { updatedAt: new Date("2026-01-02T00:00:00.000Z"), id: { gt: "changed-a" } },
+            ],
+          },
+        ]),
+      },
     });
   });
 
@@ -592,7 +871,7 @@ describe("company source worker", () => {
       prisma: prisma({
         companyEvidence: { findMany: vi.fn(async () => []) },
       }),
-      mail: {
+      mail: mailProvider({
         listMessages: vi.fn(async () => ({ messages: [summary("m-1")] })),
         getMessage: vi.fn(async () => ({
           subject: "Northwind",
@@ -601,7 +880,7 @@ describe("company source worker", () => {
           threadId: "thread-m-1",
           truncated: true,
         })),
-      } as unknown as MailProvider,
+      }),
       extractor: { relevant, extract },
     });
 
@@ -640,7 +919,7 @@ describe("company source worker", () => {
       .mockResolvedValueOnce({ messages: [] });
     const worker = createCompanySourceWorker({
       prisma: prisma(),
-      mail: { listMessages, getMessage: vi.fn() } as unknown as MailProvider,
+      mail: mailProvider({ listMessages, getMessage: vi.fn() }),
       extractor: {} as never,
     });
     const source = {
@@ -689,11 +968,11 @@ describe("company source worker", () => {
     const listMessages = vi.fn(async () => ({ messages: [] }));
     const worker = createCompanySourceWorker({
       prisma: prisma({ connection: { findFirst } }),
-      mail: {
+      mail: mailProvider({
         listAccounts,
         listMessages,
         getMessage: vi.fn(),
-      } as unknown as MailProvider,
+      }),
       extractor: {} as never,
     });
 
@@ -770,7 +1049,7 @@ describe("company source worker", () => {
             ),
           },
         }),
-        mail: {
+        mail: mailProvider({
           listMessages: vi.fn(async () => ({
             messages: [
               summary("noise", {
@@ -796,7 +1075,7 @@ describe("company source worker", () => {
             ],
           })),
           getMessage,
-        } as unknown as MailProvider,
+        }),
         extractor: { relevant, extract: vi.fn() },
       });
       await worker.read(

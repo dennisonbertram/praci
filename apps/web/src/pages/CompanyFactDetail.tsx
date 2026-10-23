@@ -33,15 +33,17 @@ export function CompanyFactDetail({
   fact,
   onClose,
   onChanged,
+  initialEditing = false,
 }: {
   fact: CompanyFact;
   onClose: () => void;
   onChanged: () => void;
+  initialEditing?: boolean;
 }) {
   const id = useId();
   const popupRef = useRef<HTMLDivElement>(null);
   const hidden = useHideAmounts();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [excluding, setExcluding] = useState(false);
   const readOnly = fact.record.readOnly === true;
   const initialName = fact.kind === "edge" ? (fact.record.role ?? "") : companyFactTitle(fact);

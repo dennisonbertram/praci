@@ -122,6 +122,19 @@ export const CompanyImportModelConsentStatusSchema = z.strictObject({
   version: z.string(),
 });
 
+export const CompanyRefreshStatusSchema = z.strictObject({
+  id: identifier,
+  sourceKind: CompanySourceKindSchema,
+  capability: z.enum(["supported", "pending", "manual_only"]),
+  status: z.string(),
+  reason: z.string().nullable(),
+  lastSuccessAt: z.iso.datetime().nullable(),
+  nextRunAt: z.iso.datetime().nullable(),
+  runId: identifier.nullable(),
+});
+
+export const CompanyRefreshStartInputSchema = z.strictObject({ sourceId: identifier });
+
 export type CompanyImportCreateInput = z.infer<typeof CompanyImportCreateInputSchema>;
 export type CompanyImportSourceInput = z.infer<typeof CompanyImportSourceInputSchema>;
 export type CompanyImportProgress = z.infer<typeof CompanyImportProgressSchema>;

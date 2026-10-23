@@ -274,6 +274,7 @@ async function main() {
     jobs,
     realtime,
     resolveModel: executor.resolveModel,
+    notificationEvents,
     worker: createCompanySourceWorker({
       prisma,
       mail,

@@ -14,6 +14,7 @@ import {
   COMPANY_IMPORT_CURSOR_MAX_BYTES,
   CompanySourceKindSchema,
 } from "@rakazo/contracts";
+import { isValidTimezone, nextCronDateAcrossStrict } from "@rakazo/core";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import { companyWriter } from "./company.js";
@@ -52,8 +53,10 @@ async function lockCompanyScope(tx: Prisma.TransactionClient, scope: Scope) {
 }
 
 async function lockRun(tx: Prisma.TransactionClient, scope: Scope, runId: string) {
-  const rows = await tx.$queryRaw<Array<{ id: string; status: string }>>`
-    SELECT "id", "status" FROM "company_import_runs"
+  const rows = await tx.$queryRaw<
+    Array<{ id: string; status: string; notificationPendingStates: string[] }>
+  >`
+    SELECT "id", "status", "notificationPendingStates" FROM "company_import_runs"
     WHERE "id" = ${runId} AND "spaceId" = ${scope.spaceId} AND "ownerUserId" = ${scope.ownerUserId}
     FOR UPDATE
   `;
@@ -63,9 +66,9 @@ async function lockRun(tx: Prisma.TransactionClient, scope: Scope, runId: string
 async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Scope, runId: string) {
   const run = await tx.companyImportRun.findFirst({
     where: { ...scope, id: runId },
-    select: { mode: true },
+    select: { mode: true, status: true },
   });
-  if (!run) return;
+  if (!run || !["running", "paused"].includes(run.status)) return;
   const pending = await tx.companyImportUnit.count({
     where: { ...scope, runId, status: { in: ["waiting", "claimed"] } },
   });
@@ -80,6 +83,7 @@ async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Sco
     where: { ...scope, runId },
     select: { id: true },
   });
+  const sourceStatuses = new Map<string, { failed: number; done: number }>();
   for (const source of sources) {
     const sourceFailed = await tx.companyImportUnit.count({
       where: { ...scope, runId, sourceId: source.id, status: "failed" },
@@ -87,41 +91,861 @@ async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Sco
     const sourceDone = await tx.companyImportUnit.count({
       where: { ...scope, runId, sourceId: source.id, status: "done" },
     });
+    sourceStatuses.set(source.id, { failed: sourceFailed, done: sourceDone });
     await tx.companyImportSource.update({
       where: { ...scope, id: source.id },
       data: {
-        status: sourceFailed > 0 ? "failed" : sourceDone > 0 ? "completed" : "failed",
+        status:
+          sourceFailed > 0 && sourceDone > 0
+            ? "partial"
+            : sourceFailed > 0
+              ? "failed"
+              : sourceDone > 0
+                ? "completed"
+                : "failed",
         ...(sourceFailed === 0 ? { lastError: null } : {}),
       },
     });
   }
+  const status =
+    failed > 0 && done > 0
+      ? "partial"
+      : failed > 0
+        ? "failed"
+        : run.mode === "sample"
+          ? "preview_ready"
+          : "completed";
   await tx.companyImportRun.updateMany({
     where: { ...scope, id: runId, status: { in: ["running", "paused", "budget_reached"] } },
     data: {
-      status:
-        failed > 0 && done > 0
-          ? "partial"
-          : failed > 0
-            ? "failed"
-            : run.mode === "sample"
-              ? "preview_ready"
-              : "completed",
+      status,
       completedAt: new Date(),
+      notificationPendingStates: { push: `completion:${status}` },
     },
   });
+  const refreshableSources = await tx.companyImportSource.findMany({
+    where: { ...scope, runId, refreshSourceId: { not: null } },
+    select: {
+      id: true,
+      refreshSourceId: true,
+      baseCheckpoint: true,
+      proposedCheckpoint: true,
+      baseCheckpointGeneration: true,
+      sampled: true,
+    },
+  });
+  const manualOnlyRefreshes = await tx.companyRefreshSource.findMany({
+    where: {
+      ...scope,
+      id: {
+        in: refreshableSources.flatMap((source) =>
+          source.refreshSourceId ? [source.refreshSourceId] : [],
+        ),
+      },
+      capability: "manual_only",
+    },
+    select: { id: true },
+  });
+  for (const refresh of manualOnlyRefreshes) {
+    await tx.companyImportRun.update({
+      where: { ...scope, id: runId },
+      data: { notificationPendingStates: { push: `refresh_unavailable:${refresh.id}` } },
+    });
+  }
+  for (const source of refreshableSources) {
+    if (!source.refreshSourceId) continue;
+    const refresh = await tx.companyRefreshSource.findFirst({
+      where: { ...scope, id: source.refreshSourceId },
+      select: {
+        id: true,
+        capability: true,
+        reason: true,
+        activeRunId: true,
+        committedCheckpoint: true,
+      },
+    });
+    if (!refresh) continue;
+    const sourceStatus = sourceStatuses.get(source.id);
+    if (run.mode !== "sample" && sourceStatus?.failed === 0 && (sourceStatus?.done ?? 0) > 0) {
+      const checkpoint = source.proposedCheckpoint ?? source.baseCheckpoint;
+      if (refresh.capability === "supported" && checkpoint !== null) {
+        const owner = await tx.user.findUnique({
+          where: { id: scope.ownerUserId },
+          select: { timezone: true },
+        });
+        const timezone =
+          owner?.timezone && isValidTimezone(owner.timezone) ? owner.timezone : "UTC";
+        const now = new Date();
+        const activeRunWhere =
+          run.mode === "refresh" ? { activeRunId: runId } : { activeRunId: null };
+        const committed = await tx.companyRefreshSource.updateMany({
+          where: {
+            ...scope,
+            id: refresh.id,
+            checkpointGeneration: source.baseCheckpointGeneration ?? 0,
+            ...activeRunWhere,
+          },
+          data: {
+            committedCheckpoint: jsonInput(checkpoint),
+            checkpointGeneration: { increment: 1 },
+            status: "ready",
+            reason: null,
+            lastSuccessAt: now,
+            timezone,
+            nextRunAt: nextCronDateAcrossStrict(["0 3 * * *"], now, timezone),
+            activeRunId: null,
+          },
+        });
+        if (committed.count > 0) continue;
+      }
+    }
+    if (status === "preview_ready" || (run.mode !== "sample" && source.sampled)) {
+      if (refresh.committedCheckpoint !== null) continue;
+      await tx.companyRefreshSource.updateMany({
+        where: {
+          ...scope,
+          id: refresh.id,
+          OR: [{ activeRunId: null }, { activeRunId: runId }],
+        },
+        data: {
+          status:
+            refresh.capability === "manual_only"
+              ? "unavailable"
+              : source.sampled
+                ? "needs_baseline"
+                : "pending",
+          reason:
+            refresh.capability === "manual_only" ? refresh.reason : "full_import_baseline_required",
+          activeRunId: null,
+        },
+      });
+      continue;
+    }
+    if (sourceStatus?.failed || status === "failed" || status === "partial") {
+      const refreshStatus =
+        sourceStatus?.failed && (sourceStatus.done ?? 0) > 0 ? "partial" : status;
+      await tx.companyRefreshSource.updateMany({
+        where: {
+          ...scope,
+          id: refresh.id,
+          OR: [{ activeRunId: null }, { activeRunId: runId }],
+        },
+        data: {
+          status: refreshStatus,
+          reason: refreshStatus === "partial" ? "run_partial" : "run_failed",
+          nextRunAt: null,
+          activeRunId: null,
+        },
+      });
+    }
+  }
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, canonicalValue(child)]),
+  );
 }
 
 function importSourceKey(source: CompanyImportSourceInput): string {
   return createHash("sha256")
     .update(
-      JSON.stringify([
-        source.sourceKind,
-        source.connectionId ?? null,
-        source.mcpServerId ?? null,
-        source.scope,
-      ]),
+      JSON.stringify(
+        canonicalValue([
+          source.sourceKind,
+          source.connectionId ?? null,
+          source.mcpServerId ?? null,
+          source.scope,
+        ]),
+      ) ?? "",
     )
     .digest("hex");
+}
+
+export function companyImportSourceKey(source: CompanyImportSourceInput): string {
+  return importSourceKey(source);
+}
+
+export async function upsertCompanyRefreshSource(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    runId: string;
+    sourceId: string;
+    source: CompanyImportSourceInput;
+    tokenCap: number;
+    capability: "supported" | "pending" | "manual_only";
+    reason?: string | null;
+  },
+) {
+  const scope = scopeOf(actor);
+  await requireMember(prisma, scope);
+  const sourceKey = importSourceKey(input.source);
+  return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const importSource = await tx.companyImportSource.findFirst({
+      where: { ...scope, id: input.sourceId, runId: input.runId, sourceKey },
+      select: { id: true },
+    });
+    if (!importSource) throw new CompanyImportError("not_found");
+    const existing = await tx.companyRefreshSource.findUnique({
+      where: { spaceId_ownerUserId_sourceKey: { ...scope, sourceKey } },
+    });
+    const terminalStatuses = [
+      "failed",
+      "partial",
+      "cancelled",
+      "recovery_required",
+      "source_disconnected",
+      "paused",
+      "budget_reached",
+      "awaiting_consent",
+    ];
+    const refreshSource = existing
+      ? await tx.companyRefreshSource.update({
+          where: { ...scope, id: existing.id },
+          data: {
+            sourceKind: input.source.sourceKind,
+            connectionId: input.source.connectionId ?? null,
+            mcpServerId: input.source.mcpServerId ?? null,
+            scope: jsonInput(input.source.scope),
+            tokenCap: BigInt(input.tokenCap),
+            capability: input.capability,
+            ...(input.reason === undefined ? {} : { reason: input.reason }),
+            ...(input.capability === "supported"
+              ? existing.activeRunId || terminalStatuses.includes(existing.status)
+                ? {}
+                : existing.committedCheckpoint === null
+                  ? { status: "needs_baseline", nextRunAt: null }
+                  : {}
+              : existing.activeRunId || terminalStatuses.includes(existing.status)
+                ? {}
+                : {
+                    status: input.capability === "manual_only" ? "unavailable" : "pending",
+                    nextRunAt: null,
+                  }),
+          },
+        })
+      : await tx.companyRefreshSource.create({
+          data: {
+            ...scope,
+            sourceKey,
+            sourceKind: input.source.sourceKind,
+            connectionId: input.source.connectionId ?? null,
+            mcpServerId: input.source.mcpServerId ?? null,
+            scope: jsonInput(input.source.scope),
+            tokenCap: BigInt(input.tokenCap),
+            capability: input.capability,
+            status:
+              input.capability === "supported"
+                ? "needs_baseline"
+                : input.capability === "manual_only"
+                  ? "unavailable"
+                  : "pending",
+            reason: input.reason ?? null,
+          },
+        });
+    await tx.companyImportSource.update({
+      where: { ...scope, id: importSource.id },
+      data: {
+        refreshSourceId: refreshSource.id,
+        baseCheckpointGeneration: refreshSource.checkpointGeneration,
+      },
+    });
+    return refreshSource;
+  });
+}
+
+export async function persistCompanyImportProposedCheckpoint(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    runId: string;
+    sourceId: string;
+    unitId: string;
+    claimToken: string;
+    checkpoint: unknown;
+  },
+) {
+  assertBoundedJson(input.checkpoint, COMPANY_IMPORT_CURSOR_MAX_BYTES);
+  const scope = scopeOf(actor);
+  return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const unit = await tx.companyImportUnit.findFirst({
+      where: {
+        ...scope,
+        id: input.unitId,
+        runId: input.runId,
+        sourceId: input.sourceId,
+        status: "claimed",
+        claimToken: input.claimToken,
+        claimExpiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    const source = await tx.companyImportSource.findFirst({
+      where: { ...scope, id: input.sourceId, runId: input.runId },
+      select: { proposedCheckpoint: true },
+    });
+    if (!unit || !source) throw new CompanyImportError("stale_claim");
+    if (source.proposedCheckpoint !== null) return source.proposedCheckpoint;
+    const checkpoint = jsonInput(input.checkpoint);
+    await tx.companyImportSource.update({
+      where: { ...scope, id: input.sourceId },
+      data: { proposedCheckpoint: checkpoint },
+    });
+    return input.checkpoint;
+  });
+}
+
+export async function markCompanyRefreshRecoveryRequired(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: { runId: string; sourceId: string; unitId: string; claimToken: string; reason: string },
+) {
+  const scope = scopeOf(actor);
+  return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const run = await lockRun(tx, scope, input.runId);
+    const unit = await tx.companyImportUnit.findFirst({
+      where: {
+        ...scope,
+        id: input.unitId,
+        runId: input.runId,
+        sourceId: input.sourceId,
+        status: "claimed",
+        claimToken: input.claimToken,
+        claimExpiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    const source = await tx.companyImportSource.findFirst({
+      where: { ...scope, id: input.sourceId, runId: input.runId, run: { mode: "refresh" } },
+      select: { refreshSourceId: true },
+    });
+    if (!run || !unit || !source?.refreshSourceId) throw new CompanyImportError("stale_claim");
+    const now = new Date();
+    await tx.companyImportUnit.update({
+      where: { ...scope, id: input.unitId },
+      data: {
+        status: "failed",
+        claimToken: null,
+        claimExpiresAt: null,
+        lastError: input.reason,
+        completedAt: now,
+      },
+    });
+    await tx.companyImportUnit.updateMany({
+      where: {
+        ...scope,
+        runId: input.runId,
+        id: { not: input.unitId },
+        status: { in: ["waiting", "claimed"] },
+      },
+      data: { status: "cancelled", claimToken: null, claimExpiresAt: null, completedAt: now },
+    });
+    await tx.companyImportSource.update({
+      where: { ...scope, id: input.sourceId },
+      data: { status: "failed", lastError: input.reason },
+    });
+    await tx.companyImportRun.update({
+      where: { ...scope, id: input.runId },
+      data: {
+        status: "failed",
+        completedAt: now,
+        notificationPendingStates: { push: "recovery_required" },
+      },
+    });
+    await tx.companyRefreshSource.updateMany({
+      where: { ...scope, id: source.refreshSourceId, activeRunId: input.runId },
+      data: {
+        status: "recovery_required",
+        reason: input.reason,
+        nextRunAt: null,
+        activeRunId: null,
+      },
+    });
+  });
+}
+
+export async function awaitCompanyRefreshConsent(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: { runId: string; sourceId: string },
+) {
+  const scope = scopeOf(actor);
+  return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const run = await tx.companyImportRun.findFirst({
+      where: { ...scope, id: input.runId, mode: "refresh", status: { in: ["running", "paused"] } },
+      select: { id: true, notificationPendingStates: true },
+    });
+    const source = await tx.companyImportSource.findFirst({
+      where: {
+        ...scope,
+        id: input.sourceId,
+        runId: input.runId,
+        refreshSource: { activeRunId: input.runId },
+      },
+      select: { id: true },
+    });
+    if (!run || !source) return false;
+    await tx.companyImportRun.update({
+      where: { ...scope, id: run.id },
+      data: {
+        status: "awaiting_consent",
+        notificationPendingStates: run.notificationPendingStates.includes("awaiting_consent")
+          ? undefined
+          : { push: "awaiting_consent" },
+      },
+    });
+    await tx.companyImportSource.update({
+      where: { ...scope, id: source.id },
+      data: { status: "awaiting_consent" },
+    });
+    await tx.companyRefreshSource.updateMany({
+      where: { ...scope, activeRunId: input.runId },
+      data: { status: "awaiting_consent" },
+    });
+    return true;
+  });
+}
+
+export async function persistCompanyImportBaseline(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    runId: string;
+    sourceId: string;
+    unitId: string;
+    claimToken: string;
+    checkpoint: unknown;
+  },
+) {
+  assertBoundedJson(input.checkpoint, COMPANY_IMPORT_CURSOR_MAX_BYTES);
+  const scope = scopeOf(actor);
+  return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const unit = await tx.companyImportUnit.findFirst({
+      where: {
+        ...scope,
+        id: input.unitId,
+        runId: input.runId,
+        sourceId: input.sourceId,
+        status: "claimed",
+        claimToken: input.claimToken,
+        claimExpiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    const run = await tx.companyImportRun.findFirst({
+      where: {
+        ...scope,
+        id: input.runId,
+        mode: { in: ["sample", "full"] },
+        status: { in: ["running", "paused"] },
+      },
+      select: { id: true, mode: true },
+    });
+    const source = await tx.companyImportSource.findFirst({
+      where: { ...scope, id: input.sourceId, runId: input.runId },
+      select: { id: true, baseCheckpoint: true, sampled: true, refreshSourceId: true },
+    });
+    if (!unit || !run || !source) throw new CompanyImportError("stale_claim");
+    if (source.baseCheckpoint !== null) return source.baseCheckpoint;
+    if (source.sampled && run.mode === "full") return null;
+    const checkpoint = jsonInput(input.checkpoint);
+    const refresh = source.refreshSourceId
+      ? await tx.companyRefreshSource.findFirst({
+          where: { ...scope, id: source.refreshSourceId },
+          select: { checkpointGeneration: true },
+        })
+      : null;
+    await tx.companyImportSource.update({
+      where: { ...scope, id: source.id },
+      data: {
+        baseCheckpoint: checkpoint,
+        proposedCheckpoint: checkpoint,
+        ...(refresh ? { baseCheckpointGeneration: refresh.checkpointGeneration } : {}),
+      },
+    });
+    return input.checkpoint;
+  });
+}
+
+export async function listCompanyRefreshSources(prisma: PrismaClient, actor: Actor) {
+  const scope = scopeOf(actor);
+  await requireMember(prisma, scope);
+  return prisma.companyRefreshSource.findMany({
+    where: scope,
+    orderBy: [{ sourceKind: "asc" }, { sourceKey: "asc" }],
+    select: {
+      id: true,
+      sourceKey: true,
+      sourceKind: true,
+      connectionId: true,
+      mcpServerId: true,
+      scope: true,
+      capability: true,
+      status: true,
+      reason: true,
+      committedCheckpoint: true,
+      checkpointGeneration: true,
+      lastSuccessAt: true,
+      nextRunAt: true,
+      activeRunId: true,
+      timezone: true,
+    },
+  });
+}
+
+export async function updateCompanyRefreshCapability(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    sourceId: string;
+    capability: "supported" | "pending" | "manual_only";
+    reason: string | null;
+  },
+) {
+  const scope = scopeOf(actor);
+  return prisma.$transaction(async (tx) => {
+    await requireMember(tx, scope);
+    await lockCompanyScope(tx, scope);
+    const existing = await tx.companyRefreshSource.findFirst({
+      where: { ...scope, id: input.sourceId },
+      select: {
+        id: true,
+        committedCheckpoint: true,
+        activeRunId: true,
+        status: true,
+        reason: true,
+      },
+    });
+    if (!existing) throw new CompanyImportError("not_found");
+    const terminalStatuses = new Set([
+      "failed",
+      "partial",
+      "cancelled",
+      "recovery_required",
+      "source_disconnected",
+      "paused",
+      "budget_reached",
+      "awaiting_consent",
+    ]);
+    const preserveLifecycle =
+      existing.activeRunId ||
+      terminalStatuses.has(existing.status) ||
+      existing.reason === "source_disconnected";
+    return tx.companyRefreshSource.update({
+      where: { ...scope, id: existing.id },
+      data:
+        input.capability === "supported"
+          ? {
+              capability: input.capability,
+              ...(preserveLifecycle
+                ? {}
+                : {
+                    status: existing.committedCheckpoint === null ? "needs_baseline" : "ready",
+                    reason: input.reason,
+                  }),
+            }
+          : {
+              capability: input.capability,
+              ...(preserveLifecycle
+                ? {}
+                : {
+                    status: input.capability === "manual_only" ? "unavailable" : "pending",
+                    nextRunAt: null,
+                  }),
+              reason: existing.reason === "source_disconnected" ? existing.reason : input.reason,
+            },
+    });
+  });
+}
+
+export async function markCompanyRefreshUnavailable(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    sourceId: string;
+    capability: "pending" | "manual_only";
+    reason: string;
+    runId?: string;
+    unitId?: string;
+    claimToken?: string;
+  },
+) {
+  const scope = scopeOf(actor);
+  return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const refresh = await tx.companyRefreshSource.findFirst({
+      where: { ...scope, id: input.sourceId },
+      select: { id: true, activeRunId: true },
+    });
+    if (!refresh) return false;
+    if (input.runId) {
+      if (refresh.activeRunId !== input.runId) return false;
+      if (!input.unitId || !input.claimToken) return false;
+      const run = await tx.companyImportRun.findFirst({
+        where: { ...scope, id: input.runId, mode: "refresh", status: "running" },
+        select: { id: true, notificationPendingStates: true },
+      });
+      if (!run) return false;
+      const liveClaim = await tx.companyImportUnit.findFirst({
+        where: {
+          ...scope,
+          id: input.unitId,
+          runId: input.runId,
+          status: "claimed",
+          claimToken: input.claimToken,
+          claimExpiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
+      if (!liveClaim) return false;
+      await tx.companyImportUnit.updateMany({
+        where: { ...scope, runId: input.runId, status: { in: ["waiting", "claimed"] } },
+        data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
+      });
+      await tx.companyImportSource.updateMany({
+        where: { ...scope, runId: input.runId },
+        data: { status: "unavailable" },
+      });
+      await tx.companyImportRun.update({
+        where: { ...scope, id: input.runId },
+        data: {
+          status: "cancelled",
+          completedAt: new Date(),
+          notificationPendingStates: run.notificationPendingStates.includes(
+            `refresh_unavailable:${refresh.id}`,
+          )
+            ? undefined
+            : { push: `refresh_unavailable:${refresh.id}` },
+        },
+      });
+    }
+    await tx.companyRefreshSource.update({
+      where: { ...scope, id: refresh.id },
+      data: {
+        capability: input.capability,
+        status: input.capability === "manual_only" ? "unavailable" : "pending",
+        reason: input.reason,
+        nextRunAt: null,
+        activeRunId: null,
+      },
+    });
+    return true;
+  });
+}
+
+export async function listDueCompanyRefreshSources(prisma: PrismaClient, now = new Date()) {
+  return prisma.companyRefreshSource.findMany({
+    where: {
+      capability: "supported",
+      status: "ready",
+      nextRunAt: { lte: now },
+      activeRunId: null,
+    },
+    orderBy: [{ nextRunAt: "asc" }, { id: "asc" }],
+    take: 100,
+    select: { id: true, spaceId: true, ownerUserId: true },
+  });
+}
+
+export async function markCompanyImportNotificationState(
+  prisma: PrismaClient,
+  actor: Actor,
+  runId: string,
+  state: string,
+) {
+  const scope = scopeOf(actor);
+  await prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    await requireMember(tx, scope);
+    const run = await tx.companyImportRun.findFirst({
+      where: { ...scope, id: runId },
+      select: { notificationStates: true, notificationPendingStates: true },
+    });
+    if (!run) return;
+    if (run.notificationStates.includes(state)) {
+      if (run.notificationPendingStates.includes(state))
+        await tx.companyImportRun.update({
+          where: { ...scope, id: runId },
+          data: {
+            notificationPendingStates: {
+              set: run.notificationPendingStates.filter((value) => value !== state),
+            },
+          },
+        });
+      return;
+    }
+    await tx.companyImportRun.update({
+      where: { ...scope, id: runId },
+      data: {
+        notificationStates: { push: state },
+        notificationPendingStates: {
+          set: run.notificationPendingStates.filter((value) => value !== state),
+        },
+      },
+    });
+  });
+}
+
+export async function clearCompanyImportNotificationPending(
+  prisma: PrismaClient,
+  actor: Actor,
+  runId: string,
+  state: string,
+) {
+  const scope = scopeOf(actor);
+  await prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    await requireMember(tx, scope);
+    const run = await tx.companyImportRun.findFirst({
+      where: { ...scope, id: runId },
+      select: { notificationPendingStates: true },
+    });
+    if (!run || !run.notificationPendingStates.includes(state)) return;
+    await tx.companyImportRun.update({
+      where: { ...scope, id: runId },
+      data: {
+        notificationPendingStates: {
+          set: run.notificationPendingStates.filter((value) => value !== state),
+        },
+      },
+    });
+  });
+}
+
+export async function createCompanyRefreshRun(
+  prisma: PrismaClient,
+  actor: Actor,
+  sourceId: string,
+  force = true,
+) {
+  const scope = scopeOf(actor);
+  await requireMember(prisma, scope);
+  return withTransactionRetry(() =>
+    prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
+      const source = await tx.companyRefreshSource.findFirst({
+        where: { ...scope, id: sourceId, capability: "supported" },
+      });
+      if (!source) throw new CompanyImportError("not_found");
+      const owner = await tx.user.findUnique({
+        where: { id: scope.ownerUserId },
+        select: { timezone: true },
+      });
+      const timezone = owner?.timezone && isValidTimezone(owner.timezone) ? owner.timezone : "UTC";
+      if (!force && source.timezone !== timezone) {
+        const now = new Date();
+        await tx.companyRefreshSource.update({
+          where: { ...scope, id: source.id },
+          data: {
+            timezone,
+            nextRunAt: nextCronDateAcrossStrict(["0 3 * * *"], now, timezone),
+          },
+        });
+        return null;
+      }
+      const blocked = await tx.companySourceBlock.findFirst({
+        where: {
+          ...scope,
+          OR: [
+            {
+              sourceKey: JSON.stringify([
+                source.sourceKind,
+                source.connectionId,
+                source.mcpServerId,
+              ]),
+            },
+            { sourceKind: source.sourceKind, connectionId: null, mcpServerId: null },
+          ],
+        },
+        select: { id: true },
+      });
+      if (blocked) throw new CompanyImportError("invalid_state");
+      if (!source.committedCheckpoint) throw new CompanyImportError("invalid_state");
+      if (source.activeRunId) {
+        const active = await tx.companyImportRun.findFirst({
+          where: {
+            ...scope,
+            id: source.activeRunId,
+            status: { in: ["draft", "running", "paused", "budget_reached", "awaiting_consent"] },
+          },
+          select: { id: true },
+        });
+        if (active) return active;
+      }
+      if (["needs_baseline", "recovery_required", "unavailable", "pending"].includes(source.status))
+        throw new CompanyImportError("invalid_state");
+      if (source.connectionId) {
+        const connection = await tx.connection.findFirst({
+          where: {
+            spaceId: scope.spaceId,
+            userId: scope.ownerUserId,
+            id: source.connectionId,
+            status: "connected",
+            allAgents: true,
+            privateByDefault: false,
+          },
+          select: { id: true },
+        });
+        if (!connection) throw new CompanyImportError("invalid_state");
+      }
+      if (source.mcpServerId) {
+        const server = await tx.mcpServer.findFirst({
+          where: {
+            spaceId: scope.spaceId,
+            userId: scope.ownerUserId,
+            id: source.mcpServerId,
+            enabled: true,
+          },
+          select: { id: true },
+        });
+        if (!server) throw new CompanyImportError("invalid_state");
+      }
+      const run = await tx.companyImportRun.create({
+        data: {
+          ...scope,
+          mode: "refresh",
+          status: "running",
+          tokenCap: source.tokenCap,
+          disclosureVersion: AI_DISCLOSURE_VERSION,
+          startedAt: new Date(),
+        },
+        select: { id: true },
+      });
+      const importSource = await tx.companyImportSource.create({
+        data: {
+          ...scope,
+          runId: run.id,
+          sourceKey: source.sourceKey,
+          sourceKind: source.sourceKind,
+          connectionId: source.connectionId,
+          mcpServerId: source.mcpServerId,
+          scope: source.scope as Prisma.InputJsonValue,
+          refreshSourceId: source.id,
+          baseCheckpoint: source.committedCheckpoint,
+          baseCheckpointGeneration: source.checkpointGeneration,
+        },
+        select: { id: true },
+      });
+      await tx.companyImportUnit.create({
+        data: { ...scope, runId: run.id, sourceId: importSource.id, unitKey: "discover:0" },
+      });
+      await tx.companyRefreshSource.update({
+        where: { ...scope, id: source.id },
+        data: { activeRunId: run.id, status: "running", reason: null },
+      });
+      return run;
+    }),
+  );
 }
 
 function jsonInput(value: unknown): Prisma.InputJsonValue {
@@ -359,7 +1183,13 @@ export async function updateCompanyImportRun(
       if (!locked) throw new CompanyImportError("not_found");
       const run = await tx.companyImportRun.findFirst({
         where: { ...scope, id: input.runId },
-        select: { id: true, status: true, mode: true, tokenCap: true },
+        select: {
+          id: true,
+          status: true,
+          mode: true,
+          tokenCap: true,
+          notificationPendingStates: true,
+        },
       });
       if (!run) throw new CompanyImportError("not_found");
       const now = new Date();
@@ -367,6 +1197,10 @@ export async function updateCompanyImportRun(
         if (run.status !== "running") throw new CompanyImportError("invalid_state");
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
+          data: { status: "paused" },
+        });
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, activeRunId: run.id },
           data: { status: "paused" },
         });
       } else if (input.action === "resume") {
@@ -386,6 +1220,14 @@ export async function updateCompanyImportRun(
             ...(input.tokenCap !== undefined ? { tokenCap: BigInt(input.tokenCap) } : {}),
           },
         });
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, activeRunId: run.id },
+          data: {
+            status: "running",
+            ...(input.tokenCap !== undefined ? { tokenCap: BigInt(input.tokenCap) } : {}),
+          },
+        });
+        await finalizeCompanyImportRun(tx, scope, run.id);
       } else if (input.action === "continue") {
         if (run.status !== "preview_ready" || run.mode !== "sample") {
           throw new CompanyImportError("invalid_state");
@@ -396,7 +1238,16 @@ export async function updateCompanyImportRun(
         });
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
-          data: { mode: "full", status: "running", completedAt: null },
+          data: {
+            mode: "full",
+            status: "running",
+            completedAt: null,
+            notificationPendingStates: {
+              set: run.notificationPendingStates.filter(
+                (state) => state !== "completion:preview_ready",
+              ),
+            },
+          },
         });
         for (const source of sources) {
           const resumeData = {
@@ -474,6 +1325,22 @@ export async function updateCompanyImportRun(
           where: { ...scope, runId: run.id, status: "failed" },
           data: { status: "running", lastError: null },
         });
+        const refreshSources = await tx.companyImportSource.findMany({
+          where: { ...scope, runId: run.id, refreshSourceId: { not: null } },
+          select: { refreshSourceId: true },
+        });
+        for (const source of refreshSources) {
+          if (!source.refreshSourceId) continue;
+          await tx.companyRefreshSource.updateMany({
+            where: {
+              ...scope,
+              id: source.refreshSourceId,
+              OR: [{ activeRunId: null }, { activeRunId: run.id }],
+              status: { notIn: ["recovery_required", "unavailable", "needs_baseline"] },
+            },
+            data: { activeRunId: run.id, status: "running", reason: null },
+          });
+        }
       } else {
         if (
           input.action === "cancel" &&
@@ -483,7 +1350,13 @@ export async function updateCompanyImportRun(
         }
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
-          data: { status: input.action === "cancel" ? "cancelled" : "discarded", completedAt: now },
+          data: {
+            status: input.action === "cancel" ? "cancelled" : "discarded",
+            completedAt: now,
+            ...(input.action === "cancel"
+              ? { notificationPendingStates: { push: "completion:cancelled" } }
+              : {}),
+          },
         });
         await tx.companyImportUnit.updateMany({
           where: { ...scope, runId: run.id, status: { not: "done" } },
@@ -492,6 +1365,15 @@ export async function updateCompanyImportRun(
         await tx.companyImportSource.updateMany({
           where: { ...scope, runId: run.id },
           data: { status: input.action === "cancel" ? "cancelled" : "discarded" },
+        });
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, activeRunId: run.id },
+          data: {
+            status: "cancelled",
+            reason: "run_cancelled",
+            nextRunAt: null,
+            activeRunId: null,
+          },
         });
         if (input.action === "discard") {
           const affectedEvidence = await tx.companyEvidence.findMany({
@@ -686,6 +1568,7 @@ export async function reserveCompanyImportCall(
               reservedTokens: true,
               inputTokensUsed: true,
               outputTokensUsed: true,
+              notificationPendingStates: true,
             },
           })
         : null;
@@ -713,7 +1596,12 @@ export async function reserveCompanyImportCall(
       if (spent + amount > run.tokenCap) {
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
-          data: { status: "budget_reached" },
+          data: {
+            status: "budget_reached",
+            ...(run.notificationPendingStates.includes("budget_reached")
+              ? {}
+              : { notificationPendingStates: { push: "budget_reached" } }),
+          },
         });
         await tx.companyImportUnit.updateMany({
           where: {
@@ -730,6 +1618,10 @@ export async function reserveCompanyImportCall(
             claimExpiresAt: null,
             availableAt: new Date(),
           },
+        });
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, activeRunId: run.id },
+          data: { status: "budget_reached" },
         });
         return null;
       }
@@ -897,6 +1789,10 @@ export async function settleCompanyImportCall(
           where: { ...scope, id: run.id },
           data: { status: "budget_reached" },
         });
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, activeRunId: run.id },
+          data: { status: "budget_reached" },
+        });
       }
       return !overBound;
     }),
@@ -1001,7 +1897,7 @@ export async function grantCompanyImportConsent(
       const lockedRun = await lockRun(tx, scope, input.runId);
       const run = await tx.companyImportRun.findFirst({
         where: { ...scope, id: input.runId },
-        select: { status: true },
+        select: { status: true, notificationPendingStates: true },
       });
       const source = await tx.companyImportSource.findFirst({
         where: { ...scope, id: input.sourceId, runId: input.runId },
@@ -1053,6 +1949,10 @@ export async function grantCompanyImportConsent(
             where: { ...scope, runId: input.runId },
             data: { status: "running" },
           });
+          await tx.companyRefreshSource.updateMany({
+            where: { ...scope, activeRunId: input.runId, status: "awaiting_consent" },
+            data: { status: "running" },
+          });
         }
       }
       return { allowed: true, resumed };
@@ -1078,6 +1978,7 @@ export async function completeCompanyImportUnit(
     readItems?: { sourceItemId: string; contentHash: string }[];
     discoveredUnits?: { unitKey: string; cursor: unknown }[];
     nextSourceCursor?: unknown | null;
+    proposedCheckpoint?: unknown | null;
     cooldownMs?: number;
   },
 ) {
@@ -1085,6 +1986,8 @@ export async function completeCompanyImportUnit(
   assertBoundedJson(input.nextCursor, COMPANY_IMPORT_CURSOR_MAX_BYTES);
   if (input.nextSourceCursor !== undefined)
     assertBoundedJson(input.nextSourceCursor, COMPANY_IMPORT_CURSOR_MAX_BYTES);
+  if (input.proposedCheckpoint !== undefined && input.proposedCheckpoint !== null)
+    assertBoundedJson(input.proposedCheckpoint, COMPANY_IMPORT_CURSOR_MAX_BYTES);
   for (const discovered of input.discoveredUnits ?? []) {
     if (
       !discovered.unitKey ||
@@ -1133,7 +2036,13 @@ export async function completeCompanyImportUnit(
       });
       const source = await tx.companyImportSource.findFirst({
         where: { ...scope, id: input.sourceId, runId: input.runId },
-        select: { id: true, sourceKind: true, connectionId: true, mcpServerId: true },
+        select: {
+          id: true,
+          sourceKind: true,
+          connectionId: true,
+          mcpServerId: true,
+          proposedCheckpoint: true,
+        },
       });
       if (!unit || !run || !source) throw new CompanyImportError("stale_claim");
       if (run.mode === "sample") {
@@ -1231,6 +2140,21 @@ export async function completeCompanyImportUnit(
           factsFound: { increment: persistedFacts },
         },
       });
+      if (run.mode === "sample") {
+        await tx.companyImportSource.update({
+          where: { ...scope, id: input.sourceId },
+          data: { sampled: true },
+        });
+      } else if (
+        input.proposedCheckpoint !== undefined &&
+        input.proposedCheckpoint !== null &&
+        source.proposedCheckpoint === null
+      ) {
+        await tx.companyImportSource.update({
+          where: { ...scope, id: input.sourceId },
+          data: { proposedCheckpoint: jsonInput(input.proposedCheckpoint) },
+        });
+      }
       if (input.cooldownMs !== undefined) {
         const until = new Date(Date.now() + input.cooldownMs);
         await tx.companyImportSource.update({
@@ -1252,6 +2176,15 @@ export async function completeCompanyImportUnit(
                   input.nextSourceCursor === null
                     ? Prisma.DbNull
                     : jsonInput(input.nextSourceCursor),
+              }),
+          ...(run.mode === "sample" ? { sampled: true } : {}),
+          ...(input.proposedCheckpoint === undefined || source.proposedCheckpoint !== null
+            ? {}
+            : {
+                proposedCheckpoint:
+                  input.proposedCheckpoint === null
+                    ? Prisma.DbNull
+                    : jsonInput(input.proposedCheckpoint),
               }),
           ...(input.discoveredUnits ? { status: input.done ? "reading" : "running" } : {}),
         },
@@ -1358,6 +2291,15 @@ export async function awaitCompanyImportConsent(
     if (!unit || !source) return false;
     await tx.companyImportRun.updateMany({
       where: { ...scope, id: input.runId, status: { in: ["running", "paused"] } },
+      data: {
+        status: "awaiting_consent",
+        ...(run.notificationPendingStates.includes("awaiting_consent")
+          ? {}
+          : { notificationPendingStates: { push: "awaiting_consent" } }),
+      },
+    });
+    await tx.companyRefreshSource.updateMany({
+      where: { ...scope, activeRunId: input.runId },
       data: { status: "awaiting_consent" },
     });
     await tx.companyImportSource.updateMany({
@@ -1379,6 +2321,30 @@ export async function reconcileCompanyImportRunIds(prisma: PrismaClient) {
     select: { id: true, spaceId: true, ownerUserId: true },
   });
   return runs.map((run) => ({ runId: run.id, spaceId: run.spaceId, userId: run.ownerUserId }));
+}
+
+export async function listCompanyImportNotificationRecovery(prisma: PrismaClient) {
+  const runs = await prisma.companyImportRun.findMany({
+    where: { notificationPendingStates: { isEmpty: false } },
+    orderBy: { updatedAt: "asc" },
+    take: 100,
+    select: {
+      id: true,
+      spaceId: true,
+      ownerUserId: true,
+      mode: true,
+      status: true,
+      notificationPendingStates: true,
+    },
+  });
+  return runs.map((run) => ({
+    runId: run.id,
+    spaceId: run.spaceId,
+    userId: run.ownerUserId,
+    mode: run.mode,
+    status: run.status,
+    states: run.notificationPendingStates,
+  }));
 }
 
 export async function listCompanyImportUnitsForScheduling(

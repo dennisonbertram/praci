@@ -49,6 +49,8 @@ import {
   CompanyImportSampleSchema,
   CompanyImportSessionInputSchema,
   CompanyImportSessionSchema,
+  CompanyRefreshStartInputSchema,
+  CompanyRefreshStatusSchema,
 } from "./company-import.js";
 import { CompanyFactRefSchema, CompanyFactSchema, CompanyPageSchema } from "./company-page.js";
 import {
@@ -63,6 +65,7 @@ import {
   ContactSaveInputSchema,
   ContactSchema,
 } from "./contacts.js";
+import { CompanyReviewResolveSchema, CompanyReviewSchema } from "./company-review.js";
 import {
   DataRoomApiBoxListInputSchema,
   DataRoomApiBoxListOutputSchema,
@@ -1511,6 +1514,10 @@ export const appContract = {
     visibility: oc.input(CompanyVisibilityInputSchema).output(z.object({ ok: z.literal(true) })),
     page: oc.output(CompanyPageSchema),
     calendar: oc.input(CompanyCalendarInputSchema).output(CompanyCalendarSchema),
+    review: oc.output(CompanyReviewSchema),
+    resolveCandidate: oc
+      .input(CompanyReviewResolveSchema)
+      .output(z.object({ ok: z.literal(true) })),
     fact: oc.input(CompanyFactRefSchema).output(CompanyFactSchema.nullable()),
     confirm: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
     reject: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
@@ -1537,6 +1544,8 @@ export const appContract = {
       .output(CompanyImportModelConsentStatusSchema),
     start: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
     action: oc.input(CompanyImportActionInputSchema).output(CompanyImportProgressSchema),
+    refreshStatus: oc.output(z.array(CompanyRefreshStatusSchema)),
+    refresh: oc.input(CompanyRefreshStartInputSchema).output(CompanyImportProgressSchema),
     subscribe: oc
       .input(CompanyImportRunIdInputSchema)
       .output(eventIterator(CompanyImportEventSchema)),

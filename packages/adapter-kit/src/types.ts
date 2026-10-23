@@ -788,6 +788,7 @@ export interface BackgroundJobPayloads {
   "company.import.run": { spaceId: string; userId: string; runId: string };
   "company.import.unit": { spaceId: string; userId: string; runId: string; unitId: string };
   "company.import.recover": Record<string, never>;
+  "company.refresh.tick": Record<string, never>;
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   /** Names exactly one source: a Connection or an MCP server. */
   "meetings.sync": {
@@ -919,11 +920,32 @@ export interface CompanyImportDiscoveredUnit {
   cursor: unknown;
 }
 
+export type CompanyImportCheckpointValue =
+  | string
+  | number
+  | boolean
+  | null
+  | CompanyImportCheckpointValue[]
+  | { [key: string]: CompanyImportCheckpointValue };
+
+export type CompanyImportCheckpoint = Exclude<CompanyImportCheckpointValue, null>;
+
 export interface CompanyImportDiscoveryPage {
   units: CompanyImportDiscoveredUnit[];
   nextCursor: unknown | null;
   done: boolean;
+  proposedCheckpoint?: CompanyImportCheckpoint;
   cooldownMs?: number;
+}
+
+export type CompanyImportRefreshCapability =
+  | { kind: "supported"; checkpointKind: "gmail_history" | "data_room_updated_at" }
+  | { kind: "pending"; reason: string }
+  | { kind: "manual_only"; reason: string };
+
+export interface CompanyImportRefreshBegin {
+  baselineCheckpoint?: CompanyImportCheckpoint | null;
+  runCutoff?: CompanyImportCheckpoint | null;
 }
 
 export interface CompanyImportReadItem {
@@ -987,11 +1009,21 @@ export interface CompanyImportWorkerContext {
 
 /** Provider-neutral, bounded source access. Implementations must never widen a supplied scope. */
 export interface CompanyImportWorker {
+  refreshCapability?(source: CompanyImportSourceDescriptor): CompanyImportRefreshCapability;
+  beginRefresh?(
+    input: {
+      source: CompanyImportSourceDescriptor;
+      mode: "full" | "refresh";
+      checkpoint: unknown | null;
+    },
+    context: CompanyImportWorkerContext,
+  ): Promise<CompanyImportRefreshBegin>;
   discover(
     input: {
       source: CompanyImportSourceDescriptor;
       cursor: unknown | null;
       maxUnits: number;
+      refresh?: { checkpoint: unknown; runCutoff?: unknown | null };
     },
     context: CompanyImportWorkerContext,
   ): Promise<CompanyImportDiscoveryPage>;

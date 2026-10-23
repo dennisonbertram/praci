@@ -7357,6 +7357,13 @@ export function createRouter(deps: RouterDeps) {
       calendar: authed.company.calendar.handler(({ context, input }) =>
         companyCalendar(deps.prisma, context.actor, input),
       ),
+      review: authed.company.review.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).review(),
+      ),
+      resolveCandidate: authed.company.resolveCandidate.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).resolveCandidate(input);
+        return { ok: true as const };
+      }),
       fact: authed.company.fact.handler(({ context, input }) =>
         companyFact(deps.prisma, context.actor, input),
       ),
@@ -7438,6 +7445,12 @@ export function createRouter(deps: RouterDeps) {
             input.action,
             input.tokenCap,
           ) ?? deps.companyImport.action(context.actor, input.runId, input.action, input.tokenCap),
+      ),
+      refreshStatus: authed.companyImport.refreshStatus.handler(({ context }) =>
+        deps.companyImport.refreshStatus(context.actor),
+      ),
+      refresh: authed.companyImport.refresh.handler(({ context, input }) =>
+        deps.companyImport.refresh(context.actor, input.sourceId),
       ),
       subscribe: authed.companyImport.subscribe.handler(async function* ({ context, input }) {
         const stream = deps.companyImport.follow(context.actor, input.runId, context.signal);

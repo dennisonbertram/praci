@@ -34,16 +34,21 @@ import { CompanyCalendar } from "./CompanyCalendar";
 import { CompanyFactDetail } from "./CompanyFactDetail";
 import { CompanyHistory } from "./CompanyHistory";
 import { CompanyPrivacy } from "./CompanyPrivacy";
+import { CompanyRefresh } from "./CompanyRefresh";
+import { CompanyReview } from "./CompanyReview";
 
 export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
   useHideAmounts();
   const page = useFinanceQuery(() => rpc.company.page(), []);
+  const review = useFinanceQuery(() => rpc.company.review(), []);
   const finance = useFinanceQuery(() => rpc.finance.overview(), []);
   const carta = useFinanceQuery(() => rpc.investors.capTable(), []);
   const [params, setParams] = useSearchParams();
   const view = params.get("view") ?? "overview";
   const [fact, setFact] = useState<CompanyFact | null>(null);
+  const [factEditing, setFactEditing] = useState(false);
   const [privacy, setPrivacy] = useState(false);
+  const [refreshOpen, setRefreshOpen] = useState(false);
   const [calendarRevision, setCalendarRevision] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -68,14 +73,19 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
     data?.latestRun &&
     ["running", "planned", "awaiting_consent", "cancelling"].includes(data.latestRun.status);
   const reload = page.reload;
+  const reloadReview = review.reload;
   useEffect(() => {
     if (!running) return;
-    const timer = setInterval(reload, 4000);
+    const timer = setInterval(() => {
+      reload();
+      reloadReview();
+    }, 4000);
     return () => clearInterval(timer);
-  }, [running, reload]);
+  }, [running, reload, reloadReview]);
   const refreshCompany = () => {
     setCalendarRevision((revision) => revision + 1);
     reload();
+    review.reload();
   };
   const people = data?.entities.filter((row) => row.kind === "person") ?? [];
   const organisations = data?.entities.filter((row) => row.kind === "organisation") ?? [];
@@ -166,6 +176,9 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
               <DropdownMenuItem onClick={() => setPrivacy(true)}>
                 <Trans>Privacy</Trans>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setRefreshOpen((open) => !open)}>
+                <Trans>Refresh sources</Trans>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -176,6 +189,11 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
         </p>
       )}
       {privacy && <CompanyPrivacy onClose={() => setPrivacy(false)} onChanged={refreshCompany} />}
+      {refreshOpen && (
+        <div className="mb-6">
+          <CompanyRefresh onChanged={refreshCompany} />
+        </div>
+      )}
       <Tabs value={view} onValueChange={(next) => setParams({ view: String(next) })}>
         <TabsList>
           <TabsTrigger value="overview">
@@ -193,6 +211,10 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
           <TabsTrigger value="calendar">
             <Trans>Calendar</Trans>
           </TabsTrigger>
+          <TabsTrigger value="review">
+            <Trans>Review</Trans>
+            {review.data ? ` (${review.data.items.length})` : ""}
+          </TabsTrigger>
         </TabsList>
       </Tabs>
       {page.error && (
@@ -207,6 +229,29 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
       {data && (
         <div className="mt-6 space-y-8">
           {view === "history" && <CompanyHistory data={data} onOpen={setFact} />}
+          {view === "review" && (
+            <>
+              {review.error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {review.error}{" "}
+                  <Button variant="link" onClick={review.reload}>
+                    <Trans>Retry</Trans>
+                  </Button>
+                </p>
+              )}
+              {!review.data && !review.error && <Skeleton className="h-32 w-full" />}
+              {review.data && (
+                <CompanyReview
+                  items={review.data.items}
+                  onOpen={(next, editing = false) => {
+                    setFactEditing(editing);
+                    setFact(next);
+                  }}
+                  onChanged={refreshCompany}
+                />
+              )}
+            </>
+          )}
           {view === "calendar" && (
             <CompanyCalendar onOpen={setFact} refreshRevision={calendarRevision} />
           )}
@@ -383,6 +428,7 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
       {fact && (
         <CompanyFactDetail
           key={`${fact.kind}:${fact.record.id}`}
+          initialEditing={factEditing}
           fact={
             fact.kind === "entity"
               ? {
@@ -397,9 +443,13 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
                 }
               : fact
           }
-          onClose={() => setFact(null)}
+          onClose={() => {
+            setFact(null);
+            setFactEditing(false);
+          }}
           onChanged={() => {
             setFact(null);
+            setFactEditing(false);
             refreshCompany();
           }}
         />

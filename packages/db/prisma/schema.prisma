@@ -326,6 +326,8 @@ model Space {
   companyImportUnits          CompanyImportUnit[]
   companyImportCalls          CompanyImportCall[]
   companySourceBlocks         CompanySourceBlock[]
+  companyRefreshSources       CompanyRefreshSource[]
+  companyCandidateResolutions CompanyCandidateResolution[]
 
   @@unique([id, organizationId])
   @@index([organizationId, createdAt])
@@ -362,6 +364,8 @@ model SpaceMember {
   companyImportUnits CompanyImportUnit[] @relation("CompanyImportUnitOwner")
   companyImportCalls CompanyImportCall[] @relation("CompanyImportCallOwner")
   companySourceBlocks CompanySourceBlock[]
+  companyRefreshSources CompanyRefreshSource[] @relation("CompanyRefreshSourceOwner")
+  companyCandidateResolutions CompanyCandidateResolution[] @relation("CompanyCandidateResolutionOwner")
 
   @@unique([spaceId, userId])
   @@index([organizationId, userId])
@@ -3489,6 +3493,8 @@ model CompanyEvidence {
   confidence      Float
   confirmedByUserId String?
   confirmedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
   createdAt       DateTime      @default(now())
   importObservations CompanyImportEvidence[]
 
@@ -3528,6 +3534,27 @@ model CompanyCandidate {
   @@index([spaceId, ownerUserId, createdAt])
   @@index([spaceId, ownerUserId, importRunId])
   @@map("company_candidates")
+}
+
+model CompanyCandidateResolution {
+  id          String      @id @default(cuid())
+  spaceId     String
+  space       Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId String
+  owner       SpaceMember @relation("CompanyCandidateResolutionOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey   String
+  reason      String
+  kind        String
+  outcome     String
+  factKind    String?
+  factId      String?
+  claimKey    String?
+  createdAt   DateTime    @default(now())
+
+  @@unique([spaceId, ownerUserId, sourceKey, reason])
+  @@index([spaceId, ownerUserId, factKind, factId])
+  @@index([spaceId, ownerUserId, claimKey])
+  @@map("company_candidate_resolutions")
 }
 
 model CompanyCorrection {
@@ -3618,6 +3645,8 @@ model CompanyImportRun {
   createdAt             DateTime                @default(now())
   startedAt             DateTime?
   completedAt           DateTime?
+  notificationStates    String[]                @default([])
+  notificationPendingStates String[]             @default([])
   updatedAt             DateTime                @updatedAt
   sources               CompanyImportSource[]
   units                 CompanyImportUnit[]
@@ -3661,6 +3690,12 @@ model CompanyImportSource {
   scope               Json               @default("{}")
   plan                Json               @default("{}")
   cursor              Json?
+  baseCheckpoint     Json?
+  proposedCheckpoint Json?
+  baseCheckpointGeneration Int?
+  refreshSourceId    String?
+  refreshSource      CompanyRefreshSource? @relation(fields: [refreshSourceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  sampled            Boolean            @default(false)
   status              String             @default("waiting")
   concurrency         Int                @default(1)
   tokensReserved      BigInt             @default(0)
@@ -3678,6 +3713,38 @@ model CompanyImportSource {
   @@index([spaceId, ownerUserId, runId, status])
   @@index([mcpServerId])
   @@map("company_import_sources")
+}
+
+model CompanyRefreshSource {
+  id                  String        @id @default(cuid())
+  spaceId             String
+  space               Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId         String
+  owner               SpaceMember   @relation("CompanyRefreshSourceOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey           String
+  sourceKind          String
+  connectionId        String?
+  mcpServerId         String?
+  scope               Json          @default("{}")
+  tokenCap            BigInt
+  capability          String        @default("pending")
+  status              String        @default("needs_baseline")
+  reason              String?
+  committedCheckpoint Json?
+  checkpointGeneration Int          @default(0)
+  lastSuccessAt       DateTime?
+  nextRunAt           DateTime?
+  timezone            String        @default("UTC")
+  activeRunId         String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  importSources       CompanyImportSource[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, sourceKey])
+  @@index([spaceId, ownerUserId, nextRunAt])
+  @@index([activeRunId])
+  @@map("company_refresh_sources")
 }
 
 model CompanyImportUnit {

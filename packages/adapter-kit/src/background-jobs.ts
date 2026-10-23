@@ -84,6 +84,7 @@ const payloadSchemas = {
     unitId: z.string().min(1),
   }),
   "company.import.recover": z.object({}),
+  "company.refresh.tick": z.object({}),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
   "dataroom.ingest": dataRoomStepPayload,

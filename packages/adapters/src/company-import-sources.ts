@@ -3,6 +3,7 @@ import type {
   AdapterContext,
   CompanyExtractor,
   CompanyImportReadPage,
+  CompanyImportRefreshCapability,
   CompanyImportSourceDescriptor,
   CompanyImportWorker,
   CompanyImportWorkerContext,
@@ -10,6 +11,7 @@ import type {
   MailProvider,
 } from "@rakazo/adapter-kit";
 import {
+  COMPANY_IMPORT_CURSOR_MAX_BYTES,
   CompanyDataRoomScopeSchema,
   CompanyGenericScopeSchema,
   CompanyMailScopeSchema,
@@ -36,9 +38,13 @@ const itemCursor = z.strictObject({
 });
 const discoveryCursor = z.strictObject({
   afterId: z.string().optional(),
+  afterUpdatedAt: z.string().datetime({ offset: true }).optional(),
   pageToken: z.string().nullable().optional(),
   pendingIds: z.array(z.string()).max(100).optional(),
   nextPageToken: z.string().nullable().optional(),
+  refreshIds: z.array(z.string()).max(10_000).optional(),
+  refreshOffset: z.number().int().nonnegative().optional(),
+  refreshCursor: z.string().optional(),
 });
 const MAX_TITLE_BYTES = 1_024;
 
@@ -88,6 +94,8 @@ export function createCompanySourceWorker(deps: {
   // Narrow the capability object at construction, not by trusting a model's instructions.
   const mail = deps.mail
     ? {
+        getCursor: deps.mail.getCursor.bind(deps.mail),
+        listChanges: deps.mail.listChanges.bind(deps.mail),
         listMessages: deps.mail.listMessages.bind(deps.mail),
         getMessage: deps.mail.getMessage.bind(deps.mail),
       }
@@ -163,6 +171,18 @@ export function createCompanySourceWorker(deps: {
     context: CompanyImportWorkerContext,
   ): Promise<MailAccount> => {
     if (!mail || !source.connectionId) throw new CompanyImportWorkerError("mail_unavailable");
+    const blocked = await deps.prisma.companySourceBlock.findFirst({
+      where: {
+        spaceId: context.actor.spaceId,
+        ownerUserId: context.actor.userId,
+        OR: [
+          { sourceKey: JSON.stringify(["gmail", source.connectionId, null]) },
+          { sourceKind: "gmail", connectionId: null, mcpServerId: null },
+        ],
+      },
+      select: { id: true },
+    });
+    if (blocked) throw new CompanyImportWorkerError("source_access_revoked");
     const row = await deps.prisma.connection.findFirst({
       where: {
         id: source.connectionId,
@@ -267,7 +287,44 @@ export function createCompanySourceWorker(deps: {
   };
 
   return {
-    async discover({ source, cursor, maxUnits }, context) {
+    refreshCapability(source): CompanyImportRefreshCapability {
+      if (source.sourceKind === "gmail" && mail)
+        return { kind: "supported", checkpointKind: "gmail_history" };
+      if (source.sourceKind === "data_room" && !source.connectionId)
+        return { kind: "supported", checkpointKind: "data_room_updated_at" };
+      if (source.sourceKind === "mcp" && source.scope.reader === "linear")
+        return { kind: "manual_only", reason: "linear_manual_reimport_release_policy" };
+      const manualReimportReasons: Record<string, string> = {
+        slack: "slack_manual_reimport_release_policy",
+        github: "github_manual_reimport_release_policy",
+        linear: "linear_manual_reimport_release_policy",
+        notion:
+          "notion_search_non_exhaustive_and_not_immediately_indexed_no_reliable_nested_change_feed",
+        mcp: "generic_tool_manual_only",
+        data_room: "data_room_external_manual_reimport",
+        composio: "generic_tool_manual_only",
+      };
+      const manualReason = manualReimportReasons[source.sourceKind];
+      if (manualReason) return { kind: "manual_only", reason: manualReason };
+      return { kind: "pending", reason: "provider_capability_pending" };
+    },
+    async beginRefresh({ source, mode }, context) {
+      if (source.sourceKind === "gmail") {
+        if (!mail) return {};
+        if (mode === "full") {
+          const account = await accountFor(source, context);
+          return { baselineCheckpoint: await mail.getCursor(account, contextFor(context)) };
+        }
+        return {};
+      }
+      if (source.sourceKind === "data_room" && !source.connectionId) {
+        await dataRoomWhere(source, context);
+        const checkpoint = { kind: "data_room_updated_at", updatedAt: new Date().toISOString() };
+        return mode === "full" ? { baselineCheckpoint: checkpoint } : { runCutoff: checkpoint };
+      }
+      return {};
+    },
+    async discover({ source, cursor, maxUnits, refresh }, context) {
       if (isCompanyDocumentSource(source)) {
         if (!deps.documents) throw new CompanyImportWorkerError("unsupported_reader");
         return deps.documents.discover(source, cursor, maxUnits, contextFor(context));
@@ -282,16 +339,42 @@ export function createCompanySourceWorker(deps: {
       }
       const page = discoveryCursor.parse(cursor ?? {});
       if (source.sourceKind === "data_room") {
+        const base = refresh
+          ? new Date((refresh.checkpoint as { updatedAt: string }).updatedAt)
+          : null;
+        const runCutoff = refresh
+          ? new Date((refresh.runCutoff as { updatedAt: string }).updatedAt)
+          : null;
         const rows = await deps.prisma.dataRoomItem.findMany({
-          where: {
-            AND: [
-              await dataRoomWhere(source, context),
-              ...(page.afterId ? [{ id: { gt: page.afterId } }] : []),
-            ],
-          },
-          orderBy: { id: "asc" },
+          where: refresh
+            ? {
+                AND: [
+                  await dataRoomWhere(source, context),
+                  { updatedAt: { gte: base!, lte: runCutoff! } },
+                  ...(page.afterUpdatedAt
+                    ? [
+                        {
+                          OR: [
+                            { updatedAt: { gt: new Date(page.afterUpdatedAt) } },
+                            {
+                              updatedAt: new Date(page.afterUpdatedAt),
+                              id: { gt: page.afterId ?? "" },
+                            },
+                          ],
+                        },
+                      ]
+                    : []),
+                ],
+              }
+            : {
+                AND: [
+                  await dataRoomWhere(source, context),
+                  ...(page.afterId ? [{ id: { gt: page.afterId } }] : []),
+                ],
+              },
+          orderBy: refresh ? [{ updatedAt: "asc" }, { id: "asc" }] : { id: "asc" },
           take: maxUnits,
-          select: { id: true },
+          select: refresh ? { id: true, updatedAt: true } : { id: true },
         });
         const done = rows.length < maxUnits;
         return {
@@ -299,12 +382,68 @@ export function createCompanySourceWorker(deps: {
             unitKey: `data_room:${hash(row.id)}`,
             cursor: { itemId: row.id },
           })),
-          nextCursor: done ? null : { afterId: rows.at(-1)!.id },
+          nextCursor: done
+            ? null
+            : refresh
+              ? {
+                  afterUpdatedAt: rows.at(-1)!.updatedAt!.toISOString(),
+                  afterId: rows.at(-1)!.id,
+                }
+              : { afterId: rows.at(-1)!.id },
           done,
+          ...(refresh?.runCutoff != null ? { proposedCheckpoint: refresh.runCutoff } : {}),
         };
       }
       if (source.sourceKind !== "gmail") throw new CompanyImportWorkerError("unsupported_source");
       const account = await accountFor(source, context);
+      if (refresh) {
+        const refreshPage = z
+          .strictObject({
+            refreshIds: z.array(z.string()).max(10_000).optional(),
+            refreshOffset: z.number().int().nonnegative().optional(),
+            refreshCursor: z.string().optional(),
+          })
+          .parse(cursor ?? {});
+        const changes =
+          refreshPage.refreshIds === undefined
+            ? await mail!.listChanges(
+                account,
+                String((refresh.checkpoint as { cursor?: string }).cursor ?? refresh.checkpoint),
+                contextFor(context),
+              )
+            : {
+                changedIds: refreshPage.refreshIds,
+                cursor: refreshPage.refreshCursor!,
+                deletedIds: [],
+              };
+        if (!changes) throw new CompanyImportWorkerError("gmail_history_expired");
+        if (changes.changedIds.length > 10_000)
+          throw new CompanyImportWorkerError("refresh_change_limit_exceeded");
+        const offset = refreshPage.refreshOffset ?? 0;
+        const ids = changes.changedIds;
+        const selected = ids.slice(offset, offset + maxUnits);
+        const nextOffset = offset + selected.length;
+        const done = nextOffset >= ids.length;
+        const cursorSnapshot = {
+          refreshIds: ids,
+          refreshOffset: nextOffset,
+          refreshCursor: changes.cursor,
+        };
+        if (
+          Buffer.byteLength(JSON.stringify(cursorSnapshot), "utf8") >
+          COMPANY_IMPORT_CURSOR_MAX_BYTES
+        )
+          throw new CompanyImportWorkerError("refresh_change_limit_exceeded");
+        return {
+          units: selected.map((id) => ({
+            unitKey: `gmail:${hash(id)}`,
+            cursor: { itemId: id },
+          })),
+          nextCursor: done ? null : cursorSnapshot,
+          done,
+          proposedCheckpoint: { kind: "gmail_history", cursor: changes.cursor },
+        };
+      }
       const scope = CompanyMailScopeSchema.parse(source.scope);
       const query = [
         scope.after ? `after:${Math.floor(Date.parse(scope.after) / 1000) - 1}` : "",

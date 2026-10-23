@@ -14,6 +14,8 @@ import type {
   CompanyFactUpsertInput,
   CompanyPartialDate,
   CompanyPrivacy,
+  CompanyReview,
+  CompanyReviewResolve,
   CompanySourceLocator,
   CompanyEdgeRecord as ContractCompanyEdgeRecord,
   CompanyEntityRecord as ContractCompanyEntityRecord,
@@ -33,14 +35,19 @@ import {
   CompanyEventImportInputSchema,
   CompanyEventInputSchema,
   CompanyEvidenceInputSchema,
+  CompanyExtractionSchema,
   CompanyFactUpsertInputSchema,
   CompanyIdentityTypeSchema,
   CompanyMergeInputSchema,
   CompanyRejectInputSchema,
+  CompanyReviewResolveSchema,
+  CompanyReviewSchema,
+  CompanySourceKindSchema,
   CompanyStatusSchema,
   CompanyVisibilitySchema,
   companyEntityIdentifiers,
   companyExcludedPersonAliases,
+  companyFactIsVisible,
   companyPrivacySourceKey,
   normalizeCompanyName,
 } from "@rakazo/contracts";
@@ -878,6 +885,11 @@ async function createCandidate(
     importRunId?: string | null;
   },
 ): Promise<string> {
+  const resolution = await db.companyCandidateResolution.findFirst({
+    where: { ...scope, sourceKey: data.sourceKey, reason: data.reason },
+    select: { id: true },
+  });
+  if (resolution) return resolution.id;
   const importRun = data.importRunId
     ? await db.companyImportRun.findFirst({
         where: { ...scope, id: data.importRunId },
@@ -1103,11 +1115,60 @@ async function persistImportEvidence(
   });
 }
 
+async function persistResolvedClaimEvidence(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "entity" | "edge" | "event",
+  factId: string,
+  sourceClaimKey: string,
+  evidence: CompanyEvidenceInput,
+) {
+  const dataRoomItemId = await linkedDataRoomItemId(db, scope, evidence);
+  await persistImportEvidence(db, scope, {
+    ...scope,
+    factKind,
+    factId,
+    stance: evidence.stance,
+    sourceKind: evidence.sourceKind,
+    connectionId: evidence.connectionId ?? null,
+    mcpServerId: evidence.mcpServerId ?? null,
+    dataRoomItemId,
+    sourceItemId: evidence.sourceItemId,
+    sourceKey: sourceClaimKey,
+    sourceUrl: evidence.sourceUrl ?? null,
+    quote: evidence.quote,
+    contentHash: evidence.contentHash,
+    extractedAt: new Date(evidence.extractedAt),
+    extractorRunId: evidence.extractorRunId ?? null,
+    extractorModel: evidence.extractorModel ?? Prisma.JsonNull,
+    confidence: evidence.confidence,
+    confirmedByUserId: null,
+    confirmedAt: null,
+  });
+  if (factKind === "entity") {
+    const entity = await db.companyEntity.findFirst({ where: { ...scope, id: factId } });
+    if (entity)
+      await db.companyEntity.update({
+        where: { ...scope, id: factId },
+        data: { sourceClaimKeys: [...new Set([...entity.sourceClaimKeys, sourceClaimKey])] },
+      });
+  } else if (factKind === "event") {
+    const event = await db.companyEvent.findFirst({ where: { ...scope, id: factId } });
+    if (event)
+      await db.companyEvent.update({
+        where: { ...scope, id: factId },
+        data: { sourceClaimKeys: [...new Set([...event.sourceClaimKeys, sourceClaimKey])] },
+      });
+  }
+}
+
 async function importEntity(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEntityImportInput,
   allowManual = false,
+  approvedNameRejectionId?: string,
+  forceSeparate = false,
 ): Promise<CompanyWriteResult> {
   const input = allowManual
     ? {
@@ -1133,6 +1194,69 @@ async function importEntity(
   const key = sourceKey(input.evidence, claimFingerprint);
   const importId = `company_${hash({ scope, input: input.entity, key }).slice(0, 24)}`;
   const aliases = entityAliases(input.entity, key);
+  const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
+  const approvedRejection =
+    rejection && rejection.id === approvedNameRejectionId
+      ? await db.companyRejection.findFirst({
+          where: {
+            ...scope,
+            id: rejection.id,
+            factKind: "entity",
+            entityKind: "person",
+            excludedPerson: false,
+          },
+          select: { id: true, reason: true },
+        })
+      : null;
+  if (rejection && !approvedRejection)
+    return { suppressed: true, record: null, rejectionId: rejection.id };
+  const resolution = await db.companyCandidateResolution.findFirst({
+    where: {
+      ...scope,
+      sourceKey: key,
+      reason: {
+        in: [
+          "rejected_name_only_claim",
+          "name_only_person_candidate",
+          "email_local_part_candidate",
+          "ambiguous_organisation_name",
+          "conflicting_organisation_domain",
+          "conflicting_strong_identities",
+        ],
+      },
+    },
+    select: { id: true, outcome: true, factKind: true, factId: true, reason: true },
+  });
+  if (resolution?.outcome === "rejected" && resolution.reason === "rejected_name_only_claim")
+    return { suppressed: true, record: null, rejectionId: resolution.id };
+  if (
+    resolution?.outcome === "confirmed" &&
+    resolution.factKind === "entity" &&
+    resolution.factId
+  ) {
+    const target = await db.companyEntity.findFirst({
+      where: {
+        ...scope,
+        id: resolution.factId,
+        kind: input.entity.kind,
+        status: { not: "rejected" },
+      },
+      include: ENTITY_INCLUDE,
+    });
+    if (!target) throw new IsolationError("The confirmed Company candidate is no longer available");
+    if (input.entity.kind === "person")
+      await assertPersonNotExcluded(db, scope, target.id, input.entity);
+    await persistImportEvidence(
+      db,
+      scope,
+      await evidenceCreateData(db, scope, "entity", target.id, input.evidence, claimFingerprint),
+    );
+    await db.companyEntity.update({
+      where: { ...scope, id: target.id },
+      data: { sourceClaimKeys: [...new Set([...target.sourceClaimKeys, key])] },
+    });
+    return mapEntity(db, scope, target);
+  }
   const evidenceRows = await db.companyEvidence.findMany({
     where: {
       ...scope,
@@ -1152,9 +1276,6 @@ async function importEntity(
       (entity) => entity.id === evidence.factId && entity.status !== "rejected",
     ),
   );
-  const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
-  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-
   const retainedClaim = activeEvidence
     ? null
     : await db.companyEntity.findFirst({
@@ -1182,11 +1303,20 @@ async function importEntity(
       },
       select: { id: true },
     });
-    if (stableRejection) {
+    if (stableRejection && stableRejection.id !== approvedNameRejectionId) {
+      const existingNames = await db.companyEntity.findMany({
+        where: {
+          ...scope,
+          kind: "person",
+          normalizedName: normalizeCompanyName(input.entity.displayName),
+          status: { not: "rejected" },
+        },
+        select: { id: true },
+      });
       const candidateId = await createCandidate(db, scope, {
         kind: "person",
         reason: "rejected_name_only_claim",
-        entityIds: [],
+        entityIds: existingNames.map((entity) => entity.id),
         proposedFact: { entity: input.entity, rejectionId: stableRejection.id },
         sourceKind: input.evidence.sourceKind,
         connectionId: input.evidence.connectionId ?? null,
@@ -1202,12 +1332,14 @@ async function importEntity(
     }
   }
 
-  const matchingIdentifiers =
-    input.entity.kind === "organisation"
+  const matchingIdentifiers = forceSeparate
+    ? []
+    : input.entity.kind === "organisation"
       ? identifiers.filter(([, identityType]) => identityType !== "name")
       : identifiers;
-  const matches =
-    input.entity.kind === "project"
+  const matches = forceSeparate
+    ? []
+    : input.entity.kind === "project"
       ? await projectIdentityMatches(db, scope, input.entity)
       : matchingIdentifiers.length
         ? await db.companyIdentity.findMany({
@@ -1314,7 +1446,7 @@ async function importEntity(
     }
   }
 
-  if (!entityId && input.entity.kind === "person") {
+  if (!forceSeparate && matchedGroups.length === 0 && !entityId && input.entity.kind === "person") {
     const normalizedName = normalizeCompanyName(input.entity.displayName);
     const sameName = await db.companyEntity.findMany({
       where: { ...scope, kind: "person", normalizedName },
@@ -1696,6 +1828,57 @@ async function importEvent(
     `source:${assertedSourceKey}`,
   ]);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
+  const candidateResolution = await db.companyCandidateResolution.findFirst({
+    where: {
+      ...scope,
+      sourceKey: assertedSourceKey,
+      reason: "ambiguous_event_subjects",
+    },
+    select: { id: true, outcome: true, factKind: true, factId: true },
+  });
+  if (candidateResolution?.outcome === "rejected")
+    return { suppressed: true, record: null, rejectionId: candidateResolution.id };
+  if (
+    candidateResolution?.outcome === "confirmed" &&
+    candidateResolution.factKind === "event" &&
+    candidateResolution.factId
+  ) {
+    const selected = await db.companyEvent.findFirst({
+      where: { ...scope, id: candidateResolution.factId, status: { not: "rejected" } },
+    });
+    if (!selected)
+      throw new IsolationError("The confirmed Company candidate is no longer available");
+    const links = await db.companyEventEntity.findMany({
+      where: { ...scope, eventId: selected.id },
+      select: { entityId: true },
+    });
+    const subjects = await db.companyEntity.findMany({
+      where: {
+        ...scope,
+        id: { in: links.map((link) => link.entityId) },
+        status: { not: "rejected" },
+      },
+      select: { id: true, kind: true },
+    });
+    if (subjects.length !== links.length)
+      throw new IsolationError("The confirmed event has an unavailable subject");
+    for (const subject of subjects)
+      if (subject.kind === "person") await assertPersonNotExcluded(db, scope, subject.id);
+    await persistResolvedClaimEvidence(
+      db,
+      scope,
+      "event",
+      selected.id,
+      assertedSourceKey,
+      input.evidence,
+    );
+    return mapEventRecord(
+      db,
+      scope,
+      selected,
+      links.map((link) => link.entityId),
+    );
+  }
   const exactSourceReplayIds = await eventSourceReplayIds(db, scope, [rawKey]);
   let event =
     exactSourceReplayIds.length === 1
@@ -1962,6 +2145,76 @@ async function manualEvidence(
   return row.id;
 }
 
+async function acknowledgeConflictingEvidence(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "entity" | "edge" | "event",
+  factId: string,
+) {
+  const factIds = factKind === "entity" ? await mergedEntityGroupIds(db, scope, factId) : [factId];
+  const evidence = await db.companyEvidence.findMany({
+    where: { ...scope, factKind, factId: { in: factIds } },
+    select: { stance: true },
+  });
+  if (
+    !evidence.some((item) => item.stance === "supports") ||
+    !evidence.some((item) => item.stance === "contradicts")
+  )
+    return;
+  await db.companyEvidence.updateMany({
+    where: { ...scope, factKind, factId: { in: factIds }, reviewedAt: null },
+    data: { reviewedAt: new Date(), reviewedByUserId: scope.ownerUserId },
+  });
+}
+
+async function assertPersonNotExcluded(
+  db: CompanyDb,
+  scope: Scope,
+  entityId: string | null,
+  proposed?: Extract<CompanyEntityInput, { kind: "person" }>,
+) {
+  const ids = entityId ? await mergedEntityGroupIds(db, scope, entityId) : [];
+  const [members, identities] = await Promise.all([
+    ids.length
+      ? db.companyEntity.findMany({
+          where: { ...scope, id: { in: ids }, kind: "person" },
+          select: { displayName: true, attrs: true, sourceClaimKeys: true },
+        })
+      : Promise.resolve([]),
+    ids.length
+      ? db.companyIdentity.findMany({
+          where: { ...scope, entityId: { in: ids }, entityKind: "person" },
+          select: { identityType: true, identityValue: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const aliases = new Set<string>(proposed ? companyExcludedPersonAliases(proposed) : []);
+  for (const member of members) {
+    for (const alias of companyExcludedPersonAliases({
+      kind: "person",
+      displayName: member.displayName,
+      confidence: 0,
+      attrs: member.attrs as Extract<CompanyEntityInput, { kind: "person" }>["attrs"],
+    }))
+      aliases.add(alias);
+    for (const sourceClaimKey of member.sourceClaimKeys) aliases.add(`source:${sourceClaimKey}`);
+  }
+  for (const identity of identities)
+    aliases.add(`person:${identity.identityType}:${identity.identityValue}`);
+  if (aliases.size === 0) return;
+  const excluded = await db.companyRejection.findFirst({
+    where: {
+      ...scope,
+      factKind: "entity",
+      entityKind: "person",
+      excludedPerson: true,
+      identityAliases: { hasSome: [...aliases] },
+    },
+    select: { id: true },
+  });
+  if (excluded) throw new IsolationError("This person is excluded from Company");
+}
+
 async function editEntity(
   db: CompanyDb,
   scope: Scope,
@@ -2093,6 +2346,7 @@ async function editEntity(
       });
     }
   }
+  await acknowledgeConflictingEvidence(db, scope, "entity", row.id);
   return mapEntity(
     db,
     scope,
@@ -2120,6 +2374,7 @@ async function confirmEntity(
     where: { id: row.id },
     data: { status: "confirmed", confirmedAt, confirmedByUserId: scope.ownerUserId },
   });
+  await acknowledgeConflictingEvidence(db, scope, "entity", row.id);
   return mapEntity(
     db,
     scope,
@@ -2296,6 +2551,7 @@ async function editEdge(
     where: { id: row.id },
     data: { ...data, lockedFields, claimFingerprints },
   });
+  await acknowledgeConflictingEvidence(db, scope, "edge", row.id);
   return mapEdgeRecord(db, scope, updated);
 }
 
@@ -2402,6 +2658,7 @@ async function editEvent(
       subjectKey: correctedSubjectKey,
     },
   });
+  await acknowledgeConflictingEvidence(db, scope, "event", row.id);
   const links = await db.companyEventEntity.findMany({
     where: { ...scope, eventId: row.id },
     select: { entityId: true },
@@ -2429,6 +2686,7 @@ async function confirmFact(
       where: { id: factId },
       data: { status: "confirmed", confirmedByUserId: scope.ownerUserId, confirmedAt },
     });
+    await acknowledgeConflictingEvidence(db, scope, "edge", factId);
     return mapEdgeRecord(db, scope, updated);
   }
   const row = await db.companyEvent.findFirstOrThrow({ where: { ...scope, id: factId } });
@@ -2437,6 +2695,7 @@ async function confirmFact(
     where: { id: factId },
     data: { status: "confirmed", confirmedByUserId: scope.ownerUserId, confirmedAt },
   });
+  await acknowledgeConflictingEvidence(db, scope, "event", factId);
   const links = await db.companyEventEntity.findMany({
     where: { ...scope, eventId: row.id },
     select: { entityId: true },
@@ -2580,6 +2839,26 @@ async function rejectFact(
 async function eraseEntity(db: CompanyDb, scope: Scope, entityId: string): Promise<void> {
   const row = await db.companyEntity.findFirst({ where: { ...scope, id: entityId } });
   if (!row) throw new IsolationError("Entity not found");
+  const [edges, eventLinks] = await Promise.all([
+    db.companyEdge.findMany({
+      where: { ...scope, OR: [{ fromId: entityId }, { toId: entityId }] },
+      select: { id: true },
+    }),
+    db.companyEventEntity.findMany({
+      where: { ...scope, entityId },
+      select: { eventId: true },
+    }),
+  ]);
+  await db.companyCandidateResolution.deleteMany({
+    where: {
+      ...scope,
+      OR: [
+        { factKind: "entity", factId: entityId },
+        { factKind: "edge", factId: { in: edges.map((edge) => edge.id) } },
+        { factKind: "event", factId: { in: eventLinks.map((link) => link.eventId) } },
+      ],
+    },
+  });
   const identities = await db.companyIdentity.findMany({
     where: { ...scope, entityId },
     select: { identityType: true, identityValue: true },
@@ -2605,6 +2884,8 @@ async function eraseEntity(db: CompanyDb, scope: Scope, entityId: string): Promi
 
 async function eraseMap(db: CompanyDb, scope: Scope): Promise<void> {
   await db.companyImportRun.deleteMany({ where: scope });
+  await db.companyRefreshSource.deleteMany({ where: scope });
+  await db.companyCandidateResolution.deleteMany({ where: scope });
   await db.companySourceBlock.deleteMany({ where: scope });
   await db.companyMerge.deleteMany({ where: scope });
   await db.companyCandidate.deleteMany({ where: scope });
@@ -2694,6 +2975,15 @@ async function sourceControl(
     await db.companySourceBlock.deleteMany({
       where: { ...scope, sourceKey: companyPrivacySourceKey(locator) },
     });
+    await db.companyRefreshSource.updateMany({
+      where: { ...scope, ...sourceLocatorWhere(locator), capability: { not: "manual_only" } },
+      data: {
+        status: "needs_baseline",
+        reason: "source_reconnected_requires_import",
+        nextRunAt: null,
+        activeRunId: null,
+      },
+    });
     return;
   }
   const linkedDataRoomItems =
@@ -2722,7 +3012,11 @@ async function sourceControl(
           where: {
             ...scope,
             status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] },
-            sources: { some: { sourceKind: "data_room" } },
+            sources: {
+              some: {
+                ...sourceLocatorWhere(locator),
+              },
+            },
           },
           select: { id: true },
         })
@@ -2763,6 +3057,15 @@ async function sourceControl(
       mcpServerId: locator.mcpServerId,
     },
     update: {},
+  });
+  await db.companyRefreshSource.updateMany({
+    where: { ...scope, ...sourceLocatorWhere(locator) },
+    data: {
+      status: "unavailable",
+      reason: "source_disconnected",
+      nextRunAt: null,
+      activeRunId: null,
+    },
   });
   await db.companyCandidate.deleteMany({ where: sourceWhere });
   if (linkedDataRoomIds.length > 0) {
@@ -3333,6 +3636,237 @@ async function splitEntity(db: CompanyDb, scope: Scope, sourceEntityId: string):
   await db.companyMerge.deleteMany({ where: { ...scope, sourceEntityId } });
 }
 
+async function candidateEvidence(
+  db: CompanyDb,
+  scope: Scope,
+  row: Prisma.CompanyCandidateGetPayload<object>,
+) {
+  const prior = await db.companyEvidence.findFirst({
+    where: {
+      ...scope,
+      sourceKind: row.sourceKind,
+      connectionId: row.connectionId,
+      mcpServerId: row.mcpServerId,
+      dataRoomItemId: row.dataRoomItemId,
+      sourceItemId: row.sourceItemId,
+      contentHash: row.contentHash,
+      NOT: { sourceKind: "manual" },
+    },
+    orderBy: { extractedAt: "desc" },
+  });
+  const proposed =
+    row.proposedFact && typeof row.proposedFact === "object" && !Array.isArray(row.proposedFact)
+      ? (row.proposedFact as Record<string, unknown>)
+      : {};
+  const entity = CompanyEntityInputSchema.safeParse(proposed.entity ?? proposed.person ?? proposed);
+  const event = CompanyEventInputSchema.safeParse(proposed.event ?? proposed.fact);
+  const confidence =
+    (entity.success ? entity.data.confidence : undefined) ??
+    (event.success ? event.data.confidence : undefined) ??
+    prior?.confidence ??
+    0.5;
+  const extractorModel = prior?.extractorModel;
+  return CompanyEvidenceInputSchema.parse({
+    stance: "supports",
+    sourceKind: CompanySourceKindSchema.parse(row.sourceKind),
+    connectionId: row.connectionId,
+    mcpServerId: row.mcpServerId,
+    dataRoomItemId: row.dataRoomItemId,
+    sourceItemId: row.sourceItemId,
+    sourceUrl: prior?.sourceUrl ?? undefined,
+    quote: row.quote,
+    contentHash: row.contentHash,
+    extractedAt: prior?.extractedAt.toISOString() ?? row.createdAt.toISOString(),
+    extractorRunId: row.importRunId,
+    extractorModel:
+      extractorModel && typeof extractorModel === "object" && !Array.isArray(extractorModel)
+        ? extractorModel
+        : null,
+    confidence,
+  });
+}
+
+function reviewEntityChoiceTitle(entity: { kind: string; displayName: string; attrs: unknown }) {
+  const attrs =
+    entity.attrs && typeof entity.attrs === "object" && !Array.isArray(entity.attrs)
+      ? (entity.attrs as Record<string, unknown>)
+      : {};
+  const distinguisher =
+    entity.kind === "person"
+      ? Array.isArray(attrs.workEmails)
+        ? attrs.workEmails.find((email): email is string => typeof email === "string")
+        : typeof attrs.githubLogin === "string"
+          ? `@${attrs.githubLogin}`
+          : typeof attrs.slackId === "string"
+            ? attrs.slackId
+            : undefined
+      : entity.kind === "organisation" && typeof attrs.domain === "string"
+        ? attrs.domain
+        : undefined;
+  return distinguisher ? `${entity.displayName} · ${distinguisher}` : entity.displayName;
+}
+
+async function reviewCandidateView(
+  db: CompanyDb,
+  scope: Scope,
+  row: Prisma.CompanyCandidateGetPayload<object>,
+) {
+  const proposed =
+    row.proposedFact && typeof row.proposedFact === "object" && !Array.isArray(row.proposedFact)
+      ? (row.proposedFact as Record<string, unknown>)
+      : {};
+  const entityValue = proposed.entity ?? proposed.person ?? proposed;
+  const parsedEntity = CompanyEntityInputSchema.safeParse(entityValue);
+  const parsedEvent = CompanyEventInputSchema.safeParse(proposed.event ?? proposed.fact);
+  const subjectEntities = Array.isArray(proposed.entities) ? proposed.entities : [];
+  const extractedRelation =
+    row.reason === "unresolved_import_subjects"
+      ? CompanyExtractionSchema.safeParse({
+          entities: subjectEntities,
+          edges: row.kind === "edge" ? [proposed.fact] : [],
+          events: row.kind === "event" ? [proposed.fact] : [],
+        })
+      : null;
+  const parsedEdge =
+    extractedRelation?.success && row.kind === "edge" ? extractedRelation.data.edges[0] : undefined;
+  const extractedEvent =
+    extractedRelation?.success && row.kind === "event"
+      ? extractedRelation.data.events[0]
+      : undefined;
+  const subjects = subjectEntities.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const item = value as { ref?: unknown; entity?: unknown };
+    if (typeof item.ref !== "string") return [];
+    const entity = CompanyEntityInputSchema.safeParse(item.entity);
+    const resolved =
+      proposed.resolvedRefs && typeof proposed.resolvedRefs === "object"
+        ? (proposed.resolvedRefs as Record<string, unknown>)[item.ref]
+        : null;
+    return [
+      {
+        ref: item.ref,
+        title: entity.success ? entity.data.displayName : item.ref,
+        entityId: typeof resolved === "string" ? resolved : null,
+      },
+    ];
+  });
+  const proposedEventIds = Array.isArray(proposed.matchingEventIds)
+    ? proposed.matchingEventIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const targetIds = row.reason === "ambiguous_event_subjects" ? proposedEventIds : row.entityIds;
+  const choices =
+    row.reason === "ambiguous_event_subjects"
+      ? (
+          await db.companyEvent.findMany({
+            where: { ...scope, id: { in: targetIds }, status: { not: "rejected" } },
+            orderBy: [{ occursOn: "asc" }, { id: "asc" }],
+          })
+        ).map((target) => ({
+          id: target.id,
+          title: `${target.title}${target.occursOn ? ` · ${target.occursOn.toISOString().slice(0, 10)}` : ""}`,
+        }))
+      : targetIds.length
+        ? await Promise.all(
+            (
+              await db.companyEntity.findMany({
+                where: { ...scope, id: { in: targetIds }, status: { not: "rejected" } },
+                include: ENTITY_INCLUDE,
+                orderBy: [{ normalizedName: "asc" }, { id: "asc" }],
+              })
+            ).map(async (target) => ({
+              id: target.id,
+              title: reviewEntityChoiceTitle(await mapEntity(db, scope, target)),
+            })),
+          )
+        : [];
+  const subjectKinds = [
+    ...new Set(
+      subjectEntities.flatMap((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+        const parsed = CompanyEntityInputSchema.safeParse((value as { entity?: unknown }).entity);
+        return parsed.success ? [parsed.data.kind] : [];
+      }),
+    ),
+  ];
+  const subjectChoices = subjectKinds.length
+    ? await db.companyEntity.findMany({
+        where: { ...scope, kind: { in: subjectKinds }, status: { not: "rejected" } },
+        orderBy: [{ normalizedName: "asc" }, { id: "asc" }],
+        take: 500,
+        select: { id: true, kind: true, displayName: true, attrs: true },
+      })
+    : [];
+  const title = parsedEntity.success
+    ? parsedEntity.data.displayName
+    : parsedEvent.success
+      ? parsedEvent.data.title
+      : parsedEdge
+        ? `${subjects.find((subject) => subject.ref === parsedEdge.fromRef)?.title ?? "Relation"} → ${subjects.find((subject) => subject.ref === parsedEdge.toRef)?.title ?? "subject"}`
+        : (extractedEvent?.title ?? "Company relation");
+  const details = parsedEntity.success
+    ? [
+        { label: "Type", value: parsedEntity.data.kind },
+        ...(parsedEntity.data.kind === "person" && parsedEntity.data.attrs.workEmails?.[0]
+          ? [{ label: "Work email", value: parsedEntity.data.attrs.workEmails[0] }]
+          : []),
+      ]
+    : parsedEdge
+      ? [
+          { label: "Relation", value: parsedEdge.relation },
+          ...(parsedEdge.role ? [{ label: "Role", value: parsedEdge.role }] : []),
+          ...(parsedEdge.startsOn ? [{ label: "From", value: parsedEdge.startsOn.date }] : []),
+          ...(parsedEdge.endsOn ? [{ label: "To", value: parsedEdge.endsOn.date }] : []),
+          { label: "Confidence", value: parsedEdge.confidence.toFixed(2) },
+        ]
+      : parsedEvent.success
+        ? [
+            { label: "Type", value: parsedEvent.data.kind },
+            ...(parsedEvent.data.occursOn
+              ? [{ label: "Date", value: parsedEvent.data.occursOn.date }]
+              : []),
+            { label: "Stream", value: parsedEvent.data.stream },
+          ]
+        : extractedEvent
+          ? [
+              { label: "Type", value: extractedEvent.kind },
+              { label: "Stream", value: extractedEvent.stream },
+              ...(extractedEvent.occursOn
+                ? [{ label: "Date", value: extractedEvent.occursOn.date }]
+                : []),
+              {
+                label: "Subjects",
+                value: subjects.map((subject) => subject.title).join(", ") || "None",
+              },
+              { label: "Confidence", value: extractedEvent.confidence.toFixed(2) },
+            ]
+          : [];
+  const version = hash({
+    contentHash: row.contentHash,
+    proposedFact: normalizeSnapshot(row.proposedFact),
+    entityIds: [...row.entityIds].sort(),
+  });
+  return {
+    id: row.id,
+    version,
+    reason: row.reason,
+    title,
+    quote: row.quote,
+    sourceKind: row.sourceKind,
+    details,
+    choices,
+    allowSeparate:
+      parsedEntity.success &&
+      row.reason !== "unresolved_import_subjects" &&
+      row.reason !== "ambiguous_event_subjects",
+    editableTitle: parsedEntity.success,
+    subjects,
+    subjectChoices: subjectChoices.map((choice) => ({
+      id: choice.id,
+      title: reviewEntityChoiceTitle(choice),
+    })),
+  };
+}
+
 function writerFor(db: CompanyDb, actor: Actor) {
   const scope = ownerOf(actor);
   const write = async <T>(operation: (tx: CompanyDb) => Promise<T>): Promise<T> => {
@@ -3404,7 +3938,11 @@ function writerFor(db: CompanyDb, actor: Actor) {
         const runIds = [...new Set(importSources.map((source) => source.runId))];
         if (runIds.length) {
           await tx.companyImportRun.updateMany({
-            where: { ...scope, id: { in: runIds }, status: { in: ["running", "paused"] } },
+            where: {
+              ...scope,
+              id: { in: runIds },
+              status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] },
+            },
             data: { status: "cancelled", completedAt: new Date() },
           });
           await tx.companyImportUnit.updateMany({
@@ -3412,6 +3950,15 @@ function writerFor(db: CompanyDb, actor: Actor) {
             data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
           });
         }
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, connectionId },
+          data: {
+            status: "unavailable",
+            reason: "source_disconnected",
+            nextRunAt: null,
+            activeRunId: null,
+          },
+        });
         await tx.companyCandidate.deleteMany({ where: { ...scope, connectionId } });
         await tx.companyEvidence.deleteMany({
           where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
@@ -3468,6 +4015,15 @@ function writerFor(db: CompanyDb, actor: Actor) {
             data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
           });
         }
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, mcpServerId },
+          data: {
+            status: "unavailable",
+            reason: "source_disconnected",
+            nextRunAt: null,
+            activeRunId: null,
+          },
+        });
         await tx.companyCandidate.deleteMany({ where: { ...scope, mcpServerId } });
         await tx.companyEvidence.deleteMany({
           where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
@@ -3490,6 +4046,7 @@ export function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
       entityIds: string[];
       proposedFact: unknown;
       evidence: CompanyEvidenceInput;
+      claimKey?: string;
     }) => {
       const scope = ownerOf(actor);
       await requireMember(tx, scope);
@@ -3509,12 +4066,104 @@ export function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
         sourceItemId: evidence.sourceItemId,
         sourceKey: sourceKey(
           evidence,
-          createHash("sha256").update(JSON.stringify(input.proposedFact)).digest("hex"),
+          input.claimKey ??
+            createHash("sha256")
+              .update(JSON.stringify(normalizeSnapshot(input.proposedFact)))
+              .digest("hex"),
         ),
         quote: evidence.quote,
         contentHash: evidence.contentHash,
         importRunId: evidence.extractorRunId,
       });
+    },
+    resolveImportClaim: async (input: {
+      kind: "edge" | "event";
+      claimKey: string;
+      evidence: CompanyEvidenceInput;
+    }) => {
+      const scope = ownerOf(actor);
+      await requireMember(tx, scope);
+      const evidence = CompanyEvidenceInputSchema.parse(input.evidence);
+      await assertSourceAllowed(tx, scope, evidence);
+      const key = sourceKey(evidence, input.claimKey);
+      const resolution = await tx.companyCandidateResolution.findFirst({
+        where: { ...scope, sourceKey: key, reason: "unresolved_import_subjects" },
+        select: { id: true, outcome: true, factKind: true, factId: true },
+      });
+      if (!resolution) return null;
+      if (resolution.outcome === "rejected")
+        return { suppressed: true, record: null, rejectionId: resolution.id };
+      if (
+        resolution.outcome !== "confirmed" ||
+        resolution.factKind !== input.kind ||
+        !resolution.factId
+      )
+        throw new IsolationError("The confirmed Company candidate is no longer available");
+      const sourceRejection = await findFactSuppression(tx, scope, input.kind, [`source:${key}`]);
+      if (sourceRejection)
+        return { suppressed: true, record: null, rejectionId: sourceRejection.id };
+      if (input.kind === "edge") {
+        const fact = await tx.companyEdge.findFirst({
+          where: { ...scope, id: resolution.factId, status: { not: "rejected" } },
+        });
+        if (!fact)
+          throw new IsolationError("The confirmed Company candidate is no longer available");
+        const endpoints = await tx.companyEntity.findMany({
+          where: {
+            ...scope,
+            id: { in: [fact.fromId, fact.toId] },
+            status: { not: "rejected" },
+          },
+          select: { id: true, kind: true },
+        });
+        if (endpoints.length !== new Set([fact.fromId, fact.toId]).size)
+          throw new IsolationError("The confirmed relation has an unavailable subject");
+        for (const endpoint of endpoints)
+          if (endpoint.kind === "person") await assertPersonNotExcluded(tx, scope, endpoint.id);
+        const edgeRejection = await findFactSuppression(tx, scope, "edge", [
+          `edge:${edgeClaimFingerprint(fact)}`,
+          `source:${key}`,
+        ]);
+        if (edgeRejection) return { suppressed: true, record: null, rejectionId: edgeRejection.id };
+        await persistResolvedClaimEvidence(tx, scope, "edge", fact.id, key, evidence);
+        return mapEdgeRecord(tx, scope, fact);
+      }
+      const fact = await tx.companyEvent.findFirst({
+        where: { ...scope, id: resolution.factId, status: { not: "rejected" } },
+      });
+      if (!fact) throw new IsolationError("The confirmed Company candidate is no longer available");
+      const links = await tx.companyEventEntity.findMany({
+        where: { ...scope, eventId: fact.id },
+        select: { entityId: true },
+      });
+      const endpoints = await tx.companyEntity.findMany({
+        where: {
+          ...scope,
+          id: { in: links.map((link) => link.entityId) },
+          status: { not: "rejected" },
+        },
+        select: { id: true, kind: true },
+      });
+      if (endpoints.length !== links.length)
+        throw new IsolationError("The confirmed event has an unavailable subject");
+      for (const endpoint of endpoints)
+        if (endpoint.kind === "person") await assertPersonNotExcluded(tx, scope, endpoint.id);
+      const fingerprint = eventClaimFingerprint({
+        ...fact,
+        subjectKey: await eventSubjectKeyForFingerprint(tx, scope, fact),
+      });
+      const eventRejection = await findFactSuppression(tx, scope, "event", [
+        `event:${fingerprint}`,
+        `source:${key}`,
+      ]);
+      if (eventRejection) return { suppressed: true, record: null, rejectionId: eventRejection.id };
+      await persistResolvedClaimEvidence(tx, scope, "event", fact.id, key, evidence);
+      return mapEventRecord(
+        tx,
+        scope,
+        fact,
+        links.map((link) => link.entityId),
+      );
     },
   };
 }
@@ -3538,6 +4187,83 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
     );
   };
   return {
+    review: async (): Promise<CompanyReview> => {
+      await requireMember(prisma, scope);
+      const store = companyForActor(prisma, actor);
+      const [entities, edges, events, candidates] = await Promise.all([
+        store.list(),
+        store.listEdges(),
+        store.listEvents(),
+        prisma.companyCandidate.findMany({ where: scope, orderBy: { createdAt: "desc" } }),
+      ]);
+      const factRows = [
+        ...entities.map((record) => ({ kind: "entity" as const, record })),
+        ...edges.map((record) => ({ kind: "edge" as const, record })),
+        ...events.map((record) => ({ kind: "event" as const, record })),
+      ].filter((fact) => !fact.record.readOnly);
+      const sourceKeys = [...new Set(candidates.map((candidate) => candidate.sourceKey))];
+      const entityFactIds = [
+        ...new Set(
+          (
+            await Promise.all(
+              entities.map((entity) => mergedEntityGroupIds(prisma, scope, entity.id)),
+            )
+          ).flat(),
+        ),
+      ];
+      const [resolved, evidenceRows] = await Promise.all([
+        sourceKeys.length
+          ? prisma.companyCandidateResolution.findMany({
+              where: { ...scope, sourceKey: { in: sourceKeys } },
+              select: { sourceKey: true, reason: true },
+            })
+          : Promise.resolve([]),
+        prisma.companyEvidence.findMany({
+          where: {
+            ...scope,
+            OR: [
+              { factKind: "entity", factId: { in: entityFactIds } },
+              { factKind: "edge", factId: { in: edges.map((fact) => fact.id) } },
+              { factKind: "event", factId: { in: events.map((fact) => fact.id) } },
+            ],
+          },
+          select: { factKind: true, factId: true, stance: true, reviewedAt: true },
+        }),
+      ]);
+      const resolvedKeys = new Set(resolved.map((item) => `${item.sourceKey}:${item.reason}`));
+      const items: CompanyReview["items"] = [];
+      for (const fact of factRows) {
+        const factIds =
+          fact.kind === "entity"
+            ? await mergedEntityGroupIds(prisma, scope, fact.record.id)
+            : [fact.record.id];
+        const evidence = evidenceRows.filter(
+          (item) => item.factKind === fact.kind && factIds.includes(item.factId),
+        );
+        const stances = new Set(evidence.map((item) => item.stance));
+        const hasUnreviewedConflict =
+          stances.size > 1 && evidence.some((item) => item.reviewedAt === null);
+        const reason = hasUnreviewedConflict
+          ? "contradiction"
+          : !companyFactIsVisible({
+                status: fact.record.status,
+                confidence: fact.record.confidence,
+                evidence: fact.record.evidence,
+              })
+            ? "low_confidence"
+            : null;
+        if (reason) items.push({ kind: "fact", id: fact.record.id, reason, fact });
+      }
+      for (const candidate of candidates) {
+        if (resolvedKeys.has(`${candidate.sourceKey}:${candidate.reason}`)) continue;
+        items.push({
+          kind: "candidate",
+          id: candidate.id,
+          candidate: await reviewCandidateView(prisma, scope, candidate),
+        });
+      }
+      return CompanyReviewSchema.parse({ items });
+    },
     list: async (
       filter: {
         kind?: string;
@@ -3875,6 +4601,421 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
         }),
       );
     },
+    resolveCandidate: (raw: CompanyReviewResolve) =>
+      write(async (tx) => {
+        const input = CompanyReviewResolveSchema.parse(raw);
+        const candidate = await tx.companyCandidate.findFirst({
+          where: { ...scope, id: input.candidateId },
+        });
+        if (!candidate) throw new IsolationError("Review candidate not found");
+        const version = hash({
+          contentHash: candidate.contentHash,
+          proposedFact: normalizeSnapshot(candidate.proposedFact),
+          entityIds: [...candidate.entityIds].sort(),
+        });
+        if (input.version !== version)
+          throw new IsolationError("Review candidate changed; reload before deciding");
+        const proposed =
+          candidate.proposedFact &&
+          typeof candidate.proposedFact === "object" &&
+          !Array.isArray(candidate.proposedFact)
+            ? (candidate.proposedFact as Record<string, unknown>)
+            : {};
+        const recordResolution = async (
+          outcome: "confirmed" | "rejected",
+          factKind?: "entity" | "edge" | "event",
+          factId?: string,
+        ) => {
+          await tx.companyCandidateResolution.upsert({
+            where: {
+              spaceId_ownerUserId_sourceKey_reason: {
+                ...scope,
+                sourceKey: candidate.sourceKey,
+                reason: candidate.reason,
+              },
+            },
+            create: {
+              ...scope,
+              sourceKey: candidate.sourceKey,
+              reason: candidate.reason,
+              kind: candidate.kind,
+              outcome,
+              factKind: factKind ?? null,
+              factId: factId ?? null,
+              claimKey: candidate.sourceKey,
+            },
+            update: { outcome, factKind: factKind ?? null, factId: factId ?? null },
+          });
+          await tx.companyCandidate.deleteMany({ where: { ...scope, id: candidate.id } });
+        };
+        if (input.action === "reject") {
+          await recordResolution("rejected");
+          return { ok: true };
+        }
+        if (input.targetId && input.separate)
+          throw new IsolationError("Choose a target or keep the claim separate");
+        const evidence = await candidateEvidence(tx, scope, candidate);
+        await assertSourceAllowed(tx, scope, evidence);
+        let factKind: "entity" | "edge" | "event";
+        let factId: string;
+        if (
+          [
+            "name_only_person_candidate",
+            "email_local_part_candidate",
+            "ambiguous_organisation_name",
+            "conflicting_organisation_domain",
+            "conflicting_strong_identities",
+            "rejected_name_only_claim",
+          ].includes(candidate.reason)
+        ) {
+          const value = CompanyEntityInputSchema.parse(
+            proposed.entity ?? proposed.person ?? proposed,
+          );
+          if (value.kind === "person") await assertPersonNotExcluded(tx, scope, null, value);
+          if (input.separate) {
+            if (candidate.reason === "rejected_name_only_claim") {
+              const rejectionId = proposed.rejectionId;
+              if (typeof rejectionId !== "string")
+                throw new IsolationError("The rejected claim is no longer available");
+              const rejection = await tx.companyRejection.findFirst({
+                where: {
+                  ...scope,
+                  id: rejectionId,
+                  factKind: "entity",
+                  entityKind: "person",
+                  excludedPerson: false,
+                },
+                select: { id: true },
+              });
+              if (!rejection) throw new IsolationError("The rejected claim is no longer available");
+              const result = await importEntity(
+                tx,
+                scope,
+                { entity: value, evidence },
+                false,
+                rejection.id,
+                true,
+              );
+              if ("suppressed" in result || "deferred" in result)
+                throw new IsolationError("The candidate could not be confirmed");
+              factId = result.id;
+            } else {
+              const entity = await tx.companyEntity.findFirst({
+                where: {
+                  ...scope,
+                  sourceClaimKeys: { has: candidate.sourceKey },
+                  kind: value.kind,
+                  status: { not: "rejected" },
+                },
+                select: { id: true },
+              });
+              if (entity) factId = entity.id;
+              else {
+                const result = await importEntity(
+                  tx,
+                  scope,
+                  { entity: value, evidence },
+                  false,
+                  undefined,
+                  true,
+                );
+                if ("suppressed" in result || "deferred" in result)
+                  throw new IsolationError("The candidate could not be confirmed");
+                factId = result.id;
+              }
+            }
+            await confirmEntity(tx, scope, factId);
+          } else {
+            if (!input.targetId || !candidate.entityIds.includes(input.targetId))
+              throw new IsolationError("Choose an available matching entity");
+            const source = await tx.companyEntity.findFirst({
+              where: {
+                ...scope,
+                sourceClaimKeys: { has: candidate.sourceKey },
+                kind: value.kind,
+                status: { not: "rejected" },
+              },
+              select: { id: true, status: true },
+            });
+            const target = await tx.companyEntity.findFirst({
+              where: {
+                ...scope,
+                id: input.targetId,
+                kind: value.kind,
+                status: { not: "rejected" },
+              },
+              select: { id: true, status: true },
+            });
+            if (!target) throw new IsolationError("Matching entity is no longer available");
+            if (value.kind === "person") await assertPersonNotExcluded(tx, scope, target.id, value);
+            if (!source) {
+              if (candidate.reason === "rejected_name_only_claim") {
+                const rejectionId = proposed.rejectionId;
+                if (typeof rejectionId !== "string")
+                  throw new IsolationError("The rejected claim is no longer available");
+                const rejection = await tx.companyRejection.findFirst({
+                  where: {
+                    ...scope,
+                    id: rejectionId,
+                    factKind: "entity",
+                    entityKind: "person",
+                    excludedPerson: false,
+                  },
+                  select: { id: true },
+                });
+                if (!rejection)
+                  throw new IsolationError("The rejected claim is no longer available");
+                const matchingRejections = await tx.companyRejection.findMany({
+                  where: {
+                    ...scope,
+                    factKind: "entity",
+                    entityKind: value.kind,
+                    identityAliases: { hasSome: entityAliases(value, candidate.sourceKey) },
+                  },
+                  select: { id: true, excludedPerson: true },
+                });
+                if (
+                  matchingRejections.some((item) => item.id !== rejection.id || item.excludedPerson)
+                )
+                  throw new IsolationError("This claim is rejected or excluded");
+              } else if (
+                await findSuppression(
+                  tx,
+                  scope,
+                  value.kind,
+                  entityAliases(value, candidate.sourceKey),
+                )
+              ) {
+                throw new IsolationError("This claim is rejected or excluded");
+              }
+              await persistResolvedClaimEvidence(
+                tx,
+                scope,
+                "entity",
+                target.id,
+                candidate.sourceKey,
+                evidence,
+              );
+              await confirmEntity(tx, scope, target.id);
+              factId = target.id;
+              factKind = "entity";
+            } else {
+              const sourceId = source.id;
+              if (sourceId === target.id) throw new IsolationError("An entity cannot match itself");
+              await confirmEntity(tx, scope, sourceId);
+              await confirmEntity(tx, scope, target.id);
+              await mergeEntities(tx, scope, sourceId, target.id);
+              factId = target.id;
+            }
+          }
+          factKind = "entity";
+        } else if (candidate.reason === "ambiguous_event_subjects") {
+          const proposedEvent = CompanyEventInputSchema.parse(proposed.event);
+          const eventIds = Array.isArray(proposed.matchingEventIds)
+            ? proposed.matchingEventIds.filter((id): id is string => typeof id === "string")
+            : [];
+          if (!input.targetId || !eventIds.includes(input.targetId))
+            throw new IsolationError("Choose an available matching event");
+          const event = await tx.companyEvent.findFirst({
+            where: { ...scope, id: input.targetId, status: { not: "rejected" } },
+          });
+          if (!event) throw new IsolationError("Matching event is no longer available");
+          if (
+            event.kind !== proposedEvent.kind ||
+            event.normalizedTitle !== normalizeCompanyName(proposedEvent.title) ||
+            JSON.stringify(partialDate(event.occursOn, event.occursPrecision)) !==
+              JSON.stringify(proposedEvent.occursOn)
+          )
+            throw new IsolationError("Matching event changed; reload before deciding");
+          const links = await tx.companyEventEntity.findMany({
+            where: { ...scope, eventId: event.id },
+            select: { entityId: true },
+          });
+          const endpoints = await tx.companyEntity.findMany({
+            where: {
+              ...scope,
+              id: { in: links.map((link) => link.entityId) },
+              status: { not: "rejected" },
+            },
+            select: { id: true, kind: true, displayName: true, attrs: true },
+          });
+          if (endpoints.length !== links.length)
+            throw new IsolationError("Matching event has an unavailable subject");
+          for (const endpoint of endpoints) {
+            if (endpoint.kind === "person") await assertPersonNotExcluded(tx, scope, endpoint.id);
+          }
+          const blocked = await findFactSuppression(tx, scope, "event", [
+            `source:${candidate.sourceKey}`,
+          ]);
+          if (blocked) throw new IsolationError("This event claim has been rejected");
+          await tx.companyEvidence.createMany({
+            data: [
+              {
+                ...scope,
+                factKind: "event",
+                factId: event.id,
+                stance: "supports",
+                sourceKind: evidence.sourceKind,
+                connectionId: evidence.connectionId ?? null,
+                mcpServerId: evidence.mcpServerId ?? null,
+                dataRoomItemId: evidence.dataRoomItemId ?? null,
+                sourceItemId: evidence.sourceItemId,
+                sourceKey: candidate.sourceKey,
+                sourceUrl: evidence.sourceUrl ?? null,
+                quote: evidence.quote,
+                contentHash: evidence.contentHash,
+                extractedAt: new Date(evidence.extractedAt),
+                extractorRunId: evidence.extractorRunId ?? null,
+                extractorModel: evidence.extractorModel ?? Prisma.JsonNull,
+                confidence: proposedEvent.confidence,
+              },
+            ],
+            skipDuplicates: true,
+          });
+          await tx.companyEvent.update({
+            where: { ...scope, id: event.id },
+            data: {
+              sourceClaimKeys: [...new Set([...event.sourceClaimKeys, candidate.sourceKey])],
+              claimFingerprints: [
+                ...new Set([
+                  ...event.claimFingerprints,
+                  eventClaimFingerprint({
+                    ...event,
+                    subjectKey: await eventSubjectKeyForFingerprint(tx, scope, event),
+                  }),
+                ]),
+              ],
+            },
+          });
+          await confirmFact(tx, scope, "event", event.id);
+          factKind = "event";
+          factId = event.id;
+        } else if (candidate.reason === "unresolved_import_subjects") {
+          if (input.targetId || input.separate)
+            throw new IsolationError("Select all required subjects");
+          const rawProposedFact =
+            proposed.fact && typeof proposed.fact === "object" && !Array.isArray(proposed.fact)
+              ? (proposed.fact as Record<string, unknown>)
+              : {};
+          const extraction = CompanyExtractionSchema.safeParse({
+            entities: proposed.entities,
+            edges: candidate.kind === "edge" ? [rawProposedFact] : [],
+            events: candidate.kind === "event" ? [rawProposedFact] : [],
+          });
+          if (!extraction.success)
+            throw new IsolationError("The proposed Company claim is invalid");
+          const entityProposals = extraction.data.entities;
+          const proposedEdge = extraction.data.edges[0];
+          const proposedEvent = extraction.data.events[0];
+          if (!proposedEdge && !proposedEvent)
+            throw new IsolationError("Unsupported review candidate");
+          const expected = new Map(
+            entityProposals.map(({ ref, entity }) => [ref, { kind: entity.kind }]),
+          );
+          const refs = proposedEdge
+            ? [proposedEdge.fromRef, proposedEdge.toRef]
+            : proposedEvent!.entityRefs;
+          if (
+            refs.length === 0 ||
+            !refs.every((ref) => typeof ref === "string") ||
+            new Set(refs).size !== refs.length ||
+            Object.keys(input.subjects).length !== refs.length ||
+            refs.some((ref) => !Object.hasOwn(input.subjects, ref as string))
+          )
+            throw new IsolationError("Select every required subject");
+          const selected = await tx.companyEntity.findMany({
+            where: {
+              ...scope,
+              id: { in: Object.values(input.subjects) },
+              status: { not: "rejected" },
+            },
+            select: { id: true, kind: true, displayName: true, attrs: true },
+          });
+          if (selected.length !== new Set(Object.values(input.subjects)).size)
+            throw new IsolationError("A selected subject is no longer available");
+          for (const ref of refs as string[]) {
+            const entityId = input.subjects[ref]!;
+            const entity = selected.find((item) => item.id === entityId);
+            if (!entity || entity.kind !== expected.get(ref)?.kind)
+              throw new IsolationError("A selected subject has the wrong type");
+            if (entity.kind === "person") await assertPersonNotExcluded(tx, scope, entity.id);
+          }
+          if (proposedEdge) {
+            const { fromRef, toRef, quote: _quote, ...edge } = proposedEdge;
+            const result = await importEdge(tx, scope, {
+              edge: CompanyEdgeInputSchema.parse({
+                ...edge,
+                fromId: input.subjects[String(fromRef)],
+                toId: input.subjects[String(toRef)],
+              }),
+              evidence,
+            });
+            if ("suppressed" in result)
+              throw new IsolationError("This relation claim has been rejected");
+            factKind = "edge";
+            factId = result.id;
+            await persistResolvedClaimEvidence(
+              tx,
+              scope,
+              factKind,
+              factId,
+              candidate.sourceKey,
+              evidence,
+            );
+            await confirmFact(tx, scope, "edge", factId);
+          } else if (proposedEvent) {
+            const { entityRefs, quote: _quote, ...event } = proposedEvent;
+            const result = await importEvent(tx, scope, {
+              event: CompanyEventInputSchema.parse({
+                ...event,
+                entityIds: (entityRefs as string[]).map((ref) => input.subjects[ref]!),
+              }),
+              evidence,
+            });
+            if ("suppressed" in result || "deferred" in result)
+              throw new IsolationError(
+                "This event claim could not be applied to the selected subjects",
+              );
+            factKind = "event";
+            factId = result.id;
+            await persistResolvedClaimEvidence(
+              tx,
+              scope,
+              factKind,
+              factId,
+              candidate.sourceKey,
+              evidence,
+            );
+            await confirmFact(tx, scope, "event", factId);
+          } else {
+            throw new IsolationError("Unsupported review candidate");
+          }
+        } else {
+          throw new IsolationError("Unsupported review candidate");
+        }
+        if (factKind === "entity" && input.title !== undefined) {
+          const entity = await tx.companyEntity.findFirst({
+            where: { ...scope, id: factId },
+            select: { id: true, kind: true, displayName: true },
+          });
+          if (!entity) throw new IsolationError("The confirmed entity is no longer available");
+          if (entity.displayName !== input.title)
+            await editEntity(
+              tx,
+              scope,
+              {
+                entityId: entity.id,
+                kind: CompanyEntityKindSchema.parse(entity.kind),
+                displayName: input.title,
+              },
+              "Reviewed Company candidate",
+              `company-review:${candidate.id}`,
+            );
+        }
+        await acknowledgeConflictingEvidence(tx, scope, factKind, factId);
+        await recordResolution("confirmed", factKind, factId);
+        return { ok: true };
+      }),
     manualUpsert: (input: {
       proposal: CompanyFactUpsertInput;
       snapshot: unknown;

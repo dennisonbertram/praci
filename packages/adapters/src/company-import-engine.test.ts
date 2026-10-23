@@ -9,18 +9,59 @@ import type {
 import type { Actor, CompanyImportProgress } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
+import { CompanyImportError } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   awaitCompanyImportConsent: vi.fn(async () => undefined),
+  awaitCompanyRefreshConsent: vi.fn(async () => true),
+  updateCompanyRefreshCapability: vi.fn(async () => undefined),
+  markCompanyImportNotificationState: vi.fn(async () => undefined),
+  markCompanyRefreshRecoveryRequired: vi.fn(async () => true),
+  clearCompanyImportNotificationPending: vi.fn(async () => undefined),
   claimCompanyImportUnit: vi.fn(),
   completeCompanyImportUnit: vi.fn(async () => undefined),
+  createCompanyRefreshRun: vi.fn(async (_prisma: unknown, _actor: Actor, sourceId: string) => ({
+    id: `run-${sourceId}`,
+  })),
   failCompanyImportUnit: vi.fn(async () => undefined),
   followRealtimeTopic: vi.fn(),
   getCompanyImportProgress: vi.fn(),
   getCompanyImportRunForScheduling: vi.fn(),
   listCompanyImportUnitsForScheduling: vi.fn(),
-  reconcileCompanyImportRunIds: vi.fn(),
+  listCompanyRefreshSources: vi.fn(
+    async (): Promise<
+      Array<{
+        id: string;
+        sourceKey: string;
+        sourceKind: string;
+        capability: string;
+        status: string;
+        reason: string | null;
+        lastSuccessAt: Date | null;
+        nextRunAt: Date | null;
+        activeRunId: string | null;
+        timezone: string;
+        scope?: Record<string, unknown>;
+      }>
+    > => [],
+  ),
+  listDueCompanyRefreshSources: vi.fn(
+    async (): Promise<Array<{ id: string; spaceId: string; ownerUserId: string }>> => [],
+  ),
+  listCompanyImportNotificationRecovery: vi.fn(
+    async (): Promise<
+      Array<{
+        runId: string;
+        spaceId: string;
+        userId: string;
+        mode: string;
+        status: string;
+        states: string[];
+      }>
+    > => [],
+  ),
+  reconcileCompanyImportRunIds: vi.fn(async () => []),
   grantCompanyImportConsent: vi.fn(async () => ({ allowed: true, resumed: false })),
   releaseCompanyImportCall: vi.fn(async () => true),
   reserveCompanyImportCall: vi.fn(async () => ({
@@ -29,17 +70,37 @@ const db = vi.hoisted(() => ({
     reservedOutput: 5,
   })),
   settleCompanyImportCall: vi.fn(async () => true),
+  createNotification: vi.fn(
+    async (_prisma: unknown, input: { surface: string; importance: string }) => ({
+      status: "created",
+      notification: { id: "notification-1", surface: input.surface, importance: input.importance },
+    }),
+  ),
 }));
 
 vi.mock("@rakazo/db", () => ({
   awaitCompanyImportConsent: db.awaitCompanyImportConsent,
-  CompanyImportError: class CompanyImportError extends Error {},
+  awaitCompanyRefreshConsent: db.awaitCompanyRefreshConsent,
+  updateCompanyRefreshCapability: db.updateCompanyRefreshCapability,
+  markCompanyImportNotificationState: db.markCompanyImportNotificationState,
+  markCompanyRefreshRecoveryRequired: db.markCompanyRefreshRecoveryRequired,
+  CompanyImportError: class CompanyImportError extends Error {
+    constructor(readonly code: string) {
+      super(code);
+    }
+  },
+  clearCompanyImportNotificationPending: db.clearCompanyImportNotificationPending,
   claimCompanyImportUnit: db.claimCompanyImportUnit,
   completeCompanyImportUnit: db.completeCompanyImportUnit,
+  createNotification: db.createNotification,
+  createCompanyRefreshRun: db.createCompanyRefreshRun,
   failCompanyImportUnit: db.failCompanyImportUnit,
   followRealtimeTopic: db.followRealtimeTopic,
   grantCompanyImportConsent: db.grantCompanyImportConsent,
   getCompanyImportProgress: db.getCompanyImportProgress,
+  listCompanyRefreshSources: db.listCompanyRefreshSources,
+  listDueCompanyRefreshSources: db.listDueCompanyRefreshSources,
+  listCompanyImportNotificationRecovery: db.listCompanyImportNotificationRecovery,
   getCompanyImportRunForScheduling: db.getCompanyImportRunForScheduling,
   listCompanyImportUnitsForScheduling: db.listCompanyImportUnitsForScheduling,
   reconcileCompanyImportRunIds: db.reconcileCompanyImportRunIds,
@@ -50,7 +111,7 @@ vi.mock("@rakazo/db", () => ({
   updateCompanyImportRun: vi.fn(),
 }));
 
-import { createCompanyImportEngine } from "./company-import-engine.js";
+import { CompanyImportWorkerError, createCompanyImportEngine } from "./company-import-engine.js";
 
 const actor: Actor = {
   spaceId: "space-1",
@@ -113,6 +174,7 @@ const source = {
   runId: "run-1",
   sourceKind: "data_room",
   connectionId: null,
+  refreshSourceId: "refresh-source",
   scope: {},
   cursor: null,
   run: { status: "running", disclosureVersion: AI_DISCLOSURE_VERSION },
@@ -125,8 +187,11 @@ function createHarness(options?: {
   sourceScope?: Record<string, unknown>;
   ownedItemIds?: string[];
   runStatus?: string;
-  runMode?: "sample" | "full";
+  runMode?: "sample" | "full" | "refresh";
+  terminalStatus?: string;
+  manualOnly?: boolean;
   readPage?: CompanyImportReadPage;
+  discoverError?: string;
 }) {
   let consentGranted = true;
   let modelId = "synthetic-model";
@@ -151,11 +216,14 @@ function createHarness(options?: {
   const secondInvoke = vi.fn();
   const readCursors: unknown[] = [];
   const worker: CompanyImportWorker = {
-    discover: async (): Promise<CompanyImportDiscoveryPage> => ({
-      units: [],
-      nextCursor: null,
-      done: true,
-    }),
+    refreshCapability: (descriptor) =>
+      descriptor.sourceKind === "mcp"
+        ? { kind: "manual_only", reason: "generic_tool_manual_only" }
+        : { kind: "supported", checkpointKind: "data_room_updated_at" },
+    discover: async (): Promise<CompanyImportDiscoveryPage> => {
+      if (options?.discoverError) throw new CompanyImportWorkerError(options.discoverError);
+      return { units: [], nextCursor: null, done: true };
+    },
     read: async (input, context) => {
       readCursors.push(input.cursor);
       await context.executeModelCall({
@@ -178,7 +246,35 @@ function createHarness(options?: {
       })),
     },
     companyImportRun: {
-      findFirst: vi.fn(async () => ({ mode: options?.runMode ?? "full" })),
+      findFirst: vi.fn(async () => ({
+        mode: options?.runMode ?? "full",
+        status: options?.terminalStatus ?? "running",
+        notificationStates: [],
+      })),
+    },
+    companyRefreshSource: {
+      findFirst: vi.fn(async () =>
+        options?.manualOnly
+          ? {
+              id: "refresh-source",
+              sourceKind: "mcp",
+              scope: {},
+              reason: "generic_tool_manual_only",
+            }
+          : null,
+      ),
+      findMany: vi.fn(async () =>
+        options?.manualOnly
+          ? [
+              {
+                id: "refresh-source",
+                sourceKind: "mcp",
+                scope: {},
+                reason: "generic_tool_manual_only",
+              },
+            ]
+          : [],
+      ),
     },
     dataRoomItem: {
       count: vi.fn(async (input: { where: { id: { in: string[] } } }) => {
@@ -214,6 +310,8 @@ function createHarness(options?: {
 describe("company import engine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    db.listCompanyImportNotificationRecovery.mockResolvedValue([]);
+    db.reconcileCompanyImportRunIds.mockResolvedValue([]);
     db.claimCompanyImportUnit.mockResolvedValue({
       id: "unit-1",
       unitKey: "read:synthetic",
@@ -251,6 +349,169 @@ describe("company import engine", () => {
     );
     expect(jobs.enqueue).toHaveBeenCalledTimes(2);
     expect(realtime.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes an oversized refresh cursor to fenced recovery without publishing completion", async () => {
+    const { engine, jobs, realtime } = createHarness({
+      runMode: "refresh",
+      discoverError: "refresh_change_limit_exceeded",
+    });
+    db.claimCompanyImportUnit.mockResolvedValueOnce({
+      id: "unit-1",
+      unitKey: "discover:synthetic",
+      cursor: null,
+      claimToken: "fence-1",
+      source,
+    });
+
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+
+    expect(db.markCompanyRefreshRecoveryRequired).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+      expect.objectContaining({
+        runId: "run-1",
+        sourceId: "source-1",
+        unitId: "unit-1",
+        claimToken: "fence-1",
+        reason: "refresh_change_limit_exceeded",
+      }),
+    );
+    expect(db.completeCompanyImportUnit).not.toHaveBeenCalled();
+    expect(db.failCompanyImportUnit).not.toHaveBeenCalled();
+    expect(db.createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        title: "Company refresh needs recovery",
+        importance: "attention",
+      }),
+    );
+    expect(jobs.enqueue).toHaveBeenCalledTimes(1);
+    expect(realtime.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies import completion and manual-only refresh attention with durable run-state keys", async () => {
+    const { engine } = createHarness({ terminalStatus: "completed", manualOnly: true });
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(db.createNotification).toHaveBeenCalledTimes(2);
+    expect(db.createNotification).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({
+        title: "Company import complete",
+        importance: "info",
+        dedupeKey: "company-import:run-1:completion:completed",
+      }),
+    );
+    expect(db.createNotification).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({
+        title: "Automatic refresh unavailable for Connected tool",
+        importance: "attention",
+        dedupeKey: "company-import:run-1:refresh_unavailable:refresh-source",
+      }),
+    );
+  });
+
+  it("recovers pending manual-only refresh attention after restart", async () => {
+    db.listCompanyImportNotificationRecovery.mockResolvedValue([
+      {
+        runId: "run-1",
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        mode: "full",
+        status: "completed",
+        states: ["refresh_unavailable"],
+      },
+    ]);
+    const { engine } = createHarness({ manualOnly: true });
+    await engine.recoveryJob();
+    expect(db.createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        surface: "company",
+        title: "Automatic refresh unavailable for Connected tool",
+        importance: "attention",
+        link: "/app/company/import?runId=run-1",
+        dedupeKey: "company-import:run-1:refresh_unavailable",
+      }),
+    );
+  });
+
+  it("notifies when an owner requests refresh for a manual-only source", async () => {
+    db.listCompanyRefreshSources.mockResolvedValue([
+      {
+        id: "refresh-source-1",
+        sourceKey: "source-key",
+        sourceKind: "mcp",
+        capability: "manual_only",
+        status: "unavailable",
+        reason: "generic_tool_manual_only",
+        lastSuccessAt: null,
+        nextRunAt: null,
+        activeRunId: null,
+        timezone: "UTC",
+      },
+    ]);
+    const { engine, jobs } = createHarness({ manualOnly: true });
+    await expect(engine.refresh(actor, "refresh-source-1")).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+    expect(db.createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        title: "Automatic refresh unavailable for Connected tool",
+        importance: "attention",
+        dedupeKey: "company-refresh:refresh-source-1:unavailable",
+      }),
+    );
+    expect(jobs.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("continues scheduled refresh dispatch when one source is unavailable", async () => {
+    db.listCompanyRefreshSources.mockResolvedValue(
+      ["blocked-source", "available-source"].map((id) => ({
+        id,
+        sourceKey: id,
+        sourceKind: "data_room",
+        scope: {},
+        capability: "supported",
+        status: "ready",
+        reason: null,
+        lastSuccessAt: new Date(),
+        nextRunAt: new Date(),
+        activeRunId: null,
+        timezone: "UTC",
+      })),
+    );
+    db.listDueCompanyRefreshSources.mockResolvedValue([
+      { id: "blocked-source", spaceId: actor.spaceId, ownerUserId: actor.userId },
+      { id: "available-source", spaceId: actor.spaceId, ownerUserId: actor.userId },
+    ]);
+    db.createCompanyRefreshRun.mockImplementation(async (_prisma, _actor, sourceId) => {
+      if (sourceId === "blocked-source") throw new CompanyImportError("invalid_state");
+      return { id: "available-run" };
+    });
+    const { engine, jobs } = createHarness();
+    await expect(engine.refreshTick()).resolves.toBeUndefined();
+    expect(db.createCompanyRefreshRun).toHaveBeenCalledTimes(2);
+    expect(jobs.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "company.import.run",
+        payload: { spaceId: actor.spaceId, userId: actor.userId, runId: "available-run" },
+      }),
+    );
   });
 
   it("pauses nonempty sample reads and unwraps their saved cursor on continue", async () => {
