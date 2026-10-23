@@ -20,6 +20,7 @@ export * from "./cap-table.js";
 export * from "./client-id.js";
 export * from "./cloud-agent.js";
 export * from "./company-calendar.js";
+export * from "./company-format.js";
 export * from "./company-history.js";
 export * from "./compose-update.js";
 export * from "./composer-mention-picker.js";

@@ -5,7 +5,7 @@ export const SIDEBAR_PAGE_TEMPLATES = [
   {
     key: "company",
     route: "/app/company",
-    platforms: ["web", "desktop"],
+    platforms: ["web", "desktop", "mobile"],
     available: false,
     ownerOnly: true,
   },

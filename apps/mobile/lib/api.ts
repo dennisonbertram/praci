@@ -90,9 +90,20 @@ let spaceSelectionGeneration = 0;
 /** Counts selectSpace attempts so one still cleaning up a rollback record
  * cannot claim the selection after a newer attempt has started. */
 let spaceSelectionRequestGeneration = 0;
+const spaceSelectionListeners = new Set<() => void>();
+export function subscribeSpaceSelection(listener: () => void): () => void {
+  spaceSelectionListeners.add(listener);
+  return () => {
+    spaceSelectionListeners.delete(listener);
+  };
+}
+export function currentSpaceSelectionGeneration() {
+  return spaceSelectionGeneration;
+}
 
 function bumpSpaceSelectionGeneration(): void {
   spaceSelectionGeneration += 1;
+  for (const listener of spaceSelectionListeners) listener();
 }
 
 /** Keeps a timeout or cancel reason; turns transport and parsing detail into copy. */
