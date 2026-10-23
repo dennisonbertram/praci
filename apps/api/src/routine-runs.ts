@@ -90,6 +90,21 @@ export async function listRoutineRuns(
       `)
     : [];
   const waitingOn = new Map(waiting.map((row) => [row.runId, row.name]));
+  // The run row finishes when it hands work to another agent; the elapsed time runs to that agent's end.
+  const delegateEnd = finished.length
+    ? await prisma.$queryRaw<Array<{ runId: string; endedAt: Date | null }>>(Prisma.sql`
+        SELECT o."runId", MAX(c."completedAt") AS "endedAt"
+        FROM messages o
+        INNER JOIN messages i
+          ON i.blocks @> jsonb_build_array(jsonb_build_object('returnToMessageId', o.id))
+        INNER JOIN runs c ON c."sourceMessageId" = i.id AND c.trigger = 'bot_message'
+        WHERE o."runId" IN (${Prisma.join(finished)})
+          AND c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
+          AND c.status IN ('completed', 'failed')
+        GROUP BY o."runId"
+      `)
+    : [];
+  const endedAt = new Map(delegateEnd.map((row) => [row.runId, row.endedAt]));
   return {
     nextCursor,
     runs: runs.map((run) => ({
@@ -99,12 +114,21 @@ export async function listRoutineRuns(
       status: run.status as RoutineRun["status"],
       createdAt: run.createdAt.toISOString(),
       startedAt: run.startedAt?.toISOString() ?? null,
-      completedAt: run.completedAt?.toISOString() ?? null,
+      completedAt: laterOf(run.completedAt, waitingOn.has(run.id) ? null : endedAt.get(run.id)),
       messageId: replyByRun.get(run.id)?.id ?? null,
-      preview: firstLine(replyByRun.get(run.id)?.blocks),
+      // After delegating, the latest message is the rewritten request to the other agent, not a result.
+      preview:
+        waitingOn.has(run.id) || endedAt.has(run.id)
+          ? null
+          : firstLine(replyByRun.get(run.id)?.blocks),
       waitingOn: waitingOn.get(run.id) ?? null,
     })),
   };
+}
+
+function laterOf(own: Date | null, delegate: Date | null | undefined): string | null {
+  const latest = delegate && (!own || delegate > own) ? delegate : own;
+  return latest?.toISOString() ?? null;
 }
 
 function firstLine(blocks: Prisma.JsonValue | undefined): string | null {
