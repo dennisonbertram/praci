@@ -173,7 +173,11 @@ export function createLegalRepos(prisma: PrismaClient) {
     async upsertContract(
       actor: Actor,
       input: LegalContractInput,
-    ): Promise<LegalContractRecord & { proposedChanges: Record<string, { stored: unknown; proposed: unknown }> }> {
+    ): Promise<
+      LegalContractRecord & {
+        proposedChanges: Record<string, { stored: unknown; proposed: unknown }>;
+      }
+    > {
       const item = await prisma.dataRoomItem.findFirst({
         where: { id: input.dataRoomItemId, ...scope(actor) },
         select: { id: true, revision: true },
@@ -228,7 +232,11 @@ export function createLegalRepos(prisma: PrismaClient) {
       const row = await prisma.legalContract.upsert({
         where: key,
         create: { ...scope(actor), dataRoomItemId: input.dataRoomItemId, ...data },
-        update: merged,
+        // A stale (older) analysis must not lower the revision, or the next current scan would count as an amendment.
+        update: {
+          ...merged,
+          analyzedRevision: Math.max(input.revision, stored?.analyzedRevision ?? 0),
+        },
       });
       return Object.assign(row, { proposedChanges });
     },

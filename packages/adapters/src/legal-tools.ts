@@ -396,7 +396,15 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
       currency: input.currency?.toUpperCase(),
       summary: input.summary,
     });
-    const derived = await deriveDeadlines(tx, row, input.renewalQuote ?? undefined);
+    // The quote supports the new dates; when a differing date was rejected the stored quote still matches the stored date.
+    const keptDates = ["expirationDate", "renewalNoticeDays", "autoRenews"].some(
+      (field) => field in row.proposedChanges,
+    );
+    const derived = await deriveDeadlines(
+      tx,
+      row,
+      keptDates ? undefined : (input.renewalQuote ?? undefined),
+    );
     return {
       contract: toLegalContract(row),
       derivedDeadlines: derived.upserted.map((d) => toLegalDeadline(d)),

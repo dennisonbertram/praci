@@ -698,6 +698,41 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     });
     expect(amended.contract.valueCents).toBe("1200000");
     expect(amended.proposedChanges).toBeUndefined();
+    // An older analysis arriving late neither changes values nor lowers the stored revision, so the
+    // next scan of the current revision is still a re-scan and cannot overwrite them.
+    const current = await amend(item.id);
+    await legal(a, "legal_upsert_contract", { ...base, valueCents: "1200000", revision: current });
+    await legal(a, "legal_upsert_contract", { ...base, valueCents: "300000" });
+    const again = await legal(a, "legal_upsert_contract", {
+      ...base,
+      valueCents: "400000",
+      revision: current,
+    });
+    expect(again.contract.valueCents).toBe("1200000");
+    expect(again.proposedChanges.valueCents).toEqual({ stored: "1200000", proposed: "400000" });
+  });
+
+  it("keeps a deadline's quote with its date when a same-revision re-scan proposes another notice period", async () => {
+    const item = await addItem(a, "notice.txt", "Lease, 90 days notice.");
+    const base = {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Lease",
+      contractType: "lease",
+      status: "active",
+      expirationDate: "2028-06-30",
+      autoRenews: false,
+      renewalNoticeDays: 90,
+      renewalQuote: "90 days written notice.",
+    };
+    await legal(a, "legal_upsert_contract", base);
+    const rescan = await legal(a, "legal_upsert_contract", {
+      ...base,
+      renewalNoticeDays: 30,
+      renewalQuote: "30 days written notice.",
+    });
+    expect(rescan.proposedChanges.renewalNoticeDays).toBeDefined();
+    for (const d of rescan.derivedDeadlines) expect(d.sourceQuote).toBe("90 days written notice.");
   });
 
   it("keeps a contract whose title contains 'handbook' when the model classifies it as a contract", async () => {

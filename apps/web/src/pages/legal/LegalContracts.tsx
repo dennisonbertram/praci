@@ -68,8 +68,8 @@ function Title({ contract }: { contract: LegalContract }) {
       state={{ from: "legal" }}
       className="rk-tap min-w-0 font-medium hover:underline"
     >
-      {/* .rk-tap is inline-flex on phones, which disables the ellipsis, so the text truncates inside it. */}
-      <span className="min-w-0 truncate">{contract.title}</span>
+      {/* .rk-tap is inline-flex on phones and the link is inline elsewhere, so neither can clip: the text truncates as a block inside it. */}
+      <span className="block min-w-0 truncate">{contract.title}</span>
     </Link>
   );
 }
