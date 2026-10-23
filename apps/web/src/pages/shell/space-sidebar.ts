@@ -116,8 +116,9 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const { pinned, root, ...rest } = sidebarSections(placed, space.botSections);
     const folders = rest.folders
       .map(({ section, items }) => ({ section, bots: items }))
-      // A search shows only the folders it found something in.
-      .filter(({ bots }) => !needle || bots.length > 0);
+      // A search shows only the folders it found something in; another space whose
+      // chats were all filtered out lists nothing, not an empty folder.
+      .filter(({ bots }) => !(needle || (otherSpace && placed.length === 0)) || bots.length > 0);
     const key = (base: string) => (showSpaceNames ? `space:${space.id}:${base}` : base);
     const shared = {
       relabeled: false,
