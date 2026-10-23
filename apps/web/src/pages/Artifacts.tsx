@@ -131,7 +131,11 @@ export function ArtifactsPage({
   const urlQuery = useSearchParams()[0].get("q") ?? "";
   const [searchQuery, setSearchQuery] = useState(urlQuery);
   useEffect(() => {
-    if (urlQuery) setSearchQuery(urlQuery);
+    if (!urlQuery) return;
+    // Show every match: an earlier bot or date filter would hide some of them.
+    setSearchQuery(urlQuery);
+    setDateFilter("all");
+    setActiveBotId(null);
   }, [urlQuery]);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [maximized, setMaximized] = useState(false);

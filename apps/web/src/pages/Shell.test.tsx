@@ -83,6 +83,8 @@ it("maps ?settings= to a settings section", () => {
   expect(settingsSectionFromParam(null)).toBeNull();
   expect(settingsSectionFromParam("privacy")).toBe("privacy");
   expect(settingsSectionFromParam("general")).toBe("general");
+  expect(settingsSectionFromParam("models")).toBe("models");
+  expect(settingsSectionFromParam("voice")).toBe("voice");
   expect(settingsSectionFromParam("nope")).toBe("general");
 });
 

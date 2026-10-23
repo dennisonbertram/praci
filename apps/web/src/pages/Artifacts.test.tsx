@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -429,6 +429,54 @@ it("keeps the view switch in the split view and returns to the full list when it
   } finally {
     await page.cleanup();
     window.localStorage.removeItem("rakazo:artifacts-view-mode");
+    vi.unstubAllGlobals();
+  }
+});
+
+it("clears the date filter when the palette applies a search", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Old report", "artifact-1", "2020-01-01T00:00:00.000Z")],
+    nextCursor: null,
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  let go: (to: string) => void = () => {};
+  function Nav() {
+    go = useNavigate();
+    return null;
+  }
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/artifacts"]}>
+        <Nav />
+        <Routes>
+          <Route path="/app/artifacts" element={<ArtifactsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  try {
+    const press = async (el: Element | null | undefined) =>
+      act(async () => {
+        el?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+        el?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        el?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+        (el as HTMLElement | null | undefined)?.click();
+      });
+    await press(button(container, "Added"));
+    await press(
+      [...document.body.querySelectorAll<HTMLElement>("[role^=menuitem]")].find((el) =>
+        el.textContent?.includes("Today"),
+      ),
+    );
+    expect(container.textContent).not.toContain("Old report");
+    await act(async () => go("/app/artifacts?q=report"));
+    expect(container.textContent).toContain("Old report");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
     vi.unstubAllGlobals();
   }
 });

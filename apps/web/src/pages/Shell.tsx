@@ -4118,6 +4118,16 @@ export function ShellPage() {
         </Button>
       </div>
     ) : null;
+  const screenIframeMounted =
+    !computerOpen &&
+    computer?.kind !== "desktop" &&
+    computer?.state === "running" &&
+    Boolean(embeddedScreenUrl) &&
+    !computerScreenError;
+  // A load only counts for the iframe mount that reported it; forget it when the iframe goes away.
+  useEffect(() => {
+    if (!screenIframeMounted) setLoadedScreenUrl(null);
+  }, [screenIframeMounted]);
   const computerPreviewScreen =
     !computerOpen &&
     computer?.kind !== "desktop" &&
@@ -7548,9 +7558,21 @@ export function ShellPage() {
 }
 
 /** Whether the pane is still waiting for its chat: the bot list loads, or the route's bot is not in it yet. */
+const SETTINGS_SECTIONS = [
+  "general",
+  "privacy",
+  "models",
+  "memory",
+  "voice",
+  "computer",
+  "billing",
+] as const satisfies readonly SettingsSection[];
+
 export function settingsSectionFromParam(value: string | null): SettingsSection | null {
   if (value === null) return null;
-  return value === "privacy" ? "privacy" : "general";
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value)
+    ? (value as SettingsSection)
+    : "general";
 }
 
 export function chatIsOpening(input: {
