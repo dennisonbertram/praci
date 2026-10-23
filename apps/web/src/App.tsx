@@ -152,11 +152,8 @@ function SessionApp() {
     return pathname.startsWith("/app") || pathname.startsWith("/integrations") ? (
       <ShellSkeleton />
     ) : (
-      <div
-        className="grid h-full place-items-center text-muted-foreground/80"
-        data-rakazo-app-state="session-pending"
-      >
-        <Trans>Loading…</Trans>
+      <div className="h-full" data-rakazo-app-state="session-pending">
+        <AuthFrame />
       </div>
     );
   }
@@ -164,7 +161,15 @@ function SessionApp() {
   const user = session.data?.user;
   return (
     <div className="h-full" data-rakazo-app-state="ready">
-      <Suspense fallback={<div className="h-full bg-background" />}>
+      <Suspense
+        fallback={
+          window.location.pathname.startsWith("/sign-") ? (
+            <AuthFrame />
+          ) : (
+            <div className="h-full bg-background" />
+          )
+        }
+      >
         <Routes>
           <Route path="/" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
           <Route
@@ -356,6 +361,18 @@ function AppFailed() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** The sign-in page's frame (same logo, same position), painted while the session or the page chunk loads. */
+function AuthFrame() {
+  return (
+    <main className="flex min-h-full items-start justify-center bg-background px-6 pb-16 pt-16 md:pt-[12vh]">
+      <div className="flex h-[74px] w-[74px] items-center justify-center gap-[11px] rounded-full bg-muted">
+        <span className="h-5 w-[9px] rounded-full bg-primary" />
+        <span className="h-5 w-[9px] rounded-full bg-primary" />
+      </div>
+    </main>
   );
 }
 

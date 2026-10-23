@@ -6289,7 +6289,6 @@ msgstr "आवाज़ प्रोवाइडर्स लोड हो र�
 msgid "Loading Zernio queue…"
 msgstr ""
 
-#: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/RowsSkeleton.tsx

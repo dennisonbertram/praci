@@ -9,6 +9,7 @@ import { useFinanceQuery } from "../components/finance/ui";
 import { GtmBlockContext } from "../components/gtm/GtmBlock";
 import { GtmCalendar } from "../components/gtm/GtmCalendar";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
@@ -133,7 +134,12 @@ export function GtmPage({
             </Button>
           </div>
         ) : null}
-        {!data && !overview.error ? <Skeleton className="h-40 w-full" /> : null}
+        {!data && !overview.error ? (
+          <>
+            <Skeleton className="h-40 w-full" />
+            <StillLoading />
+          </>
+        ) : null}
         {data ? (
           <>
             <section className="rounded-xl border border-border p-4">

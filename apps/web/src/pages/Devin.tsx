@@ -11,6 +11,7 @@ import {
   useFinanceQuery,
 } from "../components/finance/ui";
 import { PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { kindSection } from "../lib/devin-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -192,6 +193,7 @@ function DevinSkeleton() {
       {[0, 1, 2, 3, 4, 5].map((n) => (
         <Skeleton key={n} className="h-10" />
       ))}
+      <StillLoading />
     </div>
   );
 }

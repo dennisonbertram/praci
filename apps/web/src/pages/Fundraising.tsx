@@ -36,6 +36,7 @@ import type { SafeStep } from "../components/fundraising/SafeList";
 import { AttentionStrip, MarkDateDialog, SafeList } from "../components/fundraising/SafeList";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { SectionCard } from "../components/SectionCard";
+import { StillLoading } from "../components/ShellSkeleton";
 import { isoFromDay, todayDay } from "../lib/day-input";
 import { connectFinanceProvider } from "../lib/finance-connect";
 import { usdFigure } from "../lib/finance-format";
@@ -243,6 +244,7 @@ export function FundraisingPage({
               {[0, 1, 2].map((n) => (
                 <Skeleton key={n} className="h-9 w-full" />
               ))}
+              <StillLoading />
             </div>
           )
         ) : (
