@@ -177,6 +177,12 @@ export function AutoSortDialog({
           <DialogTitle>
             {/* Auto-sort never works on ticked rows; it opens on new files, with the rest one tap away. */}
             {focused ? <Trans>Sort new files</Trans> : <Trans>Auto-sort</Trans>}
+            {visible.length > 0 ? (
+              <span className="font-normal text-muted-foreground">
+                {" · "}
+                {plural(visible.length, { one: "# change", other: "# changes" })}
+              </span>
+            ) : null}
           </DialogTitle>
         </DialogHeader>
         <div className="max-h-[60dvh] min-h-16 overflow-y-auto">

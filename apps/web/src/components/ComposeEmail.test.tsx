@@ -550,6 +550,7 @@ it("says only that attachments are dropped when nothing was written", async () =
   await attach(new File(["hi"], "a.txt"));
   await act(async () => requestClose.current());
   const text = document.querySelector("[role=alertdialog]")?.textContent ?? "";
+  expect(text).toContain("Discard draft?");
   expect(text).toContain("Attachments are not kept.");
   expect(text).not.toContain("saved as a draft");
 });

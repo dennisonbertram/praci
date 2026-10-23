@@ -126,7 +126,7 @@ export function SpaceName() {
           onValueChange={(next) => next !== current.id && onSwitchSpace(next as string)}
         >
           <DropdownMenuLabel>
-            <Trans>Show finances for</Trans>
+            <Trans>Company</Trans>
           </DropdownMenuLabel>
           {spaces.map((space) => (
             <DropdownMenuRadioItem key={space.id} value={space.id}>

@@ -30,7 +30,8 @@ import { errorText } from "../lib/user-error";
 export function statusTone(status: RunActivityRow["status"], updatedAt?: string): string {
   if (status === "failed") return "text-destructive";
   if (status === "cancelled") return "text-muted-foreground";
-  if (status === "completed") return "text-success";
+  // A finished run needs nothing; colour stays for what needs the person or went wrong.
+  if (status === "completed") return "text-muted-foreground";
   if (status === "waiting_input" || status === "waiting_takeover") return "text-warning";
   if (updatedAt && isAgedStuckWork(status, updatedAt)) return "text-warning";
   return "text-foreground";
