@@ -26,7 +26,7 @@ export function SectionCard({
 }) {
   return (
     <section aria-label={title} className="min-w-0">
-      <Card className={cn("gap-0 px-4", attention && "ring-foreground", className)}>
+      <Card className={cn("gap-0 px-4", attention && "ring-foreground ring-inset", className)}>
         <div className={cn("flex min-h-8 items-center gap-2", children && "mb-3")}>
           <div className="me-auto min-w-0">
             {heading ?? <h2 className="truncate text-sm font-semibold">{title}</h2>}
