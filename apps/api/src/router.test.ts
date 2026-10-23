@@ -744,6 +744,7 @@ describe("MCP server deletion", () => {
       },
       companyImportSource: { findMany: findImportSources },
       companyCandidate: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      companyRefreshSource: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run(prisma)),
     } as unknown as PrismaClient;
     const deps = {
@@ -1257,6 +1258,24 @@ describe("connections.complete", () => {
         mailSearch: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         inboxTodo: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         mailSyncState: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        spaceMember: { findUnique: vi.fn(async () => ({ userId: "user-1" })) },
+        companyEvidence: {
+          findMany: vi.fn(async () => []),
+          deleteMany: vi.fn(async () => ({ count: 0 })),
+        },
+        dataRoomItem: { findMany: vi.fn(async () => []) },
+        companyImportRun: {
+          findMany: vi.fn(async () => []),
+          updateMany: vi.fn(async () => ({ count: 0 })),
+        },
+        companyImportUnit: { updateMany: vi.fn(async () => ({ count: 0 })) },
+        companySourceBlock: {
+          upsert: vi.fn(async () => ({})),
+          findMany: vi.fn(async () => []),
+        },
+        companyImportSource: { findMany: vi.fn(async () => []) },
+        companyCandidate: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        companyRefreshSource: { updateMany: vi.fn(async () => ({ count: 0 })) },
         $executeRaw: vi.fn(),
         $queryRaw: vi.fn(async () => []),
       };
