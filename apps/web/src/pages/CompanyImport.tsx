@@ -555,9 +555,7 @@ export function CompanyImportPage({
                       </span>
                     </div>
                     {source.lastError && (
-                      <p className="text-sm text-destructive">
-                        {errorName(source.lastError)}
-                      </p>
+                      <p className="text-sm text-destructive">{errorName(source.lastError)}</p>
                     )}
                   </div>
                 ))}

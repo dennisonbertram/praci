@@ -1,5 +1,4 @@
 export const HI_MESSAGES: Record<string, string> = {
-  Ready: "तैयार",
   "AI data sharing off": "एआई डेटा साझा करना बंद है",
   "Business plan": "बिज़नेस प्लान",
   "Could not reach Granola": "Granola से संपर्क नहीं हो सका",

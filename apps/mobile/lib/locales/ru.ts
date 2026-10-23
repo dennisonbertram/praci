@@ -1,5 +1,4 @@
 export const RU_MESSAGES: Record<string, string> = {
-  Ready: "Готово",
   "AI data sharing off": "Передача данных ИИ выключена",
   "Business plan": "Тариф Business",
   "Could not reach Granola": "Не удалось связаться с Granola",

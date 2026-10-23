@@ -26,7 +26,6 @@ import {
   companyImporterSpawnKey,
 } from "@rakazo/contracts";
 import type { NotificationEvents, PrismaClient } from "@rakazo/db";
-import { getLogger } from "@rakazo/logging";
 import {
   awaitCompanyImportConsent,
   awaitCompanyRefreshConsent,
@@ -61,6 +60,7 @@ import {
   updateCompanyRefreshCapability,
   upsertCompanyRefreshSource,
 } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import { aiRecipient } from "./ai-consent.js";
 import { validateCompanyExtraction } from "./company-extraction-safety.js";
 import { companySourceScope } from "./company-import-sources.js";

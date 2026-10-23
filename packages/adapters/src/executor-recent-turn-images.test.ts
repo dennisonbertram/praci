@@ -99,7 +99,10 @@ async function runWithModel(
       // An unresolvable backup is skipped, as the real runtime does.
       const resolved = await next
         .resolveFallbackModel?.(switchModel.provider, switchModel.modelId)
-        .then(() => true, () => false);
+        .then(
+          () => true,
+          () => false,
+        );
       if (resolved !== false) await onModelChange?.(switchModel.provider, switchModel.modelId);
     }
     yield { type: "done" as const, text: "Done" };

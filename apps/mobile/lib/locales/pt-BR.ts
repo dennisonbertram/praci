@@ -1,5 +1,4 @@
 export const PT_BR_MESSAGES: Record<string, string> = {
-  Ready: "Pronto",
   "AI data sharing off": "Compartilhamento de dados com IA desativado",
   "Business plan": "Plano Business",
   "Could not reach Granola": "Não foi possível acessar o Granola",

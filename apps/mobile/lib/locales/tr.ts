@@ -1,5 +1,4 @@
 export const TR_MESSAGES: Record<string, string> = {
-  Ready: "Hazır",
   "AI data sharing off": "Yapay zekâ veri paylaşımı kapalı",
   "Business plan": "Business planı",
   "Could not reach Granola": "Granola'ya ulaşılamadı",

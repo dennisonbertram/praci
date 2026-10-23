@@ -146,13 +146,20 @@ export const CompanyGenericScopeSchema = z.strictObject({
     ),
 });
 
-const compactName = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
+const compactName = (value: string) =>
+  value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
 /**
  * The company profile is the space's own company. A model may label a customer or
  * vendor named in the same document as the company; those become plain organisations.
  */
-export function keepOwnCompany(extraction: CompanyExtraction, spaceName: string): CompanyExtraction {
+export function keepOwnCompany(
+  extraction: CompanyExtraction,
+  spaceName: string,
+): CompanyExtraction {
   const own = compactName(spaceName);
   return {
     ...extraction,

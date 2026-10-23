@@ -1,6 +1,4 @@
 export const DE_MESSAGES: Record<string, string> = {
-  Ready: "Bereit",
-    "Die Sitzung hat sich geändert. Öffne die Datei erneut.",
   "AI data sharing off": "KI-Datenfreigabe aus",
   "Business plan": "Business-Tarif",
   "Could not reach Granola": "Granola nicht erreichbar",

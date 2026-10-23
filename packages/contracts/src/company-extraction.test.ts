@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type CompanyExtraction, keepOwnCompany } from "./company-extraction.js";
+import type { CompanyExtraction } from "./company-extraction.js";
+import { keepOwnCompany } from "./company-extraction.js";
 
 const company = (ref: string, displayName: string) => ({
   ref,

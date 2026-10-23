@@ -207,7 +207,10 @@ export function CompanyCalendar({
                       const day = week * 7 + weekday - bounds.offset + 1;
                       const date = `${month}-${String(day).padStart(2, "0")}`;
                       return (
-                        <td key={weekday} className="h-16 overflow-hidden border p-1 align-top sm:h-24 sm:p-2">
+                        <td
+                          key={weekday}
+                          className="h-16 overflow-hidden border p-1 align-top sm:h-24 sm:p-2"
+                        >
                           {day > 0 && day <= bounds.days && (
                             <>
                               <time dateTime={date} className="text-xs text-muted-foreground">

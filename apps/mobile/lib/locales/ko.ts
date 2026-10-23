@@ -1,5 +1,4 @@
 export const KO_MESSAGES: Record<string, string> = {
-  Ready: "준비됨",
   "AI data sharing off": "AI 데이터 공유 꺼짐",
   "Business plan": "비즈니스 플랜",
   "Could not reach Granola": "Granola에 연결할 수 없습니다",

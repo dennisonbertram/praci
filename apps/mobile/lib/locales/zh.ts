@@ -1,5 +1,4 @@
 export const ZH_MESSAGES: Record<string, string> = {
-  Ready: "就绪",
   "AI data sharing off": "AI 数据共享已关闭",
   "Business plan": "Business 方案",
   "Could not reach Granola": "无法连接到 Granola",
