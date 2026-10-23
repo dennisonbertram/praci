@@ -43,7 +43,8 @@ export function glanceBadge({
   }
   if (!value || rail) return { badge: null, badgeLabel: undefined };
   return {
-    notified: unseen > 0 || undefined,
+    // A count of things waiting (unread, overdue, failed) keeps the row visible while Pages is collapsed.
+    notified: true,
     badgeLabel: valueLabel,
     onBadgeClick: onValueClick,
     badge: (

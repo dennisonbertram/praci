@@ -1403,7 +1403,16 @@ describe("directoryDescription", () => {
     expect(finance).toContain("asks again in a new message for the same payment");
     expect(finance).toContain("never mention a missing request link");
     expect(finance).toContain("Post exactly one message per payment request");
-    expect(finance).toContain("ask the Mercury or Brex agent directly");
+    expect(finance).not.toContain("ask the Mercury or Brex agent directly");
+  });
+
+  it("never points the Mercury or Brex agent at itself", () => {
+    const forBank = directoryDescription(
+      { description: "Reads Finance.", spawnKey: "finance-agent:u1" },
+      true,
+    );
+    expect(forBank).toContain("[Open Finance](/app/finance)");
+    expect(forBank).not.toMatch(/Mercury or Brex agent/);
   });
 
   it("leaves other bots' descriptions alone", () => {
