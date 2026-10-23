@@ -2,7 +2,7 @@ import type { MessageBlock } from "@rakazo/contracts";
 
 /** Show the wait once the other agent has been silent this long. */
 export const DELEGATE_WAIT_SHOWN_AFTER_MS = 60_000;
-/** After this long the wait is reported as unanswered, with a way to ask again. */
+/** After this long the wait is reported as unanswered. */
 export const DELEGATE_WAIT_FAILED_AFTER_MS = 5 * 60_000;
 /** Older unanswered messages are history (the answer may have come another way), not a wait. */
 const DELEGATE_WAIT_FORGOTTEN_AFTER_MS = 60 * 60_000;
@@ -15,7 +15,9 @@ export function delegateWait(
     const blocks = messages[i]?.blocks ?? [];
     if (blocks.some((block) => block.kind === "bot_message_received")) return null;
     const sent = blocks.find((block) => block.kind === "bot_message_sent");
+    // Only a request waits for an answer; a result, status or FYI sent back does not.
     if (sent?.kind === "bot_message_sent") {
+      if (sent.intent !== "request") return null;
       return { name: sent.toBotName, at: Date.parse(messages[i]?.createdAt ?? "") };
     }
   }

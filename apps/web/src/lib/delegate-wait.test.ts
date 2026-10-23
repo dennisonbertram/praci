@@ -2,7 +2,13 @@ import type { MessageBlock } from "@rakazo/contracts";
 import { expect, it } from "vitest";
 import { delegateWaitState, delegateWaitTarget, pendingDelegateAgents } from "./delegate-wait";
 
-const sent = { kind: "bot_message_sent", toBotId: "b2", toBotName: "Mercury agent", text: "x" };
+const sent = {
+  kind: "bot_message_sent",
+  toBotId: "b2",
+  toBotName: "Mercury agent",
+  text: "x",
+  intent: "request",
+};
 const received = {
   kind: "bot_message_received",
   fromBotId: "b2",
@@ -50,4 +56,15 @@ it("shows nothing for the first minute, then the wait, then an unanswered reques
 it("shows nothing once the answer arrived, or for an old unanswered message", () => {
   expect(delegateWaitState([sentAt(0), msg(received)], 10 * 60_000)).toBeNull();
   expect(delegateWaitState([sentAt(0)], 2 * 60 * 60_000)).toBeNull();
+});
+
+it("does not wait on a result, status or FYI this chat sent back", () => {
+  for (const intent of ["result", "status", "fyi"]) {
+    expect(
+      delegateWaitState(
+        [{ blocks: [{ ...sent, intent } as MessageBlock], createdAt: at(0) }],
+        10 * 60_000,
+      ),
+    ).toBeNull();
+  }
 });

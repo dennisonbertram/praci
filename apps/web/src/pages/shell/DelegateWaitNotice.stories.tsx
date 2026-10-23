@@ -10,6 +10,7 @@ const sentMinutesAgo = (minutes: number) => [
         toBotId: "bot_inbox",
         toBotName: "Inbox agent",
         text: "Email Jana the update.",
+        intent: "request" as const,
       },
     ],
   },
@@ -18,7 +19,7 @@ const sentMinutesAgo = (minutes: number) => [
 const meta = {
   title: "Shell/Delegate wait notice",
   component: DelegateWaitNotice,
-  args: { messages: sentMinutesAgo(2), onRetry: () => undefined },
+  args: { messages: sentMinutesAgo(2) },
 } satisfies Meta<typeof DelegateWaitNotice>;
 export default meta;
 

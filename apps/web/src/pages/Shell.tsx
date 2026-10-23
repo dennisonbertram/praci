@@ -4397,10 +4397,7 @@ export function ShellPage() {
           ) : null}
           {!transcriptRunning &&
           pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).length === 0 ? (
-            <DelegateWaitNotice
-              messages={activeSnapshot?.messages ?? []}
-              onRetry={retryFailedRun}
-            />
+            <DelegateWaitNotice messages={activeSnapshot?.messages ?? []} />
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
             // Same side padding as the composer, and the toasts rise above it.
