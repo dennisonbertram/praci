@@ -18,6 +18,12 @@ const CARTA_AGENT_INSTRUCTIONS =
 const CARTA_SYNC_PROMPT =
   "Fill in the Investors page from Carta. Read the company's cap table from Carta: use discover or search_tools to find the right fetch and read_tool commands, and set_context or list_accounts to pick the company. As soon as you have read the cap table, make cap_table_update your very next tool call, before any other tool, because older tool results are shortened after your next call; use the exact figures from Carta, never estimate, and leave a field null when Carta does not give it. Next, call contacts_list, and add every investor holder who is not already a contact with contacts_add (kind investor, organization is the fund). Do not search mail or read anything else: the user only asked to refresh the page. The Investors page already shows the figures and contacts, so finish with one short sentence and no figures, lists or headings: that the cap table is up to date and who you added as a contact, or what you could not read. Do not mention charts you cannot show.";
 
+/** The default before the SAFE guidance was added. A bot still storing it is upgraded; an edited bot is left alone. */
+const PREVIOUS_CARTA_AGENT_INSTRUCTIONS = CARTA_AGENT_INSTRUCTIONS.replace(
+  " A SAFE is not a Carta change: SAFEs are recorded in Mercury, so send the user there and never suggest that switch for one.",
+  "",
+);
+
 /**
  * Gives the bot each of the user's enabled Carta MCP servers: the read tools, plus the write tools
  * when the server's writes are on. The list is written on every call, so an older or wider list is
@@ -113,7 +119,7 @@ const OLD_CARTA_DESCRIPTION = "Keeps your cap table and investor contacts.";
 export async function ensureCartaAgent(
   deps: {
     prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "$transaction">;
-    repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+    repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
   },
   actor: Actor,
 ): Promise<Bot> {
@@ -132,7 +138,12 @@ export async function ensureCartaAgent(
     where: { id: bot.id, ...actorScope(actor), description: OLD_CARTA_DESCRIPTION },
     data: { description: CARTA_DESCRIPTION },
   });
-  return bot;
+  if (bot.instructions !== PREVIOUS_CARTA_AGENT_INSTRUCTIONS) return bot;
+  await deps.repos.replaceBotInstructions(actor, bot.id, {
+    from: bot.instructions,
+    to: CARTA_AGENT_INSTRUCTIONS,
+  });
+  return { ...bot, instructions: CARTA_AGENT_INSTRUCTIONS };
 }
 
 /** Matches the user's populate runs: the Carta agent's runs that no routine and no typed message started. */
@@ -161,7 +172,7 @@ export type CartaSyncDeps = {
     PrismaClient,
     "bot" | "mcpServer" | "botMcpServer" | "run" | "capTableSnapshot" | "$transaction"
   >;
-  repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+  repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
   /** False when no model is set up, so a run would only fail. */
   hasModel: (actor: Actor) => Promise<boolean>;
   enqueueRun: (runId: string) => Promise<void>;
