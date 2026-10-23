@@ -29,6 +29,38 @@ import {
   CapTableStateSchema,
 } from "./carta.js";
 import {
+  CompanyEdgeEditInputSchema,
+  CompanyEntityEditInputSchema,
+  CompanyEventEditInputSchema,
+} from "./company.js";
+import { CompanyCalendarInputSchema, CompanyCalendarSchema } from "./company-calendar.js";
+import {
+  CompanyImportActionInputSchema,
+  CompanyImportCatalogSchema,
+  CompanyImportChannelsInputSchema,
+  CompanyImportChannelsSchema,
+  CompanyImportConsentInputSchema,
+  CompanyImportCreateInputSchema,
+  CompanyImportEventSchema,
+  CompanyImportGrantConsentInputSchema,
+  CompanyImportModelConsentStatusSchema,
+  CompanyImportProgressSchema,
+  CompanyImportRunIdInputSchema,
+  CompanyImportSampleSchema,
+  CompanyImportSessionInputSchema,
+  CompanyImportSessionSchema,
+  CompanyRefreshStartInputSchema,
+  CompanyRefreshStatusSchema,
+} from "./company-import.js";
+import { CompanyFactRefSchema, CompanyFactSchema, CompanyPageSchema } from "./company-page.js";
+import {
+  CompanyExportSchema,
+  CompanyPrivacySchema,
+  CompanySourceControlSchema,
+  CompanyVisibilityInputSchema,
+} from "./company-privacy.js";
+import { CompanyReviewResolveSchema, CompanyReviewSchema } from "./company-review.js";
+import {
   ContactLinkedSchema,
   ContactListInputSchema,
   ContactSaveInputSchema,
@@ -1470,6 +1502,53 @@ export const appContract = {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
+  },
+  company: {
+    /** Idempotent: creates the Company agent; returns the bot to open in the side panel. */
+    agent: oc.output(BotSchema),
+    privacy: oc.output(CompanyPrivacySchema),
+    sourceControl: oc.input(CompanySourceControlSchema).output(z.object({ ok: z.literal(true) })),
+    excludePerson: oc.input(z.object({ entityId: Id })).output(z.object({ ok: z.literal(true) })),
+    erase: oc.output(z.object({ ok: z.literal(true) })),
+    export: oc.output(CompanyExportSchema),
+    visibility: oc.input(CompanyVisibilityInputSchema).output(z.object({ ok: z.literal(true) })),
+    page: oc.output(CompanyPageSchema),
+    calendar: oc.input(CompanyCalendarInputSchema).output(CompanyCalendarSchema),
+    review: oc.output(CompanyReviewSchema),
+    resolveCandidate: oc
+      .input(CompanyReviewResolveSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    fact: oc.input(CompanyFactRefSchema).output(CompanyFactSchema.nullable()),
+    confirm: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
+    reject: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
+    editEntity: oc.input(CompanyEntityEditInputSchema).output(z.object({ ok: z.literal(true) })),
+    editEdge: oc.input(CompanyEdgeEditInputSchema).output(z.object({ ok: z.literal(true) })),
+    editEvent: oc.input(CompanyEventEditInputSchema).output(z.object({ ok: z.literal(true) })),
+  },
+  companyImport: {
+    /** Idempotent: creates the Company importer; returns the bot to open in the side panel. */
+    agent: oc.output(BotSchema),
+    catalog: oc.output(CompanyImportCatalogSchema),
+    channels: oc.input(CompanyImportChannelsInputSchema).output(CompanyImportChannelsSchema),
+    session: oc
+      .input(CompanyImportSessionInputSchema)
+      .output(CompanyImportSessionSchema.nullable()),
+    sample: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportSampleSchema),
+    create: oc.input(CompanyImportCreateInputSchema).output(CompanyImportProgressSchema),
+    progress: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
+    consentStatus: oc
+      .input(CompanyImportConsentInputSchema)
+      .output(CompanyImportModelConsentStatusSchema),
+    grantConsent: oc
+      .input(CompanyImportGrantConsentInputSchema)
+      .output(CompanyImportModelConsentStatusSchema),
+    start: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
+    action: oc.input(CompanyImportActionInputSchema).output(CompanyImportProgressSchema),
+    refreshStatus: oc.output(z.array(CompanyRefreshStatusSchema)),
+    refresh: oc.input(CompanyRefreshStartInputSchema).output(CompanyImportProgressSchema),
+    subscribe: oc
+      .input(CompanyImportRunIdInputSchema)
+      .output(eventIterator(CompanyImportEventSchema)),
   },
   dataRoom: {
     /** Idempotent: creates the Data room agent; returns the bot to open in the side panel. */

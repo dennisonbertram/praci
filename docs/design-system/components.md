@@ -3,9 +3,9 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 281 of 281
-- Web and shared components: 737
-- Mobile components: 140 in 97 files, mobile — native story pending
+- Web and shared component files with stories: 290 of 290
+- Web and shared components: 748
+- Mobile components: 151 in 101 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -320,6 +320,15 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
 | BotContextMenu | [apps/web/src/pages/BotContextMenu.tsx](../../apps/web/src/pages/BotContextMenu.tsx) | [BotContextMenu.stories.tsx](../../apps/web/src/pages/BotContextMenu.stories.tsx) | web |
+| CompanyPage | [apps/web/src/pages/Company.tsx](../../apps/web/src/pages/Company.tsx) | [Company.stories.tsx](../../apps/web/src/pages/Company.stories.tsx) | web |
+| CompanyCalendar | [apps/web/src/pages/CompanyCalendar.tsx](../../apps/web/src/pages/CompanyCalendar.tsx) | [CompanyCalendar.stories.tsx](../../apps/web/src/pages/CompanyCalendar.stories.tsx) | web |
+| CompanyFactDetail | [apps/web/src/pages/CompanyFactDetail.tsx](../../apps/web/src/pages/CompanyFactDetail.tsx) | [CompanyFactDetail.stories.tsx](../../apps/web/src/pages/CompanyFactDetail.stories.tsx) | web |
+| CompanyHistory | [apps/web/src/pages/CompanyHistory.tsx](../../apps/web/src/pages/CompanyHistory.tsx) | [CompanyHistory.stories.tsx](../../apps/web/src/pages/CompanyHistory.stories.tsx) | web |
+| CompanyImportPage | [apps/web/src/pages/CompanyImport.tsx](../../apps/web/src/pages/CompanyImport.tsx) | [CompanyImport.stories.tsx](../../apps/web/src/pages/CompanyImport.stories.tsx) | web |
+| CompanyImportScope | [apps/web/src/pages/CompanyImportScope.tsx](../../apps/web/src/pages/CompanyImportScope.tsx) | [CompanyImportScope.stories.tsx](../../apps/web/src/pages/CompanyImportScope.stories.tsx) | web |
+| CompanyPrivacy | [apps/web/src/pages/CompanyPrivacy.tsx](../../apps/web/src/pages/CompanyPrivacy.tsx) | [CompanyPrivacy.stories.tsx](../../apps/web/src/pages/CompanyPrivacy.stories.tsx) | web |
+| CompanyRefresh | [apps/web/src/pages/CompanyRefresh.tsx](../../apps/web/src/pages/CompanyRefresh.tsx) | [CompanyRefresh.stories.tsx](../../apps/web/src/pages/CompanyRefresh.stories.tsx) | web |
+| CompanyReview, ReviewItem, CandidateSubjects | [apps/web/src/pages/CompanyReview.tsx](../../apps/web/src/pages/CompanyReview.tsx) | [CompanyReview.stories.tsx](../../apps/web/src/pages/CompanyReview.stories.tsx) | web |
 | ConnectedCallbackPage | [apps/web/src/pages/ConnectedCallback.tsx](../../apps/web/src/pages/ConnectedCallback.tsx) | [ConnectedCallback.stories.tsx](../../apps/web/src/pages/ConnectedCallback.stories.tsx) | web |
 | ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
@@ -418,6 +427,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | ArtifactDetailScreen, ArtifactPreview | [apps/mobile/app/artifact.tsx](../../apps/mobile/app/artifact.tsx) | mobile — native story pending | mobile |
 | ArtifactsScreen, Chip, ArtifactRow | [apps/mobile/app/artifacts.tsx](../../apps/mobile/app/artifacts.tsx) | mobile — native story pending | mobile |
 | BotSettingsScreen | [apps/mobile/app/bot-settings.tsx](../../apps/mobile/app/bot-settings.tsx) | mobile — native story pending | mobile |
+| CompanyFactScreen, FactDetail, CandidateDetail | [apps/mobile/app/company-fact.tsx](../../apps/mobile/app/company-fact.tsx) | mobile — native story pending | mobile |
+| CompanyScreen, CompanyMap, CompanyAgenda, CompanyReviewList, CompanyProgress, QueryStatus | [apps/mobile/app/company.tsx](../../apps/mobile/app/company.tsx) | mobile — native story pending | mobile |
 | Computer, ComputerReleaseActions, ScreenWebView | [apps/mobile/app/computer.tsx](../../apps/mobile/app/computer.tsx) | mobile — native story pending | mobile |
 | DataRoomItemScreen | [apps/mobile/app/data-room-item.tsx](../../apps/mobile/app/data-room-item.tsx) | mobile — native story pending | mobile |
 | DataRoomScreen | [apps/mobile/app/data-room.tsx](../../apps/mobile/app/data-room.tsx) | mobile — native story pending | mobile |
@@ -451,6 +462,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | BotOrganizeModal, SectionOption | [apps/mobile/components/bot-organize-modal.tsx](../../apps/mobile/components/bot-organize-modal.tsx) | mobile — native story pending | mobile |
 | CallCard, RoundButton, Waveform | [apps/mobile/components/CallCard.tsx](../../apps/mobile/components/CallCard.tsx) | mobile — native story pending | mobile |
 | ChoiceCard | [apps/mobile/components/ChoiceCard.tsx](../../apps/mobile/components/ChoiceCard.tsx) | mobile — native story pending | mobile |
+| CompanyList | [apps/mobile/components/company-list.ios.tsx](../../apps/mobile/components/company-list.ios.tsx) | mobile — native story pending | mobile |
+| CompanyList | [apps/mobile/components/company-list.tsx](../../apps/mobile/components/company-list.tsx) | mobile — native story pending | mobile |
 | ComposerReplyPreview | [apps/mobile/components/composer-reply-preview.tsx](../../apps/mobile/components/composer-reply-preview.tsx) | mobile — native story pending | mobile |
 | ComputerKeyboardBar | [apps/mobile/components/computer-keyboard-bar.tsx](../../apps/mobile/components/computer-keyboard-bar.tsx) | mobile — native story pending | mobile |
 | ComputerMaintenanceActions | [apps/mobile/components/computer-maintenance-actions.tsx](../../apps/mobile/components/computer-maintenance-actions.tsx) | mobile — native story pending | mobile |

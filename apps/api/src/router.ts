@@ -160,6 +160,8 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
+  isCompanyAgentSpawnKey,
+  isCompanyImporterSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isGranolaEndpoint,
@@ -211,6 +213,7 @@ import {
   CannotDeleteSpaceAsNonOwnerError,
   CannotRenameSpaceAsNonOwnerError,
   CapTableSourceError,
+  CompanyPrivacyBusinessError,
   ComputerLimitError,
   ContactEmailTakenError,
   changeCapTableSource,
@@ -218,6 +221,8 @@ import {
   claimEmptySpaceDeletionForMember,
   closeAuditRequest,
   closeRound,
+  companyForActor,
+  companyWriter,
   createExternalConversationRepos,
   createGroupRepos,
   createRepos,
@@ -326,7 +331,7 @@ import {
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { createAgentSkillsService } from "./agent-skills.js";
-import { aiConsentStatus, allowAiConsent } from "./ai-consent.js";
+import { aiConsentStatus, allowAiConsent, revokeAiConsent } from "./ai-consent.js";
 import {
   ArtifactListCursorError,
   createOwnedArtifact,
@@ -346,6 +351,10 @@ import {
   onMcpServerConnected,
   startCartaSync,
 } from "./carta-agent.js";
+import { ensureCompanyAgent, ensureCompanyImporter } from "./company-agent.js";
+import { companyCalendar } from "./company-calendar.js";
+import type { CompanyImportPage } from "./company-import-page.js";
+import { companyFact, companyPage } from "./company-page.js";
 import {
   executionBlocksUserTakeover,
   resolveBusyBotName,
@@ -1440,18 +1449,7 @@ export function createRouter(deps: RouterDeps) {
         allowAiConsent(deps, context.actor, input),
       ),
       revoke: authed.aiConsent.revoke.handler(async ({ context, input }) => {
-        await deps.prisma.aiDataConsent.deleteMany({
-          where: {
-            userId: context.actor.userId,
-            spaceId: context.actor.spaceId,
-            // Taking a model back also takes back the document grants given on top of it.
-            ...(input.key
-              ? {
-                  OR: [{ recipientKey: input.key }, { recipientKey: { startsWith: "data-room:" } }],
-                }
-              : {}),
-          },
-        });
+        await revokeAiConsent(deps.prisma, context.actor, input.key);
         return aiConsentStatus(deps, context.actor);
       }),
     },
@@ -2241,6 +2239,8 @@ export function createRouter(deps: RouterDeps) {
           isLegalAgentSpawnKey(input.spawnKey) ||
           isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
+          isCompanyAgentSpawnKey(input.spawnKey) ||
+          isCompanyImporterSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
           isGtmAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
@@ -5324,6 +5324,7 @@ export function createRouter(deps: RouterDeps) {
               server.id,
               tx,
             );
+            await companyWriter(tx, context.actor).disconnectMcpServer(server.id);
             // The deleted row says which agent it had at that moment, so a concurrent relink is seen.
             const deleted = await tx.mcpServer.delete({ where: { id: server.id } });
             // Carta's agent is shared with the Cap table, and the Granola agent with the API key.
@@ -6628,6 +6629,11 @@ export function createRouter(deps: RouterDeps) {
                   previousStatus: null as string | null,
                 };
               }
+              await companyWriter(tx, context.actor).disconnectConnection(row.id);
+              await companyWriter(tx, context.actor).sourceControl(
+                { sourceKind: "data_room", connectionId: row.id, mcpServerId: null },
+                false,
+              );
               // Unlink a provisioned agent under the same lock, so a begin that reuses the row
               // right after sees a clean row. The agent itself is archived once this commits.
               if (row.privateByDefault) {
@@ -7288,6 +7294,177 @@ export function createRouter(deps: RouterDeps) {
           update: { enabled: input.enabled },
         });
         return loadAutoReviewSettings(deps, context.actor);
+      }),
+    },
+    company: {
+      agent: authed.company.agent.handler(({ context }) =>
+        ensureCompanyAgent({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      privacy: authed.company.privacy.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).privacy(),
+      ),
+      sourceControl: authed.company.sourceControl.handler(async ({ context, input }) => {
+        return companyForActor(deps.prisma, context.actor)
+          .sourceControl(input, input.connected)
+          .then(() => ({ ok: true as const }))
+          .catch((error) => {
+            if (error instanceof CompanyPrivacyBusinessError)
+              throw new ORPCError("BAD_REQUEST", { message: error.message });
+            throw error;
+          });
+      }),
+      excludePerson: authed.company.excludePerson.handler(async ({ context, input }) => {
+        return companyForActor(deps.prisma, context.actor)
+          .excludePerson(input.entityId)
+          .then(() => ({ ok: true as const }))
+          .catch((error) => {
+            if (error instanceof CompanyPrivacyBusinessError)
+              throw new ORPCError("BAD_REQUEST", { message: error.message });
+            throw error;
+          });
+      }),
+      erase: authed.company.erase.handler(async ({ context }) => {
+        await companyForActor(deps.prisma, context.actor).eraseMap();
+        return { ok: true as const };
+      }),
+      export: authed.company.export.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).export(),
+      ),
+      visibility: authed.company.visibility.handler(async ({ context, input }) => {
+        return companyForActor(deps.prisma, context.actor)
+          .visibility(input)
+          .then(() => ({ ok: true as const }))
+          .catch((error) => {
+            if (error instanceof CompanyPrivacyBusinessError)
+              throw new ORPCError("BAD_REQUEST", { message: error.message });
+            throw error;
+          });
+      }),
+      page: authed.company.page.handler(({ context }) => companyPage(deps.prisma, context.actor)),
+      calendar: authed.company.calendar.handler(({ context, input }) =>
+        companyCalendar(deps.prisma, context.actor, input),
+      ),
+      review: authed.company.review.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).review(),
+      ),
+      resolveCandidate: authed.company.resolveCandidate.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).resolveCandidate(input);
+        return { ok: true as const };
+      }),
+      fact: authed.company.fact.handler(({ context, input }) =>
+        companyFact(deps.prisma, context.actor, input),
+      ),
+      confirm: authed.company.confirm.handler(async ({ context, input }) => {
+        const store = companyForActor(deps.prisma, context.actor);
+        if (input.kind === "entity") await store.confirm(input.id);
+        else if (input.kind === "edge") await store.confirmEdge(input.id);
+        else await store.confirmEvent(input.id);
+        return { ok: true as const };
+      }),
+      reject: authed.company.reject.handler(async ({ context, input }) => {
+        const store = companyForActor(deps.prisma, context.actor);
+        if (input.kind === "entity") await store.reject(input.id);
+        else if (input.kind === "edge") await store.rejectEdge(input.id);
+        else await store.rejectEvent(input.id);
+        return { ok: true as const };
+      }),
+      editEntity: authed.company.editEntity.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).edit(input);
+        return { ok: true as const };
+      }),
+      editEdge: authed.company.editEdge.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).editEdge(input);
+        return { ok: true as const };
+      }),
+      editEvent: authed.company.editEvent.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).editEvent(input);
+        return { ok: true as const };
+      }),
+    },
+    companyImport: {
+      agent: authed.companyImport.agent.handler(({ context }) =>
+        ensureCompanyImporter({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      catalog: authed.companyImport.catalog.handler(({ context }) =>
+        deps.companyImportPage
+          ? deps.companyImportPage.catalog(context.actor)
+          : { sources: [], folders: [] },
+      ),
+      channels: authed.companyImport.channels.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.channels(context.actor, input) ?? {
+            channels: [],
+            nextCursor: null,
+          },
+      ),
+      session: authed.companyImport.session.handler(
+        ({ context, input }) => deps.companyImportPage?.session(context.actor, input.runId) ?? null,
+      ),
+      sample: authed.companyImport.sample.handler(
+        ({ context, input }) => deps.companyImportPage?.sample(context.actor, input.runId) ?? [],
+      ),
+      create: authed.companyImport.create.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.create(context.actor, input) ??
+          deps.companyImport.create(context.actor, input),
+      ),
+      progress: authed.companyImport.progress.handler(({ context, input }) =>
+        deps.companyImport.progress(context.actor, input.runId),
+      ),
+      consentStatus: authed.companyImport.consentStatus.handler(({ context, input }) =>
+        deps.companyImport.consentStatus(context.actor, input.runId, input.sourceId),
+      ),
+      grantConsent: authed.companyImport.grantConsent.handler(({ context, input }) =>
+        deps.companyImport.grantConsent(context.actor, input),
+      ),
+      start: authed.companyImport.start.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.start(context.actor, input.runId) ??
+          deps.companyImport.start(context.actor, input.runId),
+      ),
+      action: authed.companyImport.action.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.action(
+            context.actor,
+            input.runId,
+            input.action,
+            input.tokenCap,
+          ) ?? deps.companyImport.action(context.actor, input.runId, input.action, input.tokenCap),
+      ),
+      refreshStatus: authed.companyImport.refreshStatus.handler(({ context }) =>
+        deps.companyImport.refreshStatus(context.actor),
+      ),
+      refresh: authed.companyImport.refresh.handler(({ context, input }) =>
+        deps.companyImport.refresh(context.actor, input.sourceId),
+      ),
+      subscribe: authed.companyImport.subscribe.handler(async function* ({ context, input }) {
+        const stream = deps.companyImport.follow(context.actor, input.runId, context.signal);
+        const iterator = withHeartbeat(stream, {
+          signal: context.signal,
+          stillAuthorized: context.stillAuthorized,
+          heartbeatMs: HEARTBEAT_MS,
+          recheckMs: SESSION_RECHECK_MS,
+        })[Symbol.asyncIterator]();
+        let pending = iterator.next();
+        try {
+          yield await deps.companyImport.progress(context.actor, input.runId);
+          while (true) {
+            const next = await pending;
+            if (next.done) return;
+            if (next.value === HEARTBEAT) {
+              yield await deps.companyImport.progress(context.actor, input.runId);
+            } else {
+              yield next.value;
+            }
+            pending = iterator.next();
+          }
+        } finally {
+          await iterator.return?.(undefined);
+        }
       }),
     },
     dataRoom: {

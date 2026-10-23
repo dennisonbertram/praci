@@ -19,6 +19,7 @@ import { runAuditIntake } from "./audit-intake.js";
 import type { BoxFilesDeps } from "./box-files.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { pollCloudAgent } from "./cloud-agent-poll.js";
+import type { CompanyImportEngine } from "./company-import-engine.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
@@ -98,6 +99,7 @@ export function createBackgroundJobHandlers(deps: {
   meetingSources?: MeetingSourceRegistry;
   /** Gmail push settings; absent means polling only, and the watch renewal job does nothing. */
   gmailPush?: GmailPushConfig;
+  companyImport?: CompanyImportEngine;
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -371,6 +373,22 @@ export function createBackgroundJobHandlers(deps: {
         },
         payload,
       );
+    },
+    "company.import.run": async (payload) => {
+      if (!deps.companyImport) throw new Error("Company import engine is not configured");
+      await deps.companyImport.runJob(payload);
+    },
+    "company.import.unit": async (payload) => {
+      if (!deps.companyImport) throw new Error("Company import engine is not configured");
+      await deps.companyImport.unitJob(payload);
+    },
+    "company.import.recover": async () => {
+      if (!deps.companyImport) throw new Error("Company import engine is not configured");
+      await deps.companyImport.recoveryJob();
+    },
+    "company.refresh.tick": async () => {
+      if (!deps.companyImport) throw new Error("Company import engine is not configured");
+      await deps.companyImport.refreshTick();
     },
     "history.compact": async (payload) => {
       // Retrieval policies use stored context without paid message-count compaction.

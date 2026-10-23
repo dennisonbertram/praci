@@ -23,6 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   BookUser,
+  Building2,
   ChartColumn,
   ChevronDown,
   ChevronLeft,
@@ -376,6 +377,7 @@ export type SpaceSidebarProps = {
   investorsMode: boolean;
   fundraisingMode: boolean;
   contactsMode: boolean;
+  companyMode: boolean;
   dataRoomMode: boolean;
   artifactsMode: boolean;
   sidebarLayout: SidebarLayout;
@@ -487,6 +489,7 @@ export function SpaceSidebar({
   investorsMode,
   fundraisingMode,
   contactsMode,
+  companyMode,
   dataRoomMode,
   artifactsMode,
   sidebarLayout,
@@ -812,6 +815,7 @@ export function SpaceSidebar({
                 ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
                 { key: "investors", label: t`Investors` },
                 { key: "fundraising", label: t`Fundraising` },
+                { key: "company", label: t`Company` },
                 { key: "contacts", label: t`Contacts` },
                 { key: "data-room", label: t`Data room` },
                 { key: "artifacts", label: t`Artifacts` },
@@ -951,6 +955,20 @@ export function SpaceSidebar({
                   onOpen={() => {
                     setMobileSidebarOpen(false);
                     navigate("/app/fundraising");
+                  }}
+                />
+              )}
+              {hiddenPages.includes("company") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-company"
+                  href="/app/company"
+                  current={companyMode}
+                  icon={<Building2 size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Company`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/company");
                   }}
                 />
               )}

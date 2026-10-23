@@ -50,6 +50,8 @@ import {
   BUILTIN_TOOL_NAMES,
   botSecretSubmissionSchema,
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
+  COMPANY_AGENT_BUILTIN_TOOLS,
+  COMPANY_IMPORTER_BUILTIN_TOOLS,
   COMPUTER_COMMAND_OUTPUT_MAX_CHARS,
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   disabledBuiltinToolSet,
@@ -66,6 +68,8 @@ import {
   integrationPresetForEndpoint,
   isAttachmentImageMimeType,
   isCartaAgentSpawnKey,
+  isCompanyAgentSpawnKey,
+  isCompanyImporterSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isGtmAgentSpawnKey,
@@ -277,6 +281,14 @@ import { executeCloudAgentTool } from "./cloud-agent-service.js";
 import { validCloudAgentArgs } from "./cloud-agent-tools.js";
 import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
 import { cloudflareGatewayProviderEnv } from "./cloudflare-ai-gateway.js";
+import type { CompanyImportEngine } from "./company-import-engine.js";
+import {
+  COMPANY_READ_TOOL_NAMES,
+  COMPANY_TOOL_NAMES,
+  companyToolFromTool,
+  companyToolsForRun,
+  prepareCompanyApprovalArgs,
+} from "./company-tools.js";
 import type { PluginConnectionRow } from "./composio-connector.js";
 import {
   collectLogIds,
@@ -644,6 +656,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "drive_read",
   "search_data_room",
   "read_data_room_item",
+  ...COMPANY_READ_TOOL_NAMES,
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -732,6 +745,7 @@ export interface ExecutorDeps {
   /** The deployment default model can run; see resolveDeploymentModel. */
   deploymentModelConfigured?: boolean;
   dataDir?: string;
+  companyImport?: () => CompanyImportEngine;
   /** Tells the user's open clients about a new notification; absent means no live signal. */
   notificationEvents?: NotificationEvents;
   jobs: JobPublisher;
@@ -1518,6 +1532,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           include: { computer: true },
         });
         const voiceAgent = isVoiceAgentSpawnKey(bot.spawnKey);
+        const companyAgent = isCompanyAgentSpawnKey(bot.spawnKey);
+        const companyImporter = isCompanyImporterSpawnKey(bot.spawnKey);
         // The owner's zone: shown in the per-turn time line and the default for new schedules.
         const userTimezone = await loadUserTimezone(deps.prisma, run.userId);
         const [
@@ -1564,7 +1580,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           deps.prisma.deploymentSettings.findUnique({
             where: { id: "default" },
           }),
-          deps.memoryProviders.resolve(run.spaceId),
+          companyAgent || companyImporter
+            ? Promise.resolve(null)
+            : deps.memoryProviders.resolve(run.spaceId),
           deps.prisma.taughtSkill.findMany({
             where: { botId: run.botId, spaceId: run.spaceId, status: "saved" },
           }),
@@ -1922,6 +1940,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           !legalOnly &&
           !dataRoomAgent &&
           !investorsAgent &&
+          !companyAgent &&
+          !companyImporter &&
           !voiceAgent
             ? (async () => {
                 if (gtmAgent) {
@@ -2080,6 +2100,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           !voiceAgent &&
           !restrictedContext &&
           !meetingTaint &&
+          !companyAgent &&
+          !companyImporter &&
           threadContext.includeSemanticRecall &&
           semanticMemory &&
           memoryScope &&
@@ -2105,10 +2127,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ] = await Promise.all([
           discoveredPromise,
           loadCurrentTurnImages(deps, turnBlocks, context),
-          messagingChannelRun || voiceAgent || restrictedContext
+          messagingChannelRun || voiceAgent || restrictedContext || companyAgent || companyImporter
             ? Promise.resolve("")
             : loadAgentMemoryContext(deps.memory, bot.id, context),
-          messagingChannelRun || voiceAgent
+          messagingChannelRun || voiceAgent || companyAgent || companyImporter
             ? Promise.resolve("")
             : loadAgentScratchpadContext(deps, {
                 spaceId: run.spaceId,
@@ -2117,6 +2139,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }),
           messagingChannelRun ||
           restrictedContext ||
+          companyAgent ||
+          companyImporter ||
           !deps.ticketBoardEnabled ||
           (voiceAgent && !voiceWorkspaceReadAllowed)
             ? Promise.resolve(undefined)
@@ -2127,7 +2151,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           recallPromise,
         ]);
         const semanticMemoryEnabled =
-          Boolean(semanticMemory) && !messagingChannelRun && !voiceAgent;
+          Boolean(semanticMemory) &&
+          !messagingChannelRun &&
+          !voiceAgent &&
+          !companyAgent &&
+          !companyImporter;
         let recalledMemory = "";
         let recallSucceeded = false;
         if (recalled) {
@@ -2239,18 +2267,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return;
         }
         runSecrets.push(...resolved.redact);
+        let effectiveRunModel = {
+          provider: runModelProvider,
+          id: runModelId,
+          baseUrl: resolved.baseUrl,
+          apiKey: resolved.apiKey,
+        };
+        const resolvedFallbackModels = new Map<string, AgentRunRequest["model"]>();
+        let companyReadUsed = false;
         // Data Room consent for the model this run actually uses. Read on every use, so a revoked
         // consent applies at once.
         const legalRunAi = () =>
           resolveDataRoomAi(
             {
               prisma: deps.prisma,
-              resolveModel: async () => ({
-                provider: runModelProvider,
-                id: runModelId,
-                baseUrl: resolved.baseUrl,
-                apiKey: resolved.apiKey,
-              }),
+              resolveModel: async () => effectiveRunModel,
             },
             { spaceId: run.spaceId, userId: bot.userId },
           );
@@ -2872,6 +2903,33 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ownerAgentPeer: senderInScope && peerMessage?.ownerOrigin === true,
           }) &&
           (await meetingConsentOk());
+        const companyReadAllowed = dataRoomToolsAllowed({
+          hasProvider: true,
+          groupId: thread.groupId,
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          trigger: run.trigger,
+          messagingChannelRun,
+        });
+        const companyReadToolsAllowed =
+          companyReadAllowed &&
+          !restrictedContext &&
+          !meetingTaint &&
+          !gtmAgent &&
+          !legalOnly &&
+          !dataRoomAgent &&
+          !meetingAgent &&
+          !investorsAgent &&
+          !cartaAgent &&
+          !integrationAgent &&
+          !appAgentIdentity;
+        const companyOwnerRun =
+          run.userId === bot.userId &&
+          !thread.groupId &&
+          !messagingChannelRun &&
+          run.trigger !== "routine" &&
+          !isBackgroundRunTrigger(run.trigger) &&
+          OWNER_INITIATED_TRIGGERS.has(run.trigger);
         const meetingAgentToolSet: ReadonlySet<string> = new Set(MEETING_AGENT_BUILTIN_TOOLS);
         const financeEnabled =
           financeToolsAllowed({
@@ -2942,6 +3000,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
+        const companyAgentToolSet: ReadonlySet<string> = new Set(COMPANY_AGENT_BUILTIN_TOOLS);
+        const companyImporterToolSet: ReadonlySet<string> = new Set(COMPANY_IMPORTER_BUILTIN_TOOLS);
         const investorsToolSet: ReadonlySet<string> = new Set(INVESTORS_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
@@ -2997,6 +3057,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             (!gtmAgent || GTM_AGENT_TOOL_SET.has(tool.name)) &&
             (!legalOnly || legalToolSet.has(tool.name)) &&
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
+            (!companyAgent || companyAgentToolSet.has(tool.name)) &&
+            (!companyImporter || companyImporterToolSet.has(tool.name)) &&
             (!investorsAgent || investorsToolSet.has(tool.name)) &&
             !(capTableWriteBlocked && tool.name === "cap_table_update") &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
@@ -3107,12 +3169,40 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The intro turn confirms how a bot read its own role before anyone hands it
         // real work — it must not be able to act on that reading (shell, computer,
         // scheduling, spawning another bot, ...) before the user has assigned any task.
+        const companyToolDeps = {
+          ownerRun: companyOwnerRun,
+          companyAgent,
+          importer: companyImporter,
+          readAllowed: companyReadAllowed,
+        };
+        const companyRunTools = companyToolsForRun(companyToolDeps).filter(
+          (tool) =>
+            companyOwnerRun ||
+            ![
+              "company_fact_upsert",
+              "company_import_start",
+              "company_import_pause",
+              "company_import_resume",
+              "company_import_cancel",
+            ].includes(tool.name),
+        );
         const baseTools =
           run.trigger === "created"
             ? []
-            : voiceAgent
-              ? builtins
-              : [...builtins, ...exposedConnectorTools];
+            : companyAgent || companyImporter
+              ? [...companyRunTools, ...builtins]
+              : voiceAgent
+                ? [
+                    ...builtins,
+                    ...(companyReadAllowed && voiceWorkspaceReadAllowed
+                      ? companyToolsForRun(companyToolDeps)
+                      : []),
+                  ]
+                : [
+                    ...builtins,
+                    ...(companyReadToolsAllowed ? companyToolsForRun(companyToolDeps) : []),
+                    ...exposedConnectorTools,
+                  ];
         const gtmPostEligible =
           run.trigger !== "created" &&
           ["user", "follow_up", "routine"].includes(run.trigger) &&
@@ -3397,6 +3487,67 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (disabledBuiltinTools.has(name)) {
             return { error: "This tool is disabled for this bot." };
+          }
+          if (COMPANY_TOOL_NAMES.has(name) && !offeredToolNames.has(name)) {
+            return { error: `Tool ${name} is not available to this bot.` };
+          }
+          const companyIdentityTools = companyImporter
+            ? COMPANY_IMPORTER_BUILTIN_TOOLS
+            : companyAgent
+              ? COMPANY_AGENT_BUILTIN_TOOLS
+              : undefined;
+          if (companyIdentityTools && !companyIdentityTools.includes(name as never)) {
+            return { error: `Tool ${name} is not available to this Company agent.` };
+          }
+          if (
+            (name === "company_fact_upsert" ||
+              name === "company_import_start" ||
+              name === "company_import_pause" ||
+              name === "company_import_resume" ||
+              name === "company_import_cancel") &&
+            !companyOwnerRun
+          ) {
+            return { error: "Company changes require a direct owner-started foreground run." };
+          }
+          const companyApprovalTool =
+            name === "company_fact_upsert" || name === "company_import_start";
+          const companyApprovalReplay =
+            companyApprovalTool &&
+            approvedEffectReplays.nextToolName() === name &&
+            approvedEffectReplays.nextRequest() !== undefined;
+          if (companyApprovalTool && !companyApprovalReplay) {
+            const companyImport = deps.companyImport?.();
+            if (name === "company_import_start" && !companyImport) {
+              return { error: "Company import services are not configured for this process." };
+            }
+            const prepared = await prepareCompanyApprovalArgs(
+              {
+                prisma: deps.prisma,
+                actor: {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  email: "",
+                  isDeploymentOwner: false,
+                },
+                companyImport,
+                ownerRun: companyOwnerRun,
+                companyAgent,
+                importer: companyImporter,
+                readAllowed: companyReadAllowed,
+                dataRoomAllowed: async () => (await legalRunAi()).allowed,
+              },
+              name,
+              args,
+              false,
+            );
+            if (prepared.consentRequired) {
+              return {
+                untrusted: true,
+                consentRequired: true,
+                link: prepared.link,
+              };
+            }
+            args = prepared;
           }
           if (name === GTM_POST_TOOL) {
             if (!offeredToolNames.has(name)) {
@@ -3708,6 +3859,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               // still matches the first-approval effect key and execute payload.
               args = approvedReplayArgs(approvedRequest, args, CATALOG_APPROVAL_TOOL);
             }
+            if (companyApprovalTool) effectRequest = args;
             // Bound / shrink-direct approvals may skip catalog parse — reject before execute
             // if they no longer match the live schema.
             if (
@@ -3752,7 +3904,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 : {}),
             };
           }
-          const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name);
+          const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name) && !COMPANY_TOOL_NAMES.has(name);
           const builtinDenial = viaConnector ? null : await googleBuiltinDenial(name);
           if (builtinDenial) return { error: builtinDenial };
           const writeOnAgentConnection = viaConnector
@@ -3763,7 +3915,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // execute; a catalog call uses the tool it was just resolved to.
           const declaredReadOnly = viaConnector
             ? (resolvedTool ?? connectorTools.get(name))?.readOnly
-            : undefined;
+            : COMPANY_TOOL_NAMES.has(name)
+              ? tools.find((tool) => tool.name === name)?.readOnly
+              : undefined;
           const requiresUnattendedApproval = unattendedTriggerToolRequiresApproval(
             run.trigger,
             name,
@@ -4190,8 +4344,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ? [EXTERNAL_REQUEST_REASON, reviewReason].filter(Boolean).join("\n")
                 : reviewReason,
               fullMail: isCartaMailSend(bot.spawnKey, name),
+              fullCompany:
+                (name === "company_fact_upsert" || name === "company_import_start") &&
+                COMPANY_TOOL_NAMES.has(name),
               integrationWriteTool,
-              noAlwaysAllow: meetingTaintedCall || externalTaintedCall,
+              noAlwaysAllow:
+                meetingTaintedCall || externalTaintedCall || COMPANY_TOOL_NAMES.has(name),
               serviceName: callRoute?.serverName,
               mailAccount:
                 meetingTaintedCall || externalTaintedCall ? undefined : await approvalMailAccount(),
@@ -4467,6 +4625,37 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runSecrets.push(...additions);
             progressRedactor = createStreamingRedactor(runSecrets);
           };
+          if (COMPANY_TOOL_NAMES.has(name)) {
+            const companyImport = deps.companyImport?.();
+            const result = await companyToolFromTool(
+              {
+                prisma: deps.prisma,
+                actor: {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  email: "",
+                  isDeploymentOwner: false,
+                },
+                companyImport,
+                ownerRun: companyOwnerRun,
+                companyAgent,
+                importer: companyImporter,
+                readAllowed: companyReadAllowed,
+                dataRoomAllowed: async () => (await legalRunAi()).allowed,
+              },
+              name,
+              args,
+              { approvedByCard, effectKey },
+            );
+            if (
+              COMPANY_READ_TOOL_NAMES.has(name) &&
+              !("error" in result) &&
+              !("consentRequired" in result)
+            ) {
+              companyReadUsed = true;
+            }
+            return finish(result);
+          }
           const appendComputerCommand = (payload: ComputerCommand) =>
             deps.events
               .append({
@@ -6451,6 +6640,28 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (name === "notify_user") {
+            if (companyImporter) {
+              const eligibleImport = await deps.prisma.companyImportRun.findFirst({
+                where: {
+                  spaceId: run.spaceId,
+                  ownerUserId: bot.userId,
+                  status: { in: ["budget_reached", "awaiting_consent"] },
+                },
+                select: { id: true },
+              });
+              const attentionAllowed = eligibleImport !== null;
+              if (args.importance === "attention" && !attentionAllowed) {
+                return finish({
+                  error:
+                    "Importer attention notifications are reserved for budget or consent issues.",
+                });
+              }
+              args = {
+                ...args,
+                surface: "company",
+                importance: attentionAllowed ? args.importance : "info",
+              };
+            }
             return finish(
               await runNotifyUser(deps.prisma, deps.notificationEvents, run, bot, args),
             );
@@ -6939,7 +7150,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let fallbackModels: { provider: string; modelId: string }[] = [];
         // Backup models would receive the Legal agent's history under a consent given for another
         // recipient, so the Legal agent has none. A meeting-source agent has none for the same reason.
-        if (!scripted && !legalOnly && !meetingAgent && !meetingTaint) {
+        if (
+          !scripted &&
+          !legalOnly &&
+          !meetingAgent &&
+          !meetingTaint &&
+          !companyAgent &&
+          !companyImporter
+        ) {
           try {
             fallbackModels = await deps.prisma.spaceBackupModel.findMany({
               where: { userId: run.userId, spaceId: run.spaceId },
@@ -7029,6 +7247,30 @@ export function createRunExecutor(deps: ExecutorDeps) {
               history: runtimeHistory,
               currentTurnImages,
               tools,
+              ...(companyImporter
+                ? {
+                    subagentToolNames: new Set([
+                      ...COMPANY_READ_TOOL_NAMES,
+                      "company_import_plan",
+                      "company_import_status",
+                    ]),
+                    subagentModelSelectionAllowed: false,
+                  }
+                : companyAgent
+                  ? {
+                      subagentToolNames: new Set([
+                        ...COMPANY_READ_TOOL_NAMES,
+                        "company_review_next",
+                      ]),
+                      subagentModelSelectionAllowed: false,
+                    }
+                  : {
+                      subagentToolNames: new Set(
+                        tools
+                          .map((tool) => tool.name)
+                          .filter((name) => !COMPANY_TOOL_NAMES.has(name)),
+                      ),
+                    }),
               model: {
                 provider: runModelProvider,
                 id: runModelId,
@@ -7060,13 +7302,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     const key = JSON.stringify([provider, modelId]);
                     if (meetingMarkedMidRun || !fallbackModelKeys.has(key))
                       throw new Error("Backup model is not selected");
-                    return resolveConnectedModel(
+                    const fallbackModel = await resolveConnectedModel(
                       { userId: run.userId, spaceId: run.spaceId },
                       provider,
                       modelId,
                       (values) => runSecrets.push(...values),
                       true,
                     );
+                    if (companyReadUsed) {
+                      const consent = await resolveDataRoomAi(
+                        { prisma: deps.prisma, resolveModel: async () => fallbackModel },
+                        { spaceId: run.spaceId, userId: bot.userId },
+                      );
+                      if (!consent.allowed)
+                        throw new Error("Data Room consent is required for the backup model.");
+                    }
+                    resolvedFallbackModels.set(key, fallbackModel);
+                    return fallbackModel;
                   }
                 : undefined,
               beforeModelRequest: async () => {
@@ -7082,11 +7334,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 void phases.write({ kind: "retrying", name: reason });
               },
               onModelChange: async (provider, modelId) => {
-                if (
-                  meetingMarkedMidRun ||
-                  !fallbackModelKeys.has(JSON.stringify([provider, modelId]))
-                ) {
+                const key = JSON.stringify([provider, modelId]);
+                if (meetingMarkedMidRun || !fallbackModelKeys.has(key)) {
                   throw new Error("Backup model is not selected");
+                }
+                const fallbackModel = resolvedFallbackModels.get(key);
+                if (!fallbackModel) {
+                  throw new Error("Backup model was not resolved before it was selected");
+                }
+                if (companyReadUsed) {
+                  const consent = await resolveDataRoomAi(
+                    { prisma: deps.prisma, resolveModel: async () => fallbackModel },
+                    { spaceId: run.spaceId, userId: bot.userId },
+                  );
+                  if (!consent.allowed)
+                    throw new Error("Data Room consent is required for the backup model.");
                 }
                 const updated = await deps.prisma.run.updateMany({
                   where: {
@@ -7100,6 +7362,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 if (updated.count !== 1) {
                   throw new Error("Run lease was lost before the backup model could be used");
                 }
+                effectiveRunModel = {
+                  provider: fallbackModel.provider,
+                  id: fallbackModel.id,
+                  baseUrl: fallbackModel.baseUrl,
+                  apiKey: fallbackModel.apiKey,
+                };
               },
               resumeFromCheckpoint: takeoverResume?.checkpoint,
               script,

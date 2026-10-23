@@ -6,6 +6,8 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { makeBot, mockBots, mockMe, mockSections } from "../stories/fixtures";
+import { companyFixture } from "./company-fixtures";
+import { importCatalog } from "./company-import-fixtures";
 import { overview as gtmOverview, page as gtmPage } from "./gtm/fixtures";
 import { ShellPage } from "./Shell";
 
@@ -24,6 +26,7 @@ const at = (path: string) => (Story: () => ReactNode) => (
     <Routes>
       <Route path="/app/finance/*" element={<Story />} />
       <Route path="/app/inbox" element={<Story />} />
+      <Route path="/app/company/*" element={<Story />} />
       <Route path="/app/:botId" element={<Story />} />
     </Routes>
   </At>
@@ -260,6 +263,77 @@ const demoMe = {
   sandboxProvider: "docker",
   avatarStyle: "organic",
   billingEnabled: false,
+};
+
+function companyAgentStory(importer: boolean, failed = false, needsModel = false) {
+  const bot = makeBot({
+    id: importer ? "bot_company_importer" : "bot_company",
+    name: importer ? "Company importer" : "Company agent",
+    spawnKey: `${importer ? "company-importer" : "company-agent"}:user_demo`,
+    description: importer ? "Plan and follow your import." : "Ask about your company.",
+  });
+  loadedWith(bot, { ...snapshot, messages: [], cursor: 0 })();
+  const bots = failed ? [] : [bot];
+  mockRpc({
+    bootstrap: {
+      me: { ...demoMe, needsModel },
+      bots,
+      groups: [],
+      botSections: [],
+      archivedBots: [],
+      archivedGroups: [],
+      thread: null,
+      routines: [],
+      spaces: [space],
+    },
+    "spaces.list": { ...navigation, current: { ...navigation.current, bots } },
+    "company.page": companyFixture,
+    "finance.overview": null,
+    "carta.capTable": { snapshot: null, syncing: false },
+    "companyImport.catalog": importCatalog,
+    "companyImport.session": null,
+    [importer ? "companyImport.agent" : "company.agent"]: () => {
+      if (failed) throw new Error("Could not create the Company agent");
+      return bot;
+    },
+  });
+}
+
+export const CompanyAgent: Story = {
+  decorators: [at("/app/company")],
+  beforeEach: () => companyAgentStory(false),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Ask Company agent" }),
+    );
+  },
+};
+export const CompanyImporter: Story = {
+  decorators: [at("/app/company/import")],
+  beforeEach: () => companyAgentStory(true),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Ask Company importer" }),
+    );
+  },
+};
+export const CompanyAgentUnavailable: Story = {
+  decorators: [at("/app/company")],
+  beforeEach: () => companyAgentStory(false, true),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Ask Company agent" }),
+    );
+  },
+};
+export const CompanyAgentNoModel: Story = {
+  decorators: [at("/app/company")],
+  beforeEach: () => companyAgentStory(false, false, true),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Ask Company agent" }),
+    );
+  },
 };
 
 /** The Personal list: a pinned agent, two folders (Apps closed, its needs-input status still showing), then the unfiled chats under a Chats header. */

@@ -81,7 +81,6 @@ model User {
   agentSecrets                AgentSecret[]
   createdTickets              Ticket[]                     @relation("TicketCreatorUser")
   ticketComments              TicketComment[]              @relation("TicketCommentAuthorUser")
-
   @@unique([email])
   @@map("user")
 }
@@ -312,6 +311,23 @@ model Space {
   board                       Board?
   tickets                     Ticket[]
   ticketComments              TicketComment[]
+  companyEntities             CompanyEntity[]
+  companyEdges                CompanyEdge[]
+  companyEvents               CompanyEvent[]
+  companyEventEntities        CompanyEventEntity[]
+  companyEvidence             CompanyEvidence[]
+  companyIdentities           CompanyIdentity[]
+  companyCandidates           CompanyCandidate[]
+  companyCorrections          CompanyCorrection[]
+  companyRejections           CompanyRejection[]
+  companyMerges               CompanyMerge[]
+  companyImportRuns           CompanyImportRun[]
+  companyImportSources        CompanyImportSource[]
+  companyImportUnits          CompanyImportUnit[]
+  companyImportCalls          CompanyImportCall[]
+  companySourceBlocks         CompanySourceBlock[]
+  companyRefreshSources       CompanyRefreshSource[]
+  companyCandidateResolutions CompanyCandidateResolution[]
 
   @@unique([id, organizationId])
   @@index([organizationId, createdAt])
@@ -333,6 +349,23 @@ model SpaceMember {
   aiDataConsents   AiDataConsent[]
   backupModels     SpaceBackupModel[]
   dataRoomPrefs    DataRoomPreference?
+  companyEntities CompanyEntity[]
+  companyEdges    CompanyEdge[]
+  companyEvents   CompanyEvent[]
+  companyEventEntities CompanyEventEntity[]
+  companyEvidence CompanyEvidence[]
+  companyIdentities CompanyIdentity[]
+  companyCandidates CompanyCandidate[]
+  companyCorrections CompanyCorrection[]
+  companyRejections CompanyRejection[]
+  companyMerges   CompanyMerge[]
+  companyImportRuns CompanyImportRun[] @relation("CompanyImportRunOwner")
+  companyImportSources CompanyImportSource[] @relation("CompanyImportSourceOwner")
+  companyImportUnits CompanyImportUnit[] @relation("CompanyImportUnitOwner")
+  companyImportCalls CompanyImportCall[] @relation("CompanyImportCallOwner")
+  companySourceBlocks CompanySourceBlock[]
+  companyRefreshSources CompanyRefreshSource[] @relation("CompanyRefreshSourceOwner")
+  companyCandidateResolutions CompanyCandidateResolution[] @relation("CompanyCandidateResolutionOwner")
 
   @@unique([spaceId, userId])
   @@index([organizationId, userId])
@@ -1092,8 +1125,11 @@ model Connection {
   /// is private to its own agent from the start, stays private when the agent goes away, and is
   /// always scoped on its own. Older rows keep the shared-by-default rules.
   privateByDefault    Boolean               @default(false)
+  companyEvidence     CompanyEvidence[]
+  companyCandidates   CompanyCandidate[]    @relation("CompanyCandidateConnection")
 
   @@index([spaceId, userId, connectorId])
+  @@unique([id, spaceId, userId])
   @@index([agentBotId])
   @@map("connections")
 }
@@ -1566,8 +1602,11 @@ model McpServer {
   devinSessions         DevinSession[]
   meetings              Meeting[]
   meetingSyncState      MeetingSyncState?
+  companyEvidence       CompanyEvidence[]
+  companyCandidates     CompanyCandidate[] @relation("CompanyCandidateMcpServer")
 
   @@unique([spaceId, userId, slug])
+  @@unique([id, spaceId, userId])
   @@index([spaceId, userId])
   @@index([agentBotId])
   @@map("mcp_servers")
@@ -2523,8 +2562,10 @@ model Contact {
   bot              Bot?                  @relation(fields: [botId], references: [id], onDelete: SetNull)
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
+  companyEntities CompanyEntity[] @relation("CompanyEntityContact")
 
   @@unique([spaceId, userId, email])
+  @@unique([id, spaceId, userId])
   @@index([spaceId, userId])
   @@index([botId])
   @@index([roundId])
@@ -2858,8 +2899,12 @@ model DataRoomItem {
   legalContracts     LegalContract[]
   legalEdges         LegalEdge[]
   investorShares     InvestorShare[]
+  companyEntities    CompanyEntity[] @relation("CompanyEntityDataRoomItem")
+  companyEvidence    CompanyEvidence[] @relation("CompanyEvidenceDataRoomItem")
+  companyCandidates  CompanyCandidate[] @relation("CompanyCandidateDataRoomItem")
 
   @@index([spaceId, folderId])
+  @@unique([id, spaceId, userId])
   @@index([importId])
   @@index([spaceId, status])
   @@index([spaceId, userId, createdAt, id])
@@ -3024,8 +3069,10 @@ model LegalContract {
   updatedAt         DateTime        @updatedAt
   deadlines         LegalDeadline[]
   nodes             LegalNode[]
+  companyEntities   CompanyEntity[] @relation("CompanyEntityLegalContract")
 
   @@unique([spaceId, userId, dataRoomItemId])
+  @@unique([id, spaceId, userId])
   @@index([spaceId, userId, expirationDate])
   @@map("legal_contracts")
 }
@@ -3128,7 +3175,6 @@ model AccountExport {
   @@index([expiresAt])
   @@map("account_exports")
 }
-
 /// Pending "Sign in with OpenRouter" attempt: the state is the id, the PKCE verifier is encrypted.
 model ModelOAuthState {
   id                 String   @id
@@ -3279,4 +3325,508 @@ model MeetingTombstone {
 
   @@unique([spaceId, userId, provider, externalId])
   @@map("meeting_tombstones")
+}
+model CompanyEntity {
+  id                String          @id @default(cuid())
+  spaceId           String
+  space             Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId       String
+  owner             SpaceMember     @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  kind              String
+  displayName       String
+  normalizedName    String
+  attrs             Json            @default("{}")
+  confidence        Float
+  status            String          @default("suggested")
+  visibility        String          @default("private")
+  lockedFields      String[]        @default([])
+  sourceClaimKeys   String[]        @default([])
+  confirmedAt       DateTime?
+  confirmedByUserId String?
+  contactId         String?
+  contact           Contact?        @relation("CompanyEntityContact", fields: [contactId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  legalContractId   String?
+  legalContract     LegalContract?  @relation("CompanyEntityLegalContract", fields: [legalContractId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  dataRoomItemId    String?
+  dataRoomItem      DataRoomItem?   @relation("CompanyEntityDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  identities        CompanyIdentity[]
+  edgesOut          CompanyEdge[]   @relation("CompanyEdgeFrom")
+  edgesIn           CompanyEdge[]   @relation("CompanyEdgeTo")
+  eventLinks        CompanyEventEntity[]
+  mergesFrom        CompanyMerge[]  @relation("CompanyMergeSource")
+  mergesInto        CompanyMerge[]  @relation("CompanyMergeSurvivor")
+  corrections       CompanyCorrection[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@index([spaceId, ownerUserId, kind, status])
+  @@index([spaceId, ownerUserId, normalizedName])
+  @@map("company_entities")
+}
+
+model CompanyIdentity {
+  id             String        @id @default(cuid())
+  spaceId        String
+  space          Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId    String
+  owner          SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  entityId       String
+  entity         CompanyEntity @relation(fields: [entityId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  entityKind     String
+  identityType   String
+  identityValue  String
+  createdAt      DateTime      @default(now())
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, entityKind, identityType, identityValue])
+  @@index([entityId, spaceId, ownerUserId])
+  @@map("company_identities")
+}
+
+model CompanyEdge {
+  id             String        @id @default(cuid())
+  spaceId        String
+  space          Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId    String
+  owner          SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  fromId         String
+  fromEntity     CompanyEntity @relation("CompanyEdgeFrom", fields: [fromId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  toId           String
+  toEntity       CompanyEntity @relation("CompanyEdgeTo", fields: [toId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  relation       String
+  startsOn       DateTime?     @db.Date
+  startsPrecision String?
+  endsOn         DateTime?     @db.Date
+  endsPrecision  String?
+  role           String?
+  confidence     Float
+  status         String          @default("suggested")
+  visibility     String          @default("private")
+  lockedFields   String[]        @default([])
+  claimFingerprints String[]     @default([])
+  confirmedByUserId String?
+  confirmedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([id, spaceId, ownerUserId])
+  @@index([spaceId, ownerUserId, fromId])
+  @@index([spaceId, ownerUserId, toId])
+  @@map("company_edges")
+}
+
+model CompanyEvent {
+  id               String             @id @default(cuid())
+  spaceId          String
+  space            Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId      String
+  owner            SpaceMember        @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  stream           String
+  kind             String
+  title            String
+  normalizedTitle  String
+  occursOn         DateTime?          @db.Date
+  occursPrecision  String?
+  endsOn           DateTime?          @db.Date
+  endsPrecision    String?
+  amountCents      BigInt?
+  currency         String?
+  confidence       Float
+  status           String             @default("suggested")
+  visibility       String             @default("private")
+  lockedFields     String[]           @default([])
+  claimFingerprints String[]          @default([])
+  sourceClaimKeys  String[]           @default([])
+  subjectKey       String
+  confirmedByUserId String?
+  confirmedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  entityLinks      CompanyEventEntity[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@index([spaceId, ownerUserId, occursOn])
+  @@map("company_events")
+}
+
+model CompanyEventEntity {
+  id          String        @id @default(cuid())
+  spaceId     String
+  space       Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId String
+  owner       SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  eventId     String
+  event       CompanyEvent  @relation(fields: [eventId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  entityId    String
+  entity      CompanyEntity @relation(fields: [entityId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([eventId, entityId])
+  @@map("company_event_entities")
+}
+
+model CompanyEvidence {
+  id              String        @id @default(cuid())
+  spaceId         String
+  space           Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId     String
+  owner           SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  factKind        String
+  factId          String
+  stance          String        @default("supports")
+  sourceKind      String
+  connectionId    String?
+  connection      Connection?   @relation(fields: [connectionId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  mcpServerId     String?
+  mcpServer       McpServer?    @relation(fields: [mcpServerId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  dataRoomItemId  String?
+  dataRoomItem    DataRoomItem? @relation("CompanyEvidenceDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  sourceItemId    String
+  sourceKey       String
+  sourceUrl       String?
+  quote           String
+  contentHash     String
+  extractedAt     DateTime
+  extractorRunId  String?
+  extractorModel  Json?
+  confidence      Float
+  confirmedByUserId String?
+  confirmedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  createdAt       DateTime      @default(now())
+  importObservations CompanyImportEvidence[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, factKind, factId, sourceKey, contentHash])
+  @@index([spaceId, ownerUserId, sourceKind, sourceItemId])
+  @@index([factKind, factId, spaceId, ownerUserId])
+  @@map("company_evidence")
+}
+
+model CompanyCandidate {
+  id           String      @id @default(cuid())
+  spaceId      String
+  space        Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId  String
+  owner        SpaceMember @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  kind         String
+  reason       String
+  entityIds    String[]
+  proposedFact Json
+  sourceKind   String
+  connectionId String?
+  connection   Connection? @relation("CompanyCandidateConnection", fields: [connectionId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  mcpServerId  String?
+  mcpServer    McpServer?  @relation("CompanyCandidateMcpServer", fields: [mcpServerId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  dataRoomItemId String?
+  dataRoomItem DataRoomItem? @relation("CompanyCandidateDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  sourceItemId String
+  sourceKey    String
+  quote        String
+  contentHash  String
+  importRunId String?
+  importRun    CompanyImportRun? @relation(fields: [importRunId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  createdAt    DateTime    @default(now())
+  importObservations CompanyImportCandidate[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@index([spaceId, ownerUserId, createdAt])
+  @@index([spaceId, ownerUserId, importRunId])
+  @@map("company_candidates")
+}
+
+model CompanyCandidateResolution {
+  id          String      @id @default(cuid())
+  spaceId     String
+  space       Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId String
+  owner       SpaceMember @relation("CompanyCandidateResolutionOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey   String
+  reason      String
+  kind        String
+  outcome     String
+  factKind    String?
+  factId      String?
+  claimKey    String?
+  createdAt   DateTime    @default(now())
+
+  @@unique([spaceId, ownerUserId, sourceKey, reason])
+  @@index([spaceId, ownerUserId, factKind, factId])
+  @@index([spaceId, ownerUserId, claimKey])
+  @@map("company_candidate_resolutions")
+}
+
+model CompanyCorrection {
+  id          String        @id @default(cuid())
+  spaceId     String
+  space       Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId String
+  owner       SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  entityId    String
+  entity      CompanyEntity @relation(fields: [entityId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  fieldPath   String
+  value       Json
+  evidenceId  String?
+  createdAt   DateTime      @default(now())
+
+  @@unique([id, spaceId, ownerUserId])
+  @@index([spaceId, ownerUserId, entityId, fieldPath])
+  @@map("company_corrections")
+}
+
+model CompanyRejection {
+  id              String      @id @default(cuid())
+  spaceId         String
+  space           Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId     String
+  owner           SpaceMember @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  factKind        String      @default("entity")
+  entityKind      String?
+  fingerprint     String
+  identityAliases String[]
+  reason          String?
+  excludedPerson  Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, fingerprint])
+  @@index([spaceId, ownerUserId])
+  @@map("company_rejections")
+}
+
+model CompanySourceBlock {
+  id          String      @id @default(cuid())
+  spaceId     String
+  space       Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId String
+  owner       SpaceMember @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey   String
+  sourceKind  String
+  connectionId String?
+  mcpServerId String?
+  createdAt   DateTime    @default(now())
+
+  @@unique([spaceId, ownerUserId, sourceKey])
+  @@index([spaceId, ownerUserId, sourceKind])
+  @@map("company_source_blocks")
+}
+
+model CompanyMerge {
+  id               String        @id @default(cuid())
+  spaceId          String
+  space            Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId      String
+  owner            SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceEntityId   String
+  sourceEntity     CompanyEntity @relation("CompanyMergeSource", fields: [sourceEntityId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  survivorEntityId String
+  survivorEntity  CompanyEntity @relation("CompanyMergeSurvivor", fields: [survivorEntityId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, sourceEntityId])
+  @@index([spaceId, ownerUserId, survivorEntityId])
+  @@map("company_merges")
+}
+model CompanyImportRun {
+  id                    String                  @id @default(cuid())
+  spaceId               String
+  space                 Space                   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId           String
+  owner                 SpaceMember             @relation("CompanyImportRunOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  status                String                  @default("draft")
+  mode                  String                  @default("full")
+  tokenCap              BigInt
+  reservedTokens        BigInt                  @default(0)
+  inputTokensUsed       BigInt                  @default(0)
+  outputTokensUsed      BigInt                  @default(0)
+  disclosureVersion     String
+  createdAt             DateTime                @default(now())
+  startedAt             DateTime?
+  completedAt           DateTime?
+  notificationStates    String[]                @default([])
+  notificationPendingStates String[]             @default([])
+  updatedAt             DateTime                @updatedAt
+  sources               CompanyImportSource[]
+  units                 CompanyImportUnit[]
+  calls                 CompanyImportCall[]
+  candidates            CompanyCandidate[]
+  evidenceObservations  CompanyImportEvidence[]
+  candidateObservations CompanyImportCandidate[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@index([spaceId, ownerUserId, createdAt])
+  @@index([status, updatedAt])
+  @@map("company_import_runs")
+}
+
+model CompanyImportEvidence {
+  id         String           @id @default(cuid())
+  runId      String
+  run        CompanyImportRun @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  evidenceId String
+  evidence   CompanyEvidence  @relation(fields: [evidenceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId    String
+  ownerUserId String
+  createdAt  DateTime         @default(now())
+
+  @@unique([runId, evidenceId])
+  @@index([spaceId, ownerUserId, evidenceId])
+  @@map("company_import_evidence")
+}
+
+model CompanyImportCandidate {
+  id          String           @id @default(cuid())
+  runId       String
+  run         CompanyImportRun @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  candidateId String
+  candidate   CompanyCandidate @relation(fields: [candidateId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId     String
+  ownerUserId String
+  createdAt   DateTime         @default(now())
+
+  @@unique([runId, candidateId])
+  @@index([spaceId, ownerUserId, candidateId])
+  @@map("company_import_candidates")
+}
+
+model CompanyImportSource {
+  id                  String             @id @default(cuid())
+  runId               String
+  run                 CompanyImportRun   @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId             String
+  space               Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId         String
+  owner               SpaceMember        @relation("CompanyImportSourceOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey           String
+  sourceKind          String
+  connectionId        String?
+  mcpServerId         String?
+  scope               Json               @default("{}")
+  plan                Json               @default("{}")
+  cursor              Json?
+  baseCheckpoint     Json?
+  proposedCheckpoint Json?
+  baseCheckpointGeneration Int?
+  refreshSourceId    String?
+  refreshSource      CompanyRefreshSource? @relation(fields: [refreshSourceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  sampled            Boolean            @default(false)
+  status              String             @default("waiting")
+  concurrency         Int                @default(1)
+  tokensReserved      BigInt             @default(0)
+  inputTokensUsed     BigInt             @default(0)
+  outputTokensUsed    BigInt             @default(0)
+  backoffUntil        DateTime?
+  lastError           String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  units               CompanyImportUnit[]
+  calls               CompanyImportCall[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([runId, sourceKey])
+  @@index([spaceId, ownerUserId, runId, status])
+  @@index([mcpServerId])
+  @@map("company_import_sources")
+}
+
+model CompanyRefreshSource {
+  id                  String        @id @default(cuid())
+  spaceId             String
+  space               Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId         String
+  owner               SpaceMember   @relation("CompanyRefreshSourceOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey           String
+  sourceKind          String
+  connectionId        String?
+  mcpServerId         String?
+  scope               Json          @default("{}")
+  tokenCap            BigInt
+  capability          String        @default("pending")
+  status              String        @default("needs_baseline")
+  reason              String?
+  committedCheckpoint Json?
+  checkpointGeneration Int          @default(0)
+  lastSuccessAt       DateTime?
+  nextRunAt           DateTime?
+  timezone            String        @default("UTC")
+  activeRunId         String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  importSources       CompanyImportSource[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, sourceKey])
+  @@index([spaceId, ownerUserId, nextRunAt])
+  @@index([activeRunId])
+  @@map("company_refresh_sources")
+}
+
+model CompanyImportUnit {
+  id                String             @id @default(cuid())
+  runId             String
+  run               CompanyImportRun   @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  sourceId          String
+  source            CompanyImportSource @relation(fields: [sourceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId           String
+  space             Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId       String
+  owner             SpaceMember        @relation("CompanyImportUnitOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  unitKey           String
+  cursor            Json?
+  status            String             @default("waiting")
+  attempts          Int                @default(0)
+  claimToken        String?
+  claimExpiresAt    DateTime?
+  availableAt       DateTime            @default(now())
+  itemsDiscovered   Int                 @default(0)
+  itemsRead         Int                 @default(0)
+  factsFound        Int                 @default(0)
+  tokensReserved    BigInt              @default(0)
+  inputTokensUsed   BigInt              @default(0)
+  outputTokensUsed  BigInt              @default(0)
+  lastError         String?
+  completedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  calls             CompanyImportCall[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([sourceId, unitKey])
+  @@index([spaceId, ownerUserId, runId, status, availableAt])
+  @@index([sourceId, status, claimExpiresAt, availableAt])
+  @@map("company_import_units")
+}
+
+model CompanyImportCall {
+  id               String             @id @default(cuid())
+  runId            String
+  run               CompanyImportRun   @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  sourceId         String
+  source            CompanyImportSource @relation(fields: [sourceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  unitId           String
+  unit              CompanyImportUnit  @relation(fields: [unitId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId          String
+  space            Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId      String
+  owner            SpaceMember        @relation("CompanyImportCallOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  reservationId    String             @unique
+  claimToken       String
+  reservedInput    BigInt
+  reservedOutput   BigInt
+  recipientKey     String
+  disclosureVersion String
+  actualInput      Int?
+  actualOutput     Int?
+  status           String             @default("reserved")
+  provider         String?
+  model            String?
+  callId           String?
+  createdAt        DateTime           @default(now())
+  settledAt        DateTime?
+
+  @@index([spaceId, ownerUserId, runId, status])
+  @@map("company_import_calls")
 }

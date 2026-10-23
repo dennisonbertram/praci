@@ -14,6 +14,7 @@ import type {
 import type {
   CloudAgentConnection,
   CodexLiveCatalog,
+  CompanyImportEngine,
   ComposioProvider,
   ConnectorRegistry,
   DevinCallTool,
@@ -36,6 +37,7 @@ import type { Actor } from "@rakazo/contracts";
 import { appContract } from "@rakazo/contracts";
 import type { BoardEvents, NotificationEvents, PrismaClient, ThreadEvents } from "@rakazo/db";
 import type { BillingService } from "../billing.js";
+import type { CompanyImportPage } from "../company-import-page.js";
 import type { createDataRoomService } from "../data-room.js";
 import type { FinanceCryptoDeps } from "../finance.js";
 import type { ParseStatement } from "../finance-statements.js";
@@ -53,6 +55,8 @@ export interface RouterDeps {
   events: ThreadEvents;
   boardEvents: BoardEvents;
   notificationEvents: NotificationEvents;
+  companyImport: CompanyImportEngine;
+  companyImportPage?: CompanyImportPage;
   ticketChanges: TicketChangeNotifier;
   auth: Auth;
   jobs: JobPublisher;

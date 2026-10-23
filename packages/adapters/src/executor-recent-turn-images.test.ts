@@ -80,7 +80,30 @@ async function runWithModel(
           onModelChange?: (provider: string, modelId: string) => Promise<void>;
         }
       ).onModelChange;
-      await onModelChange?.(switchModel.provider, switchModel.modelId);
+      // The real runtime resolves the backup first, then reports the switch.
+      prisma.spaceModelPreference.findFirst.mockResolvedValueOnce({
+        modelId: switchModel.modelId,
+        isDefault: false,
+        thinkingLevel: null,
+        credential: {
+          id: "backup-credential",
+          userId: "user-1",
+          provider: switchModel.provider,
+          label: "Backup",
+          secretId: "backup-secret",
+          createdAt: new Date(0),
+          updatedAt: new Date(0),
+        },
+      });
+      prisma.secret.findFirst.mockResolvedValueOnce({ id: "backup-secret", ciphertext: "sealed" });
+      // An unresolvable backup is skipped, as the real runtime does.
+      const resolved = await next
+        .resolveFallbackModel?.(switchModel.provider, switchModel.modelId)
+        .then(
+          () => true,
+          () => false,
+        );
+      if (resolved !== false) await onModelChange?.(switchModel.provider, switchModel.modelId);
     }
     yield { type: "done" as const, text: "Done" };
   });
@@ -140,7 +163,11 @@ async function runWithModel(
         async () => null,
       ),
     },
-    secret: { findFirst: vi.fn(async () => null) },
+    secret: {
+      findFirst: vi.fn<(...args: unknown[]) => Promise<Record<string, unknown> | null>>(
+        async () => null,
+      ),
+    },
     // A connected provider, so a backup passes the chat-consent gate's credential lookup. Its
     // secret row is absent, which keeps the deployment key and the missing-secret case intact.
     userModelCredential: {
@@ -213,6 +240,7 @@ async function runWithModel(
     events: { append: vi.fn(async () => undefined), finalizeRun },
     jobs: { enqueue: vi.fn(async () => undefined) },
     secrets: [],
+    secretStore: { load: async () => "fake-backup-key" },
   } as unknown as Parameters<typeof createRunExecutor>[0]);
 
   await executor.continueRun(run.id, "worker-1");

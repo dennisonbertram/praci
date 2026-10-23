@@ -476,6 +476,11 @@ describe("mutating tool effect idempotency keys", () => {
           "read_agent_history",
           "search_data_room",
           "read_data_room_item",
+          // Company read tools go to every agent under the data-room gate (docs/plans/import-company.md).
+          "company_search",
+          "company_get",
+          "timeline_query",
+          "calendar_query",
           "board_tickets",
           "ticket_get",
           "message_bot",

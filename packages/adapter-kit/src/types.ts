@@ -1,4 +1,8 @@
 import type {
+  CompanyEdgeImportInput,
+  CompanyEntityImportInput,
+  CompanyEventImportInput,
+  CompanyExtraction,
   CacheCapabilities as ConnectionCacheCapabilities,
   ConnectionCatalogItem,
   InboxCategory,
@@ -40,6 +44,8 @@ export interface AdapterContext {
   onRetry?: (retry: { reason: "rate_limited" | "retry"; attempt: number }) => void;
   /** Called as tool discovery connects to a server, with the name a person knows it by. */
   onConnecting?: (service: string) => void;
+  /** Preserve provider metadata for the server-owned Company read boundary only. */
+  companyImportReadOnly?: boolean;
 }
 
 export interface ConnectedConnector {
@@ -260,6 +266,8 @@ export interface ConnectorTool {
   inputSchema: Record<string, unknown>;
   /** Declared effect. `false` forces approval; `true` never relaxes the name-based gate. */
   readOnly?: boolean;
+  /** Provider-reported display-only pricing metadata. */
+  reportedCost?: { description: string; discount?: string };
   /** In-process routing metadata. It is never exposed to the model. */
   route?: ConnectorRoute;
 }
@@ -277,6 +285,8 @@ export interface ConnectorRoute {
   endpoint?: string;
   /** The MCP server's display name, shown on approval cards. */
   serverName?: string;
+  /** Fingerprint of live MCP metadata authorized by a server-side capability boundary. */
+  authorizationFingerprint?: string;
   /** Read or write as classified at discovery, for an integration agent's tools. The executor asked for approval on that basis, so execute() refuses a tool that has since become a write. */
   discoveredReadOnly?: boolean;
 }
@@ -287,6 +297,8 @@ export interface ConnectorCall {
   connectionId?: string;
   executionId: string;
   route?: ConnectorRoute;
+  /** Server-only authorization for a freshly offered tool with no read-only annotation. */
+  authorizeUnannotatedRead?: (tool: ConnectorTool) => boolean;
   /**
    * Re-reads the durable state that authorizes this call (writes switch, agent link, exclusivity)
    * and returns a message to refuse with, or null. A connector with provider setup (sessions,
@@ -507,6 +519,10 @@ export interface AgentRunRequest {
   }>;
   currentTurnImages?: AgentInputImage[];
   tools: ConnectorTool[];
+  /** Optional child-tool boundary for identities with restricted helper access. */
+  subagentToolNames?: ReadonlySet<string>;
+  /** False prevents helpers from requesting a different model recipient. */
+  subagentModelSelectionAllowed?: boolean;
   model: AgentRunModel;
   /** Ordered, user-selected models eligible after provider unavailability. */
   fallbackModels?: Array<Pick<AgentRunModel, "provider" | "id">>;
@@ -583,7 +599,8 @@ export type UsageOperationKind =
   | "retrieval"
   | "subagent"
   | "compaction"
-  | "triage";
+  | "triage"
+  | "company_import";
 
 export interface ModelCallObserver {
   beforeCall(call: {
@@ -768,6 +785,10 @@ export interface BackgroundJobPayloads {
   "mail.watch.renew": Record<string, never>;
   /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
   "devin.refresh": { serverId?: string };
+  "company.import.run": { spaceId: string; userId: string; runId: string };
+  "company.import.unit": { spaceId: string; userId: string; runId: string; unitId: string };
+  "company.import.recover": Record<string, never>;
+  "company.refresh.tick": Record<string, never>;
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   /** Names exactly one source: a Connection or an MCP server. */
   "meetings.sync": {
@@ -885,6 +906,138 @@ export type BackgroundJob = {
 export type BackgroundJobHandlers = {
   [Name in BackgroundJobName]: (payload: BackgroundJobPayloads[Name]) => Promise<void>;
 };
+
+export interface CompanyImportSourceDescriptor {
+  id: string;
+  sourceKind: string;
+  connectionId: string | null;
+  mcpServerId?: string | null;
+  scope: Record<string, unknown>;
+}
+
+export interface CompanyImportDiscoveredUnit {
+  unitKey: string;
+  cursor: unknown;
+}
+
+export type CompanyImportCheckpointValue =
+  | string
+  | number
+  | boolean
+  | null
+  | CompanyImportCheckpointValue[]
+  | { [key: string]: CompanyImportCheckpointValue };
+
+export type CompanyImportCheckpoint = Exclude<CompanyImportCheckpointValue, null>;
+
+export interface CompanyImportDiscoveryPage {
+  units: CompanyImportDiscoveredUnit[];
+  nextCursor: unknown | null;
+  done: boolean;
+  proposedCheckpoint?: CompanyImportCheckpoint;
+  cooldownMs?: number;
+}
+
+export type CompanyImportRefreshCapability =
+  | { kind: "supported"; checkpointKind: "gmail_history" | "data_room_updated_at" }
+  | { kind: "pending"; reason: string }
+  | { kind: "manual_only"; reason: string };
+
+export interface CompanyImportRefreshBegin {
+  baselineCheckpoint?: CompanyImportCheckpoint | null;
+  runCutoff?: CompanyImportCheckpoint | null;
+}
+
+export interface CompanyImportReadItem {
+  sourceItemId: string;
+  contentHash: string;
+  content: string;
+}
+
+export type CompanyImportFact =
+  | { kind: "entity"; input: CompanyEntityImportInput }
+  | { kind: "edge"; input: CompanyEdgeImportInput }
+  | { kind: "event"; input: CompanyEventImportInput };
+
+export interface CompanyImportReadPage {
+  items: CompanyImportReadItem[];
+  facts: CompanyImportFact[];
+  extractions?: Array<{
+    sourceItemId: string;
+    contentHash: string;
+    sourceUrl?: string | null;
+    extraction: CompanyExtraction;
+    model: { provider: string; model: string };
+  }>;
+  reusedEvidenceIds?: string[];
+  nextCursor: unknown | null;
+  done: boolean;
+  cooldownMs?: number;
+}
+
+/** Owner-authorized reads only; callers cannot supply or override connector routes. */
+export interface CompanyConnectionReader {
+  listTools(
+    source: CompanyImportSourceDescriptor,
+    context: AdapterContext,
+  ): Promise<ConnectorTool[]>;
+  callTool(
+    source: CompanyImportSourceDescriptor,
+    name: string,
+    args: Record<string, unknown>,
+    context: AdapterContext,
+  ): Promise<unknown>;
+}
+
+export interface CompanyImportModelCallResult<T> {
+  value: T;
+  provider: string;
+  model: string;
+  callId: string;
+  usage: AgentUsage;
+}
+
+export interface CompanyImportWorkerContext {
+  actor: { spaceId: string; userId: string };
+  signal: AbortSignal;
+  executeModelCall<T>(input: {
+    inputTokenBound: number;
+    maxOutputTokens: number;
+    invoke: (model: AgentRunModel, signal: AbortSignal) => Promise<CompanyImportModelCallResult<T>>;
+  }): Promise<CompanyImportModelCallResult<T>>;
+}
+
+/** Provider-neutral, bounded source access. Implementations must never widen a supplied scope. */
+export interface CompanyImportWorker {
+  refreshCapability?(source: CompanyImportSourceDescriptor): CompanyImportRefreshCapability;
+  beginRefresh?(
+    input: {
+      source: CompanyImportSourceDescriptor;
+      mode: "full" | "refresh";
+      checkpoint: unknown | null;
+    },
+    context: CompanyImportWorkerContext,
+  ): Promise<CompanyImportRefreshBegin>;
+  discover(
+    input: {
+      source: CompanyImportSourceDescriptor;
+      cursor: unknown | null;
+      maxUnits: number;
+      refresh?: { checkpoint: unknown; runCutoff?: unknown | null };
+    },
+    context: CompanyImportWorkerContext,
+  ): Promise<CompanyImportDiscoveryPage>;
+  read(
+    input: {
+      source: CompanyImportSourceDescriptor;
+      unitKey: string;
+      cursor: unknown | null;
+      maxBytes: number;
+      maxItems?: number;
+    },
+    context: CompanyImportWorkerContext,
+  ): Promise<CompanyImportReadPage>;
+}
 
 export interface SecretRecord {
   id: string;
@@ -1121,6 +1274,8 @@ export interface MailAddress {
 export interface MailListRequest {
   /** Provider search syntax, passed through. Every adapter today speaks Gmail syntax. */
   query: string;
+  /** Native provider label ids, intersected with the query. */
+  labelIds?: string[];
   /** Inclusive lower bound, YYYY-MM-DD. Translated by the provider. */
   after?: string;
   /** Exclusive upper bound, YYYY-MM-DD. Translated by the provider. */

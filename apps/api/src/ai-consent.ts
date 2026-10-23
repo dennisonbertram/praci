@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import {
   aiRecipient,
+  COMPANY_IMPORT_CONSENT_KEY_PREFIX,
   cloudAgentsEnabled,
   inboxClassifierSelected,
   parseModelSecret,
@@ -21,6 +22,25 @@ import {
 } from "@rakazo/db";
 import type { RouterDeps } from "./router.js";
 import { resolveThreadTarget } from "./thread-target.js";
+
+/** Taking a model back also takes back the document and Company import grants given on top of it. */
+export async function revokeAiConsent(prisma: PrismaClient, actor: Actor, key?: string | null) {
+  await prisma.aiDataConsent.deleteMany({
+    where: {
+      userId: actor.userId,
+      spaceId: actor.spaceId,
+      ...(key
+        ? {
+            OR: [
+              { recipientKey: key },
+              { recipientKey: { startsWith: "data-room:" } },
+              { recipientKey: { startsWith: COMPANY_IMPORT_CONSENT_KEY_PREFIX } },
+            ],
+          }
+        : {}),
+    },
+  });
+}
 
 export async function aiConsentStatus(
   deps: RouterDeps,

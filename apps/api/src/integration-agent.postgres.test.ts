@@ -22,7 +22,16 @@ import {
   ZERNIO_READ_TOOLS,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb, createRepos, createThreadEvents } from "@rakazo/db";
+import {
+  claimCompanyImportUnit,
+  companyForActor,
+  completeCompanyImportUnit,
+  createCompanyImportRun,
+  createDb,
+  createRepos,
+  createThreadEvents,
+  startCompanyImportRun,
+} from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { isIntegrationAgentWrite } from "../../../packages/adapters/src/approval-ask.js";
 import { isApprovalPausedResult } from "../../../packages/adapters/src/approval-effect.js";
@@ -1434,7 +1443,110 @@ describePostgres("integration agents (PostgreSQL)", () => {
         const created = await devinClient(async () => []).mcp.servers.create(
           other(`gen-rm-${suffix}`),
         );
+        const otherServer = await mkServer(
+          userA,
+          `gen-rm-other-${suffix}`,
+          "https://mcp.example.test/mcp",
+        );
+        const startImport = async (mcpServerId: string) => {
+          const run = await createCompanyImportRun(prisma, a, {
+            tokenCap: 100,
+            sources: [{ sourceKind: "mcp", mcpServerId, scope: {} }],
+          });
+          await startCompanyImportRun(prisma, a, run.id);
+          const unit = await prisma.companyImportUnit.findFirstOrThrow({
+            where: { spaceId, ownerUserId: userA, runId: run.id },
+          });
+          const claim = await claimCompanyImportUnit(prisma, a, {
+            runId: run.id,
+            unitId: unit.id,
+          });
+          if (!claim) throw new Error("Expected a claimed Company import unit");
+          return { run, unit, claim };
+        };
+        const removed = await startImport(created.id);
+        const unaffected = await startImport(otherServer.id);
+        const imported = await companyForActor(prisma, a).importEntity({
+          entity: {
+            kind: "organisation",
+            displayName: `Removed MCP organization ${suffix}`,
+            attrs: {},
+            confidence: 0.9,
+          },
+          evidence: {
+            stance: "supports",
+            sourceKind: "mcp",
+            mcpServerId: created.id,
+            sourceItemId: `removed-mcp-item-${suffix}`,
+            quote: "Synthetic evidence from the removed MCP server.",
+            contentHash: `removed-mcp-hash-${suffix}`,
+            extractedAt: new Date().toISOString(),
+            extractorModel: null,
+            confidence: 0.9,
+          },
+        });
+        if ("suppressed" in imported || "deferred" in imported)
+          throw new Error("Expected imported Company evidence");
+        expect(
+          await prisma.companyEvidence.count({
+            where: { spaceId, ownerUserId: userA, mcpServerId: created.id, factId: imported.id },
+          }),
+        ).toBe(1);
+
         await editorClient().mcp.servers.remove({ id: created.id });
+        expect(
+          await prisma.companyImportRun.findFirstOrThrow({
+            where: { id: removed.run.id, spaceId, ownerUserId: userA },
+            select: { status: true },
+          }),
+        ).toEqual({ status: "cancelled" });
+        expect(
+          await prisma.companyImportUnit.findFirstOrThrow({
+            where: { id: removed.unit.id, spaceId, ownerUserId: userA },
+            select: { status: true, claimToken: true },
+          }),
+        ).toEqual({ status: "cancelled", claimToken: null });
+        await expect(
+          completeCompanyImportUnit(prisma, a, {
+            runId: removed.run.id,
+            sourceId: removed.claim.sourceId,
+            unitId: removed.claim.id,
+            claimToken: removed.claim.claimToken,
+            nextCursor: null,
+            done: true,
+            itemsDiscovered: 0,
+            itemsRead: 0,
+            facts: [],
+          }),
+        ).rejects.toMatchObject({ code: "stale_claim" });
+        expect(
+          await prisma.companyEvidence.count({
+            where: { spaceId, ownerUserId: userA, factId: imported.id },
+          }),
+        ).toBe(0);
+        expect(
+          await prisma.companyImportRun.findFirstOrThrow({
+            where: { id: unaffected.run.id, spaceId, ownerUserId: userA },
+            select: { status: true },
+          }),
+        ).toEqual({ status: "running" });
+        expect(
+          await prisma.companyImportUnit.findFirstOrThrow({
+            where: { id: unaffected.unit.id, spaceId, ownerUserId: userA },
+            select: { status: true, claimToken: true },
+          }),
+        ).toEqual({ status: "claimed", claimToken: unaffected.claim.claimToken });
+        await completeCompanyImportUnit(prisma, a, {
+          runId: unaffected.run.id,
+          sourceId: unaffected.claim.sourceId,
+          unitId: unaffected.claim.id,
+          claimToken: unaffected.claim.claimToken,
+          nextCursor: null,
+          done: true,
+          itemsDiscovered: 0,
+          itemsRead: 0,
+          facts: [],
+        });
         const bot = await prisma.bot.findUniqueOrThrow({ where: { id: created.agentBotId! } });
         expect(bot.archivedAt).not.toBeNull();
       });

@@ -35,6 +35,7 @@ import { useInboxRenderItem } from "../components/inbox-render-item";
 import { BotRow, FALLBACK_COLOR, GroupRow } from "../components/inbox-rows";
 import { createHomeStyles } from "../components/inbox-styles";
 import { NativeSymbol } from "../components/native-symbol";
+import { SettingsRow } from "../components/settings-group";
 import {
   activityStatusLabel,
   fetchSpaceActivity,
@@ -58,6 +59,7 @@ import {
   selectSpace,
 } from "../lib/api";
 import { mobileTokens, resolveMobileAppearance } from "../lib/appearance";
+import { mobileCompanyAvailable } from "../lib/company";
 import { t, useI18n } from "../lib/i18n";
 import { filterBots, userInitials } from "../lib/inbox";
 import { retainInboxValue } from "../lib/inbox-retention";
@@ -834,6 +836,13 @@ function Home() {
 
             {!searching && !query.trim() ? (
               <MailInboxRow onPress={() => router.push("/inbox")} />
+            ) : null}
+            {!searching && !query.trim() && mobileCompanyAvailable() ? (
+              <SettingsRow
+                title={t("Company")}
+                onPress={() => router.push("/company")}
+                chevron="right"
+              />
             ) : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {spaceRecoveryId ? (

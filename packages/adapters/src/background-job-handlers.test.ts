@@ -36,6 +36,34 @@ vi.mock("./messaging-delivery.js", () => ({
 }));
 
 describe("createBackgroundJobHandlers", () => {
+  it("exposes durable company import jobs and fails closed without the engine", async () => {
+    const base = {
+      executor: {} as unknown as ReturnType<typeof createRunExecutor>,
+      prisma: {} as unknown as PrismaClient,
+      sandbox: {} as unknown as SandboxProvider,
+      home: {} as unknown as AgentHomeStore,
+      jobs: {} as unknown as JobPublisher,
+      events: {} as unknown as ThreadEvents,
+      workerId: "worker-1",
+      runtime: {} as unknown as AgentRuntime,
+      secretStore: {} as unknown as EncryptedSecretStore,
+      memoryProviders: { resolve: vi.fn(async () => null) },
+    };
+    const handlers = createBackgroundJobHandlers(base);
+    await expect(
+      handlers["company.import.run"]({ spaceId: "space-1", userId: "user-1", runId: "run-1" }),
+    ).rejects.toThrow("not configured");
+    await expect(
+      handlers["company.import.unit"]({
+        spaceId: "space-1",
+        userId: "user-1",
+        runId: "run-1",
+        unitId: "unit-1",
+      }),
+    ).rejects.toThrow("not configured");
+    await expect(handlers["company.import.recover"]({})).rejects.toThrow("not configured");
+  });
+
   it("runs the finance sync for the user and space in the job, and refuses without a tool caller", async () => {
     const base = {
       executor: {} as unknown as ReturnType<typeof createRunExecutor>,

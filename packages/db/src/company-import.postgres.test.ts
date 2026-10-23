@@ -1,0 +1,1633 @@
+import type { AgentUsage } from "@rakazo/adapter-kit";
+import type { Actor } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { PrismaClient } from "./client.js";
+import { createDb } from "./client.js";
+import { companyForActor } from "./company.js";
+import {
+  awaitCompanyImportConsent,
+  CompanyImportError,
+  claimCompanyImportUnit,
+  companyImportSourceKey,
+  completeCompanyImportUnit,
+  createCompanyImportRun,
+  createCompanyRefreshRun,
+  failCompanyImportUnit,
+  getCompanyImportProgress,
+  grantCompanyImportConsent,
+  markCompanyRefreshUnavailable,
+  persistCompanyImportBaseline,
+  persistCompanyImportProposedCheckpoint,
+  releaseCompanyImportCall,
+  reserveCompanyImportCall,
+  settleCompanyImportCall,
+  startCompanyImportRun,
+  updateCompanyImportRun,
+  upsertCompanyRefreshSource,
+} from "./company-import.js";
+import { createNotification } from "./notifications.js";
+
+const databaseUrl = process.env.DATABASE_URL;
+const describePostgres =
+  process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
+
+describePostgres("company import engine persistence (PostgreSQL)", () => {
+  const suffix = `${process.pid}-${Date.now()}`;
+  const organizationId = `company-import-org-${suffix}`;
+  const spaceId = `company-import-space-${suffix}`;
+  const otherSpaceId = `company-import-other-space-${suffix}`;
+  const userId = `company-import-user-${suffix}`;
+  const otherUserId = `company-import-other-user-${suffix}`;
+  const actor: Actor = {
+    spaceId,
+    userId,
+    email: "owner@example.test",
+    isDeploymentOwner: true,
+  };
+  const otherActor: Actor = {
+    spaceId,
+    userId: otherUserId,
+    email: "other@example.test",
+    isDeploymentOwner: false,
+  };
+  let prisma: PrismaClient;
+  let close: () => Promise<void>;
+  let slackConnectionId: string;
+
+  beforeAll(async () => {
+    const db = createDb(databaseUrl!);
+    prisma = db.prisma;
+    close = async () => {
+      await prisma.$disconnect();
+      await db.pool.end();
+    };
+    await prisma.user.createMany({
+      data: [
+        { id: userId, name: userId, email: `${userId}@example.test` },
+        { id: otherUserId, name: otherUserId, email: `${otherUserId}@example.test` },
+      ],
+    });
+    await prisma.organization.create({
+      data: {
+        id: organizationId,
+        name: "Company import test org",
+        slug: organizationId,
+        createdAt: new Date(),
+      },
+    });
+    await prisma.space.createMany({
+      data: [
+        { id: spaceId, organizationId, name: "Company import test space" },
+        { id: otherSpaceId, organizationId, name: "Company import other space" },
+      ],
+    });
+    await prisma.member.createMany({
+      data: [
+        {
+          id: `company-import-member-a-${suffix}`,
+          organizationId,
+          userId,
+          role: "owner",
+          createdAt: new Date(),
+        },
+        {
+          id: `company-import-member-b-${suffix}`,
+          organizationId,
+          userId: otherUserId,
+          role: "member",
+          createdAt: new Date(),
+        },
+      ],
+    });
+    await prisma.spaceMember.createMany({
+      data: [
+        {
+          id: `company-import-space-member-a-${suffix}`,
+          spaceId,
+          organizationId,
+          userId,
+          role: "owner",
+          createdAt: new Date(),
+        },
+        {
+          id: `company-import-space-member-b-${suffix}`,
+          spaceId,
+          organizationId,
+          userId: otherUserId,
+          role: "member",
+          createdAt: new Date(),
+        },
+      ],
+    });
+    slackConnectionId = (
+      await prisma.connection.create({
+        data: {
+          spaceId,
+          userId,
+          connectorId: "synthetic",
+          provider: "slack",
+          displayName: "Synthetic Slack",
+          status: "connected",
+          providerRef: "synthetic-slack",
+          allAgents: true,
+          privateByDefault: false,
+        },
+      })
+    ).id;
+  });
+
+  afterAll(async () => {
+    if (!prisma) return;
+    await prisma.organization.deleteMany({ where: { id: organizationId } });
+    await prisma.user.deleteMany({ where: { id: { in: [userId, otherUserId] } } });
+    await close();
+  });
+
+  async function runWithSources(
+    tokenCap: number,
+    count = 1,
+    sourceKind: "data_room" | "slack" = "data_room",
+    mode: "full" | "sample" = "full",
+  ) {
+    const run = await createCompanyImportRun(prisma, actor, {
+      tokenCap,
+      mode,
+      sources: Array.from({ length: count }, (_, index) => ({
+        sourceKind,
+        ...(sourceKind === "slack" ? { connectionId: slackConnectionId } : {}),
+        scope: { index },
+      })),
+    });
+    await startCompanyImportRun(prisma, actor, run.id);
+    const units = await prisma.companyImportUnit.findMany({
+      where: { spaceId, ownerUserId: userId, runId: run.id },
+      orderBy: { createdAt: "asc" },
+    });
+    const claims = await Promise.all(
+      units.map((unit) =>
+        claimCompanyImportUnit(prisma, actor, { runId: run.id, unitId: unit.id }),
+      ),
+    );
+    return {
+      runId: run.id,
+      claims: claims.filter((claim): claim is NonNullable<typeof claim> => claim !== null),
+    };
+  }
+
+  it("bounds internal cursors separately from owner source scope", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const cursor = { value: "x".repeat(20_000) };
+    const oversizedCursor = { value: "x".repeat(COMPANY_IMPORT_CURSOR_MAX_BYTES) };
+    const completion = {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 0,
+      facts: [],
+    };
+
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        ...completion,
+        nextCursor: oversizedCursor,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        ...completion,
+        nextCursor: null,
+        nextSourceCursor: oversizedCursor,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        ...completion,
+        nextCursor: null,
+        discoveredUnits: [{ unitKey: "read:oversized", cursor: oversizedCursor }],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+
+    await completeCompanyImportUnit(prisma, actor, {
+      ...completion,
+      nextCursor: null,
+      discoveredUnits: [{ unitKey: "read:large", cursor }],
+    });
+    const stored = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId, spaceId, ownerUserId: userId, unitKey: "read:large" },
+      select: { cursor: true },
+    });
+    expect(stored.cursor).toEqual(cursor);
+
+    await expect(
+      createCompanyImportRun(prisma, actor, {
+        tokenCap: 100,
+        sources: [{ sourceKind: "data_room", scope: { value: "x".repeat(16_384) } }],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+  });
+
+  it("reclaims expired claims with a new fence and rejects stale completion", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const first = claims[0]!;
+    await prisma.companyImportUnit.update({
+      where: { id: first.id },
+      data: { claimExpiresAt: new Date(Date.now() - 1_000) },
+    });
+    const reclaimed = await claimCompanyImportUnit(prisma, actor, {
+      runId,
+      unitId: first.id,
+    });
+    expect(reclaimed).not.toBeNull();
+    expect(reclaimed!.claimToken).not.toBe(first.claimToken);
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        runId,
+        sourceId: first.sourceId,
+        unitId: first.id,
+        claimToken: first.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 0,
+        itemsRead: 0,
+        facts: [],
+      }),
+    ).rejects.toMatchObject({ code: "stale_claim" });
+    await updateCompanyImportRun(prisma, actor, { runId, action: "cancel" });
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        runId,
+        sourceId: first.sourceId,
+        unitId: first.id,
+        claimToken: reclaimed!.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 0,
+        itemsRead: 0,
+        facts: [],
+      }),
+    ).rejects.toMatchObject({ code: "stale_claim" });
+    await expect(
+      updateCompanyImportRun(prisma, actor, { runId, action: "cancel" }),
+    ).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("cancelled");
+  });
+
+  it("rejects duplicate source input rather than relying on a database conflict", async () => {
+    await expect(
+      createCompanyImportRun(prisma, actor, {
+        tokenCap: 100,
+        sources: [
+          { sourceKind: "data_room", scope: { folderId: "same" } },
+          { sourceKind: "data_room", scope: { folderId: "same" } },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+  });
+
+  it("serializes refresh dispatch and commits only the completed source checkpoint", async () => {
+    const created = await createCompanyImportRun(prisma, actor, {
+      tokenCap: 150,
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: { allTime: true } }],
+    });
+    const importSource = await prisma.companyImportSource.findFirstOrThrow({
+      where: { runId: created.id, spaceId, ownerUserId: userId },
+    });
+    const refreshSource = await upsertCompanyRefreshSource(prisma, actor, {
+      runId: created.id,
+      sourceId: importSource.id,
+      source: {
+        sourceKind: "slack",
+        connectionId: slackConnectionId,
+        scope: { allTime: true },
+      },
+      tokenCap: 150,
+      capability: "supported",
+    });
+    const oldCheckpoint = { kind: "gmail_history", cursor: "old" };
+    await prisma.companyRefreshSource.update({
+      where: { id: refreshSource.id },
+      data: {
+        committedCheckpoint: oldCheckpoint,
+        status: "ready",
+        timezone: "UTC",
+      },
+    });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { timezone: "America/Los_Angeles" },
+    });
+
+    const company = companyForActor(prisma, actor);
+    const rejected = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Refresh Rejected Person",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: {
+        stance: "supports",
+        sourceKind: "slack",
+        connectionId: slackConnectionId,
+        sourceItemId: "refresh-rejected-item",
+        quote: "The owner rejected this synthetic fact.",
+        contentHash: "refresh-rejected-old",
+        extractedAt: "2026-01-02T03:04:05.000Z",
+        extractorModel: null,
+        confidence: 0.9,
+      },
+    });
+    if ("suppressed" in rejected || "deferred" in rejected)
+      throw new Error("Expected the baseline fact to persist");
+    await company.reject(rejected.id, "Owner rejection should survive refresh");
+
+    const [first, duplicate] = await Promise.all([
+      createCompanyRefreshRun(prisma, actor, refreshSource.id),
+      createCompanyRefreshRun(prisma, actor, refreshSource.id),
+    ]);
+    if (!first || !duplicate) throw new Error("Expected a refresh run");
+    expect(first.id).toBe(duplicate.id);
+    await expect(
+      createCompanyRefreshRun(prisma, otherActor, refreshSource.id),
+    ).rejects.toMatchObject({
+      code: "not_found",
+    });
+    const [runs, unit] = await Promise.all([
+      prisma.companyImportRun.count({
+        where: { spaceId, ownerUserId: userId, mode: "refresh", status: "running" },
+      }),
+      prisma.companyImportUnit.findFirstOrThrow({
+        where: { runId: first.id, spaceId, ownerUserId: userId },
+      }),
+    ]);
+    expect(runs).toBe(1);
+    let claim = await claimCompanyImportUnit(prisma, actor, {
+      runId: first.id,
+      unitId: unit.id,
+    });
+    expect(claim).not.toBeNull();
+    const claimInput = {
+      runId: first.id,
+      sourceId: claim!.sourceId,
+      unitId: unit.id,
+      claimToken: claim!.claimToken,
+    };
+    expect(await awaitCompanyImportConsent(prisma, actor, claimInput)).toBe(true);
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { status: true, activeRunId: true },
+      }),
+    ).toMatchObject({ status: "awaiting_consent", activeRunId: first.id });
+    const recipientKey = `company-refresh-consent-${suffix}`;
+    expect(
+      await grantCompanyImportConsent(prisma, actor, {
+        runId: first.id,
+        sourceId: claimInput.sourceId,
+        recipientKey,
+        version: AI_DISCLOSURE_VERSION,
+        requiredKeys: [recipientKey],
+      }),
+    ).toMatchObject({ allowed: true, resumed: true });
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { status: true, activeRunId: true },
+      }),
+    ).toMatchObject({ status: "running", activeRunId: first.id });
+    claim = await claimCompanyImportUnit(prisma, actor, {
+      runId: first.id,
+      unitId: unit.id,
+    });
+    expect(claim).not.toBeNull();
+    expect(await awaitCompanyImportConsent(prisma, actor, claimInput)).toBe(false);
+    expect(
+      await markCompanyRefreshUnavailable(prisma, actor, {
+        sourceId: refreshSource.id,
+        runId: first.id,
+        unitId: unit.id,
+        claimToken: claimInput.claimToken,
+        capability: "manual_only",
+        reason: "stale-worker-must-not-cancel",
+      }),
+    ).toBe(false);
+    expect(
+      (await prisma.companyRefreshSource.findUniqueOrThrow({ where: { id: refreshSource.id } }))
+        .status,
+    ).toBe("running");
+    const nextCheckpoint = { kind: "gmail_history", cursor: "new" };
+    await persistCompanyImportProposedCheckpoint(prisma, actor, {
+      runId: first.id,
+      sourceId: claim!.sourceId,
+      unitId: unit.id,
+      claimToken: claim!.claimToken,
+      checkpoint: nextCheckpoint,
+    });
+    await expect(
+      persistCompanyImportProposedCheckpoint(prisma, actor, {
+        runId: first.id,
+        sourceId: claim!.sourceId,
+        unitId: unit.id,
+        claimToken: claim!.claimToken,
+        checkpoint: { kind: "gmail_history", cursor: "replacement" },
+      }),
+    ).resolves.toMatchObject(nextCheckpoint);
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { committedCheckpoint: true },
+      }),
+    ).toMatchObject({ committedCheckpoint: oldCheckpoint });
+    await completeCompanyImportUnit(prisma, actor, {
+      runId: first.id,
+      sourceId: claim!.sourceId,
+      unitId: unit.id,
+      claimToken: claim!.claimToken,
+      nextCursor: null,
+      done: true,
+      proposedCheckpoint: { kind: "gmail_history", cursor: "completion-replacement" },
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [
+        {
+          kind: "entity",
+          input: {
+            entity: {
+              kind: "person",
+              displayName: "Refresh Rejected Person",
+              attrs: {},
+              confidence: 0.9,
+            },
+            evidence: {
+              stance: "supports",
+              sourceKind: "slack",
+              connectionId: slackConnectionId,
+              sourceItemId: "refresh-rejected-item",
+              quote: "The owner rejected this synthetic fact.",
+              contentHash: "refresh-rejected-new",
+              extractedAt: "2026-01-02T03:04:05.000Z",
+              extractorModel: null,
+              confidence: 0.9,
+            },
+          },
+        },
+      ],
+    });
+    const committed = await prisma.companyRefreshSource.findUniqueOrThrow({
+      where: { id: refreshSource.id },
+    });
+    expect(committed.committedCheckpoint).toMatchObject(nextCheckpoint);
+    expect(committed.status).toBe("ready");
+    expect(committed.timezone).toBe("America/Los_Angeles");
+    expect(committed.nextRunAt).not.toBeNull();
+    expect(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: committed.timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(committed.nextRunAt!),
+    ).toBe("03:00");
+    expect(await company.detail(rejected.id, { includeRejected: true })).toMatchObject({
+      status: "rejected",
+      displayName: "Refresh Rejected Person",
+    });
+
+    const failedRun = await createCompanyRefreshRun(prisma, actor, refreshSource.id, true);
+    if (!failedRun) throw new Error("Expected a refresh run");
+    const failedUnit = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId: failedRun.id, spaceId, ownerUserId: userId },
+    });
+    const failedClaim = await claimCompanyImportUnit(prisma, actor, {
+      runId: failedRun.id,
+      unitId: failedUnit.id,
+    });
+    expect(failedClaim).not.toBeNull();
+    const failedCheckpoint = { kind: "gmail_history", cursor: "uncommitted" };
+    await persistCompanyImportProposedCheckpoint(prisma, actor, {
+      runId: failedRun.id,
+      sourceId: failedClaim!.sourceId,
+      unitId: failedUnit.id,
+      claimToken: failedClaim!.claimToken,
+      checkpoint: failedCheckpoint,
+    });
+    await prisma.companyImportUnit.update({
+      where: { id: failedUnit.id },
+      data: { attempts: 3 },
+    });
+    await failCompanyImportUnit(prisma, actor, {
+      runId: failedRun.id,
+      sourceId: failedClaim!.sourceId,
+      unitId: failedUnit.id,
+      claimToken: failedClaim!.claimToken,
+      errorCode: "synthetic_refresh_failure",
+    });
+    const afterFailure = await prisma.companyRefreshSource.findUniqueOrThrow({
+      where: { id: refreshSource.id },
+    });
+    expect(afterFailure.committedCheckpoint).toMatchObject(nextCheckpoint);
+    expect(afterFailure.status).toBe("failed");
+    expect(afterFailure.nextRunAt).toBeNull();
+  });
+
+  it("does not let an older full import overwrite a newer completed baseline", async () => {
+    const descriptor = {
+      sourceKind: "data_room" as const,
+      scope: { itemIds: ["synthetic-generation-fixture"] },
+    };
+    const runs = [];
+    for (const label of ["older", "newer"]) {
+      const run = await createCompanyImportRun(prisma, actor, {
+        tokenCap: 100,
+        sources: [descriptor],
+      });
+      const source = await prisma.companyImportSource.findFirstOrThrow({
+        where: { runId: run.id, spaceId, ownerUserId: userId },
+      });
+      const refresh = await upsertCompanyRefreshSource(prisma, actor, {
+        runId: run.id,
+        sourceId: source.id,
+        source: descriptor,
+        tokenCap: 100,
+        capability: "supported",
+      });
+      await startCompanyImportRun(prisma, actor, run.id);
+      const unit = await prisma.companyImportUnit.findFirstOrThrow({
+        where: { runId: run.id, spaceId, ownerUserId: userId },
+      });
+      const claim = await claimCompanyImportUnit(prisma, actor, { runId: run.id, unitId: unit.id });
+      if (!claim) throw new Error("Expected baseline claim");
+      const input = {
+        runId: run.id,
+        sourceId: source.id,
+        unitId: unit.id,
+        claimToken: claim.claimToken,
+      };
+      await persistCompanyImportBaseline(prisma, actor, { ...input, checkpoint: { label } });
+      runs.push({ input, refreshId: refresh.id });
+    }
+    for (const run of [...runs].reverse())
+      await completeCompanyImportUnit(prisma, actor, {
+        ...run.input,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 0,
+        itemsRead: 0,
+        facts: [],
+      });
+    const refresh = await prisma.companyRefreshSource.findUniqueOrThrow({
+      where: { id: runs[0]!.refreshId },
+    });
+    expect(refresh.committedCheckpoint).toEqual({ label: "newer" });
+    expect(refresh.checkpointGeneration).toBe(1);
+  });
+
+  it("canonicalizes source scope before building its durable refresh key", () => {
+    expect(
+      companyImportSourceKey({
+        sourceKind: "mcp",
+        mcpServerId: "server",
+        scope: { reader: "generic", filters: { status: "open", owner: "team" } },
+      }),
+    ).toBe(
+      companyImportSourceKey({
+        sourceKind: "mcp",
+        mcpServerId: "server",
+        scope: { filters: { owner: "team", status: "open" }, reader: "generic" },
+      }),
+    );
+  });
+
+  it("deduplicates Company attention notifications without losing their importance", async () => {
+    const now = new Date();
+    const input = {
+      spaceId,
+      userId,
+      surface: "company_import",
+      title: "Company import needs consent",
+      importance: "attention" as const,
+      dedupeKey: `company-import:${suffix}:awaiting_consent`,
+      skipRateLimits: true,
+      now,
+    };
+    const first = await createNotification(prisma, input);
+    const duplicate = await createNotification(prisma, input);
+    expect(first.status).toBe("created");
+    expect(first.status === "created" && first.notification.importance).toBe("attention");
+    expect(duplicate.status).toBe("deduped");
+    expect(duplicate.status === "deduped" && duplicate.notification.id).toBe(
+      first.status === "created" ? first.notification.id : "",
+    );
+  });
+
+  it("keeps MCP import locators distinct and disconnects only the selected server", async () => {
+    const serverIds = [`company-import-mcp-a-${suffix}`, `company-import-mcp-b-${suffix}`];
+    await prisma.mcpServer.createMany({
+      data: serverIds.map((id, index) => ({
+        id,
+        spaceId,
+        userId,
+        slug: `company-import-mcp-${index}-${suffix}`,
+        name: `Synthetic MCP ${index}`,
+        transport: "streamable_http",
+        endpoint: "https://synthetic.example.test/mcp",
+        enabled: true,
+      })),
+    });
+    const runs = await Promise.all(
+      serverIds.map((mcpServerId) =>
+        createCompanyImportRun(prisma, actor, {
+          tokenCap: 100,
+          sources: [{ sourceKind: "mcp", mcpServerId, scope: { reader: "slack" } }],
+        }),
+      ),
+    );
+    const sources = await prisma.companyImportSource.findMany({
+      where: { runId: { in: runs.map((run) => run.id) }, spaceId, ownerUserId: userId },
+      orderBy: { mcpServerId: "asc" },
+      select: {
+        runId: true,
+        sourceKey: true,
+        sourceKind: true,
+        connectionId: true,
+        mcpServerId: true,
+      },
+    });
+    expect(sources).toHaveLength(2);
+    expect(new Set(sources.map((source) => source.sourceKey)).size).toBe(2);
+    expect(sources.map((source) => source.mcpServerId).sort()).toEqual([...serverIds].sort());
+    expect(
+      sources.every((source) => source.sourceKind === "mcp" && source.connectionId === null),
+    ).toBe(true);
+    await Promise.all(runs.map((run) => startCompanyImportRun(prisma, actor, run.id)));
+
+    await prisma.$transaction(async (tx) => {
+      await companyForActor(prisma, actor).writer(tx).disconnectMcpServer(serverIds[0]!);
+    });
+
+    expect(
+      await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runs[0]!.id } }),
+    ).toMatchObject({ status: "cancelled" });
+    expect(
+      await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runs[1]!.id } }),
+    ).toMatchObject({ status: "running" });
+    expect(
+      await prisma.companySourceBlock.findMany({
+        where: { spaceId, ownerUserId: userId, sourceKind: "mcp" },
+        select: { mcpServerId: true, connectionId: true },
+      }),
+    ).toEqual([{ mcpServerId: serverIds[0], connectionId: null }]);
+    expect(
+      await prisma.companyImportUnit.count({
+        where: { runId: runs[0]!.id, status: "cancelled", spaceId, ownerUserId: userId },
+      }),
+    ).toBe(1);
+  });
+
+  it("persists successful source cooldowns and prevents claims until both delays expire", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const startedAt = Date.now();
+    const completeInput = {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: false,
+      itemsDiscovered: 1,
+      itemsRead: 0,
+      facts: [],
+      discoveredUnits: [{ unitKey: "read:cooldown", cursor: null }],
+    };
+    await expect(
+      completeCompanyImportUnit(prisma, actor, { ...completeInput, cooldownMs: 86_400_001 }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await completeCompanyImportUnit(prisma, actor, { ...completeInput, cooldownMs: 5_000 });
+    const [sourceAfter, units] = await Promise.all([
+      prisma.companyImportSource.findUniqueOrThrow({ where: { id: claim.sourceId } }),
+      prisma.companyImportUnit.findMany({
+        where: { runId, sourceId: claim.sourceId, spaceId, ownerUserId: userId, status: "waiting" },
+      }),
+    ]);
+    expect(sourceAfter.backoffUntil!.getTime()).toBeGreaterThan(startedAt + 4_000);
+    expect(units).toHaveLength(2);
+    expect(units.find((unit) => unit.id === claim.id)!.availableAt).toEqual(
+      sourceAfter.backoffUntil,
+    );
+    expect(
+      await Promise.all(
+        units.map((unit) => claimCompanyImportUnit(prisma, actor, { runId, unitId: unit.id })),
+      ),
+    ).toEqual([null, null]);
+  });
+
+  it("persists rate-limit retry delays as source and unit backoff", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const startedAt = Date.now();
+    await failCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      errorCode: "rate_limited",
+      retryAfterMs: 5_000,
+    });
+    const [sourceAfter, unitAfter] = await Promise.all([
+      prisma.companyImportSource.findUniqueOrThrow({ where: { id: claim.sourceId } }),
+      prisma.companyImportUnit.findUniqueOrThrow({ where: { id: claim.id } }),
+    ]);
+    expect(sourceAfter.backoffUntil!.getTime()).toBeGreaterThan(startedAt + 4_000);
+    expect(unitAfter.availableAt).toEqual(sourceAfter.backoffUntil);
+    expect(await claimCompanyImportUnit(prisma, actor, { runId, unitId: claim.id })).toBeNull();
+  });
+
+  it("serializes reservations across sources and resumes after raising the cap", async () => {
+    const { runId, claims } = await runWithSources(10, 2);
+    expect(claims).toHaveLength(2);
+    const reservationInput = (claim: (typeof claims)[number]) => ({
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: `synthetic-call-${claim.id}`,
+      inputTokenBound: 4,
+      maxOutputTokens: 2,
+    });
+    const results = await Promise.allSettled(
+      claims.map((claim) => reserveCompanyImportCall(prisma, actor, reservationInput(claim))),
+    );
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(
+      results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected" &&
+          result.reason instanceof CompanyImportError &&
+          result.reason.code === "budget_reached",
+      ),
+    ).toHaveLength(1);
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("budget_reached");
+
+    const reserved = await prisma.companyImportCall.findMany({
+      where: { spaceId, ownerUserId: userId, runId },
+      select: { unitId: true },
+    });
+    await updateCompanyImportRun(prisma, actor, {
+      runId,
+      action: "resume",
+      tokenCap: 20,
+    });
+    const second = await claimCompanyImportUnit(prisma, actor, {
+      runId,
+      unitId: claims.find((claim) => claim.id !== reserved[0]?.unitId)!.id,
+    });
+    expect(second).not.toBeNull();
+    await expect(
+      reserveCompanyImportCall(prisma, actor, reservationInput(second!)),
+    ).resolves.toMatchObject({ reservedInput: 4, reservedOutput: 2 });
+  });
+
+  it("settles a reservation once, charges actual usage, and records late known usage", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const reservation = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "untrusted-provider-call-id",
+      inputTokenBound: 10,
+      maxOutputTokens: 5,
+    });
+    const settlement = {
+      reservationId: reservation.reservationId,
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      provider: "synthetic",
+      model: "synthetic-model",
+      callId: "untrusted-provider-call-id",
+      usage: {
+        type: "usage" as const,
+        provider: "synthetic",
+        model: "synthetic-model",
+        callId: "untrusted-provider-call-id",
+        operationKind: "company_import" as const,
+        inputTokens: 3,
+        outputTokens: 2,
+      },
+    };
+    const settled = await Promise.all([
+      settleCompanyImportCall(prisma, actor, settlement),
+      settleCompanyImportCall(prisma, actor, settlement),
+    ]);
+    expect(settled.sort()).toEqual([false, true]);
+    const run = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    const source = await prisma.companyImportSource.findUniqueOrThrow({
+      where: { id: claim.sourceId },
+    });
+    const unit = await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: claim.id } });
+    expect(run.reservedTokens).toBe(0n);
+    expect(run.inputTokensUsed).toBe(3n);
+    expect(run.outputTokensUsed).toBe(2n);
+    expect(source.tokensReserved).toBe(0n);
+    expect(source.inputTokensUsed).toBe(3n);
+    expect(unit.tokensReserved).toBe(0n);
+    expect(unit.outputTokensUsed).toBe(2n);
+    const usage = await prisma.usageRecord.findFirstOrThrow({
+      where: { callId: reservation.reservationId },
+    });
+    expect(usage.callId).toBe(reservation.reservationId);
+    expect(usage.operationId).toBe(
+      `${runId}:${claim.sourceId}:${claim.id}:${reservation.reservationId}`,
+    );
+
+    const late = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "another-untrusted-call-id",
+      inputTokenBound: 4,
+      maxOutputTokens: 4,
+    });
+    await updateCompanyImportRun(prisma, actor, { runId, action: "cancel" });
+    await expect(
+      settleCompanyImportCall(prisma, actor, {
+        ...settlement,
+        reservationId: late.reservationId,
+        usage: { ...settlement.usage, inputTokens: 5, outputTokens: 1 },
+      }),
+    ).resolves.toBe(false);
+    const cancelledRun = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(cancelledRun.status).toBe("cancelled");
+    expect(cancelledRun.reservedTokens).toBe(0n);
+    expect(cancelledRun.inputTokensUsed).toBe(8n);
+    expect(cancelledRun.outputTokensUsed).toBe(3n);
+  });
+
+  it("releases a pre-invocation reservation once without usage", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const reservation = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "synthetic-call",
+      inputTokenBound: 4,
+      maxOutputTokens: 3,
+    });
+    const release = {
+      reservationId: reservation.reservationId,
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+    };
+
+    await expect(
+      releaseCompanyImportCall(prisma, actor, { ...release, unitId: "wrong-unit" }),
+    ).resolves.toBe(false);
+    await expect(releaseCompanyImportCall(prisma, actor, release)).resolves.toBe(true);
+    await expect(releaseCompanyImportCall(prisma, actor, release)).resolves.toBe(false);
+
+    const run = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    const source = await prisma.companyImportSource.findUniqueOrThrow({
+      where: { id: claim.sourceId },
+    });
+    const unit = await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: claim.id } });
+    const call = await prisma.companyImportCall.findUniqueOrThrow({
+      where: { reservationId: reservation.reservationId },
+    });
+    expect(run.reservedTokens).toBe(0n);
+    expect(source.tokensReserved).toBe(0n);
+    expect(unit.tokensReserved).toBe(0n);
+    expect(call.status).toBe("released");
+    expect(await prisma.usageRecord.count({ where: { callId: reservation.reservationId } })).toBe(
+      0,
+    );
+  });
+
+  it("records known over-bound usage and pauses the run instead of dropping billing", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const reservation = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "provider-call",
+      inputTokenBound: 2,
+      maxOutputTokens: 2,
+    });
+    await expect(
+      settleCompanyImportCall(prisma, actor, {
+        reservationId: reservation.reservationId,
+        runId,
+        sourceId: claim.sourceId,
+        unitId: claim.id,
+        claimToken: claim.claimToken,
+        provider: "synthetic",
+        model: "synthetic-model",
+        callId: "provider-call",
+        usage: {
+          provider: "synthetic",
+          model: "synthetic-model",
+          callId: "provider-call",
+          operationKind: "company_import",
+          inputTokens: 3,
+          outputTokens: 1,
+        } as AgentUsage,
+      }),
+    ).resolves.toBe(false);
+    const run = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(run.status).toBe("budget_reached");
+    expect(run.reservedTokens).toBe(0n);
+    expect(run.inputTokensUsed).toBe(3n);
+    expect(await prisma.usageRecord.count({ where: { callId: reservation.reservationId } })).toBe(
+      1,
+    );
+  });
+
+  it("finalizes a run when its final claim expires at the attempt limit", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    await prisma.companyImportUnit.update({
+      where: { id: claim.id },
+      data: { attempts: 3, claimExpiresAt: new Date(Date.now() - 1_000) },
+    });
+    await expect(
+      claimCompanyImportUnit(prisma, actor, { runId, unitId: claim.id }),
+    ).resolves.toBeNull();
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("failed");
+  });
+
+  it("clears a transient unit error after a successful page", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const first = claims[0]!;
+    await failCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: first.sourceId,
+      unitId: first.id,
+      claimToken: first.claimToken,
+      errorCode: "transient_worker_failure",
+    });
+
+    expect((await getCompanyImportProgress(prisma, actor, runId)).sources[0]?.lastError).toBe(
+      "transient_worker_failure",
+    );
+    const availableAt = new Date(Date.now() - 1_000);
+    await prisma.companyImportUnit.update({
+      where: { id: first.id },
+      data: { availableAt },
+    });
+    await prisma.companyImportSource.update({
+      where: { id: first.sourceId },
+      data: { backoffUntil: availableAt },
+    });
+    const reclaimed = await claimCompanyImportUnit(prisma, actor, {
+      runId,
+      unitId: first.id,
+    });
+    expect(reclaimed).not.toBeNull();
+
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: first.sourceId,
+      unitId: first.id,
+      claimToken: reclaimed!.claimToken,
+      nextCursor: { page: 2 },
+      done: false,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+
+    const progress = await getCompanyImportProgress(prisma, actor, runId);
+    expect(progress.status).toBe("running");
+    expect(progress.sources[0]?.lastError).toBeNull();
+    expect(
+      await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: first.id } }),
+    ).toMatchObject({ status: "waiting", lastError: null });
+  });
+
+  it("requires retry_failed for partial runs and completes the retried unit", async () => {
+    const { runId, claims } = await runWithSources(100, 2);
+    const done = claims[0]!;
+    const failed = claims[1]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: done.sourceId,
+      unitId: done.id,
+      claimToken: done.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    await prisma.companyImportUnit.update({
+      where: { id: failed.id },
+      data: { attempts: 3 },
+    });
+    await failCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: failed.sourceId,
+      unitId: failed.id,
+      claimToken: failed.claimToken,
+      errorCode: "synthetic_failure",
+    });
+
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("partial");
+    expect(
+      await prisma.companyImportSource.findUniqueOrThrow({ where: { id: failed.sourceId } }),
+    ).toMatchObject({ status: "failed", lastError: "synthetic_failure" });
+    await expect(
+      updateCompanyImportRun(prisma, actor, { runId, action: "resume" }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("partial");
+    await updateCompanyImportRun(prisma, actor, { runId, action: "retry_failed" });
+    const retried = await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: failed.id } });
+    expect(retried).toMatchObject({ status: "waiting", attempts: 0, lastError: null });
+    const claim = await claimCompanyImportUnit(prisma, actor, { runId, unitId: failed.id });
+    expect(claim).not.toBeNull();
+    await prisma.companyImportSource.update({
+      where: { id: failed.sourceId },
+      data: { lastError: "stale_worker_error" },
+    });
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: failed.sourceId,
+      unitId: failed.id,
+      claimToken: claim!.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("completed");
+    expect(
+      await prisma.companyImportSource.findUniqueOrThrow({ where: { id: failed.sourceId } }),
+    ).toMatchObject({ status: "completed", lastError: null });
+  });
+
+  it("cancels a preview-ready sample before discard and blocks continuation", async () => {
+    const { runId, claims } = await runWithSources(100, 1, "slack", "sample");
+    const claim = claims[0]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [
+        {
+          kind: "entity",
+          input: {
+            entity: {
+              kind: "person",
+              displayName: "Preview cancellation person",
+              attrs: {},
+              confidence: 0.8,
+            },
+            evidence: {
+              stance: "supports",
+              sourceKind: "slack",
+              connectionId: slackConnectionId,
+              sourceItemId: "preview-cancellation-item",
+              quote: "Preview cancellation source quote.",
+              contentHash: "preview-cancellation-hash",
+              extractedAt: "2026-01-02T03:04:05.000Z",
+              extractorModel: null,
+              confidence: 0.8,
+            },
+          },
+        },
+      ],
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("preview_ready");
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: runId } })).toBe(1);
+
+    await updateCompanyImportRun(prisma, actor, { runId, action: "cancel" });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("cancelled");
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: runId } })).toBe(1);
+    await expect(
+      updateCompanyImportRun(prisma, actor, { runId, action: "continue" }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+
+    await updateCompanyImportRun(prisma, actor, { runId, action: "discard" });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("discarded");
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: runId } })).toBe(0);
+  });
+
+  it("retains a first-touch sample baseline until a successful full continuation", async () => {
+    const { runId, claims } = await runWithSources(100, 1, "slack", "sample");
+    const sampleClaim = claims[0]!;
+    const importSource = await prisma.companyImportSource.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, runId },
+    });
+    const refreshSource = await upsertCompanyRefreshSource(prisma, actor, {
+      runId,
+      sourceId: importSource.id,
+      source: {
+        sourceKind: "slack",
+        connectionId: slackConnectionId,
+        scope: { index: 0 },
+      },
+      tokenCap: 100,
+      capability: "supported",
+    });
+    const baseline = { kind: "gmail_history", cursor: "captured-before-sample" };
+    const claimInput = {
+      runId,
+      sourceId: sampleClaim.sourceId,
+      unitId: sampleClaim.id,
+      claimToken: sampleClaim.claimToken,
+    };
+    await expect(
+      persistCompanyImportBaseline(prisma, actor, { ...claimInput, checkpoint: baseline }),
+    ).resolves.toEqual(baseline);
+    await completeCompanyImportUnit(prisma, actor, {
+      ...claimInput,
+      nextCursor: null,
+      nextSourceCursor: { sampleResume: true },
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [],
+    });
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { committedCheckpoint: true, status: true },
+      }),
+    ).toMatchObject({ committedCheckpoint: null, status: "needs_baseline" });
+
+    await updateCompanyImportRun(prisma, actor, { runId, action: "continue" });
+    const continuation = await prisma.companyImportUnit.findFirstOrThrow({
+      where: {
+        spaceId,
+        ownerUserId: userId,
+        runId,
+        sourceId: importSource.id,
+        unitKey: "discover:0",
+      },
+    });
+    const continuedClaim = await claimCompanyImportUnit(prisma, actor, {
+      runId,
+      unitId: continuation.id,
+    });
+    expect(continuedClaim).not.toBeNull();
+    const continuedInput = {
+      runId,
+      sourceId: continuedClaim!.sourceId,
+      unitId: continuation.id,
+      claimToken: continuedClaim!.claimToken,
+    };
+    await expect(
+      persistCompanyImportBaseline(prisma, actor, {
+        ...continuedInput,
+        checkpoint: { kind: "gmail_history", cursor: "captured-too-late" },
+      }),
+    ).resolves.toEqual(baseline);
+    await completeCompanyImportUnit(prisma, actor, {
+      ...continuedInput,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { committedCheckpoint: true, status: true },
+      }),
+    ).toMatchObject({ committedCheckpoint: baseline, status: "ready" });
+  });
+
+  it("allows a claimed unit to finish after the run is paused", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    await updateCompanyImportRun(prisma, actor, { runId, action: "pause" });
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("completed");
+  });
+
+  it("isolates progress and discard evidence by owner and import run", async () => {
+    const first = await runWithSources(100);
+    const firstClaim = first.claims[0]!;
+    const fact = {
+      entity: {
+        kind: "person" as const,
+        displayName: "Synthetic import person",
+        attrs: {},
+        confidence: 0.8,
+      },
+      evidence: {
+        stance: "supports" as const,
+        sourceKind: "slack" as const,
+        sourceItemId: "synthetic-item",
+        quote: "Synthetic source quote.",
+        contentHash: "synthetic-hash",
+        extractedAt: "2026-01-02T03:04:05.000Z",
+        extractorModel: null,
+        confidence: 0.8,
+      },
+    };
+    await completeCompanyImportUnit(prisma, actor, {
+      runId: first.runId,
+      sourceId: firstClaim.sourceId,
+      unitId: firstClaim.id,
+      claimToken: firstClaim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [{ kind: "entity", input: fact }],
+    });
+    const other = await runWithSources(100);
+    const otherClaim = other.claims[0]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId: other.runId,
+      sourceId: otherClaim.sourceId,
+      unitId: otherClaim.id,
+      claimToken: otherClaim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [
+        {
+          kind: "entity",
+          input: { ...fact, evidence: { ...fact.evidence, sourceItemId: "other-item" } },
+        },
+      ],
+    });
+    const firstEvidence = await prisma.companyEvidence.findFirst({
+      where: { extractorRunId: first.runId },
+      select: { factId: true },
+    });
+    expect(firstEvidence).not.toBeNull();
+    const company = companyForActor(prisma, actor);
+    await company.edit({
+      entityId: firstEvidence!.factId,
+      kind: "person",
+      displayName: "Owner-corrected import person",
+    });
+    await company.reject(firstEvidence!.factId, "Owner rejection preserved after discard");
+    await expect(getCompanyImportProgress(prisma, otherActor, first.runId)).rejects.toMatchObject({
+      code: "not_found",
+    });
+    await updateCompanyImportRun(prisma, actor, { runId: first.runId, action: "discard" });
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: first.runId } })).toBe(0);
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: other.runId } })).toBe(1);
+    expect(await company.detail(firstEvidence!.factId, { includeRejected: true })).toMatchObject({
+      displayName: "Owner-corrected import person",
+      status: "rejected",
+    });
+    expect(
+      await prisma.companyEvidence.count({
+        where: {
+          factId: firstEvidence!.factId,
+          factKind: "entity",
+          sourceKind: "manual",
+          extractorRunId: null,
+        },
+      }),
+    ).toBeGreaterThan(0);
+  });
+
+  it("retains shared evidence until every observing run is discarded", async () => {
+    const fact = {
+      entity: {
+        kind: "person" as const,
+        displayName: "Synthetic shared import person",
+        attrs: { workEmails: ["shared-import@example.test"] },
+        confidence: 0.8,
+      },
+      evidence: {
+        stance: "supports" as const,
+        sourceKind: "slack" as const,
+        sourceItemId: "shared-synthetic-item",
+        quote: "Shared synthetic source quote.",
+        contentHash: "shared-synthetic-hash",
+        extractedAt: "2026-01-02T03:04:05.000Z",
+        extractorModel: null,
+        confidence: 0.8,
+      },
+    };
+    const importFact = async () => {
+      const run = await runWithSources(100);
+      const claim = run.claims[0]!;
+      await completeCompanyImportUnit(prisma, actor, {
+        runId: run.runId,
+        sourceId: claim.sourceId,
+        unitId: claim.id,
+        claimToken: claim.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 1,
+        itemsRead: 1,
+        facts: [{ kind: "entity", input: fact }],
+      });
+      return run.runId;
+    };
+
+    const firstRunId = await importFact();
+    const secondRunId = await importFact();
+    const evidence = await prisma.companyEvidence.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, extractorRunId: firstRunId },
+      select: { id: true, factId: true },
+    });
+    expect(
+      await prisma.companyEvidence.count({
+        where: { spaceId, ownerUserId: userId, contentHash: "shared-synthetic-hash" },
+      }),
+    ).toBe(1);
+    expect(await prisma.companyImportEvidence.count({ where: { evidenceId: evidence.id } })).toBe(
+      2,
+    );
+
+    await updateCompanyImportRun(prisma, actor, { runId: firstRunId, action: "discard" });
+    expect(await prisma.companyEvidence.count({ where: { id: evidence.id } })).toBe(1);
+    expect(
+      await prisma.companyImportEvidence.count({
+        where: { evidenceId: evidence.id, runId: secondRunId },
+      }),
+    ).toBe(1);
+    expect(await prisma.companyIdentity.count({ where: { entityId: evidence.factId } })).toBe(1);
+
+    await updateCompanyImportRun(prisma, actor, { runId: secondRunId, action: "discard" });
+    expect(await prisma.companyEvidence.count({ where: { id: evidence.id } })).toBe(0);
+    expect(await prisma.companyEntity.count({ where: { id: evidence.factId } })).toBe(0);
+    expect(await prisma.companyIdentity.count({ where: { entityId: evidence.factId } })).toBe(0);
+  });
+
+  it("defers relations for rejected name-only subjects and skips suppressed subjects", async () => {
+    const company = companyForActor(prisma, actor);
+    const sourceItemId = "mapper-source";
+    const contentHash = "mapper-source-hash";
+    const deferredQuote = "Taylor Nguyen works at Pinecone Systems.";
+    const suppressedQuote = "Suppressed Systems partnered with Pinecone Systems.";
+    const baselineEvidence = (quote: string) => ({
+      stance: "supports" as const,
+      sourceKind: "slack" as const,
+      connectionId: slackConnectionId,
+      sourceItemId,
+      quote,
+      contentHash,
+      extractedAt: "2026-01-02T03:04:05.000Z",
+      extractorModel: null,
+      confidence: 0.9,
+    });
+    const rejectedPerson = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Taylor Nguyen",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: baselineEvidence("Taylor Nguyen was introduced in an earlier report."),
+    });
+    if ("suppressed" in rejectedPerson || "deferred" in rejectedPerson)
+      throw new Error("Expected baseline person to persist");
+    await company.reject(rejectedPerson.id, "Name-only person is unresolved");
+    const rejectedOrganisation = await company.importEntity({
+      entity: {
+        kind: "organisation",
+        displayName: "Suppressed Systems",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: baselineEvidence(suppressedQuote),
+    });
+    if ("suppressed" in rejectedOrganisation || "deferred" in rejectedOrganisation)
+      throw new Error("Expected baseline organisation to persist");
+    await company.reject(rejectedOrganisation.id, "Organisation is incorrect");
+
+    const { runId, claims } = await runWithSources(100, 1, "slack");
+    const claim = claims[0]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [],
+      readItems: [{ sourceItemId, contentHash }],
+      extractions: [
+        {
+          sourceItemId,
+          contentHash,
+          extraction: {
+            entities: [
+              {
+                ref: "person",
+                entity: {
+                  kind: "person",
+                  displayName: "Taylor Nguyen",
+                  attrs: {},
+                  confidence: 0.9,
+                },
+                quote: deferredQuote,
+              },
+              {
+                ref: "organisation",
+                entity: {
+                  kind: "organisation",
+                  displayName: "Pinecone Systems",
+                  attrs: { domain: "pinecone.example" },
+                  confidence: 0.9,
+                },
+                quote: deferredQuote,
+              },
+              {
+                ref: "suppressed",
+                entity: {
+                  kind: "organisation",
+                  displayName: "Suppressed Systems",
+                  attrs: {},
+                  confidence: 0.9,
+                },
+                quote: suppressedQuote,
+              },
+            ],
+            edges: [
+              {
+                fromRef: "person",
+                toRef: "organisation",
+                relation: "works_at",
+                startsOn: null,
+                endsOn: null,
+                role: null,
+                confidence: 0.9,
+                quote: deferredQuote,
+              },
+              {
+                fromRef: "suppressed",
+                toRef: "organisation",
+                relation: "part_of",
+                startsOn: null,
+                endsOn: null,
+                role: null,
+                confidence: 0.9,
+                quote: suppressedQuote,
+              },
+            ],
+            events: [
+              {
+                stream: "people",
+                kind: "hire",
+                title: "Taylor joined Pinecone Systems",
+                occursOn: { date: "2025-01-01", precision: "year" },
+                endsOn: null,
+                entityRefs: ["person"],
+                confidence: 0.9,
+                quote: "Pinecone Systems hired Taylor in 2025.",
+              },
+              {
+                stream: "company",
+                kind: "other",
+                title: "Suppressed Systems partnership",
+                occursOn: null,
+                endsOn: null,
+                entityRefs: ["suppressed"],
+                confidence: 0.9,
+                quote: suppressedQuote,
+              },
+            ],
+          },
+          model: { provider: "synthetic", model: "recorded" },
+        },
+      ],
+    });
+    expect(
+      await prisma.companyEntity.count({
+        where: { spaceId, ownerUserId: userId, displayName: "Pinecone Systems" },
+      }),
+    ).toBe(1);
+    const candidates = await prisma.companyCandidate.findMany({
+      where: {
+        spaceId,
+        ownerUserId: userId,
+        importRunId: runId,
+        reason: "unresolved_import_subjects",
+      },
+      select: { id: true, kind: true, proposedFact: true, entityIds: true },
+    });
+    expect(candidates).toHaveLength(2);
+    expect(candidates.map(({ kind }) => kind).sort()).toEqual(["edge", "event"]);
+    for (const { kind, proposedFact } of candidates) {
+      expect(proposedFact).toMatchObject({
+        entities: expect.any(Array),
+        candidateRefs: expect.objectContaining({ person: expect.any(String) }),
+      });
+      if (kind === "edge")
+        expect(proposedFact).toMatchObject({
+          resolvedRefs: expect.objectContaining({ organisation: expect.any(String) }),
+        });
+    }
+    expect(
+      candidates.some((candidate) =>
+        JSON.stringify(candidate.proposedFact).includes("Suppressed Systems"),
+      ),
+    ).toBe(false);
+    expect(await prisma.companyEdge.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
+    expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
+
+    const firstEvidence = await prisma.companyEvidence.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, sourceKind: "slack", sourceItemId, contentHash },
+      select: { id: true },
+    });
+    const observeAgain = async () => {
+      const second = await runWithSources(100, 1, "slack");
+      const secondClaim = second.claims[0]!;
+      await completeCompanyImportUnit(prisma, actor, {
+        runId: second.runId,
+        sourceId: secondClaim.sourceId,
+        unitId: secondClaim.id,
+        claimToken: secondClaim.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 1,
+        itemsRead: 1,
+        facts: [],
+        readItems: [{ sourceItemId, contentHash }],
+        reusedEvidenceIds: [firstEvidence.id],
+      });
+      return second.runId;
+    };
+    const secondRunId = await observeAgain();
+    const thirdRunId = await observeAgain();
+    for (const observedRunId of [runId, secondRunId, thirdRunId]) {
+      expect(
+        await prisma.companyImportCandidate.count({
+          where: {
+            spaceId,
+            ownerUserId: userId,
+            runId: observedRunId,
+            candidateId: { in: candidates.map(({ id }) => id) },
+          },
+        }),
+      ).toBe(candidates.length);
+    }
+
+    await updateCompanyImportRun(prisma, actor, { runId: thirdRunId, action: "discard" });
+    await updateCompanyImportRun(prisma, actor, { runId, action: "discard" });
+    const preservedCandidates = await prisma.companyCandidate.findMany({
+      where: { spaceId, ownerUserId: userId, id: { in: candidates.map(({ id }) => id) } },
+      select: { id: true, proposedFact: true, entityIds: true },
+    });
+    expect(preservedCandidates).toHaveLength(candidates.length);
+    expect(preservedCandidates).toEqual(
+      expect.arrayContaining(
+        candidates.map(({ id, proposedFact, entityIds }) => ({ id, proposedFact, entityIds })),
+      ),
+    );
+    expect(await prisma.companyEvidence.count({ where: { id: firstEvidence.id } })).toBe(1);
+    await updateCompanyImportRun(prisma, actor, { runId: secondRunId, action: "discard" });
+    expect(
+      await prisma.companyCandidate.count({
+        where: { spaceId, ownerUserId: userId, id: { in: candidates.map(({ id }) => id) } },
+      }),
+    ).toBe(0);
+  });
+});

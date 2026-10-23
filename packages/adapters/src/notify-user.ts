@@ -1,5 +1,7 @@
 import {
   isCartaAgentSpawnKey,
+  isCompanyAgentSpawnKey,
+  isCompanyImporterSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
@@ -16,6 +18,7 @@ export function defaultNotificationSurface(spawnKey: string | null | undefined):
   if (isLegalAgentSpawnKey(spawnKey)) return "legal";
   if (isCartaAgentSpawnKey(spawnKey) || isInvestorsAgentSpawnKey(spawnKey)) return "investors";
   if (isDataRoomAgentSpawnKey(spawnKey)) return "data-room";
+  if (isCompanyAgentSpawnKey(spawnKey) || isCompanyImporterSpawnKey(spawnKey)) return "company";
   return "thread";
 }
 

@@ -1,6 +1,11 @@
+import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import {
+  AI_DISCLOSURE_VERSION,
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
+  COMPANY_READ_TOOLS,
+  companyAgentSpawnKey,
+  companyImporterSpawnKey,
   financeAgentSpawnKey,
   GTM_AGENT_BUILTIN_TOOLS,
   VOICE_AGENT_BUILTIN_TOOLS,
@@ -16,6 +21,8 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { isApprovalPausedResult } from "./approval-effect.js";
+import { resolveDataRoomAi } from "./data-room-models.js";
 import {
   appendToolCompletionAudit,
   createRunExecutor,
@@ -64,6 +71,18 @@ it("adds live page guidance to existing GTM agents without duplicating it on new
     GTM_PAGE_INSTRUCTIONS,
   );
 });
+const companyStoreMock = vi.hoisted(() => ({ current: null as unknown }));
+const createNotificationMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    status: "created" as const,
+    notification: { id: "notification-1", importance: "attention" as const },
+  })),
+);
+vi.mock("@rakazo/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/db")>()),
+  companyForActor: vi.fn(() => companyStoreMock.current),
+  createNotification: createNotificationMock,
+}));
 
 describe("bot tool permissions", () => {
   it("never lets self-edit change disabled tools alongside an allowed field", () => {
@@ -135,6 +154,1179 @@ describe("bot tool permissions", () => {
       expect(offered).toEqual(expect.arrayContaining(["mail_search", "mail_grep", "mail_get"]));
     },
   );
+});
+
+async function runIdentityExecutor({
+  spawnKey,
+  trigger = "user",
+  groupId = null,
+  botUserId = "user-1",
+  channelRun = false,
+  meetingTaintedAt = null,
+  calls = [],
+  callBatches,
+  autoReview,
+  companyImport,
+  companyImportRuns,
+  resumeApprovedEffect = false,
+  backupModel,
+  selectBackup = false,
+  callsAfterBackup = [],
+  consentedRecipientKeys,
+  ambientContext = false,
+  ticketBoardEnabled = false,
+  taskPrompt = ambientContext ? "Follow up on SYN-42" : "Synthetic request",
+}: {
+  spawnKey: string | null;
+  trigger?: string;
+  groupId?: string | null;
+  botUserId?: string;
+  channelRun?: boolean;
+  meetingTaintedAt?: Date | null;
+  calls?: Array<{ name: string; args: Record<string, unknown> }>;
+  callBatches?: Array<Array<{ name: string; args: Record<string, unknown> }>>;
+  autoReview?: { review: ReturnType<typeof vi.fn> };
+  companyImport?: {
+    run: Record<string, unknown>;
+    engine: Record<string, unknown>;
+    mutateBeforeResume?: () => void;
+  };
+  companyImportRuns?: Array<{
+    id: string;
+    spaceId: string;
+    ownerUserId: string;
+    status: string;
+    createdAt: Date;
+  }>;
+  resumeApprovedEffect?: boolean;
+  backupModel?: { provider: string; modelId: string };
+  selectBackup?: boolean;
+  callsAfterBackup?: Array<{ name: string; args: Record<string, unknown> }>;
+  consentedRecipientKeys?: string[];
+  ambientContext?: boolean;
+  ticketBoardEnabled?: boolean;
+  taskPrompt?: string;
+}) {
+  const run = {
+    id: "run-1",
+    botId: "bot-1",
+    threadId: "thread-1",
+    taskId: "task-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    status: "queued",
+    trigger,
+    sourceMessageId: channelRun ? "channel-message-1" : null,
+    leaseFence: 0,
+  };
+  let request: AgentRunRequest | undefined;
+  const toolResults: Array<{ name: string; result: unknown }> = [];
+  const effectRows: Array<Record<string, unknown>> = [];
+  const persistedReplayArgs: Array<Record<string, unknown>> = [];
+  const fallbackAttempts: Array<{ ok: boolean; value?: unknown; error?: unknown }> = [];
+  const matchesEffectWhere = (row: Record<string, unknown>, where: Record<string, unknown> = {}) =>
+    Object.entries(where).every(([key, value]) => {
+      if (value && typeof value === "object" && "not" in value) {
+        return row[key] !== (value as { not: unknown }).not;
+      }
+      return row[key] === value;
+    });
+  let runtimeRunCount = 0;
+  const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
+    request = next;
+    const runtimeRunIndex = runtimeRunCount;
+    runtimeRunCount += 1;
+    let currentCalls = callBatches?.[runtimeRunIndex] ?? calls;
+    if (resumeApprovedEffect && runtimeRunIndex === 1) {
+      const approved = effectRows.find((effect) => effect.kind === "company_import_start");
+      const persistedRequest = approved?.request;
+      if (
+        approved?.status !== "approved" ||
+        !persistedRequest ||
+        typeof persistedRequest !== "object"
+      ) {
+        throw new Error("Approved Company import request was not persisted.");
+      }
+      const replayArgs = structuredClone(persistedRequest) as Record<string, unknown>;
+      persistedReplayArgs.push(replayArgs);
+      currentCalls = [{ name: "company_import_start", args: replayArgs }];
+    }
+    for (const [index, call] of currentCalls.entries()) {
+      if (!next.executeTool) throw new Error("Runtime tool executor was not provided.");
+      toolResults.push({
+        name: call.name,
+        result: await next.executeTool(call.name, call.args, `forged-${index}`),
+      });
+    }
+    if (backupModel) {
+      try {
+        if (!next.resolveFallbackModel) throw new Error("Backup resolver is missing");
+        const resolved = await next.resolveFallbackModel(backupModel.provider, backupModel.modelId);
+        fallbackAttempts.push({ ok: true, value: resolved });
+        if (selectBackup) {
+          await (
+            next as AgentRunRequest & {
+              onModelChange?: (provider: string, modelId: string) => Promise<void>;
+            }
+          ).onModelChange?.(backupModel.provider, backupModel.modelId);
+          for (const [index, call] of callsAfterBackup.entries()) {
+            if (!next.executeTool) throw new Error("Runtime tool executor was not provided.");
+            toolResults.push({
+              name: call.name,
+              result: await next.executeTool(call.name, call.args, `after-backup-${index}`),
+            });
+          }
+        }
+      } catch (error) {
+        fallbackAttempts.push({ ok: false, error });
+      }
+    }
+    yield { type: "done" as const, text: "Done" };
+  });
+  const pauseRunForInput = vi.fn(
+    async (_input: {
+      blocks: Array<{ kind: string; actions?: Array<{ id: string; label: string }> }>;
+    }) => {
+      run.status = "waiting_input";
+      return true;
+    },
+  );
+  const finalizeRun = vi.fn(async () => ({ continuationRunId: null }));
+  const mailSend = vi.fn(async () => []);
+  const webFetch = vi.fn(async () => ({ title: "Synthetic" }));
+  const connectorCall = vi.fn(async function* () {
+    yield { type: "result" as const, data: {} };
+  });
+  const memoryRead = vi.fn(async () => ({
+    documents: ambientContext
+      ? [
+          {
+            path: "synthetic-private-memory",
+            content: "DURABLE_MEMORY_PRIVATE_MARKER",
+            revision: 1,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ]
+      : [],
+  }));
+  const semanticRecall = vi.fn(async () => ({
+    ok: true as const,
+    value: [{ id: "memory-1", memory: "SEMANTIC_RECALL_PRIVATE_MARKER" }],
+  }));
+  const memoryProviderResolve = vi.fn(async () =>
+    ambientContext ? { provider: { recall: semanticRecall }, defaultScope: "user" as const } : null,
+  );
+  const scratchpadFindMany = vi.fn(async () =>
+    ambientContext
+      ? [
+          {
+            id: "scratchpad-1",
+            botId: run.botId,
+            title: "SCRATCHPAD_PRIVATE_MARKER",
+            status: "open",
+            notes: "Private synthetic note",
+            createdAt: new Date(0),
+            updatedAt: new Date(0),
+          },
+        ]
+      : [],
+  );
+  const prisma = {
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
+    run: {
+      findUnique: vi.fn(async () => run),
+      findUniqueOrThrow: vi.fn(async () => run),
+      updateMany: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(run, data);
+        return { count: 1 };
+      }),
+    },
+    bot: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.botId,
+        userId: botUserId,
+        spaceId: run.spaceId,
+        name: "Company agent",
+        title: "Assistant",
+        description: "Synthetic test agent",
+        spawnKey,
+        modelProvider: null,
+        modelId: null,
+        thinkingLevel: null,
+        computerId: "computer-1",
+        computerSwitching: false,
+        memoryScope: null,
+        computer: { id: "computer-1", scope: "dedicated" },
+        disabledBuiltinTools: [],
+      })),
+      findMany: vi.fn(async () => []),
+    },
+    attempt: {
+      create: vi.fn(async () => ({ id: "attempt-1" })),
+      update: vi.fn(),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    thread: {
+      findUnique: vi.fn(async () => ({ meetingTaintedAt })),
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.threadId,
+        groupId,
+        historyCompactionSummary: null,
+        historyCompactedUpToSeq: ambientContext ? 1 : null,
+        nextMessageSeq: 3,
+      })),
+    },
+    chatGroup: { findUnique: vi.fn(async () => null) },
+    message: {
+      findMany: vi.fn(async () => [
+        {
+          id: channelRun ? "channel-message-1" : "message-1",
+          threadId: run.threadId,
+          seq: 1,
+          role: "user",
+          runId: run.id,
+          blocks: channelRun
+            ? [
+                {
+                  kind: "channel_message",
+                  provider: "sendblue",
+                  channelId: "channel-1",
+                  fromAddress: "synthetic-channel-source",
+                  fromLabel: "Synthetic channel source",
+                  text: "Synthetic channel message",
+                },
+              ]
+            : [{ kind: "text", text: taskPrompt }],
+          replyToMessageId: null,
+          replyQuote: null,
+          replyTo: null,
+        },
+      ]),
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
+        channelRun && where?.id === "channel-message-1"
+          ? {
+              blocks: [
+                {
+                  kind: "channel_message",
+                  provider: "sendblue",
+                  channelId: "channel-1",
+                  fromAddress: "synthetic-channel-source",
+                  fromLabel: "Synthetic channel source",
+                  text: "Synthetic channel message",
+                },
+              ],
+            }
+          : null,
+      ),
+    },
+    task: {
+      findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: taskPrompt })),
+    },
+    computer: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: "computer-1",
+        homeKey: "home-1",
+        scope: "dedicated",
+        state: "running",
+        kind: "e2b",
+        providerRef: "synthetic-computer",
+        spaceId: run.spaceId,
+        maintenanceId: null,
+        updatedAt: new Date(),
+      })),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    connection: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
+    spaceModelPreference: {
+      findFirst: vi.fn(
+        async (args: {
+          where?: { credential?: { provider?: string }; modelId?: string; isDefault?: boolean };
+          select?: { embeddingModel?: boolean };
+        }) => {
+          if (backupModel && args.where?.credential?.provider === backupModel.provider) {
+            return {
+              modelId: backupModel.modelId,
+              isDefault: false,
+              thinkingLevel: null,
+              credential: {
+                id: "backup-credential",
+                userId: run.userId,
+                provider: backupModel.provider,
+                label: "Synthetic backup",
+                secretId: "backup-secret",
+                createdAt: new Date(0),
+                updatedAt: new Date(0),
+              },
+            };
+          }
+          if (args.select?.embeddingModel) return { embeddingModel: null };
+          return null;
+        },
+      ),
+    },
+    secret: {
+      findFirst: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
+        backupModel && where?.id === "backup-secret"
+          ? { id: "backup-secret", ciphertext: "synthetic-backup-secret" }
+          : null,
+      ),
+    },
+    userModelCredential: { findFirst: vi.fn(async () => null) },
+    spaceBackupModel: {
+      findMany: vi.fn(async () =>
+        backupModel ? [{ provider: backupModel.provider, modelId: backupModel.modelId }] : [],
+      ),
+    },
+    deploymentSettings: {
+      findUnique: vi.fn(async () => ({
+        defaultModelProvider: "openrouter",
+        defaultModelId: "openai/gpt-4o",
+      })),
+    },
+    aiDataConsent: {
+      findFirst: vi.fn(async ({ where }: { where?: { recipientKey?: string } } = {}) =>
+        !consentedRecipientKeys || consentedRecipientKeys.includes(where?.recipientKey ?? "")
+          ? { userId: run.userId }
+          : null,
+      ),
+      // Chat consent is always granted here; these tests vary the Data Room consent read by findFirst.
+      findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })),
+    },
+    taughtSkill: { findMany: vi.fn(async () => []) },
+    agentSecret: { findMany: vi.fn(async () => []) },
+    botSecret: { findMany: vi.fn(async () => []) },
+    agentSkill: { findMany: vi.fn(async () => []) },
+    botSkillSetting: { findMany: vi.fn(async () => []) },
+    scratchpadItem: { findMany: scratchpadFindMany },
+    board: {
+      findUnique: vi.fn(async () =>
+        ambientContext ? { id: "board-1", ticketPrefix: "SYN" } : null,
+      ),
+    },
+    ticket: {
+      findMany: vi.fn(async () =>
+        ambientContext
+          ? [
+              {
+                id: "ticket-1",
+                number: 42,
+                title: "TICKET_CONTEXT_PRIVATE_MARKER",
+                status: "open",
+                assigneeBotId: null,
+              },
+            ]
+          : [],
+      ),
+    },
+    ticketComment: {
+      findMany: vi.fn(async () =>
+        ambientContext ? [{ ticketId: "ticket-1", body: "TICKET_COMMENT_PRIVATE_MARKER" }] : [],
+      ),
+    },
+    companyImportRun: {
+      findFirst: vi.fn(
+        async ({
+          where,
+        }: {
+          where?: {
+            spaceId?: string;
+            ownerUserId?: string;
+            status?: string | { in?: string[] };
+          };
+        } = {}) => {
+          if (!companyImportRuns) return companyImport?.run ?? null;
+          const matchingRuns = companyImportRuns.filter((importRun) => {
+            if (where?.spaceId && importRun.spaceId !== where.spaceId) return false;
+            if (where?.ownerUserId && importRun.ownerUserId !== where.ownerUserId) return false;
+            if (typeof where?.status === "string") return importRun.status === where.status;
+            if (where?.status && "in" in where.status) {
+              return where.status.in?.includes(importRun.status) ?? false;
+            }
+            return true;
+          });
+          return (
+            matchingRuns.sort(
+              (left, right) =>
+                right.createdAt.getTime() - left.createdAt.getTime() ||
+                right.id.localeCompare(left.id),
+            )[0] ?? null
+          );
+        },
+      ),
+    },
+    externalEffect: {
+      findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) => {
+        const rows = effectRows.filter((row) => matchesEffectWhere(row, where));
+        return rows;
+      }),
+      findUnique: vi.fn(
+        async ({ where }: { where?: { id?: string; idempotencyKey?: string } } = {}) =>
+          effectRows.find(
+            (row) => row.id === where?.id || row.idempotencyKey === where?.idempotencyKey,
+          ) ?? null,
+      ),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = {
+          id: `effect-${effectRows.length + 1}`,
+          status: "pending",
+          ...data,
+          request: structuredClone(data.request),
+        };
+        effectRows.push(row);
+        return row;
+      }),
+      update: vi.fn(
+        async ({ where, data }: { where?: { id?: string }; data?: Record<string, unknown> }) => {
+          const row = effectRows.find((effect) => effect.id === where?.id);
+          if (row && data) Object.assign(row, data);
+          return row;
+        },
+      ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where?: Record<string, unknown>;
+          data?: Record<string, unknown>;
+        } = {}) => {
+          const matching = effectRows.filter((row) => matchesEffectWhere(row, where));
+          for (const row of matching) if (data) Object.assign(row, data);
+          return { count: matching.length || 1 };
+        },
+      ),
+    },
+    artifact: { findMany: vi.fn(async () => []) },
+    actionApprovalRule: { findMany: vi.fn(async () => []) },
+    actionAutoReviewPreference: { findUnique: vi.fn(async () => ({ enabled: true })) },
+    computerControlLease: { findUnique: vi.fn(async () => null) },
+  };
+  const executor = createRunExecutor({
+    prisma,
+    deploymentModelKey: "synthetic-test-key",
+    runtime: { describe: () => ({ capabilities: {} }), run: runtimeRun },
+    connector: {
+      discoverTools: vi.fn(async () => []),
+      execute: connectorCall,
+    },
+    web: {
+      describe: () => ({ capabilities: {} }),
+      search: vi.fn(async () => []),
+      fetch: webFetch,
+    },
+    mail: { listAccounts: vi.fn(async () => []), send: mailSend },
+    sandbox: {
+      describe: () => ({ capabilities: { graphical: false } }),
+      isRunning: vi.fn(async () => true),
+      prepare: vi.fn(async () => undefined),
+      writeFile: vi.fn(async () => undefined),
+      async *exportWorkspace() {
+        yield* [];
+      },
+    },
+    home: { commit: vi.fn(async () => "fixture-revision") },
+    memory: { read: memoryRead },
+    memoryProviders: { resolve: memoryProviderResolve },
+    artifacts: { get: vi.fn(async () => new Uint8Array()) },
+    events: {
+      append: vi.fn(async () => undefined),
+      finalizeRun,
+      pauseRunForInput,
+    },
+    jobs: { enqueue: vi.fn(async () => undefined) },
+    companyImport: companyImport ? () => companyImport.engine : undefined,
+    autoReview,
+    secretStore: { load: vi.fn(async () => "synthetic-backup-secret"), put: vi.fn() },
+    ticketBoardEnabled,
+    secrets: [],
+  } as unknown as Parameters<typeof createRunExecutor>[0]);
+  await executor.continueRun(run.id, "worker-1");
+  if (resumeApprovedEffect) {
+    const approved = effectRows.find((effect) => effect.kind === "company_import_start");
+    if (!approved) throw new Error("Company import approval was not persisted.");
+    approved.status = "approved";
+    companyImport?.mutateBeforeResume?.();
+    run.status = "queued";
+    await executor.continueRun(run.id, "worker-1");
+  }
+  return {
+    request,
+    toolResults,
+    runtimeRun,
+    pauseRunForInput,
+    finalizeRun,
+    mailSend,
+    connectorCall,
+    webFetch,
+    effectRows,
+    persistedReplayArgs,
+    fallbackAttempts,
+    prisma,
+    memoryRead,
+    memoryProviderResolve,
+    semanticRecall,
+    scratchpadFindMany,
+  };
+}
+
+async function dataRoomConsentKey(provider: string, id: string) {
+  const ai = await resolveDataRoomAi(
+    {
+      prisma: {
+        spaceModelPreference: { findFirst: async () => null },
+        aiDataConsent: { findFirst: async () => null },
+      },
+      resolveModel: async () => ({ provider, id, apiKey: "synthetic-key" }),
+    } as never,
+    { userId: "user-1", spaceId: "space-1" },
+  );
+  return ai.consentKey;
+}
+
+function setCompanySearchStore() {
+  companyStoreMock.current = {
+    list: vi.fn(async () => [
+      {
+        id: "company-person-1",
+        kind: "person",
+        displayName: "Synthetic Example",
+        attrs: {},
+        confidence: 0.9,
+        status: "suggested",
+        visibility: "private",
+        evidence: [],
+        identities: [],
+        mergedFrom: [],
+        edges: [],
+        events: [],
+      },
+      {
+        id: "company-data-room-person",
+        kind: "person",
+        displayName: "Synthetic Private Example",
+        attrs: {},
+        confidence: 0.9,
+        status: "suggested",
+        visibility: "private",
+        evidence: [
+          {
+            id: "company-data-room-evidence",
+            factKind: "entity",
+            factId: "company-data-room-person",
+            stance: "supports",
+            sourceKind: "data_room",
+            connectionId: null,
+            mcpServerId: null,
+            dataRoomItemId: "synthetic-item",
+            sourceItemId: "synthetic-source",
+            sourceKey: "synthetic-source-key",
+            sourceUrl: null,
+            quote: "Synthetic private evidence",
+            contentHash: "synthetic-content-hash",
+            extractedAt: "2026-01-01T00:00:00.000Z",
+            extractorRunId: null,
+            extractorModel: null,
+            confidence: 0.9,
+            confirmedByUserId: null,
+            confirmedAt: null,
+          },
+        ],
+        identities: [],
+        mergedFrom: [],
+        edges: [],
+        events: [],
+      },
+    ]),
+    listEdges: vi.fn(async () => []),
+    listEvents: vi.fn(async () => []),
+    teamFacts: vi.fn(async () => ({ entities: [], edges: [], events: [] })),
+  };
+}
+
+describe("Company identity executor boundaries", () => {
+  it("requires approval for Company reads after untrusted meeting content", async () => {
+    const { toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey: null,
+      meetingTaintedAt: new Date("2026-01-01T00:00:00.000Z"),
+      calls: [{ name: "company_search", args: {} }],
+    });
+    expect(isApprovalPausedResult(toolResults[0]?.result)).toBe(true);
+    expect(pauseRunForInput).toHaveBeenCalled();
+  });
+
+  it("keeps Company read tools classified as reads", () => {
+    for (const name of COMPANY_READ_TOOLS) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
+  });
+
+  it("rejects importer attention notifications without a budget or consent issue", async () => {
+    const { toolResults } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      calls: [{ name: "notify_user", args: { importance: "attention", title: "Import" } }],
+    });
+    expect(toolResults[0]?.result).toEqual({
+      error: "Importer attention notifications are reserved for budget or consent issues.",
+    });
+  });
+
+  it("sends importer attention notifications for an eligible run despite a newer draft", async () => {
+    createNotificationMock.mockClear();
+    const { toolResults, prisma } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      companyImportRuns: [
+        {
+          id: "eligible-import",
+          spaceId: "space-1",
+          ownerUserId: "user-1",
+          status: "awaiting_consent",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+        {
+          id: "newer-draft",
+          spaceId: "space-1",
+          ownerUserId: "user-1",
+          status: "draft",
+          createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        },
+      ],
+      calls: [{ name: "notify_user", args: { importance: "attention", title: "Import" } }],
+    });
+
+    expect(toolResults[0]?.result).toEqual({ ok: true, note: "Notification sent." });
+    expect(prisma.companyImportRun.findFirst).toHaveBeenCalledWith({
+      where: {
+        spaceId: "space-1",
+        ownerUserId: "user-1",
+        status: { in: ["budget_reached", "awaiting_consent"] },
+      },
+      select: { id: true },
+    });
+    expect(createNotificationMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        spaceId: "space-1",
+        userId: "user-1",
+        surface: "company",
+        importance: "attention",
+        kind: "urgent",
+      }),
+    );
+  });
+
+  it("rejects forged importer source, connector, write, and confirmation tools before provider calls", async () => {
+    const { request, toolResults, mailSend, connectorCall, webFetch } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      calls: [
+        { name: "mail_send", args: {} },
+        { name: "web_fetch", args: { url: "https://example.test" } },
+        { name: "mcp__synthetic__write", args: {} },
+        {
+          name: "company_fact_upsert",
+          args: {
+            operation: "create",
+            kind: "entity",
+            fact: { kind: "person", displayName: "Synthetic Example", attrs: {}, confidence: 0.8 },
+            provenance: "Synthetic owner correction",
+          },
+        },
+        { name: "company_fact_confirm", args: {} },
+      ],
+    });
+    expect(request?.tools.map(({ name }) => name)).not.toContain("mail_send");
+    expect(
+      toolResults.every(({ result }) =>
+        /not available|not offered/i.test((result as { error?: string })?.error ?? ""),
+      ),
+    ).toBe(true);
+    expect(mailSend).not.toHaveBeenCalled();
+    expect(connectorCall).not.toHaveBeenCalled();
+    expect(webFetch).not.toHaveBeenCalled();
+  });
+
+  it("offers ordinary foreground reads and excludes Company access from ordinary helpers", async () => {
+    const { request } = await runIdentityExecutor({ spawnKey: null });
+    expect(request?.tools.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([...COMPANY_READ_TOOLS]),
+    );
+    expect(
+      [...request!.subagentToolNames!].some((name) => COMPANY_READ_TOOLS.includes(name as never)),
+    ).toBe(false);
+  });
+
+  it.each([
+    ["ordinary bot", null],
+    ["Company agent", companyAgentSpawnKey("user-1")],
+  ])(
+    "%s offers and dispatches Company reads for an eligible owner routine without upsert",
+    async (_label, spawnKey) => {
+      setCompanySearchStore();
+      const { request, toolResults } = await runIdentityExecutor({
+        spawnKey,
+        trigger: "routine",
+        calls: [
+          { name: "company_search", args: { text: "Synthetic Example" } },
+          {
+            name: "company_fact_upsert",
+            args: {
+              operation: "create",
+              kind: "entity",
+              fact: {
+                kind: "person",
+                displayName: "Synthetic Example",
+                attrs: {},
+                confidence: 0.8,
+              },
+              provenance: "Synthetic owner correction",
+            },
+          },
+        ],
+      });
+
+      const exposedCompanyTools =
+        request?.tools
+          .map(({ name }) => name)
+          .filter(
+            (name) => name.startsWith("company_") || COMPANY_READ_TOOLS.includes(name as never),
+          )
+          .sort() ?? [];
+      expect(exposedCompanyTools).toEqual([...COMPANY_READ_TOOLS].sort());
+      expect(request?.tools.map(({ name }) => name)).not.toContain("company_fact_upsert");
+      expect(toolResults[0]?.result).toMatchObject({
+        untrusted: true,
+        facts: [
+          expect.objectContaining({
+            record: expect.objectContaining({ id: "company-person-1" }),
+          }),
+        ],
+      });
+      expect(toolResults[1]?.result).toMatchObject({
+        error: expect.stringMatching(/not available/i),
+      });
+    },
+  );
+
+  it.each([
+    {
+      label: "a nonowner routine",
+      trigger: "routine",
+      groupId: null,
+      botUserId: "owner-1",
+      channelRun: false,
+    },
+    {
+      label: "a group routine",
+      trigger: "routine",
+      groupId: "group-1",
+      botUserId: "user-1",
+      channelRun: false,
+    },
+    {
+      label: "a messaging-channel run",
+      trigger: "messaging",
+      groupId: null,
+      botUserId: "user-1",
+      channelRun: true,
+    },
+  ])("denies Company reads for $label", async ({ trigger, groupId, botUserId, channelRun }) => {
+    const { request, toolResults } = await runIdentityExecutor({
+      spawnKey: null,
+      trigger,
+      groupId,
+      botUserId,
+      channelRun,
+      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+    });
+
+    expect(request?.tools.map(({ name }) => name)).not.toContain("company_search");
+    expect(toolResults[0]?.result).toMatchObject({
+      error: expect.stringMatching(/not available/i),
+    });
+  });
+
+  it.each([
+    ["Company agent", companyAgentSpawnKey("user-1")],
+    ["Company importer", companyImporterSpawnKey("user-1")],
+  ])("%s receives no configured backup models", async (_label, spawnKey) => {
+    const { request, prisma } = await runIdentityExecutor({
+      spawnKey,
+      backupModel: { provider: "openai", modelId: "gpt-4o" },
+    });
+
+    expect(request?.fallbackModels).toEqual([]);
+    expect(request?.resolveFallbackModel).toBeUndefined();
+    expect(prisma.spaceBackupModel.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Company agent", companyAgentSpawnKey("user-1")],
+    ["Company importer", companyImporterSpawnKey("user-1")],
+  ])("%s receives no ambient private context", async (_label, spawnKey) => {
+    const {
+      request,
+      memoryRead,
+      memoryProviderResolve,
+      semanticRecall,
+      scratchpadFindMany,
+      prisma,
+    } = await runIdentityExecutor({
+      spawnKey,
+      ambientContext: true,
+      ticketBoardEnabled: true,
+    });
+    const serialized = JSON.stringify(request);
+
+    for (const marker of [
+      "DURABLE_MEMORY_PRIVATE_MARKER",
+      "SEMANTIC_RECALL_PRIVATE_MARKER",
+      "SCRATCHPAD_PRIVATE_MARKER",
+      "TICKET_CONTEXT_PRIVATE_MARKER",
+      "TICKET_COMMENT_PRIVATE_MARKER",
+    ]) {
+      expect(serialized).not.toContain(marker);
+    }
+    expect(memoryProviderResolve).not.toHaveBeenCalled();
+    expect(semanticRecall).not.toHaveBeenCalled();
+    expect(memoryRead).not.toHaveBeenCalled();
+    expect(scratchpadFindMany).not.toHaveBeenCalled();
+    expect(prisma.board.findUnique).not.toHaveBeenCalled();
+    expect(prisma.ticket.findMany).not.toHaveBeenCalled();
+    expect(prisma.ticketComment.findMany).not.toHaveBeenCalled();
+  });
+
+  it("preserves ordinary-agent memory, scratchpad, ticket, and semantic context", async () => {
+    const {
+      request,
+      memoryRead,
+      memoryProviderResolve,
+      semanticRecall,
+      scratchpadFindMany,
+      prisma,
+    } = await runIdentityExecutor({
+      spawnKey: null,
+      ambientContext: true,
+      ticketBoardEnabled: true,
+    });
+    const serialized = JSON.stringify(request);
+
+    for (const marker of [
+      "DURABLE_MEMORY_PRIVATE_MARKER",
+      "SEMANTIC_RECALL_PRIVATE_MARKER",
+      "SCRATCHPAD_PRIVATE_MARKER",
+      "TICKET_CONTEXT_PRIVATE_MARKER",
+      "TICKET_COMMENT_PRIVATE_MARKER",
+    ]) {
+      expect(serialized).toContain(marker);
+    }
+    expect(memoryProviderResolve).toHaveBeenCalledOnce();
+    expect(semanticRecall).toHaveBeenCalledOnce();
+    expect(memoryRead).toHaveBeenCalledTimes(2);
+    expect(scratchpadFindMany).toHaveBeenCalledOnce();
+    expect(prisma.board.findUnique).toHaveBeenCalledOnce();
+    expect(prisma.ticket.findMany).toHaveBeenCalledOnce();
+    expect(prisma.ticketComment.findMany).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an unconsented fallback after a successful Company read", async () => {
+    const primaryConsent = await dataRoomConsentKey("openrouter", "openai/gpt-4o");
+    const backup = { provider: "openai", modelId: "gpt-4o" };
+    const backupConsent = await dataRoomConsentKey(backup.provider, backup.modelId);
+    setCompanySearchStore();
+
+    const { toolResults, fallbackAttempts, prisma } = await runIdentityExecutor({
+      spawnKey: null,
+      backupModel: backup,
+      consentedRecipientKeys: [primaryConsent],
+      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+    });
+
+    expect(toolResults[0]?.result).toMatchObject({ untrusted: true });
+    expect(fallbackAttempts[0]?.ok).toBe(false);
+    expect(fallbackAttempts[0]?.error).toMatchObject({
+      message: "Data Room consent is required for the backup model.",
+    });
+    expect(
+      prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
+    ).toEqual([primaryConsent, backupConsent]);
+  });
+
+  it("uses a consented fallback recipient for later Company reads", async () => {
+    const primaryConsent = await dataRoomConsentKey("openrouter", "openai/gpt-4o");
+    const backup = { provider: "openai", modelId: "gpt-4o" };
+    const backupConsent = await dataRoomConsentKey(backup.provider, backup.modelId);
+    setCompanySearchStore();
+
+    const { toolResults, fallbackAttempts, prisma } = await runIdentityExecutor({
+      spawnKey: null,
+      backupModel: backup,
+      selectBackup: true,
+      calls: [{ name: "company_search", args: {} }],
+      callsAfterBackup: [{ name: "company_search", args: {} }],
+      consentedRecipientKeys: [primaryConsent, backupConsent],
+    });
+
+    expect(fallbackAttempts[0]?.ok).toBe(true);
+    expect(toolResults).toHaveLength(2);
+    expect(toolResults.every(({ result }) => (result as { untrusted?: boolean }).untrusted)).toBe(
+      true,
+    );
+    const fallbackSearch = toolResults[1]!.result as {
+      facts: Array<{ record: { id: string } }>;
+    };
+    expect(fallbackSearch.facts.map((fact) => fact.record.id)).toContain(
+      "company-data-room-person",
+    );
+    expect(
+      prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
+    ).toEqual([primaryConsent, backupConsent, backupConsent, backupConsent]);
+    expect(prisma.run.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { modelProvider: backup.provider, modelId: backup.modelId },
+      }),
+    );
+  });
+
+  it("allows ordinary fallback before Company reads and checks the selected recipient", async () => {
+    const backup = { provider: "openai", modelId: "gpt-4o" };
+    const backupConsent = await dataRoomConsentKey(backup.provider, backup.modelId);
+    setCompanySearchStore();
+
+    const { toolResults, fallbackAttempts, prisma } = await runIdentityExecutor({
+      spawnKey: null,
+      backupModel: backup,
+      selectBackup: true,
+      callsAfterBackup: [{ name: "company_search", args: {} }],
+      consentedRecipientKeys: [],
+    });
+
+    expect(fallbackAttempts[0]?.ok).toBe(true);
+    const searchResult = toolResults[0]!.result as {
+      untrusted: boolean;
+      facts: Array<{ record: { id: string } }>;
+    };
+    expect(searchResult).toMatchObject({ untrusted: true });
+    const facts = searchResult.facts;
+    expect(facts.map((fact) => fact.record.id)).toContain("company-person-1");
+    expect(facts.map((fact) => fact.record.id)).not.toContain("company-data-room-person");
+    expect(
+      prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
+    ).toEqual([backupConsent]);
+  });
+
+  it.each([
+    {
+      label: "group Company mutation",
+      spawnKey: companyAgentSpawnKey("user-1"),
+      trigger: "user",
+      groupId: "group-1",
+      call: {
+        name: "company_fact_upsert",
+        args: {
+          operation: "create",
+          kind: "entity",
+          fact: {
+            kind: "person",
+            displayName: "Synthetic Example",
+            attrs: {},
+            confidence: 0.8,
+          },
+          provenance: "Synthetic owner correction",
+        },
+      },
+      error: /not available/i,
+    },
+    {
+      label: "unattended Company mutation",
+      spawnKey: companyAgentSpawnKey("user-1"),
+      trigger: "routine",
+      groupId: null,
+      call: {
+        name: "company_fact_upsert",
+        args: {
+          operation: "create",
+          kind: "entity",
+          fact: {
+            kind: "person",
+            displayName: "Synthetic Example",
+            attrs: {},
+            confidence: 0.8,
+          },
+          provenance: "Synthetic owner correction",
+        },
+      },
+      error: /direct owner-started foreground|not available/i,
+    },
+    {
+      label: "Elio routine Company read",
+      spawnKey: voiceAgentSpawnKey("user-1"),
+      trigger: "routine",
+      groupId: null,
+      call: { name: "company_search", args: { text: "Synthetic Example" } },
+      error: /not available/i,
+    },
+    {
+      label: "ordinary group Company read",
+      spawnKey: null,
+      trigger: "user",
+      groupId: "group-1",
+      call: { name: "company_search", args: { text: "Synthetic Example" } },
+      error: /not available/i,
+    },
+  ])("denies $label", async ({ label, spawnKey, trigger, groupId, call, error }) => {
+    const { request, toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey,
+      trigger,
+      groupId,
+      calls: [call],
+    });
+    expect((toolResults[0]?.result as { error?: string })?.error).toMatch(error);
+    expect(pauseRunForInput).not.toHaveBeenCalled();
+    if (groupId || label === "Elio routine Company read") {
+      expect(request?.tools.map(({ name }) => name)).not.toContain(call.name);
+    }
+    if (label === "unattended Company mutation") {
+      const exposedCompanyTools =
+        request?.tools
+          .map(({ name }) => name)
+          .filter(
+            (name) => name.startsWith("company_") || COMPANY_READ_TOOLS.includes(name as never),
+          )
+          .sort() ?? [];
+      expect(exposedCompanyTools).toEqual([...COMPANY_READ_TOOLS].sort());
+    }
+  });
+
+  it("requires explicit approval for Company edits and does not invoke auto-review", async () => {
+    const review = vi.fn(async () => ({ decision: "approve" as const }));
+    const { request, toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey: companyAgentSpawnKey("user-1"),
+      autoReview: { review },
+      calls: [
+        {
+          name: "company_fact_upsert",
+          args: {
+            operation: "create",
+            kind: "entity",
+            fact: {
+              kind: "person",
+              displayName: "Synthetic Example",
+              attrs: {},
+              confidence: 0.8,
+            },
+            provenance: "Synthetic owner correction",
+          },
+        },
+        { name: "remember", args: { content: "Must not be remembered" } },
+      ],
+    });
+    expect(request?.tools.map(({ name }) => name)).toContain("company_fact_upsert");
+    expect(pauseRunForInput).toHaveBeenCalledTimes(1);
+    const approvalAsk = pauseRunForInput.mock.calls[0]![0].blocks[0]!;
+    expect(approvalAsk.kind).toBe("ask");
+    expect(approvalAsk.actions?.map(({ id }) => id)).toEqual(["allow", "deny"]);
+    expect(toolResults[0]?.result).toEqual({
+      kind: "agent_tool_result",
+      content: [{ type: "text", text: "Waiting for approval." }],
+      details: { approval: "paused" },
+      terminate: true,
+    });
+    expect(review).not.toHaveBeenCalled();
+    expect(request?.tools.map(({ name }) => name)).not.toContain("remember");
+  });
+
+  it.each([
+    ["unchanged", false],
+    ["changed", true],
+  ])("replays an approved Company import start with the persisted plan (%s)", async (_, mutate) => {
+    const importRun = {
+      id: "import-1",
+      status: "configured",
+      tokenCap: 1000n,
+      mode: "sample",
+      reservedTokens: 50n,
+      inputTokensUsed: 20n,
+      outputTokensUsed: 10n,
+      sources: [
+        {
+          id: "source-1",
+          sourceKind: "slack",
+          connectionId: "connection-1",
+          scope: { channels: ["synthetic-channel"] },
+          plan: {
+            itemCount: 10,
+            tokensLower: 100,
+            tokensUpper: 200,
+            estimateBasis: "sample",
+          },
+        },
+      ],
+    };
+    const start = vi.fn(async () => ({ runId: "import-1", status: "running" }));
+    const consentStatus = vi.fn(async () => ({
+      allowed: true,
+      consentKey: "synthetic-consent",
+      sourceKind: "slack",
+      recipient: {
+        key: "synthetic-recipient",
+        name: "Synthetic model",
+        detail: "Synthetic test",
+        privacyUrl: null,
+      },
+      version: "synthetic-version",
+    }));
+    const call = { name: "company_import_start", args: { runId: "import-1" } };
+    const { toolResults, pauseRunForInput, effectRows, persistedReplayArgs } =
+      await runIdentityExecutor({
+        spawnKey: companyImporterSpawnKey("user-1"),
+        callBatches: [[call], [call]],
+        resumeApprovedEffect: true,
+        companyImport: {
+          run: importRun,
+          engine: { consentStatus, start },
+          mutateBeforeResume: mutate
+            ? () => {
+                (importRun.sources[0]!.scope as { channels: string[] }).channels = [
+                  "changed-channel",
+                ];
+              }
+            : undefined,
+        },
+      });
+
+    expect(pauseRunForInput).toHaveBeenCalledTimes(1);
+    expect(effectRows).toEqual([
+      expect.objectContaining({
+        kind: "company_import_start",
+        status: expect.any(String),
+        request: expect.objectContaining({
+          runId: "import-1",
+          snapshot: expect.objectContaining({ runId: "import-1" }),
+        }),
+      }),
+    ]);
+    expect(persistedReplayArgs).toHaveLength(1);
+    expect(persistedReplayArgs[0]).toEqual(effectRows[0]?.request);
+    expect(persistedReplayArgs[0]).not.toBe(effectRows[0]?.request);
+    expect(toolResults).toHaveLength(2);
+    if (mutate) {
+      expect(start).not.toHaveBeenCalled();
+      expect(toolResults[1]?.result).toMatchObject({
+        error:
+          "The Company import plan or model recipient changed after approval. Review it again.",
+        approvalRequired: true,
+      });
+    } else {
+      expect(start).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ userId: "user-1", spaceId: "space-1" }),
+        "import-1",
+      );
+      expect(toolResults[1]?.result).toMatchObject({
+        untrusted: true,
+        progress: { runId: "import-1", status: "running" },
+      });
+    }
+  });
 });
 
 describe("voice agent permissions", () => {

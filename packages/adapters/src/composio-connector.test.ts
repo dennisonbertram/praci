@@ -1,6 +1,8 @@
 import type { AdapterContext, ConnectorEvent, ConnectorTool } from "@rakazo/adapter-kit";
+import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
+import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { composioToolkitDirectory } from "./composio-catalog-cache.js";
 import {
   asConnectorTools,
@@ -29,6 +31,13 @@ const composioSdkState = vi.hoisted(() => ({
   executeResult: null as null | { data: Record<string, unknown>; error: string | null },
   failTools: null as null | string[],
   githubReadOnlyHint: undefined as boolean | undefined,
+  offeredReadOnly: undefined as boolean | undefined,
+  offeredReadOnlyHint: undefined as boolean | undefined,
+  extraOfferedNames: [] as string[],
+  slackToolName: "SLACK_FETCH_CONVERSATION_HISTORY",
+  slackReadOnlyHint: undefined as boolean | undefined,
+  slackDestructiveHint: undefined as boolean | undefined,
+  rawTools: [] as unknown[],
   logIds: null as null | string[],
   connectedAccounts: {
     list: async (_query?: Record<string, unknown>) => ({ items: [] as Array<{ id: string }> }),
@@ -65,6 +74,9 @@ const composioSdkState = vi.hoisted(() => ({
 
 vi.mock("@composio/core", () => ({
   Composio: class {
+    readonly tools = {
+      getRawToolRouterSessionTools: async () => composioSdkState.rawTools,
+    };
     readonly sessions = {
       use: async (sessionId: string) => {
         const session = composioSdkState.sessions.get(sessionId);
@@ -107,8 +119,14 @@ vi.mock("@composio/core", () => ({
       }
 
       const scopedToCanonicalGithub = toolkits.includes("GITHUB");
+      const scopedToSlack = toolkits.includes("SLACK");
+      const scopedToAcme = toolkits.includes("ACME");
       const session = {
-        sessionId: scopedToCanonicalGithub ? "github-session" : "unscoped-session",
+        sessionId: scopedToCanonicalGithub
+          ? "github-session"
+          : scopedToSlack
+            ? "slack-session"
+            : "unscoped-session",
         tools: async () =>
           scopedToCanonicalGithub
             ? [
@@ -124,7 +142,55 @@ vi.mock("@composio/core", () => ({
                   },
                 },
               ]
-            : [],
+            : scopedToSlack
+              ? [
+                  {
+                    type: "function",
+                    function: {
+                      name: composioSdkState.slackToolName,
+                      description: "Synthetic Slack tool",
+                      parameters: { type: "object", properties: {} },
+                      ...(composioSdkState.slackReadOnlyHint === undefined &&
+                      composioSdkState.slackDestructiveHint === undefined
+                        ? {}
+                        : {
+                            annotations: {
+                              ...(composioSdkState.slackReadOnlyHint === undefined
+                                ? {}
+                                : { readOnlyHint: composioSdkState.slackReadOnlyHint }),
+                              ...(composioSdkState.slackDestructiveHint === undefined
+                                ? {}
+                                : { destructiveHint: composioSdkState.slackDestructiveHint }),
+                            },
+                          }),
+                    },
+                  },
+                ]
+              : scopedToAcme
+                ? [
+                    {
+                      slug: "ACME_LIST_RECORDS",
+                      description: "Synthetic list",
+                      inputParameters: { type: "object", properties: {} },
+                      ...(composioSdkState.offeredReadOnly === undefined
+                        ? {}
+                        : { readOnly: composioSdkState.offeredReadOnly }),
+                      ...(composioSdkState.offeredReadOnlyHint === undefined
+                        ? {}
+                        : { annotations: { readOnlyHint: composioSdkState.offeredReadOnlyHint } }),
+                    },
+                    {
+                      slug: "ACME_CREATE_RECORD",
+                      description: "Synthetic create",
+                      inputParameters: { type: "object", properties: {} },
+                    },
+                    ...composioSdkState.extraOfferedNames.map((slug) => ({
+                      slug,
+                      description: "Synthetic list",
+                      inputParameters: { type: "object", properties: {} },
+                    })),
+                  ]
+                : [],
         execute: async (tool: string, args: Record<string, unknown>) => {
           composioSdkState.executions.push({ tool, args });
           const failed = composioSdkState.failTools?.includes(tool) ?? false;
@@ -167,15 +233,263 @@ describe("composio tool mapping", () => {
   });
 
   it("preserves only explicit read-only metadata from Composio tools", () => {
-    const [read, write, unknown] = asConnectorTools([
+    const [read, write, unknown, destructive] = asConnectorTools([
       { slug: "GMAIL_FETCH_EMAILS", readOnly: true },
       { slug: "GMAIL_SEND_EMAIL", annotations: { readOnlyHint: false } },
       { slug: "GMAIL_OTHER" },
+      {
+        slug: "SLACK_FETCH_CONVERSATION_HISTORY",
+        readOnly: true,
+        annotations: { destructiveHint: true },
+      },
     ]);
 
     expect(read?.readOnly).toBe(true);
     expect(write?.readOnly).toBe(false);
     expect(unknown?.readOnly).toBeUndefined();
+    expect(destructive?.readOnly).toBe(false);
+  });
+
+  it("uses fresh raw Company tags, blocks tag mutations, and retains reported prices", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    composioSdkState.rawTools = [
+      {
+        slug: "ACME_LIST_RECORDS",
+        toolkit: { slug: "acme" },
+        description: "List CRM records",
+        inputParameters: {
+          type: "object",
+          properties: { query: { type: "string" } },
+        },
+        tags: { readOnlyHint: true },
+      },
+      {
+        slug: "ACME_CREATE_RECORD",
+        toolkit: { slug: "acme" },
+        inputParameters: { type: "object", properties: {} },
+        tags: { readOnlyHint: true, createHint: true },
+      },
+    ];
+    const restoreAccounts = stubActiveAccounts(["ca-acme"]);
+    const previousFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  slug: "ACME_LIST_RECORDS",
+                  instant: {
+                    price: { description: "Synthetic $0.01/call", discount: "Synthetic rate" },
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const context: AdapterContext = {
+      operationId: "company-generic",
+      traceId: "company-generic",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: new AbortController().signal,
+      companyImportReadOnly: true,
+      connectedConnections: [
+        {
+          id: "connection-acme",
+          connectorId: "composio",
+          externalId: "acme",
+          displayName: "Synthetic",
+          providerRef: "ca-acme",
+        },
+      ],
+    };
+    try {
+      const connector = new ComposioConnector("synthetic-key");
+      const tools = await connector.discoverTools(context);
+      expect(tools).toContainEqual(
+        expect.objectContaining({
+          name: "ACME_LIST_RECORDS",
+          readOnly: true,
+          description: "List CRM records",
+          inputSchema: {
+            type: "object",
+            properties: { query: { type: "string" } },
+          },
+          reportedCost: { description: "Synthetic $0.01/call", discount: "Synthetic rate" },
+        }),
+      );
+      expect(tools.find((tool) => tool.name === "ACME_CREATE_RECORD")?.readOnly).toBe(false);
+
+      composioSdkState.rawTools[0] = {
+        ...(composioSdkState.rawTools[0] as Record<string, unknown>),
+        tags: { readOnlyHint: true, updateHint: true },
+      };
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        {
+          tool: "ACME_LIST_RECORDS",
+          args: {},
+          executionId: "company-generic-write-mutation",
+          route: {
+            connectorId: "composio",
+            connectionId: "connection-acme",
+            toolName: "ACME_LIST_RECORDS",
+            discoveredReadOnly: true,
+          },
+        },
+        context,
+      ))
+        events.push(event);
+      expect(events).toContainEqual(expect.objectContaining({ type: "error" }));
+      expect(composioSdkState.executions).toEqual([]);
+    } finally {
+      globalThis.fetch = previousFetch;
+      restoreAccounts();
+      composioSdkState.rawTools = [];
+      composioSdkState.sessions.clear();
+    }
+  });
+
+  it("does not upgrade an explicitly denied offered tool from raw read tags", async () => {
+    const restoreAccounts = stubActiveAccounts(["ca-acme"]);
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({ items: [] }), { status: 200 });
+    try {
+      for (const form of ["readOnly", "annotation"] as const) {
+        composioSdkState.created.length = 0;
+        composioSdkState.executions.length = 0;
+        composioSdkState.sessions.clear();
+        composioToolkitDirectory.invalidate();
+        composioSdkState.offeredReadOnly = form === "readOnly" ? false : undefined;
+        composioSdkState.offeredReadOnlyHint = form === "annotation" ? false : undefined;
+        composioSdkState.rawTools = [
+          {
+            slug: "ACME_LIST_RECORDS",
+            toolkit: { slug: "acme" },
+            inputParameters: { type: "object", properties: {} },
+            tags: { readOnlyHint: true },
+          },
+        ];
+        const connector = new ComposioConnector("synthetic-key");
+        const context: AdapterContext = {
+          operationId: `company-read-only-${form}`,
+          traceId: `company-read-only-${form}`,
+          spaceId: "workspace",
+          userId: "user-1",
+          signal: new AbortController().signal,
+          companyImportReadOnly: true,
+          connectedConnections: [
+            {
+              id: "connection-acme",
+              connectorId: "composio",
+              externalId: "acme",
+              displayName: "Synthetic",
+              providerRef: "ca-acme",
+            },
+          ],
+        };
+        const tools = await connector.discoverTools(context);
+        expect(tools.find((tool) => tool.name === "ACME_LIST_RECORDS")?.readOnly).toBe(false);
+        const events: ConnectorEvent[] = [];
+        for await (const event of connector.execute(
+          {
+            tool: "ACME_LIST_RECORDS",
+            args: {},
+            executionId: `company-read-only-${form}`,
+            route: {
+              connectorId: "composio",
+              connectionId: "connection-acme",
+              toolName: "ACME_LIST_RECORDS",
+              discoveredReadOnly: true,
+            },
+          },
+          context,
+        ))
+          events.push(event);
+        expect(events).toContainEqual(expect.objectContaining({ type: "error" }));
+        expect(composioSdkState.executions).toEqual([]);
+      }
+    } finally {
+      composioSdkState.offeredReadOnly = undefined;
+      composioSdkState.offeredReadOnlyHint = undefined;
+      composioSdkState.rawTools = [];
+      composioSdkState.sessions.clear();
+      globalThis.fetch = previousFetch;
+      restoreAccounts();
+    }
+  });
+
+  it("bounds pricing metadata requests, follows cancellation, and ignores off-batch slugs", async () => {
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const extraNames = Array.from({ length: 49 }, (_, index) => `ACME_LIST_${index}`);
+    const outsideBatch = extraNames.at(-1)!;
+    composioSdkState.extraOfferedNames = extraNames;
+    composioSdkState.rawTools = ["ACME_LIST_RECORDS", "ACME_CREATE_RECORD", ...extraNames].map(
+      (slug) => ({
+        slug,
+        toolkit: { slug: "acme" },
+        inputParameters: { type: "object", properties: {} },
+        tags: { readOnlyHint: true },
+      }),
+    );
+    const previousFetch = globalThis.fetch;
+    const signals: AbortSignal[] = [];
+    let requests = 0;
+    globalThis.fetch = async (_input, init) => {
+      signals.push(init?.signal as AbortSignal);
+      const items =
+        requests++ === 0
+          ? [
+              {
+                slug: outsideBatch,
+                instant: { price: { description: "Unrequested price" } },
+              },
+            ]
+          : [];
+      return new Response(JSON.stringify({ items }), { status: 200 });
+    };
+    const controller = new AbortController();
+    controller.abort();
+    const context: AdapterContext = {
+      operationId: "company-pricing-abort",
+      traceId: "company-pricing-abort",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: controller.signal,
+      companyImportReadOnly: true,
+      connectedConnections: [
+        {
+          id: "connection-acme",
+          connectorId: "composio",
+          externalId: "acme",
+          displayName: "Synthetic",
+          providerRef: "ca-acme",
+        },
+      ],
+    };
+    const restoreAccounts = stubActiveAccounts(["ca-acme"]);
+    try {
+      const tools = await new ComposioConnector("synthetic-key").discoverTools(context);
+      expect(requests).toBe(2);
+      expect(signals).toHaveLength(2);
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+      expect(tools.find((tool) => tool.name === outsideBatch)?.reportedCost).toBeUndefined();
+    } finally {
+      composioSdkState.extraOfferedNames = [];
+      composioSdkState.rawTools = [];
+      composioSdkState.sessions.clear();
+      globalThis.fetch = previousFetch;
+      restoreAccounts();
+    }
   });
 
   it("retains provider route metadata independently of the tool name", async () => {
@@ -362,6 +676,169 @@ describe("composio tool mapping", () => {
       composioSdkState.connectedAccounts.list = previous;
     };
   }
+
+  it("fails Company session reuse closed when ACTIVE account verification is unavailable", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const restore = stubActiveAccounts(["ca-company"]);
+    const context: AdapterContext = {
+      operationId: "company-active-outage",
+      traceId: "company-active-outage",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: new AbortController().signal,
+      connectedConnections: [
+        {
+          id: "connection-company",
+          connectorId: "composio",
+          externalId: "github",
+          displayName: "GitHub",
+          providerRef: "ca-company",
+        },
+      ],
+    };
+
+    try {
+      const connector = new ComposioConnector();
+      await connector.discoverTools(context);
+      const sessionsBeforeOutage = composioSdkState.created.length;
+      const failedLookup = vi.fn(async () => {
+        throw new Error("provider unavailable");
+      });
+      composioSdkState.connectedAccounts.list = failedLookup;
+
+      await expect(
+        connector.discoverTools({ ...context, companyImportReadOnly: true }),
+      ).rejects.toThrow("The connected account is unavailable");
+      expect(failedLookup).toHaveBeenCalledTimes(1);
+      expect(composioSdkState.created).toHaveLength(sessionsBeforeOutage);
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        { tool: "GITHUB_GET_REPOS", args: {}, executionId: "company-outage" },
+        { ...context, companyImportReadOnly: true },
+      ))
+        events.push(event);
+      expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+      expect(failedLookup).toHaveBeenCalledTimes(2);
+      expect(composioSdkState.executions).toEqual([]);
+      await expect(connector.discoverTools(context)).resolves.toBeDefined();
+    } finally {
+      restore();
+    }
+  });
+
+  it("dispatches a missing-annotation Slack read through the pinned Company reader", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    composioSdkState.slackToolName = "SLACK_FETCH_CONVERSATION_HISTORY";
+    composioSdkState.slackReadOnlyHint = undefined;
+    composioSdkState.slackDestructiveHint = undefined;
+    const restore = stubActiveAccounts(["ca-slack"]);
+    const slackConnection = {
+      id: "connection-slack",
+      connectorId: "composio",
+      provider: "slack",
+      providerRef: "ca-slack",
+      displayName: "Synthetic Slack",
+      allAgents: true,
+      privateByDefault: false,
+      status: "connected",
+    };
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ userId: "user-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      connection: { findFirst: async () => slackConnection },
+    } as unknown as PrismaClient;
+    const reader = createCompanyConnectionReader({
+      prisma,
+      connectors: new ComposioConnector(),
+      mcp: {} as never,
+    });
+    const source = {
+      id: "source-slack",
+      sourceKind: "slack",
+      connectionId: slackConnection.id,
+      scope: {},
+    };
+    const context: AdapterContext = {
+      operationId: "company-slack-dispatch",
+      traceId: "company-slack-dispatch",
+      spaceId: "space-1",
+      userId: "user-1",
+      signal: new AbortController().signal,
+    };
+    try {
+      await expect(
+        reader.callTool(source, "SLACK_FETCH_CONVERSATION_HISTORY", {}, context),
+      ).resolves.toMatchObject({ data: { ok: true } });
+      expect(composioSdkState.created).toContainEqual(
+        expect.objectContaining({
+          userId: "user-1",
+          config: expect.objectContaining({
+            connectedAccounts: { SLACK: ["ca-slack"] },
+          }),
+        }),
+      );
+      expect(composioSdkState.executions.map(({ tool }) => tool)).toEqual([
+        "SLACK_FETCH_CONVERSATION_HISTORY",
+      ]);
+
+      composioSdkState.executions.length = 0;
+      composioSdkState.slackReadOnlyHint = false;
+      await expect(
+        reader.callTool(source, "SLACK_FETCH_CONVERSATION_HISTORY", {}, context),
+      ).rejects.toThrow("Company tool is not an approved read");
+      const directEvents: ConnectorEvent[] = [];
+      const directContext = {
+        ...context,
+        connectedAppAgentConnectionId: slackConnection.id,
+        connectedConnections: [
+          {
+            id: slackConnection.id,
+            connectorId: "composio",
+            externalId: slackConnection.provider,
+            providerRef: "ca-slack",
+            displayName: "Synthetic Slack",
+          },
+        ],
+      } as AdapterContext;
+      for await (const event of new ComposioConnector().execute(
+        {
+          tool: "SLACK_FETCH_CONVERSATION_HISTORY",
+          args: {},
+          executionId: "company-slack-explicit-false",
+          route: {
+            connectorId: "composio",
+            connectionId: slackConnection.id,
+            toolName: "SLACK_FETCH_CONVERSATION_HISTORY",
+            discoveredReadOnly: true,
+          },
+          authorizeUnannotatedRead: () => true,
+        },
+        directContext,
+      ))
+        directEvents.push(event);
+      expect(directEvents.some((event) => event.type === "error")).toBe(true);
+      expect(composioSdkState.executions).toEqual([]);
+
+      composioSdkState.slackToolName = "SLACK_SEND_MESSAGE";
+      composioSdkState.slackReadOnlyHint = true;
+      await expect(reader.listTools(source, context)).resolves.toEqual([]);
+      await expect(reader.callTool(source, "SLACK_SEND_MESSAGE", {}, context)).rejects.toThrow(
+        "Company tool is not an approved read",
+      );
+      expect(composioSdkState.executions).toEqual([]);
+    } finally {
+      restore();
+      composioSdkState.slackToolName = "SLACK_FETCH_CONVERSATION_HISTORY";
+      composioSdkState.slackReadOnlyHint = undefined;
+      composioSdkState.slackDestructiveHint = undefined;
+    }
+  });
 
   it("returns directory metadata without opening an actor session", async () => {
     const previous = composioSdkState.connectedAccounts.list;
@@ -1623,6 +2100,20 @@ describe("composio connected-app agent dispatch gates", () => {
         message: expect.stringContaining("Changes are off"),
       }),
     ]);
+    expect(composioSdkState.executions).toEqual([]);
+  });
+
+  it("preserves annotated read batches without extending unannotated authorization to wrappers", async () => {
+    const batch = {
+      tool: "COMPOSIO_MULTI_EXECUTE_TOOL",
+      args: { tools: [{ tool_slug: "GITHUB_GET_REPOS", arguments: {} }] },
+      route: { ...route, toolName: "COMPOSIO_MULTI_EXECUTE_TOOL", discoveredReadOnly: true },
+    };
+    const events = await run({ ...batch, readOnlyNow: true });
+    expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+    expect(composioSdkState.executions).toHaveLength(1);
+    const denied = await run({ ...batch, authorizeUnannotatedRead: () => true });
+    expect(denied).toContainEqual(expect.objectContaining({ type: "error" }));
     expect(composioSdkState.executions).toEqual([]);
   });
 });

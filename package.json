@@ -37,6 +37,7 @@
     "test:canary": "tsx packages/testkit/src/cli/canary.ts",
     "test:pi": "vitest run packages/testkit/src/model-emulator.test.ts packages/testkit/src/pi-offline.test.ts",
     "test:evals": "tsx packages/testkit/src/cli/evals.ts",
+    "test:company-eval": "tsx packages/testkit/src/cli/company-eval.ts",
     "test:computer-replay": "tsx packages/testkit/src/cli/computer-replay.ts",
     "test:computer": "tsx packages/testkit/src/cli/computer.ts",
     "perf:desktop": "tsx packages/testkit/src/cli/desktop-performance.ts",

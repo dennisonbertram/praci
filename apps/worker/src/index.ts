@@ -18,6 +18,12 @@ import {
   createArtifactStore,
   createBackgroundJobHandlers,
   createCloudAgentConnection,
+  createCompanyConnectionReader,
+  createCompanyDocumentReader,
+  createCompanyImportEngine,
+  createCompanySlackReader,
+  createCompanySourceWorker,
+  createCompanyTrackerReader,
   createConnectorStack,
   createDevinCallTool,
   createFinanceCallToolFor,
@@ -39,6 +45,7 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
+  LlmCompanyExtractor,
   McpConnector,
   McpOAuthBroker,
   MessagingSettings,
@@ -204,8 +211,13 @@ async function main() {
   const shutdown = new AbortController();
   const mail = createMailProvider({ prisma, connectors: stack.connector });
   const gmailPush = gmailPushConfigFromEnv(process.env, webOrigin);
+  let companyImport: ReturnType<typeof createCompanyImportEngine> | undefined;
   const executor = createRunExecutor({
     shutdownSignal: shutdown.signal,
+    companyImport: () => {
+      if (!companyImport) throw new Error("Company import engine is not initialized.");
+      return companyImport;
+    },
     prisma,
     mcpOAuth,
     runtime,
@@ -253,6 +265,25 @@ async function main() {
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
   });
 
+  const companyReader = createCompanyConnectionReader({ prisma, connectors: stack.connector, mcp });
+  const documentReader = createCompanyDocumentReader(companyReader);
+  const slackReader = createCompanySlackReader(companyReader);
+  const trackerReader = createCompanyTrackerReader(companyReader);
+  companyImport = createCompanyImportEngine({
+    prisma,
+    jobs,
+    realtime,
+    resolveModel: executor.resolveModel,
+    notificationEvents,
+    worker: createCompanySourceWorker({
+      prisma,
+      mail,
+      extractor: new LlmCompanyExtractor(),
+      slack: slackReader,
+      tracker: trackerReader,
+      documents: documentReader,
+    }),
+  });
   const jobHandlers = createBackgroundJobHandlers({
     executor,
     prisma,
@@ -289,6 +320,7 @@ async function main() {
     mail,
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
     gmailPush,
+    companyImport,
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start
@@ -319,6 +351,7 @@ async function main() {
     reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
     reconcileDataRoom: () => reconcileDataRoom({ prisma, jobs }),
     reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
+    reconcileCompanyImports: () => companyImport.recoveryJob(),
   });
   reconciler.start();
 

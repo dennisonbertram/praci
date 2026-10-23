@@ -101,7 +101,7 @@ Company dates are calendar dates. A hire date, a contract renewal and a funding 
 
 The resolver runs after extraction, in code first and a model second.
 
-1. **Deterministic keys.** People match on a work email, Slack id, GitHub login or Linear id. Organisations match on domain, then normalized legal name. Events match on kind, normalized title and date within the precision. A deterministic match merges silently and keeps all evidence.
+1. **Deterministic keys.** People match on a work email, Slack id, GitHub login or Linear id. Organisations match on domain, then an unambiguous normalized legal name. Events match on kind, normalized title, date and precision, plus sorted canonical subject IDs; exact raw subject/source keys take precedence over canonical keys after an explicit merge. Explicit merges canonicalize subjects while preserving original links and per-source replay keys. Subject corrections retain source-bound replay keys without making the old subject a global alias. If a new source matches multiple events after an explicit merge, it becomes an event candidate in Review instead of collapsing the records. Events without known subjects match only within the same stable source locator, independent of content hash.
 2. **Candidate pairs.** Same normalized name with no shared identifier, or the same email local part at different domains, become candidates. One cheap model call per small batch of candidates sees names, roles and snippet counts only (no message text) and answers merge, keep apart, or unsure.
 3. **Unsure and low-confidence merges** are never applied. They land in Review as "Same person?" with both records side by side.
 4. **Merge is reversible.** A merge writes a `mergedFrom` list on the survivor. "Split" in fact detail restores both rows and re-attaches evidence by `sourceItemId`.
@@ -139,7 +139,7 @@ The Company importer drafts a plan per source: scope (channels, folders, labels,
 
 - **Postgres only.** No local disk. Run, source and unit state live in tables; a worker crash leaves a unit `claimed` with an expired claim, and the next worker re-claims it, like the `MailSyncState` claim token (stale after 2 minutes).
 - **Units.** Each source reader turns its scope into units of bounded size (for example 25 messages, one Slack channel-day window, 50 issues, one Drive folder level). A unit has a stable key, so planning twice does not duplicate work.
-- **Incremental.** Each source keeps a cursor (Gmail history id, Slack oldest timestamp, an `updatedAt` high-water mark). A refresh reads only past the cursor and then re-reads items whose provider version changed.
+- **Incremental (approved release scope).** Automatic refresh is limited to Gmail history IDs and local Data Room `updatedAt` watermarks. Checkpoints are durable and advance only after successful completion; expired Gmail history requires explicit full-import recovery. Slack, GitHub, Linear, Notion and generic tools without a verified change-feed contract are manual-re-import-only for this release, as approved by the owner. Show source-specific reasons and attention notifications, never automatically rescan or mark unsupported sources fresh, and continue capable sources independently. Slack timestamp history omits edits to older messages; current tracker lists lack complete change/version filters; Notion search explicitly does not guarantee exhaustive or immediate results and page timestamps do not prove nested-block change detection. Generic selected tool names and arguments do not constitute an incremental capability contract.
 - **Rate limited.** Each source has its own concurrency (default 1 in flight per source) and backoff, honoring provider limits; a rate-limited unit is re-queued with `runAfter`, never retried in a tight loop. Total concurrency across the deployment is capped by the existing graphile worker settings.
 - **Resumable.** Every job is idempotent by unit key and `resultHash`. Extraction writes evidence and facts in the same transaction that marks the unit `done`.
 - **Reading is bounded.** A unit reads at most a set number of characters per item (a long thread or document is truncated and marked so), like the Data room's read bounds.
@@ -171,7 +171,7 @@ Dedupe and merge as above, then a synthesis step: the coordinator drafts the com
 
 ### 7. Review queue
 
-Items below the threshold, merge candidates ("Same person?"), contradictions, and anything involving a never-auto category land in Review. Actions are Confirm, Edit and Reject, with a keyboard shortcut for each. The page badge shows the count.
+Items below the threshold, merge candidates ("Same person?"), contradictions, ambiguous event candidates, rejected name-only person claims, and anything involving a never-auto category land in Review. Ambiguous event and rejected name-only candidates retain their proposed fact and evidence metadata without creating a new fact; `importEvent` and `importEntity` return `{ deferred: true, record: null, candidateId }` for these paths, with resolution left to the next-phase Review action. Actions are Confirm, Edit and Reject, with a keyboard shortcut for each. The page badge shows the count.
 
 ### 8. Progress UI
 
@@ -233,6 +233,7 @@ Cost = input tokens x input price + output tokens x output price, with prices TB
 ### PII, retention, deletion, export
 
 - Stored: names, work emails, roles, dates, organisation names, short quotes. Not stored: full message bodies or document text (documents stay in the Data room; mail and chat bodies are not kept), compensation, health, performance, personal contacts.
+- **Source email deletion**: deleting an email in Gmail retains its imported Company evidence and history. Removal requires an explicit Company disconnect, exclude-person or erase action, with the existing locked-edit and rejection retention rules below. This is the approved v1 retention policy, not deletion synchronization.
 - **Disconnect** a source: deletes its evidence rows and any fact left with none, in one transaction. Rejections and locked owner edits stay.
 - **Exclude a person**: stops collection about them and deletes their person entity, edges and events that name only them (the Team health opt-out pattern).
 - **Erase company map**: deletes every map row for the owner in the space, including rejections.
@@ -399,3 +400,24 @@ An offline eval with a synthetic fixture, run in CI with a recorded-output fake 
 | Read-only | Write calls recorded by each source emulator | 0 |
 
 Tests are deterministic and offline by default (AGENTS.md); the live-model run is manual and its results are recorded as measured, never as CI facts.
+
+### First offline baseline (recorded fixture, not live quality)
+
+Report format 2 also records fact/evidence deletions on replay; all four replay deltas must be zero. Coverage counts unique items actually read during the first import, not the fixture-size constant. These stricter safety observations do not change the original quality scores or frozen floors.
+
+Run `pnpm test:company-eval` with `DATABASE_URL` pointing to a freshly migrated, throwaway **local PostgreSQL 16** database, then drop that database. The command accepts `--output=<report.json>`, rejects live mode, and fails on safety or regression gates. `company-eval.postgres.test.ts` is automatically discovered by `pnpm test:integration`; unit tests mutate the evidence, identities, dates and gate observations to ensure broken results fail. No real account, model, source or paid service is used. The checked-in report is `packages/testkit/src/evals/fixtures/company-baseline.json`; recordings never import the independent ground truth.
+
+The first run read all 990 items through recorded source readers and the real durable engine, no-tools extractor, validation and resolver. This **does not** assert production Slack/tracker readers exist; Data room/Gmail production-reader conformance remains in its separate source integration suite. Sparse hand-authored responses intentionally expose misses rather than manufacture perfect model quality. These measured values are frozen as **offline regression floors**, not deployment quality targets:
+
+| Entity kind | Precision | Recall |
+| --- | --- | --- |
+| Company | 1/1 | 1/1 |
+| Person | 4/5 | 4/30 |
+| Organisation | 5/5 | 5/11 |
+| Matter | 1/1 | 1/2 |
+| Product | 1/1 | 1/3 |
+| Project | 1/1 | 1/3 |
+
+Date accuracy is **7/8**, comparing date **and precision** (including the year-only date); subject links are reported separately (**4/8** correct). The draft Series A date remains wrong. Wrong merges: **0**; missed merges: **1** because a weak return mention remains a separate identity. A separate owner-linked resolver control preserves two employment periods; it does not claim the extractor resolved that weak identity. Three aliases resolve to one strong identity and the two Sams remain distinct. All **27/27** persisted facts have resolving source/hash/quote/run/model evidence. Injection-only facts, out-of-allowlist calls, source writes and isolation leaks are **0**. Edit/confirm/reject retention after changed-hash reimport is **3/3**. Unchanged replay adds **0 facts and 0 evidence**; its **976** extra relevance calls on evidence-free items are reported, not hidden as a zero-cost refresh.
+
+Recorded usage accounting is **26,150 input + 2,680 output = 28,830 tokens**, or **29.12/item**, within the explicit 1,000,000 test cap with zero outstanding reservations. The matching plan estimate for 990 relevance and 14 extraction calls is **183,500 input + 15,500 output = 199,000 tokens**. Recorded usage is synthetic, not tokenizer/provider measurement: it cannot set a default production budget or establish live cost/quality. No live baseline has been authorized. Unsupported email-label grammar and preview screening remain explicit recall limitations. Company availability remains disabled.
