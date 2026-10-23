@@ -8988,6 +8988,12 @@ msgstr "Schlüssel ersetzen"
 msgid "Replace value"
 msgstr ""
 
+#. placeholder {0}: maskCurrencyWhenHidden(replacement.title)
+#. placeholder {1}: fullDay(replacement.dueDate)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Replaced by {0} on {1}."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Replaced by a newer request"
 msgstr ""
@@ -9451,6 +9457,14 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Scan now"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning for {minutes} min"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning now"
 msgstr ""
 
 #: src/pages/Legal.tsx

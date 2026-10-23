@@ -41,7 +41,7 @@ export const Wide: StoryObj<typeof meta> = {
   },
   decorators: [
     (Story) => (
-      <div className="@container w-[1000px]">
+      <div className="@container w-[1200px]">
         <Story />
       </div>
     ),
@@ -53,7 +53,7 @@ export const AllActive: StoryObj<typeof meta> = {
   args: { contracts: contracts.filter((contract) => contract.status === "active") },
   decorators: [
     (Story) => (
-      <div className="@container w-[1000px]">
+      <div className="@container w-[1200px]">
         <Story />
       </div>
     ),

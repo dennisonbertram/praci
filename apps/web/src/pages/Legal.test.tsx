@@ -630,6 +630,19 @@ it("keeps Scanning until the run ends, then shows the new time", async () => {
   }
 });
 
+it("says Scanning now, not an elapsed time, when the page opens during a scan", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: { id: id(7), status: "running" as const, error: null },
+    },
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Scanning now");
+  expect(container.textContent).not.toMatch(/Scanning for \d/);
+});
+
 it("shows why the last scan failed and scans again from the one Scan now button", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
