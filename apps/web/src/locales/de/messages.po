@@ -516,10 +516,6 @@ msgstr ""
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr ""
 
-#: src/components/inbox/TodoCard.tsx
-msgid "{hiddenCount} more"
-msgstr ""
-
 #: src/lib/relative-time.ts
 msgid "{hours}h ago"
 msgstr "vor {hours} Std."
@@ -6362,7 +6358,6 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr "Stelle sicher, dass auf diesem Computer nichts mehr läuft."
 
-#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
@@ -6796,10 +6791,6 @@ msgstr ""
 msgid "More {0} actions"
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr ""
-
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #. placeholder {0}: row.from
@@ -7038,9 +7029,12 @@ msgid "New folder…"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "Neue Gruppe"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr ""
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -7853,10 +7847,6 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Opening an email"
-msgstr ""
-
-#: src/components/ShellSkeleton.tsx
-msgid "Opening Praci…"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -9821,6 +9811,10 @@ msgstr ""
 msgid "Sent to {forwardedName}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Sent. Moved out of Needs reply"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
 msgstr ""
@@ -9960,7 +9954,6 @@ msgstr ""
 msgid "Show in sidebar"
 msgstr ""
 
-#: src/components/inbox/TodoCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"
@@ -10388,6 +10381,10 @@ msgstr "Aufnahme starten"
 msgid "Starting"
 msgstr "Startet"
 
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10449,8 +10446,17 @@ msgstr ""
 msgid "Still opening…"
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr ""
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
 msgstr ""
 
 #: src/components/ai/primitives.tsx
@@ -10753,10 +10759,6 @@ msgstr ""
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr ""
 
-#: src/lib/run-phase.ts
-msgid "the computer"
-msgstr ""
-
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Zeitüberschreitung der Verbindung."
@@ -10788,10 +10790,6 @@ msgstr ""
 
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
-msgstr ""
-
-#: src/lib/run-phase.ts
-msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -11782,10 +11780,6 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
-msgstr ""
-
-#: src/lib/run-phase.ts
-msgid "Waiting for the computer"
 msgstr ""
 
 #: src/lib/run-phase.ts

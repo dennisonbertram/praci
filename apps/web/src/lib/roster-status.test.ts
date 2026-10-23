@@ -59,9 +59,7 @@ describe("compactRosterStatusLabel", () => {
 describe("run phase in the sidebar", () => {
   const at = "2026-10-11T00:00:00.000Z";
   it("shows what a queued or running bot waits on", () => {
-    expect(rosterWorkStatusLabel("queued", { kind: "computer_wait", at })).toBe(
-      "Waiting for the computer…",
-    );
+    expect(rosterWorkStatusLabel("queued", { kind: "computer_wait", at })).toBe("Starting up…");
     expect(compactRosterStatusLabel("running", { kind: "connecting", name: "Devin", at })).toBe(
       "Connecting to Devin…",
     );

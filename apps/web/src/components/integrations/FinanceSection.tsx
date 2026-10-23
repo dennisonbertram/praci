@@ -432,10 +432,6 @@ export function FinanceSection({
                     <Link to="/app/finance" className={OPEN_LINK}>
                       <Trans>Open Finance</Trans>
                     </Link>
-                    <TileMenu
-                      label={t`More ${name} actions`}
-                      manageTo={serverId ? `/app/integrations/mcp/${serverId}` : undefined}
-                    />
                   </>
                 ) : (
                   <Button

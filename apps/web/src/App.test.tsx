@@ -126,6 +126,7 @@ it.each([
   ["/app/cap-table?kind=options&security=SAFE", "/app/investors?security=SAFE"],
   ["/app/cap-table/x?kind=investor", "/app/investors/x?kind=investor"],
   ["/app/CAP-TABLE?kind=auditor", "/app/investors?kind=auditor"],
+  ["/app/settings", "/app?settings=general"],
 ])("sends the old Cap table address %s to %s", async (from, to) => {
   const at = await renderAt(
     from,

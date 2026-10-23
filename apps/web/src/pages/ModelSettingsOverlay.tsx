@@ -1661,9 +1661,6 @@ export function ModelSettingsOverlay({
           <Skeleton data-testid="provider-skeleton" className="mx-6 h-10 sm:mx-8" />
         ) : simple ? (
           <section className="mx-6 flex flex-col items-start gap-3 rounded-xl border border-border px-4 py-4 sm:mx-8">
-            <h3 className="text-[15px] font-medium text-foreground">
-              <Trans>Model</Trans>
-            </h3>
             <p className="text-[14px] text-foreground/75">
               {modelLabel ? t`Your bots use ${modelLabel}.` : t`Your bots already have a model.`}
             </p>
