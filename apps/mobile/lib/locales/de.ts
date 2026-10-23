@@ -1,18 +1,6 @@
 export const DE_MESSAGES: Record<string, string> = {
-  "Clear search": "Suche löschen",
-  "Could not load files.": "Dateien konnten nicht geladen werden.",
-  "Could not preview this file.": "Vorschau dieser Datei nicht möglich.",
-  "Could not share this file": "Diese Datei konnte nicht geteilt werden",
-  "Data room": "Datenraum",
-  "No files": "Keine Dateien",
-  "No matching files": "Keine passenden Dateien",
-  "Not searchable": "Nicht durchsuchbar",
-  "Processing…": "Wird verarbeitet…",
   Ready: "Bereit",
-  "Search files": "Dateien suchen",
-  "The session changed. Open the file again.":
     "Die Sitzung hat sich geändert. Öffne die Datei erneut.",
-  "This file is too large to preview.": "Diese Datei ist zu groß für die Vorschau.",
   "AI data sharing off": "KI-Datenfreigabe aus",
   "Business plan": "Business-Tarif",
   "Could not reach Granola": "Granola nicht erreichbar",
