@@ -94,10 +94,10 @@ it("gives each agent its own animation phase", () => {
   expect(phase("bot-1")).toEqual(phase("bot-1"));
 });
 
-it("shows a failed mark only while the latest run failed", () => {
-  expect(rowStatusKind("failed", "failed")).toBe("failed");
-  expect(rowStatusKind("failed", "running")).toBeUndefined();
-  expect(rowStatusKind("failed", "completed")).toBeUndefined();
-  expect(rowStatusKind("done", "running")).toBe("done");
-  expect(rowStatusKind(undefined, "failed")).toBeUndefined();
+it("shows a failed mark while the roster records a run error", () => {
+  expect(rowStatusKind("failed", "run-1")).toBe("failed");
+  expect(rowStatusKind("failed", undefined)).toBeUndefined();
+  expect(rowStatusKind("failed", null)).toBeUndefined();
+  expect(rowStatusKind("done", null)).toBe("done");
+  expect(rowStatusKind(undefined, "run-1")).toBeUndefined();
 });

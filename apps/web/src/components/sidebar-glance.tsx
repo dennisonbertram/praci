@@ -58,12 +58,15 @@ export function glanceBadge({
   };
 }
 
-/** A failed mark belongs to the latest run: once a later run has started or succeeded it no longer shows. */
+/**
+ * A failed mark belongs to the latest run. The roster's `status` only describes an active run, so a
+ * finished failed run is recorded in `runErrorId`; the mark goes once a later run succeeds and clears it.
+ */
 export function rowStatusKind(
   kind: NotificationKind | undefined,
-  runStatus: string | undefined,
+  runErrorId: string | null | undefined,
 ): NotificationKind | undefined {
-  return kind === "failed" && runStatus !== "failed" ? undefined : kind;
+  return kind === "failed" && !runErrorId ? undefined : kind;
 }
 
 const KIND_LABEL: Record<NotificationKind, () => React.ReactNode> = {

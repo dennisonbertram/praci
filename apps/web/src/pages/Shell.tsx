@@ -1284,6 +1284,7 @@ export function ShellPage() {
     loaded: initialBotsLoaded,
     seen: missingBotSeen.current,
     applied: botsListApplied.current,
+    namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
     inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
@@ -2058,8 +2059,8 @@ export function ShellPage() {
   );
   // A space holding only a page's auto-created agent has no chat yet: it shows "No bots yet".
   const noChatBots = !bots.some((bot) => pageAgentKind(bot.spawnKey) === null);
-  const rosterKind = (chat: { id: string; status?: string }) =>
-    rowStatusKind(glance.botKinds[chat.id], chat.status);
+  const rosterKind = (chat: { id: string; runErrorId?: string | null }) =>
+    rowStatusKind(glance.botKinds[chat.id], chat.runErrorId);
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0

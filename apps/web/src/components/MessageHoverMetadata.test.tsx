@@ -46,7 +46,7 @@ describe("MessageHoverMetadata", () => {
     expect(html).toContain("@max-sm:[@media(hover:hover)]:mt-6");
   });
 
-  it("overlays the rail on the bubble's bottom corner on touch, adding no row to the thread", () => {
+  it("places the rail just below the bubble's bottom corner on touch, adding no row to the thread", () => {
     const bot = renderToStaticMarkup(
       <MessageHoverMetadata side="end">
         <div data-testid="message-actions" />
@@ -60,7 +60,8 @@ describe("MessageHoverMetadata", () => {
 
     for (const html of [bot, user]) {
       expect(html).toContain("[@media(hover:none)]:end-0");
-      expect(html).toContain("[@media(hover:none)]:-bottom-3.5");
+      expect(html).toContain("[@media(hover:none)]:top-full");
+      expect(html).not.toContain("[@media(hover:none)]:-bottom-3.5");
       expect(html).toContain("[@media(hover:none)]:p-0");
       expect(html).not.toContain("[@media(hover:none)]:static");
     }

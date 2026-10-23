@@ -14,7 +14,7 @@ export function MessageHoverMetadata({
   hasReactions?: boolean;
   children: ReactNode;
 }) {
-  // Touch shows the rail over the bubble's bottom corner, so it adds no row to the thread. Hover-capable pointers reveal it beside the
+  // Touch shows the rail just below the bubble's bottom corner (its 44px target covers no text), so it adds no row to the thread. Hover-capable pointers reveal it beside the
   // bubble's bottom corner, in the gutter the bubble's max width reserves, so it covers no text.
   const reveal = pinned
     ? "pointer-events-auto opacity-100"
@@ -36,7 +36,7 @@ export function MessageHoverMetadata({
         below
           ? "[@media(hover:hover)]:top-full [@media(hover:hover)]:mt-6 [@media(hover:hover)]:bottom-auto"
           : "@max-sm:[@media(hover:hover)]:top-full @max-sm:[@media(hover:hover)]:mt-6 @max-sm:[@media(hover:hover)]:bottom-auto"
-      } ${reveal} [@media(hover:none)]:start-auto [@media(hover:none)]:end-0 [@media(hover:none)]:-bottom-3.5 [@media(hover:none)]:p-0`}
+      } ${reveal} [@media(hover:none)]:start-auto [@media(hover:none)]:end-0 [@media(hover:none)]:top-full [@media(hover:none)]:bottom-auto [@media(hover:none)]:p-0`}
     >
       {children}
     </div>
