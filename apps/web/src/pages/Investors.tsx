@@ -163,7 +163,7 @@ function Summary({
       .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
   const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
-  const raisedUsd = equityRaisedUsd(snapshot.holders, safes);
+  const raisedUsd = equityRaisedUsd(snapshot.holders, safes, snapshot.amountRaisedUsd);
   const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
   // Until the first SAFE list answers, a dash would read as "nothing raised".
   const loading = !safesLoaded && !safesFailed;
