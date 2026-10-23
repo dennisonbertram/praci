@@ -229,7 +229,7 @@ export function MemorySettingsOverlay({
                   className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
                   strokeWidth={1.75}
                 />
-                <Trans>Outside memory service</Trans>
+                <Trans>Memory provider</Trans>
               </summary>
               <p className="mt-2 mb-4 text-[13px] text-muted-foreground/80">
                 {registration.description}
