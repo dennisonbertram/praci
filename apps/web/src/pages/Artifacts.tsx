@@ -647,11 +647,9 @@ function ArtifactTable({
                 <TableCell className={`${MID_COL} truncate text-muted-foreground`}>
                   {kindLabel(artifact.mimeType)}
                 </TableCell>
-                <TableCell
-                  className={`${MID_COL} relative pe-0 text-end text-muted-foreground tabular-nums`}
-                >
+                <TableCell className="relative w-10 pe-0 text-end text-muted-foreground tabular-nums @min-[720px]/list:w-auto">
                   {/* Delete takes the time's place on hover; on touch it sits beside the time. */}
-                  <span className="block truncate group-hover/row:invisible group-focus-within/row:invisible pointer-coarse:pe-8">
+                  <span className="hidden truncate @min-[720px]/list:block group-hover/row:invisible group-focus-within/row:invisible pointer-coarse:pe-8">
                     {formatRelativeTime(artifact.createdAt)}
                   </span>
                   <button

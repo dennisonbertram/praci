@@ -281,6 +281,9 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
       "/app/artifacts/artifact-1",
     );
+    // Narrow panes hide the mid columns, so the row's delete button must not sit in a hidden cell.
+    const del = page.container.querySelector("tr button[aria-label^='Delete']");
+    expect(del?.closest("td")?.className).not.toMatch(/(^| )hidden/);
     // No size anywhere: "128 bytes" means nothing to a founder.
     expect(page.container.textContent).not.toMatch(/bytes|\b128 B\b/);
     expect(window.localStorage.getItem("rakazo:artifacts-view-mode")).toBe("list");
