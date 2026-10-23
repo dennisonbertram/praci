@@ -264,7 +264,11 @@ function CompanyReviewList() {
                 title: maskAmountsWhenHidden(companyFactTitle(item.fact)),
                 detail:
                   item.reason === "contradiction" ? t("Conflicting evidence") : t("Not confirmed"),
-                onPress: () => openFact(item.fact.kind, item.fact.record.id),
+                onPress: () =>
+                  router.push({
+                    pathname: "/company-fact",
+                    params: { kind: item.fact.kind, id: item.fact.record.id, origin: "review" },
+                  }),
                 ...(!item.fact.record.readOnly
                   ? {
                       onConfirm: () => void act(item.fact, "confirm"),

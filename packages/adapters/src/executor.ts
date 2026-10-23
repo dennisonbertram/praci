@@ -2911,6 +2911,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
+        const companyReadToolsAllowed =
+          companyReadAllowed &&
+          !restrictedContext &&
+          !meetingTaint &&
+          !gtmAgent &&
+          !legalOnly &&
+          !dataRoomAgent &&
+          !meetingAgent &&
+          !investorsAgent &&
+          !cartaAgent &&
+          !integrationAgent &&
+          !appAgentIdentity;
         const companyOwnerRun =
           run.userId === bot.userId &&
           !thread.groupId &&
@@ -3161,7 +3173,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ownerRun: companyOwnerRun,
           companyAgent,
           importer: companyImporter,
-          dataRoomAllowed: companyReadAllowed,
+          readAllowed: companyReadAllowed,
         };
         const companyRunTools = companyToolsForRun(companyToolDeps).filter(
           (tool) =>
@@ -3183,7 +3195,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ? [...builtins, ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : [])]
                 : [
                     ...builtins,
-                    ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : []),
+                    ...(companyReadToolsAllowed ? companyToolsForRun(companyToolDeps) : []),
                     ...exposedConnectorTools,
                   ];
         const gtmPostEligible =
@@ -3516,6 +3528,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ownerRun: companyOwnerRun,
                 companyAgent,
                 importer: companyImporter,
+                readAllowed: companyReadAllowed,
                 dataRoomAllowed: async () => (await legalRunAi()).allowed,
               },
               name,
@@ -4622,6 +4635,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ownerRun: companyOwnerRun,
                 companyAgent,
                 importer: companyImporter,
+                readAllowed: companyReadAllowed,
                 dataRoomAllowed: async () => (await legalRunAi()).allowed,
               },
               name,
@@ -6622,14 +6636,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (name === "notify_user") {
             if (companyImporter) {
-              const latestImport = await deps.prisma.companyImportRun.findFirst({
-                where: { spaceId: run.spaceId, ownerUserId: bot.userId },
-                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-                select: { status: true },
+              const eligibleImport = await deps.prisma.companyImportRun.findFirst({
+                where: {
+                  spaceId: run.spaceId,
+                  ownerUserId: bot.userId,
+                  status: { in: ["budget_reached", "awaiting_consent"] },
+                },
+                select: { id: true },
               });
-              const attentionAllowed =
-                latestImport !== null &&
-                ["budget_reached", "awaiting_consent"].includes(latestImport.status);
+              const attentionAllowed = eligibleImport !== null;
               if (args.importance === "attention" && !attentionAllowed) {
                 return finish({
                   error:

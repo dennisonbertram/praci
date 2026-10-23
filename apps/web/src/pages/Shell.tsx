@@ -1171,9 +1171,8 @@ export function ShellPage() {
   useEffect(() => {
     if (!gtmMode) setGtmAgentOpen(false);
   }, [gtmMode]);
-    if (!companyMode) {
-      setCompanyAgentOpen(false);
-    }
+  useEffect(() => {
+    setCompanyAgentOpen(false);
     setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
   }, [companyMode, companyRole]);
   useEffect(() => {

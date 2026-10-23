@@ -20,6 +20,7 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { isApprovalPausedResult } from "./approval-effect.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import {
   appendToolCompletionAudit,
@@ -70,9 +71,16 @@ it("adds live page guidance to existing GTM agents without duplicating it on new
   );
 });
 const companyStoreMock = vi.hoisted(() => ({ current: null as unknown }));
+const createNotificationMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    status: "created" as const,
+    notification: { id: "notification-1", importance: "attention" as const },
+  })),
+);
 vi.mock("@rakazo/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@rakazo/db")>()),
   companyForActor: vi.fn(() => companyStoreMock.current),
+  createNotification: createNotificationMock,
 }));
 
 describe("bot tool permissions", () => {
@@ -151,10 +159,14 @@ async function runIdentityExecutor({
   spawnKey,
   trigger = "user",
   groupId = null,
+  botUserId = "user-1",
+  channelRun = false,
+  meetingTaintedAt = null,
   calls = [],
   callBatches,
   autoReview,
   companyImport,
+  companyImportRuns,
   resumeApprovedEffect = false,
   backupModel,
   selectBackup = false,
@@ -167,6 +179,9 @@ async function runIdentityExecutor({
   spawnKey: string | null;
   trigger?: string;
   groupId?: string | null;
+  botUserId?: string;
+  channelRun?: boolean;
+  meetingTaintedAt?: Date | null;
   calls?: Array<{ name: string; args: Record<string, unknown> }>;
   callBatches?: Array<Array<{ name: string; args: Record<string, unknown> }>>;
   autoReview?: { review: ReturnType<typeof vi.fn> };
@@ -175,6 +190,13 @@ async function runIdentityExecutor({
     engine: Record<string, unknown>;
     mutateBeforeResume?: () => void;
   };
+  companyImportRuns?: Array<{
+    id: string;
+    spaceId: string;
+    ownerUserId: string;
+    status: string;
+    createdAt: Date;
+  }>;
   resumeApprovedEffect?: boolean;
   backupModel?: { provider: string; modelId: string };
   selectBackup?: boolean;
@@ -193,6 +215,7 @@ async function runIdentityExecutor({
     userId: "user-1",
     status: "queued",
     trigger,
+    sourceMessageId: channelRun ? "channel-message-1" : null,
     leaseFence: 0,
   };
   let request: AgentRunRequest | undefined;
@@ -320,7 +343,7 @@ async function runIdentityExecutor({
     bot: {
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.botId,
-        userId: run.userId,
+        userId: botUserId,
         spaceId: run.spaceId,
         name: "Company agent",
         title: "Assistant",
@@ -343,6 +366,7 @@ async function runIdentityExecutor({
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     thread: {
+      findUnique: vi.fn(async () => ({ meetingTaintedAt })),
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.threadId,
         groupId,
@@ -355,18 +379,45 @@ async function runIdentityExecutor({
     message: {
       findMany: vi.fn(async () => [
         {
-          id: "message-1",
+          id: channelRun ? "channel-message-1" : "message-1",
           threadId: run.threadId,
           seq: 1,
           role: "user",
           runId: run.id,
-          blocks: [{ kind: "text", text: taskPrompt }],
+          blocks: channelRun
+            ? [
+                {
+                  kind: "channel_message",
+                  provider: "sendblue",
+                  channelId: "channel-1",
+                  fromAddress: "synthetic-channel-source",
+                  fromLabel: "Synthetic channel source",
+                  text: "Synthetic channel message",
+                },
+              ]
+            : [{ kind: "text", text: taskPrompt }],
           replyToMessageId: null,
           replyQuote: null,
           replyTo: null,
         },
       ]),
-      findUnique: vi.fn(async () => null),
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
+        channelRun && where?.id === "channel-message-1"
+          ? {
+              blocks: [
+                {
+                  kind: "channel_message",
+                  provider: "sendblue",
+                  channelId: "channel-1",
+                  fromAddress: "synthetic-channel-source",
+                  fromLabel: "Synthetic channel source",
+                  text: "Synthetic channel message",
+                },
+              ],
+            }
+          : null,
+      ),
     },
     task: {
       findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: taskPrompt })),
@@ -471,7 +522,35 @@ async function runIdentityExecutor({
       ),
     },
     companyImportRun: {
-      findFirst: vi.fn(async () => companyImport?.run ?? null),
+      findFirst: vi.fn(
+        async ({
+          where,
+        }: {
+          where?: {
+            spaceId?: string;
+            ownerUserId?: string;
+            status?: string | { in?: string[] };
+          };
+        } = {}) => {
+          if (!companyImportRuns) return companyImport?.run ?? null;
+          const matchingRuns = companyImportRuns.filter((importRun) => {
+            if (where?.spaceId && importRun.spaceId !== where.spaceId) return false;
+            if (where?.ownerUserId && importRun.ownerUserId !== where.ownerUserId) return false;
+            if (typeof where?.status === "string") return importRun.status === where.status;
+            if (where?.status && "in" in where.status) {
+              return where.status.in?.includes(importRun.status) ?? false;
+            }
+            return true;
+          });
+          return (
+            matchingRuns.sort(
+              (left, right) =>
+                right.createdAt.getTime() - left.createdAt.getTime() ||
+                right.id.localeCompare(left.id),
+            )[0] ?? null
+          );
+        },
+      ),
     },
     externalEffect: {
       findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) => {
@@ -663,6 +742,76 @@ function setCompanySearchStore() {
 }
 
 describe("Company identity executor boundaries", () => {
+  it("requires approval for Company reads after untrusted meeting content", async () => {
+    const { toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey: null,
+      meetingTaintedAt: new Date("2026-01-01T00:00:00.000Z"),
+      calls: [{ name: "company_search", args: {} }],
+    });
+    expect(isApprovalPausedResult(toolResults[0]?.result)).toBe(true);
+    expect(pauseRunForInput).toHaveBeenCalled();
+  });
+
+  it("keeps Company read tools classified as reads", () => {
+    for (const name of COMPANY_READ_TOOLS) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
+  });
+
+  it("rejects importer attention notifications without a budget or consent issue", async () => {
+    const { toolResults } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      calls: [{ name: "notify_user", args: { importance: "attention", title: "Import" } }],
+    });
+    expect(toolResults[0]?.result).toEqual({
+      error: "Importer attention notifications are reserved for budget or consent issues.",
+    });
+  });
+
+  it("sends importer attention notifications for an eligible run despite a newer draft", async () => {
+    createNotificationMock.mockClear();
+    const { toolResults, prisma } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      companyImportRuns: [
+        {
+          id: "eligible-import",
+          spaceId: "space-1",
+          ownerUserId: "user-1",
+          status: "awaiting_consent",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+        {
+          id: "newer-draft",
+          spaceId: "space-1",
+          ownerUserId: "user-1",
+          status: "draft",
+          createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        },
+      ],
+      calls: [{ name: "notify_user", args: { importance: "attention", title: "Import" } }],
+    });
+
+    expect(toolResults[0]?.result).toEqual({ ok: true, note: "Notification sent." });
+    expect(prisma.companyImportRun.findFirst).toHaveBeenCalledWith({
+      where: {
+        spaceId: "space-1",
+        ownerUserId: "user-1",
+        status: { in: ["budget_reached", "awaiting_consent"] },
+      },
+      select: { id: true },
+    });
+    expect(createNotificationMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        spaceId: "space-1",
+        userId: "user-1",
+        surface: "company",
+        importance: "attention",
+        kind: "urgent",
+      }),
+    );
+  });
+
   it("rejects forged importer source, connector, write, and confirmation tools before provider calls", async () => {
     const { request, toolResults, mailSend, connectorCall, webFetch } = await runIdentityExecutor({
       spawnKey: companyImporterSpawnKey("user-1"),
@@ -701,6 +850,96 @@ describe("Company identity executor boundaries", () => {
     expect(
       [...request!.subagentToolNames!].some((name) => COMPANY_READ_TOOLS.includes(name as never)),
     ).toBe(false);
+  });
+
+  it.each([
+    ["ordinary bot", null],
+    ["Company agent", companyAgentSpawnKey("user-1")],
+  ])(
+    "%s offers and dispatches Company reads for an eligible owner routine without upsert",
+    async (_label, spawnKey) => {
+      setCompanySearchStore();
+      const { request, toolResults } = await runIdentityExecutor({
+        spawnKey,
+        trigger: "routine",
+        calls: [
+          { name: "company_search", args: { text: "Synthetic Example" } },
+          {
+            name: "company_fact_upsert",
+            args: {
+              operation: "create",
+              kind: "entity",
+              fact: {
+                kind: "person",
+                displayName: "Synthetic Example",
+                attrs: {},
+                confidence: 0.8,
+              },
+              provenance: "Synthetic owner correction",
+            },
+          },
+        ],
+      });
+
+      const exposedCompanyTools =
+        request?.tools
+          .map(({ name }) => name)
+          .filter(
+            (name) => name.startsWith("company_") || COMPANY_READ_TOOLS.includes(name as never),
+          )
+          .sort() ?? [];
+      expect(exposedCompanyTools).toEqual([...COMPANY_READ_TOOLS].sort());
+      expect(request?.tools.map(({ name }) => name)).not.toContain("company_fact_upsert");
+      expect(toolResults[0]?.result).toMatchObject({
+        untrusted: true,
+        facts: [
+          expect.objectContaining({
+            record: expect.objectContaining({ id: "company-person-1" }),
+          }),
+        ],
+      });
+      expect(toolResults[1]?.result).toMatchObject({
+        error: expect.stringMatching(/not available/i),
+      });
+    },
+  );
+
+  it.each([
+    {
+      label: "a nonowner routine",
+      trigger: "routine",
+      groupId: null,
+      botUserId: "owner-1",
+      channelRun: false,
+    },
+    {
+      label: "a group routine",
+      trigger: "routine",
+      groupId: "group-1",
+      botUserId: "user-1",
+      channelRun: false,
+    },
+    {
+      label: "a messaging-channel run",
+      trigger: "messaging",
+      groupId: null,
+      botUserId: "user-1",
+      channelRun: true,
+    },
+  ])("denies Company reads for $label", async ({ trigger, groupId, botUserId, channelRun }) => {
+    const { request, toolResults } = await runIdentityExecutor({
+      spawnKey: null,
+      trigger,
+      groupId,
+      botUserId,
+      channelRun,
+      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+    });
+
+    expect(request?.tools.map(({ name }) => name)).not.toContain("company_search");
+    expect(toolResults[0]?.result).toMatchObject({
+      error: expect.stringMatching(/not available/i),
+    });
   });
 
   it.each([
@@ -923,7 +1162,7 @@ describe("Company identity executor boundaries", () => {
       call: { name: "company_search", args: { text: "Synthetic Example" } },
       error: /not available/i,
     },
-  ])("denies $label", async ({ spawnKey, trigger, groupId, call, error }) => {
+  ])("denies $label", async ({ label, spawnKey, trigger, groupId, call, error }) => {
     const { request, toolResults, pauseRunForInput } = await runIdentityExecutor({
       spawnKey,
       trigger,
@@ -934,6 +1173,16 @@ describe("Company identity executor boundaries", () => {
     expect(pauseRunForInput).not.toHaveBeenCalled();
     if (groupId) {
       expect(request?.tools.map(({ name }) => name)).not.toContain(call.name);
+    }
+    if (label === "unattended Company mutation") {
+      const exposedCompanyTools =
+        request?.tools
+          .map(({ name }) => name)
+          .filter(
+            (name) => name.startsWith("company_") || COMPANY_READ_TOOLS.includes(name as never),
+          )
+          .sort() ?? [];
+      expect(exposedCompanyTools).toEqual([...COMPANY_READ_TOOLS].sort());
     }
   });
 

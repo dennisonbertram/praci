@@ -6,6 +6,13 @@ const url = z
   .url()
   .max(2000)
   .refine((value) => /^https?:\/\//i.test(value));
+export function companyInboxSourceMessageId(value: string): string | null {
+  return /^\/app\/inbox\?mail=([A-Za-z0-9_-]+)$/.exec(value)?.[1] ?? null;
+}
+const evidenceSourceUrl = z
+  .string()
+  .max(2000)
+  .refine((value) => url.safeParse(value).success || companyInboxSourceMessageId(value) !== null);
 export const CompanyDateSchema = z.iso.date();
 export const CompanyPrecisionSchema = z.enum(["day", "month", "quarter", "year"]);
 export const CompanyPartialDateSchema = z
@@ -195,7 +202,7 @@ export const CompanyEvidenceInputSchema = z.strictObject({
   mcpServerId: identifier.nullish(),
   dataRoomItemId: identifier.nullish(),
   sourceItemId: identifier,
-  sourceUrl: url.nullish(),
+  sourceUrl: evidenceSourceUrl.nullish(),
   quote: z.string().trim().min(1).max(240),
   contentHash: z.string().min(1).max(128),
   extractedAt: z.iso.datetime(),
@@ -335,7 +342,7 @@ export const CompanyEvidenceRecordSchema = z.strictObject({
   dataRoomItemId: identifier.nullable(),
   sourceItemId: identifier,
   sourceKey: identifier,
-  sourceUrl: url.nullable(),
+  sourceUrl: evidenceSourceUrl.nullable(),
   quote: z.string().min(1).max(240),
   contentHash: z.string().min(1).max(128),
   extractedAt: z.iso.datetime(),

@@ -78,6 +78,9 @@ describe("company source worker", () => {
       after: "2023-03-31",
     });
     expect(
+      companySourceScope("gmail", { before: "2020-01-02" }, new Date("2026-03-31T23:59:00Z")),
+    ).toEqual({ before: "2020-01-02" });
+    expect(
       companySourceScope(
         "gmail",
         { after: "2020-01-02", before: "2021-01-02" },
@@ -794,10 +797,112 @@ describe("company source worker", () => {
     expect(Buffer.byteLength(page.items[0]!.content)).toBeLessThanOrEqual(10);
     expect(page.nextCursor).toEqual({ itemId: "item-1", truncated: true });
     expect(extract).toHaveBeenCalledWith(
-      { id: "item-1", title: "brief", text: "界", snippet: "\n界界界", sourceUrl: null },
+      { id: "item-1", title: "brief", text: "界", snippet: "界", sourceUrl: null },
       expect.anything(),
     );
   });
+
+  it("screens and extracts only a bounded Data Room text prefix", async () => {
+    const itemFindFirst = vi.fn(async () => ({
+      id: "item-1",
+      name: "brief",
+      docType: null,
+      docDate: null,
+      parties: [],
+      summary: "Summary contains excluded-secret-phrase.",
+      sourceUrl: null,
+      status: "ready",
+    }));
+    const textFindFirst = vi.fn(async () => ({
+      text: `${"a".repeat(1_500)} excluded-secret-phrase`,
+    }));
+    const relevant = vi.fn(async (_document: { title: string; text: string }) => true);
+    const extract = vi.fn(
+      async (_document: {
+        id: string;
+        title: string;
+        text: string;
+        snippet: string;
+        sourceUrl: string | null;
+      }) => ({
+        extraction: { entities: [], edges: [], events: [] },
+        model: { provider: "scripted", model: "bounded" },
+      }),
+    );
+    const worker = createCompanySourceWorker({
+      prisma: prisma({
+        dataRoomItem: { findMany: vi.fn(), findFirst: itemFindFirst },
+        dataRoomItemText: { findFirst: textFindFirst },
+      }),
+      extractor: { relevant, extract },
+    });
+
+    await worker.read(
+      {
+        source: { id: "source-1", sourceKind: "data_room", connectionId: null, scope: {} },
+        unitKey: "data_room:item-1",
+        cursor: { itemId: "item-1" },
+        maxBytes: 40,
+      },
+      context(),
+    );
+
+    expect(relevant.mock.calls[0]?.[0].text).not.toContain("excluded-secret-phrase");
+    expect(extract.mock.calls[0]?.[0]?.snippet).not.toContain("excluded-secret-phrase");
+    expect(extract.mock.calls[0]?.[0]?.text).not.toContain("excluded-secret-phrase");
+  });
+
+  it.each([
+    {
+      cached: { id: "cached_message-1", category: null, pile: null },
+      sourceUrl: "/app/inbox?mail=cached_message-1",
+    },
+    { cached: null, sourceUrl: null },
+  ])(
+    "uses cached-mail provenance only when available ($sourceUrl)",
+    async ({ cached, sourceUrl }) => {
+      const relevant = vi.fn(async () => true);
+      const extract = vi.fn(async () => ({
+        extraction: { entities: [], edges: [], events: [] },
+        model: { provider: "scripted", model: "provenance" },
+      }));
+      const worker = createCompanySourceWorker({
+        prisma: prisma({
+          cachedMailMessage: { findFirst: vi.fn(async () => cached) },
+        }),
+        mail: mailProvider({
+          listMessages: vi.fn(async () => ({ messages: [summary("m-1")] })),
+          getMessage: vi.fn(async () => ({
+            subject: "Northwind",
+            text: "Synthetic message text.",
+            html: null,
+            threadId: "thread-m-1",
+          })),
+        }),
+        extractor: { relevant, extract },
+      });
+
+      await worker.read(
+        {
+          source: {
+            id: "source-1",
+            sourceKind: "gmail",
+            connectionId: "connection-1",
+            scope: { allTime: true },
+          },
+          unitKey: "gmail:m-1",
+          cursor: { itemId: "m-1" },
+          maxBytes: 1_000,
+        },
+        context(),
+      );
+
+      expect(extract).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceUrl }),
+        expect.anything(),
+      );
+    },
+  );
 
   it("marks reused and irrelevant truncated documents as complete with a cursor marker", async () => {
     const itemFindFirst = vi.fn(async () => ({

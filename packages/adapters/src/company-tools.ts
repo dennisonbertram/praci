@@ -1,6 +1,8 @@
 import type { ConnectorTool } from "@rakazo/adapter-kit";
 import type {
   Actor,
+  CompanyEdgeRecord,
+  CompanyEntityRecord,
   CompanyEventRecord,
   CompanyFact,
   CompanyFactUpsertInput,
@@ -33,23 +35,30 @@ const sanitizeEvidence = <
 >(
   evidence: T[],
 ) => evidence.map(({ quote: _quote, extractorModel: _model, ...item }) => item);
+const sanitizeEdgeRecord = (record: CompanyEdgeRecord) => ({
+  ...record,
+  evidence: sanitizeEvidence(record.evidence),
+});
+const sanitizeEventRecord = (record: CompanyEventRecord) => ({
+  ...record,
+  evidence: sanitizeEvidence(record.evidence),
+});
 const sanitizeFact = (fact: CompanyFact) => {
   switch (fact.kind) {
     case "entity":
       return {
         ...fact,
-        record: { ...fact.record, evidence: sanitizeEvidence(fact.record.evidence) },
+        record: {
+          ...fact.record,
+          evidence: sanitizeEvidence(fact.record.evidence),
+          edges: fact.record.edges.map(sanitizeEdgeRecord),
+          events: fact.record.events.map(sanitizeEventRecord),
+        },
       };
     case "edge":
-      return {
-        ...fact,
-        record: { ...fact.record, evidence: sanitizeEvidence(fact.record.evidence) },
-      };
+      return { ...fact, record: sanitizeEdgeRecord(fact.record) };
     case "event":
-      return {
-        ...fact,
-        record: { ...fact.record, evidence: sanitizeEvidence(fact.record.evidence) },
-      };
+      return { ...fact, record: sanitizeEventRecord(fact.record) };
   }
 };
 
@@ -60,6 +69,7 @@ export type CompanyToolsDeps = {
   ownerRun: boolean;
   companyAgent: boolean;
   importer: boolean;
+  readAllowed: boolean;
   dataRoomAllowed: () => Promise<boolean>;
 };
 
@@ -153,16 +163,20 @@ export function companyToolsForRun(deps: {
   ownerRun: boolean;
   companyAgent: boolean;
   importer: boolean;
-  dataRoomAllowed: boolean;
+  readAllowed: boolean;
 }): ConnectorTool[] {
-  if (!deps.ownerRun) return [];
-  if (deps.importer) return companyImporterTools;
-  if (deps.companyAgent) return companyAgentTools;
-  return deps.ownerRun && deps.dataRoomAllowed ? companyReadTools : [];
+  if (deps.importer) return deps.ownerRun ? companyImporterTools : [];
+  if (deps.companyAgent) {
+    if (!deps.ownerRun) return deps.readAllowed ? companyReadTools : [];
+    return deps.readAllowed
+      ? companyAgentTools
+      : companyAgentTools.filter((tool) => !COMPANY_READ_TOOL_NAMES.has(tool.name));
+  }
+  return deps.readAllowed ? companyReadTools : [];
 }
 
-function factHasDataRoomEvidence(fact: CompanyFact) {
-  return fact.record.evidence.some((item) => item.sourceKind === "data_room");
+function recordHasDataRoomEvidence(record: { evidence: Array<{ sourceKind: string }> }) {
+  return record.evidence.some((item) => item.sourceKind === "data_room");
 }
 
 function matchesText(fact: CompanyFact, text: string) {
@@ -182,37 +196,72 @@ function matchesText(fact: CompanyFact, text: string) {
   return haystack.toLocaleLowerCase().includes(value);
 }
 
-function visiblePage(
-  entities: Awaited<ReturnType<ReturnType<typeof companyForActor>["list"]>>,
-  edges: Awaited<ReturnType<ReturnType<typeof companyForActor>["listEdges"]>>,
-  events: Awaited<ReturnType<ReturnType<typeof companyForActor>["listEvents"]>>,
-  shared: Awaited<ReturnType<ReturnType<typeof companyForActor>["teamFacts"]>>,
+function authorizedFacts(
+  entities: CompanyEntityRecord[],
+  edges: CompanyEdgeRecord[],
+  events: CompanyEventRecord[],
+  dataRoomAllowed: boolean,
 ): CompanyFact[] {
-  const visibleEntities = entities.filter(companyFactIsVisible);
+  const visibleEntities = entities.filter(
+    (entity) =>
+      companyFactIsVisible(entity) && (dataRoomAllowed || !recordHasDataRoomEvidence(entity)),
+  );
   const visibleIds = new Set(visibleEntities.map((fact) => fact.id));
   const visibleEdges = edges.filter(
     (edge) =>
-      companyFactIsVisible(edge) && visibleIds.has(edge.fromId) && visibleIds.has(edge.toId),
+      companyFactIsVisible(edge) &&
+      (dataRoomAllowed || !recordHasDataRoomEvidence(edge)) &&
+      visibleIds.has(edge.fromId) &&
+      visibleIds.has(edge.toId),
   );
   const visibleEvents = events.filter(
-    (event) => companyFactIsVisible(event) && event.entityIds.every((id) => visibleIds.has(id)),
-  );
-  const sharedEntities = shared.entities.filter(companyFactIsVisible);
-  const sharedIds = new Set(sharedEntities.map((entity) => entity.id));
-  const sharedEdges = shared.edges.filter(
-    (edge) => companyFactIsVisible(edge) && sharedIds.has(edge.fromId) && sharedIds.has(edge.toId),
-  );
-  const sharedEvents = shared.events.filter(
-    (event) => companyFactIsVisible(event) && event.entityIds.every((id) => sharedIds.has(id)),
+    (event) =>
+      companyFactIsVisible(event) &&
+      (dataRoomAllowed || !recordHasDataRoomEvidence(event)) &&
+      event.entityIds.every((id) => visibleIds.has(id)),
   );
   return [
     ...visibleEntities.map((record) => ({ kind: "entity" as const, record })),
     ...visibleEdges.map((record) => ({ kind: "edge" as const, record })),
     ...visibleEvents.map((record) => ({ kind: "event" as const, record })),
-    ...sharedEntities.map((record) => ({ kind: "entity" as const, record })),
-    ...sharedEdges.map((record) => ({ kind: "edge" as const, record })),
-    ...sharedEvents.map((record) => ({ kind: "event" as const, record })),
   ];
+}
+
+function projectEntityRelationships(facts: CompanyFact[]): CompanyFact[] {
+  const edgesByEntityId = new Map<string, Map<string, CompanyEdgeRecord>>();
+  const eventsByEntityId = new Map<string, Map<string, CompanyEventRecord>>();
+  const addRelationship = <T extends { id: string }>(
+    relationshipsByEntityId: Map<string, Map<string, T>>,
+    entityId: string,
+    relationship: T,
+  ) => {
+    const relationships = relationshipsByEntityId.get(entityId) ?? new Map<string, T>();
+    if (!relationships.has(relationship.id)) relationships.set(relationship.id, relationship);
+    relationshipsByEntityId.set(entityId, relationships);
+  };
+
+  for (const fact of facts) {
+    if (fact.kind === "edge") {
+      addRelationship(edgesByEntityId, fact.record.fromId, fact.record);
+      addRelationship(edgesByEntityId, fact.record.toId, fact.record);
+    } else if (fact.kind === "event") {
+      for (const entityId of fact.record.entityIds) {
+        addRelationship(eventsByEntityId, entityId, fact.record);
+      }
+    }
+  }
+
+  return facts.map((fact) => {
+    if (fact.kind !== "entity") return fact;
+    return {
+      ...fact,
+      record: {
+        ...fact.record,
+        edges: [...(edgesByEntityId.get(fact.record.id)?.values() ?? [])],
+        events: [...(eventsByEntityId.get(fact.record.id)?.values() ?? [])],
+      },
+    };
+  });
 }
 
 function dateEnd(date: string, precision: string) {
@@ -249,29 +298,18 @@ function safeResult<
 
 async function visibleFacts(deps: CompanyToolsDeps, text?: string) {
   const store = companyForActor(deps.prisma, deps.actor);
-  const [entities, edges, events, shared] = await Promise.all([
+  const [entities, edges, events, shared, allowed] = await Promise.all([
     store.list(),
     store.listEdges(),
     store.listEvents(),
     store.teamFacts(),
+    deps.dataRoomAllowed(),
   ]);
-  const allowed = await deps.dataRoomAllowed();
-  const facts = visiblePage(entities, edges, events, shared).filter(
-    (fact) => companyFactIsVisible(fact.record) && (allowed || !factHasDataRoomEvidence(fact)),
-  );
-  const permittedEntityIds = new Set(
-    facts
-      .filter((fact): fact is Extract<CompanyFact, { kind: "entity" }> => fact.kind === "entity")
-      .map((fact) => fact.record.id),
-  );
-  const relationSafeFacts = facts.filter((fact) => {
-    if (fact.kind === "edge")
-      return permittedEntityIds.has(fact.record.fromId) && permittedEntityIds.has(fact.record.toId);
-    if (fact.kind === "event")
-      return fact.record.entityIds.every((id) => permittedEntityIds.has(id));
-    return true;
-  });
-  return text ? relationSafeFacts.filter((fact) => matchesText(fact, text)) : relationSafeFacts;
+  const facts = projectEntityRelationships([
+    ...authorizedFacts(entities, edges, events, allowed),
+    ...authorizedFacts(shared.entities, shared.edges, shared.events, allowed),
+  ]);
+  return text ? facts.filter((fact) => matchesText(fact, text)) : facts;
 }
 
 async function searchCompany(deps: CompanyToolsDeps, raw: unknown) {
@@ -341,18 +379,11 @@ async function reviewNext(deps: CompanyToolsDeps, raw: unknown) {
     store.candidates(),
     deps.dataRoomAllowed(),
   ]);
+  const ownerFacts = authorizedFacts(entities, edges, events, dataRoomAllowed);
   const permittedEntityIds = new Set(
-    entities
-      .filter(
-        (entity) =>
-          companyFactIsVisible(entity) &&
-          (dataRoomAllowed ||
-            !factHasDataRoomEvidence({
-              kind: "entity",
-              record: entity,
-            })),
-      )
-      .map((entity) => entity.id),
+    ownerFacts
+      .filter((fact): fact is Extract<CompanyFact, { kind: "entity" }> => fact.kind === "entity")
+      .map((fact) => fact.record.id),
   );
   const visibleCandidates = candidates
     .filter((candidate) => dataRoomAllowed || candidate.sourceKind !== "data_room")
@@ -360,27 +391,8 @@ async function reviewNext(deps: CompanyToolsDeps, raw: unknown) {
       ...candidate,
       entityIds: candidate.entityIds.filter((id) => permittedEntityIds.has(id)),
     }));
-  const suggested: CompanyFact[] = [
-    ...entities
-      .filter((record) => record.status === "suggested")
-      .map((record) => ({ kind: "entity" as const, record })),
-    ...edges
-      .filter((record) => record.status === "suggested")
-      .map((record) => ({ kind: "edge" as const, record })),
-    ...events
-      .filter((record) => record.status === "suggested")
-      .map((record) => ({ kind: "event" as const, record })),
-  ];
-  const facts = suggested
-    .filter(
-      (fact) =>
-        companyFactIsVisible(fact.record) &&
-        (dataRoomAllowed || !factHasDataRoomEvidence(fact)) &&
-        (fact.kind === "entity" ||
-          (fact.kind === "edge"
-            ? permittedEntityIds.has(fact.record.fromId) && permittedEntityIds.has(fact.record.toId)
-            : fact.record.entityIds.every((id) => permittedEntityIds.has(id)))),
-    )
+  const facts = projectEntityRelationships(ownerFacts)
+    .filter((fact) => fact.record.status === "suggested")
     .map(sanitizeFact);
   const conflicts = visibleCandidates
     .filter((candidate) => /conflict|ambiguous/i.test(candidate.reason))
@@ -540,7 +552,11 @@ export async function companyToolFromTool(
   options: { approvedByCard?: boolean; effectKey?: string } = {},
 ): Promise<Record<string, unknown>> {
   try {
-    if (!deps.ownerRun) return { error: "Company tools require an owner-started foreground run." };
+    const readTool = COMPANY_READ_TOOL_NAMES.has(name);
+    if (readTool && !deps.readAllowed)
+      return { error: "Company reads are not authorized for this run." };
+    if (!readTool && !deps.ownerRun)
+      return { error: "Company tools require an owner-started foreground run." };
     if (name === "company_search") return await searchCompany(deps, raw);
     if (name === "company_get") return await getCompanyFact(deps, raw);
     if (name === "timeline_query") return await queryTimeline(deps, raw, false);

@@ -427,6 +427,11 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
   });
 
   it("runs real Data Room and Gmail sources, persists facts, and reuses unchanged evidence", async () => {
+    const internalInboxUrl = "/app/inbox?mail=synthetic_cache_id";
+    await prisma.dataRoomItem.updateMany({
+      where: { id: itemId, spaceId, userId },
+      data: { sourceUrl: internalInboxUrl },
+    });
     const engine = await createEngine();
     const created = await engine.create(actor, {
       tokenCap: 1_000_000,
@@ -452,6 +457,7 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
         factKind: true,
         sourceKind: true,
         connectionId: true,
+        sourceUrl: true,
         extractorRunId: true,
         spaceId: true,
         ownerUserId: true,
@@ -469,6 +475,11 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     expect(new Set(firstEvidence.map((row) => row.sourceKind))).toEqual(
       new Set(["data_room", "gmail"]),
     );
+    expect(
+      firstEvidence.some(
+        (row) => row.sourceKind === "data_room" && row.sourceUrl === internalInboxUrl,
+      ),
+    ).toBe(true);
     expect(
       firstEvidence.every((row) =>
         row.sourceKind === "data_room"

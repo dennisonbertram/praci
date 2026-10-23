@@ -1551,7 +1551,7 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         importRunId: runId,
         reason: "unresolved_import_subjects",
       },
-      select: { kind: true, proposedFact: true },
+      select: { id: true, kind: true, proposedFact: true, entityIds: true },
     });
     expect(candidates).toHaveLength(2);
     expect(candidates.map(({ kind }) => kind).sort()).toEqual(["edge", "event"]);
@@ -1572,5 +1572,62 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     ).toBe(false);
     expect(await prisma.companyEdge.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
     expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
+
+    const firstEvidence = await prisma.companyEvidence.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, sourceKind: "slack", sourceItemId, contentHash },
+      select: { id: true },
+    });
+    const observeAgain = async () => {
+      const second = await runWithSources(100, 1, "slack");
+      const secondClaim = second.claims[0]!;
+      await completeCompanyImportUnit(prisma, actor, {
+        runId: second.runId,
+        sourceId: secondClaim.sourceId,
+        unitId: secondClaim.id,
+        claimToken: secondClaim.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 1,
+        itemsRead: 1,
+        facts: [],
+        readItems: [{ sourceItemId, contentHash }],
+        reusedEvidenceIds: [firstEvidence.id],
+      });
+      return second.runId;
+    };
+    const secondRunId = await observeAgain();
+    const thirdRunId = await observeAgain();
+    for (const observedRunId of [runId, secondRunId, thirdRunId]) {
+      expect(
+        await prisma.companyImportCandidate.count({
+          where: {
+            spaceId,
+            ownerUserId: userId,
+            runId: observedRunId,
+            candidateId: { in: candidates.map(({ id }) => id) },
+          },
+        }),
+      ).toBe(candidates.length);
+    }
+
+    await updateCompanyImportRun(prisma, actor, { runId: thirdRunId, action: "discard" });
+    await updateCompanyImportRun(prisma, actor, { runId, action: "discard" });
+    const preservedCandidates = await prisma.companyCandidate.findMany({
+      where: { spaceId, ownerUserId: userId, id: { in: candidates.map(({ id }) => id) } },
+      select: { id: true, proposedFact: true, entityIds: true },
+    });
+    expect(preservedCandidates).toHaveLength(candidates.length);
+    expect(preservedCandidates).toEqual(
+      expect.arrayContaining(
+        candidates.map(({ id, proposedFact, entityIds }) => ({ id, proposedFact, entityIds })),
+      ),
+    );
+    expect(await prisma.companyEvidence.count({ where: { id: firstEvidence.id } })).toBe(1);
+    await updateCompanyImportRun(prisma, actor, { runId: secondRunId, action: "discard" });
+    expect(
+      await prisma.companyCandidate.count({
+        where: { spaceId, ownerUserId: userId, id: { in: candidates.map(({ id }) => id) } },
+      }),
+    ).toBe(0);
   });
 });

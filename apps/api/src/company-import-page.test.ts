@@ -625,6 +625,7 @@ describe("Company document imports", () => {
       },
       companyImportSource: { update: updateSource },
       connection: { findMany: async () => [] },
+      mcpServer: { findMany: async () => [] },
     } as unknown as PrismaClient;
     const engine = {
       progress: async () => ({
@@ -636,7 +637,34 @@ describe("Company document imports", () => {
         outputTokensUsed: 0,
         budgetWarning: false,
         counts: {},
-        sources: [],
+        sources: [
+          {
+            id: "source-1",
+            sourceKind: "mcp",
+            status: "running",
+            units: 1,
+            itemsDiscovered: 1,
+            itemsRead: 0,
+            factsFound: 0,
+            reservedTokens: 0,
+            inputTokensUsed: 0,
+            outputTokensUsed: 0,
+            lastError: null,
+          },
+          {
+            id: "source-2",
+            sourceKind: "mcp",
+            status: "running",
+            units: 1,
+            itemsDiscovered: 1,
+            itemsRead: 0,
+            factsFound: 0,
+            reservedTokens: 0,
+            inputTokensUsed: 0,
+            outputTokensUsed: 0,
+            lastError: null,
+          },
+        ],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }),
@@ -649,5 +677,96 @@ describe("Company document imports", () => {
         data: { plan: expect.objectContaining({ perCallCosts }) },
       }),
     );
+  });
+
+  it("labels each MCP import source from its actor-scoped server", async () => {
+    const serverFindMany = vi.fn(async () => [
+      { id: "server-1", name: "Linear workspace" },
+      { id: "server-2", name: "Slack workspace" },
+    ]);
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companyImportRun: {
+        findFirst: async () => ({
+          id: "run-1",
+          mode: "full",
+          tokenCap: 100,
+          sources: [
+            {
+              id: "source-1",
+              sourceKind: "mcp",
+              connectionId: null,
+              mcpServerId: "server-1",
+              scope: {},
+              plan: {},
+            },
+            {
+              id: "source-2",
+              sourceKind: "mcp",
+              connectionId: null,
+              mcpServerId: "server-2",
+              scope: {},
+              plan: {},
+            },
+          ],
+        }),
+      },
+      connection: { findMany: async () => [] },
+      mcpServer: { findMany: serverFindMany },
+    } as unknown as PrismaClient;
+    const engine = {
+      progress: async () => ({
+        runId: "run-1",
+        status: "paused",
+        tokenCap: 100,
+        reservedTokens: 0,
+        inputTokensUsed: 0,
+        outputTokensUsed: 0,
+        budgetWarning: false,
+        counts: {},
+        sources: [
+          {
+            id: "source-1",
+            sourceKind: "mcp",
+            status: "running",
+            units: 1,
+            itemsDiscovered: 1,
+            itemsRead: 0,
+            factsFound: 0,
+            reservedTokens: 0,
+            inputTokensUsed: 0,
+            outputTokensUsed: 0,
+            lastError: null,
+          },
+          {
+            id: "source-2",
+            sourceKind: "mcp",
+            status: "running",
+            units: 1,
+            itemsDiscovered: 1,
+            itemsRead: 0,
+            factsFound: 0,
+            reservedTokens: 0,
+            inputTokensUsed: 0,
+            outputTokensUsed: 0,
+            lastError: null,
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }),
+    } as unknown as CompanyImportEngine;
+
+    const result = await createCompanyImportPage({ prisma, engine }).session(actor, "run-1");
+
+    expect(result?.sources.map(({ label }) => label)).toEqual([
+      "Linear workspace",
+      "Slack workspace",
+    ]);
+    expect(result?.progress.sources.map(({ id }) => id)).toEqual(["source-1", "source-2"]);
+    expect(serverFindMany).toHaveBeenCalledWith({
+      where: { spaceId: actor.spaceId, userId: actor.userId, id: { in: ["server-1", "server-2"] } },
+      select: { id: true, name: true },
+    });
   });
 });

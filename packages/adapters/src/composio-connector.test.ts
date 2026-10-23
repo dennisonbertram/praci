@@ -677,6 +677,58 @@ describe("composio tool mapping", () => {
     };
   }
 
+  it("fails Company session reuse closed when ACTIVE account verification is unavailable", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const restore = stubActiveAccounts(["ca-company"]);
+    const context: AdapterContext = {
+      operationId: "company-active-outage",
+      traceId: "company-active-outage",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: new AbortController().signal,
+      connectedConnections: [
+        {
+          id: "connection-company",
+          connectorId: "composio",
+          externalId: "github",
+          displayName: "GitHub",
+          providerRef: "ca-company",
+        },
+      ],
+    };
+
+    try {
+      const connector = new ComposioConnector();
+      await connector.discoverTools(context);
+      const sessionsBeforeOutage = composioSdkState.created.length;
+      const failedLookup = vi.fn(async () => {
+        throw new Error("provider unavailable");
+      });
+      composioSdkState.connectedAccounts.list = failedLookup;
+
+      await expect(
+        connector.discoverTools({ ...context, companyImportReadOnly: true }),
+      ).rejects.toThrow("The connected account is unavailable");
+      expect(failedLookup).toHaveBeenCalledTimes(1);
+      expect(composioSdkState.created).toHaveLength(sessionsBeforeOutage);
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        { tool: "GITHUB_GET_REPOS", args: {}, executionId: "company-outage" },
+        { ...context, companyImportReadOnly: true },
+      ))
+        events.push(event);
+      expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+      expect(failedLookup).toHaveBeenCalledTimes(2);
+      expect(composioSdkState.executions).toEqual([]);
+      await expect(connector.discoverTools(context)).resolves.toBeDefined();
+    } finally {
+      restore();
+    }
+  });
+
   it("dispatches a missing-annotation Slack read through the pinned Company reader", async () => {
     composioSdkState.created.length = 0;
     composioSdkState.executions.length = 0;

@@ -1,6 +1,7 @@
 import type { Actor } from "@rakazo/contracts";
 import {
   CalendarQueryInputSchema,
+  COMPANY_READ_TOOLS,
   CompanyFactUpsertInputSchema,
   CompanyGetInputSchema,
   CompanyImportStartInputSchema,
@@ -47,7 +48,12 @@ describe("Company tools", () => {
     confirmedAt: null,
   });
 
-  const entity = (id: string, displayName: string, attrs: unknown, evidenceRows = [evidence(id)]) =>
+  const entity = (
+    id: string,
+    displayName: string,
+    attrs: unknown,
+    evidenceRows: unknown[] = [evidence(id)],
+  ) =>
     ({
       id,
       kind: "person",
@@ -127,6 +133,7 @@ describe("Company tools", () => {
       ownerRun: true,
       companyAgent: false,
       importer: false,
+      readAllowed: true,
       dataRoomAllowed: async () => false,
     };
     const byAttribute = await companyToolFromTool(deps, "company_search", {
@@ -171,6 +178,204 @@ describe("Company tools", () => {
     expect(JSON.stringify(review)).not.toContain("Shared Example");
   });
 
+  it("keeps nested Data Room relationships out of sanitized entity projections", async () => {
+    const gmailEvidence = {
+      ...evidence("gmail-evidence", "gmail"),
+      sourceItemId: "gmail-message-1",
+      sourceUrl: "https://mail.example.test/message/1",
+      quote: "PRIVATE_GMAIL_QUOTE",
+      extractorModel: "PRIVATE_MODEL_METADATA",
+    };
+    const edgeEvidence = {
+      ...evidence("data-room-edge-evidence", "data_room"),
+      quote: "PRIVATE_DATA_ROOM_EDGE_QUOTE",
+      extractorModel: "PRIVATE_MODEL_METADATA",
+    };
+    const corroboratingEdgeEvidence = {
+      ...evidence("gmail-edge-evidence", "gmail"),
+      factKind: "edge",
+      factId: "data-room-edge",
+    };
+    const eventEvidence = {
+      ...evidence("data-room-event-evidence", "data_room"),
+      quote: "PRIVATE_DATA_ROOM_EVENT_QUOTE",
+      extractorModel: "PRIVATE_MODEL_METADATA",
+    };
+    const corroboratingEventEvidence = {
+      ...evidence("gmail-event-evidence", "gmail"),
+      factKind: "event",
+      factId: "data-room-event",
+    };
+    const hiddenEndpoint = entity("hidden-person", "Hidden Data Room Person", {}, [
+      evidence("hidden-endpoint-evidence", "data_room"),
+    ]);
+    const stillHiddenEndpoint = {
+      ...(entity("still-hidden-person", "Still Hidden Person", {}) as object),
+      confidence: 0.2,
+    } as never;
+    const dataRoomEdge = {
+      id: "data-room-edge",
+      fromId: "person-1",
+      toId: "hidden-person",
+      relation: "works_with",
+      role: null,
+      confidence: 0.2,
+      status: "confirmed",
+      visibility: "private",
+      evidence: [edgeEvidence, corroboratingEdgeEvidence],
+    } as never;
+    const lowConfidenceEdge = {
+      id: "low-confidence-edge",
+      fromId: "person-1",
+      toId: "still-hidden-person",
+      relation: "works_with",
+      role: null,
+      confidence: 0.2,
+      status: "suggested",
+      visibility: "private",
+      evidence: [evidence("low-confidence-edge-evidence", "gmail")],
+    } as never;
+    const dataRoomEvent = {
+      id: "data-room-event",
+      stream: "private",
+      kind: "meeting",
+      title: "Private Data Room Event",
+      occursOn: { date: "2026-01-01", precision: "day" },
+      endsOn: null,
+      entityIds: ["person-1", "hidden-person"],
+      confidence: 0.2,
+      status: "confirmed",
+      visibility: "private",
+      evidence: [eventEvidence, corroboratingEventEvidence],
+    } as never;
+    const storedOnlyEdge = { ...(dataRoomEdge as object), id: "stored-only-edge" } as never;
+    const storedOnlyEvent = { ...(dataRoomEvent as object), id: "stored-only-event" } as never;
+    const personWithNestedRelationships = {
+      ...(entity("person-1", "Gmail Person", {}, [gmailEvidence]) as object),
+      edges: [dataRoomEdge, storedOnlyEdge],
+      events: [dataRoomEvent, storedOnlyEvent],
+    } as never;
+    companyStoreMock.current = {
+      list: vi.fn(async () => [personWithNestedRelationships, hiddenEndpoint, stillHiddenEndpoint]),
+      listEdges: vi.fn(async () => [dataRoomEdge, lowConfidenceEdge]),
+      listEvents: vi.fn(async () => [dataRoomEvent]),
+      candidates: vi.fn(async () => []),
+      teamFacts: vi.fn(async () => ({ entities: [], edges: [], events: [] })),
+    };
+    const deps = {
+      prisma: {} as PrismaClient,
+      actor,
+      ownerRun: true,
+      companyAgent: false,
+      importer: false,
+      readAllowed: true,
+      dataRoomAllowed: async () => false,
+    };
+
+    const deniedSearch = await companyToolFromTool(deps, "company_search", {
+      text: "Gmail Person",
+    });
+    const deniedGet = await companyToolFromTool(deps, "company_get", {
+      kind: "entity",
+      id: "person-1",
+    });
+    const deniedReview = await companyToolFromTool(deps, "company_review_next", {});
+    const deniedOutput = JSON.stringify([deniedSearch, deniedGet, deniedReview]);
+    expect(deniedOutput).not.toContain("hidden-person");
+    expect(deniedOutput).not.toContain("data-room-edge");
+    expect(deniedOutput).not.toContain("data-room-event");
+    expect(deniedOutput).not.toContain("PRIVATE_DATA_ROOM");
+    expect((deniedGet.fact as { record: { edges: unknown[]; events: unknown[] } }).record).toEqual(
+      expect.objectContaining({ edges: [], events: [] }),
+    );
+
+    const authorizedDeps = { ...deps, dataRoomAllowed: async () => true };
+    const authorizedSearch = await companyToolFromTool(authorizedDeps, "company_search", {
+      text: "Gmail Person",
+    });
+    const authorizedGet = await companyToolFromTool(authorizedDeps, "company_get", {
+      kind: "entity",
+      id: "person-1",
+    });
+    const authorizedReview = await companyToolFromTool(authorizedDeps, "company_review_next", {});
+    const authorizedAll = await companyToolFromTool(authorizedDeps, "company_search", {});
+    const authorizedRelationshipSearch = await companyToolFromTool(
+      authorizedDeps,
+      "company_search",
+      { kind: "edge", text: "works_with" },
+    );
+    const authorizedOutput = JSON.stringify([
+      authorizedSearch,
+      authorizedGet,
+      authorizedReview,
+      authorizedAll,
+    ]);
+    expect(authorizedOutput).not.toContain("PRIVATE_GMAIL_QUOTE");
+    expect(authorizedOutput).not.toContain("PRIVATE_DATA_ROOM");
+    expect(authorizedOutput).not.toContain("PRIVATE_MODEL_METADATA");
+    expect(authorizedOutput).not.toContain("extractorModel");
+    expect(JSON.stringify(authorizedAll)).not.toContain("still-hidden-person");
+    expect(JSON.stringify(authorizedAll)).not.toContain("low-confidence-edge");
+
+    const facts = authorizedSearch.facts as Array<{
+      kind: string;
+      record: {
+        id: string;
+        evidence?: Array<Record<string, unknown>>;
+        edges?: Array<Record<string, unknown>>;
+        events?: Array<Record<string, unknown>>;
+      };
+    }>;
+    const allFacts = authorizedAll.facts as typeof facts;
+    const personFact = facts.find(
+      (fact) => fact.kind === "entity" && fact.record.id === "person-1",
+    );
+    const edgeFact = allFacts.find(
+      (fact) => fact.kind === "edge" && fact.record.id === "data-room-edge",
+    );
+    const eventFact = allFacts.find(
+      (fact) => fact.kind === "event" && fact.record.id === "data-room-event",
+    );
+    expect(personFact?.record.edges?.map(({ id }) => id)).toEqual(["data-room-edge"]);
+    expect(personFact?.record.events?.map(({ id }) => id)).toEqual(["data-room-event"]);
+    expect(personFact?.record.evidence?.[0]).toMatchObject({
+      sourceItemId: "gmail-message-1",
+      sourceUrl: "https://mail.example.test/message/1",
+    });
+    expect(edgeFact?.record.evidence?.[0]).toMatchObject({
+      id: "data-room-edge-evidence",
+      dataRoomItemId: "dr-item-1",
+      sourceItemId: "data-room-edge-evidence-source",
+    });
+    expect(eventFact?.record.evidence?.[0]).toMatchObject({
+      id: "data-room-event-evidence",
+      dataRoomItemId: "dr-item-1",
+      sourceItemId: "data-room-event-evidence-source",
+    });
+    expect(personFact?.record.edges?.[0]).not.toHaveProperty("evidence[0].quote");
+    expect(personFact?.record.edges?.[0]).not.toHaveProperty("evidence[0].extractorModel");
+    expect(personFact?.record.events?.[0]).not.toHaveProperty("evidence[0].quote");
+    expect(personFact?.record.events?.[0]).not.toHaveProperty("evidence[0].extractorModel");
+    expect(authorizedRelationshipSearch.facts).toEqual([
+      expect.objectContaining({
+        kind: "edge",
+        record: expect.objectContaining({ id: "data-room-edge" }),
+      }),
+    ]);
+    const reviewedPerson = (
+      authorizedReview.suggested as Array<{
+        kind: string;
+        record: { id: string; edges?: Array<Record<string, unknown>> };
+      }>
+    ).find((fact) => fact.kind === "entity" && fact.record.id === "person-1");
+    expect(reviewedPerson?.record.edges?.map(({ id }) => id)).toEqual(["data-room-edge"]);
+    expect(
+      (authorizedReview.suggested as Array<{ kind: string; record: { id: string } }>).some(
+        (fact) => fact.kind === "edge" && fact.record.id === "data-room-edge",
+      ),
+    ).toBe(false);
+  });
+
   it("uses event precision and end dates, and withholds legal deadlines without consent", async () => {
     const personRecord = entity("person-1", "Visible Person", {});
     const eventRecord = (id: string, title: string, occursOn: unknown, endsOn: unknown = null) =>
@@ -210,6 +415,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: false,
+        readAllowed: true,
         dataRoomAllowed: async () => false,
       },
       "calendar_query",
@@ -274,6 +480,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: true,
+        readAllowed: false,
         dataRoomAllowed: async () => false,
         companyImport: {
           consentStatus: vi.fn(async () => ({ allowed: false, recipient: null })),
@@ -327,6 +534,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: true,
+        readAllowed: false,
         dataRoomAllowed: async () => false,
         companyImport: {
           consentStatus: vi.fn(async () => ({ allowed: false, recipient: null })),
@@ -356,6 +564,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: true,
+        readAllowed: false,
         dataRoomAllowed: async () => false,
         companyImport: { progress, action } as never,
       },
@@ -407,12 +616,12 @@ describe("Company tools", () => {
     );
   });
 
-  it("offers shared reads only through the owner and data-room authorization seam", () => {
+  it("offers shared reads through explicit read eligibility", () => {
     const authorized = companyToolsForRun({
       ownerRun: true,
       companyAgent: false,
       importer: false,
-      dataRoomAllowed: true,
+      readAllowed: true,
     });
     expect(authorized.map((tool) => tool.name)).toEqual([
       "company_search",
@@ -425,23 +634,23 @@ describe("Company tools", () => {
         ownerRun: false,
         companyAgent: false,
         importer: false,
-        dataRoomAllowed: true,
-      }),
-    ).toEqual([]);
+        readAllowed: true,
+      }).map((tool) => tool.name),
+    ).toEqual(["company_search", "company_get", "timeline_query", "calendar_query"]);
     expect(
       companyToolsForRun({
         ownerRun: false,
         companyAgent: true,
         importer: false,
-        dataRoomAllowed: true,
-      }),
-    ).toEqual([]);
+        readAllowed: true,
+      }).map((tool) => tool.name),
+    ).toEqual(["company_search", "company_get", "timeline_query", "calendar_query"]);
     expect(
       companyToolsForRun({
         ownerRun: false,
         companyAgent: false,
         importer: true,
-        dataRoomAllowed: true,
+        readAllowed: true,
       }),
     ).toEqual([]);
     expect(
@@ -449,13 +658,57 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: false,
-        dataRoomAllowed: false,
+        readAllowed: false,
       }),
     ).toEqual([]);
+    expect(
+      companyToolsForRun({
+        ownerRun: true,
+        companyAgent: true,
+        importer: false,
+        readAllowed: true,
+      }).map((tool) => tool.name),
+    ).toContain("company_fact_upsert");
+    const foregroundCompanyToolsWithoutRead = companyToolsForRun({
+      ownerRun: true,
+      companyAgent: true,
+      importer: false,
+      readAllowed: false,
+    }).map((tool) => tool.name);
+    expect(
+      foregroundCompanyToolsWithoutRead.filter((name) =>
+        COMPANY_READ_TOOLS.includes(name as never),
+      ),
+    ).toEqual([]);
+    expect(foregroundCompanyToolsWithoutRead).toContain("company_review_next");
+    expect(foregroundCompanyToolsWithoutRead).toContain("company_fact_upsert");
+    expect(
+      companyToolsForRun({
+        ownerRun: true,
+        companyAgent: false,
+        importer: true,
+        readAllowed: true,
+      }).map((tool) => tool.name),
+    ).not.toContain("company_fact_upsert");
   });
 
   it("requires an owner run and a server-recorded approval for mutations", async () => {
     const prisma = {} as PrismaClient;
+    const unauthorizedRead = await companyToolFromTool(
+      {
+        prisma,
+        actor,
+        ownerRun: true,
+        companyAgent: false,
+        importer: false,
+        readAllowed: false,
+        dataRoomAllowed: async () => true,
+      },
+      "company_search",
+      { text: "Company" },
+    );
+    expect(unauthorizedRead.error).toMatch(/not authorized/i);
+
     const outsideOwnerRead = await companyToolFromTool(
       {
         prisma,
@@ -463,12 +716,13 @@ describe("Company tools", () => {
         ownerRun: false,
         companyAgent: true,
         importer: false,
+        readAllowed: false,
         dataRoomAllowed: async () => true,
       },
       "company_search",
       { text: "Company" },
     );
-    expect(outsideOwnerRead.error).toMatch(/owner-started foreground run/i);
+    expect(outsideOwnerRead.error).toMatch(/not authorized/i);
 
     const outsideOwner = await companyToolFromTool(
       {
@@ -477,6 +731,7 @@ describe("Company tools", () => {
         ownerRun: false,
         companyAgent: true,
         importer: false,
+        readAllowed: false,
         dataRoomAllowed: async () => true,
       },
       "company_fact_upsert",
@@ -491,6 +746,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: true,
         importer: false,
+        readAllowed: true,
         dataRoomAllowed: async () => true,
       },
       "company_fact_upsert",
@@ -506,6 +762,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: true,
+        readAllowed: false,
         dataRoomAllowed: async () => true,
       },
       "company_import_start",
@@ -525,6 +782,7 @@ describe("Company tools", () => {
         ownerRun: true,
         companyAgent: false,
         importer: false,
+        readAllowed: true,
         dataRoomAllowed,
       },
       "company_search",

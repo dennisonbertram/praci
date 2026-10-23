@@ -400,6 +400,7 @@ export class ComposioConnector implements ComposioProvider {
      * discovery and resolution only list tools and omit this.
      */
     dispatchSlugs?: string[],
+    requireActiveAccountVerification = false,
   ): Promise<ComposioSession> {
     const canonicalToolkits = await this.canonicalizeToolkits(
       connections.map((connection) => connection.externalId),
@@ -408,6 +409,9 @@ export class ComposioConnector implements ComposioProvider {
       canonicalToolkits.map((toolkit) => [composioSlugKey(toolkit), toolkit]),
     );
     const liveAccountIds = await this.listActiveAccountIds(userId, canonicalToolkits);
+    if (requireActiveAccountVerification && liveAccountIds === null) {
+      throw new Error("The connected account is unavailable");
+    }
     const accountIdsByToolkit = new Map<string, Set<string>>();
     const authenticatedToolkits = new Set<string>();
     for (const connection of connections) {
@@ -549,6 +553,8 @@ export class ComposioConnector implements ComposioProvider {
       context.userId,
       connections,
       Boolean(context.connectedAppAgentConnectionId),
+      undefined,
+      Boolean(context.companyImportReadOnly),
     );
     const raw = await session.tools();
     const offered = asConnectorTools(raw);
@@ -716,6 +722,8 @@ export class ComposioConnector implements ComposioProvider {
       context.userId,
       connections,
       Boolean(call.route.connectionId),
+      undefined,
+      Boolean(context.companyImportReadOnly),
     );
     if (
       call.route.connectionId &&
@@ -775,6 +783,7 @@ export class ComposioConnector implements ComposioProvider {
         connections,
         Boolean(call.route?.connectionId),
         dispatchSlugs(call),
+        Boolean(context.companyImportReadOnly),
       );
       if (call.route && (call.route.connectionId || call.route.discoveredReadOnly === true)) {
         // Fetched now, not at discovery: a read that has become a write must not run unasked.

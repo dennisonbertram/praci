@@ -6,6 +6,7 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   await page.setViewportSize({ width: 1500, height: 1000 });
   await signup(page, `company-agent-${Date.now()}@rakazo.test`, "password12", "Company Owner");
   await completeOnboarding(page);
+  await rpc(page, "preferences/update", { tourSeen: true });
   await page.goto("/app/company");
   await page.getByRole("button", { name: "Ask Company agent", exact: true }).click();
   const historian = page.getByTestId("company-agent-panel");
@@ -17,10 +18,9 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   const again = await rpc<Bot>(page, "company/agent", {});
   expect(again.id).toBe(first.id);
   await captureScreenshot(page, testInfo, "company-agent-panel");
-  await historian.getByRole("button", { name: "Collapse Company agent" }).click();
+  await page.getByRole("link", { name: "Import", exact: true }).click();
   await expect(historian).toHaveCount(0);
-
-  await page.goto("/app/company/import");
+  await expect(page.getByTestId("company-importer-panel")).toHaveCount(0);
   await page.getByRole("button", { name: "Ask Company importer", exact: true }).click();
   const importer = page.getByTestId("company-importer-panel");
   await expect(
@@ -30,8 +30,9 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   expect(second.spawnKey).toMatch(/^company-importer:/);
   expect(second.id).not.toBe(first.id);
   await captureScreenshot(page, testInfo, "company-importer-panel");
-  await page.goto("/app/company");
+  await page.getByRole("link", { name: "Company", exact: true }).click();
   await expect(page.getByTestId("company-importer-panel")).toHaveCount(0);
+  await expect(historian).toHaveCount(0);
   await page.getByRole("button", { name: "Ask Company agent", exact: true }).click();
   await expect(
     historian.getByRole("button", { name: "Open Company agent full screen" }),
@@ -44,6 +45,7 @@ test("Company route changes can create the other agent while creation is pending
 }) => {
   await signup(page, `company-race-${Date.now()}@rakazo.test`, "password12", "Company Owner");
   await completeOnboarding(page);
+  await rpc(page, "preferences/update", { tourSeen: true });
   let releaseCreation!: () => void;
   const held = new Promise<void>((resolve) => {
     releaseCreation = resolve;
