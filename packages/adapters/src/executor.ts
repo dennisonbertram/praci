@@ -8213,7 +8213,7 @@ export function selectBuiltinToolsForRun(options: {
       (!options.gtmAgent ||
         options.trigger === "user" ||
         options.trigger === "follow_up" ||
-        tool.name !== "request_takeover") &&
+        !["request_takeover", "request_secret"].includes(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
