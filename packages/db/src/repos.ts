@@ -166,6 +166,7 @@ export function createRepos(prisma: PrismaClient) {
         position: true,
         updatedAt: true,
         parentBotId: true,
+        spawnKey: true,
         thread: {
           select: {
             unread: true,
@@ -195,6 +196,7 @@ export function createRepos(prisma: PrismaClient) {
         position: bot.position,
         unread: bot.thread.unread,
         parentBotId: bot.parentBotId,
+        spawnKey: bot.spawnKey,
         preview: previewFromBlocks(bot.thread.messages[0]?.blocks),
         status: bot.runs[0]?.status ?? "idle",
         runPhase: storedRunPhase(bot.runs[0]?.phase),
