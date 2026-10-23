@@ -344,10 +344,14 @@ export function InboxRow({
             {label ? (
               <span
                 aria-hidden="true"
-                title={labelNames[label]}
                 data-label-dot={label}
                 className={`me-1.5 inline-block size-2 rounded-full align-middle @md:hidden ${LABEL_DOT[label]}`}
               />
+            ) : null}
+            {label ? (
+              <span className="me-1.5 text-xs text-muted-foreground @md:hidden">
+                {labelNames[label]}
+              </span>
             ) : null}
             <Marked text={maskCurrencyWhenHidden(row.subject)} terms={terms} />
             {summary ? (
@@ -381,7 +385,6 @@ export function InboxRow({
               className="col-start-4 row-start-1 size-4 text-muted-foreground @md:hidden"
             />
           ) : null}
-          {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           {row.inInbox || !showArchived ? null : (
             // Only search finds archived mail; say so, since it is not in the Inbox list.
             <Badge
