@@ -117,7 +117,6 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const shared = {
       relabeled: false,
       showLock: false,
-      emptySpaceId: undefined as string | undefined,
       current: false,
       spaceId: space.id,
       spaceName: space.name,
@@ -188,11 +187,12 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       });
     }
     if (sections.length > 0) return sections;
-    // Keep empty spaces selectable; chat clicks are the only switch control.
     if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
-    if (headless || (!showSpaceNames && space.canRename !== true && space.canDelete !== true)) {
-      return [];
-    }
+    // An inactive empty space is reachable only from the space switcher: a header with no rows
+    // would let a click land the person in a space with nothing in it. The active one keeps its
+    // block so its Rename/Delete menu stays reachable (deleting needs an empty space).
+    if (headless || (showSpaceNames && space.id !== currentSpaceId)) return [];
+    if (!showSpaceNames && space.canRename !== true && space.canDelete !== true) return [];
     return [
       {
         ...shared,
@@ -202,8 +202,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         title: (showSpaceNames ? space.name : null) as string | null,
         bots: [] as typeof root,
         showLock: showSpaceNames,
-        emptySpaceId: showSpaceNames ? space.id : undefined,
-        current: showSpaceNames && space.id === currentSpaceId,
+        current: showSpaceNames,
       },
     ];
   });

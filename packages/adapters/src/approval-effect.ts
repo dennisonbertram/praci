@@ -378,12 +378,16 @@ export function approvedPaymentResult(result: unknown, bank = "the bank"): unkno
 export const CLOSED_APPROVAL_MESSAGE =
   "This approval is no longer active, so nothing was sent. Do not repeat it unless the user asks again in a new message.";
 
+/** Fields a model regenerates on every call; they do not make a payment a different request. */
+const PER_CALL_FIELDS = new Set(["idempotencyKey", "note", "externalMemo"]);
+
 function normalizeRequest(value: unknown): unknown {
   if (typeof value === "string") return value.trim().replace(/\s+/g, " ").toLowerCase();
   if (Array.isArray(value)) return value.map(normalizeRequest);
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
+        .filter(([key]) => !PER_CALL_FIELDS.has(key))
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([key, item]) => [key, normalizeRequest(item)]),
     );

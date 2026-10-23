@@ -54,7 +54,7 @@ export function localLogoUrl(logo: string): string | null {
   return BUNDLED.has(slug) ? `/logos/simple/${slug}.svg` : null;
 }
 
-/** App logo on a neutral tile. With no usable logo, an app named after a bundled mark gets that mark, a known app a glyph, any other named app its initial. */
+/** App logo on a white tile. An app named after a bundled mark always gets that mark; with no usable logo, a known app a glyph, any other named app its initial. */
 export function AppLogo({
   name,
   logo,
@@ -66,11 +66,10 @@ export function AppLogo({
 }) {
   const [failed, setFailed] = useState(false);
   const named = (name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const simple = logo ? null : BUNDLED.has(named) ? `${SIMPLE_ICONS}${named}` : null;
-  const mark = logo ?? simple;
+  // An app with a bundled mark always shows it, whichever source supplied a logo, so its tile never changes with connection state.
+  const mark = BUNDLED.has(named) ? `${SIMPLE_ICONS}${named}` : logo;
   const src = mark ? localLogoUrl(mark) : null;
   const showImage = Boolean(src) && !failed;
-  const mono = Boolean(mark?.startsWith(SIMPLE_ICONS));
   const Glyph = Object.entries(GLYPHS).find(([key]) => named.startsWith(key))?.[1];
   const initial = /^[\p{L}\p{N}]/u.test(name ?? "") ? (name ?? "").charAt(0).toUpperCase() : null;
   return (
@@ -78,15 +77,14 @@ export function AppLogo({
       data-testid="app-logo"
       data-fallback={showImage ? undefined : "true"}
       className={`grid shrink-0 place-items-center overflow-hidden border border-border font-semibold ${SIZES[size]} ${
-        showImage && !mono ? "bg-white" : "bg-muted text-muted-foreground"
+        showImage || Glyph ? "bg-white text-neutral-600" : "bg-muted text-muted-foreground"
       }`}
     >
       {showImage ? (
         <img
           src={src ?? undefined}
           alt=""
-          decoding="async"
-          className={`size-[55%] object-contain ${mono ? "dark:invert" : ""}`}
+          className="size-[55%] object-contain"
           onError={() => setFailed(true)}
         />
       ) : Glyph ? (

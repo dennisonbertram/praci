@@ -525,6 +525,35 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     expect(found.results[0]?.snippet).not.toContain("\u0001");
     expect(found.results[0]).toMatchObject({ link: `/app/data-room?item=${mine.id}` });
 
+    // With no query the tool lists the room with each file's folder, so a present document is
+    // never reported missing just because a keyword search missed it.
+    const listed = (await call("search_data_room", {})) as {
+      results: { id: string; name: string }[];
+    };
+    // Earlier tests leave their own files for this user, so check membership, not the whole list.
+    const listedIds = listed.results.map((r) => r.id);
+    expect(listedIds).toContain(mine.id);
+    expect(listedIds).not.toContain(theirs.id);
+    expect(listedIds).not.toContain(elsewhere.id);
+
+    // A page of one continues with its cursor until every file has been listed once.
+    const walked: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = (await call("search_data_room", {
+        limit: 1,
+        ...(cursor ? { cursor } : {}),
+      })) as {
+        results: { id: string }[];
+        nextCursor?: string;
+      };
+      walked.push(...page.results.map((r) => r.id));
+      cursor = page.nextCursor;
+    } while (cursor);
+    expect(walked).toContain(mine.id);
+    expect(new Set(walked).size).toBe(walked.length);
+    expect(walked.sort()).toEqual([...listedIds].sort());
+
     const read = (await call("read_data_room_item", { item_id: mine.id })) as Record<
       string,
       unknown

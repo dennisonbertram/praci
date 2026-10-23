@@ -171,7 +171,7 @@ export const NeedsConsentSyncing: Story = {
     }),
 };
 
-/** The first sort after Allow: no rows until it lands, so nothing moves afterwards. */
+/** The first sort after Allow: grey bars for 15 s, then the unsorted rows dimmed until it lands. */
 export const SortingFirstTime: Story = {
   beforeEach: () =>
     mockRpc({

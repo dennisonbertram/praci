@@ -194,15 +194,16 @@ export async function legalGraph(deps: LegalDeps, actor: Actor): Promise<LegalGr
   };
 }
 
-/** Deadlines the user marked done, latest due date first. */
+/** Deadlines the user closed, done or dismissed, latest due date first. */
 export async function legalDoneDeadlines(deps: LegalDeps, actor: Actor) {
   const repo = createLegalRepos(deps.prisma);
-  const [rows, contracts] = await Promise.all([
+  const [done, dismissed, contracts] = await Promise.all([
     repo.listDeadlines(actor, { status: "done", limit: 200, newestFirst: true }),
+    repo.listDeadlines(actor, { status: "dismissed", limit: 200, newestFirst: true }),
     repo.listContracts(actor, { limit: 500 }),
   ]);
   const titles = new Map(contracts.map((c) => [c.id, c.title]));
-  return rows
+  return [...done, ...dismissed]
     .map((d) => toLegalDeadline(d, d.contractId ? (titles.get(d.contractId) ?? null) : null))
     .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
 }

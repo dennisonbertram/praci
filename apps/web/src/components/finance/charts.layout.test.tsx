@@ -367,6 +367,39 @@ it("names the Financing ring on a quarter view", async () => {
   done();
 });
 
+it("puts neighbouring quarters' Financing labels on separate rows", async () => {
+  const q = (start: string, financingCents: number) => ({
+    start,
+    end: start,
+    outCents: 900_000,
+    revenueCents: 0,
+    financingCents,
+    partial: false,
+  });
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[
+        q("2025-01-01", 150_000),
+        q("2025-04-01", 200_000),
+        q("2025-07-01", 250_000),
+        q("2025-10-01", 350_000),
+      ]}
+      onOpen={() => {}}
+    />,
+  );
+  const ys = [...el.querySelectorAll("[data-testid=financing-clipped]")].map((n) =>
+    n.getAttribute("y"),
+  );
+  expect(new Set(ys).size).toBeGreaterThan(1);
+  expect(ys[0]).not.toBe(ys[1]);
+  expect(ys.every((y) => Number(y) >= 12)).toBe(true);
+  done();
+});
+
 it("keeps a Financing label inside the chart when financing equals the scale top", async () => {
   const { el, done } = await mount(
     600,
@@ -381,4 +414,59 @@ it("keeps a Financing label inside the chart when financing equals the scale top
   const text = el.querySelector("[data-testid=financing-clipped]") as SVGTextElement;
   expect(Number(text.getAttribute("y"))).toBeGreaterThanOrEqual(12);
   done();
+});
+
+it("keeps one Financing label on the first row after the chart is measured again", async () => {
+  const cbs: (() => void)[] = [];
+  const savedRO = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class {
+    constructor(cb: () => void) {
+      cbs.push(cb);
+    }
+    observe() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[{ ...day(1, 1_000_000), outCents: 900_000 }]}
+      onOpen={() => {}}
+    />,
+  );
+  // A resize re-runs the chart's render callback without re-rendering BurnLines.
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 601,
+  });
+  await act(async () => {
+    for (const cb of cbs) cb();
+  });
+  const text = el.querySelector("[data-testid=financing-clipped]") as SVGTextElement;
+  expect(Number(text.getAttribute("y"))).toBeGreaterThanOrEqual(14);
+  done();
+  globalThis.ResizeObserver = savedRO;
+});
+
+it("keeps the last axis label clear of the one before it", async () => {
+  const days = Array.from({ length: 30 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`);
+  const labels = days.map((d) => `Oct ${Number(d.slice(8))}`);
+  const { el, done } = await mount(
+    600,
+    <LineChart
+      values={days.map((_, i) => 1000 + i)}
+      labels={labels}
+      height={200}
+      label="Balance"
+    />,
+  );
+  const ticks = [...el.querySelectorAll("text")].filter((t) =>
+    /^Oct \d+$/.test(t.textContent ?? ""),
+  );
+  done();
+  const xs = ticks.map((t) => Number(t.getAttribute("x")));
+  expect(ticks.at(-1)?.textContent).toBe("Oct 30");
+  expect(xs.at(-1)! - xs.at(-2)!).toBeGreaterThanOrEqual(80);
 });

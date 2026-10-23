@@ -89,7 +89,10 @@ export function AppToaster() {
   pathRef.current = pathname;
   const openBotIdRef = useRef(openBotId);
   openBotIdRef.current = openBotId;
+  const signedIn = Boolean(userId);
   useEffect(() => {
+    // Signed out, every notifications call is a 401.
+    if (!signedIn) return;
     const controller = new AbortController();
     // The browser switch, loaded once and reloaded when the settings change.
     let browserOn: Promise<boolean> | undefined;
@@ -159,7 +162,7 @@ export function AppToaster() {
       window.removeEventListener("rakazo:notifications-changed", syncApprovals);
       window.removeEventListener(NOTIFICATION_SETTINGS_CHANGED, reload);
     };
-  }, []);
+  }, [signedIn]);
   // Leaving a chat with an approval still waiting raises its toast again; the 2 s poll stopped once
   // the open chat hid the last toast, so nothing else would.
   const previousChat = useRef(pathname);

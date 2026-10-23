@@ -160,3 +160,25 @@ it("shows nothing for one or two files: their rows already say Reading", () => {
   );
   expect(container.textContent).toBe("");
 });
+
+it("says it is waiting for permission, not processing, when the user has not allowed reading", () => {
+  act(() =>
+    root.render(<ProcessingStrip processing={counts} total={1_104} waitingForPermission />),
+  );
+  expect(container.textContent).toContain("Waiting for permission to read");
+  expect(container.textContent).not.toContain("Processing");
+  expect(container.querySelector('[role="progressbar"]')).toBeNull();
+});
+
+it("says a stalled batch is taking longer than usual and offers Try again", () => {
+  const onRetry = vi.fn();
+  act(() =>
+    root.render(<ProcessingStrip processing={counts} total={1_104} stalled onRetry={onRetry} />),
+  );
+  expect(container.textContent).toContain("Taking longer than usual");
+  const retry = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Try again",
+  );
+  act(() => retry?.click());
+  expect(onRetry).toHaveBeenCalledTimes(1);
+});

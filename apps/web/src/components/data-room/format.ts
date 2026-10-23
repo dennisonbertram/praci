@@ -108,20 +108,7 @@ export const canRetryItem = (item: {
   previewText?: string | null;
 }) => (item.status === "failed" && !isUnreadable(item.error ?? null)) || isStuck(item);
 
-/**
- * "Reading for 5 min" (or hours, days) once a file has been in the pipeline over 2 minutes; empty before that.
- * Counts from the last pipeline write (`updatedAt`), so a retried file starts again at zero.
- */
-export function readingAge(updatedAt: string, now = Date.now()) {
-  const minutes = Math.floor((now - new Date(updatedAt).getTime()) / 60_000);
-  if (minutes < 2) return "";
-  if (minutes < 60) return t`Reading for ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  return days < 1 ? t`Reading for ${hours} h` : t`Reading for ${days} d`;
-}
-
-/** A file still being read with no pipeline write for 3 minutes and no stored text: it offers Try again. */
+/** A file still being read with no pipeline write for a minute and no stored text: it offers Try again. */
 export const isStuck = (
   item: { status: string; updatedAt: string; previewText?: string | null },
   now = Date.now(),

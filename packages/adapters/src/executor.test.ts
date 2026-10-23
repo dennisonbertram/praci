@@ -26,6 +26,7 @@ import {
   isTerminalModelSetupError,
   loadCurrentTurnImages,
   loadFinanceConnectionLine,
+  MAIL_SORTING_LINE,
   MEMORY_GUIDANCE,
   missingTurnImagesInstruction,
   NOT_CONNECTED_GUIDANCE,
@@ -1428,6 +1429,12 @@ describe("financeConnectionLineFor", () => {
     expect(line).toContain("Mercury (no agent yet");
     expect(line).toContain("Allow changes");
     expect(line).toContain("never say no bank is connected");
+  });
+  it("links a bank without an agent to its own page, where Allow changes is confirmed", () => {
+    const line = financeConnectionLineFor([
+      { id: "srv1", endpoint: mercury, agentBotId: null, login: "connected" },
+    ]);
+    expect(line).toContain("[Open Mercury](/app/integrations/mcp/srv1)");
   });
   it("hands a connected bank with an agent to that agent", () => {
     const line = financeConnectionLineFor([
@@ -3792,5 +3799,16 @@ describe("ticket board tool capability", () => {
       expect(names({ integrationAgent: true })).not.toContain(name);
     }
     expect(names({})).toContain("message_bot");
+  });
+});
+
+describe("mail sorting line", () => {
+  it("names the sort and the Inbox instead of 'no tasks', and speaks to the user as you", () => {
+    expect(MAIL_SORTING_LINE).toContain("has not been sorted yet");
+    expect(MAIL_SORTING_LINE).toContain("[Open Inbox](/app/inbox)");
+    expect(MAIL_SORTING_LINE).toContain("do not say there are no tasks");
+    expect(MAIL_SORTING_LINE).toContain("may be incomplete");
+    expect(MAIL_SORTING_LINE).not.toMatch(/in a minute|will appear in/);
+    expect(PLAIN_CAPABILITY_GUIDANCE).toContain('Speak to the user as "you"');
   });
 });

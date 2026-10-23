@@ -391,12 +391,12 @@ it("clears the filter from the chip near the title, and shows everything with no
   expect(rows().join(" ")).toContain("Brex Card");
 });
 
-it("charts the year first and refetches when another range is chosen", async () => {
+it("charts the month first, like the overview, and refetches when another range is chosen", async () => {
   expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(1);
-  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "month" });
   const tab = (name: string) =>
     [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent === name);
-  expect(tab("Year")?.getAttribute("aria-selected")).toBe("true");
+  expect(tab("Month")?.getAttribute("aria-selected")).toBe("true");
   await act(async () => (tab("Quarter") as HTMLElement).click());
   await flush();
   expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "quarter" });

@@ -180,6 +180,35 @@ describe("routine history", () => {
       messageId: "group-reply",
     });
   });
+  it("ends a finished run when the agent it asked finished", async () => {
+    const { prisma, runs, messages } = fixture();
+    runs.mockResolvedValue([
+      {
+        id: "run-0",
+        botId: "bot-1",
+        threadId: "thread-1",
+        thread: { groupId: null },
+        status: "completed",
+        createdAt: at,
+        startedAt: at,
+        completedAt: new Date(at.getTime() + 6_000),
+      },
+    ]);
+    messages
+      .mockResolvedValueOnce([
+        {
+          id: "r",
+          runId: "run-0",
+          threadId: "thread-1",
+          blocks: [{ kind: "text", text: "Asking Ada" }],
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ runId: "run-0", endedAt: new Date(at.getTime() + 40_000) }]);
+    const history = await listRoutineRuns(prisma, actor, "routine-1");
+    expect(history.runs[0]?.preview).toBeNull();
+    expect(history.runs[0]?.completedAt).toBe(new Date(at.getTime() + 40_000).toISOString());
+  });
   it("shows the first line of the reply text as a preview", async () => {
     const { prisma, runs, messages } = fixture();
     runs.mockResolvedValue([
@@ -194,7 +223,7 @@ describe("routine history", () => {
         completedAt: at,
       },
     ]);
-    messages.mockResolvedValue([
+    messages.mockResolvedValueOnce([
       {
         id: "reply",
         runId: "run-0",
@@ -202,6 +231,7 @@ describe("routine history", () => {
         blocks: [{ kind: "text", text: "\nCash is steady.\nRunway is long." }],
       },
     ]);
+    messages.mockResolvedValue([]);
     const history = await listRoutineRuns(prisma, actor, "routine-1");
     expect(RoutineHistorySchema.parse(history).runs[0]?.preview).toBe("Cash is steady.");
   });
@@ -219,7 +249,7 @@ describe("routine history", () => {
         completedAt: at,
       },
     ]);
-    messages.mockResolvedValue([
+    messages.mockResolvedValueOnce([
       {
         id: "reply",
         runId: "run-0",
@@ -227,6 +257,7 @@ describe("routine history", () => {
         blocks: [{ kind: "subagent", task: "Research runway", result: "Cash is steady." }],
       },
     ]);
+    messages.mockResolvedValue([]);
     const history = await listRoutineRuns(prisma, actor, "routine-1");
     expect(history.runs[0]?.preview).toBe("Cash is steady.");
   });

@@ -115,11 +115,28 @@ function fakes(servers: FakeServer[]) {
     tx: fakeTx,
     assignments,
     prisma,
-    deps: { prisma, repos: { createBot } },
+    deps: { prisma, repos: { createBot, replaceBotInstructions: vi.fn(async () => undefined) } },
   };
 }
 
 describe("ensureCartaAgent", () => {
+  it("upgrades stored instructions only while they are the earlier default", async () => {
+    const { createBot, deps } = fakes([]);
+    await ensureCartaAgent(deps, actor);
+    const current = (createBot.mock.calls[0] as unknown as [Actor, { instructions: string }])[1]
+      .instructions;
+    const earlier = current.replace(/ A SAFE is not a Carta change[^.]*\./, "");
+    expect(earlier).not.toBe(current);
+    const replace = deps.repos.replaceBotInstructions;
+    createBot.mockResolvedValueOnce({ id: "bot-1", instructions: earlier } as never);
+    await ensureCartaAgent(deps, actor);
+    expect(replace).toHaveBeenCalledWith(actor, "bot-1", { from: earlier, to: current });
+    replace.mockClear();
+    createBot.mockResolvedValueOnce({ id: "bot-1", instructions: `${earlier} Mine.` } as never);
+    await ensureCartaAgent(deps, actor);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("rewrites the old default description only, scoped to the actor", async () => {
     const { botUpdateMany, deps } = fakes([]);
     await ensureCartaAgent(deps, actor);

@@ -357,7 +357,7 @@ it("shows each investor's portal state: none, invited, opened, revoked, unblocke
     }),
   ]);
   await show();
-  expect(portalCell("c1")).toBe("—");
+  expect(portalCell("c1")).toBeUndefined();
   expect(portalCell("c2")).toBe("Invited Oct 12");
   expect(portalCell("c3")).toBe("Opened Oct 13");
   expect(portalCell("c4")).toBe("Revoked");
@@ -830,6 +830,21 @@ it("counts only Funded SAFEs in Equity raised and shows Sent and Signed ones as 
   expect(container.textContent).not.toContain("Dee Newcomer");
 });
 
+it("ignores the Carta company total in Equity raised and counts Funded SAFEs only", async () => {
+  rpcMock.capTable.mockResolvedValue(
+    state({
+      ...carta,
+      amountRaisedUsd: 350_000,
+      holders: carta.holders.map((h) => ({ ...h, amountUsd: null })),
+    }),
+  );
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+  ]);
+  await show();
+  expect(container.textContent).toContain("Equity raised$25,000");
+});
+
 it("shows Equity raised from SAFEs when the cap table is empty", async () => {
   rpcMock.capTable.mockResolvedValue(state({ ...carta, fullyDilutedShares: 0, holders: [] }));
   rpcMock.safesList.mockResolvedValue([
@@ -858,6 +873,16 @@ it("shows a loading state, not a dash, until the SAFE list answers", async () =>
   answer([safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 })]);
   await flush();
   expect(container.textContent).toContain("Equity raised$525,000");
+});
+
+it("keeps the loading state, not a dash, while a sync is still filling in the figures", async () => {
+  rpcMock.capTable.mockResolvedValue(
+    state({ ...carta, holders: carta.holders.map((h) => ({ ...h, amountUsd: null })) }, true),
+  );
+  rpcMock.safesList.mockResolvedValue([]);
+  await show();
+  expect(container.textContent).not.toContain("Equity raised—");
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
 });
 
 it("offers Try again when the SAFE list cannot load", async () => {

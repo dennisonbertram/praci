@@ -649,21 +649,6 @@ it("keeps Try again for a failure that is not about the file's bytes", () => {
   expect(buttons).toContain("Try again");
 });
 
-it("shows how long a file has been Reading once that passes two minutes", () => {
-  const long = new Date(Date.now() - 150_000).toISOString();
-  const short = new Date(Date.now() - 30_000).toISOString();
-  const rows = asRows(
-    { ...item("old", null), status: "extracting", updatedAt: long },
-    { ...item("new", null), status: "extracting", updatedAt: short },
-  );
-  act(() => root.render(<ListView rows={rows} o={o()} />));
-  const lines = Array.from(container.querySelectorAll('[data-testid="data-room-subline"]')).map(
-    (el) => el.textContent,
-  );
-  expect(lines[0]).toMatch(/^Reading for/);
-  expect(lines[1]).toBe("Reading");
-});
-
 it("counts the Reading age from the last pipeline write, not from when the file was added", () => {
   const rows = asRows({
     ...item("again", null),
@@ -675,7 +660,7 @@ it("counts the Reading age from the last pipeline write, not from when the file 
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe("Reading");
 });
 
-it("offers Try again on a file still Reading after 3 minutes", () => {
+it("offers Try again on a file still Reading after a minute", () => {
   const onAction = vi.fn();
   const rows = asRows({
     ...item("stuck", null),
@@ -774,4 +759,23 @@ it("reads 'Not read' in the Type cell of a failed file and offers no retry for a
   act(() => root.render(<ListView rows={[{ item: failed, snippets: [] }]} o={o()} />));
   expect(container.textContent).toContain("Not read");
   expect(container.textContent).not.toContain("Try again");
+});
+
+it("shows a visible Replace file and the folder path on a failed row that a second read cannot fix", () => {
+  const failed = {
+    ...item("nda", null),
+    folderId: "f-legal",
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  } as DataRoomApiItem;
+  const onAction = vi.fn();
+  act(() =>
+    root.render(<ListView rows={[{ item: failed, snippets: [] }]} o={{ ...o(), onAction }} />),
+  );
+  expect(container.textContent).toContain("Legal");
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Replace file",
+  );
+  act(() => button?.click());
+  expect(onAction).toHaveBeenCalledWith("replace", failed);
 });

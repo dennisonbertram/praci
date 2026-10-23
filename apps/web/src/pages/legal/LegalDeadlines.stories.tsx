@@ -41,3 +41,13 @@ export const DoneWithReload: Story = { render: (args) => <ReloadingDeadlines {..
 export const RemovalProposed: Story = {
   args: { deadlines: deadlines.map((d, i) => ({ ...d, removalProposed: i === 1 })) },
 };
+
+/** The scan opened a same-date deadline for the same contract: the flagged row names it. */
+export const Replaced: Story = {
+  args: {
+    deadlines: [
+      ...deadlines.map((d, i) => ({ ...d, removalProposed: i === 1 })),
+      { ...deadlines[1]!, id: "replacement", title: "Renewal notice deadline" },
+    ],
+  },
+};

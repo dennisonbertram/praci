@@ -114,7 +114,7 @@ export function FinancePage(chrome: FinanceChrome) {
   const route = parseFinanceRoute(location.pathname, location.search);
   return (
     <FinanceChromeProvider value={chrome}>
-      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7">
         <div className="mx-auto max-w-[1440px]">
           {route.page === "dashboard" ? (
             <Dashboard />
@@ -193,6 +193,11 @@ function Dashboard() {
   // The add dialogs live here, above the empty and loaded states: the first import turns the empty
   // state into the dashboard, and the dialog must stay open on its results until Done.
   const [adding, setAdding] = useState<"type" | "bank" | null>(null);
+  // From picking a bank until the overview that includes it arrives, the stale empty state would
+  // read "No accounts yet" and invite a second connection.
+  const [connecting, setConnecting] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new overview (or its error) ends the wait
+  useEffect(() => setConnecting(false), [overview.data, overview.error]);
   const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   const dialogs = (
     <>
@@ -201,6 +206,10 @@ function Dashboard() {
           initialStep={adding}
           onPickCrypto={setCrypto}
           onImported={overview.reload}
+          onConnected={() => {
+            setConnecting(true);
+            overview.reload();
+          }}
           onClose={() => setAdding(null)}
         />
       ) : null}
@@ -226,7 +235,14 @@ function Dashboard() {
     <>
       {/* Accounts fed by uploaded statements have no source to connect, but they are data. */}
       {!connected && !data.hasCashAccounts ? (
-        <EmptyState cryptoCents={data.crypto?.totalCents ?? null} onAdd={() => setAdding("type")} />
+        connecting ? (
+          <DashboardSkeleton connecting />
+        ) : (
+          <EmptyState
+            cryptoCents={data.crypto?.totalCents ?? null}
+            onAdd={() => setAdding("type")}
+          />
+        )
       ) : (
         <Overview
           data={data}
@@ -283,9 +299,14 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   );
 }
 
-function DashboardSkeleton() {
+function DashboardSkeleton({ connecting = false }: { connecting?: boolean }) {
   return (
     <div aria-busy="true" className="flex flex-col gap-3">
+      {connecting ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          <Trans>Connecting…</Trans>
+        </p>
+      ) : null}
       <Skeleton className="h-7 w-32" />
       <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
         {[0, 1, 2, 3].map((n) => (
@@ -368,7 +389,9 @@ function Overview({
   // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
     !p.previousCents || p.previousCents === p.currentCents || p.currentCents === 0;
-  const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
+  // Non-breaking spaces keep "Oct 1 – 22" together, so a narrow line never strands the "22".
+  const range = (r: { start: string; end: string }) =>
+    dayRange(r.start, lastDayOf(r.end)).replace(/[ \u2009]/g, "\u00a0");
   const spentRange = range(totals);
   // A quarter or year that has just begun covers the same days as the month; say it is partial.
   const quarter = Math.floor((Number(totals.start.slice(5, 7)) - 1) / 3) + 1;
@@ -399,17 +422,15 @@ function Overview({
     : connected.some((source) => source.status === "needs_reconnect")
       ? "bg-warning"
       : "bg-success";
-  const nonUsdNote =
-    data.excludedNonUsdCount === 1
-      ? t`1 non-USD transaction not counted`
-      : t`${data.excludedNonUsdCount} non-USD transactions not counted`;
+  const lapsed = connected.filter((source) => source.status === "needs_reconnect");
+  const lapsedNames = lapsed.map((source) => providerName(source.provider)).join(", ");
   const showSkeleton = syncing && data.lastSyncedAt === null;
   const updated = data.lastSyncedAt ? formatRelativeTime(data.lastSyncedAt) : "";
 
   return (
     <div>
       {/* Sticks like the Inbox header from md up: -top cancels the scroller's padding, so rows never show above it. A phone keeps the screen for the figures. */}
-      <div className="pb-4 md:sticky md:-top-5 md:z-20 md:-mx-7 md:-mt-5 md:bg-background md:px-7 md:pt-5">
+      <div className="pb-4 md:sticky md:-top-2 md:z-20 md:-mx-7 md:-mt-2 md:bg-background md:px-7 md:pt-2">
         <PageHeader
           className="mb-0"
           title={<Trans>Finance</Trans>}
@@ -417,27 +438,31 @@ function Overview({
             <>
               <CompanyMenu>
                 <Link
-                  to={financePath.accounts()}
+                  to={lapsed.length > 0 ? CONNECT_PATH : financePath.accounts()}
                   className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                 >
                   <span
                     aria-hidden="true"
                     className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                   />
-                  <span className="truncate">
-                    {/* A phone has room for the time only; Accounts names the sources. */}
-                    <span className={updated || syncing ? "max-sm:hidden" : undefined}>
-                      {sourceNames}
-                      {updated || syncing ? " · " : ""}
-                    </span>
-                    {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                  <span>
+                    {lapsed.length > 0 ? (
+                      // One status for a lapsed sign-in, the same words as Fundraising and Integrations.
+                      t`Reconnect ${lapsedNames}`
+                    ) : (
+                      <>
+                        {/* A phone has room for the time only; Accounts names the sources. */}
+                        <span className={updated || syncing ? "max-sm:hidden" : undefined}>
+                          {sourceNames}
+                          {updated || syncing ? " · " : ""}
+                        </span>
+                        {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                      </>
+                    )}
                   </span>
-                  {sourceDot !== "bg-success" ? (
-                    <span className="sr-only">
-                      {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
-                    </span>
+                  {sourceDot === "bg-destructive" ? (
+                    <span className="sr-only">{t`Sync failed.`}</span>
                   ) : null}
-                  {data.excludedNonUsdCount > 0 ? <span> · {nonUsdNote}</span> : null}
                 </Link>
                 <Tooltip>
                   <TooltipTrigger
@@ -463,6 +488,16 @@ function Overview({
                   </TooltipContent>
                 </Tooltip>
               </CompanyMenu>
+              {data.excludedNonUsdCount > 0 ? (
+                // A phone shows it above the figures instead, so the header stays two rows.
+                <span className="min-w-0 max-sm:hidden">
+                  {data.excludedNonUsdCount === 1 ? (
+                    <Trans>1 non-USD transaction not counted</Trans>
+                  ) : (
+                    <Trans>{data.excludedNonUsdCount} non-USD transactions not counted</Trans>
+                  )}
+                </span>
+              ) : null}
               {missing.length > 0 ? (
                 // One way to connect: the same Add account dialog as the empty state.
                 <Button
@@ -512,6 +547,13 @@ function Overview({
         <DashboardSkeleton />
       ) : (
         <div className="flex flex-col gap-3">
+          {data.excludedNonUsdCount > 0 ? (
+            <p className="text-xs text-muted-foreground sm:hidden">
+              {data.excludedNonUsdCount === 1
+                ? t`1 non-USD transaction not counted`
+                : t`${data.excludedNonUsdCount} non-USD transactions not counted`}
+            </p>
+          ) : null}
           <div
             // Two per row when narrow, the odd last card taking the whole row. Five cards go 3 + 2
             // (three-sixths wide, then the last two half each) from 28rem, so the Ask panel never
@@ -672,7 +714,7 @@ function Overview({
             ) : null}
           </Section>
 
-          <div className="grid gap-3 @3xl:grid-cols-2">
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,

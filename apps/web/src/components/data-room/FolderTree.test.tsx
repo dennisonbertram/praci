@@ -92,3 +92,16 @@ it("marks a folder with subfolders as expanded and leaves the others without the
     null,
   ]);
 });
+
+it("scrolls to the selected folder only when the selection changes", () => {
+  const scroll = vi.fn();
+  Element.prototype.scrollIntoView = scroll;
+  const render = (selected: string) =>
+    act(() => root.render(<FolderTree nodes={nodes} selected={selected} onSelect={vi.fn()} />));
+  render("f-inv");
+  expect(scroll).toHaveBeenCalledTimes(1);
+  render("f-inv");
+  expect(scroll).toHaveBeenCalledTimes(1);
+  render("f-legal");
+  expect(scroll).toHaveBeenCalledTimes(2);
+});

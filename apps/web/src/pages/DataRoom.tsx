@@ -1,14 +1,15 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
   DataRoomApiFacetValues,
   DataRoomApiFolder,
   DataRoomApiItem,
   DataRoomApiStats,
+  DataRoomConsentStatus,
 } from "@rakazo/contracts";
 import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
 import { ArrowLeft, ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import type { ComposeRestore } from "../components/ComposeEmail";
@@ -19,7 +20,8 @@ import { DataRoomStats } from "../components/data-room/DataRoomStats";
 import { FilterBar, facetOptions, Tip } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
-import { alreadyText } from "../components/data-room/format";
+import { alreadyText, isStuck } from "../components/data-room/format";
+import { holdNewRows } from "../components/data-room/hold-new-rows";
 import { ImportActivity, importProgress } from "../components/data-room/ImportActivity";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
 import type { DataRoomEntry } from "../components/data-room/ItemDialogs";
@@ -28,7 +30,7 @@ import type { ItemAction } from "../components/data-room/ItemMenu";
 import type { RowInteraction } from "../components/data-room/ItemRows";
 import { GridView, ListView, SubfolderList } from "../components/data-room/ItemRows";
 import { PathBar } from "../components/data-room/PathBar";
-import { Preview } from "../components/data-room/Preview";
+import { Preview, replaceDataRoomFile } from "../components/data-room/Preview";
 import { ProcessingStrip } from "../components/data-room/ProcessingStrip";
 import { ResizableFolders } from "../components/data-room/ResizableFolders";
 import { SelectionBar } from "../components/data-room/SelectionBar";
@@ -122,7 +124,26 @@ export function DataRoomPage({
   // View and sort are remembered for this browser.
   const [saved] = useState(readDataRoomView);
   const [view, setView] = useState<"list" | "grid">(saved.view);
-  const [queryInput, setQueryInput] = useState("");
+  // The command palette's "See all in Data room" arrives with the search in ?q=.
+  const urlQuery = params.get("q") ?? "";
+  const [queryInput, setQueryInput] = useState(urlQuery);
+  useEffect(() => setQueryInput(urlQuery), [urlQuery]);
+  // Edits and clearing go back to ?q= so a reload restores what the box shows.
+  const changeQuery = useCallback(
+    (value: string) => {
+      setQueryInput(value);
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value) next.set("q", value);
+          else next.delete("q");
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setParams],
+  );
   const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   // Clearing the box shows the list again at once; only typing waits for a pause.
   const query = queryInput.trim() === "" ? "" : debouncedQuery;
@@ -312,6 +333,7 @@ export function DataRoomPage({
   // The pointer alone never changes it, so the highlight stays on the row the user chose. Nothing
   // is previewed until the user picks a file.
   const [pinned, setPinned] = useState<DataRoomApiItem | null>(null);
+  const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
   // Narrow: the preview has no room beside the list, so a tap opens it in a dialog.
   const [narrow, setNarrow] = useState(false);
@@ -343,7 +365,7 @@ export function DataRoomPage({
       .then((item) => {
         if (!current || item.id !== linkedItem) return;
         // Show the folder the item is in, so the list and the preview agree.
-        setQueryInput("");
+        changeQuery("");
         setFilters(item.folderId ? { folderId: item.folderId } : {}, true);
         explicit.current = item.id;
         setPinned(item);
@@ -429,7 +451,13 @@ export function DataRoomPage({
           setPinned(null);
           setPreviewOpen(false);
         },
-    onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
+    onAction: (kind, item) => {
+      if (kind === "retry") retry(item);
+      else if (kind === "replace") {
+        replacing.current = item;
+        replaceInput.current?.click();
+      } else setAction({ kind, item });
+    },
     // Tick boxes are for the list; the grid has its tiles' own menus.
     ...(view === "list" || searching
       ? {
@@ -528,6 +556,8 @@ export function DataRoomPage({
   }
   const fileInput = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const replacing = useRef<DataRoomApiItem | null>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [autoSorting, setAutoSorting] = useState(false);
 
@@ -602,7 +632,16 @@ export function DataRoomPage({
     !list.error &&
     !searching &&
     !hasFilters;
-  const rows = list.rows;
+  // Files that arrive above the open preview's row wait behind a count, so that row stays put.
+  const [, refreshHold] = useReducer((n: number) => n + 1, 0);
+  const hold = useRef<{ key: string; ids: Set<string> } | null>(null);
+  let rows = list.rows;
+  let heldCount = 0;
+  if (shown) {
+    if (hold.current?.key !== list.key)
+      hold.current = { key: list.key, ids: new Set(list.rows.map((row) => row.item.id)) };
+    ({ rows, held: heldCount } = holdNewRows(list.rows, hold.current.ids, shown.id));
+  } else hold.current = null;
   // The folder's values, plus any on rows newer than that answer. They stay when a search or
   // filter finds nothing, so changing one is never a dead end.
   const options = useMemo(() => {
@@ -672,7 +711,7 @@ export function DataRoomPage({
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         {fromLegal ? (
           <Link
             to="/app/legal"
@@ -692,6 +731,20 @@ export function DataRoomPage({
               {empty ? null : (
                 <>
                   {viewToggles("@max-[639px]/bd:hidden")}
+                  <input
+                    ref={replaceInput}
+                    type="file"
+                    hidden
+                    data-testid="data-room-replace-input"
+                    onChange={(event) => {
+                      if (replacing.current)
+                        replaceDataRoomFile(
+                          replacing.current,
+                          Array.from(event.target.files ?? []),
+                        );
+                      event.target.value = "";
+                    }}
+                  />
                   <input
                     ref={fileInput}
                     type="file"
@@ -748,11 +801,11 @@ export function DataRoomPage({
         <>
           <div className={`${PAGE_GUTTER_X} pb-2.5 empty:hidden`}>
             {/* Also in Stats, so switching views never moves the folder tree. */}
-            <DataRoomConsentPrompt onAllowed={reload} />
+            <DataRoomConsentPrompt onAllowed={reload} onStatus={setConsent} />
           </div>
           <FilterBar
             query={queryInput}
-            onQuery={setQueryInput}
+            onQuery={changeQuery}
             searching={searching}
             filters={filters}
             onFilters={(next) => setFilters(next)}
@@ -834,6 +887,13 @@ export function DataRoomPage({
                       processing={processing.processing}
                       total={processing.total}
                       finished={!processing.active}
+                      waitingForPermission={
+                        !!consent && !consent.allowed && consent.recipients.length > 0
+                      }
+                      stalled={list.rows.some(({ item }) => isStuck(item))}
+                      onRetry={() => {
+                        for (const { item } of list.rows) if (isStuck(item)) retry(item);
+                      }}
                     />
                   ) : null}
                   {searching && openFolderPath ? (
@@ -849,6 +909,21 @@ export function DataRoomPage({
                         onClick={() => setFilters({ ...filters, folderId: undefined })}
                       >
                         <Trans>Search all items</Trans>
+                      </Button>
+                    </div>
+                  ) : null}
+                  {heldCount > 0 ? (
+                    <div className="sticky top-1 z-10 h-0 overflow-visible text-center">
+                      <Button
+                        size="xs"
+                        variant="secondary"
+                        className="shadow-sm"
+                        onClick={() => {
+                          hold.current = { key: list.key, ids: new Set(resultIds.split(",")) };
+                          refreshHold();
+                        }}
+                      >
+                        {plural(heldCount, { one: "# new file", other: "# new files" })}
                       </Button>
                     </div>
                   ) : null}
@@ -884,12 +959,20 @@ export function DataRoomPage({
                           <Trans>No results</Trans>
                         </p>
                       )}
+                      {searching && openFolderPath ? (
+                        <Button
+                          size="sm"
+                          onClick={() => setFilters({ ...filters, folderId: undefined })}
+                        >
+                          <Trans>Search all items</Trans>
+                        </Button>
+                      ) : null}
                       {searching || filtered ? (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setQueryInput("");
+                            changeQuery("");
                             clearFilters();
                           }}
                         >
@@ -962,6 +1045,7 @@ export function DataRoomPage({
             )}
             {shown && !narrow && !showStats ? (
               <Preview
+                pageAsksConsent={!!consent && !consent.allowed && consent.recipients.length > 0}
                 item={shown}
                 folderPath={folderPath(shown.folderId)}
                 onAction={interaction.onAction}

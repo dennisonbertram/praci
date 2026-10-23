@@ -429,6 +429,23 @@ export function createRepos(prisma: PrismaClient) {
       return bot;
     },
 
+    /** Replaces a bot's instructions only if they still equal `from`, so an edit is never overwritten. */
+    async replaceBotInstructions(
+      actor: Actor,
+      botId: string,
+      input: { from: string; to: string },
+    ): Promise<void> {
+      await prisma.bot.updateMany({
+        where: {
+          id: botId,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          instructions: input.from,
+        },
+        data: { instructions: input.to },
+      });
+    },
+
     async createBot(
       actor: Actor,
       input: {

@@ -19,12 +19,20 @@ export function ProcessingStrip({
   total,
   finished = false,
   importing,
+  waitingForPermission = false,
+  stalled = false,
+  onRetry,
 }: {
   processing: DataRoomApiProcessing;
   total: number;
   finished?: boolean;
   /** Imports still running, shown ahead of the count on the same line. */
   importing?: { done: number; total: number } | null;
+  /** Files are queued but the user has not allowed Praci to read documents yet. */
+  waitingForPermission?: boolean;
+  /** A file has made no progress for about a minute. */
+  stalled?: boolean;
+  onRetry?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const remaining = processingRemaining(processing);
@@ -66,12 +74,23 @@ export function ProcessingStrip({
         ) : null}
         {remaining > 0 ? (
           <span className="shrink-0">
-            <Shimmer>
-              {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
-            </Shimmer>
+            {waitingForPermission ? (
+              t`Waiting for permission to read`
+            ) : stalled ? (
+              t`Taking longer than usual`
+            ) : (
+              <Shimmer>
+                {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
+              </Shimmer>
+            )}
           </span>
         ) : null}
-        {remaining > 0 && processing.current && doing ? (
+        {remaining > 0 && stalled && !waitingForPermission && onRetry ? (
+          <Button variant="link" size="xs" className="h-auto p-0" onClick={onRetry}>
+            {t`Try again`}
+          </Button>
+        ) : null}
+        {remaining > 0 && !waitingForPermission && !stalled && processing.current && doing ? (
           <span className="min-w-0 truncate">
             {doing} {maskCurrencyWhenHidden(processing.current)}
           </span>
@@ -99,7 +118,7 @@ export function ProcessingStrip({
           ))}
         </ul>
       ) : null}
-      {remaining > 0 && percent > 0 ? (
+      {remaining > 0 && percent > 0 && !waitingForPermission ? (
         <div
           role="progressbar"
           aria-label={t`Processing`}

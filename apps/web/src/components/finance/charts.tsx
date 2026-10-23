@@ -183,6 +183,25 @@ export function axisTicks(labels: readonly string[], every: number): (string | n
   });
 }
 
+/** The last tick is always named. When it hangs left of the point (near the right edge), a kept tick less than 80px before it would nearly touch it, so that tick is dropped. */
+export function dropCrowdedTick(
+  ticks: (string | null)[],
+  x: (i: number) => number,
+  width: number,
+): (string | null)[] {
+  const last = ticks.length - 1;
+  const before = ticks.findLastIndex((text, i) => i < last && text !== null);
+  if (before < 0 || x(last) <= width - 24 || x(last) - x(before) >= 80) return ticks;
+  // The dropped tick may carry a year change ('27); the last tick takes it over.
+  const year = ticks[before]?.match(/'\d\d$/)?.[0];
+  return ticks.map((text, i) => {
+    if (i === before) return null;
+    return i === last && text && year && !text.endsWith(year) && !text.includes("•")
+      ? `${text} ${year}`
+      : text;
+  });
+}
+
 /**
  * A line over equally spaced points. Points after `solidUntil` are dashed, `endMarker` draws a hollow
  * dot on the last point (a projection that reaches zero). Without axes it is a bare trend line.
@@ -242,7 +261,7 @@ export function LineChart({
                   bottom={bottom}
                   scale={scale}
                 />
-                {axisTicks(labels, every).map((text, i) =>
+                {dropCrowdedTick(axisTicks(labels, every), x, width).map((text, i) =>
                   text !== null ? (
                     <text
                       key={i}
@@ -402,13 +421,26 @@ export function BurnLines({
   const right = 8;
   const bottom = 24;
   const clipped = series.some((m) => m.financingCents > scale.top);
-  const top = clipped ? 28 : 10;
+  // A quarter or year names its financing point in a label above the plot, so the label never sits on a bar.
+  const named = series.some(
+    (m) => m.financingCents > 0 && (granularity === "quarter" || granularity === "year"),
+  );
+  // Neighbouring labels that collide go on a second row, so two or more labels get the extra room.
+  const labelled = series.filter(
+    (m) =>
+      m.financingCents > scale.top ||
+      (m.financingCents > 0 && (granularity === "quarter" || granularity === "year")),
+  ).length;
+  const top = labelled > 1 ? 42 : clipped || named ? 28 : 10;
   // Each month is a control and must be 44 px wide on touch: a narrow phone scrolls the chart.
   const minWidth =
     touch && granularity === "month" ? left + right + Math.max(series.length, minSlots) * 44 : 0;
   return (
     <Chart height={height} label={label} minWidth={minWidth}>
       {(width) => {
+        // Where the last label on each row ends (lower row first). It lives in this callback, which
+        // Chart runs again on every resize: a value kept outside would push the one label up a row.
+        const rowEnd = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
         const slot = (width - left - right) / Math.max(series.length, minSlots);
         // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
@@ -497,18 +529,6 @@ export function BurnLines({
             />
             {series.length > 1 ? (
               <>
-                {partial && drawn.length >= 1 ? (
-                  <line
-                    data-testid="burn-out-pending"
-                    x1={drawn.at(-1)?.[0]}
-                    y1={drawn.at(-1)?.[1]}
-                    x2={out.at(-1)?.[0]}
-                    y2={out.at(-1)?.[1]}
-                    className="stroke-foreground"
-                    strokeWidth={1.5}
-                    strokeDasharray="3 3"
-                  />
-                ) : null}
                 {hasRevenue && revDrawn.length > 1 ? (
                   <>
                     <path
@@ -721,23 +741,28 @@ export function BurnLines({
             {series.map((m, i) => {
               const off = m.financingCents > scale.top;
               // A quarter or year has few marks, so a bare ring beside the legend is named in place.
-              const named =
+              const inPlace =
                 !off &&
                 m.financingCents > 0 &&
                 (granularity === "quarter" || granularity === "year");
-              if (!off && !named) return null;
+              if (!off && !inPlace) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
               const text = `${t`Financing, ${when}`} ${off ? "↑ " : ""}${money(m.financingCents)}`;
               // About 6.5 px a character at 12 px; a centred label that would pass either edge hugs it.
               const half = (text.length * 6.5) / 2;
               const anchor =
                 cx(i) + half > width - 8 ? "end" : cx(i) - half < 8 ? "start" : "middle";
+              const x = anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i);
+              const from = anchor === "end" ? x - 2 * half : anchor === "start" ? x : x - half;
+              // Drop to the second row when an earlier label on the first row reaches this one.
+              const row = from < (rowEnd[0] ?? 0) ? 1 : 0;
+              rowEnd[row] = from + 2 * half;
               return (
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
-                  x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
-                  y={off ? top - 12 : Math.max(y(m.financingCents) - 10, 12)}
+                  x={x}
+                  y={top - 12 - 14 * row}
                   textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={12}
@@ -801,7 +826,7 @@ export function MonthBars({
   height = 200,
   label,
 }: {
-  items: { label: string; cents: number }[];
+  items: { label: string; cents: number; partial?: boolean }[];
   height?: number;
   label: string;
 }) {
@@ -838,7 +863,7 @@ export function MonthBars({
                     width={bw}
                     height={Math.max(height - bottom - y, 0)}
                     rx={2}
-                    className="fill-foreground"
+                    className={item.partial ? "fill-foreground/40" : "fill-foreground"}
                   />
                   {hidden ? null : (
                     <text
@@ -859,6 +884,7 @@ export function MonthBars({
                     fontSize={12}
                   >
                     {item.label}
+                    {item.partial ? "*" : ""}
                   </text>
                 </g>
               );
