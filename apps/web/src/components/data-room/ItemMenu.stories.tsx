@@ -25,6 +25,14 @@ export const FailedOpen: StoryObj = {
   },
 };
 
+/** A file Praci cannot read: Try again cannot help, so the menu offers Replace file and no Send to agent. */
+export const UnreadableOpen: StoryObj = {
+  render: () => <ItemMenu item={failedItem} onAction={() => undefined} />,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button"));
+  },
+};
+
 /** A file's "⋯" menu with the agents it can be sent to. */
 export const SendToAgentOpen: StoryObj = {
   render: () => (
