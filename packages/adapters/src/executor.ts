@@ -8768,7 +8768,7 @@ export async function loadFinanceConnectionLine(
 
 /** Shown while the first mail sort runs, so an empty To do list is not read as "no tasks". */
 export const MAIL_SORTING_LINE =
-  "Facts: the user's mail is still being sorted into To do, Needs reply and the other piles. If asked what to do, what is open or what needs attention, do not say there are no tasks and do not say you cannot recommend anything. Say the mail is still being sorted, that the To do list will appear in the Inbox in a minute, and end with [Open Inbox](/app/inbox).";
+  "Facts: some of the user's mail has not been sorted yet, so the To do list may be incomplete. If asked what to do, what is open or what needs attention, do not say there are no tasks, do not say you cannot recommend anything, and do not say how long sorting will take or that the list will appear. Say some mail has not been sorted yet and the To do list may be incomplete, and end with [Open Inbox](/app/inbox).";
 
 export function userTurnInstructions(parts: {
   botInstructions: string;

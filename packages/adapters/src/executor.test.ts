@@ -3798,9 +3798,11 @@ describe("ticket board tool capability", () => {
 
 describe("mail sorting line", () => {
   it("names the sort and the Inbox instead of 'no tasks', and speaks to the user as you", () => {
-    expect(MAIL_SORTING_LINE).toContain("still being sorted");
+    expect(MAIL_SORTING_LINE).toContain("has not been sorted yet");
     expect(MAIL_SORTING_LINE).toContain("[Open Inbox](/app/inbox)");
     expect(MAIL_SORTING_LINE).toContain("do not say there are no tasks");
+    expect(MAIL_SORTING_LINE).toContain("may be incomplete");
+    expect(MAIL_SORTING_LINE).not.toMatch(/in a minute|will appear in/);
     expect(PLAIN_CAPABILITY_GUIDANCE).toContain('Speak to the user as "you"');
   });
 });

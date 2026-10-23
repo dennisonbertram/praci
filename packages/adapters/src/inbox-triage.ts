@@ -121,24 +121,45 @@ export async function triageReadiness(
   return (await triageStatus(deps, scope)).ready;
 }
 
+/** A stamped message with no to-do yet counts as unsynced only this long, so a to-do cut by the limit cannot hold the state forever. */
+const SYNC_GRACE_MS = 5 * 60_000;
+
 /**
- * True while the user's mail is waiting for its sort: triage can run and at least one inbox
- * message the job would pick has no sort yet. Chief uses it to say so instead of "no tasks".
+ * True while the user's mail is not fully sorted: triage can run and either an inbox message the
+ * job would pick has no sort yet, or a recently sorted message that should become a to-do has none
+ * yet (the to-do sync runs after the stamps are written). Chief uses it to say the To do list may
+ * be incomplete instead of "no tasks".
  */
 export async function isSortingMail(deps: TriageReadinessDeps, scope: Scope): Promise<boolean> {
   if (!(await triageReadiness(deps, scope))) return false;
-  const row = await deps.prisma.cachedMailMessage.findFirst({
+  const base = {
+    ...scope,
+    receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
+    connection: { status: "connected" as const },
+  };
+  const unsorted = await deps.prisma.cachedMailMessage.findFirst({
     where: {
-      ...scope,
+      ...base,
       inInbox: true,
       fromSelf: false,
-      receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
-      connection: { status: "connected" },
       OR: [{ triagedAt: null }, { triageVersion: { lt: TRIAGE_VERSION } }],
     },
     select: { id: true },
   });
-  return row !== null;
+  if (unsorted) return true;
+  const unsynced = await deps.prisma.cachedMailMessage.findFirst({
+    where: {
+      ...base,
+      triagedAt: { gte: new Date(Date.now() - SYNC_GRACE_MS) },
+      isSpam: false,
+      alreadyHandled: false,
+      todoText: { not: null },
+      OR: [{ needsReply: true }, { category: { in: [...TODO_CATEGORIES] } }],
+      inboxTodos: { none: {} },
+    },
+    select: { id: true },
+  });
+  return unsynced !== null;
 }
 
 /** A run that finds the user busy looks again after this, in case mail arrived since the holder read its list. */

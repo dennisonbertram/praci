@@ -231,9 +231,11 @@ describe("triageStatus says why triage cannot run", () => {
 });
 
 describe("isSortingMail", () => {
-  const withMail = (found: boolean, options: Parameters<typeof setup>[0] = {}) => {
+  // `results` answers the unsorted query first, then the stamped-but-no-to-do query.
+  const withMail = (found: boolean | boolean[], options: Parameters<typeof setup>[0] = {}) => {
     const { deps } = setup(options);
-    const findFirst = vi.fn(async () => (found ? { id: "m1" } : null));
+    const results = [found].flat();
+    const findFirst = vi.fn(async () => (results.shift() ? { id: "m1" } : null));
     return {
       deps: {
         ...deps,
@@ -254,7 +256,15 @@ describe("isSortingMail", () => {
   });
 
   it("is false once every message is sorted", async () => {
-    expect(await isSortingMail(withMail(false).deps, scope)).toBe(false);
+    expect(await isSortingMail(withMail([false, false]).deps, scope)).toBe(false);
+  });
+
+  it("stays true after the stamps are written until the to-do sync has made the to-do", async () => {
+    const { deps, findFirst } = withMail([false, true]);
+    expect(await isSortingMail(deps, scope)).toBe(true);
+    expect(findFirst).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ inboxTodos: { none: {} } }) }),
+    );
   });
 
   it("is false when triage cannot run, so Chief does not promise a sort", async () => {
