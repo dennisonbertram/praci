@@ -23,7 +23,8 @@ follow-up (see Out of scope).
 From the framing (spec-like idea, confirmation step skipped on request). Each PR below traces
 to one of these points:
 
-1. **Accurate.** Today Finance shows burn and runway only for Mercury and Brex. With Plaid the
+1. **Accurate.** Today Finance shows burn and runway only for Mercury, Brex and imported
+   statements. With Plaid the
    numbers cover the whole company, and the same money is never counted twice (PR B, PR C).
 2. **Simpler.** One bank connection flow covers the US and Canadian institutions Plaid supports
    instead of one integration per bank (PR A, PR C, PR D).
@@ -186,8 +187,9 @@ Plaid has no MCP server, so it joins:
 - The web client loads the script once (`apps/web/src/lib/plaid-link.ts`: inject
   `<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js">`, resolve on load,
   then `window.Plaid.create({ token, onSuccess, onExit }).open()`). There is no CSP on the web
-  app (`apps/web/index.html` and `vite.config.ts` set none; the only CSP in the repo is for the
-  desktop's separate auth window in `apps/desktop/src/browser-auth.ts`), so no header change.
+  app (`apps/web/index.html` and `vite.config.ts` set none; the other CSPs in the repo cover
+  separate documents such as the desktop auth and setup windows, sandboxes and downloads), so no
+  header change.
 - `onSuccess(publicToken, metadata)` calls the authenticated `finance.plaidExchange({
   publicToken, institution: { id, name }, accounts: [{ mask, name, type, subtype }] })` (new
   connection) or `finance.plaidUpdated({ itemId })` (update mode: no exchange). `onExit`
@@ -207,9 +209,11 @@ Plaid has no MCP server, so it joins:
   4. `ensureFinanceAgent`, then enqueue `financeSyncJob(userId, spaceId)` for transactions.
 - **Recovery.** A database failure after step 2 calls `/item/remove` with the new token before
   the error is returned (best effort, logged), so a billable Item is not left behind invisible.
-  A retried or duplicate `onSuccess` re-exchanges a single-use token and fails at Plaid with
-  `INVALID_PUBLIC_TOKEN`: the client shows `"Could not connect. Try again."` and re-reads the
-  overview, which lists the Item if the first request stored it. There is no time-based guess.
+  A retried or duplicate `onSuccess` after the first request **committed** finds the stored
+  accounts in step 1 and is refused with `"These accounts are already connected."` before any
+  Plaid call. After the first request **rolled back**, the retry re-exchanges a single-use token
+  and fails at Plaid with `INVALID_PUBLIC_TOKEN`; the client shows `"Could not connect. Try
+  again."`. Either way the client re-reads the overview. There is no time-based guess.
 
 **Electron.** The main window's `setWindowOpenHandler` (`apps/desktop/src/main.ts`,
 `shouldOpenInAppPopup` in `apps/desktop/src/window-open.ts`) allows an https popup only when
@@ -245,8 +249,8 @@ store and `fetch`, not an MCP tool caller.
   the cursor; set `lastSyncedAt`, clear the error fields; update `importStatus`. A failed page
   leaves rows and cursor unchanged. Then `reclassifyFinance` (Design item 6) when anything was
   stored.
-- **Balance contract.** `balances.current` from `/accounts/get`. **Every discovered account is
-  stored.** When `current` is a number: `balanceCents = current × 100` (Plaid's sign: on a
+- **Balance contract.** `balances.current` from `/accounts/get`. **Every discovered account of a
+  supported type (depository and credit) is stored.** When `current` is a number: `balanceCents = current × 100` (Plaid's sign: on a
   credit account a positive value is the amount owed, a negative value is a credit balance and
   keeps its sign; `cardOwedCents` sums it as is) and `balanceKnownAt = now`. When `current` is
   null: a new account is stored with `balanceCents = 0` and `balanceKnownAt = null`
@@ -360,10 +364,11 @@ and Refresh forces it. For a new Item (`importStatus = 'pending'`):
 - `importStatus` becomes `complete` when a run ends with `transactions_update_status =
   HISTORICAL_UPDATE_COMPLETE` (A2, A4), never from a non-empty page alone. After the tenth run
   without it, `importStatus` becomes `stalled`: the normal throttle resumes, the source row shows
-  `importing: false` and `lastError = "History is still loading"` (status `error`, which the
-  existing UI shows with `Try again`), and any later run that reports
-  `HISTORICAL_UPDATE_COMPLETE` sets `complete` and clears it. Stalled is distinct from complete,
-  so burn and runway are not presented as final on partial history.
+  `importing: false` and `lastError = "History is still loading"` (status `error`). `FinanceSourceSchema` gains
+  an optional `lastError`, and the Finance source line shows it next to the source name (PR B);
+  today the UI shows only a status dot. Any later run that reports `HISTORICAL_UPDATE_COMPLETE`
+  sets `complete` and clears it. Stalled is distinct from complete, and the source line says
+  history is still loading; burn and runway are otherwise unchanged.
 - The source row carries `importing: true` while pending; the Finance page re-reads the
   overview every 10 seconds while any source is importing (PR D) and shows the source as
   importing.
@@ -440,8 +445,8 @@ proven only in the Sandbox gate.
 
 ### 12. Security
 
-Access tokens and the operator secret are only in the secrets store (AES-256-GCM, AAD by record
-id), loaded on use, never returned by an RPC or logged. Link tokens are single use and bound to
+Access tokens and the operator secret are only in the configured secrets store (the local
+encrypted store, AES-256-GCM with AAD by record id, or Infisical when `SECRET_STORE` selects it), loaded on use, never returned by an RPC or logged. Link tokens are single use and bound to
 the operator's keys; exchange, update and remove are authenticated and scoped to the actor.
 Plaid is read-only by product choice. Every row is scoped to space and user.
 
@@ -561,9 +566,9 @@ cannot provide (real Link and Plaid behavior, which the gate covers).
     history lands), and becomes `stalled` after ten runs without it.
   - `plaid-sync.postgres.test.ts` **with the real `classify`**: first run writes accounts and
     rows; second applies `modified` and `removed` and a pending-to-posted charge counts once; a
-    deselected account is deleted; another user's and another space's rows are untouched; a
-    Mercury transfer to the Plaid checking account is internal on both sides when the
-    description names the last four.
+    deselected account is deleted; another user's and another space's rows are untouched; the
+    Plaid side of a transfer from Mercury is internal when its description names the Mercury
+    account's last four; the Mercury side follows the existing Mercury rules, unchanged.
   - `finance.test.ts` (API): `financeSources` maps `needsReconnect`, `importing` and `stalled`;
     `financeRefresh` forces `syncPlaidItems`; `plaidAvailable` false without keys;
     `hasCashAccounts` false with only a CAD account.
@@ -604,8 +609,9 @@ cannot provide (real Link and Plaid behavior, which the gate covers).
     update mode; exchange refused before any Plaid call when a selected account matches a
     stored Plaid, Mercury or statement account by mask and kind; distinct accounts at the same
     institution are allowed; Brex through Plaid refused while a Brex server exists; a DB failure
-    after exchange calls `/item/remove`; a retried exchange fails with the Plaid error and
-    stores nothing new.
+    after exchange calls `/item/remove`; a retry after a committed exchange is refused
+    by the overlap check before any Plaid call; a retry after a rollback fails with the Plaid
+    error; neither stores anything new.
   - `plaid-link.postgres.test.ts`: exchange stores Item, secret **and accounts** in one
     transaction and enqueues the job; two concurrent exchanges of overlapping account sets end
     with exactly one Item (the advisory lock); `ensureFinanceAgent` created the agent for a user
@@ -794,8 +800,9 @@ Nothing below could be verified from the code or the research notes; none blocks
     one predicate; transaction currency in the mapping.
   - Initial import completes only on `transactions_update_status = HISTORICAL_UPDATE_COMPLETE`;
     retry exhaustion is `stalled`, distinct from complete, and delayed history is tested.
-  - Balance contract: every discovered account is stored; unknown (`balanceKnownAt` null) and
-    stale balances are defined, excluded from cash sums and shown as such.
+  - Balance contract: every discovered account of a supported type is stored; unknown
+    (`balanceKnownAt` null) balances are excluded from cash sums and shown as unavailable; stale
+    balances stay in the sums and show their date.
   - Hand tests look for the card payment on the account page with the real label
     `Card payment · not spend` (Spend excludes it); Storybook smoke filters match import paths.
   - Gate failures have an owner and a follow-up PR; the Electron change is pre-planned
