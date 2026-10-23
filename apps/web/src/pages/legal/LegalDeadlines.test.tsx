@@ -122,9 +122,20 @@ it("offers Keep on a deadline a scan proposed removing, and Keep clears the prop
     ),
   );
   expect(container.textContent).toContain("The last scan thinks this no longer applies.");
-  const keep = [...container.querySelectorAll("button")].find((b) => b.textContent === "Keep");
+  const keep = [...container.querySelectorAll("button")].find((b) => b.textContent === "Keep this deadline");
   await act(async () => keep?.click());
   expect(update).toHaveBeenCalledWith({ id: "d9", keep: true });
+});
+
+it("Remove this one closes a proposed row in one click, and the row has no second Dismiss", async () => {
+  update.mockResolvedValue(null);
+  const old = { ...mk("old"), removalProposed: true } as LegalDeadline;
+  const container = await mount([old]);
+  const labels = [...container.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels).not.toContain("Dismiss");
+  await click(container, "Remove this one", 0);
+  expect(update).toHaveBeenCalledWith({ id: "old", status: "dismissed" });
+  expect(container.textContent).toContain("Undo");
 });
 
 it("names the deadline that replaced a flagged one", async () => {

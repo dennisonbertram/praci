@@ -31,6 +31,16 @@ export const Narrow: StoryObj<typeof meta> = {
   ],
 };
 
+/** A title longer than the card ends in an ellipsis, also under a touch pointer. */
+export const LongTitle: StoryObj<typeof meta> = {
+  args: {
+    contracts: [
+      { ...contracts[0]!, title: "SaaS Subscription - Cobalt Cloud Hosting and Support Agreement" },
+    ],
+  },
+  decorators: Narrow.decorators,
+};
+
 /** A wide page: the table, with a SAFE that has a start date only. */
 export const Wide: StoryObj<typeof meta> = {
   args: {

@@ -66,9 +66,10 @@ function Title({ contract }: { contract: LegalContract }) {
     <Link
       to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
       state={{ from: "legal" }}
-      className="rk-tap min-w-0 truncate font-medium hover:underline"
+      className="rk-tap min-w-0 font-medium hover:underline"
     >
-      {contract.title}
+      {/* .rk-tap is inline-flex on phones, which disables the ellipsis, so the text truncates inside it. */}
+      <span className="min-w-0 truncate">{contract.title}</span>
     </Link>
   );
 }

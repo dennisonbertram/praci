@@ -1071,7 +1071,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "legal_upsert_contract",
     description:
-      "Record what you concluded about one Data Room document. Creates or replaces its contract record, and opens the expiration and notice-deadline entries for you from expirationDate and renewalNoticeDays. Leave a field out (or null) when the document does not state it; never guess. Set notLegal: true when the document is not a legal document, so it is not offered again. Money is integer cents.",
+      "Record what you concluded about one Data Room document. Creates or replaces its contract record, and opens the expiration and notice-deadline entries for you from expirationDate and renewalNoticeDays. Leave a field out (or null) when the document does not state it; never guess. Set notLegal: true when the document is not a legal document, so it is not offered again. Money is integer cents. If the document has not changed since its last analysis, a value that differs from the stored one is kept and returned as proposedChanges: tell the user, do not retry.",
     inputSchema: {
       type: "object",
       properties: {
