@@ -923,7 +923,7 @@ export function ComposeEmail({
         <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
           <AlertDialogContent size="sm">
             <AlertDialogTitle>
-              <Trans>Remove attachments?</Trans>
+              {isBlank(fields) ? <Trans>Discard draft?</Trans> : <Trans>Remove attachments?</Trans>}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isBlank(fields) ? (

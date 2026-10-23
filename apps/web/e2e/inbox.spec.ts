@@ -361,6 +361,8 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   // The page refetches on its own while the list reports triage pending.
   const card = main.getByRole("region", { name: "To do" });
   await expect(card).toBeVisible();
+  // The card is one line until opened.
+  await card.getByRole("button", { name: /^To do/ }).click();
   await expect(card.getByText("Sign the vendor agreement")).toBeVisible();
   await expect(card.getByText("Acme Legal · DocuSign request, not completed")).toBeVisible();
   await expect(card.getByText("Today", { exact: true })).toBeVisible();
@@ -372,10 +374,6 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   await captureScreenshot(page, testInfo, "inbox-todo-card");
 
   // Checking a to-do sends the change and keeps the item visible, struck through.
-  // A container under 48rem shows two open to-dos and "1 more"; the collapsed agent panel leaves
-  // the pane wider than that at the default viewport, so narrow the window.
-  await page.setViewportSize({ width: 700, height: 800 });
-  await card.getByRole("button", { name: "1 more" }).click();
   const checkbox = card.getByRole("checkbox", { name: "Pay the October invoice" });
   await expect(checkbox).not.toBeChecked();
   await checkbox.click();

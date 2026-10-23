@@ -4,14 +4,11 @@ import { Trans } from "@lingui/react/macro";
 import type { InboxTodo } from "@rakazo/contracts";
 import { dueTone, localDaysUntil } from "@rakazo/core";
 import { Button, Card, Checkbox } from "@rakazo/ui-web";
+import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { Shimmer } from "../ai/primitives";
-
-const COLLAPSED_OPEN = 2;
-/** A phone shows one open to-do first, so the first mail starts higher up the screen. */
-const COLLAPSED_OPEN_COMPACT = 1;
 
 /** "Today", "Tomorrow", a short weekday within the week, otherwise a short date; shared by the card, mail rows and the open mail. */
 export function dueLabel(dueOn: string, now: Date) {
@@ -33,9 +30,7 @@ export function TodoCard({
   onChange,
   onOpen,
   meetings,
-  compact = false,
 }: {
-  compact?: boolean;
   todos: InboxTodo[];
   onChange: (todo: InboxTodo) => void;
   /** Opens the email a to-do came from. */
@@ -60,12 +55,9 @@ export function TodoCard({
   const ordered = [...todos].sort(
     (a, b) => Number(doneWhenShown.current.get(a.id)) - Number(doneWhenShown.current.get(b.id)),
   );
-  const shownOpen = compact ? COLLAPSED_OPEN_COMPACT : COLLAPSED_OPEN;
-  const isCollapsed = (todo: InboxTodo, index: number) =>
-    !expanded && todo.doneAt === null && index >= shownOpen;
-  const hiddenCount = ordered.filter(
-    (todo, index) => todo.doneAt === null && index >= shownOpen,
-  ).length;
+  // With open to-dos the card is one line (heading and count) until opened, so the first mail
+  // starts high on the screen and a task already shown on a mail row is not written out twice.
+  const collapsed = !expanded && openCount > 0;
   const setDone = (todo: InboxTodo, done: boolean) => {
     setError("");
     rpc.inbox.todos
@@ -78,11 +70,28 @@ export function TodoCard({
     <Card
       size="sm"
       role="region"
-      className="mb-5 gap-1 px-3.5"
+      className={`mb-5 gap-1 px-3.5 ${collapsed ? "gap-0 py-1.5" : ""}`}
       aria-labelledby="inbox-todo-heading"
     >
-      <h2 id="inbox-todo-heading" className="mb-1 text-xs font-semibold text-muted-foreground">
-        <Trans>To do</Trans>
+      <h2 id="inbox-todo-heading" className="text-xs font-semibold text-muted-foreground">
+        {openCount > 0 ? (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+            className="-mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1.5 rounded-sm px-1 py-2.5 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <Trans>To do</Trans>
+            <span className="tabular-nums">{openCount}</span>
+            <ChevronDown
+              size={14}
+              aria-hidden="true"
+              className={`ms-auto transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        ) : (
+          <Trans>To do</Trans>
+        )}
       </h2>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -90,12 +99,11 @@ export function TodoCard({
         </p>
       ) : null}
       <ul>
-        {ordered.map((todo, index) => {
+        {ordered.map((todo) => {
           const days = todo.dueOn ? localDaysUntil(todo.dueOn, now) : null;
           const tone = dueTone(days, todo.priority);
           const done = todo.doneAt !== null;
-          // Only the first few open to-dos show until expanded; ticked ones stay struck through until the next visit.
-          const collapsed = isCollapsed(todo, index);
+          // Ticked to-dos stay struck through until the next visit.
           return (
             <li
               key={todo.id}
@@ -134,7 +142,7 @@ export function TodoCard({
                 </div>
                 {todo.dueOn && days !== null ? (
                   <span
-                    className={`whitespace-nowrap text-xs ${tone === "crit" && days < 0 ? "text-destructive" : tone !== "none" ? "text-warning" : "text-muted-foreground"}`}
+                    className={`whitespace-nowrap text-xs leading-5 ${tone === "crit" && days < 0 ? "text-destructive" : tone !== "none" ? "text-warning" : "text-muted-foreground"}`}
                   >
                     {dueLabel(todo.dueOn, now)}
                   </span>
@@ -155,17 +163,6 @@ export function TodoCard({
         <p className="py-1.5 text-sm text-muted-foreground">
           <Trans>No follow-ups from meetings yet</Trans>
         </p>
-      ) : null}
-      {hiddenCount > 0 ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="self-start text-muted-foreground"
-          aria-expanded={expanded}
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? <Trans>Show less</Trans> : <Trans>{hiddenCount} more</Trans>}
-        </Button>
       ) : null}
     </Card>
   );

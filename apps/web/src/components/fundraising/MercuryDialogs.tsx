@@ -140,7 +140,9 @@ export function AssignSafeDialog({
           value={contactId}
           onChange={(e) => setContactId(e.target.value)}
         >
-          <NativeSelectOption value="" />
+          <NativeSelectOption value="" disabled>
+            {t`Choose a contact`}
+          </NativeSelectOption>
           {choices.map((c) => (
             <NativeSelectOption key={c.id} value={c.id}>
               {c.name}

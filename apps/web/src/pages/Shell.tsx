@@ -191,7 +191,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
-import { pendingDelegateAgents } from "../lib/delegate-wait";
+import { delegateWaitTarget, pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
 import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -306,6 +306,7 @@ import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/co
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
 import { isStalePendingAskError } from "./shell/composer-error";
+import { DelegateWaitNotice } from "./shell/DelegateWaitNotice";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -433,12 +434,33 @@ function toggleCollapsedIdSet(
 }
 
 function readCollapsedSidebarSections(userId: string | null | undefined): Set<string> {
-  return readCollapsedIdSet(collapsedSidebarSectionsStorageKey(userId));
+  const key = collapsedSidebarSectionsStorageKey(userId);
+  const saved = readCollapsedIdSet(key);
+  // On a phone the nine pages would fill the drawer and leave one chat visible, so Pages starts
+  // collapsed until the person has opened or closed any section themselves.
+  try {
+    if (
+      key &&
+      window.localStorage.getItem(key) === null &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      return new Set(["pages"]);
+    }
+  } catch {
+    // Storage blocked: keep the default.
+  }
+  return saved;
 }
 
 function readCollapsedRosterParents(userId: string | null | undefined): Set<string> {
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
+
+/** The same side inset as the transcript, so full-page content sits in the composer's column. */
+const CHAT_COLUMN_INSET = "md:px-[max(1.75rem,calc((100%-900px)/2))]";
+
+const isPageOrIntegrationAgent = (spawnKey: string | null | undefined) =>
+  pageAgentKind(spawnKey) !== null || isIntegrationAgentSpawnKey(spawnKey);
 
 /** A non-chat search result: a Data room document, artifact or contact. */
 type SearchLink = { id: string; label: string; detail?: string };
@@ -483,7 +505,8 @@ export async function findDocumentsAndArtifacts(query: string) {
       .then((result): SearchLink[] =>
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
-          .slice(0, 5)
+          // One more than is listed, to know whether Artifacts holds more.
+          .slice(0, 6)
           .map((item) => ({
             id: item.id,
             label: artifactDisplayName(item.name),
@@ -1145,6 +1168,7 @@ export function ShellPage() {
     loaded: initialBotsLoaded,
     seen: missingBotSeen.current,
     applied: botsListApplied.current,
+    namedOnly: (bot) => pageAgentKind(bot.spawnKey) !== null,
   });
   const active =
     inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
@@ -1335,7 +1359,7 @@ export function ShellPage() {
         const currentGroupId = routeGroupId.current;
         if (currentGroupId) {
           if (!groupList.some((group) => group.id === currentGroupId)) {
-            navigate(firstThreadRoute(list, groupList), { replace: true });
+            navigate(firstThreadRoute(list, groupList, window.location.search), { replace: true });
           }
           return;
         }
@@ -1351,7 +1375,7 @@ export function ShellPage() {
               return;
             }
           }
-          navigate(firstThreadRoute(list, groupList), { replace: true });
+          navigate(firstThreadRoute(list, groupList, window.location.search), { replace: true });
         }
       } finally {
         botsRefreshInFlight.current -= 1;
@@ -1622,9 +1646,22 @@ export function ShellPage() {
           markMissing(window.location.pathname);
           return;
         }
-        const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
+        // A page's auto-created agent is only opened when the address names it.
+        const threadBotId = bootstrap.thread?.botId;
+        const threadIsPageAgent = pageAgentKind(
+          bootstrap.bots.find((bot) => bot.id === threadBotId)?.spawnKey,
+        );
+        const selectedBotId =
+          threadBotId && (threadBotId === botId || !threadIsPageAgent)
+            ? threadBotId
+            : bootstrap.bots.find((bot) => pageAgentKind(bot.spawnKey) === null)?.id;
         if (selectedBotId && selectedBotId !== botId && !pageMode) {
-          navigate(`/app/${selectedBotId}`, { replace: true });
+          navigate(
+            firstThreadRoute([{ id: selectedBotId, spawnKey: null }], [], window.location.search),
+            {
+              replace: true,
+            },
+          );
         }
       })
       .catch(() => {
@@ -1904,6 +1941,8 @@ export function ShellPage() {
     () => bots.filter((bot) => listedInSidebar(bot, botId)),
     [bots, botId],
   );
+  // A space holding only a page's auto-created agent has no chat yet: it shows "No bots yet".
+  const noChatBots = !bots.some((bot) => pageAgentKind(bot.spawnKey) === null);
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
@@ -2298,7 +2337,11 @@ export function ShellPage() {
         {
           heading: t`Artifacts`,
           icon: <Files size={16} strokeWidth={1.75} />,
-          entries: found.artifacts.map((item) => ({
+          more:
+            found.artifacts.length > 5
+              ? { id: `/app/artifacts?q=${encodeURIComponent(q)}`, label: t`See all in Artifacts` }
+              : undefined,
+          entries: found.artifacts.slice(0, 5).map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
             detail: item.detail,
@@ -2315,6 +2358,21 @@ export function ShellPage() {
       ];
     },
     [t],
+  );
+
+  const paletteBots = useMemo(
+    () =>
+      bots.filter(
+        (bot) => !isMailThreadAgentSpawnKey(bot.spawnKey) && !isGtmAgentSpawnKey(bot.spawnKey),
+      ),
+    [bots],
+  );
+  const [paletteMainBots, paletteSearchOnlyBots] = useMemo(
+    () => [
+      paletteBots.filter((bot) => !isPageOrIntegrationAgent(bot.spawnKey)),
+      paletteBots.filter((bot) => isPageOrIntegrationAgent(bot.spawnKey)),
+    ],
+    [paletteBots],
   );
 
   function openSearchResult(path: string) {
@@ -2405,10 +2463,12 @@ export function ShellPage() {
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
 
-  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch;
+  // any other value (e.g. /app/settings redirecting to ?settings=general) opens General.
   useEffect(() => {
-    if (searchParams.get("settings") !== "privacy") return;
-    openSettings("privacy");
+    const section = settingsSectionFromParam(searchParams.get("settings"));
+    if (!section) return;
+    openSettings(section);
     const next = new URLSearchParams(searchParams);
     next.delete("settings");
     setSearchParams(next, { replace: true });
@@ -2595,7 +2655,7 @@ export function ShellPage() {
     initialBotsLoaded &&
     (inGroup
       ? Boolean(activeGroup && activeSnapshot)
-      : bots.length === 0 || pageMode || Boolean(active && activeSnapshot));
+      : noChatBots || pageMode || Boolean(active && activeSnapshot));
   const refreshThreadRef = useRef(refreshThread);
   refreshThreadRef.current = refreshThread;
   const refreshGroupThreadRef = useRef(refreshGroupThread);
@@ -3626,7 +3686,10 @@ export function ShellPage() {
   async function createBot() {
     try {
       const bot = await rpc.bots.create({
-        name: t`New Bot`,
+        name: uniqueBotName(
+          t`New Bot`,
+          bots.map((item) => item.name),
+        ),
         title: "",
         description: "",
         instructions: "",
@@ -3949,6 +4012,8 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
+  // The address the preview frame has finished loading; the caption waits for it.
+  const [loadedScreenUrl, setLoadedScreenUrl] = useState<string | null>(null);
   // Without a screen to show (whatever the computer's state), the panel is just the bot's
   // routines: no heading over an empty box.
   const noComputerScreen = isRoutinesOnlyPanel({
@@ -3974,6 +4039,16 @@ export function ShellPage() {
         </Button>
       </div>
     ) : null;
+  const screenIframeMounted =
+    !computerOpen &&
+    computer?.kind !== "desktop" &&
+    computer?.state === "running" &&
+    Boolean(embeddedScreenUrl) &&
+    !computerScreenError;
+  // A load only counts for the iframe mount that reported it; forget it when the iframe goes away.
+  useEffect(() => {
+    if (!screenIframeMounted) setLoadedScreenUrl(null);
+  }, [screenIframeMounted]);
   const computerPreviewScreen =
     !computerOpen &&
     computer?.kind !== "desktop" &&
@@ -4066,6 +4141,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description=""
           suggestions={bankSuggestions}
+          className={CHAT_COLUMN_INSET}
           onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -4075,6 +4151,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description={cartaAgentIntro}
           suggestions={cartaSuggestions}
+          className={CHAT_COLUMN_INSET}
           onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -4132,6 +4209,7 @@ export function ShellPage() {
                 onScrollRequestHandled={clearScrollRequest}
                 artifactTarget={transcriptArtifactTarget}
                 messages={transcriptMessages}
+                delegate={delegateWaitTarget(activeSnapshot?.messages ?? [])}
                 showToolActivity={showToolActivity}
                 olderCursor={activeSnapshot?.olderCursor ?? null}
                 loadingOlder={loadingOlder}
@@ -4238,6 +4316,10 @@ export function ShellPage() {
                 <Trans>Open</Trans>
               </Button>
             </div>
+          ) : null}
+          {!transcriptRunning &&
+          pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).length === 0 ? (
+            <DelegateWaitNotice messages={activeSnapshot?.messages ?? []} />
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
             // Same side padding as the composer, and the toasts rise above it.
@@ -4591,7 +4673,7 @@ export function ShellPage() {
             setPaneDraggingFiles(false);
             if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
           }}
-          className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
+          className={`isolate flex min-w-0 flex-1 flex-col bg-background pb-[var(--toast-page-reserve,0px)] outline-none ${
             paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
@@ -4618,7 +4700,7 @@ export function ShellPage() {
             className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
               pageMode
                 ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed && desktopBridge() ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
-                : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
+                : TOP_BAR_HEIGHT
             }`}
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -4675,7 +4757,7 @@ export function ShellPage() {
                       {inGroup
                         ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
                         : (active?.name ??
-                          (opening ? "" : bots.length === 0 ? t`No bots yet` : t`Select a bot`))}
+                          (opening ? "" : noChatBots ? t`No bots yet` : t`Select a bot`))}
                     </span>
                   </span>
                   {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
@@ -4796,6 +4878,7 @@ export function ShellPage() {
               onConsentChange={setLegalConsentMissing}
               onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
+              agentBusy={transcriptRunning}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}
               onSwitchSpace={(spaceId) => {
@@ -4978,30 +5061,42 @@ export function ShellPage() {
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div
-                className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 ${TOP_BAR_HEIGHT}`}
+                className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 ${TOP_BAR_HEIGHT}`}
               >
-                <span
-                  className="min-w-0 truncate text-[16px] font-medium text-foreground"
-                  title={panel === "settings" && active ? t`${active.name} settings` : undefined}
-                >
-                  {panel === "settings" ? (
-                    active ? (
-                      t`${active.name} settings`
+                {/* On a phone this panel covers the chat header, so it carries the way to the sidebar. */}
+                <div className="flex min-w-0 items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t`Open navigation`}
+                    onClick={() => setMobileSidebarOpen(true)}
+                    className="-ms-1.5 text-foreground/75 lg:hidden"
+                  >
+                    <Menu size={19} strokeWidth={1.7} />
+                  </Button>
+                  <span
+                    className="min-w-0 truncate text-[16px] font-medium text-foreground"
+                    title={panel === "settings" && active ? t`${active.name} settings` : undefined}
+                  >
+                    {panel === "settings" ? (
+                      active ? (
+                        t`${active.name} settings`
+                      ) : (
+                        <Trans>Settings</Trans>
+                      )
+                    ) : panel === "page" ? (
+                      <Trans>Page</Trans>
+                    ) : panel === "list" ? (
+                      <Trans>List</Trans>
+                    ) : active ? (
+                      computerScreenError || noComputerScreen ? null : (
+                        computerStateLabel(computer?.state)
+                      )
                     ) : (
-                      <Trans>Settings</Trans>
-                    )
-                  ) : panel === "page" ? (
-                    <Trans>Page</Trans>
-                  ) : panel === "list" ? (
-                    <Trans>List</Trans>
-                  ) : active ? (
-                    computerScreenError || noComputerScreen ? null : (
-                      computerStateLabel(computer?.state)
-                    )
-                  ) : (
-                    <Trans>Group</Trans>
-                  )}
-                </span>
+                      <Trans>Group</Trans>
+                    )}
+                  </span>
+                </div>
                 <div className="flex shrink-0 gap-1">
                   {active &&
                   panel === "computer" &&
@@ -5094,6 +5189,7 @@ export function ShellPage() {
                         <iframe
                           title={t`Bot screen preview`}
                           src={embeddedScreenUrl}
+                          onLoad={() => setLoadedScreenUrl(embeddedScreenUrl)}
                           sandbox={screenIframeSandbox(embeddedScreenUrl)}
                           className="h-full w-full border-0 bg-background"
                           allow="clipboard-read; clipboard-write"
@@ -5145,7 +5241,7 @@ export function ShellPage() {
                     {showsComputerCaption({
                       kind: computer?.kind,
                       state: computer?.state,
-                      hasScreen: Boolean(embeddedScreenUrl),
+                      screenLoaded: loadedScreenUrl === embeddedScreenUrl,
                       hasError: Boolean(computerScreenError),
                       open: computerOpen,
                     }) ? (
@@ -5768,9 +5864,9 @@ export function ShellPage() {
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
           // An email's chat is found once, under Chats; the GTM page already opens the GTM agent.
-          bots={bots.filter(
-            (bot) => !isMailThreadAgentSpawnKey(bot.spawnKey) && !isGtmAgentSpawnKey(bot.spawnKey),
-          )}
+          // Page and integration agents open from their page's Ask button, so only a search lists them.
+          bots={paletteMainBots}
+          searchOnlyBots={paletteSearchOnlyBots}
           onSelectBot={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
@@ -6130,6 +6226,23 @@ export function ShellPage() {
 }
 
 /** Whether the pane is still waiting for its chat: the bot list loads, or the route's bot is not in it yet. */
+const SETTINGS_SECTIONS = [
+  "general",
+  "privacy",
+  "models",
+  "memory",
+  "voice",
+  "computer",
+  "billing",
+] as const satisfies readonly SettingsSection[];
+
+export function settingsSectionFromParam(value: string | null): SettingsSection | null {
+  if (value === null) return null;
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value)
+    ? (value as SettingsSection)
+    : "general";
+}
+
 export function chatIsOpening(input: {
   hasChat: boolean;
   botsLoaded: boolean;
@@ -6147,13 +6260,30 @@ export function knownBotId(
   return bots.some((bot) => bot.id === botId) || archivedBots.some((bot) => bot.id === botId);
 }
 
-function firstThreadRoute(
-  bots: readonly Pick<Bot, "id">[],
+/** `name`, or `name 2`, `name 3` ... when bots already use it, so new bots never share a sidebar row's text. */
+export function uniqueBotName(name: string, taken: readonly string[]): string {
+  if (!taken.includes(name)) return name;
+  let n = 2;
+  while (taken.includes(`${name} ${n}`)) n += 1;
+  return `${name} ${n}`;
+}
+
+/**
+ * Where a person with no usable route lands: the first chat. A page's auto-created agent is not a
+ * chat to land on, so a space holding only those stays at /app. A pending `?settings=` link is
+ * carried along, so the redirect cannot swallow it before the shell opens the dialog.
+ */
+export function firstThreadRoute(
+  bots: readonly Pick<Bot, "id" | "spawnKey">[],
   groups: readonly Pick<Group, "id">[],
+  search = "",
 ): string {
-  if (bots[0]) return `/app/${bots[0].id}`;
-  if (groups[0]) return `/app/g/${groups[0].id}`;
-  return "/app";
+  const settings = new URLSearchParams(search).get("settings");
+  const query = settings === null ? "" : `?${new URLSearchParams({ settings })}`;
+  const chat = bots.find((bot) => pageAgentKind(bot.spawnKey) === null);
+  if (chat) return `/app/${chat.id}${query}`;
+  if (groups[0]) return `/app/g/${groups[0].id}${query}`;
+  return `/app${query}`;
 }
 
 function applyThreadEvent(
@@ -6241,18 +6371,18 @@ export function isRoutinesOnlyPanel(input: {
   );
 }
 
-/** The "<bot>'s computer" caption names a live screen; under a placeholder or hint it labels nothing. */
+/** The "<bot>'s computer" caption names a live screen; under a placeholder, hint or a frame that has not loaded it labels nothing. */
 export function showsComputerCaption(input: {
   kind: ComputerStatus["kind"] | undefined;
   state?: ComputerStatus["state"];
-  hasScreen: boolean;
+  screenLoaded: boolean;
   hasError: boolean;
   open: boolean;
 }) {
   return (
     input.kind !== "desktop" &&
     input.state === "running" &&
-    input.hasScreen &&
+    input.screenLoaded &&
     !input.hasError &&
     !input.open
   );

@@ -49,6 +49,11 @@ msgstr ", {0} already imported"
 msgid "(opens in Devin)"
 msgstr "(opens in Devin)"
 
+#. placeholder {0}: visible.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {# change} other {# changes}}"
+msgstr "{0, plural, one {# change} other {# changes}}"
+
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -287,6 +292,11 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
+#. placeholder {0}: wait.name
+#: src/pages/shell/DelegateWaitNotice.tsx
+msgid "{0} has not answered"
+msgstr "{0} has not answered"
+
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
@@ -304,10 +314,6 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
-msgid "{0} non-USD <0>transactions </0>not counted"
-msgstr "{0} non-USD <0>transactions </0>not counted"
-
-#. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD transactions not counted"
 msgstr "{0} non-USD transactions not counted"
@@ -516,10 +522,6 @@ msgstr "{heldCount, plural, one {# new file} other {# new files}}"
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 
-#: src/components/inbox/TodoCard.tsx
-msgid "{hiddenCount} more"
-msgstr "{hiddenCount} more"
-
 #: src/lib/relative-time.ts
 msgid "{hours}h ago"
 msgstr "{hours}h ago"
@@ -710,6 +712,7 @@ msgid "* Month to date"
 msgstr "* Month to date"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "* So far"
 msgstr "* So far"
 
@@ -731,9 +734,6 @@ msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
 
 #: src/pages/Finance.tsx
-msgid "1 non-USD <0>transaction </0>not counted"
-msgstr "1 non-USD <0>transaction </0>not counted"
-
 #: src/pages/finance/FinanceSpend.tsx
 msgid "1 non-USD transaction not counted"
 msgstr "1 non-USD transaction not counted"
@@ -1308,6 +1308,7 @@ msgstr "Always allow this"
 msgid "Always allowed"
 msgstr "Always allowed"
 
+#: src/components/cap-table/SafeRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/fundraising/SafeDialog.tsx
@@ -1662,6 +1663,10 @@ msgstr "Assign to contact"
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "at {timeSelect}"
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "At cap"
+msgstr "At cap"
 
 #: src/pages/Auth.tsx
 msgid "At least 8 characters."
@@ -2387,10 +2392,6 @@ msgstr "Check for receipt"
 msgid "Check for updates"
 msgstr "Check for updates"
 
-#: src/pages/Legal.tsx
-msgid "Check now"
-msgstr "Check now"
-
 #: src/pages/gtm/GtmPlan.tsx
 msgid "Check queue"
 msgstr "Check queue"
@@ -2437,6 +2438,10 @@ msgstr "Choose a bot shape, color, or upload an image"
 msgid "Choose a bot…"
 msgstr "Choose a bot…"
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Choose a contact"
+msgstr "Choose a contact"
+
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Choose a Google Sheet"
 msgstr "Choose a Google Sheet"
@@ -2452,6 +2457,10 @@ msgstr "Choose a tool"
 #: src/components/MailApprovalCard.tsx
 msgid "Choose an account"
 msgstr "Choose an account"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account to send from."
+msgstr "Choose an account to send from."
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
@@ -2758,6 +2767,7 @@ msgstr "Committed"
 msgid "Compact"
 msgstr "Compact"
 
+#: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 msgid "Company"
 msgstr "Company"
@@ -4412,6 +4422,10 @@ msgstr "Disabled tools"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr "Discard"
+
+#: src/components/ComposeEmail.tsx
+msgid "Discard draft?"
+msgstr "Discard draft?"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Discarded"
@@ -6362,7 +6376,6 @@ msgstr "Mail from {0} is now marked important"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
-#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
@@ -6583,6 +6596,10 @@ msgstr "Memo"
 msgid "Memory"
 msgstr "Memory"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Memory provider"
+msgstr "Memory provider"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Memory scope"
 msgstr "Memory scope"
@@ -6795,10 +6812,6 @@ msgstr "More"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
 msgstr "More {0} actions"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr "More {name} actions"
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
@@ -7038,9 +7051,12 @@ msgid "New folder…"
 msgstr "New folder…"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "New group"
+
+#: src/pages/shell/bot-picker.tsx
+msgid "New group chat"
+msgstr "New group chat"
 
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
@@ -7561,6 +7577,10 @@ msgid "Not tagged yet. Allow Praci to read your documents above."
 msgstr "Not tagged yet. Allow Praci to read your documents above."
 
 #: src/components/data-room/Preview.tsx
+msgid "Not tagged. No model is set up to read documents."
+msgstr "Not tagged. No model is set up to read documents."
+
+#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr "Not tagged. Praci can't read your documents."
 
@@ -7855,10 +7875,6 @@ msgstr "Opening {name}"
 msgid "Opening an email"
 msgstr "Opening an email"
 
-#: src/components/ShellSkeleton.tsx
-msgid "Opening Praci…"
-msgstr "Opening Praci…"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -7943,10 +7959,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Outside memory service"
-msgstr "Outside memory service"
 
 #: src/pages/Board.tsx
 msgid "Owner"
@@ -8985,6 +8997,7 @@ msgid "Replace API key"
 msgstr "Replace API key"
 
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Replace file"
 msgstr "Replace file"
@@ -9629,6 +9642,10 @@ msgid "Security"
 msgstr "Security"
 
 #: src/pages/Shell.tsx
+msgid "See all in Artifacts"
+msgstr "See all in Artifacts"
+
+#: src/pages/Shell.tsx
 msgid "See all in Data room"
 msgstr "See all in Data room"
 
@@ -9821,6 +9838,10 @@ msgstr "Sent to {count}"
 msgid "Sent to {forwardedName}"
 msgstr "Sent to {forwardedName}"
 
+#: src/pages/Inbox.tsx
+msgid "Sent. Moved out of Needs reply"
+msgstr "Sent. Moved out of Needs reply"
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
 msgstr "Serenity endpoint is required."
@@ -9952,15 +9973,10 @@ msgstr "Show closed"
 msgid "Show done"
 msgstr "Show done"
 
-#: src/components/finance/ui.tsx
-msgid "Show finances for"
-msgstr "Show finances for"
-
 #: src/components/SidebarPagesGroup.tsx
 msgid "Show in sidebar"
 msgstr "Show in sidebar"
 
-#: src/components/inbox/TodoCard.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"
@@ -10388,6 +10404,10 @@ msgstr "Start recording"
 msgid "Starting"
 msgstr "Starting"
 
+#: src/lib/run-phase.ts
+msgid "Starting up"
+msgstr "Starting up"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -10438,6 +10458,7 @@ msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Still loading…"
 msgstr "Still loading…"
 
@@ -10449,9 +10470,18 @@ msgstr "Still looking. This can take a minute."
 msgid "Still opening…"
 msgstr "Still opening…"
 
+#: src/lib/run-phase.ts
+msgid "Still starting up"
+msgstr "Still starting up"
+
+#: src/lib/run-phase.ts
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
+
+#: src/lib/run-phase.ts
+msgid "Still waiting on the model"
+msgstr "Still waiting on the model"
 
 #: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
@@ -10753,10 +10783,6 @@ msgstr "The Carta agent reads your cap table from Carta and answers questions ab
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr "The Carta agent will be able to change your Carta data. It asks before each change."
 
-#: src/lib/run-phase.ts
-msgid "the computer"
-msgstr "the computer"
-
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
@@ -10789,10 +10815,6 @@ msgstr "The last scan thinks this no longer applies."
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."
 msgstr "The member who connected Devin left this space. Alerts are paused."
-
-#: src/lib/run-phase.ts
-msgid "the model"
-msgstr "the model"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "The model could not sort your files."
@@ -10914,9 +10936,17 @@ msgstr "This connection no longer exists."
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr "This deletes all {0} versions of this artifact. This can't be undone."
 
+#: src/components/MailApprovalCard.tsx
+msgid "This draft was not saved. Check the account in Integrations, then open it in the composer."
+msgstr "This draft was not saved. Check the account in Integrations, then open it in the composer."
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "This email isn't in your mail any more. It may have been deleted or moved."
 msgstr "This email isn't in your mail any more. It may have been deleted or moved."
+
+#: src/components/MailApprovalCard.tsx
+msgid "This email was not sent. Check the account in Integrations, then open it in the composer."
+msgstr "This email was not sent. Check the account in Integrations, then open it in the composer."
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
@@ -11785,10 +11815,6 @@ msgid "Waiting for the API to come back…"
 msgstr "Waiting for the API to come back…"
 
 #: src/lib/run-phase.ts
-msgid "Waiting for the computer"
-msgstr "Waiting for the computer"
-
-#: src/lib/run-phase.ts
 msgid "Waiting for the model"
 msgstr "Waiting for the model"
 
@@ -11801,7 +11827,9 @@ msgid "Waiting in line…"
 msgstr "Waiting in line…"
 
 #. placeholder {0}: run.waitingOn
+#. placeholder {0}: wait.name
 #: src/pages/RoutineRunHistory.tsx
+#: src/pages/shell/DelegateWaitNotice.tsx
 msgid "Waiting on {0}"
 msgstr "Waiting on {0}"
 
@@ -12176,6 +12204,10 @@ msgstr "Your data in {name} is not deleted."
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
 msgstr "Your mail didn't load"
+
+#: src/pages/Inbox.tsx
+msgid "Your mail is taking longer than usual to load."
+msgstr "Your mail is taking longer than usual to load."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"

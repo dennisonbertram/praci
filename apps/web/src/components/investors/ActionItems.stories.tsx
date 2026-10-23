@@ -63,6 +63,17 @@ export const NewAuditRequest: Story = {
   args: { drafts: [], audits: [audit({})] },
 };
 
+/** A long fund name wraps to two lines on a phone, with the buttons under it. */
+export const LongAuditTitle: Story = {
+  args: {
+    drafts: [],
+    audits: [
+      audit({ fund: "Meridian Climate Opportunities Fund III, L.P. annual audit confirmation" }),
+    ],
+  },
+  globals: { viewport: { value: "mobile1" } },
+};
+
 /** The sender is not an Auditors contact and the cap table had no holdings for the date. */
 export const AuditWarnings: Story = {
   args: {

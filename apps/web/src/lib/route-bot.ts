@@ -31,13 +31,16 @@ export function resolveRouteBot(input: {
   loaded: boolean;
   seen: MissingBotSeen | null;
   applied: number;
+  /** Bots that open only when the address names them, never as the fallback (a page's agent). */
+  namedOnly?: (bot: Bot) => boolean;
 }): { bot: Bot | undefined; waiting: boolean; needsRefresh: boolean } {
   const { bots, botId, loaded, seen, applied } = input;
+  const first = bots.find((bot) => !input.namedOnly?.(bot));
   const found = bots.find((bot) => bot.id === botId);
   if (found || !botId || !loaded)
-    return { bot: found ?? bots[0], waiting: false, needsRefresh: false };
+    return { bot: found ?? first, waiting: false, needsRefresh: false };
   const tracked = seen?.id === botId;
-  if (tracked && applied > seen.epoch) return { bot: bots[0], waiting: false, needsRefresh: false };
+  if (tracked && applied > seen.epoch) return { bot: first, waiting: false, needsRefresh: false };
   return { bot: undefined, waiting: true, needsRefresh: !tracked };
 }
 

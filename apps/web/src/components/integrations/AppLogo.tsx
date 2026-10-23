@@ -77,7 +77,7 @@ export function AppLogo({
       data-testid="app-logo"
       data-fallback={showImage ? undefined : "true"}
       className={`grid shrink-0 place-items-center overflow-hidden border border-border font-semibold ${SIZES[size]} ${
-        showImage ? "bg-white" : "bg-muted text-muted-foreground"
+        showImage || Glyph ? "bg-white text-neutral-600" : "bg-muted text-muted-foreground"
       }`}
     >
       {showImage ? (

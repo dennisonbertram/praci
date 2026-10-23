@@ -29,3 +29,15 @@ export const NoDescription: Story = { args: { description: "" } };
 
 /** No model is set up: the questions would only fail, so the panel offers Add a model. */
 export const NeedsModel: Story = { args: { onAddModel: fn() } };
+
+/** A full-page chat (Mercury, Carta) lines the intro up with the composer column. */
+export const FullPage: Story = {
+  args: { className: "md:px-[max(1.75rem,calc((100%-900px)/2))]" },
+  decorators: [
+    (Story) => (
+      <div className="w-[1100px]">
+        <Story />
+      </div>
+    ),
+  ],
+};

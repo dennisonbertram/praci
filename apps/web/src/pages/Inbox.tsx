@@ -145,8 +145,8 @@ function saveConsentDismissed(scope: string | undefined, value: string | null) {
 }
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
-// A first sort that runs this long shows the unsorted rows, dimmed, instead of grey bars.
-const SORT_ROWS_AFTER_MS = 15_000;
+// A load still waiting after this long offers Try again.
+const LOAD_STUCK_MS = 20_000;
 /** Needs reply lists this many rows first, then "Show N more". */
 const NEEDS_REPLY_SHOWN = 5;
 /** The heading a dated row sits under on the sender piles, the same split Important uses. */
@@ -180,7 +180,8 @@ type Status =
       /** The action-log batches of the call, once it has returned; Undo waits for it. */
       batches: Promise<string[]>;
     }
-  | { kind: "moved"; messageId: string; subject: string };
+  | { kind: "moved"; messageId: string; subject: string }
+  | { kind: "replied" };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -378,17 +379,29 @@ function InboxListPage({
   } | null>(null);
 
   // A message sent from any composer: reload, since the send synced the account.
+  // The Needs reply rows when a send finished: the first list after it says which ones left.
+  const repliesWhenSent = useRef<string[] | null>(null);
+  const needsReplyIds = useRef<string[]>([]);
   useEffect(() => {
-    const onSent = () => {
+    const onChanged = () => {
       setReload((n) => n + 1);
       onRefreshed();
     };
+    // Only an actual send arms the "Sent. Moved out of Needs reply" confirmation.
+    const onSent = () => {
+      repliesWhenSent.current = needsReplyIds.current;
+      // A row archived much later is not an answer to this send.
+      setTimeout(() => {
+        repliesWhenSent.current = null;
+      }, 20_000);
+      onChanged();
+    };
     window.addEventListener(MAIL_SENT_EVENT, onSent);
     // An agent card archived or marked a message: the list shows it at once.
-    window.addEventListener(INBOX_CHANGED_EVENT, onSent);
+    window.addEventListener(INBOX_CHANGED_EVENT, onChanged);
     return () => {
       window.removeEventListener(MAIL_SENT_EVENT, onSent);
-      window.removeEventListener(INBOX_CHANGED_EVENT, onSent);
+      window.removeEventListener(INBOX_CHANGED_EVENT, onChanged);
     };
   }, [onRefreshed]);
 
@@ -721,6 +734,7 @@ function InboxListPage({
   );
   const replyRows = allReplies ? groups.needsReply : groups.needsReply.slice(0, NEEDS_REPLY_SHOWN);
   const hiddenReplies = groups.needsReply.length - replyRows.length;
+  needsReplyIds.current = groups.needsReply.map((row) => row.id);
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
     if (digestOn) return groupBySender(digestList).map((group) => group.newest.id);
@@ -788,22 +802,16 @@ function InboxListPage({
     restartSortWatch();
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
+    setTodoRefresh((n) => n + 1);
   };
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
-  // The first sort shows grey bars for its first seconds, since rows would regroup and the To do
-  // card would push them down. After SORT_ROWS_AFTER_MS the unsorted rows show, dimmed.
+  // While sorting, the unsorted rows stay readable, dimmed; grey bars show only with no rows yet.
   const sortActive = sorting || firstSort;
-  const [unsortedShown, setUnsortedShown] = useState(false);
-  useEffect(() => {
-    if (!sortActive) return setUnsortedShown(false);
-    const timer = setTimeout(() => setUnsortedShown(true), SORT_ROWS_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [sortActive]);
-  const sortingRows = sortActive && !stalled && !unsortedShown;
+  const sortingRows = sortActive && !stalled && !shown?.rows.length;
   const loading =
     !shown ||
     sortingRows ||
@@ -811,6 +819,22 @@ function InboxListPage({
     // The To do card is waited for on the Important pile even before it is known to show (meetings
     // arrive with it), so it never pushes the loaded rows down.
     (pile === "important" && !paused && todos === undefined && !sorting);
+  useEffect(() => {
+    const before = repliesWhenSent.current;
+    if (!before || loading) return;
+    const left = before.some((id) => !needsReplyIds.current.includes(id));
+    // Keep waiting until some row has left; the send's own list may not be the next one.
+    if (!left) return;
+    repliesWhenSent.current = null;
+    setStatus({ kind: "replied" });
+  });
+  // A load that is still waiting after 20 s is not normal: offer Try again beside the skeleton.
+  const [loadStuck, setLoadStuck] = useState(false);
+  useEffect(() => {
+    if (!loading) return setLoadStuck(false);
+    const timer = setTimeout(() => setLoadStuck(true), LOAD_STUCK_MS);
+    return () => clearTimeout(timer);
+  }, [loading]);
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   // Nothing to search in a mailbox with no mail in any pile.
   const mailboxEmpty =
@@ -1135,7 +1159,6 @@ function InboxListPage({
   const todoCard = cardTodos ? (
     <TodoCard
       todos={cardTodos}
-      compact={phone}
       meetings={meetings ?? undefined}
       onOpen={openMessage}
       onChange={changeTodo}
@@ -1288,7 +1311,10 @@ function InboxListPage({
   const toast = status ? (
     <div
       data-toast-avoid
-      className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg"
+      className={cn(
+        "pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 text-sm text-primary-foreground shadow-lg",
+        status.kind === "replied" ? "pe-3" : "pe-1",
+      )}
     >
       {status.kind === "archivedMany" ? (
         <Trans>Archived {count}</Trans>
@@ -1308,6 +1334,8 @@ function InboxListPage({
         ) : (
           <Trans>Marked {status.count} as not spam</Trans>
         )
+      ) : status.kind === "replied" ? (
+        <Trans>Sent. Moved out of Needs reply</Trans>
       ) : status.kind === "moved" ? (
         <span className="min-w-0 truncate" dir="auto">
           <Trans>Moved "{maskCurrencyWhenHidden(status.subject)}" to Inbox</Trans>
@@ -1317,23 +1345,25 @@ function InboxListPage({
       ) : (
         <Trans>Mail from {status.sender} is now marked important</Trans>
       )}
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() =>
-          status.kind === "archivedMany"
-            ? unarchiveMany(status.messageIds)
-            : status.kind === "junked"
-              ? undoMove(status.batches)
-              : status.kind === "archived"
-                ? unarchive(status.messageId)
-                : status.kind === "moved"
-                  ? archive(status.messageId)
-                  : mark(status.messageId, null)
-        }
-      >
-        <Trans>Undo</Trans>
-      </Button>
+      {status.kind === "replied" ? null : (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            status.kind === "archivedMany"
+              ? unarchiveMany(status.messageIds)
+              : status.kind === "junked"
+                ? undoMove(status.batches)
+                : status.kind === "archived"
+                  ? unarchive(status.messageId)
+                  : status.kind === "moved"
+                    ? archive(status.messageId)
+                    : mark(status.messageId, null)
+          }
+        >
+          <Trans>Undo</Trans>
+        </Button>
+      )}
     </div>
   ) : null;
 
@@ -1701,15 +1731,23 @@ function InboxListPage({
                 <Trans>Sorting your mail…</Trans>
               </p>
             ) : null}
-            {synced || sortingRows || consentPrompt ? null : (
+            {synced || sortingRows ? null : (
               <p role="status" className="text-sm text-muted-foreground">
-                {slowSync && !everSynced && !data?.syncedAt ? (
+                {slowSync && !everSynced && data && !data.syncedAt ? (
                   <Trans>First sync can take a minute</Trans>
                 ) : (
                   <Trans>Reading your mail…</Trans>
                 )}
               </p>
             )}
+            {loadStuck ? (
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+                <Trans>Your mail is taking longer than usual to load.</Trans>
+                <Button variant="outline" size="sm" disabled={retrying} onClick={retry}>
+                  <Trans>Try again</Trans>
+                </Button>
+              </div>
+            ) : null}
             {/* Real rows are 57px apart with no gap, so the list does not jump when they arrive.
                 Beside the consent card, blank bars look stalled, so only the card shows. */}
             <div hidden={Boolean(consentPrompt) && !sortingRows}>
@@ -1782,7 +1820,7 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
-            ) : sorting && unsortedShown ? (
+            ) : sorting ? (
               <p
                 role="status"
                 className="mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
@@ -1926,7 +1964,7 @@ function InboxListPage({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="mb-5 -ms-2.5 -mt-3 text-muted-foreground"
+                      className="mb-5 -mt-3 ms-7 px-0 text-muted-foreground @md:ms-10"
                       onClick={() => setAllReplies(true)}
                     >
                       <Trans>Show {hiddenReplies} more</Trans>

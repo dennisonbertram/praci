@@ -39,13 +39,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArtifactPreview } from "../components/ArtifactPreview";
 import { AskBotButton } from "../components/AskBotButton";
 import { Tip } from "../components/data-room/FilterBar";
 import { PickFilter, SearchField } from "../components/ListControls";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { StillLoading } from "../components/ShellSkeleton";
 import { artifactDisplayName as displayName } from "../lib/artifact-name";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -127,7 +128,16 @@ export function ArtifactsPage({
   // Bots that own at least one artifact. Only grows, so filtering to one bot keeps the others listed.
   const [ownerBotIds, setOwnerBotIds] = useState<ReadonlySet<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
-  const [searchQuery, setSearchQuery] = useState("");
+  // The palette's "See all in Artifacts" arrives as ?q=.
+  const urlQuery = useSearchParams()[0].get("q") ?? "";
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+  useEffect(() => {
+    if (!urlQuery) return;
+    // Show every match: an earlier bot or date filter would hide some of them.
+    setSearchQuery(urlQuery);
+    setDateFilter("all");
+    setActiveBotId(null);
+  }, [urlQuery]);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [maximized, setMaximized] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ArtifactSummary | null>(null);
@@ -484,6 +494,7 @@ function BrowsingPane({
         {[0, 1, 2, 3].map((n) => (
           <Skeleton key={n} className="h-8 w-full" />
         ))}
+        <StillLoading />
       </div>
     );
   }
@@ -554,7 +565,6 @@ function ArtifactTable({
           {showBot ? <col className={`${MID_COLUMN} w-40`} /> : null}
           <col className={`${MID_COLUMN} w-24`} />
           <col className={`${MID_COLUMN} w-28`} />
-          <col className="w-9" />
         </colgroup>
         <TableHeader
           data-testid="artifacts-head"
@@ -575,7 +585,6 @@ function ArtifactTable({
             <TableHead className={`${MID_COL} text-end`}>
               <Trans>Added</Trans>
             </TableHead>
-            <TableHead />
           </TableHeadRow>
         </TableHeader>
         <TableBody aria-label={t`Artifacts`}>
@@ -640,12 +649,11 @@ function ArtifactTable({
                 <TableCell className={`${MID_COL} truncate text-muted-foreground`}>
                   {kindLabel(artifact.mimeType)}
                 </TableCell>
-                <TableCell
-                  className={`${MID_COL} truncate text-end text-muted-foreground tabular-nums`}
-                >
-                  {formatRelativeTime(artifact.createdAt)}
-                </TableCell>
-                <TableCell className="pe-0">
+                <TableCell className="relative w-10 pe-0 text-end text-muted-foreground tabular-nums @min-[720px]/list:w-auto">
+                  {/* Delete takes the time's place on hover; on touch it sits beside the time. */}
+                  <span className="hidden truncate @min-[720px]/list:block group-hover/row:invisible group-focus-within/row:invisible pointer-coarse:pe-8">
+                    {formatRelativeTime(artifact.createdAt)}
+                  </span>
                   <button
                     type="button"
                     aria-label={t`Delete ${title}`}
@@ -654,7 +662,7 @@ function ArtifactTable({
                       event.stopPropagation();
                       onRequestDelete(artifact);
                     }}
-                    className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
+                    className="absolute end-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
                   >
                     <Trash2 size={14} strokeWidth={1.9} />
                   </button>
@@ -771,6 +779,9 @@ function IndexPane({
       ?.querySelector<HTMLElement>("[aria-current=page]")
       ?.scrollIntoView?.({ block: "nearest" });
   }, [selectedId, count]);
+  // Rows that all say "10m ago" tell nothing; the time shows once they differ.
+  const rowsDiffer =
+    new Set((items ?? []).map((item) => formatRelativeTime(item.createdAt))).size > 1;
   return (
     // Phones show the list or the open artifact, never both side by side.
     <aside
@@ -798,6 +809,7 @@ function IndexPane({
               artifact={item}
               bot={item.botId ? botsById.get(item.botId) : undefined}
               active={item.id === selectedId}
+              showTime={rowsDiffer}
               onRequestDelete={onRequestDelete}
             />
           ))}
@@ -836,9 +848,25 @@ function ArtifactCard({
           <ArtifactMimeIcon mimeType={artifact.mimeType} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="line-clamp-2 break-words text-[15px] font-semibold">{title}</div>
+          {/* The version badge shares the title's line so a versioned card is no taller than the rest. */}
+          <div className="flex items-start gap-2">
+            <div
+              className="line-clamp-1 min-w-0 flex-1 break-words text-[15px] font-semibold"
+              title={title}
+            >
+              {title}
+            </div>
+            {artifact.versionCount > 1 ? (
+              <span className="mt-0.5 shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
+                {`v${artifact.version}`}
+              </span>
+            ) : null}
+          </div>
           {artifact.description ? (
-            <div className="line-clamp-1 text-[13px] text-muted-foreground max-md:hidden">
+            <div
+              className="line-clamp-1 text-[13px] text-muted-foreground max-md:hidden"
+              title={artifact.description}
+            >
               {artifact.description}
             </div>
           ) : null}
@@ -852,11 +880,6 @@ function ArtifactCard({
             ) : (
               <span className="flex-1 max-md:hidden" />
             )}
-            {artifact.versionCount > 1 ? (
-              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground max-md:hidden">
-                {`v${artifact.version}`}
-              </span>
-            ) : null}
             {showTime ? (
               <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
                 {formatRelativeTime(artifact.createdAt)}
@@ -886,11 +909,13 @@ function ArtifactRow({
   artifact,
   bot,
   active,
+  showTime,
   onRequestDelete,
 }: {
   artifact: ArtifactSummary;
   bot: Bot | undefined;
   active?: boolean;
+  showTime: boolean;
   onRequestDelete: (artifact: ArtifactSummary) => void;
 }) {
   const { t } = useLingui();
@@ -914,9 +939,11 @@ function ArtifactRow({
             {`v${artifact.version}`}
           </span>
         ) : null}
-        <span className="shrink-0 text-[11.5px] text-muted-foreground">
-          {formatRelativeTime(artifact.createdAt)}
-        </span>
+        {showTime ? (
+          <span className="shrink-0 text-[11.5px] text-muted-foreground">
+            {formatRelativeTime(artifact.createdAt)}
+          </span>
+        ) : null}
       </Link>
       <button
         type="button"

@@ -10,7 +10,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { axisTicks, BurnLines, LineChart } from "./charts";
+import { axisTicks, BurnLines, dropCrowdedTick, LineChart } from "./charts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
@@ -474,4 +474,15 @@ it("names a year's financing above the plot, not on its bars", async () => {
   expect(Number(label?.getAttribute("y"))).toBeLessThan(barTop);
   act(() => root.unmount());
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+});
+
+it("moves a dropped tick's year onto the last tick", () => {
+  const x = (i: number) => 500 + i * 10;
+  expect(dropCrowdedTick(["Dec 20 '25", null, "Jan 2 '26", null, "Jan 6"], x, 520)).toEqual([
+    "Dec 20 '25",
+    null,
+    null,
+    null,
+    "Jan 6 '26",
+  ]);
 });

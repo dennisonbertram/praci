@@ -5,9 +5,33 @@ import { useEffect, useState } from "react";
 /** After this long the wait is no longer normal, so the line changes and offers a retry. */
 export const OPENING_SLOW_MS = 8000;
 
+/** A page skeleton that is still showing after this long is stuck, not slow. */
+export const STILL_LOADING_MS = 20_000;
+
+/** Goes beside any page skeleton: after 20 s it says so and offers Try again (default: reload the page). */
+export function StillLoading({
+  onRetry = () => window.location.reload(),
+}: {
+  onRetry?: () => void;
+}) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), STILL_LOADING_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return slow ? (
+    <div role="status" className="flex items-center gap-3 text-[13px] text-muted-foreground">
+      <Trans>Still loading…</Trans>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <Trans>Try again</Trans>
+      </Button>
+    </div>
+  ) : null;
+}
+
 /**
- * The centered "Opening Praci…" line, shared by every wait between sign-in and the first chat.
- * A slow wait says so and offers Try again, which loads the page afresh.
+ * Message placeholders, shared by every wait between sign-in and the first chat.
+ * A slow wait says "Still opening…" and offers Try again, which loads the page afresh.
  */
 export function OpeningSpace({
   onRetry = () => window.location.reload(),
@@ -20,15 +44,18 @@ export function OpeningSpace({
     return () => clearTimeout(timer);
   }, []);
   return (
-    <div
-      role="status"
-      className="flex flex-1 flex-col items-center justify-center gap-3 text-[14px] text-muted-foreground"
-    >
-      {slow ? <Trans>Still opening…</Trans> : <Trans>Opening Praci…</Trans>}
+    <div className="flex flex-1 flex-col">
+      <ThreadSkeleton />
       {slow ? (
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          <Trans>Try again</Trans>
-        </Button>
+        <div
+          role="status"
+          className="flex items-center justify-center gap-3 pb-4 text-[14px] text-muted-foreground"
+        >
+          <Trans>Still opening…</Trans>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            <Trans>Try again</Trans>
+          </Button>
+        </div>
       ) : null}
     </div>
   );

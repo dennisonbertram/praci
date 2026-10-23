@@ -32,3 +32,12 @@ it("keeps waiting, without refreshing again, when only a refresh that started ea
     needsRefresh: false,
   });
 });
+
+it("never falls back to a bot that opens only by name, so a space holding only one shows the empty state", () => {
+  const pageAgent = bot("inbox");
+  const namedOnly = (b: Bot) => b.id === "inbox";
+  const base = { ...input, botId: undefined, namedOnly };
+  expect(resolveRouteBot({ ...base, bots: [pageAgent] }).bot).toBeUndefined();
+  expect(resolveRouteBot({ ...base, bots: [pageAgent, chief] }).bot).toBe(chief);
+  expect(resolveRouteBot({ ...base, bots: [pageAgent], botId: "inbox" }).bot).toBe(pageAgent);
+});

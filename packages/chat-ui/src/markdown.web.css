@@ -288,6 +288,13 @@
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 }
 
+/* Touch: padding on an inline link grows its hit area to 44px without moving the lines. */
+@media (pointer: coarse) {
+  .rk-chat-markdown a.rk-chat-app-link {
+    padding-block: 12px;
+  }
+}
+
 a.rk-chat-link {
   color: inherit;
   font-weight: 500;

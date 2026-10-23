@@ -75,7 +75,7 @@ import {
   SortableList,
   SortableRow,
 } from "../../components/sidebar-folders/SidebarDnd";
-import { glanceBadge, StatusMark } from "../../components/sidebar-glance";
+import { glanceBadge, rowStatusKind, StatusMark } from "../../components/sidebar-glance";
 import { FirstRunTour } from "../../components/tour/FirstRunTour";
 import { clearTourStep } from "../../components/tour/TourPopover";
 import type { AgentApp } from "../../lib/agent-app";
@@ -546,6 +546,8 @@ export function SpaceSidebar({
   openSettings,
 }: SpaceSidebarProps) {
   const { t } = useLingui();
+  const rosterKind = (chat: { id: string; runErrorId?: string | null }) =>
+    rowStatusKind(glance.botKinds[chat.id], chat.runErrorId);
   const sidebarPaneRef = useRef<HTMLDivElement>(null);
   // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
   const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
@@ -793,7 +795,7 @@ export function SpaceSidebar({
           >
             <SidebarPagesGroup
               title={t`Pages`}
-              collapsed={collapsedSidebarSections.has("pages")}
+              collapsed={collapsedSidebarSections.has("pages") && !tourOpen}
               rail={rail}
               onToggle={() => toggleSidebarSection("pages")}
               pages={[
@@ -1015,6 +1017,7 @@ export function SpaceSidebar({
         )}
         <div
           ref={sidebarScrollRef}
+          tabIndex={-1}
           className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
         >
           {activityMode && !rail ? (
@@ -1070,7 +1073,7 @@ export function SpaceSidebar({
               const folderStatus = folder
                 ? NOTIFICATION_KINDS.find((kind) =>
                     group.bots.some(
-                      (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
+                      (item) => item.kind === "bot" && rosterKind(item.chat) === kind,
                     ),
                   )
                 : undefined;
@@ -1300,8 +1303,7 @@ export function SpaceSidebar({
                               needsYou={
                                 heldFor !== null ||
                                 rows.some(
-                                  (row) =>
-                                    row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                  (row) => row.item.chat.unread || rosterKind(row.item.chat),
                                 )
                               }
                               heldFor={heldFor}
@@ -1584,9 +1586,9 @@ export function SpaceSidebar({
                                           >
                                             {compact &&
                                             item.kind === "bot" &&
-                                            glance.botKinds[item.chat.id] ? (
+                                            rosterKind(item.chat) ? (
                                               <StatusMark
-                                                kind={glance.botKinds[item.chat.id]!}
+                                                kind={rosterKind(item.chat)!}
                                                 botId={item.chat.id}
                                               />
                                             ) : null}
@@ -1642,10 +1644,9 @@ export function SpaceSidebar({
                                                   : "text-muted-foreground"
                                             }`}
                                           >
-                                            {item.kind === "bot" &&
-                                            glance.botKinds[item.chat.id] ? (
+                                            {item.kind === "bot" && rosterKind(item.chat) ? (
                                               <StatusMark
-                                                kind={glance.botKinds[item.chat.id]!}
+                                                kind={rosterKind(item.chat)!}
                                                 botId={item.chat.id}
                                               />
                                             ) : null}

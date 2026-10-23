@@ -101,6 +101,9 @@ function Highlight({ text, needle, clip }: { text: string; needle: string; clip?
 /** The row Enter opens: data-selected's bg-muted barely shows on the popover, so mark it. */
 const SELECTED_ROW = "data-selected:bg-accent";
 
+/** Footer key hints: a visible cap on the popover, where Kbd's own bg-muted barely shows. */
+const KEY_CAP = "border border-border bg-background";
+
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
 export type PaletteEntry = {
   id: string;
@@ -127,6 +130,7 @@ export function CommandPalette({
   open,
   onOpenChange,
   bots,
+  searchOnlyBots = [],
   onSelectBot,
   pages = [],
   groups = [],
@@ -139,6 +143,8 @@ export function CommandPalette({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bots: Bot[];
+  /** Bots found only by typing: they have no row and no number shortcut in the empty palette. */
+  searchOnlyBots?: Bot[];
   onSelectBot: (botId: string) => void;
   pages?: PaletteEntry[];
   groups?: PaletteEntry[];
@@ -161,11 +167,19 @@ export function CommandPalette({
   useEffect(() => {
     if (!open) setSearch("");
   }, [open]);
+  // After opening something, focus goes to the page, not back to where the palette was opened.
+  const chose = useRef(false);
+  const choose = () => {
+    chose.current = true;
+    onOpenChange(false);
+  };
+
   // Whatever had focus when it opened gets it back, so Escape does not drop focus to the page body.
   const openedFrom = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
     if (open && document.activeElement instanceof HTMLElement) {
       openedFrom.current = document.activeElement;
+      chose.current = false;
     }
   }, [open]);
 
@@ -208,8 +222,13 @@ export function CommandPalette({
     ? ranked(actions, (action) => paletteMatchScore(action.label, needle))
     : [];
   const filteredBots = useMemo(
-    () => (needle ? ranked(bots, (bot) => paletteMatchScore(bot.name, needle, bot.title)) : bots),
-    [bots, needle],
+    () =>
+      needle
+        ? ranked([...bots, ...searchOnlyBots], (bot) =>
+            paletteMatchScore(bot.name, needle, bot.title),
+          )
+        : bots,
+    [bots, searchOnlyBots, needle],
   );
   // A fade over the last row while more results wait below the visible ones.
   // Kept in state: the dialog mounts the list after the first render that opens it.
@@ -250,6 +269,7 @@ export function CommandPalette({
       if (!bot) return;
       event.preventDefault();
       onSelectBot(bot.id);
+      chose.current = true;
       onOpenChange(false);
     }
     window.addEventListener("keydown", onKey);
@@ -262,7 +282,7 @@ export function CommandPalette({
         const subtitle = botSubtitle(bot);
         const titleTag = botTitleTag(bot);
         const index = bots.indexOf(bot);
-        const shortcut = index < 9 ? `${modKey}${index + 1}` : null;
+        const shortcut = index >= 0 && index < 9 ? `${modKey}${index + 1}` : null;
         return (
           <CommandItem
             key={bot.id}
@@ -270,7 +290,7 @@ export function CommandPalette({
             data-testid={`command-palette-bot-${bot.id}`}
             onSelect={() => {
               onSelectBot(bot.id);
-              onOpenChange(false);
+              choose();
             }}
             className={`items-center gap-3 rounded-xl! px-2.5 py-2.5 ${SELECTED_ROW}`}
           >
@@ -291,7 +311,7 @@ export function CommandPalette({
               </div>
               {subtitle ? (
                 <div className="mt-0.5 truncate text-[13px] text-muted-foreground" dir="auto">
-                  {subtitle}
+                  <Highlight text={subtitle} needle={needle} clip />
                 </div>
               ) : null}
             </div>
@@ -314,7 +334,7 @@ export function CommandPalette({
           value={`group:${group.id}`}
           onSelect={() => {
             onSelectGroup(group.id);
-            onOpenChange(false);
+            choose();
           }}
           className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
         >
@@ -334,7 +354,7 @@ export function CommandPalette({
           value={`page:${page.id}`}
           onSelect={() => {
             onSelectPage(page.id);
-            onOpenChange(false);
+            choose();
           }}
           className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
         >
@@ -362,7 +382,7 @@ export function CommandPalette({
             value={`link:${entry.id}`}
             onSelect={() => {
               onOpenPath(entry.id);
-              onOpenChange(false);
+              choose();
             }}
             className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
           >
@@ -392,7 +412,7 @@ export function CommandPalette({
           value={`link:${group.more.id}`}
           onSelect={() => {
             onOpenPath(group.more?.id ?? "");
-            onOpenChange(false);
+            choose();
           }}
           className={`items-center gap-3 rounded-xl! py-2 pe-2.5 ps-13.5 text-muted-foreground ${SELECTED_ROW}`}
         >
@@ -457,11 +477,16 @@ export function CommandPalette({
       open={open}
       onOpenChange={onOpenChange}
       finalFocus={() => {
+        const main = document.getElementById(MAIN_CONTENT_ID);
+        // After opening something, the page itself gets focus. Base UI skips a tabindex=-1 element,
+        // so move it by hand once the dialog has let go.
+        if (chose.current) {
+          window.setTimeout(() => main?.focus(), 0);
+          return false;
+        }
         // A trigger that is gone (a closed phone drawer) or the page body falls back to the page itself.
         const from = openedFrom.current;
-        return from?.isConnected && from !== document.body
-          ? from
-          : document.getElementById(MAIN_CONTENT_ID);
+        return from?.isConnected && from !== document.body ? from : main;
       }}
       title={t`Go to`}
       description={t`Search pages, bots, groups, documents and artifacts`}
@@ -523,7 +548,7 @@ export function CommandPalette({
                   value={`action:${action.label}`}
                   onSelect={() => {
                     action.run();
-                    onOpenChange(false);
+                    choose();
                   }}
                   className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
                 >
@@ -548,16 +573,16 @@ export function CommandPalette({
           className="flex items-center gap-4 border-t border-border px-3 py-2 text-xs text-muted-foreground max-sm:hidden"
         >
           <span className="flex items-center gap-1.5">
-            <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd>
+            <Kbd className={KEY_CAP}>↑</Kbd>
+            <Kbd className={KEY_CAP}>↓</Kbd>
             <Trans>Move</Trans>
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>Enter</Kbd>
+            <Kbd className={KEY_CAP}>Enter</Kbd>
             <Trans>Open</Trans>
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>Esc</Kbd>
+            <Kbd className={KEY_CAP}>Esc</Kbd>
             <Trans>Close</Trans>
           </span>
         </div>

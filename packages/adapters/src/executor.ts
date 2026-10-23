@@ -8707,7 +8707,7 @@ export const PLAIN_CAPABILITY_GUIDANCE =
   'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names. Name an email by its subject and a record by its name, never by its id. Speak to the user as "you", never by their name or as "the user".';
 
 export const NOT_CONNECTED_GUIDANCE =
-  'If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say "Add a bank account in Finance" and end with [Open Finance](/app/finance); do not mention Integrations in that reply. The same goes for a question about cash, balance, spending or runway with no bank connected. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).';
+  'If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say "Add a bank account in Finance" and end with [Open Finance](/app/finance); do not mention Integrations in that reply. The same goes for a question about cash, balance, spending or runway with no bank connected. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with the link given for that bank in the Facts, or [Open Integrations](/app/integrations) when it has none.';
 
 /**
  * The user's connected banks as plain facts, so the model does not guess which branch of
@@ -8715,6 +8715,7 @@ export const NOT_CONNECTED_GUIDANCE =
  */
 export function financeConnectionLineFor(
   servers: readonly {
+    id?: string;
     endpoint: string | null;
     agentBotId: string | null;
     login: "none" | "connected" | "reconnect";
@@ -8727,6 +8728,7 @@ export function financeConnectionLineFor(
       ? [
           {
             name: provider === "mercury" ? "Mercury" : "Brex",
+            id: server.id,
             hasAgent: Boolean(server.agentBotId),
             reconnect: server.login === "reconnect",
           },
@@ -8739,7 +8741,7 @@ export function financeConnectionLineFor(
   const list = banks
     .map(
       (bank) =>
-        `${bank.name} (${bank.reconnect ? "sign-in expired: tell the user to reconnect it under Integrations" : bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"})`,
+        `${bank.name} (${bank.reconnect ? "sign-in expired: tell the user to reconnect it under Integrations" : bank.hasAgent ? "has an agent: message it with message_bot for payments and changes" : "no agent yet: tell the user to turn on Allow changes on its page under Integrations"}${bank.id && (bank.reconnect || !bank.hasAgent) ? `; link [Open ${bank.name}](/app/integrations/mcp/${bank.id}), not the Integrations list` : ""})`,
     )
     .join(", ");
   return `Facts: connected banks: ${list}. Never tell the user to connect a bank listed here, and never say no bank is connected.`;
@@ -8758,6 +8760,7 @@ export async function loadFinanceConnectionLine(
   return financeConnectionLineFor(
     await Promise.all(
       servers.map(async (server) => ({
+        id: server.id,
         endpoint: server.endpoint,
         agentBotId: server.agentBotId,
         login: await mcpOAuth.statusFor(server, actor),

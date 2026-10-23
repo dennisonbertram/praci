@@ -59,18 +59,17 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-it("keeps the triage label in the accessibility tree when the badge is hidden in a narrow pane", async () => {
+it("shows the label word beside the dot in a narrow pane, hidden at the wide layout", async () => {
   await show();
   const badge = [...document.querySelectorAll('[data-slot="badge"]')][0];
   expect(badge?.className).toContain("hidden @md:inline-flex");
-  const spoken = document.querySelector("button[data-row-id] .sr-only.\\@md\\:hidden");
-  expect(spoken?.textContent).toBe("Newsletter");
+  const word = document.querySelector("button[data-row-id] .text-xs.\\@md\\:hidden");
+  expect(word?.textContent).toBe("Newsletter");
 });
 
-it("shows a compact label dot in the narrow pane that names the label", async () => {
+it("shows a compact label dot in the narrow pane", async () => {
   await show();
   const dot = document.querySelector("[data-label-dot]");
-  expect(dot?.getAttribute("title")).toBe("Newsletter");
   expect(dot?.className).toContain("@md:hidden");
 });
 
