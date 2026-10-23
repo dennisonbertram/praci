@@ -172,9 +172,9 @@ function safeUrl(value: unknown) {
   }
 }
 
-/** A bare URL keeps its path only: query strings and fragments can carry tokens. */
+/** URLs in text keep their path only: query strings and fragments can carry tokens. */
 function withoutUrlCredentials(value: string) {
-  return /^https?:\/\/\S+$/i.test(value) ? (safeUrl(value) ?? "") : value;
+  return value.replace(/https?:\/\/[^\s"'<>)\]]+/gi, (url) => safeUrl(url) ?? "");
 }
 
 function providerFailure(value: Record<string, unknown>): never {

@@ -767,12 +767,18 @@ describe("generic document URLs", () => {
     const doc = genericDocument(
       { name: "search" } as ConnectorTool,
       {},
-      { id: "1", title: "Plan", url: "https://example.com/doc/1?token=abc#x" },
+      {
+        id: "1",
+        title: "Plan",
+        url: "https://example.com/doc/1?token=abc#x",
+        body: "Download: https://files.example/doc?token=SECRET now",
+      },
       null,
       0,
     );
     expect(doc.sourceUrl).toBe("https://example.com/doc/1");
     expect(doc.text).not.toContain("token=abc");
+    expect(doc.text).not.toContain("SECRET");
     expect(doc.text).toContain("https://example.com/doc/1");
   });
 });
