@@ -3,9 +3,10 @@ import { Trans } from "@lingui/react/macro";
 import type { LegalGraph as Graph, LegalNode, LegalNodeKind } from "@rakazo/contracts";
 import { cn } from "@rakazo/ui-web";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
+import { legalDataRoomState, legalUiStateFromHistory } from "../../lib/legal-navigation";
 
 /** Most nodes drawn; past this the busiest ones are kept and a note says so. */
 export const MAX_GRAPH_NODES = 120;
@@ -136,8 +137,14 @@ function edgePath(from: Placed, to: Placed): string {
 
 /** Nodes and edges as an SVG diagram. Selecting a node highlights its edges and lists its relations below. */
 export function LegalGraphView({ graph }: { graph: Graph }) {
+  const location = useLocation();
+  const savedSelectedNode = legalUiStateFromHistory(location.state)?.selectedNode;
   useHideAmounts();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() =>
+    savedSelectedNode && graph.nodes.some((node) => node.id === savedSelectedNode)
+      ? savedSelectedNode
+      : null,
+  );
   const { placed, edges, heads, width, height, hidden } = useMemo(() => layout(graph), [graph]);
   // Drawn at its own size so labels stay readable; when that is wider than the page, say it scrolls.
   const frame = useRef<HTMLDivElement>(null);
@@ -297,6 +304,10 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
                   {edge.dataRoomItemId ? (
                     <Link
                       to={`${DATA_ROOM_PATH}?item=${edge.dataRoomItemId}`}
+                      state={legalDataRoomState(
+                        location,
+                        selected ? { selectedNode: selected } : undefined,
+                      )}
                       className="text-xs text-muted-foreground hover:underline"
                     >
                       <Trans>Open document</Trans>

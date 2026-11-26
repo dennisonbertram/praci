@@ -3,12 +3,13 @@ import { Trans } from "@lingui/react/macro";
 import type { LegalDeadline, LegalDeadlineKind, LegalDeadlineStatus } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { PickFilter, SearchField, SortControl } from "../../components/ListControls";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay } from "../../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { daysBetween, isDueSoon, todayIso, utcTodayIso } from "../../lib/legal-format";
+import { legalDataRoomState } from "../../lib/legal-navigation";
 import { sortBy, useListParams } from "../../lib/list-params";
 import { rpc } from "../../lib/rpc";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../../lib/use-sidebar-glance";
@@ -62,6 +63,7 @@ export function LegalDeadlines({
   /** Opens the Legal agent with this deadline as the question; without it no row offers Ask agent. */
   onAsk?: (deadline: LegalDeadline) => void;
 }) {
+  const location = useLocation();
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState("");
   const [reopening, setReopening] = useState<ReadonlySet<string>>(new Set());
@@ -361,6 +363,7 @@ export function LegalDeadlines({
                         {deadline.dataRoomItemId ? (
                           <Link
                             to={`${DATA_ROOM_PATH}?item=${deadline.dataRoomItemId}`}
+                            state={legalDataRoomState(location)}
                             className="hover:underline"
                           >
                             {maskCurrencyWhenHidden(deadline.contractTitle)}

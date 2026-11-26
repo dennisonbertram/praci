@@ -18,11 +18,12 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { Columns3, MoreHorizontal, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { todayDay } from "../../lib/day-input";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { sortBy, useListParams } from "../../lib/list-params";
 import type { PipelineRow, RowEdits, SortField } from "../../lib/pipeline-rows";
 import { filterRows, isDue, SORT_FIELDS, sortValue, toPipelineRow } from "../../lib/pipeline-rows";
@@ -304,306 +305,312 @@ export function PipelineTable({
         </div>
       ) : (
         <>
-          <div className="@max-[759px]/bd:hidden">
-            <Table compact className="table-fixed" data-testid="pipeline-table">
-              <TableHeader>
-                <TableHeadRow>
-                  <TableHead className={`${headClass} ps-2 @[1040px]/bd:w-44`} {...head("name")}>
-                    <Trans>Prospect</Trans>
-                  </TableHead>
-                  <TableHead className={`${headClass} w-32`} {...head("status")}>
-                    <Trans>Status</Trans>
-                  </TableHead>
-                  <TableHead
-                    className={`${headClass} w-28 @[1040px]/bd:w-60`}
-                    {...head("interest")}
-                  >
-                    <Trans>Interest</Trans>
-                  </TableHead>
-                  <TableHead
-                    className={`${headClass} hidden w-32 @[900px]/bd:table-cell`}
-                    {...head("lastCall")}
-                  >
-                    <Trans>Last call</Trans>
-                  </TableHead>
-                  <TableHead
-                    className={`${headClass} hidden w-28 @[1240px]/bd:table-cell`}
-                    {...head("lastContact")}
-                  >
-                    <Trans>Last contact</Trans>
-                  </TableHead>
-                  <TableHead
-                    className={`${headClass} hidden @[1040px]/bd:table-cell`}
-                    {...head("nextStep")}
-                  >
-                    <Trans>Next step</Trans>
-                  </TableHead>
-                  <TableHead className={`${headClass} w-26`} {...head("nextCall")}>
-                    <Trans>Next call</Trans>
-                  </TableHead>
-                  {show("referredBy") ? (
-                    <TableHead
-                      className={`${headClass} hidden w-24 @[1240px]/bd:table-cell`}
-                      {...head("referredBy")}
-                    >
-                      <Trans>Referred by</Trans>
+          <div className="@max-[759px]/bd:hidden min-w-0">
+            <TableScrollRegion
+              aria-label={t`Fundraising prospects`}
+              className="min-w-0 [&:not([tabindex='0'])]:overflow-visible [&[tabindex='0']]:max-h-[70vh] [&[tabindex='0']]:overflow-auto"
+            >
+              <Table
+                compact
+                className={columns.length ? "table-fixed w-max min-w-full" : "table-fixed"}
+                data-testid="pipeline-table"
+              >
+                <TableHeader>
+                  <TableHeadRow>
+                    <TableHead className={`${headClass} ps-2 @[1040px]/bd:w-44`} {...head("name")}>
+                      <Trans>Prospect</Trans>
                     </TableHead>
-                  ) : null}
-                  {show("amount") ? (
-                    <TableHead
-                      className={`${headClass} hidden w-24 whitespace-nowrap text-end @[1240px]/bd:table-cell`}
-                      {...head("amount")}
-                    >
-                      <Trans>Possible amount</Trans>
+                    <TableHead className={`${headClass} w-32`} {...head("status")}>
+                      <Trans>Status</Trans>
                     </TableHead>
-                  ) : null}
-                  {show("details") ? (
                     <TableHead
-                      className={`${headClass} hidden w-32 @[1360px]/bd:table-cell`}
-                      {...head("details")}
+                      className={`${headClass} w-28 @[1040px]/bd:w-60`}
+                      {...head("interest")}
                     >
-                      <Trans>Fund details</Trans>
+                      <Trans>Interest</Trans>
                     </TableHead>
-                  ) : null}
-                  {/* Wide enough for Log beside Send SAFE or the waiting menu, so neither spills out. */}
-                  <TableHead className={`${headClass} w-40`}>
-                    <span className="sr-only">
-                      <Trans>Actions</Trans>
-                    </span>
-                  </TableHead>
-                </TableHeadRow>
-              </TableHeader>
-              <TableBody>
-                {capped.rows.map((row) => {
-                  const [first, ...others] = row.people;
-                  const sub =
-                    waitingText(row) ??
-                    (first ? `${first.name}${others.length ? ` +${others.length}` : ""}` : null);
-                  const last = lastCallText(row);
-                  const contact = lastContactText(row);
-                  const label = callLabel(row);
-                  return (
-                    <TableRow
-                      key={row.id}
-                      className={`group/row [&>td]:py-1.5 ${row.id === savedId ? SAVED_ROW_CLASS : ""}`}
-                      data-contact-id={row.id}
-                      data-testid={`row-${row.id}`}
-                      onOpen={() => setSheetId(row.id)}
+                    <TableHead
+                      className={`${headClass} hidden w-32 @[900px]/bd:table-cell`}
+                      {...head("lastCall")}
                     >
-                      <TableCell>
-                        <button
-                          type="button"
-                          data-row-open
-                          title={row.name}
-                          className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline"
-                        >
-                          {row.name}
-                        </button>
-                        {sub ? (
-                          <div className="truncate text-xs text-muted-foreground" title={sub}>
-                            {sub}
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      {/* The popover and the status menu render in a portal: a click on their surface, not a control, would still reach the row's onOpen. */}
-                      <TableCell
-                        onClick={(e) => {
-                          if (!(e.target as Element).closest("button,a,input,select,textarea"))
-                            e.preventDefault();
-                        }}
+                      <Trans>Last call</Trans>
+                    </TableHead>
+                    <TableHead
+                      className={`${headClass} hidden w-28 @[1240px]/bd:table-cell`}
+                      {...head("lastContact")}
+                    >
+                      <Trans>Last contact</Trans>
+                    </TableHead>
+                    <TableHead
+                      className={`${headClass} hidden @[1040px]/bd:table-cell`}
+                      {...head("nextStep")}
+                    >
+                      <Trans>Next step</Trans>
+                    </TableHead>
+                    <TableHead className={`${headClass} w-26`} {...head("nextCall")}>
+                      <Trans>Next call</Trans>
+                    </TableHead>
+                    {show("referredBy") ? (
+                      <TableHead className={`${headClass} w-24`} {...head("referredBy")}>
+                        <Trans>Referred by</Trans>
+                      </TableHead>
+                    ) : null}
+                    {show("amount") ? (
+                      <TableHead
+                        className={`${headClass} w-24 whitespace-nowrap text-end`}
+                        {...head("amount")}
                       >
-                        <StatusPick row={row} onChange={(next) => edits.status(row, next)} />
-                        {row.status === "committed" && row.amountCents == null && !hidden ? (
-                          <ValueEditor
-                            label={t`Possible amount of ${row.name}`}
-                            inputMode="decimal"
-                            value=""
-                            onSave={(text) => edits.amount(row, text)}
+                        <Trans>Possible amount</Trans>
+                      </TableHead>
+                    ) : null}
+                    {show("details") ? (
+                      <TableHead className={`${headClass} w-32`} {...head("details")}>
+                        <Trans>Fund details</Trans>
+                      </TableHead>
+                    ) : null}
+                    {/* Wide enough for Log beside Send SAFE or the waiting menu, so neither spills out. */}
+                    <TableHead className={`${headClass} w-40`}>
+                      <span className="sr-only">
+                        <Trans>Actions</Trans>
+                      </span>
+                    </TableHead>
+                  </TableHeadRow>
+                </TableHeader>
+                <TableBody>
+                  {capped.rows.map((row) => {
+                    const [first, ...others] = row.people;
+                    const sub =
+                      waitingText(row) ??
+                      (first ? `${first.name}${others.length ? ` +${others.length}` : ""}` : null);
+                    const last = lastCallText(row);
+                    const contact = lastContactText(row);
+                    const label = callLabel(row);
+                    const fundDetails = maskCurrencyWhenHidden(
+                      row.details.map((d) => `${d.label}: ${d.value}`).join(" · "),
+                    );
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className={`group/row [&>td]:py-1.5 ${row.id === savedId ? SAVED_ROW_CLASS : ""}`}
+                        data-contact-id={row.id}
+                        data-testid={`row-${row.id}`}
+                        onOpen={() => setSheetId(row.id)}
+                      >
+                        <TableCell>
+                          <button
+                            type="button"
+                            data-row-open
+                            title={row.name}
+                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline"
                           >
-                            <span className="text-xs text-muted-foreground">
-                              <Trans>Add amount</Trans>
-                            </span>
-                          </ValueEditor>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>
-                        <div className="@[1040px]/bd:hidden">
-                          <InterestPick row={row} onChange={(v) => edits.interest(row, v)} />
-                        </div>
-                        <div className="hidden @[1040px]/bd:block">
-                          <InterestChoice row={row} onChange={(v) => edits.interest(row, v)} />
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden @[900px]/bd:table-cell">
-                        {last ? (
-                          <div className="truncate text-muted-foreground" title={last}>
-                            {last}
-                          </div>
-                        ) : (
-                          <Dash />
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden @[1240px]/bd:table-cell">
-                        {contact ? (
-                          <div className="truncate text-muted-foreground" title={contact}>
-                            {contact}
-                          </div>
-                        ) : (
-                          <Dash />
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden @[1040px]/bd:table-cell">
-                        <ValueEditor
-                          label={t`Next step of ${row.name}`}
-                          value={row.nextStep ?? ""}
-                          onSave={(text) => edits.nextStep(row, text)}
-                        >
-                          {row.nextStep ? (
-                            <span title={row.nextStep}>{row.nextStep}</span>
-                          ) : (
-                            <BlankAction>
-                              <Trans>Add</Trans>
-                            </BlankAction>
-                          )}
-                        </ValueEditor>
-                      </TableCell>
-                      <TableCell>
-                        <NextCallEditor row={row} onSave={(next) => edits.nextCall(row, next)}>
-                          {label ?? (
-                            <BlankAction>
-                              <Trans>Set date</Trans>
-                            </BlankAction>
-                          )}
-                        </NextCallEditor>
-                        {isOverdue(row) ? (
-                          <div className="text-xs text-destructive">
-                            <Trans>Overdue</Trans>
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      {show("referredBy") ? (
-                        <TableCell className="hidden @[1240px]/bd:table-cell">
-                          {referrer(
-                            row,
-                            row.referredBy ? (
-                              <span title={row.referredBy.name} className="block truncate">
-                                {row.referredBy.name}
-                              </span>
-                            ) : (
-                              <BlankAction>
-                                <Trans>Add</Trans>
-                              </BlankAction>
-                            ),
-                          )}
+                            {row.name}
+                          </button>
+                          {sub ? (
+                            <div className="truncate text-xs text-muted-foreground" title={sub}>
+                              {sub}
+                            </div>
+                          ) : null}
                         </TableCell>
-                      ) : null}
-                      {show("amount") ? (
-                        <TableCell className="hidden text-end tabular-nums @[1240px]/bd:table-cell">
-                          {/* Hidden amounts are read-only: an editor would show the figure. */}
-                          {hidden ? (
-                            (usdOrNull(row.amountCents) ?? <Dash />)
-                          ) : (
+                        {/* The popover and the status menu render in a portal: a click on their surface, not a control, would still reach the row's onOpen. */}
+                        <TableCell
+                          onClick={(e) => {
+                            if (!(e.target as Element).closest("button,a,input,select,textarea"))
+                              e.preventDefault();
+                          }}
+                        >
+                          <StatusPick row={row} onChange={(next) => edits.status(row, next)} />
+                          {row.status === "committed" && row.amountCents == null && !hidden ? (
                             <ValueEditor
                               label={t`Possible amount of ${row.name}`}
                               inputMode="decimal"
-                              value={row.amountCents == null ? "" : String(row.amountCents / 100)}
+                              value=""
                               onSave={(text) => edits.amount(row, text)}
                             >
-                              {usdOrNull(row.amountCents) ?? (
-                                <BlankAction>
-                                  <Trans>Add</Trans>
-                                </BlankAction>
-                              )}
+                              <span className="text-xs text-muted-foreground">
+                                <Trans>Add amount</Trans>
+                              </span>
                             </ValueEditor>
-                          )}
+                          ) : null}
                         </TableCell>
-                      ) : null}
-                      {show("details") ? (
-                        <TableCell className="hidden @[1360px]/bd:table-cell">
-                          {row.details.length ? (
-                            <div
-                              className="truncate text-muted-foreground"
-                              title={row.details.map((d) => `${d.label}: ${d.value}`).join(" · ")}
-                            >
-                              {row.details.map((d) => `${d.label}: ${d.value}`).join(" · ")}
+                        <TableCell>
+                          <div className="@[1040px]/bd:hidden">
+                            <InterestPick row={row} onChange={(v) => edits.interest(row, v)} />
+                          </div>
+                          <div className="hidden @[1040px]/bd:block">
+                            <InterestChoice row={row} onChange={(v) => edits.interest(row, v)} />
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden @[900px]/bd:table-cell">
+                          {last ? (
+                            <div className="truncate text-muted-foreground" title={last}>
+                              {last}
                             </div>
                           ) : (
                             <Dash />
                           )}
                         </TableCell>
-                      ) : null}
-                      {/* The menu's and popover's items render in a portal: preventDefault keeps their clicks from reaching the row's onOpen. */}
-                      <TableCell className="w-40 pe-0 text-end" onClick={(e) => e.preventDefault()}>
-                        <div className="inline-flex items-center justify-end gap-1">
-                          <Popover
-                            open={logId === row.id}
-                            onOpenChange={(open) => setLogId(open ? row.id : undefined)}
+                        <TableCell className="hidden @[1240px]/bd:table-cell">
+                          {contact ? (
+                            <div className="truncate text-muted-foreground" title={contact}>
+                              {contact}
+                            </div>
+                          ) : (
+                            <Dash />
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden @[1040px]/bd:table-cell">
+                          <ValueEditor
+                            label={t`Next step of ${row.name}`}
+                            value={row.nextStep ?? ""}
+                            onSave={(text) => edits.nextStep(row, text)}
                           >
-                            <PopoverTrigger
-                              nativeButton
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="xs"
-                                  aria-label={t`Log a call with ${row.name}`}
-                                  className="opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100 pointer-coarse:opacity-100"
-                                />
-                              }
+                            {row.nextStep ? (
+                              <span title={row.nextStep}>{row.nextStep}</span>
+                            ) : (
+                              <BlankAction>
+                                <Trans>Add</Trans>
+                              </BlankAction>
+                            )}
+                          </ValueEditor>
+                        </TableCell>
+                        <TableCell>
+                          <NextCallEditor row={row} onSave={(next) => edits.nextCall(row, next)}>
+                            {label ?? (
+                              <BlankAction>
+                                <Trans>Set date</Trans>
+                              </BlankAction>
+                            )}
+                          </NextCallEditor>
+                          {isOverdue(row) ? (
+                            <div className="text-xs text-destructive">
+                              <Trans>Overdue</Trans>
+                            </div>
+                          ) : null}
+                        </TableCell>
+                        {show("referredBy") ? (
+                          <TableCell className="w-24">
+                            {referrer(
+                              row,
+                              row.referredBy ? (
+                                <span title={row.referredBy.name} className="block truncate">
+                                  {row.referredBy.name}
+                                </span>
+                              ) : (
+                                <BlankAction>
+                                  <Trans>Add</Trans>
+                                </BlankAction>
+                              ),
+                            )}
+                          </TableCell>
+                        ) : null}
+                        {show("amount") ? (
+                          <TableCell className="w-24 text-end tabular-nums">
+                            {/* Hidden amounts are read-only: an editor would show the figure. */}
+                            {hidden ? (
+                              (usdOrNull(row.amountCents) ?? <Dash />)
+                            ) : (
+                              <ValueEditor
+                                label={t`Possible amount of ${row.name}`}
+                                inputMode="decimal"
+                                value={row.amountCents == null ? "" : String(row.amountCents / 100)}
+                                onSave={(text) => edits.amount(row, text)}
+                              >
+                                {usdOrNull(row.amountCents) ?? (
+                                  <BlankAction>
+                                    <Trans>Add</Trans>
+                                  </BlankAction>
+                                )}
+                              </ValueEditor>
+                            )}
+                          </TableCell>
+                        ) : null}
+                        {show("details") ? (
+                          <TableCell className="w-32">
+                            {fundDetails ? (
+                              <div className="truncate text-muted-foreground" title={fundDetails}>
+                                {fundDetails}
+                              </div>
+                            ) : (
+                              <Dash />
+                            )}
+                          </TableCell>
+                        ) : null}
+                        {/* The menu's and popover's items render in a portal: preventDefault keeps their clicks from reaching the row's onOpen. */}
+                        <TableCell
+                          className="w-40 pe-0 text-end"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <div className="inline-flex items-center justify-end gap-1">
+                            <Popover
+                              open={logId === row.id}
+                              onOpenChange={(open) => setLogId(open ? row.id : undefined)}
                             >
-                              <Phone aria-hidden="true" />
-                              <Trans>Log</Trans>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="end"
-                              className="w-96 max-w-[calc(100vw-2rem)] text-start"
-                            >
-                              <LogCallBody
-                                row={row}
-                                onSave={(result) => {
-                                  setLogId(undefined);
-                                  edits.log(row, result);
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          {row.waitingSince ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
+                              <PopoverTrigger
+                                nativeButton
                                 render={
                                   <Button
                                     variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={t`Actions for ${row.name}`}
+                                    size="xs"
+                                    aria-label={t`Log a call with ${row.name}`}
+                                    className="opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100 pointer-coarse:opacity-100"
                                   />
                                 }
                               >
-                                <MoreHorizontal aria-hidden="true" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-max">
-                                <DropdownMenuItem onClick={onOpenMercury}>
-                                  <Trans>Open Mercury</Trans>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onNotSent(row.contact)}>
-                                  <Trans>Not sent</Trans>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : row.status === "committed" ? (
-                            <Button
-                              size="xs"
-                              variant={filledSend ? "default" : "outline"}
-                              onClick={() => onSendSafe(row.contact)}
-                            >
-                              <Trans>Send SAFE</Trans>
-                            </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                                <Phone aria-hidden="true" />
+                                <Trans>Log</Trans>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="end"
+                                className="w-96 max-w-[calc(100vw-2rem)] text-start"
+                              >
+                                <LogCallBody
+                                  row={row}
+                                  onSave={(result) => {
+                                    setLogId(undefined);
+                                    edits.log(row, result);
+                                  }}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            {row.waitingSince ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      aria-label={t`Actions for ${row.name}`}
+                                    />
+                                  }
+                                >
+                                  <MoreHorizontal aria-hidden="true" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-max">
+                                  <DropdownMenuItem onClick={onOpenMercury}>
+                                    <Trans>Open Mercury</Trans>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onNotSent(row.contact)}>
+                                    <Trans>Not sent</Trans>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : row.status === "committed" ? (
+                              <Button
+                                size="xs"
+                                variant={filledSend ? "default" : "outline"}
+                                onClick={() => onSendSafe(row.contact)}
+                              >
+                                <Trans>Send SAFE</Trans>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableScrollRegion>
           </div>
           <ul className="@[760px]/bd:hidden" data-testid="pipeline-list">
             {capped.rows.map((row) => {

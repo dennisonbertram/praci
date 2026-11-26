@@ -8058,7 +8058,7 @@ msgstr ""
 msgid "Estimated value"
 msgstr ""
 
-#. placeholder {0}: hideAmounts ? "$•••" : formatCents(view.estimatedValue.valueCents)
+#. placeholder {0}: formatCents(view.estimatedValue.valueCents, hideAmounts)
 #: src/pages/portal/PortalHoldings.tsx
 msgid "Estimated value {0}"
 msgstr ""
@@ -8736,6 +8736,10 @@ msgstr ""
 #: src/pages/shell/pages.tsx
 msgid "Fundraising"
 msgstr ""
+
+#: src/components/fundraising/PipelineTable.tsx
+msgid "Fundraising prospects"
+msgstr "Investisseurs potentiels pour la levée de fonds"
 
 #: src/components/cap-table/securities/AppSafes.tsx
 msgid "Fundraising SAFEs"

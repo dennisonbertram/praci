@@ -65,6 +65,7 @@ import {
   saveDataRoomItem,
   saveDataRoomView,
 } from "../lib/data-room";
+import { legalReturnTo, legalUiStateForReturn } from "../lib/legal-navigation";
 import { rpc } from "../lib/rpc";
 import { useDebounced } from "../lib/use-debounced";
 import { useRefetchWhileOpen } from "../lib/use-refetch-while-open";
@@ -125,11 +126,11 @@ export function DataRoomPage({
   onSendToAgent?: (items: DataRoomApiItem[], agent: SendTarget) => void;
 } = {}) {
   const [params, setParams] = useSearchParams();
-  // A contract opened from Legal's list keeps a way back to it. Read once: choosing a folder
-  // replaces the entry and drops its state.
+  // A contract opened from Legal's list keeps its return destination in router history state.
   const location = useLocation();
+  const returnToLegal = legalReturnTo((location.state as { returnTo?: unknown } | null)?.returnTo);
   const [fromLegal] = useState(
-    () => (location.state as { from?: string } | null)?.from === "legal",
+    () => Boolean(returnToLegal) || (location.state as { from?: string } | null)?.from === "legal",
   );
   const linkedItem = params.get("item");
   const urlFolder = params.get("folder") ?? undefined;
@@ -151,10 +152,10 @@ export function DataRoomPage({
           else next.delete("q");
           return next;
         },
-        { replace: true },
+        { replace: true, state: location.state },
       );
     },
-    [setParams],
+    [location.state, setParams],
   );
   const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   // Clearing the box shows the list again at once; only typing waits for a pause.
@@ -211,10 +212,10 @@ export function DataRoomPage({
           if (dropStatus) next.delete("status");
           return next;
         },
-        { replace: replace || folderId === urlFolderRef.current },
+        { replace: replace || folderId === urlFolderRef.current, state: location.state },
       );
     },
-    [setParams],
+    [location.state, setParams],
   );
   // "Recently added" first, so a file just filed is on top even before it has a document date.
   const [listSort, setListSort] = useState<Sort>(saved.sort);
@@ -235,12 +236,15 @@ export function DataRoomPage({
   const processing = useDataRoomProcessing();
   const openImported = useCallback(
     (id: string) =>
-      setParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("item", id);
-        return next;
-      }),
-    [setParams],
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("item", id);
+          return next;
+        },
+        { state: location.state },
+      ),
+    [location.state, setParams],
   );
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
@@ -262,7 +266,7 @@ export function DataRoomPage({
               params.delete("folder");
               return params;
             },
-            { replace: true },
+            { replace: true, state: location.state },
           );
         }
       })
@@ -416,7 +420,7 @@ export function DataRoomPage({
             next.delete("item");
             return next;
           },
-          { replace: true },
+          { replace: true, state: location.state },
         );
       });
     return () => {
@@ -758,7 +762,8 @@ export function DataRoomPage({
       <div className={`${PAGE_GUTTER_X} pt-2`}>
         {fromLegal ? (
           <Link
-            to="/app/legal"
+            to={returnToLegal ?? "/app/legal"}
+            state={legalUiStateForReturn(location.state)}
             className="rk-tap mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
@@ -894,11 +899,14 @@ export function DataRoomPage({
                 <FailedChip
                   count={source ? 0 : (processing.processing?.failed ?? 0)}
                   onClick={() =>
-                    setParams((prev) => {
-                      const next = new URLSearchParams(prev);
-                      next.set("status", "failed");
-                      return next;
-                    })
+                    setParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.set("status", "failed");
+                        return next;
+                      },
+                      { state: location.state },
+                    )
                   }
                 />
               )

@@ -219,6 +219,62 @@ it("shows an imported row's Wave, Fund details and Referred by", async () => {
   localStorage.removeItem("rakazo:crm-pipeline-columns");
 });
 
+it("masks fund-detail check sizes in both the cell and tooltip when amounts are hidden", async () => {
+  localStorage.setItem("rakazo:crm-pipeline-columns", JSON.stringify(["details"]));
+  setHideAmounts(true);
+  try {
+    const imported = prospect("i1", "Peak Fund", {
+      details: [
+        {
+          label: "Stage and check",
+          value: "Seed lead, $250K-$500K",
+          source: "list",
+          at: "2026-11-05T00:00:00.000Z",
+        },
+      ],
+    });
+    await render([imported]);
+    const details = el.querySelector("[data-testid=row-i1] td:nth-last-child(2) div");
+    expect(details?.textContent).toBe("Stage and check: Seed lead, $•••-$•••");
+    expect(details?.getAttribute("title")).toBe("Stage and check: Seed lead, $•••-$•••");
+    expect(details?.textContent).not.toContain("250K");
+    expect(details?.getAttribute("title")).not.toContain("500K");
+  } finally {
+    resetHideAmountsMemory();
+    localStorage.removeItem("rakazo:crm-pipeline-columns");
+  }
+});
+
+it("keeps explicitly selected optional columns visible in a labelled scroll region", async () => {
+  localStorage.setItem(
+    "rakazo:crm-pipeline-columns",
+    JSON.stringify(["referredBy", "amount", "details"]),
+  );
+  try {
+    await render(SAMPLE_PROSPECTS);
+    const table = el.querySelector("[data-testid=pipeline-table]");
+    expect(el.querySelector('[role="region"][aria-label="Fundraising prospects"]')).not.toBeNull();
+    const region = el.querySelector('[role="region"][aria-label="Fundraising prospects"]');
+    expect(region?.className).toContain("[&:not([tabindex='0'])]:overflow-visible");
+    expect(region?.className).toContain("[&[tabindex='0']]:max-h-[70vh]");
+    expect(region?.className).toContain("[&[tabindex='0']]:overflow-auto");
+    expect(table?.classList.contains("w-max")).toBe(true);
+    expect(table?.classList.contains("min-w-full")).toBe(true);
+    for (const name of ["Referred by", "Possible amount", "Fund details"]) {
+      const header = [...(table?.querySelectorAll("thead th") ?? [])].find((th) =>
+        th.textContent?.includes(name),
+      );
+      expect(header).toBeDefined();
+      expect(header?.classList.contains("hidden")).toBe(false);
+    }
+    expect(
+      table?.querySelector('button[aria-label="Possible amount of Mock Valley Seed"]'),
+    ).not.toBeNull();
+  } finally {
+    localStorage.removeItem("rakazo:crm-pipeline-columns");
+  }
+});
+
 it("offers Log on every desktop row, beside Send SAFE and the waiting menu", async () => {
   await render(SAMPLE_PROSPECTS);
   const logOf = (name: string) => `button[aria-label="Log a call with ${name}"]`;
