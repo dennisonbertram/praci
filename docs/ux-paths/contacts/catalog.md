@@ -7,6 +7,10 @@
 
 Sources: the three topic files under `docs/ux-paths/contacts/topics/` (find-and-browse, manual-edits, agent-saves). All people, companies and addresses are invented (`example.test`). Stories keep their original content; only numbering, cross-references and the merge below changed.
 
+### Current implementation note (2026-11-26)
+
+The current Contacts route is `/app/contacts`. It has page-level search and a Kind filter, a Name/Email/Organization/Kind table on wide screens, and contact cards on narrow screens. **Add contact** and each row's Actions menu expose the manual add/edit flows. The old “seed: 5 demo contacts” precondition and the old fixed contact examples are stale; use whatever synthetic contacts the active demo provides and do not assume a fixed row count. Keep the story steps for search, filtering and editing, but recheck labels and layout against the live page.
+
 ## Contents by topic
 
 | Topic | Stories | Count | Former IDs |

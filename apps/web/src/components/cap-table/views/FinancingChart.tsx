@@ -1,10 +1,12 @@
 import { t } from "@lingui/core/macro";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { formatDollars } from "./format";
 
 export type FinancingBar = { id: string; label: string; cents: string };
 
 /** Cash raised per round, in date order, as bars scaled to the largest round, with a cumulative line. */
 export function FinancingChart({ bars }: { bars: FinancingBar[] }) {
+  const hidden = useHideAmounts();
   if (bars.length === 0) return null;
   const max = bars.reduce((top, bar) => (BigInt(bar.cents) > top ? BigInt(bar.cents) : top), 0n);
   const total = bars.reduce((sum, bar) => sum + BigInt(bar.cents), 0n);
@@ -19,7 +21,9 @@ export function FinancingChart({ bars }: { bars: FinancingBar[] }) {
   return (
     <figure className="flex flex-col gap-2" aria-label={t`Cash raised by round`}>
       <figcaption className="text-sm">
-        <span className="font-semibold tabular-nums">{formatDollars(total.toString())}</span>{" "}
+        <span className="font-semibold tabular-nums">
+          {formatDollars(total.toString(), hidden)}
+        </span>{" "}
         <span className="text-muted-foreground">{t`raised`}</span>
       </figcaption>
       {/* Values, then the plot (bars and the cumulative line share its box), then names. */}
@@ -29,7 +33,7 @@ export function FinancingChart({ bars }: { bars: FinancingBar[] }) {
             key={bar.id}
             className="min-w-12 flex-1 text-center text-xs tabular-nums text-muted-foreground"
           >
-            {formatDollars(bar.cents)}
+            {formatDollars(bar.cents, hidden)}
           </span>
         ))}
       </div>
@@ -43,7 +47,7 @@ export function FinancingChart({ bars }: { bars: FinancingBar[] }) {
         ))}
         <svg
           role="img"
-          aria-label={t`Cumulative cash raised ${formatDollars(total.toString())}`}
+          aria-label={t`Cumulative cash raised ${formatDollars(total.toString(), hidden)}`}
           className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"

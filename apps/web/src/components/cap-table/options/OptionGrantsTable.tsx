@@ -23,6 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { useListParams } from "../../../lib/list-params";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -197,6 +198,7 @@ export function OptionGrantsTable({
   /** Reprices the outstanding grants picked by the bulk actions menu. */
   onBulkReprice?: (grants: EquityOptionGrant[]) => void;
 }) {
+  const amountsHidden = useHideAmounts();
   const list = useListParams(EQUITY_OPTION_GRANT_SORT_FIELDS, { field: "grantDate", dir: "desc" });
   const search = list.param("search") ?? "";
   const status = (list.param("status") ?? "").split(",").filter(Boolean);
@@ -485,7 +487,7 @@ export function OptionGrantsTable({
       case "price":
         return (
           <TableCell key={column} className="text-end tabular-nums">
-            {price(grant.exercisePrice)}
+            {price(grant.exercisePrice, amountsHidden)}
           </TableCell>
         );
       case "type":

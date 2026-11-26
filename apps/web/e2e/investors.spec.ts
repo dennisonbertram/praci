@@ -19,8 +19,46 @@ test("Investors opens from the sidebar and the old Cap table address redirects",
 
   await captureScreenshot(page, testInfo, "investors-empty");
 
+  const now = "2026-10-01T09:00:00.000Z";
+  await page.route("**/rpc/contacts/list", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        json: [
+          {
+            id: "auditor-contact",
+            name: "Quinn Auditwell",
+            email: "quinn@example.test",
+            organization: "Example Audit LLP",
+            kind: "auditor",
+            notes: null,
+            addedBy: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: "investor-contact",
+            name: "Ada Example",
+            email: "ada@example.test",
+            organization: "Example Fund",
+            kind: "investor",
+            notes: null,
+            addedBy: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        meta: [],
+      }),
+    }),
+  );
   await page.goto("/app/cap-table?kind=auditor");
-  await expect(page).toHaveURL(/\/app\/investors\?kind=auditor$/);
+  await expect(page).toHaveURL(/\/app\/contacts\?kind=auditor$/);
+  const contacts = page.getByRole("main");
+  await expect(contacts.getByRole("heading", { name: "Contacts" })).toBeVisible();
+  await expect(contacts.getByRole("button", { name: "Kind: Auditor" })).toBeVisible();
+  await expect(contacts.getByText("Quinn Auditwell")).toBeVisible();
+  await expect(contacts.getByText("Ada Example")).toHaveCount(0);
 });
 
 test("A founder without Carta types the cap table in and it is saved", async ({
@@ -118,6 +156,7 @@ test("Audit requests wait in Action items, are closed from the row menu and reac
   await page.getByRole("menuitem", { name: "Mark done" }).click();
   await expect.poll(() => closed).toEqual([{ id: "a1", status: "done" }]);
   await expect(items.getByText("Audit request · Example Audit LLP")).toHaveCount(0);
+  await main.getByRole("tab", { name: "Updates" }).click();
   await main.getByRole("button", { name: "Show done" }).click();
   await expect(items.getByText("Audit request · Example Audit LLP")).toBeVisible();
 });

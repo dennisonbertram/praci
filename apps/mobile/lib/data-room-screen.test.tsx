@@ -265,6 +265,12 @@ describe("native Data room list", () => {
     await act(async () => state.sessionListener?.());
     expect(host.textContent).toContain("session changed");
   });
+  it("explains where to scan when the Scanner list is empty", async () => {
+    state.items.mockResolvedValue({ items: [], nextCursor: null });
+    await render(<DataRoomScreen source="scan" />);
+    expect(host.textContent).toContain("No scans yet");
+    expect(host.textContent).toContain("Use the desktop app to scan a document.");
+  });
   it("uses a controlled Android search field and clears the filter without a header search bar", async () => {
     vi.useFakeTimers();
     Platform.OS = "android";

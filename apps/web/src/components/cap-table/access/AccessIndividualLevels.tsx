@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { rpc } from "../../../lib/rpc";
@@ -147,85 +148,93 @@ export function AccessIndividualLevels() {
           message={search ? t`No matching stakeholders` : t`No stakeholders yet`}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableHeadRow>
-              <TableHead className="w-8">
-                <Checkbox
-                  aria-label={t`Select all`}
-                  checked={allSelected}
-                  onCheckedChange={(checked) =>
-                    setSelected(checked ? new Set(rows.map((row) => row.id)) : new Set())
-                  }
-                />
-              </TableHead>
-              <TableHead>{t`Stakeholder`}</TableHead>
-              <TableHead>{t`Relationship`}</TableHead>
-              <TableHead>{t`Holdings`}</TableHead>
-              <TableHead className="text-end">{t`Ownership`}</TableHead>
-              <TableHead>{t`Access level`}</TableHead>
-              <TableHead className="w-32" />
-            </TableHeadRow>
-          </TableHeader>
-          <TableBody aria-label={t`Individual levels`}>
-            {rows.map((row) => {
-              const own = override(row);
-              const holder = data.holders.get(row.id);
-              return (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <Checkbox
-                      aria-label={t`Select ${row.name}`}
-                      checked={selected.has(row.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selected);
-                        if (checked) next.add(row.id);
-                        else next.delete(row.id);
-                        setSelected(next);
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell>
-                    {row.relationship ? EQUITY_RELATIONSHIP_LABELS[row.relationship] : "—"}
-                  </TableCell>
-                  <TableCell>
-                    {holder?.classCodes.length ? (
-                      <span className="flex flex-wrap gap-1">
-                        {holder.classCodes.map((code) => (
-                          <Badge key={code} variant="outline">
-                            {code}
-                          </Badge>
-                        ))}
+        <TableScrollRegion aria-label={t`Individual access levels`}>
+          <Table className="min-w-[760px] whitespace-nowrap">
+            <TableHeader>
+              <TableHeadRow>
+                <TableHead className="w-8">
+                  <Checkbox
+                    aria-label={t`Select all`}
+                    checked={allSelected}
+                    onCheckedChange={(checked) =>
+                      setSelected(checked ? new Set(rows.map((row) => row.id)) : new Set())
+                    }
+                  />
+                </TableHead>
+                <TableHead>{t`Stakeholder`}</TableHead>
+                <TableHead>{t`Relationship`}</TableHead>
+                <TableHead>{t`Holdings`}</TableHead>
+                <TableHead className="text-end">{t`Ownership`}</TableHead>
+                <TableHead>{t`Access level`}</TableHead>
+                <TableHead className="w-32" />
+              </TableHeadRow>
+            </TableHeader>
+            <TableBody aria-label={t`Individual levels`}>
+              {rows.map((row) => {
+                const own = override(row);
+                const holder = data.holders.get(row.id);
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <Checkbox
+                        aria-label={t`Select ${row.name}`}
+                        checked={selected.has(row.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selected);
+                          if (checked) next.add(row.id);
+                          else next.delete(row.id);
+                          setSelected(next);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell
+                      className="max-w-48 font-medium"
+                      title={row.name}
+                      aria-label={row.name}
+                    >
+                      <span className="block truncate">{row.name}</span>
+                    </TableCell>
+                    <TableCell>
+                      {row.relationship ? EQUITY_RELATIONSHIP_LABELS[row.relationship] : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {holder?.classCodes.length ? (
+                        <span className="flex flex-wrap gap-1">
+                          {holder.classCodes.map((code) => (
+                            <Badge key={code} variant="outline">
+                              {code}
+                            </Badge>
+                          ))}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-end tabular-nums">
+                      {`${Number(holder?.ownershipPercent ?? 0).toFixed(2)}%`}
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        {levelLabel(own ?? groupLevel(row))}
+                        {own ? <Badge variant="outline">{t`Override`}</Badge> : null}
                       </span>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-end tabular-nums">
-                    {`${Number(holder?.ownershipPercent ?? 0).toFixed(2)}%`}
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-2">
-                      {levelLabel(own ?? groupLevel(row))}
-                      {own ? <Badge variant="outline">{t`Override`}</Badge> : null}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setPreview(row)}>
-                        {t`Preview`}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => open([row.id])}>
-                        {t`Edit`}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setPreview(row)}>
+                          {t`Preview`}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => open([row.id])}>
+                          {t`Edit`}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableScrollRegion>
       )}
       {preview ? (
         <AccessPreview

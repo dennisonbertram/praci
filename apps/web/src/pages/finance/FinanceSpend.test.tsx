@@ -37,6 +37,73 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+const filteredSpendTransaction = (
+  id: string,
+  day: string,
+  amountCents: number,
+): FinanceSpendOutput["transactions"][number] => ({
+  id,
+  provider: "mercury",
+  externalId: id,
+  accountExternalId: "acct_demo",
+  postedAt: `${day}T12:00:00.000Z`,
+  purchasedAt: null,
+  amountCents,
+  currency: "USD",
+  counterparty: `Software vendor ${id}`,
+  vendorKey: `vendor_${id}`,
+  category: "Software",
+  status: "posted",
+  kind: "card",
+  classification: "spend",
+  cardLastFour: "4242",
+  cardholder: "Sam Example",
+  memo: null,
+  hasReceipt: false,
+  dashboardUrl: null,
+});
+
+it("keeps a filtered date-range total exact alongside its transaction rows", async () => {
+  const transactions = [
+    filteredSpendTransaction("fractional", "2026-11-01", -8_750),
+    filteredSpendTransaction("whole", "2026-11-02", -15_000),
+    filteredSpendTransaction("last", "2026-11-03", -20_000),
+  ];
+  const totalCents = transactions.reduce((sum, row) => sum + Math.abs(row.amountCents), 0);
+  rpcMock.spend.mockResolvedValue({
+    period: "quarter",
+    range: { from: "2026-10-01", to: "2026-12-31" },
+    category: "software",
+    totalCents,
+    categories: [{ key: "software", label: "Software", cents: totalCents }],
+    transactions,
+  } satisfies FinanceSpendOutput);
+
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceSpendPage
+          period="quarter"
+          category="software"
+          range={{ from: "2026-10-01", to: "2026-12-31" }}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+
+  expect(rpcMock.spend).toHaveBeenCalledWith({
+    period: "quarter",
+    category: "software",
+    from: "2026-10-01",
+    to: "2026-12-31",
+  });
+  expect(container.textContent).toContain("$437.50");
+  expect(container.textContent).toContain("$87.50");
+  expect(container.textContent).toContain("$150");
+  expect(container.textContent).toContain("$200");
+});
+
 it("shows a new vendor's steady spend as 0% against the month it compares with", async () => {
   rpcMock.vendor.mockResolvedValue({
     key: "cloudnine",
@@ -145,7 +212,7 @@ it("says how many non-USD transactions a category's total leaves out", async () 
     label: "Rent",
     last90Cents: 2_250_000,
     excludedNonUsdCount: 1,
-  excludedNonUsd: [],
+    excludedNonUsd: [],
     trend: [],
     vendors: [],
     recent: [],

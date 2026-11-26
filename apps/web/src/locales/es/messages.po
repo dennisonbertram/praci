@@ -425,7 +425,7 @@ msgid "{0} connection"
 msgstr "Conexión {0}"
 
 #. placeholder {0}: rows.length
-#. placeholder {1}: formatCents(review.totalPrincipalCents)
+#. placeholder {1}: formatCents(review.totalPrincipalCents, hidden)
 #: src/components/cap-table/securities/DraftSetEditor.tsx
 msgid "{0} convertibles, {1}"
 msgstr ""
@@ -525,7 +525,7 @@ msgstr ""
 msgid "{0} non-USD transactions not counted"
 msgstr ""
 
-#. placeholder {0}: formatCents(rows.reduce((sum, row) => sum + BigInt(row.principalCents), 0n).toString())
+#. placeholder {0}: formatCents(rows.reduce((sum, row) => sum + BigInt(row.principalCents), 0n).toString(), hidden)
 #: src/components/cap-table/securities/AppSafes.tsx
 msgid "{0} not yet in the ledger"
 msgstr ""
@@ -568,7 +568,7 @@ msgid "{0} rollup hours"
 msgstr ""
 
 #. placeholder {0}: totals.count
-#. placeholder {1}: formatCents(totals.principalCents)
+#. placeholder {1}: formatCents(totals.principalCents, hidden)
 #: src/components/cap-table/securities/ConvertiblesLedger.tsx
 msgid "{0} SAFEs and notes, {1} principal"
 msgstr ""
@@ -1239,7 +1239,7 @@ msgstr ""
 msgid "1 SAFE found in Legal"
 msgstr ""
 
-#. placeholder {0}: formatCents(totals.principalCents)
+#. placeholder {0}: formatCents(totals.principalCents, hidden)
 #: src/components/cap-table/securities/ConvertiblesLedger.tsx
 msgid "1 SAFE or note, {0} principal"
 msgstr ""
@@ -2731,7 +2731,7 @@ msgstr ""
 msgid "Assign to contact"
 msgstr ""
 
-#. placeholder {0}: formatPrice(view.estimatedValue.pricePerShare)
+#. placeholder {0}: formatPrice(view.estimatedValue.pricePerShare, hideAmounts)
 #. placeholder {1}: formatDay(view.estimatedValue.effectiveDate)
 #: src/pages/portal/PortalHoldings.tsx
 msgid "at {0} per share, {1}"
@@ -3128,7 +3128,7 @@ msgstr ""
 msgid "Board approve funding"
 msgstr ""
 
-#. placeholder {0}: formatCents(funding.approvedCents)
+#. placeholder {0}: formatCents(funding.approvedCents, hidden)
 #: src/components/cap-table/securities/SafeFunding.tsx
 msgid "Board approved {0}"
 msgstr ""
@@ -3623,6 +3623,10 @@ msgstr ""
 #: src/pages/shell/pages.tsx
 msgid "Cap table"
 msgstr ""
+
+#: src/components/cap-table/access/ActivityLog.tsx
+msgid "Cap table activity"
+msgstr "Actividad de la tabla de capitalización"
 
 #: src/pages/shell/pages.tsx
 msgid "cap table, equity, ownership, Carta"
@@ -5639,6 +5643,14 @@ msgstr ""
 msgid "Could not load commands"
 msgstr ""
 
+#: src/pages/Company.tsx
+msgid "Could not load company information."
+msgstr "No se pudo cargar la información de la empresa."
+
+#: src/pages/Company.tsx
+msgid "Could not load company review."
+msgstr "No se pudo cargar la revisión de la empresa."
+
 #: src/pages/McpConnectionsPanel.tsx
 msgid "Could not load connections"
 msgstr ""
@@ -6541,7 +6553,7 @@ msgstr ""
 msgid "Cumulative"
 msgstr ""
 
-#. placeholder {0}: formatDollars(total.toString())
+#. placeholder {0}: formatDollars(total.toString(), hidden)
 #: src/components/cap-table/views/FinancingChart.tsx
 msgid "Cumulative cash raised {0}"
 msgstr ""
@@ -8011,6 +8023,7 @@ msgid "Equity"
 msgstr ""
 
 #: src/components/cap-table/options/OptionsPlansPage.tsx
+#: src/components/cap-table/options/PlansTable.tsx
 msgid "Equity plans"
 msgstr ""
 
@@ -8045,7 +8058,7 @@ msgstr ""
 msgid "Estimated value"
 msgstr ""
 
-#. placeholder {0}: formatCents(view.estimatedValue.valueCents)
+#. placeholder {0}: hideAmounts ? "$•••" : formatCents(view.estimatedValue.valueCents)
 #: src/pages/portal/PortalHoldings.tsx
 msgid "Estimated value {0}"
 msgstr ""
@@ -9076,9 +9089,18 @@ msgstr ""
 msgid "Hide action items"
 msgstr ""
 
+#: src/components/cap-table/ConcealedAmountInput.tsx
+msgid "Hide amount"
+msgstr "Ocultar monto"
+
 #: src/components/HideAmountsToggle.tsx
 msgid "Hide amounts"
 msgstr ""
+
+#. placeholder {0}: kindLabel(row.kind)
+#: src/components/cap-table/access/ActivityLog.tsx
+msgid "Hide details for {0}"
+msgstr "Ocultar detalles de {0}"
 
 #: src/pages/Investors.tsx
 msgid "Hide done"
@@ -9497,6 +9519,10 @@ msgstr ""
 #: src/components/cap-table/stakeholders/StakeholderProfile.tsx
 msgid "Individual"
 msgstr ""
+
+#: src/components/cap-table/access/AccessIndividualLevels.tsx
+msgid "Individual access levels"
+msgstr "Niveles de acceso individuales"
 
 #: src/components/cap-table/access/AccessIndividualLevels.tsx
 #: src/components/cap-table/access/AccessPage.tsx
@@ -10320,6 +10346,10 @@ msgstr ""
 msgid "Loading activity…"
 msgstr "Cargando actividad…"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Loading board members…"
+msgstr "Cargando miembros de la junta…"
+
 #: src/pages/CompanyImportScope.tsx
 msgid "Loading channels…"
 msgstr ""
@@ -10331,6 +10361,10 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations…"
 msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Loading investors…"
+msgstr "Cargando inversores…"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
@@ -14464,7 +14498,7 @@ msgstr ""
 msgid "Raised (cents)"
 msgstr ""
 
-#. placeholder {0}: formatCents(funding.raisedCents)
+#. placeholder {0}: formatCents(funding.raisedCents, hidden)
 #: src/components/cap-table/securities/SafeFunding.tsx
 msgid "Raised {0}"
 msgstr ""
@@ -14988,7 +15022,7 @@ msgstr ""
 msgid "Reload"
 msgstr ""
 
-#. placeholder {0}: formatCents(funding.remainingCents)
+#. placeholder {0}: formatCents(funding.remainingCents, hidden)
 #: src/components/cap-table/securities/SafeFunding.tsx
 msgid "Remaining {0}"
 msgstr ""
@@ -17072,9 +17106,18 @@ msgstr ""
 msgid "Show all {0} changes"
 msgstr ""
 
+#: src/components/cap-table/ConcealedAmountInput.tsx
+msgid "Show amount"
+msgstr "Mostrar monto"
+
 #: src/pages/Legal.tsx
 msgid "Show closed"
 msgstr ""
+
+#. placeholder {0}: kindLabel(row.kind)
+#: src/components/cap-table/access/ActivityLog.tsx
+msgid "Show details for {0}"
+msgstr "Mostrar detalles de {0}"
 
 #: src/pages/Investors.tsx
 msgid "Show done"
@@ -19714,6 +19757,10 @@ msgstr ""
 #: src/components/ApprovalActionsTable.tsx
 msgid "Use the computer"
 msgstr ""
+
+#: src/pages/Scanner.tsx
+msgid "Use the desktop app to scan a document."
+msgstr "Escanea un documento con la aplicación de escritorio."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use this model"

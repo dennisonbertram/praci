@@ -588,6 +588,7 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   // answered here the way the API answers once a model is connected.
   const recipient = { key: "recipient-key", name: "OpenRouter" };
   let allowed = false;
+  let allowedListRequests = 0;
   let allowBody: unknown;
   let refreshes = 0;
   const consentStatus = () => ({
@@ -610,14 +611,21 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   await page.route("**/rpc/inbox/list", async (route) => {
     const response = await route.fetch();
     const body = (await response.json()) as { json: Record<string, unknown> };
+    const sorting = allowed && allowedListRequests++ === 0;
     await route.fulfill({
       response,
       json: {
         json: {
           ...body.json,
+          rows: sorting
+            ? (body.json.rows as Array<Record<string, unknown>>).map((row) => ({
+                ...row,
+                needsReply: null,
+              }))
+            : body.json.rows,
           enabled: allowed,
           triageBlocked: allowed ? null : { reason: "needs_consent", recipient },
-          triagePending: false,
+          triagePending: sorting,
         },
       },
     });
@@ -656,7 +664,7 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   const prompt = main.getByRole("region", { name: "Let Praci sort your mail" });
   await expect(prompt).toBeVisible();
   await expect(prompt).toContainText(
-    "are sent to the AI service that runs your bots (OpenRouter).",
+    "The sender, subject and a preview of each message are sent to the AI model that runs your bots.",
   );
   await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
   expect(allowBody).toBeUndefined();

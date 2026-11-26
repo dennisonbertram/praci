@@ -27,7 +27,8 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   await page.getByRole("button", { name: /Day-to-day work/ }).click();
   // The focus step suggests apps but must not rename the bot: the name the
   // user chose during creation ("Chief") is preserved.
-  await expect(page.locator("main").getByText("Chief", { exact: true })).toBeVisible();
+  // The chat composer retains the chosen first bot name. A separate hidden
+  // heading also contains “Chief”, so an exact text locator is ambiguous.
   await expect(page.getByPlaceholder("Message Chief")).toBeVisible();
   await expect(page.getByText("Slack", { exact: true })).toBeVisible();
   await expect(page.getByText("Gmail", { exact: true })).toBeVisible();
@@ -44,7 +45,10 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   await slackCard(page).scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
   await captureScreenshot(page, testInfo, "02-app-suggestions");
-  const authorizeButton = slackCard(page).getByRole("button", { name: "Connect", exact: true });
+  const authorizeButton = slackCard(page).getByRole("button", {
+    name: "Connect Slack",
+    exact: true,
+  });
   const restingBackground = await authorizeButton.evaluate(
     (button) => getComputedStyle(button).backgroundColor,
   );
@@ -99,16 +103,20 @@ test("focus choice follows Simplified Chinese UI locale", async ({ page }, testI
   const picker = settings.getByTestId("ui-locale-select");
   await picker.click();
   await settings.getByRole("option", { name: "简体中文", exact: true }).click();
-  await expect(settings.getByRole("heading", { name: "语言", exact: true })).toBeVisible();
+  await expect(picker).toContainText("简体中文");
+  // The heading names the current settings section (General), not the field.
+  await expect(settings.getByRole("heading", { name: "通用", exact: true })).toBeVisible();
   await settings.getByRole("button", { name: "关闭用户设置" }).click();
   await expect(settings).toHaveCount(0);
 
   await expect(page.getByText("What should I work on first?", { exact: true })).toHaveCount(0);
   await expect(page.getByText("你想让我先做什么？", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /帮我打理公司/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /日常工作/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /收件箱和邮件/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /调研和写作/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /什么都做一点/ })).toBeVisible();
+  await expect(page.getByText("电子邮件、日历和公司页面", { exact: true })).toBeVisible();
+  await expect(page.getByText("Slack 和日历", { exact: true })).toBeVisible();
+  await expect(page.getByText("网页、笔记和文档", { exact: true })).toBeVisible();
   await page.mouse.move(1, 1);
   await captureScreenshot(page, testInfo, "choice-card-onboarding-zh-cn");
 });

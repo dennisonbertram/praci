@@ -4,7 +4,7 @@ import type { EquityOverview } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -82,7 +82,7 @@ afterEach(async () => {
 
 function At() {
   const location = useLocation();
-  return <span data-at={location.pathname} />;
+  return <span data-at={`${location.pathname}${location.search}`} />;
 }
 
 async function renderPage(path: string) {
@@ -92,7 +92,11 @@ async function renderPage(path: string) {
   await act(async () => {
     root?.render(
       <MemoryRouter initialEntries={[path]}>
-        <CapTablePage />
+        <Routes>
+          <Route path="/app/cap-table/*" element={<CapTablePage />} />
+          <Route path="/app/contacts" element={<p>Contacts destination</p>} />
+          <Route path="/app/investors" element={<p>Investors destination</p>} />
+        </Routes>
         <At />
       </MemoryRouter>,
     );
@@ -108,6 +112,25 @@ it("redirects /app/cap-table to the overview tab", async () => {
   );
 });
 
+it("routes the legacy auditor filter to its current Contacts filter", async () => {
+  const container = await renderPage("/app/cap-table?kind=auditor");
+  expect(container.querySelector("[data-at]")?.getAttribute("data-at")).toBe(
+    "/app/contacts?kind=auditor",
+  );
+  expect(container.textContent).toContain("Contacts destination");
+});
+
+it.each(["shareholder", "options"])(
+  "sends the retired Carta %s filter to the unfiltered Investors overview",
+  async (kind) => {
+    const container = await renderPage(`/app/cap-table?kind=${kind}`);
+    expect(container.querySelector("[data-at]")?.getAttribute("data-at")).toBe(
+      "/app/investors",
+    );
+    expect(container.textContent).toContain("Investors destination");
+  },
+);
+
 it("redirects an unknown tab to the overview tab", async () => {
   const container = await renderPage("/app/cap-table/not-a-tab");
   expect(container.querySelector("[data-at]")?.getAttribute("data-at")).toBe(
@@ -116,7 +139,10 @@ it("redirects an unknown tab to the overview tab", async () => {
 });
 
 it("shows the tabs and the stakeholders empty state", async () => {
-  const container = await renderPage("/app/cap-table/stakeholders");
+  const container = await renderPage("/app/cap-table/stakeholders?kind=auditor");
+  expect(container.querySelector("[data-at]")?.getAttribute("data-at")).toBe(
+    "/app/cap-table/stakeholders?kind=auditor",
+  );
   expect(container.textContent).toContain("Cap table");
   expect(container.textContent).toContain("Share classes");
   expect(container.textContent).toContain("No stakeholders");

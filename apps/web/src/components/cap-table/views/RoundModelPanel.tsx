@@ -19,16 +19,18 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { downloadText } from "./download";
-import { formatDollars, formatPercent, formatShares } from "./format";
+import { formatDollars, formatPercent, formatPrice, formatShares } from "./format";
 import { centsToDollars, dollarsToCents } from "./money";
 
 type Investment = { name: string; amount: string };
 
 /** A pro forma cap table for a new priced round. Scenarios are saved; the ledger never changes. */
 export function RoundModelPanel() {
+  const hidden = useHideAmounts();
   const [scenarios, setScenarios] = useState<EquityRoundScenario[]>([]);
   const [scenarioId, setScenarioId] = useState("");
   const [name, setName] = useState("");
@@ -229,7 +231,7 @@ export function RoundModelPanel() {
                   />
                   <span>{row.label}</span>
                   <span className="text-muted-foreground">
-                    {row.stakeholderName} · {formatDollars(row.principalCents)}
+                    {row.stakeholderName} · {formatDollars(row.principalCents, hidden)}
                   </span>
                 </li>
               ))}
@@ -274,13 +276,15 @@ export function RoundModelPanel() {
             <div>
               <dt className="text-xs text-muted-foreground">{t`Price per share`}</dt>
               <dd className="font-semibold tabular-nums">
-                ${model.pricePerShare.replace(/(\.\d{4})\d*$/, "$1")}
+                {hidden
+                  ? formatPrice(model.pricePerShare, true)
+                  : `$${model.pricePerShare.replace(/(\.\d{4})\d*$/, "$1")}`}
               </dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">{t`Post-money`}</dt>
               <dd className="font-semibold tabular-nums">
-                {formatDollars(model.postMoneyValuationCents)}
+                {formatDollars(model.postMoneyValuationCents, hidden)}
               </dd>
             </div>
             <div>

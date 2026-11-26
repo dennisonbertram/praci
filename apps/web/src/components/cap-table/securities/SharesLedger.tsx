@@ -35,6 +35,7 @@ import {
 } from "@rakazo/ui-web";
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { useListParams } from "../../../lib/list-params";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -77,7 +78,7 @@ type Column = {
   end?: boolean;
   /** Tailwind width class; the stakeholder column takes what is left. */
   width?: string;
-  cell: (row: EquityCertificate, places: number) => string;
+  cell: (row: EquityCertificate, places: number, hidden?: boolean) => string;
 };
 
 const COLUMNS: readonly Column[] = [
@@ -109,21 +110,21 @@ const COLUMNS: readonly Column[] = [
     label: () => t`Price per share`,
     sort: "pricePerShare",
     end: true,
-    cell: (row, places) => formatPrice(row.pricePerShare, places),
+    cell: (row, places, hidden) => formatPrice(row.pricePerShare, places, hidden),
   },
   {
     id: "paid",
     width: "w-24",
     label: () => t`Price paid per share`,
     end: true,
-    cell: (row, places) => formatPrice(row.pricePaidPerShare, places),
+    cell: (row, places, hidden) => formatPrice(row.pricePaidPerShare, places, hidden),
   },
   {
     id: "value",
     width: "w-32",
     label: () => t`Transaction value`,
     end: true,
-    cell: (row) => formatCents(row.transactionValueCents),
+    cell: (row, _places, hidden) => formatCents(row.transactionValueCents, hidden),
   },
   {
     id: "issued",
@@ -161,6 +162,7 @@ export function SharesLedger({
   /** Bump to load the page again after a change. */
   reloadKey?: number;
 }) {
+  const hidden = useHideAmounts();
   const list = useListParams(SORTS, { field: "issueDate", dir: "desc" });
   const search = list.param("q") ?? "";
   const statuses = (list.param("status")?.split(",") ?? []) as EquityCertificateStatus[];
@@ -501,7 +503,7 @@ export function SharesLedger({
                       key={column.id}
                       className={column.end ? "text-end tabular-nums" : undefined}
                     >
-                      {column.cell(row, places)}
+                      {column.cell(row, places, hidden)}
                     </TableCell>
                   ))}
                   <TableCell>

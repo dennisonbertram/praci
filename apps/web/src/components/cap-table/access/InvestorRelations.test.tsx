@@ -129,6 +129,30 @@ it("lists holders sorted by ownership desc by default", async () => {
   expect(host.textContent).toContain("Requested");
 });
 
+it("keeps investor access columns in a labelled, keyboard-scrollable region", async () => {
+  await render();
+  const region = host.querySelector('[role="region"][aria-label="Investor relations"]');
+  expect(region?.className).toContain("overflow-x-auto");
+  expect(region?.querySelector("table")?.className).toContain("min-w-[960px]");
+  expect(region?.querySelectorAll("th")).toHaveLength(8);
+});
+
+it("truncates long investor names while keeping the full value accessible", async () => {
+  const name = "The International Long Name Foundation for Example Holdings";
+  accessHolders.list.mockResolvedValue({
+    items: [holder("long-name", name)],
+    total: 1,
+    page: 1,
+    pageSize: 25,
+  });
+  await render();
+  const nameCell = host.querySelector("tbody td[aria-label]");
+  expect(nameCell?.textContent).toBe(name);
+  expect(nameCell?.getAttribute("aria-label")).toBe(name);
+  expect(nameCell?.getAttribute("title")).toBe(name);
+  expect(nameCell?.querySelector("span")?.className).toContain("truncate");
+});
+
 it("sends the level filter", async () => {
   await render();
   await change("Access level", "basic");

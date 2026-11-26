@@ -3,6 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -36,6 +37,7 @@ afterEach(async () => {
     });
   root = null;
   document.body.innerHTML = "";
+  setHideAmounts(false);
 });
 
 const certificate = {
@@ -86,4 +88,24 @@ it("fills Personnel from the stakeholder when nothing was recorded at issue", as
   expect(rpcMock.stakeholder).toHaveBeenCalledWith({ id: "sh-1" });
   expect(document.body.textContent).toContain("dev.example@example.test");
   expect(document.body.textContent).toContain("Employee");
+});
+
+it("masks certificate amounts and updates while the detail sheet is open", async () => {
+  setHideAmounts(false);
+  rpcMock.certificate.mockResolvedValue(certificate);
+  rpcMock.stakeholder.mockResolvedValue(null);
+  const container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => {
+    root?.render(<SecurityRecord kind="certificate" id="cert-26" onOpenChange={() => undefined} />);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(document.body.textContent).toContain("$1,750.00");
+  await act(async () => setHideAmounts(true));
+  expect(document.body.textContent).toContain("$•••");
+  expect(document.body.textContent).not.toContain("$1,750.00");
+  expect(document.body.textContent).toContain("17,500");
+  await act(async () => setHideAmounts(false));
+  expect(document.body.textContent).toContain("$1,750.00");
 });

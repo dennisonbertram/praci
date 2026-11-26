@@ -94,7 +94,22 @@ export const Ready: Story = {
     markStoryPlayComplete("Ready");
   },
 };
-export const Empty: Story = { beforeEach: () => load("ready", true) };
+export const Empty: Story = {
+  beforeEach: () => load("ready", true),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() =>
+      expect(canvas.getByRole("status")).toHaveTextContent(
+        "ScanSnap iX1600 · Scans when paper is loaded",
+      ),
+    );
+    await expect(canvas.getByRole("button", { name: "Scan" })).toBeEnabled();
+    await expect(
+      canvas.queryByText("Use the desktop app to scan a document."),
+    ).not.toBeInTheDocument();
+    markStoryPlayComplete("Empty");
+  },
+};
 export const Scanning: Story = {
   beforeEach: () => load("scanning"),
   play: async ({ canvasElement }) => {
@@ -126,6 +141,17 @@ export const Browser: Story = {
   play: async ({ canvasElement }) => {
     expect(within(canvasElement).queryByRole("button", { name: "Scan" })).not.toBeInTheDocument();
     markStoryPlayComplete("Browser");
+  },
+};
+export const BrowserEmpty: Story = {
+  beforeEach: () => load(undefined, true),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByText("No scans yet")).resolves.toBeVisible();
+    await expect(
+      canvas.findByText("Use the desktop app to scan a document."),
+    ).resolves.toBeVisible();
+    expect(canvas.queryByRole("button", { name: "Scan" })).not.toBeInTheDocument();
   },
 };
 export const Phone: Story = {

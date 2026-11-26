@@ -21,6 +21,7 @@ import {
   Textarea,
 } from "@rakazo/ui-web";
 import { useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { formatPrice } from "./format";
@@ -37,6 +38,7 @@ export function OptionRepriceDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [exercisePrice, setExercisePrice] = useState("");
   const [note, setNote] = useState("");
   const [reviewing, setReviewing] = useState(false);
@@ -85,7 +87,8 @@ export function OptionRepriceDialog({
                     <TableCell className="font-medium">{grant.label}</TableCell>
                     <TableCell className="truncate">{grant.stakeholderName}</TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {formatPrice(grant.exercisePrice)} → {formatPrice(exercisePrice)}
+                      {formatPrice(grant.exercisePrice, hidden)} →{" "}
+                      {formatPrice(exercisePrice, hidden)}
                     </TableCell>
                   </TableRow>
                 ))}

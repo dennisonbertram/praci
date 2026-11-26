@@ -3,7 +3,7 @@
 **Date**: 2026-10-20
 **Total stories**: 38 kept (41 written; 3 merged, see "Merged stories")
 **Coverage**: 15 of 17 planned features covered (88%), counted from the feature map in `discovery.md`. "Covered" means at least one kept story walks a user-visible path that the feature creates or changes. The two uncovered features are internal and have no user path: Granola S1 (`MeetingSource`, tables, `meetings.json` export; only mentioned in GS-7 step 5) and Flow S1 (`TranscriptionProvider` interface and conformance suite). Granola S2 (API source adapter) is counted as covered through key validation in GS-2 although its 429 and 413 handling is invisible to users.
-**Scope**: both plans are unbuilt. Plans: `docs/plans/granola.md` (epic #444), `docs/plans/wispr-flow.md` (epic #452). Mockups: `docs/granola/mockup.html` (screen ids `screen-integrations`, `screen-api-key`, `screen-agent`, `screen-inbox`, `screen-citation`, `screen-disconnect`, `screen-mobile`; the weekly routine screen was removed when S7 was deferred) and `docs/wispr-flow/mockup.html` (`screen-settings-voice`, `screen-consent`, `screen-call`, `screen-flow-meetings`, `screen-mobile`). Open a state with `mockup.html#screen-id`, then press the state pill named in the "Mockup screen" line.
+**Scope**: These stories describe the 2026-10-20 Granola and Wispr Flow plans and mockups, not a current feature inventory. See the implementation refresh below before walking. Plans: `docs/plans/granola.md` (epic #444), `docs/plans/wispr-flow.md` (epic #452). Mockups: `docs/granola/mockup.html` and `docs/wispr-flow/mockup.html` remain design references.
 
 Story IDs keep their topic prefix and are not renumbered: GS (granola-setup-recovery), IF (inbox-followups), MX (meetings-cross-provider), WF (wispr-flow-voice), MB (mobile). Issue numbers known from the plans: Granola S1 #437, S2 #438, S3 #439, S4 #440; Flow S5 #450. Granola S5, S6, S7 and Flow S1, S1b, S1c, S2, S3a, S3b, S4, S6 have no issue number in the plans and are written as slice names.
 
@@ -12,6 +12,10 @@ All people, companies and meetings in the stories are invented.
 **Stories and drafts:** the stories in this file are current. The files in `docs/ux-paths/meetings-voice/topics/` are the original drafts and are not updated.
 
 **History:** the story steps were refreshed after round 3 and match the current plans. The sections after the stories record what round 1 found. These are the mobile comparison table, Redundancy Candidates, Gaps and the JF findings, and they are kept as history. Where they contradict the plans, for example "two Granola agents", "no delete" or "API access required", the plans and the fix lists win. The fix lists are `fix-list.md`, `fix-list-round-2.md` and `fix-list-round-3.md`.
+
+### Implementation refresh (2026-11-26)
+
+Granola meeting storage and the user-facing Meetings page are implemented. The live paths are `/app/meetings` for the meeting list/detail and local capture, Settings → Voice for speech-provider setup, and Integrations → Granola for API-key setup. See `apps/web/src/pages/Meetings.tsx`, `MeetingDetail.tsx`, `VoiceSettingsOverlay.tsx`, `components/integrations/GranolaPage.tsx` and `GranolaMeetingsCard.tsx`, plus `apps/api/src/meetings.ts`, `meetings-local.ts` and `meeting-captures.ts`. Do not describe these surfaces as planned or unbuilt. The October story preconditions about mockups and “planned” status are historical; connected-provider data, transcript results and real microphone capture still need an appropriate configured source and were not established by an empty demo account.
 
 ## Summary by type
 

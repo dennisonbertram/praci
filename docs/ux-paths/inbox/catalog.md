@@ -8,6 +8,10 @@ Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keep
 
 **Persona for every story.** A naive first-time user: a startup founder who has never seen Praci or its code, does not know its words ("triage", "noise", "agent", "Data room", "approval"), and only wants to run their company clearly and consistently. In the stories they are called **Maya**, the founder of the mock company. Steps say what Maya would try, in her words, and mark **Hesitation** where she would likely pause or misread a label. "UNVERIFIED" marks a behaviour read from code but not seen running; the walker should record what actually appears.
 
+### Current implementation note (2026-11-26)
+
+Use the current Inbox implementation at `/app/inbox` when walking these stories. The route now offers Important, Updates, Newsletters and All piles, along with connected-account filters. The sidebar unread badge is a separate 14-day inbox total; it does not represent the unread rows in the selected pile. Do not compare the badge with a single pile's visible rows or assume the exact message names/counts in the older mock-data section match the current demo seed. Search queries use Gmail search syntax; `in:sent` can return sent mail, including replies in the same thread. The demo seed and counts may change between walks.
+
 **Scope note on the Data room (written 2026-10-17, superseded: see the Refresh 2026-10-20 block).** On that commit the Data room had **no** "Import from email" and the Inbox has no "Save to Data room" action; the agent has only `data_room_search` and `data_room_read` (`builtin-tools.ts:1021-1028`), no tool that adds files. The way to file a mail attachment is: download it, then **Choose files** on the Data room page or drop it on any app page (STORY-INB-016, 022, 024). **PR #109 (`origin/feat/legal`)** adds `ImportFromEmail.tsx` to the Data room page (a button "Import from email", or "Connect Gmail" when none is connected, that opens a picker of mail with attachments). The main-branch path stays the primary path in every story; each Data-room story says what changes once #109 merges.
 
 ---

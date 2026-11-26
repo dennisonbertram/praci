@@ -193,3 +193,13 @@ export const RecipientsFailed: Story = {
       "investors.updates.save": update(),
     }),
 };
+
+/** The To list is still loading: keep its empty-state copy hidden until the request settles. */
+export const RecipientsLoading: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "investors.updates.get": update(),
+      "investors.updates.accounts": accounts,
+      "contacts.list": () => new Promise(() => {}),
+    }),
+};

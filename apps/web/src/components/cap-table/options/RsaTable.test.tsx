@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -78,6 +79,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = null;
   document.body.innerHTML = "";
+  setHideAmounts(false);
   vi.clearAllMocks();
 });
 
@@ -153,6 +155,12 @@ it("lists plan certificates and excludes option exercise certificates", async ()
   expect(container.textContent).not.toContain("Riley Okafor");
   expect(container.textContent).toContain("Feb 1, 2026");
   expect(container.querySelector('[aria-label="Actions for CS-1"]')).not.toBeNull();
+  expect(container.textContent).toContain("$0.001");
+  await act(async () => setHideAmounts(true));
+  expect(container.textContent).toContain("$•••");
+  expect(container.textContent).not.toContain("$0.001");
+  await act(async () => setHideAmounts(false));
+  expect(container.textContent).toContain("$0.001");
 });
 
 it("issues an RSA under the plan's share class after the review step", async () => {

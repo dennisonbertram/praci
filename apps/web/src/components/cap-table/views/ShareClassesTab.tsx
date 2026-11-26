@@ -23,6 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { CapTableEmptyState } from "../shell/CapTableEmptyState";
@@ -30,10 +31,12 @@ import { formatPrice, formatShares } from "./format";
 import { ShareClassForm } from "./ShareClassForm";
 
 const yesNo = (value: boolean) => (value ? t`Yes` : t`No`);
-const money = (value: string | null) => (value == null ? "—" : formatPrice(value));
+const money = (value: string | null, hidden: boolean) =>
+  value == null ? "—" : formatPrice(value, hidden);
 
 /** Share classes with their terms as of an incorporation document date; create and edit terms. */
 export function ShareClassesTab() {
+  const hidden = useHideAmounts();
   const [classes, setClasses] = useState<EquityShareClass[] | null>(null);
   const [dates, setDates] = useState<string[]>([]);
   const [asOfDocumentDate, setAsOfDocumentDate] = useState("");
@@ -195,17 +198,17 @@ export function ShareClassesTab() {
                       {allTerms ? <TableCell>{yesNo(terms.certificated)}</TableCell> : null}
                       {allTerms ? (
                         <TableCell className="text-end tabular-nums">
-                          {money(terms.parValue)}
+                          {money(terms.parValue, hidden)}
                         </TableCell>
                       ) : null}
                       <TableCell className="text-end tabular-nums">{terms.seniority}</TableCell>
                       {allTerms ? <TableCell>{yesNo(terms.pariPassu)}</TableCell> : null}
                       <TableCell className="text-end tabular-nums">
-                        {preferred ? money(terms.originalIssuePrice) : "—"}
+                        {preferred ? money(terms.originalIssuePrice, hidden) : "—"}
                       </TableCell>
                       {allTerms ? (
                         <TableCell className="text-end tabular-nums">
-                          {preferred ? money(terms.conversionPrice) : "—"}
+                          {preferred ? money(terms.conversionPrice, hidden) : "—"}
                         </TableCell>
                       ) : null}
                       {allTerms ? (

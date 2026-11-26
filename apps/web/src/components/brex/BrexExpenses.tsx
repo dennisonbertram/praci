@@ -21,7 +21,7 @@ import {
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { money, shortDay } from "../../lib/finance-format";
+import { moneyInList, shortDay } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { sortBy, useListParams } from "../../lib/list-params";
 import { rpc } from "../../lib/rpc";
@@ -67,7 +67,7 @@ function missingChips(expense: BrexExpenseView) {
 function amountText(expense: BrexExpenseView): string {
   return expense.amountCents === null
     ? dash
-    : money(expense.amountCents, undefined, expense.currency ?? undefined);
+    : moneyInList(expense.amountCents, undefined, expense.currency ?? undefined);
 }
 
 /** Edit memo sends one fixed message: the expense id and the memo as data. The memo's text never steers the template. */

@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
 import type { EquityOverview } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useSearchParams } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -120,6 +122,9 @@ const empty: EquityOverview = {
 let root: ReturnType<typeof createRoot> | null = null;
 beforeEach(() => {
   vi.clearAllMocks();
+  i18n.load("en", {});
+  i18n.activate("en");
+  setHideAmounts(false);
   rpcMock.savedViews.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 500 });
 });
 afterEach(async () => {
@@ -128,6 +133,7 @@ afterEach(async () => {
       root?.unmount();
     });
   root = null;
+  setHideAmounts(false);
 });
 
 const Query = () => {
@@ -160,6 +166,38 @@ it("shows the totals and the class table from the overview", async () => {
   expect(content).toContain("10,000,000");
   expect(content).toContain("$265,000");
   expect(content).toContain("2026 Stock Plan");
+});
+
+it("rounds fractional dollars consistently in the amount raised total and class rows", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    totals: { ...base.totals, amountRaisedCents: "3429201250" },
+    classes: [
+      { ...base.classes[0]!, amountRaisedCents: "21601250" },
+      { ...base.classes[1]!, amountRaisedCents: "3407600000" },
+    ],
+  });
+  const container = await render();
+  const content = container.textContent ?? "";
+  expect(content).toContain("$34,292,013");
+  expect(content).toContain("$216,013");
+});
+
+it("masks fundraising and debt amounts while preserving share counts, then restores them", async () => {
+  rpcMock.overview.mockResolvedValue(base);
+  const container = await render();
+  expect(container.textContent).toContain("$5,000,000");
+  expect(container.textContent).toContain("12,000,000");
+
+  await act(async () => setHideAmounts(true));
+  expect(container.textContent).toContain("$•••");
+  expect(container.textContent).not.toContain("$5,000,000");
+  expect(container.textContent).not.toContain("$265,000");
+  expect(container.textContent).toContain("12,000,000");
+
+  await act(async () => setHideAmounts(false));
+  expect(container.textContent).toContain("$5,000,000");
+  expect(container.textContent).toContain("$265,000");
 });
 
 it("copies the snapshot and refetches when the ledger is empty", async () => {

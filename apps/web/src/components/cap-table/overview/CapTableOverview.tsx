@@ -23,6 +23,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { percentFigure } from "../../../lib/finance-format";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { sortBy, useListParams } from "../../../lib/list-params";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -30,6 +31,7 @@ import { SectionCard } from "../../SectionCard";
 import { OwnershipBar } from "../OwnershipBar";
 import { CapTableEmptyState } from "../shell/CapTableEmptyState";
 import { downloadText } from "../views/download";
+import { formatDollars } from "../views/format";
 import { OverviewSavedViews } from "../views/OverviewSavedViews";
 import { StakeholderCapTable } from "../views/StakeholderCapTable";
 import { fullyDilutedParts, ownershipLegend, percentText } from "./fully-diluted";
@@ -38,10 +40,6 @@ const locale = () => i18n.locale || "en";
 
 /** Share counts arrive as integer strings: BigInt keeps the digits, the formatter adds separators. */
 const shares = (value: string) => new Intl.NumberFormat(locale()).format(BigInt(value));
-
-/** Cents as whole dollars, still through BigInt so no sum passes through a float. */
-const dollars = (value: string) =>
-  `$${new Intl.NumberFormat(locale()).format(BigInt(value) / 100n)}`;
 
 const percent = (value: string) => percentFigure(Number(value), 2);
 
@@ -60,9 +58,11 @@ type SortField = (typeof SORTS)[number];
 function ClassTable({
   overview,
   fullyDiluted,
+  hidden,
 }: {
   overview: EquityOverview;
   fullyDiluted: boolean;
+  hidden: boolean;
 }) {
   const list = useListParams(SORTS, { field: "diluted", dir: "desc" });
   const parts = fullyDilutedParts(overview);
@@ -133,7 +133,7 @@ function ClassTable({
               )}
             </TableCell>
             <TableCell className="text-end tabular-nums">
-              {dollars(row.amountRaisedCents)}
+              {formatDollars(row.amountRaisedCents, hidden)}
             </TableCell>
           </TableRow>
         ))}
@@ -155,6 +155,7 @@ function ClassTable({
 
 /** The overview tab: what the company is made of, by share class. */
 export function CapTableOverview() {
+  const hidden = useHideAmounts();
   const [overview, setOverview] = useState<EquityOverview | null>(null);
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
@@ -309,7 +310,7 @@ export function CapTableOverview() {
         <div>
           <dt className="text-xs text-muted-foreground">{t`Amount raised`}</dt>
           <dd className="text-lg font-semibold tabular-nums">
-            {dollars(totals.amountRaisedCents)}
+            {formatDollars(totals.amountRaisedCents, hidden)}
           </dd>
         </div>
       </dl>
@@ -336,7 +337,7 @@ export function CapTableOverview() {
           {/* The class rows and the totals row share one width, so they scroll together on a phone. */}
           <div className="overflow-x-auto">
             <div className="min-w-xl">
-              <ClassTable overview={overview} fullyDiluted={fullyDiluted} />
+              <ClassTable overview={overview} fullyDiluted={fullyDiluted} hidden={hidden} />
               <Table>
                 <TableBody aria-label={t`Totals`}>
                   <TableRow>
@@ -359,7 +360,7 @@ export function CapTableOverview() {
                         : "—"}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {dollars(totals.amountRaisedCents)}
+                      {formatDollars(totals.amountRaisedCents, hidden)}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -416,13 +417,13 @@ export function CapTableOverview() {
                 <TableRow key={block.blockId ?? `block-${index}`}>
                   <TableCell className="font-medium">{block.name}</TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {dollars(block.principalCents)}
+                    {formatDollars(block.principalCents, hidden)}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {dollars(block.interestCents)}
+                    {formatDollars(block.interestCents, hidden)}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {dollars(block.outstandingDebtCents)}
+                    {formatDollars(block.outstandingDebtCents, hidden)}
                   </TableCell>
                 </TableRow>
               ))}

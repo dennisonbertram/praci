@@ -1,6 +1,47 @@
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type * as React from "react";
+import { useEffect, useRef, useState } from "react";
+
+type TableScrollRegionProps = Omit<React.ComponentProps<"div">, "role" | "tabIndex"> & {
+  "aria-label": string;
+};
+
+/** A labelled horizontal scroll area that joins keyboard order only when its content overflows. */
+function TableScrollRegion({ className, ...props }: TableScrollRegionProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrollable, setScrollable] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const update = () => setScrollable(element.scrollWidth > element.clientWidth);
+    update();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    if (element.firstElementChild instanceof HTMLElement)
+      observer?.observe(element.firstElementChild);
+    window.addEventListener("resize", update);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return (
+    <div
+      {...props}
+      ref={ref}
+      role="region"
+      tabIndex={scrollable ? 0 : undefined}
+      className={cn(
+        "overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring",
+        className,
+      )}
+    />
+  );
+}
 
 // `compact` is for dense lists of short rows: columns size to their content (no fixed layout, so
 // give columns widths only where they need them) and rows are as tall as their content.
@@ -144,4 +185,5 @@ export {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 };

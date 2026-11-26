@@ -6,14 +6,28 @@ const locale = () => i18n.locale || "en";
 export const formatShares = (value: string) =>
   new Intl.NumberFormat(locale()).format(BigInt(value));
 
-/** A price per share in dollars with two decimals, from a decimal string (display only). */
-export const formatPrice = (value: string) =>
-  new Intl.NumberFormat(locale(), {
+/** A decimal price as dollars, localized without rounding its decimal string. */
+export const formatPrice = (value: string, hidden = false) => {
+  if (hidden) return "$•••";
+  const [whole = "0", fraction = ""] = value.split(".");
+  const shown = fraction.replace(/0+$/, "").padEnd(2, "0");
+  const currentLocale = locale();
+  const currency = new Intl.NumberFormat(currentLocale, {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(value));
+  });
+  const digits = new Intl.NumberFormat(currentLocale, { useGrouping: false });
+  const isNegative = whole.startsWith("-");
+  const integer = BigInt(whole);
+  const negativeZero = isNegative && integer === 0n;
+  const localizedFraction = [...shown].map((digit) => digits.format(Number(digit))).join("");
+  return currency
+    .formatToParts(negativeZero ? -0 : integer)
+    .map((part) => (part.type === "fraction" ? localizedFraction : part.value))
+    .join("");
+};
 
 /** "Mar 4, 2025" from YYYY-MM-DD, without a time zone shift. */
 export const formatDay = (value: string) =>

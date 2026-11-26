@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
 import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -28,6 +30,9 @@ let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   vi.clearAllMocks();
+  i18n.load("en", {});
+  i18n.activate("en");
+  setHideAmounts(false);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -37,6 +42,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => root.unmount());
+  setHideAmounts(false);
   host.remove();
 });
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -73,6 +79,12 @@ it("models terms in cents, shows the pro forma, and saves the scenario", async (
   expect(host.textContent).toContain("$1.6000");
   expect(host.textContent).toContain("Option pool");
   expect(host.textContent).toContain("3,125,000");
+  await act(async () => setHideAmounts(true));
+  expect(host.textContent).toContain("$•••");
+  expect(host.textContent).not.toContain("$1.6000");
+  expect(host.textContent).toContain("3,125,000");
+  await act(async () => setHideAmounts(false));
+  expect(host.textContent).toContain("$1.6000");
   await act(async () => button("Download CSV").click());
   const [file, csv] = download.downloadText.mock.calls[0] as [string, string];
   expect(file).toBe("pro-forma-2026-10-15.csv");

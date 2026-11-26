@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
 import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -25,6 +27,9 @@ let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   vi.clearAllMocks();
+  i18n.load("en", {});
+  i18n.activate("en");
+  setHideAmounts(false);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -32,6 +37,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => root.unmount());
+  setHideAmounts(false);
   host.remove();
 });
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -86,6 +92,47 @@ it("records one history entry when Download CSV is clicked twice", async () => {
     await settle();
   });
   expect(rpcMock.views.report).toHaveBeenCalledTimes(1);
+});
+
+it("masks report money and restores it without changing shares, percentages, or CSV", async () => {
+  const report = {
+    ...reportFixture,
+    columns: [
+      ...reportFixture.columns,
+      { key: "price", label: "Price per share", numeric: true, format: "price" as const },
+    ],
+    rows: reportFixture.rows.map((row) => ({ ...row, price: "1.25" })),
+  };
+  rpcMock.views.report.mockResolvedValue(report);
+  await act(async () => {
+    root.render(<ReportViewer kind="cap_table" />);
+    await settle();
+  });
+  expect(host.textContent).toContain("$63,975.00");
+  expect(host.textContent).toContain("$1.25");
+  expect(host.textContent).toContain("8,000,000");
+
+  await act(async () => setHideAmounts(true));
+  expect(host.textContent).toContain("$•••");
+  expect(host.textContent).not.toContain("$63,975.00");
+  expect(host.textContent).not.toContain("$2,000,000.00");
+  expect(host.textContent).not.toContain("$1.25");
+  expect(host.textContent).toContain("8,000,000");
+  expect(host.textContent).toContain("66.67%");
+  expect(host.textContent).toContain("Common");
+  expect(rpcMock.views.report).toHaveBeenCalledTimes(1);
+
+  const csv = [...host.querySelectorAll("button")].find((b) => b.textContent === "Download CSV")!;
+  await act(async () => {
+    csv.click();
+    await settle();
+  });
+  expect(rpcMock.views.report).toHaveBeenLastCalledWith(expect.objectContaining({ record: true }));
+  expect(download.downloadText).toHaveBeenCalledWith("cap-table-2026-10-15.csv", report.csv);
+
+  await act(async () => setHideAmounts(false));
+  expect(host.textContent).toContain("$63,975.00");
+  expect(host.textContent).toContain("$1.25");
 });
 
 it("asks other reports without cap table options", async () => {

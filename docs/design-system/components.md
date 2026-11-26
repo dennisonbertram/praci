@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 444 of 444
-- Web and shared components: 1024
+- Web and shared component files with stories: 445 of 445
+- Web and shared components: 1026
 - Mobile components: 158 in 105 files, mobile — native story pending
 - SwiftUI views: 192 in 103 files, native story pending
 
@@ -48,7 +48,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | Skeleton | [packages/ui-web/src/components/ui/skeleton.tsx](../../packages/ui-web/src/components/ui/skeleton.tsx) | [skeleton.stories.tsx](../../packages/ui-web/src/components/ui/skeleton.stories.tsx) | shared |
 | Spinner | [packages/ui-web/src/components/ui/spinner.tsx](../../packages/ui-web/src/components/ui/spinner.tsx) | [spinner.stories.tsx](../../packages/ui-web/src/components/ui/spinner.stories.tsx) | shared |
 | Switch | [packages/ui-web/src/components/ui/switch.tsx](../../packages/ui-web/src/components/ui/switch.tsx) | [switch.stories.tsx](../../packages/ui-web/src/components/ui/switch.stories.tsx) | shared |
-| Table, TableHeader, TableBody, TableRow, TableHeadRow, TableHead, TableCell, TableCaption | [packages/ui-web/src/components/ui/table.tsx](../../packages/ui-web/src/components/ui/table.tsx) | [table.stories.tsx](../../packages/ui-web/src/components/ui/table.stories.tsx) | shared |
+| TableScrollRegion, Table, TableHeader, TableBody, TableRow, TableHeadRow, TableHead, TableCell, TableCaption | [packages/ui-web/src/components/ui/table.tsx](../../packages/ui-web/src/components/ui/table.tsx) | [table.stories.tsx](../../packages/ui-web/src/components/ui/table.stories.tsx) | shared |
 | Tabs, TabsList, TabsTrigger, TabsContent | [packages/ui-web/src/components/ui/tabs.tsx](../../packages/ui-web/src/components/ui/tabs.tsx) | [tabs.stories.tsx](../../packages/ui-web/src/components/ui/tabs.stories.tsx) | shared |
 | Textarea | [packages/ui-web/src/components/ui/textarea.tsx](../../packages/ui-web/src/components/ui/textarea.tsx) | [textarea.stories.tsx](../../packages/ui-web/src/components/ui/textarea.stories.tsx) | shared |
 | Toggle | [packages/ui-web/src/components/ui/toggle.tsx](../../packages/ui-web/src/components/ui/toggle.tsx) | [toggle.stories.tsx](../../packages/ui-web/src/components/ui/toggle.stories.tsx) | shared |
@@ -192,6 +192,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | LinkContact | [apps/web/src/components/cap-table/access/LinkContact.tsx](../../apps/web/src/components/cap-table/access/LinkContact.tsx) | [LinkContact.stories.tsx](../../apps/web/src/components/cap-table/access/LinkContact.stories.tsx) | web |
 | Pager | [apps/web/src/components/cap-table/access/Pager.tsx](../../apps/web/src/components/cap-table/access/Pager.tsx) | [Pager.stories.tsx](../../apps/web/src/components/cap-table/access/Pager.stories.tsx) | web |
 | CapTableEditor | [apps/web/src/components/cap-table/CapTableEditor.tsx](../../apps/web/src/components/cap-table/CapTableEditor.tsx) | [CapTableEditor.stories.tsx](../../apps/web/src/components/cap-table/CapTableEditor.stories.tsx) | web |
+| ConcealedAmountInput | [apps/web/src/components/cap-table/ConcealedAmountInput.tsx](../../apps/web/src/components/cap-table/ConcealedAmountInput.tsx) | [ConcealedAmountInput.stories.tsx](../../apps/web/src/components/cap-table/ConcealedAmountInput.stories.tsx) | web |
 | HoldingsTable | [apps/web/src/components/cap-table/HoldingsTable.tsx](../../apps/web/src/components/cap-table/HoldingsTable.tsx) | [HoldingsTable.stories.tsx](../../apps/web/src/components/cap-table/HoldingsTable.stories.tsx) | web |
 | Iso100kDialog | [apps/web/src/components/cap-table/options/Iso100kDialog.tsx](../../apps/web/src/components/cap-table/options/Iso100kDialog.tsx) | [Iso100kDialog.stories.tsx](../../apps/web/src/components/cap-table/options/Iso100kDialog.stories.tsx) | web |
 | OptionBulkCancelDialog | [apps/web/src/components/cap-table/options/OptionBulkCancelDialog.tsx](../../apps/web/src/components/cap-table/options/OptionBulkCancelDialog.tsx) | [OptionBulkCancelDialog.stories.tsx](../../apps/web/src/components/cap-table/options/OptionBulkCancelDialog.stories.tsx) | web |

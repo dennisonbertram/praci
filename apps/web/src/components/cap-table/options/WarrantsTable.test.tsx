@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -53,6 +54,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = null;
   document.body.innerHTML = "";
+  setHideAmounts(false);
   vi.clearAllMocks();
 });
 
@@ -96,6 +98,11 @@ it("lists warrants with their holder, class, status and terms", async () => {
   expect(container.textContent).toContain("Canceled");
   expect(container.textContent).toContain("Mar 4, 2025");
   expect(container.querySelector('[aria-label="Actions for W-1"]')).not.toBeNull();
+  await act(async () => setHideAmounts(true));
+  expect(container.textContent).toContain("$•••");
+  expect(container.textContent).not.toContain("$0.25");
+  await act(async () => setHideAmounts(false));
+  expect(container.textContent).toContain("$0.25");
 });
 
 it("shows the empty state with a way to issue the first warrant", async () => {

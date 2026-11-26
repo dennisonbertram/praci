@@ -2,6 +2,7 @@ import { t } from "@lingui/core/macro";
 import type { EquityFundingRound } from "@rakazo/contracts";
 import { Button, Field, FieldLabel, Input } from "@rakazo/ui-web";
 import { useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -30,6 +31,7 @@ export function RoundForm({
   onSaved: (saved: EquityFundingRound) => void;
   onCancel: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [draft, setDraft] = useState<Draft>({
     name: round?.name ?? "",
     startDate: round?.startDate ?? today,
@@ -94,14 +96,19 @@ export function RoundForm({
       [t`Original issue price`, values.originalIssuePrice ?? "—"],
       [
         t`Pre-money`,
-        values.preMoneyValuationCents ? formatDollars(values.preMoneyValuationCents) : "—",
+        values.preMoneyValuationCents ? formatDollars(values.preMoneyValuationCents, hidden) : "—",
       ],
       ...(values.overrides.cashRaisedCents
-        ? [[t`Cash raised`, formatDollars(values.overrides.cashRaisedCents)] as [string, string]]
+        ? [
+            [t`Cash raised`, formatDollars(values.overrides.cashRaisedCents, hidden)] as [
+              string,
+              string,
+            ],
+          ]
         : []),
       ...(values.overrides.postMoneyValuationCents
         ? [
-            [t`Post-money`, formatDollars(values.overrides.postMoneyValuationCents)] as [
+            [t`Post-money`, formatDollars(values.overrides.postMoneyValuationCents, hidden)] as [
               string,
               string,
             ],

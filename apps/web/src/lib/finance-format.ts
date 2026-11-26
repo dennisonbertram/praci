@@ -13,21 +13,71 @@ const dollars = (locale?: string, currency = "USD") =>
 const exact = (locale?: string, currency = "USD") =>
   new Intl.NumberFormat(locale, { style: "currency", currency });
 
-/** Whole dollars, no sign. Money is cents in a JS number. */
-export const money = (cents: number, locale?: string, currency?: string) =>
-  getHideAmounts() ? `$${MASK}` : dollars(locale, currency).format(Math.abs(cents) / 100);
+type Cents = number | bigint;
+
+const asBigIntCents = (cents: Cents): bigint | null =>
+  typeof cents === "bigint" ? cents : Number.isInteger(cents) ? BigInt(cents) : null;
+const absoluteCents = (cents: bigint) => (cents < 0n ? -cents : cents);
+
+/** Formats cents without converting a large integer amount through a floating-point dollar value. */
+function exactCents(cents: Cents, locale?: string, currency?: string): string {
+  const formatter = exact(locale, currency);
+  const integerCents = asBigIntCents(cents);
+  if (integerCents === null) return formatter.format(Math.abs(cents as number) / 100);
+
+  // Currency formatters resolve this; keep a two-digit fallback for TypeScript runtimes that omit it.
+  const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+  const scale = 10n ** BigInt(digits);
+  const scaled = (absoluteCents(integerCents) * scale + 50n) / 100n;
+  const whole = scaled / scale;
+  const fraction = scaled % scale;
+  const localizedFraction =
+    digits === 0
+      ? ""
+      : new Intl.NumberFormat(locale, {
+          useGrouping: false,
+          minimumIntegerDigits: digits,
+          maximumFractionDigits: 0,
+        }).format(fraction);
+  return formatter
+    .formatToParts(whole)
+    .map((part) => (part.type === "fraction" ? localizedFraction : part.value))
+    .join("");
+}
+
+/** Whole dollars, no sign. */
+export const money = (cents: Cents, locale?: string, currency?: string) => {
+  if (getHideAmounts()) return `$${MASK}`;
+  const formatter = dollars(locale, currency);
+  const integerCents = asBigIntCents(cents);
+  return integerCents === null
+    ? formatter.format(Math.abs(cents as number) / 100)
+    : formatter.format((absoluteCents(integerCents) + 50n) / 100n);
+};
 
 /** Dollars and cents, no sign. */
-export const moneyExact = (cents: number, locale?: string, currency?: string) =>
-  getHideAmounts() ? `$${MASK}` : exact(locale, currency).format(Math.abs(cents) / 100);
+export const moneyExact = (cents: Cents, locale?: string, currency?: string) =>
+  getHideAmounts() ? `$${MASK}` : exactCents(cents, locale, currency);
+
+/** List amounts keep whole dollars compact, but retain cents when a fractional dollar is present. */
+export const moneyInList = (cents: Cents, locale?: string, currency?: string) => {
+  const integerCents = asBigIntCents(cents);
+  return integerCents !== null && integerCents % 100n === 0n
+    ? money(cents, locale, currency)
+    : moneyExact(cents, locale, currency);
+};
 
 /** A transaction amount: money in gets a plus sign, money out has none (the page shows what left). */
-export const transactionAmount = (cents: number, locale?: string, currency?: string) =>
-  cents > 0 ? `+${moneyExact(cents, locale, currency)}` : moneyExact(cents, locale, currency);
+export const transactionAmount = (cents: Cents, locale?: string, currency?: string) =>
+  (typeof cents === "bigint" ? cents > 0n : cents > 0)
+    ? `+${moneyExact(cents, locale, currency)}`
+    : moneyExact(cents, locale, currency);
 
-/** A transaction amount in a list, in whole dollars like every other figure on a list page: `+$1,200`, `$88`. A single transaction's page shows the cents. */
-export const listAmount = (cents: number, locale?: string, currency?: string) =>
-  cents > 0 ? `+${money(cents, locale, currency)}` : money(cents, locale, currency);
+/** An itemized transaction amount: retain cents only when needed; money in gets a plus sign. */
+export const listAmount = (cents: Cents, locale?: string, currency?: string) =>
+  (typeof cents === "bigint" ? cents > 0n : cents > 0)
+    ? `+${moneyInList(cents, locale, currency)}`
+    : moneyInList(cents, locale, currency);
 
 /** Axis labels: `$1.5M`, `$1.5k`, `$40k`, `$800`. */
 export function axisMoney(cents: number): string {

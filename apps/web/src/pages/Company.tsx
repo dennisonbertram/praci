@@ -78,8 +78,12 @@ const typeLabels = (): Record<string, string> => ({
 
 export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
   useHideAmounts();
-  const page = useFinanceQuery(() => rpc.company.page(), []);
-  const review = useFinanceQuery(() => rpc.company.review(), []);
+  const page = useFinanceQuery(() => rpc.company.page(), [], {
+    fallback: t`Could not load company information.`,
+  });
+  const review = useFinanceQuery(() => rpc.company.review(), [], {
+    fallback: t`Could not load company review.`,
+  });
   const finance = useFinanceQuery(() => rpc.finance.overview(), []);
   const carta = useFinanceQuery(() => rpc.investors.capTable(), []);
   const [params, setParams] = useSearchParams();

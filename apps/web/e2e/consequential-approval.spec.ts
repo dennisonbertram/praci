@@ -24,7 +24,10 @@ test("actions run by default while optional confirmations live in advanced user 
 
   await page.getByTestId("bot-settings-trigger").click();
   await expect(page.getByTestId("bot-settings")).toBeVisible();
-  await expect(page.getByTestId("bot-settings").getByText("Action confirmations")).toHaveCount(0);
+  await expect(
+    page.getByTestId("bot-settings").getByTestId("action-confirmation-settings"),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("bot-settings").getByTestId("bot-approvals")).toBeVisible();
   await page.getByRole("button", { name: "Close panel" }).click();
 
   const settings = await openUserSettings(page);
@@ -32,24 +35,28 @@ test("actions run by default while optional confirmations live in advanced user 
   await expect(settings).toBeFocused();
   await expect(settings.getByText("Advanced", { exact: true })).toBeVisible();
   await expect(settings.getByText("Optional controls most people never need")).toHaveCount(0);
-  await expect(settings.getByRole("heading", { name: "Action confirmations" })).toHaveCount(0);
+  await expect(settings.getByTestId("action-confirmation-settings")).toHaveCount(0);
   await captureScreenshot(page, testInfo, "51-user-settings-advanced-collapsed");
 
   await settings.getByTestId("settings-nav-privacy").click();
-  await expect(settings.getByRole("heading", { name: "Action confirmations" })).toBeVisible();
+  const approvalSettings = settings.getByTestId("action-confirmation-settings");
+  await expect(approvalSettings).toBeVisible();
+  await expect(approvalSettings.getByRole("heading", { name: "Approvals" })).toBeVisible();
   await expect(
     settings.getByText(
       "Bots act without asking by default. Add an exception only when you want to review a type of action first.",
     ),
   ).toHaveCount(0);
   await expect(settings.getByText("No exceptions. Actions run automatically.")).toHaveCount(0);
-  await expect(settings.getByTestId("auto-review-toggle")).toBeVisible();
-  await expect(settings.getByTestId("auto-review-toggle")).not.toBeChecked();
-  await expect(settings.getByText("Flag unexpected actions")).toBeVisible();
-  await settings.getByRole("switch", { name: "Ask before sending external email" }).click();
-  await expect(
-    settings.getByRole("switch", { name: "Ask before sending external email" }),
-  ).toBeChecked();
+  const autoReview = settings
+    .getByTestId("auto-review-settings")
+    .getByRole("switch", { name: "Auto Review" });
+  await expect(autoReview).toBeVisible();
+  await expect(autoReview).not.toBeChecked();
+  await approvalSettings.getByText("Customize actions").click();
+  const emailRule = approvalSettings.getByRole("combobox", { name: "Send email" });
+  await expect(emailRule).toHaveValue("ask");
+  await expect(approvalSettings.getByText("New recipients always ask")).toBeVisible();
   await captureScreenshot(page, testInfo, "52-advanced-action-confirmations");
   await settings.getByRole("button", { name: "Close user settings" }).click();
 
@@ -71,9 +78,9 @@ test("actions run by default while optional confirmations live in advanced user 
   expect(allowBox).toBeTruthy();
   expect(alwaysBox).toBeTruthy();
   expect(denyBox).toBeTruthy();
-  expect(alwaysBox!.y).toBeGreaterThan(allowBox!.y + allowBox!.height - 2);
-  expect(denyBox!.y).toBeGreaterThan(alwaysBox!.y + alwaysBox!.height - 2);
-  expect(Math.abs(allowBox!.x - alwaysBox!.x)).toBeLessThan(2);
+  expect(denyBox!.y).toBeGreaterThan(allowBox!.y + allowBox!.height - 2);
+  expect(alwaysBox!.y).toBeGreaterThan(denyBox!.y + denyBox!.height - 2);
+  expect(Math.abs(allowBox!.x - denyBox!.x)).toBeLessThan(2);
   const optionList = allowOnce.locator("xpath=ancestor::div[contains(@class,'space-y-1.5')][1]");
   const listBox = await optionList.boundingBox();
   expect(listBox).toBeTruthy();
@@ -81,21 +88,27 @@ test("actions run by default while optional confirmations live in advanced user 
   await captureScreenshot(page, testInfo, "53-action-confirmation-pending");
 
   await page.getByRole("button", { name: "Deny", exact: true }).click();
-  await expect(page.getByText("Denied", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: /Review before writing/ }).last()).toContainText(
+    "Denied",
+  );
   await waitForRunIdle(page);
   await expectComposerReady(page);
   await captureScreenshot(page, testInfo, "54-action-confirmation-denied");
 
   await requestDestinationWrite(page, "write this to the destination crm once more");
   await page.getByRole("button", { name: "Allow once", exact: true }).click();
-  await expect(page.getByText("Approved", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: /Review before writing/ }).last()).toContainText(
+    "Approved",
+  );
   await waitForRunIdle(page);
   await expectComposerReady(page);
   await captureScreenshot(page, testInfo, "55-action-confirmation-allowed-once");
 
   await requestDestinationWrite(page, "write this to the destination crm one final time");
   await page.getByRole("button", { name: "Always allow this", exact: true }).click();
-  await expect(page.getByText("Always allowed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: /Review before writing/ }).last()).toContainText(
+    "Always allowed",
+  );
   await waitForRunIdle(page);
   await expectComposerReady(page);
   await captureScreenshot(page, testInfo, "56-action-confirmation-always-allowed");

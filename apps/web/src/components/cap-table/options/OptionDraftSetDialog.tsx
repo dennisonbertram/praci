@@ -21,6 +21,7 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { listAllPages } from "../../../lib/list-all";
 import { rpc } from "../../../lib/rpc";
@@ -73,6 +74,7 @@ export function OptionDraftSetDialog({
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 }) {
+  const hidden = useHideAmounts();
   const [holders, setHolders] = useState<Option[]>([]);
   const [plans, setPlans] = useState<Option[]>([]);
   const [templates, setTemplates] = useState<EquityVestingTemplate[]>([]);
@@ -335,7 +337,7 @@ export function OptionDraftSetDialog({
                         {rowValid(row) ? figure(row.quantity) : row.quantity}
                       </td>
                       <td className="whitespace-nowrap px-2 py-1 first:pl-0 last:pr-0 text-right tabular-nums">
-                        {formatPrice(row.exercisePrice)}
+                        {formatPrice(row.exercisePrice, hidden)}
                       </td>
                       <td className="whitespace-nowrap px-2 py-1 first:pl-0 last:pr-0">
                         {formatDay(row.grantDate)}

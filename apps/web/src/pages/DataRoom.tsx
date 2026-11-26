@@ -106,11 +106,13 @@ export function DataRoomPage({
   agents,
   onSendToAgent,
   source,
+  emptyDescription,
   headerActions,
   headerMeta,
   beforeList,
 }: {
   source?: "scan";
+  emptyDescription?: ReactNode;
   headerActions?: ReactNode;
   headerMeta?: ReactNode;
   beforeList?: ReactNode;
@@ -843,7 +845,9 @@ export function DataRoomPage({
             }
             title={source === "scan" ? <Trans>No scans yet</Trans> : <Trans>Drop files here</Trans>}
             description={
-              source === "scan" ? undefined : (
+              source === "scan" ? (
+                emptyDescription
+              ) : (
                 <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
               )
             }

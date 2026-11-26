@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -91,13 +92,17 @@ const page = (items: EquityOptionGrant[]) => ({
 });
 
 let root: ReturnType<typeof createRoot> | null = null;
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  setHideAmounts(false);
+  vi.clearAllMocks();
+});
 afterEach(async () => {
   if (root)
     await act(async () => {
       root?.unmount();
     });
   root = null;
+  setHideAmounts(false);
 });
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -149,6 +154,15 @@ it("renders the grant rows with their figures", async () => {
   expect(content).toContain("Mar 4, 2025");
   expect(content).toContain("1/48 monthly, 1 year cliff");
   expect(content).toContain("—");
+});
+
+it("masks grant exercise prices while keeping share counts visible", async () => {
+  setHideAmounts(true);
+  rpcMock.list.mockResolvedValue(page(grants));
+  const container = await render();
+  expect(container.textContent).toContain("$•••");
+  expect(container.textContent).not.toContain("$1.20");
+  expect(container.textContent).toContain("120,000");
 });
 
 it("sends the search to the list", async () => {

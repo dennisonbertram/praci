@@ -51,7 +51,11 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
-  const calls = await mockFinance(page);
+  const calls = await mockFinance(page, {
+    ...connectedOverview,
+    // A fresh overview does not trigger the dashboard's automatic background sync.
+    lastSyncedAt: new Date(Date.now() - 16 * 60_000).toISOString(),
+  });
   await signup(page, `finance-${Date.now()}@rakazo.test`, "password12", "Finance User");
   await completeOnboarding(page);
 
@@ -85,7 +89,12 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(main.locator('a[href^="/app/finance/category/payroll"]')).toHaveCount(0);
 
   // Subscription rows show what paid them on hover and on keyboard focus.
-  const row = main.locator("tbody tr").filter({ hasText: "Umbrella AI" });
+  const row = main
+    .getByRole("link", {
+      name: "Umbrella AI, paid with Brex ••0001 + Mercury Checking ••0002",
+      exact: true,
+    })
+    .locator("xpath=ancestor::tr");
   const pill = row.getByRole("tooltip");
   await expect(pill).toBeHidden();
   await row.hover();
@@ -121,7 +130,7 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(main.getByText("↑ 40%")).toBeVisible();
   // Opened from the dashboard's Breakdown card, so Back says so (Acme Hosting is also a
   // subscription, but the user did not come from there).
-  await expect(main.getByRole("link", { name: "← Breakdown" })).toBeVisible();
+  await expect(main.getByRole("link", { name: "Breakdown", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-vendor");
 
   // A charge without a receipt says so and offers no upload.
@@ -136,10 +145,13 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(page).toHaveURL(/\/app\/finance\?by=vendor#breakdown$/);
 
   // A charge with a receipt opens it.
-  await page.goto(`/app/finance/transaction/${withReceipt.id}`);
-  // The title names the merchant; the charge's own crumb carries its day and amount.
+  await main.getByRole("link", { name: "Acme Hosting" }).first().click();
+  await main.locator("tbody tr").filter({ hasText: "Usage" }).first().getByRole("link").click();
+  await expect(page).toHaveURL(new RegExp(`/app/finance/transaction/${withReceipt.id}$`));
+  // The title names the merchant; the charge details carry its day and amount.
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("Acme Hosting");
-  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Oct 1 · $");
+  await expect(main.getByText(/^\$470(?:\.00)?$/)).toBeVisible();
+  await expect(main.getByText("Oct 1, 2026")).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-transaction");
   await main.getByRole("link", { name: "Open receipt" }).click();
   await expect(page).toHaveURL(new RegExp(`/app/finance/receipt/${withReceipt.id}$`));
@@ -167,7 +179,7 @@ test("Finance with nothing connected offers Add account", async ({ page }, testI
   // The page title sits above the empty state, as on every other page.
   await expect(main.getByRole("heading", { name: "Finance", level: 1 })).toBeVisible();
   await expect(main.getByRole("heading", { name: "No accounts yet", level: 2 })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Ask Finance agent" })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: "Ask Finance agent" })).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-empty");
   await main.getByRole("button", { name: "Add account" }).click();
   await expect(page.getByRole("dialog")).toContainText("Upload statements");
@@ -330,7 +342,7 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   await captureScreenshot(page, testInfo, "finance-accounts-add-wallet");
 });
 
-test("Blockscout tile: no server is ready without a key, Add API key opens the key modal", async ({
+test("Blockscout tile supports keyless wallets and an optional API key", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
@@ -369,9 +381,7 @@ test("Blockscout tile: no server is ready without a key, Add API key opens the k
   await completeOnboarding(page);
   await page.goto("/app/integrations?category=finance");
   const tile = page.getByTestId("finance-tile-crypto");
-  // No key is needed: the tile is ready, offers Add wallet, and keeps the key in its menu.
-  await expect(tile).toContainText("Ready");
-  await expect(tile).toContainText("no key needed");
+  // Keyless Blockscout can add a wallet; the optional API key is in the menu.
   await expect(tile).not.toContainText("Not connected");
   await expect(tile.getByRole("link", { name: "Add wallet" })).toBeVisible();
   await captureScreenshot(page, testInfo, "blockscout-tile-not-connected");

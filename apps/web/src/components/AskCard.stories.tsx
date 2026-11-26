@@ -84,7 +84,11 @@ export const MoneyApprovalWithFoldedDetails: Story = {
         'tool: mcp__finance-mercury__requestSendMoney\narguments: {\n  "amount": 1200,\n  "recipientId": "rcp-demo",\n  "accountId": "acct-demo"\n}',
       detailFolded: true,
       approvalEffectId: "effect_money",
-      actions: approvalActions,
+      // Spending money always needs an explicit, one-time choice. It cannot save an Allow rule.
+      actions: [
+        { id: "allow", label: "Send $1,200.00" },
+        { id: "deny", label: "Deny" },
+      ],
     }),
   },
 };

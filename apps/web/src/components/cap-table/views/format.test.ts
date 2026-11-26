@@ -2,7 +2,18 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core", () => ({ i18n: { locale: "en" } }));
 
-import { formatPrice } from "./format";
+import { formatDollars, formatPrice, formatShares } from "./format";
+
+it("rounds whole dollars from cents to the nearest dollar", () => {
+  expect(formatDollars("3429201250")).toBe("$34,292,013");
+  expect(formatDollars("21601250")).toBe("$216,013");
+});
+
+it("masks money without masking share counts", () => {
+  expect(formatDollars("25000000", true)).toBe("$•••");
+  expect(formatPrice("8.50", true)).toBe("$•••");
+  expect(formatShares("12000000")).toBe("12,000,000");
+});
 
 it("shows a price with two to four places, rounded", () => {
   expect(formatPrice("8.5")).toBe("$8.50");

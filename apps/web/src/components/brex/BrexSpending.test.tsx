@@ -114,3 +114,12 @@ it("hides Card and Person columns on phones", async () => {
     expect(th.className).toContain("@lg:table-cell");
   }
 });
+
+it("keeps fractional card transactions exact and whole-dollar transactions compact", async () => {
+  spending.mockResolvedValue(spendingFixture);
+  await mount();
+
+  expect(container.textContent).toContain("$18.50");
+  expect(container.textContent).toContain("$15");
+  expect(container.textContent).not.toContain("$15.00");
+});

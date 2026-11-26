@@ -1114,8 +1114,11 @@ and what the demo cannot provide.
   `apps/web/e2e/investors.spec.ts` (renamed), one note atop
   `docs/ux-paths/captable/catalog.md`.
 - **Prerequisites.** None.
-- **Behavior.** Sidebar row "Investors" (`sidebar-investors`); `/app/cap-table?kind=auditor`
-  lands on `/app/investors?kind=auditor`; a hidden `cap-table` becomes a hidden
+- **Behavior.** Sidebar row "Investors" (`sidebar-investors`); the legacy
+  `/app/cap-table?kind=auditor` bookmark opens Contacts with its supported Auditor filter
+  selected. Legacy `shareholder` and `options` Carta filters have no direct current
+  equivalent and land on the unfiltered Investors overview. Bare and nested `/app/cap-table`
+  routes remain in the current cap-table area; a hidden `cap-table` becomes a hidden
   `investors`, still reachable by URL and cross-links; the Carta agent's badge lands
   on Investors; Data room folder unchanged; the first visit after the rename shows
   nothing extra (the label change is self-explaining).

@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { PortalHoldings } from "../../../pages/portal/PortalHoldings";
@@ -30,6 +31,7 @@ export function AccessPreview({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const hideAmounts = useHideAmounts();
   const [level, setLevel] = useState<EquityAccessLevel | "">("");
   const [view, setView] = useState<EquityAccessView | null>(null);
   const [error, setError] = useState("");
@@ -80,7 +82,7 @@ export function AccessPreview({
           <p className="text-sm text-muted-foreground">{t`No access`}</p>
         ) : (
           <div className="flex flex-col gap-6">
-            <PortalHoldings view={view} preview />
+            <PortalHoldings view={view} preview hideAmounts={hideAmounts} />
           </div>
         )}
       </DialogContent>

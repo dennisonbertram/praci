@@ -149,6 +149,67 @@ it("records Skip tour", async () => {
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
 });
 
+it("leaves Escape to a foreground dialog or popup, then dismisses the tour from the page", async () => {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
+  const onClose = vi.fn();
+  const onSkip = vi.fn();
+  await act(async () =>
+    root.render(<FirstRunTour open onClose={onClose} onAsk={vi.fn()} onSkip={onSkip} />),
+  );
+
+  const pressEscape = async (target: HTMLElement) => {
+    const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    await act(async () => target.dispatchEvent(event));
+    return event;
+  };
+  for (const role of ["dialog", "menu"]) {
+    const popup = document.createElement("div");
+    popup.setAttribute("role", role);
+    const control = document.createElement(role === "dialog" ? "input" : "button");
+    popup.append(control);
+    document.body.append(popup);
+    const closePopup = vi.fn((event: KeyboardEvent) => {
+      event.stopPropagation();
+      popup.remove();
+    });
+    popup.addEventListener("keydown", closePopup);
+
+    control.focus();
+    await pressEscape(control);
+
+    expect(closePopup).toHaveBeenCalledOnce();
+    expect(document.querySelector('[data-testid="tour-card"]')).not.toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  }
+
+  const openPopoverTrigger = document.createElement("button");
+  openPopoverTrigger.setAttribute("aria-haspopup", "dialog");
+  openPopoverTrigger.setAttribute("aria-expanded", "true");
+  document.body.append(openPopoverTrigger);
+  const closePopover = vi.fn((event: KeyboardEvent) => event.stopPropagation());
+  openPopoverTrigger.addEventListener("keydown", closePopover);
+  openPopoverTrigger.focus();
+  await pressEscape(openPopoverTrigger);
+  expect(closePopover).toHaveBeenCalledOnce();
+  expect(document.querySelector('[data-testid="tour-card"]')).not.toBeNull();
+  expect(onClose).not.toHaveBeenCalled();
+
+  const focusedPageButton = document.querySelector<HTMLButtonElement>(
+    '[data-tour="sidebar-inbox"]',
+  )!;
+  focusedPageButton.focus();
+  await pressEscape(focusedPageButton);
+
+  expect(onClose).toHaveBeenCalledWith(null, true);
+  expect(onSkip).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(focusedPageButton);
+});
+
 it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not about Done", async () => {
   const onSkip = vi.fn();
   await act(async () =>

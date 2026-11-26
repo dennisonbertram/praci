@@ -27,6 +27,7 @@ import {
 } from "@rakazo/ui-web";
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { useListParams } from "../../../lib/list-params";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -62,6 +63,7 @@ export function ConvertiblesLedger({
   onAction: (action: ConvertibleAction, rows: EquityConvertible[]) => void;
   reloadKey?: number;
 }) {
+  const hidden = useHideAmounts();
   const list = useListParams(SORTS, { field: "issueDate", dir: "desc" });
   const search = list.param("cq") ?? "";
   const kind = list.param("kind") as "safe" | "note" | undefined;
@@ -297,13 +299,13 @@ export function ConvertiblesLedger({
                     {row.convertedToLabel ? ` · ${row.convertedToLabel}` : ""}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {formatCents(row.principalCents)}
+                    {formatCents(row.principalCents, hidden)}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {row.kind === "note" ? formatCents(row.interestAccruedCents) : "—"}
+                    {row.kind === "note" ? formatCents(row.interestAccruedCents, hidden) : "—"}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {formatCents(row.valuationCapCents)}
+                    {formatCents(row.valuationCapCents, hidden)}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
                     {percent(row.discountPercent)}
@@ -359,8 +361,8 @@ export function ConvertiblesLedger({
       {rows?.length && totals ? (
         <p className="text-sm text-muted-foreground tabular-nums">
           {totals.count === 1
-            ? t`1 SAFE or note, ${formatCents(totals.principalCents)} principal`
-            : t`${totals.count} SAFEs and notes, ${formatCents(totals.principalCents)} principal`}
+            ? t`1 SAFE or note, ${formatCents(totals.principalCents, hidden)} principal`
+            : t`${totals.count} SAFEs and notes, ${formatCents(totals.principalCents, hidden)} principal`}
         </p>
       ) : null}
       {pages > 1 ? (

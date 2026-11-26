@@ -95,6 +95,24 @@ it("says there are no organisations", async () => {
   expect(container.textContent).toContain("No organisations yet");
 });
 
+it("keeps the Company retry action separate from its load error", async () => {
+  rpcMock.company.page.mockRejectedValue(new Error());
+  rpcMock.company.review.mockResolvedValue({ items: [] });
+  rpcMock.finance.overview.mockResolvedValue(null);
+  rpcMock.investors.capTable.mockResolvedValue({ snapshot: null, syncing: false });
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/company"]}>
+        <CompanyPage />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toBe("Could not load company information.Try again");
+});
+
 it("still lists people when there are some", async () => {
   await show("people");
   expect(container.textContent).not.toContain("No people yet");
@@ -236,6 +254,32 @@ it("lists only an organisation's relationships with the company and puts ended o
   expect(past?.querySelector("summary")?.textContent).toBe("Past relationships");
   expect(past?.textContent).toContain("Kestrel Capital");
   expect(past?.textContent).toContain("Investor");
+});
+
+it("lists a subsidiary by its part-of relationship", async () => {
+  const organisation = companyFixture.entities.find((row) => row.kind === "organisation")!;
+  const subsidiary = {
+    ...organisation,
+    id: "subsidiary",
+    displayName: "Northwind Robotics Europe",
+    normalizedName: "northwind robotics europe",
+    attrs: { type: "other" },
+  };
+  const relationship = {
+    ...companyFixture.edges[0]!,
+    id: "subsidiary-relationship",
+    fromId: subsidiary.id,
+    toId: "company",
+    relation: "part_of" as const,
+    role: null,
+  };
+  await showAt("view=organisations", [...companyFixture.entities, subsidiary], {
+    edges: [...companyFixture.edges, relationship],
+  });
+
+  const table = container.querySelector("table");
+  expect(table?.textContent).toContain("Northwind Robotics Europe");
+  expect(table?.textContent).toContain("part of");
 });
 
 it("finds an organisation by the relationship it shows", async () => {

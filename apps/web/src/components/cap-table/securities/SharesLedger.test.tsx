@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -51,6 +52,7 @@ let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
+  setHideAmounts(false);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -67,6 +69,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  setHideAmounts(false);
   vi.clearAllMocks();
 });
 
@@ -94,6 +97,14 @@ it("lists certificates newest first with formatted values", async () => {
   const table = host.querySelector("table")!;
   expect(table.className).toContain("table-auto");
   expect(table.className).toContain("whitespace-nowrap");
+});
+
+it("masks read-only certificate prices and values while leaving shares visible", async () => {
+  setHideAmounts(true);
+  await render();
+  expect(host.textContent).toContain("$•••");
+  expect(host.textContent).not.toContain("$100.00");
+  expect(host.textContent).toContain("1,000,000");
 });
 
 it("opens a certificate from its label and enables Actions once a row is selected", async () => {
@@ -133,7 +144,7 @@ it("formats percents without eating whole-number zeros", async () => {
 });
 
 it("gives every price in a column the same decimals, 2 to 4", async () => {
-  const { formatPrice, pricePlaces } = await import("./format");
+  const { formatCents, formatPrice, pricePlaces } = await import("./format");
   expect(pricePlaces(["0.1", "8.5"])).toBe(2);
   expect(pricePlaces(["0.0001", "8.5"])).toBe(4);
   expect(pricePlaces(["1.123456", null])).toBe(4);
@@ -141,4 +152,6 @@ it("gives every price in a column the same decimals, 2 to 4", async () => {
   expect(formatPrice("0.10", 2)).toBe("$0.10");
   expect(formatPrice("1.123456", 4)).toBe("$1.1235");
   expect(formatPrice("1234.5", 2)).toBe("$1,234.50");
+  expect(formatCents("12345", true)).toBe("$•••");
+  expect(formatPrice("1.25", 2, true)).toBe("$•••");
 });

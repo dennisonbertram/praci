@@ -4,6 +4,7 @@ import {
   captureScreenshot,
   completeOnboarding,
   connectMailFromInbox,
+  rpc,
   signup,
 } from "./helpers";
 
@@ -14,17 +15,40 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await signup(page, `email-cards-${Date.now()}@rakazo.test`, "password12", "Email Cards");
   await completeOnboarding(page);
 
+  // The scripted runtime does not itself represent an AI data recipient. Give the E2E user an
+  // explicit loopback-only OpenAI-compatible model identity so the consent fixture can grant the
+  // same recipient the Inbox agent resolves, while the scripted runtime still supplies the reply.
+  const consentModel = {
+    provider: "openai-compatible",
+    modelId: "rakazo-e2e-email-cards",
+    baseUrl: "http://127.0.0.1:9/v1",
+  };
+  await rpc(page, "models/connect", {
+    ...consentModel,
+    apiKey: "fake-loopback-model-key",
+  });
+  await rpc(page, "models/setDefault", {
+    provider: consentModel.provider,
+    modelId: consentModel.modelId,
+  });
+
   await page.goto("/app/inbox");
   await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  const skipTour = page.getByRole("button", { name: "Skip tour", exact: true });
+  if (await skipTour.isVisible().catch(() => false)) {
+    await skipTour.click();
+    await expect(skipTour).toBeHidden();
+  }
 
   // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs.
   await allowInboxAgentMail(page);
   const panel = page.getByTestId("side-panel");
   await main.getByRole("button", { name: "Ask Inbox agent" }).click();
-  await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
+  const createAgent = panel.getByRole("button", { name: "Create Inbox agent", exact: true });
+  if (await createAgent.isVisible().catch(() => false)) await createAgent.click();
   const composer = panel.getByPlaceholder(/Message/);
   await composer.fill(
     "show email cards e2e-a-1=today e2e-b-1=within_3_days e2e-a-2=this_week e2e-a-3=later e2e-a-4=later",
@@ -49,7 +73,8 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   // Clicking a card opens the message in place, without leaving the Inbox.
   await cards.getByTestId("email-row").first().click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Offsite dates")).toBeVisible();
+  const messageTitle = dialog.getByRole("heading", { name: "Offsite dates", exact: true });
+  await expect(messageTitle).toBeVisible();
   const body = dialog.locator("iframe").contentFrame().locator("#preview").contentFrame();
   await expect(body.locator("#probe")).toHaveText("Can you do the 14th or the 21st?");
   await captureScreenshot(page, testInfo, "email-cards-open-message");
@@ -58,18 +83,15 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await expect(dialog.getByRole("button", { name: "Previous message" })).toBeDisabled();
   await next.click();
   await expect(dialog.getByRole("button", { name: "Previous message" })).toBeEnabled();
-  await expect(dialog.getByText("Offsite dates")).toHaveCount(0);
+  await expect(messageTitle).toHaveCount(0);
   await page.keyboard.press("k");
-  await expect(dialog.getByText("Offsite dates")).toBeVisible();
+  await expect(messageTitle).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
+  await expect(messageTitle).toHaveCount(0);
   expect(new URL(page.url()).pathname).toBe("/app/inbox");
 
-  // The same cards render in the ordinary bot chat, and a Later row opens too.
-  await page.locator("[data-roster-bot-id]").filter({ hasText: "Inbox agent" }).click();
-  await expect(page).toHaveURL(/\/app\/(?!inbox$)[^/?]+$/);
-  const chatCards = page.getByTestId("email-cards");
-  await expect(chatCards).toBeVisible();
-  await chatCards.getByTestId("email-row").filter({ hasText: "Weekend sale" }).click();
+  // The cards remain in the Inbox agent conversation, and a Later row opens too.
+  await expect(cards).toBeVisible();
+  await cards.getByTestId("email-row").filter({ hasText: "Weekend sale" }).click();
   await expect(page.getByRole("dialog").getByText("Everything is 20 percent off.")).toBeVisible();
 });

@@ -108,6 +108,17 @@ it("rows without a missing memo get no Edit memo button, and a complete expense 
   expect(container.textContent).toContain("3 expenses");
 });
 
+it("keeps fractional expense amounts exact and whole-dollar amounts compact", async () => {
+  const expenses = expensesFixture.expenses.map((expense) =>
+    expense.merchant === "Blue Bottle" ? { ...expense, amountCents: 8_750 } : expense,
+  );
+  await mount({ ...expensesFixture, expenses });
+
+  expect(rowOf("Blue Bottle").textContent).toContain("$87.50");
+  expect(rowOf("LinkedIn Ads").textContent).toContain("$450");
+  expect(rowOf("LinkedIn Ads").textContent).not.toContain("$450.00");
+});
+
 it("the Missing filter narrows the list to receipt or memo", async () => {
   await mount(expensesFixture);
   const filter = container.querySelector<HTMLButtonElement>('[aria-label^="Filter by"]')!;

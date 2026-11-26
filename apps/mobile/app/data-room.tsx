@@ -244,6 +244,13 @@ export default function DataRoomScreen({ source }: { source?: "scan" } = {}) {
         ListEmptyComponent={
           items === null ? (
             <ActivityIndicator style={styles.centered} />
+          ) : !error && source === "scan" && !search ? (
+            <View>
+              <Text style={styles.empty}>{t("No scans yet")}</Text>
+              <Text style={styles.emptyDescription}>
+                {t("Use the desktop app to scan a document.")}
+              </Text>
+            </View>
           ) : !error ? (
             <Text style={styles.empty}>{search ? t("No matching files") : t("No files")}</Text>
           ) : null
@@ -298,6 +305,11 @@ function createStyles() {
     failed: { color: tokens.destructive, fontSize: 14 },
     centered: { padding: 32 },
     empty: { padding: 24, color: native.secondaryLabel, textAlign: "center" },
+    emptyDescription: {
+      paddingHorizontal: 24,
+      color: native.secondaryLabel,
+      textAlign: "center",
+    },
     footer: { padding: 20, gap: 12, alignItems: "center" },
   });
 }

@@ -22,11 +22,8 @@ test("Fundraising: add a prospect, start a round, commit, close and reopen", asy
   await main.getByRole("button", { name: "Add prospect" }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Name").fill("Example Ventures");
-  await dialog.getByLabel("Check size").fill("250000");
-  await dialog.getByLabel("Next step").fill("Send the deck");
   await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(main.getByText("Example Ventures")).toBeVisible();
-  await expect(main.getByText("$250,000")).toBeVisible();
+  await expect(main.getByRole("button", { name: "Example Ventures", exact: true })).toBeVisible();
 
   // Start a round, then move the prospect to Committed: it counts as Pending.
   await main.getByRole("button", { name: "Start a round" }).click();
@@ -37,9 +34,12 @@ test("Fundraising: add a prospect, start a round, commit, close and reopen", asy
   await round.getByRole("button", { name: "Start a round" }).click();
   await expect(main.getByRole("heading", { name: "Seed" })).toBeVisible();
 
-  await main.getByRole("button", { name: "Actions for Example Ventures" }).click();
-  await page.getByRole("menuitem", { name: "Move to" }).click();
-  await page.getByRole("menuitem", { name: "Committed" }).click();
+  await main.getByRole("button", { name: "Status of Example Ventures: Not reached" }).click();
+  await page.getByRole("menuitemradio", { name: "Committed" }).click();
+  // New prospects start without an amount; Committed exposes the inline possible-amount editor.
+  await main.getByRole("button", { name: "Possible amount of Example Ventures" }).click();
+  await page.getByRole("textbox", { name: "Possible amount of Example Ventures" }).fill("250000");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(main.getByText("Pending").locator("..")).toContainText("$250,000");
   await captureScreenshot(page, testInfo, "fundraising");
 

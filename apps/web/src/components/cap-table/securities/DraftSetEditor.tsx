@@ -20,6 +20,7 @@ import {
 } from "@rakazo/ui-web";
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -139,6 +140,7 @@ export function DraftSetEditor({
   onOpenChange: (open: boolean) => void;
   onChanged: () => void | Promise<void>;
 }) {
+  const hidden = useHideAmounts();
   const [name, setName] = useState(set?.name ?? "");
   const [rows, setRows] = useState<Row[]>(() =>
     set?.items.length ? set.items.map(fromItem) : [blank()],
@@ -259,7 +261,7 @@ export function DraftSetEditor({
                     <span className="tabular-nums text-muted-foreground">
                       {kind === "certificate"
                         ? formatShares(row.quantity.replace(/[,\s]/g, "") || "0")
-                        : `${row.kind === "safe" ? t`SAFE` : t`Note`} ${formatCents(dollarsToCents(row.principal) ?? "0")}`}
+                        : `${row.kind === "safe" ? t`SAFE` : t`Note`} ${formatCents(dollarsToCents(row.principal) ?? "0", hidden)}`}
                     </span>
                     {review.items[index]?.problems.length ? (
                       <span className="text-destructive">
@@ -272,7 +274,7 @@ export function DraftSetEditor({
               <p className="tabular-nums">
                 {kind === "certificate"
                   ? t`${rows.length} certificates, ${formatShares(review.totalShares)} shares`
-                  : t`${rows.length} convertibles, ${formatCents(review.totalPrincipalCents)}`}
+                  : t`${rows.length} convertibles, ${formatCents(review.totalPrincipalCents, hidden)}`}
               </p>
             </div>
           ) : (

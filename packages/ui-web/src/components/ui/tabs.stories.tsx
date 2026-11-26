@@ -61,6 +61,14 @@ export const WithDisabledTab: Story = {
 };
 
 export const ManyTabsOnPhone: Story = {
+  name: "Many tabs in a narrow window",
+  parameters: {
+    docs: {
+      description: {
+        story: "The selected tab stays in view when the tab list is wider than its container.",
+      },
+    },
+  },
   render: () => (
     <Tabs defaultValue="review" className="w-[370px]">
       <TabsList>

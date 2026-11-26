@@ -2,26 +2,21 @@
 
 Round 4. Updated against the plan after round 3 (`docs/fundraising/README.md`, "Cap table sources", slices 1, 3, 4, 9) and the 50-view mockup (`docs/fundraising/mockup.html`, view ids such as `#inv-native`, `#inv-notsaved`, `#inv-changed`, `#inv-nosnap`, `#inv-native-menu`). Planned feature; every label is from the plan or mockup. All names and figures are invented. Gap tags: `PG-nn` is a round-1 gap still open; `NG-nn` is a gap from round 2, 3 or 4 that is still open (see `../catalog.md`, "Plan gaps (round 4)"). Gaps that earlier rounds resolved carry no tag.
 
-## STORY-101: Cap Table becomes Investors (rename, redirect, hidden page)
+## STORY-101: Legacy auditor bookmark opens the Contacts filter
 **Type**: short
 **Topic**: Cap table sources
-**Persona**: Dana, seed-stage founder who bookmarked the Cap Table page and hid two sidebar pages
-**Goal**: Land on the renamed Investors page from an old bookmark, with sidebar preferences intact
-**Preconditions**: Slice 1 shipped. Dana's `hiddenPages` contained `cap-table` before the migration. The Carta agent has an unseen notification.
+**Persona**: Dana, seed-stage founder who bookmarked the old Cap Table auditor filter
+**Goal**: Open auditor contacts from the saved link
+**Preconditions**: At least one auditor contact exists.
 **Ideal path**: 1 (open the bookmark; the redirect does the rest)
-**Alternate paths**: Click "Investors" in the sidebar; command palette ("cap table", "equity", "ownership", "Carta" all match Investors); click the notification.
+**Alternate paths**: Open Contacts and select Auditor from the Kind filter.
 ### Steps
-1. Open the bookmark `/app/cap-table?kind=auditor` → `<Navigate>` lands on `/app/investors?kind=auditor`; the query is kept and the Auditors tab is selected.
-2. Read the sidebar → the row says "Investors" (`sidebar-investors`) and is active. Because the migration turned the hidden key `cap-table` into `investors`, Dana's row is hidden, but the page still opened by URL.
-3. Read the page → heading "Investors", the same data as before, nothing extra: the plan shows no notice about the rename.
-4. Scroll to Documents → the section is the Data room folder Finance / Cap Table (folder name kept so old files stay), so Dana's old files are present.
-5. Click the Carta agent's notification → lands on Investors.
+1. Open the legacy bookmark `/app/cap-table?kind=auditor` → Contacts opens with `Kind: Auditor` selected. The query is applied by the current Contacts filter, which lists only auditor contacts.
+2. Check the results → auditor contacts appear and other contact kinds do not.
+3. Clear the Kind filter → the other contacts return.
 ### Variations
-- `/app/cap-table?kind=shareholder` or `kind=options` → lands on Investors with no tab filter.
-- `/app/cap-table/anything` → falls through the `/app/cap-table/*` redirect to Investors.
-### Edge Cases
-- Dana hid the old page, so "Fundraising" is not hidden: it shows in the sidebar below a hidden Investors row. [plan silent: whether Fundraising defaults to hidden for users who hid Cap Table (PG-04)]
-- Old e2e and screenshot names change (`cap-table` to `investors`); not user-visible.
+- `/app/cap-table?kind=shareholder` or `kind=options` → lands on the current Investors overview without a filter; those Carta holding filters no longer have a direct equivalent.
+- `/app/cap-table/anything` → lands on `/app/cap-table/overview`; nested cap-table paths remain in the current cap-table area.
 
 ## STORY-102: Empty page, choose a source
 **Type**: medium

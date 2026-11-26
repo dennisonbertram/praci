@@ -16,6 +16,7 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -24,7 +25,7 @@ import { formatDay, formatPrice, formatShares } from "./format";
 type Option = { id: string; name: string };
 
 const day = (value: string) => (value ? formatDay(value) : "");
-const price = (value: string) => (value ? formatPrice(value) : "");
+const price = (value: string, hidden: boolean) => (value ? formatPrice(value, hidden) : "");
 
 /**
  * "Issue warrant" for a new warrant, or "Cancel warrant" for one already outstanding. Both show a
@@ -42,6 +43,7 @@ export function WarrantDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [holders, setHolders] = useState<Option[]>([]);
   const [classes, setClasses] = useState<Option[]>([]);
   const [stakeholderId, setStakeholderId] = useState("");
@@ -122,7 +124,7 @@ export function WarrantDialog({
           [t`Holder`, nameOf(holders, stakeholderId)],
           [t`Class`, nameOf(classes, shareClassId)],
           [t`Quantity`, quantityValid ? formatShares(quantity) : quantity],
-          [t`Exercise price`, priceValid ? price(exercisePrice) : exercisePrice],
+          [t`Exercise price`, priceValid ? price(exercisePrice, hidden) : exercisePrice],
           [t`Issue date`, day(issueDate)],
           [t`Expiration`, expirationDate ? day(expirationDate) : t`None`],
         ];
