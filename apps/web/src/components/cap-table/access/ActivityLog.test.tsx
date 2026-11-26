@@ -131,6 +131,37 @@ it("opens a row to show before and after", async () => {
   expect(host.textContent).not.toContain("Quantity: 20000");
 });
 
+it("wraps long expanded changes inside the horizontally scrolling table", async () => {
+  const legend = `CERTIFICATE-${"A".repeat(180)}`;
+  list.mockResolvedValue({
+    items: [
+      {
+        ...row,
+        before: { certificateLegend: "Original" },
+        after: { certificateLegend: legend },
+      },
+    ],
+    total: 1,
+    page: 1,
+    pageSize: 25,
+  });
+  await render();
+
+  const region = host.querySelector('[role="region"][aria-label="Cap table activity"]');
+  const table = region?.querySelector("table");
+  const detailAction = host.querySelector('button[data-row-open][aria-expanded="false"]');
+  await act(async () => (detailAction as HTMLButtonElement).click());
+
+  const detailList = host.querySelector("ul");
+  const detailItem = detailList?.querySelector("li");
+  expect(region?.className).toContain("overflow-x-auto");
+  expect(table?.className).toContain("min-w-[960px]");
+  expect(table?.className).not.toContain("whitespace-nowrap");
+  expect(detailList?.className).toContain("min-w-0");
+  expect(detailItem?.className).toContain("[overflow-wrap:anywhere]");
+  expect(detailItem?.textContent).toContain(legend);
+});
+
 it("masks row values and expanded monetary changes while preserving quantities and dates", async () => {
   const moneyRow = {
     ...row,

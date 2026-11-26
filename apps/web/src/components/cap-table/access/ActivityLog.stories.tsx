@@ -83,6 +83,28 @@ export const WithActivity: Story = {
     mockRpc({ "equity.transactions.list": { items: rows, total: 4, page: 1, pageSize: 25 } }),
 };
 
+/** An expanded certificate legend with a long, unbroken token. */
+export const LongCertificateLegend: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "equity.transactions.list": {
+        items: [
+          tx({
+            id: "long-certificate-legend",
+            kind: "issue",
+            certificateId: "certificate-1",
+            securityLabel: "CS-2",
+            before: { certificateLegend: "Original certificate" },
+            after: { certificateLegend: `CERTIFICATE-${"A".repeat(180)}` },
+          }),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      },
+    }),
+};
+
 /** A ledger with no changes yet. */
 export const Empty: Story = {
   beforeEach: () =>

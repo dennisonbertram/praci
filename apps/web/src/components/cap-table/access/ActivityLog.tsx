@@ -259,7 +259,7 @@ export function ActivityLog() {
       ) : (
         <>
           <TableScrollRegion aria-label={t`Cap table activity`}>
-            <Table className="min-w-[960px] whitespace-nowrap">
+            <Table className="min-w-[960px]">
               <TableHeader>
                 <TableHeadRow>
                   <TableHead className="w-44" {...head("createdAt")}>{t`Recorded`}</TableHead>
@@ -325,10 +325,12 @@ export function ActivityLog() {
                       </TableRow>
                       {expanded ? (
                         <TableRow>
-                          <TableCell colSpan={8}>
-                            <ul className="grid grid-cols-1 gap-x-8 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+                          <TableCell colSpan={8} className="min-w-0 whitespace-normal">
+                            <ul className="grid min-w-0 grid-cols-1 gap-x-8 gap-y-1 whitespace-normal text-xs text-muted-foreground [overflow-wrap:anywhere] sm:grid-cols-2 lg:grid-cols-3">
                               {changes.map((line) => (
-                                <li key={line}>{line}</li>
+                                <li key={line} className="min-w-0 [overflow-wrap:anywhere]">
+                                  {line}
+                                </li>
                               ))}
                             </ul>
                           </TableCell>

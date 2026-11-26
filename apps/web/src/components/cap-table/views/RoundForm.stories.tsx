@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 import { roundsFixture } from "./fixtures";
 import { RoundForm } from "./RoundForm";
 
@@ -13,3 +14,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Create: Story = {};
 export const Edit: Story = { args: { round: roundsFixture[1] } };
+export const EditAmountsHidden: Story = {
+  args: {
+    round: { ...roundsFixture[1]!, originalIssuePrice: "0.80" },
+  },
+  beforeEach: () => {
+    setHideAmounts(true);
+    return () => setHideAmounts(false);
+  },
+};
