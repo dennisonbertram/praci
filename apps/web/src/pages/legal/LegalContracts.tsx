@@ -16,12 +16,13 @@ import {
 import { ChevronRight } from "lucide-react";
 import type { MouseEvent, ReactNode } from "react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PickFilter, SearchField, SortControl } from "../../components/ListControls";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay, hiddenOr } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { contractValue, daysBetween, todayIso } from "../../lib/legal-format";
+import { legalDataRoomState, legalUiStateFromHistory } from "../../lib/legal-navigation";
 import { useListParams } from "../../lib/list-params";
 import type { ContractSort } from "./contract-list";
 import {
@@ -76,11 +77,20 @@ function NextDeadline({ contract }: { contract: LegalContract }) {
   );
 }
 
-function Title({ contract, wrap = false }: { contract: LegalContract; wrap?: boolean }) {
+function Title({
+  contract,
+  wrap = false,
+  expandedGroups,
+}: {
+  contract: LegalContract;
+  wrap?: boolean;
+  expandedGroups?: string[];
+}) {
+  const location = useLocation();
   return (
     <Link
       to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-      state={{ from: "legal" }}
+      state={legalDataRoomState(location, expandedGroups ? { expandedGroups } : undefined)}
       className="rk-tap min-w-0 font-medium hover:underline"
     >
       {/* .rk-tap is inline-flex on phones and the link is inline elsewhere, so neither can clip: the text truncates as a block inside it. */}
@@ -259,19 +269,24 @@ export function LegalContracts({
       </span>
     </div>
   );
-  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set());
+  const location = useLocation();
+  const savedExpandedGroups = legalUiStateFromHistory(location.state)?.expandedGroups ?? [];
+  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set(savedExpandedGroups));
   const toggle = (key: string) =>
     setOpenKeys((keys) => {
       const next = new Set(keys);
       if (!next.delete(key)) next.add(key);
       return next;
     });
+  const currentExpandedGroups = [...openKeys];
   const hidden = useHideAmounts();
   const navigate = useNavigate();
   // Any click on a row opens the contract; the title link stays the keyboard and screen-reader target.
   const open = (contract: LegalContract) => (event: MouseEvent) => {
     if ((event.target as HTMLElement).closest("a, button")) return;
-    navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, { state: { from: "legal" } });
+    navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, {
+      state: legalDataRoomState(location, { expandedGroups: currentExpandedGroups }),
+    });
   };
   const card = (contract: LegalContract, nested = false) => {
     const names = contract.counterparties.join(", ");
@@ -284,7 +299,7 @@ export function LegalContracts({
         className={cn("cursor-pointer border-t border-border py-2 text-sm", nested && "ps-4")}
       >
         <div className="flex items-center justify-between gap-3">
-          <Title contract={contract} wrap />
+          <Title contract={contract} wrap expandedGroups={currentExpandedGroups} />
           <Status status={contractStatus(contract, todayIso())} />
         </div>
         {/* Only what the agent found: no labels, since the values say what they are. */}
@@ -311,7 +326,7 @@ export function LegalContracts({
     >
       <TableCell title={`${contract.title} (${contract.contractType})`}>
         <div className={cn("flex max-w-72 items-center gap-2", nested && "ps-4")}>
-          <Title contract={contract} />
+          <Title contract={contract} expandedGroups={currentExpandedGroups} />
           <Status status={contractStatus(contract, todayIso())} />
         </div>
       </TableCell>
@@ -409,7 +424,9 @@ export function LegalContracts({
         </TableHeader>
         <TableBody>
           {rows.flatMap((row) => {
-            if (row.kind === "single") return [tableRow(row.contract)];
+            if (row.kind === "single") {
+              return [tableRow(row.contract)];
+            }
             const isOpen = openKeys.has(row.key);
             const sum = groupSummary(row.contracts);
             return [

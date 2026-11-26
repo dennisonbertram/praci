@@ -8,6 +8,11 @@ const WORD = String.raw`[\p{L}\p{N}_]`;
 // 600,000  4.000.000  1 234 567 (comma, dot, nbsp or narrow nbsp groups; plain spaces are too ambiguous)
 const GROUPED = String.raw`\d{1,3}(?:[,.\u00a0\u202f]\d{3})+`;
 
+const RANGE_UPPER = new RegExp(
+  String.raw`\s*(?:[-‐‑‒–—−]\s*|to\s+)(?:(?:${SIGN})?(?:${SC}|${CODES})\s*)?(?<amount>${NUM}${SCALE}?)(?!${WORD}|\s?%)`,
+  "iuy",
+);
+
 const CURRENCY = new RegExp(
   [
     // $73,781.83  -$300  $-1,234.56  €1.234,56  ₹450k  $2 million
@@ -32,7 +37,10 @@ export type CurrencyMatch = { start: number; end: number; replacement: string };
  */
 export function currencyMatches(text: string): CurrencyMatch[] {
   const out: CurrencyMatch[] = [];
-  for (const m of text.matchAll(CURRENCY)) {
+  const matches = [...text.matchAll(CURRENCY)];
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    if (!m) continue;
     const g = m.groups ?? {};
     const start = m.index ?? 0;
     const end = start + m[0].length;
@@ -42,7 +50,20 @@ export function currencyMatches(text: string): CurrencyMatch[] {
     }
     const sign = g.s1 ?? g.s2 ?? g.s3 ?? "";
     out.push({ start, end, replacement: `${sign}${g.y1 ?? g.y3 ?? "$"}•••` });
+    RANGE_UPPER.lastIndex = end;
+    const range = RANGE_UPPER.exec(text);
+    const amount = range?.groups?.amount;
+    if (!range || !amount) continue;
+    const upperStart = end + range[0].lastIndexOf(amount);
+    const upperEnd = upperStart + amount.length;
+    const next = matches[i + 1];
+    if (next?.index !== undefined) {
+      const nextEnd = next.index + next[0].length;
+      if (next.index < upperEnd && nextEnd > upperStart) continue;
+    }
+    out.push({ start: upperStart, end: upperEnd, replacement: "•••" });
   }
+
   return out;
 }
 

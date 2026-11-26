@@ -166,7 +166,8 @@ export const APP_PAGES: readonly AppPage[] = [
     paths: ["/app/board"],
     sidebar: false,
     needsTicketBoard: true,
-    visible: (gate) => gate.ticketBoardEnabled && gate.glance.hasTickets,
+    // The palette is the non-persistent entry point for an enabled, empty board.
+    visible: (gate) => gate.ticketBoardEnabled,
   },
   {
     key: "integrations",

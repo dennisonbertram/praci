@@ -338,6 +338,18 @@ describe("shell pages", () => {
     ]);
   });
 
+  it("offers the enabled Task board in the palette before its first ticket", async () => {
+    setup.ticketBoardEnabled = true;
+    setup.glance = { hasTickets: false };
+    await mount("/app/inbox");
+
+    expect((await paletteEntries()).map(([value]) => value)).toContain("page:board");
+    await act(async () => {
+      document.querySelector<HTMLElement>('[data-value="page:board"]')?.click();
+    });
+    expect(document.querySelector('[data-testid="page-BoardPage"]')).not.toBeNull();
+  });
+
   it("hides Brex, Devin and the board from the palette until they apply", async () => {
     await mount("/app/inbox");
     const values = (await paletteEntries()).map(([value]) => value);
