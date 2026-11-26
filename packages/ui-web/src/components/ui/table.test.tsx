@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { Table, TableBody, TableCell, TableRow } from "./table.js";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "./table.js";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -75,4 +75,34 @@ it("is a pointer only when it opens something", async () => {
   document.body.innerHTML = "";
   await mount(() => {});
   expect(document.querySelector("tr")?.className).toContain("cursor-pointer");
+});
+
+it("sortable header: aria-sort on the th, button calls onSort; plain header has neither", async () => {
+  const onSort = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(
+      <table>
+        <thead>
+          <tr>
+            <TableHead sortDirection="desc" onSort={onSort}>
+              Value
+            </TableHead>
+            <TableHead sortDirection={null} onSort={onSort}>
+              Term
+            </TableHead>
+            <TableHead>Plain</TableHead>
+          </tr>
+        </thead>
+      </table>,
+    ),
+  );
+  const [value, term, plain] = [...container.querySelectorAll("th")];
+  expect(value?.getAttribute("aria-sort")).toBe("descending");
+  expect(term?.getAttribute("aria-sort")).toBe("none");
+  expect(plain?.hasAttribute("aria-sort")).toBe(false);
+  expect(plain?.querySelector("button")).toBeNull();
+  await act(async () => term?.querySelector("button")?.click());
+  expect(onSort).toHaveBeenCalledTimes(1);
 });

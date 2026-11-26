@@ -8,7 +8,8 @@ import type {
   DataRoomConsentStatus,
 } from "@rakazo/contracts";
 import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
-import { ArrowLeft, ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
+import { ArrowLeft, ChartColumn, LayoutGrid, List, Plus, ScanLine, Upload } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
@@ -17,6 +18,7 @@ import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { AutoSortDialog } from "../components/data-room/AutoSortDialog";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { DataRoomStats } from "../components/data-room/DataRoomStats";
+import { FailedChip } from "../components/data-room/FailedChip";
 import { FilterBar, facetOptions, Tip } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
@@ -25,7 +27,13 @@ import { holdNewRows } from "../components/data-room/hold-new-rows";
 import { ImportActivity, importProgress } from "../components/data-room/ImportActivity";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
 import type { DataRoomEntry } from "../components/data-room/ItemDialogs";
-import { ItemDialog, isFolder, NewFolderDialog } from "../components/data-room/ItemDialogs";
+import {
+  ItemDialog,
+  isFolder,
+  MoveFilesDialog,
+  NewFolderDialog,
+  ShareFilesDialog,
+} from "../components/data-room/ItemDialogs";
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import type { RowInteraction } from "../components/data-room/ItemRows";
 import { GridView, ListView, SubfolderList } from "../components/data-room/ItemRows";
@@ -58,21 +66,14 @@ import {
   saveDataRoomView,
 } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
+import { useDebounced } from "../lib/use-debounced";
+import { useRefetchWhileOpen } from "../lib/use-refetch-while-open";
 import { errorText } from "../lib/user-error";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const NOTICE_MS = 6_000;
 /** Below this width of the page body the preview covers the list instead of sitting beside it. */
 const PREVIEW_BESIDE_PX = 560;
-
-function useDebounced<T>(value: T, ms: number) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return debounced;
-}
 
 function FileInputButton(props: React.ComponentProps<typeof Button>) {
   const input = useRef<HTMLInputElement>(null);
@@ -104,7 +105,15 @@ export function DataRoomPage({
   onOpenModelSettings,
   agents,
   onSendToAgent,
+  source,
+  headerActions,
+  headerMeta,
+  beforeList,
 }: {
+  source?: "scan";
+  headerActions?: ReactNode;
+  headerMeta?: ReactNode;
+  beforeList?: ReactNode;
   spaceName?: string;
   onAskAgent?: () => void;
   /** Where a model problem is fixed; without it Auto-sort only names the problem. */
@@ -159,8 +168,12 @@ export function DataRoomPage({
     }),
   );
   const filters = useMemo<Filters>(
-    () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
-    [otherFilters, urlFolder],
+    () => ({
+      ...otherFilters,
+      ...(urlFolder ? { folderId: urlFolder } : {}),
+      ...(source ? { source } : {}),
+    }),
+    [otherFilters, urlFolder, source],
   );
   // The sidebar badge links here while the page may already be open.
   const urlFailed = params.get("status") === "failed";
@@ -229,10 +242,12 @@ export function DataRoomPage({
   );
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
+  const folderLoadAttempted = useRef(false);
   const reloadFolders = useCallback(() => {
     rpc.dataRoom
       .folders()
       .then((next) => {
+        folderLoadAttempted.current = true;
         setFolders(next);
         // A folder that no longer exists (a stale link, or deleted in another tab) falls back to
         // All items, and says why. Deleting it here moves to its parent first, so no message.
@@ -249,15 +264,18 @@ export function DataRoomPage({
           );
         }
       })
-      .catch(() => undefined);
+      .catch((cause) => {
+        if (!folderLoadAttempted.current) {
+          folderLoadAttempted.current = true;
+          showNoticeToast(errorText(cause));
+        }
+      });
   }, []);
   useEffect(reloadFolders, [reloadFolders]);
   // Another tab may have added, renamed or deleted folders: catch up when this one is used again.
   useEffect(() => {
-    window.addEventListener("focus", reloadFolders);
     window.addEventListener(DATA_ROOM_CHANGED, reloadFolders);
     return () => {
-      window.removeEventListener("focus", reloadFolders);
       window.removeEventListener(DATA_ROOM_CHANGED, reloadFolders);
     };
   }, [reloadFolders]);
@@ -269,10 +287,10 @@ export function DataRoomPage({
   const nodes = useMemo(() => folderNodes(folders), [folders]);
   const subfolders = useMemo(
     () =>
-      searching || filters.folderId === undefined
+      source || searching || filters.folderId === undefined
         ? []
         : nodes.map(({ folder }) => folder).filter((f) => f.parentId === filters.folderId),
-    [nodes, searching, filters.folderId],
+    [nodes, source, searching, filters.folderId],
   );
   const folderPath = useCallback(
     (id: string | null) => nodes.find(({ folder }) => folder.id === id)?.path ?? "",
@@ -281,7 +299,9 @@ export function DataRoomPage({
 
   // What the filters offer: every value in the open folder, not only the loaded page, given the
   // other filters, so two picks never combine into nothing.
-  const [facetValues, setFacetValues] = useState<DataRoomApiFacetValues | null>(null);
+  const [facetValues, setFacetValues] = useState<
+    { key: string; folderId: string | undefined; value: DataRoomApiFacetValues } | undefined
+  >();
   const [facetsVersion, setFacetsVersion] = useState(0);
   const facetFilters = JSON.stringify(filters);
   // facetsVersion changes to ask for a fresh read.
@@ -289,7 +309,9 @@ export function DataRoomPage({
     let live = true;
     rpc.dataRoom
       .facetValues(JSON.parse(facetFilters))
-      .then((next) => live && setFacetValues(next))
+      .then(
+        (value) => live && setFacetValues({ key: facetFilters, folderId: filters.folderId, value }),
+      )
       .catch(() => undefined);
     return () => {
       live = false;
@@ -322,6 +344,15 @@ export function DataRoomPage({
   // slow search never got to show its answer.
   const listLoading = useRef(list.loading);
   listLoading.current = list.loading;
+  const refresh = useCallback(() => {
+    reloadFolders();
+    // The list waits while the reader is in it: a search, extra pages, an open file or ticked files
+    // would be replaced by a fresh first page.
+    if (searching || list.extended || list.error || listLoading.current) return;
+    if (linkedItem || checked.size > 0) return;
+    reload();
+  }, [reloadFolders, searching, list.extended, list.error, reload, linkedItem, checked.size]);
+  useRefetchWhileOpen(true, refresh);
   useEffect(() => {
     const onChanged = () => {
       if (!listLoading.current) reload();
@@ -365,6 +396,7 @@ export function DataRoomPage({
       .item({ id: linkedItem })
       .then((item) => {
         if (!current || item.id !== linkedItem) return;
+        if (source && item.source !== source) throw new Error("Not a scan");
         // Show the folder the item is in, so the list and the preview agree.
         changeQuery("");
         setFilters(item.folderId ? { folderId: item.folderId } : {}, true);
@@ -388,7 +420,7 @@ export function DataRoomPage({
     return () => {
       current = false;
     };
-  }, [linkedItem]);
+  }, [linkedItem, source]);
 
   // When a new search, filter, folder or sort answers, keep the pinned item only if it is in the
   // results; otherwise close the preview. Another item is never picked for the user.
@@ -488,9 +520,10 @@ export function DataRoomPage({
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [movingChecked, setMovingChecked] = useState(false);
+  const [sharingChecked, setSharingChecked] = useState(false);
   const [compose, setCompose] = useState<ComposeRestore | null>(null);
   // A search or filter keeps the selection; another folder starts a new one.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the folder is the trigger.
   useEffect(
     () => setChecked((current) => (current.size ? new Map() : current)),
     [filters.folderId],
@@ -623,7 +656,9 @@ export function DataRoomPage({
     return () => clearTimeout(timer);
   }, [notice]);
 
-  const hasFilters = Object.values(filters).some(Boolean);
+  const hasFilters = Object.entries(filters).some(
+    ([key, value]) => value && !(source && key === "source"),
+  );
   // Only rows that answer the query now asked count: for one render after a search is cleared, the
   // old empty results are still in hand, and must not flash the first-run screen.
   const empty =
@@ -647,16 +682,20 @@ export function DataRoomPage({
   // filter finds nothing, so changing one is never a dead end.
   const options = useMemo(() => {
     const shown = facetOptions(rows.map(({ item }) => item));
-    if (!facetValues) return shown;
+    const currentFacets =
+      facetValues && (facetValues.key === facetFilters || facetValues.folderId === filters.folderId)
+        ? facetValues.value
+        : undefined;
+    if (!currentFacets) return shown;
     const merge = (a: string[], b: string[]) =>
       [...new Set([...a, ...b])].sort((x, y) => x.localeCompare(y));
     return {
-      types: merge(facetValues.types, shown.types),
-      parties: merge(facetValues.parties, shown.parties),
-      sources: [...new Set([...facetValues.sources, ...shown.sources])],
-      hasDates: facetValues.hasDates || shown.hasDates,
+      types: merge(currentFacets.types, shown.types),
+      parties: merge(currentFacets.parties, shown.parties),
+      sources: [...new Set([...currentFacets.sources, ...shown.sources])],
+      hasDates: currentFacets.hasDates || shown.hasDates,
     };
-  }, [rows, facetValues]);
+  }, [rows, facetFilters, filters.folderId, facetValues]);
   const subfolderList = (status?: boolean) => (
     <SubfolderList
       status={status}
@@ -668,7 +707,9 @@ export function DataRoomPage({
     />
   );
   /** A filter other than the folder is set. */
-  const filtered = Object.entries(filters).some(([key, value]) => key !== "folderId" && value);
+  const filtered = Object.entries(filters).some(
+    ([key, value]) => key !== "folderId" && !(source && key === "source") && value,
+  );
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
   const openFolderPath = filters.folderId ? folderPath(filters.folderId) : "";
 
@@ -725,10 +766,12 @@ export function DataRoomPage({
         <PageHeader
           // The space name is in the sidebar; on a phone its own line pushes the first file below 160px.
           className="max-sm:[&_[data-page-header-meta]]:hidden"
-          title={<Trans>Data room</Trans>}
+          title={source === "scan" ? <Trans>Scanner</Trans> : <Trans>Data room</Trans>}
+          meta={headerMeta}
           spaceName={spaceName}
           actions={
             <>
+              {headerActions}
               {empty ? null : (
                 <>
                   {viewToggles("@max-[639px]/bd:hidden")}
@@ -757,17 +800,19 @@ export function DataRoomPage({
                       event.target.value = "";
                     }}
                   />
-                  <ImportSources
-                    compact
-                    folderId={filters.folderId ?? null}
-                    onDone={showNotice}
-                    onUpload={() => fileInput.current?.click()}
-                  />
+                  {!source && (
+                    <ImportSources
+                      compact
+                      folderId={filters.folderId ?? null}
+                      onDone={showNotice}
+                      onUpload={() => fileInput.current?.click()}
+                    />
+                  )}
                 </>
               )}
               {onAskAgent ? (
                 <AskBotButton
-                  botName="Data room agent"
+                  botName={source === "scan" ? "Scanner agent" : "Data room agent"}
                   onClick={() => {
                     // The agent panel takes the room the preview had.
                     setPinned(null);
@@ -780,22 +825,37 @@ export function DataRoomPage({
           }
         />
       </div>
+      {beforeList}
       {empty ? (
         <div className="flex justify-center px-6 pt-4">
           <PageEmptyState
-            className="w-full max-w-md rounded-xl border-2 border-dashed border-border"
-            icon={<Upload aria-hidden="true" className="size-8" strokeWidth={1.6} />}
-            title={<Trans>Drop files here</Trans>}
+            className={
+              source
+                ? "w-full max-w-md"
+                : "w-full max-w-md rounded-xl border-2 border-dashed border-border"
+            }
+            icon={
+              source ? (
+                <ScanLine aria-hidden="true" className="size-8" strokeWidth={1.6} />
+              ) : (
+                <Upload aria-hidden="true" className="size-8" strokeWidth={1.6} />
+              )
+            }
+            title={source === "scan" ? <Trans>No scans yet</Trans> : <Trans>Drop files here</Trans>}
             description={
-              <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
+              source === "scan" ? undefined : (
+                <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
+              )
             }
           >
-            <div className="flex flex-wrap justify-center gap-2">
-              <FileInputButton>
-                <Trans>Choose files</Trans>
-              </FileInputButton>
-              <ImportSources folderId={null} onDone={showNotice} />
-            </div>
+            {!source && (
+              <div className="flex flex-wrap justify-center gap-2">
+                <FileInputButton>
+                  <Trans>Choose files</Trans>
+                </FileInputButton>
+                <ImportSources folderId={null} onDone={showNotice} />
+              </div>
+            )}
           </PageEmptyState>
         </div>
       ) : (
@@ -808,40 +868,58 @@ export function DataRoomPage({
             query={queryInput}
             onQuery={changeQuery}
             searching={searching}
-            filters={filters}
+            filters={source ? { ...filters, source: undefined } : filters}
             onFilters={(next) => setFilters(next)}
             sort={sort}
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
             types={options.types}
             parties={options.parties}
-            sources={options.sources}
+            sources={source ? [] : options.sources}
             hasDates={options.hasDates}
             folders={nodes}
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
-            onNewFolder={() => setCreatingFolder(true)}
-            onAutoSort={() => setAutoSorting(true)}
+            onNewFolder={source ? undefined : () => setCreatingFolder(true)}
+            onAutoSort={source ? undefined : () => setAutoSorting(true)}
+            folderTreeHidden={!!source}
             statsView={showStats}
+            previewBeside={!!shown && !narrow && !showStats}
             trailing={viewToggles("@min-[640px]/bd:hidden")}
+            leading={
+              filters.status ? null : (
+                <FailedChip
+                  count={source ? 0 : (processing.processing?.failed ?? 0)}
+                  onClick={() =>
+                    setParams((prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set("status", "failed");
+                      return next;
+                    })
+                  }
+                />
+              )
+            }
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             {/* With a preview beside the list the tree needs a wider page, or file names get ~100px. */}
-            <div
-              className={`hidden self-stretch border-e border-border ${
-                shown && !narrow && !showStats ? "@min-[1100px]/bd:flex" : "@min-[800px]/bd:flex"
-              }`}
-            >
-              <ResizableFolders bounds={bodyEl}>
-                <FolderTree
-                  nodes={nodes}
-                  selected={filters.folderId}
-                  onSelect={(folderId) => setFilters({ ...filters, folderId })}
-                  onAction={(kind, folder) => setAction({ kind, item: folder })}
-                  onNewFolder={() => setCreatingFolder(true)}
-                  onAutoSort={() => setAutoSorting(true)}
-                />
-              </ResizableFolders>
-            </div>
+            {!source && (
+              <div
+                className={`hidden self-stretch border-e border-border ${
+                  shown && !narrow && !showStats ? "@min-[1100px]/bd:flex" : "@min-[800px]/bd:flex"
+                }`}
+              >
+                <ResizableFolders bounds={bodyEl}>
+                  <FolderTree
+                    nodes={nodes}
+                    selected={filters.folderId}
+                    onSelect={(folderId) => setFilters({ ...filters, folderId })}
+                    onAction={(kind, folder) => setAction({ kind, item: folder })}
+                    onNewFolder={() => setCreatingFolder(true)}
+                    onAutoSort={() => setAutoSorting(true)}
+                  />
+                </ResizableFolders>
+              </div>
+            )}
             {showStats ? (
               <div
                 data-testid="data-room-stats"
@@ -876,13 +954,19 @@ export function DataRoomPage({
                     onSelect={(folderId) => setFilters({ ...filters, folderId })}
                   />
                   <ImportActivity
-                    imports={importActivity.imports}
+                    imports={
+                      source
+                        ? importActivity.imports.filter((entry) => entry.source === source)
+                        : importActivity.imports
+                    }
                     onOpenItem={openImported}
                     onDismiss={importActivity.dismiss}
                     hideRunning={processing.active}
                   />
                   {/* A file that could not be read is flagged on its row and by the sidebar badge. */}
-                  {processing.processing && (processing.active || processing.finished) ? (
+                  {!source &&
+                  processing.processing &&
+                  (processing.active || processing.finished) ? (
                     <ProcessingStrip
                       importing={processing.active ? importProgress(importActivity.imports) : null}
                       processing={processing.processing}
@@ -946,7 +1030,7 @@ export function DataRoomPage({
                   ) : rows.length === 0 && !list.error && !subfolders.length ? (
                     <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
                       {/* An open folder with nothing in it is empty, not a search that found nothing. */}
-                      {!searching && !filtered ? (
+                      {!searching && !filtered && !source ? (
                         <>
                           <p>
                             <Trans>This folder is empty. Drop files here or add them.</Trans>
@@ -1018,22 +1102,28 @@ export function DataRoomPage({
                   count={checkedItems.length}
                   total={selectTotal}
                   onSelectAll={() =>
-                    void list
+                    list
                       .loadAll()
-                      .then(
-                        (all) =>
-                          all &&
-                          setChecked(
-                            (current) =>
-                              new Map([
-                                ...current,
-                                ...all.map(({ item }) => [item.id, item] as const),
-                              ]),
-                          ),
-                      )
+                      .then((all) => {
+                        if (!all) return;
+                        setChecked(
+                          (current) =>
+                            new Map([
+                              ...current,
+                              ...all.map(({ item }) => [item.id, item] as const),
+                            ]),
+                        );
+                      })
                       .catch((cause) => showNoticeToast(errorText(cause)))
                   }
                   busy={bulkBusy}
+                  onShare={
+                    // The server refuses meeting notes; Share shows only when a file can go.
+                    checkedItems.some((item) => item.source !== "meeting")
+                      ? () => setSharingChecked(true)
+                      : undefined
+                  }
+                  onMove={() => setMovingChecked(true)}
                   onDownload={() => void downloadChecked()}
                   onSend={() => void sendChecked()}
                   agents={agents}
@@ -1100,6 +1190,39 @@ export function DataRoomPage({
             showNoticeToast(t`Created ${folder.name}`);
             reloadFolders();
             setFilters({ ...filters, folderId: folder.id });
+          }}
+        />
+      ) : null}
+      {movingChecked ? (
+        <MoveFilesDialog
+          items={checkedItems}
+          folders={nodes}
+          onClose={() => setMovingChecked(false)}
+          onDone={({ moved, failed, folderId }) => {
+            // The files that moved leave the selection; the ones that failed stay ticked.
+            setChecked((current) => new Map([...current].filter(([id]) => !moved.includes(id))));
+            if (failed.length) {
+              const names = checkedItems
+                .filter((item) => failed.includes(item.id))
+                .map((item) => item.name);
+              showNoticeToast(t`Could not move ${names.join(", ")}`);
+            }
+            setPinned((current) =>
+              current && moved.includes(current.id) ? { ...current, folderId } : current,
+            );
+            window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+            reload();
+            reloadFolders();
+          }}
+        />
+      ) : null}
+      {sharingChecked ? (
+        <ShareFilesDialog
+          items={checkedItems}
+          onClose={() => setSharingChecked(false)}
+          onDone={({ shared }) => {
+            // The files that went through leave the selection; the ones that failed stay ticked.
+            setChecked((current) => new Map([...current].filter(([id]) => !shared.includes(id))));
           }}
         />
       ) : null}

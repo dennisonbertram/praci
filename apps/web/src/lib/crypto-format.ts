@@ -16,6 +16,12 @@ export function tokenAmount(rawBalance: string, decimals: number, locale?: strin
   const trimmed = fraction.replace(/0+$/, "");
   if (BigInt(rawBalance) !== 0n && whole === "0" && trimmed === "")
     return `<0.${"0".repeat(FRACTION_DIGITS - 1)}1`;
+  // A balance of a billion or more (almost always a scam airdrop) is shown as 1.05e+38, cut not rounded.
+  if (whole.length > 9) {
+    const digits = whole.replace(/^0+/, "");
+    const mantissa = `${digits.slice(0, 1)}.${digits.slice(1, 3)}`.replace(/\.?0+$/, "");
+    return `${mantissa}e+${digits.length - 1}`;
+  }
   const grouped = BigInt(whole).toLocaleString(locale);
   if (!trimmed) return grouped;
   const point = (0.1).toLocaleString(locale).charAt(1);
@@ -28,6 +34,18 @@ export function decimalAmount(amount: string, locale?: string): string {
   if (!match) return getHideAmounts() ? MASK : amount;
   const fraction = match[2] ?? "";
   return tokenAmount(`${match[1]}${fraction}`.replace(/^0+(?=\d)/, ""), fraction.length, locale);
+}
+
+/** USD per token: two decimals from a dollar up, four significant digits below (a $0.00004 token stays readable). */
+export function tokenPrice(usdPrice: string, locale?: string): string {
+  const price = Number(usdPrice);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits:
+      price >= 1 || !(price > 0) ? 2 : Math.min(10, 3 - Math.floor(Math.log10(price))),
+  }).format(price);
 }
 
 export const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;

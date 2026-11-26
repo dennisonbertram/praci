@@ -8,8 +8,12 @@ import type {
   MessageReaction,
   Routine,
 } from "@rakazo/contracts";
-import { canReactToThreadMessage, MESSAGE_REACTIONS } from "@rakazo/contracts";
-import type { SlashActionId, ThreadItem } from "@rakazo/core";
+import {
+  canReactToThreadMessage,
+  MAIL_ALREADY_SENT_REASON,
+  MESSAGE_REACTIONS,
+} from "@rakazo/contracts";
+import type { ThreadItem } from "@rakazo/core";
 import {
   abortableDelay,
   appendNewerThreadPage,
@@ -33,6 +37,7 @@ import {
   messageProviderLabel,
   newClientId,
   newMessagesAfter,
+  ownerOnlyCredentialAskMessageIds,
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
@@ -41,6 +46,7 @@ import {
   reportedToolStep,
   resolveComposerSendPlan,
   resolvePersonaColorDef,
+  runErrorAction,
   selectableMessageText,
   selectedAskActionLabel,
   splitDataRoomReferences,
@@ -77,6 +83,7 @@ import type {
   TextProps,
 } from "react-native";
 import {
+  AccessibilityInfo,
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
@@ -98,13 +105,15 @@ import { KeyboardAvoidingView, useKeyboardState } from "react-native-keyboard-co
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppConnectCard } from "../components/AppConnectCard";
-import { AskActions } from "../components/AskActions";
+import { AskActions, AskContext } from "../components/AskActions";
 import { BotAvatar } from "../components/bot-avatar";
 import { ChoiceCard } from "../components/ChoiceCard";
 import { ComputerCard } from "../components/ComputerCard";
 import { ComposerReplyPreview } from "../components/composer-reply-preview";
 import { FailedSendBubble } from "../components/failed-send-bubble";
 import { GlassSurface } from "../components/glass-surface";
+import { GoalCard } from "../components/goal-card";
+import { GoalLine } from "../components/goal-line";
 import type { ImageArtifactPreviewTarget } from "../components/image-artifact-viewer";
 import { InlineImageAttachment } from "../components/inline-image-attachment";
 import { McpApprovalCard } from "../components/McpApprovalCard";
@@ -169,6 +178,7 @@ import {
   resumeLiveNotifications,
   setOpenNotificationThread,
 } from "../lib/live-notifications";
+import { mailOutcomeLabel } from "../lib/mail-outcome";
 import { presentMessageActionSheet } from "../lib/message-action-sheet";
 import { buildMessageContextMenu, messageMenuReaction } from "../lib/message-context-menu";
 import {
@@ -189,6 +199,7 @@ import {
 import type { PickedAttachment } from "../lib/pick-attachments";
 import { pickDocuments, pickFromLibrary, takePhoto } from "../lib/pick-attachments";
 import { threadRefreshDelayMs } from "../lib/refresh";
+import { replyToAnnounce } from "../lib/reply-announcement";
 import {
   getCachedResponseStreamingEnabled,
   subscribeResponseStreaming,
@@ -211,14 +222,24 @@ import {
   loadVerifiedIntegrationsScope,
   subscribeSessionGeneration,
 } from "../lib/session";
+import type { MobileSlashActionId } from "../lib/slash-actions";
+import { slashActionRoute } from "../lib/slash-actions";
 import {
   applyMessageJump as applyMessageJumpAction,
   commitSnap as commitSnapAction,
   showLatest as showLatestAction,
 } from "../lib/thread-actions";
 import type { SendAttempt } from "../lib/thread-feedback";
-import { confirmEchoes, subscribeDelivered, useThreadFeedback } from "../lib/thread-feedback";
+import {
+  confirmEchoes,
+  setThreadBubblesVisible,
+  subscribeDelivered,
+  subscribeGoalReply,
+  useThreadFeedback,
+} from "../lib/thread-feedback";
+import { applyGoalEvent, goalLineState } from "../lib/thread-goal";
 import { ThreadJumpAnchor } from "../lib/thread-jump";
+import { copyWithFeedback, loadEarlierPage } from "../lib/thread-message-actions";
 import { ThreadReadOnlyContext } from "../lib/thread-read-only";
 import type { ThreadScrollAction, ThreadScrollState } from "../lib/thread-scroll";
 import { ThreadScrollBehavior } from "../lib/thread-scroll";
@@ -249,8 +270,13 @@ function formatApprovalAnswer(
   if (approval && outcome === "created") return t("Created");
   if (approval && outcome === "cancelled") return t("Cancelled");
   if (approval && answer === "allow") return t("Allowed once");
+  if (approval && answer === "always_routine") return t("Always allowed for this routine");
+  if (approval && answer === "always_bot_sites") return t("Allowed for all sites");
   if (approval && answer === "always") return t("Always allowed");
   if (approval && answer === "deny") return t("Denied");
+  if (approval && answer === "skipped") return t("Skipped");
+  // A reply batch pressed on another surface; its results are on that surface's card.
+  if (answer === "send") return t("Send selected");
   return t("Answered: {answer}", { answer: selectedAskActionLabel(answer, actions) });
 }
 
@@ -279,7 +305,9 @@ function speakableMessageText(message: MobileMessage): string {
 export default function ThreadRoute() {
   const generation = useSyncExternalStore(subscribeSessionGeneration, currentSessionGeneration);
   const ready = useSyncExternalStore(subscribeSessionGeneration, currentReadySessionGeneration);
-  const [owner, setOwner] = useState<{ key: string; generation: number } | null>(null);
+  const [owner, setOwner] = useState<{ key: string; generation: number; userId: string } | null>(
+    null,
+  );
   useEffect(() => {
     if (generation !== ready) return;
     const apiBase = currentApiBase();
@@ -296,7 +324,11 @@ export default function ThreadRoute() {
             generation === currentSessionGeneration() &&
             apiBase === currentApiBase()
           )
-            setOwner({ key: JSON.stringify([apiBase, scope.userId]), generation });
+            setOwner({
+              key: JSON.stringify([apiBase, scope.userId]),
+              generation,
+              userId: scope.userId,
+            });
         })
         .catch((error) => {
           if (!cancelled && !notified) Alert.alert(t("Could not continue"), errorText(error));
@@ -364,7 +396,7 @@ export default function ThreadRoute() {
       <>
         {owner?.generation !== generation ? <ActivityIndicator color={tokens.foreground} /> : null}
         <View style={{ flex: 1, display: owner?.generation === generation ? "flex" : "none" }}>
-          {owner ? <Thread key={owner.key} sessionEpoch={ready} /> : null}
+          {owner ? <Thread key={owner.key} sessionEpoch={ready} userId={owner.userId} /> : null}
         </View>
       </>
     );
@@ -462,7 +494,7 @@ function createThreadHeaderStyles() {
   });
 }
 
-function Thread({ sessionEpoch }: { sessionEpoch: number }) {
+function Thread({ sessionEpoch, userId }: { sessionEpoch: number; userId: string }) {
   const colorScheme = useResolvedAppearance();
   const tokens = mobileTokens();
   const styles = useThemedStyles(createThreadHeaderStyles);
@@ -471,6 +503,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const [pinsTick, setPinsTick] = useState(0);
   const { t, locale } = useI18n();
   const navigation = useNavigation();
+  const focused = useIsFocused();
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const nativeHeaderHeight = useHeaderHeight();
@@ -542,6 +575,8 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const readVisibleTarget = useRef<string | null>(null);
   const autoSpoken = useRef<string | null>(null);
   const autoSpokenBotId = useRef<string | null>(null);
+  const announcedReplyIds = useRef(new Set<string>());
+  const announcedReplyThread = useRef<string | null>(null);
   const threadKey = groupId ?? botId;
   const [threadScrollState, setThreadScrollState] = useState<ThreadScrollState>(() =>
     scrollBehavior.current.state(),
@@ -607,11 +642,13 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const [replyQuote, setReplyQuote] = useState<string | null>(null);
   const [quoteTarget, setQuoteTarget] = useState<MobileMessage | null>(null);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  const [goalNotice, setGoalNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const preparingSend = useRef(false);
   const feedback = useThreadFeedback(threadKey, newClientId);
   const { error, setError } = feedback;
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderLoadFailed, setOlderLoadFailed] = useState(false);
   const [selectableText, setSelectableText] = useState<string | null>(null);
   const [loadingNewer, setLoadingNewer] = useState(false);
   const loadingNewerContent = useRef(false);
@@ -715,6 +752,72 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     });
   }, [inGroup, snap?.activeRuns, snap?.members, snap?.run]);
   const working = inGroup ? workingGroupBots.length > 0 : isRunWorking(currentBotStatus);
+  const announcementSnapshotReady =
+    Boolean(snap) && (groupId ? snap?.groupId === groupId : botId ? snap?.botId === botId : true);
+  useEffect(() => {
+    if (
+      !snap ||
+      !announcementSnapshotReady ||
+      showingSaved ||
+      announcedReplyThread.current === threadKey
+    )
+      return;
+    announcedReplyThread.current = threadKey ?? null;
+    announcedReplyIds.current = new Set(snap.messages.map(({ id }) => id));
+  }, [snap, announcementSnapshotReady, showingSaved, threadKey]);
+
+  const announceFinishedReply = useCallback(() => {
+    if (
+      !snap ||
+      !announcementSnapshotReady ||
+      showingSaved ||
+      !focused ||
+      !navigation.isFocused() ||
+      AppState.currentState !== "active"
+    )
+      return;
+    if (working) return;
+    const message = replyToAnnounce(
+      snap.messages.map((item) => ({
+        ...item,
+        role: item.role === "bot" ? "assistant" : item.role,
+      })),
+      announcedReplyIds.current,
+    );
+    if (!message) return;
+    const text = message.blocks
+      .flatMap((block) =>
+        block.kind === "text" && block.text ? [plainTextFromMarkdown(block.text)] : [],
+      )
+      .join(" ")
+      .trim();
+    if (!text) return;
+    const speaker = inGroup ? memberName(snap.members, message.botId) : null;
+    AccessibilityInfo.announceForAccessibility(speaker ? `${speaker}: ${text}` : text);
+    announcedReplyIds.current.add(message.id);
+  }, [
+    snap,
+    announcementSnapshotReady,
+    showingSaved,
+    focused,
+    navigation,
+    threadKey,
+    working,
+    inGroup,
+    displayName,
+  ]);
+
+  useEffect(() => {
+    announceFinishedReply();
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") announceFinishedReply();
+    });
+    return () => appState.remove();
+  }, [announceFinishedReply]);
+  const goalLine = goalLineState(
+    inGroup ? null : snap?.goal,
+    snap?.activeRuns ?? (snap?.run ? [snap.run] : []),
+  );
 
   const speakFinishedReply = useCallback(() => {
     if (!botId || inGroup || !currentBot) return;
@@ -1361,26 +1464,30 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     if ((!botId && !groupId) || snap?.olderCursor == null || loadingOlder) return;
     loadingOlderContent.current = true;
     setLoadingOlder(true);
+    setOlderLoadFailed(false);
     const epoch = historyEpoch.current;
     const pinned = pinnedAroundRef.current;
-    try {
-      const page = await rpc<MobileMessagePage>("threads/messages", {
-        ...(groupId ? { groupId } : { botId: botId! }),
-        before: snap.olderCursor,
-        includePeerReceipts: true,
-      });
-      if (epoch !== historyEpoch.current || pinnedAroundRef.current !== pinned) {
+    await loadEarlierPage(
+      () =>
+        rpc<MobileMessagePage>("threads/messages", {
+          ...(groupId ? { groupId } : { botId: botId! }),
+          before: snap.olderCursor,
+          includePeerReceipts: true,
+        }),
+      (page) => {
+        if (epoch !== historyEpoch.current || pinnedAroundRef.current !== pinned) {
+          loadingOlderContent.current = false;
+          return;
+        }
+        expandedHistoryThread.current = page.threadId;
+        commitSnap(prependMobileMessagePage(snapRef.current, page));
+      },
+      () => {
         loadingOlderContent.current = false;
-        return;
-      }
-      expandedHistoryThread.current = page.threadId;
-      commitSnap(prependMobileMessagePage(snapRef.current, page));
-    } catch (err) {
-      loadingOlderContent.current = false;
-      setError(errorText(err, t("Could not load earlier messages")));
-    } finally {
-      setLoadingOlder(false);
-    }
+        setOlderLoadFailed(true);
+      },
+    );
+    setLoadingOlder(false);
   }
 
   // Marks the newest stored message read once the live thread is on screen at its latest messages.
@@ -1388,10 +1495,12 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const showingSavedRef = useRef(showingSaved);
   showingSavedRef.current = showingSaved;
   const readTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const heldUnread = useRef<string | null>(null);
   useEffect(() => () => clearTimeout(readTimer.current), []);
   const markReadIfVisible = useCallback(() => {
     if (readOnly || AppState.currentState !== "active" || !navigation.isFocused()) return;
     const target = groupId ?? botId;
+    if (target && heldUnread.current === target) return;
     const current = snapRef.current;
     if (!target || !current || showingSavedRef.current || pinnedAroundRef.current) return;
     if (scrollBehavior.current.state().detached) return;
@@ -1533,6 +1642,9 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 }
                 commitSnap(reduceThreadSnapshot(snapRef.current, event));
               }
+              if (event.type === "thread.goal.updated") {
+                commitSnap(applyGoalEvent(snapRef.current, event));
+              }
               if (event.type === "page.updated") setHasPage(true);
               if (event.type === "pins.updated") setPinsTick((n) => n + 1);
               if (event.type === "bot.updated") {
@@ -1654,19 +1766,14 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     setError(null);
   }, [threadKey]);
 
-  function runSlashAction(action: SlashActionId) {
-    if (action === "chat-settings") {
-      if (inGroup && groupId) {
-        router.push({ pathname: "/group-settings", params: { groupId } });
-      } else if (botId) {
-        router.push({ pathname: "/bot-settings", params: { botId } });
-      }
-      return;
-    }
-    router.push({
-      pathname: "/account",
-      params: action === "settings-usage" ? { focus: "usage" } : undefined,
-    });
+  function runSlashAction(action: MobileSlashActionId) {
+    const route = slashActionRoute(action, { inGroup, groupId, botId });
+    if (route) router.push(route as never);
+  }
+
+  function clearGoal() {
+    if (!botId) return;
+    void rpc("threads/clearGoal", { botId }).catch((err) => setError(errorText(err)));
   }
 
   async function send() {
@@ -1785,6 +1892,12 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   afterDeliveredRef.current = afterDelivered;
   useEffect(() => subscribeDelivered((attempt) => afterDeliveredRef.current(attempt)), []);
   useEffect(() => {
+    setGoalNotice(null);
+    return subscribeGoalReply((key, text) => {
+      if (key === threadKey) setGoalNotice(text);
+    });
+  }, [threadKey]);
+  useEffect(() => {
     if (snap && (snap.groupId ?? snap.botId) === threadKey) {
       confirmEchoes(
         threadKey!,
@@ -1830,13 +1943,24 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       const targetBotId = botId;
       const targetGroupId = groupId;
       if (readOnly || (!targetBotId && !targetGroupId) || !message.runId) return;
-      await rpc("threads/answer", {
-        ...(targetGroupId ? { groupId: targetGroupId } : { botId: targetBotId! }),
-        runId: message.runId,
-        messageId: message.id,
-        answer,
-        ...(username ? { username } : {}),
-      });
+      try {
+        await rpc("threads/answer", {
+          ...(targetGroupId ? { groupId: targetGroupId } : { botId: targetBotId! }),
+          runId: message.runId,
+          messageId: message.id,
+          answer,
+          ...(username ? { username } : {}),
+        });
+      } catch (error) {
+        if (isCurrentTarget(targetBotId, targetGroupId)) {
+          try {
+            await refresh();
+          } catch {
+            // Keep the answer error visible; refreshing is a best-effort recovery.
+          }
+        }
+        throw error;
+      }
       if (isCurrentTarget(targetBotId, targetGroupId)) await refresh();
     },
     [botId, groupId, readOnly],
@@ -2027,6 +2151,11 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   }
 
   const answerableAskMessageId = latestAnswerableAskMessageId(snap);
+  // A login or credential is saved for the run's user, so others see the card without fields.
+  const ownerOnlyAskIds = useMemo(
+    () => ownerOnlyCredentialAskMessageIds(snap, userId),
+    [snap, userId],
+  );
   const [dismissedRuns, setDismissedRuns] = useState<ReadonlySet<string>>(
     () => new Set(dismissedRunErrorIds),
   );
@@ -2040,11 +2169,33 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const separatorIds = useMemo(() => timeSeparatorIds(visibleMessages), [visibleMessages]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [copyFeedbackTarget, setCopyFeedbackTarget] = useState<string | null>(null);
+  const copyFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      if (copyFeedbackTimer.current) clearTimeout(copyFeedbackTimer.current);
     },
     [],
+  );
+  // Stable, so the memoized message rows do not all re-render on every thread update.
+  const copyText = useCallback(
+    (text: string, target?: string) => {
+      if (!text.trim()) return;
+      void copyWithFeedback(
+        () => Clipboard.setStringAsync(text),
+        (feedback) => {
+          const notice = t(feedback);
+          setCopyFeedback(notice);
+          setCopyFeedbackTarget(target ?? null);
+          AccessibilityInfo.announceForAccessibility(notice);
+          if (copyFeedbackTimer.current) clearTimeout(copyFeedbackTimer.current);
+          copyFeedbackTimer.current = setTimeout(() => setCopyFeedback(null), 1600);
+        },
+      );
+    },
+    [t],
   );
   // Group calls in reading order, then reverse for the inverted list.
   const liveItems = useMemo(() => groupVoiceChats(visibleMessages).reverse(), [visibleMessages]);
@@ -2060,6 +2211,14 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           (pinnedTarget.groupId && pinnedTarget.groupId === groupId))),
   );
   const pinnedNewerCursor = showPinnedPage ? (pinnedTarget?.newerCursor ?? null) : null;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!threadKey) return;
+      setThreadBubblesVisible(threadKey, pinnedNewerCursor === null);
+      return () => setThreadBubblesVisible(threadKey, false);
+    }, [threadKey, pinnedNewerCursor]),
+  );
 
   function performScroll(action: ThreadScrollAction) {
     if (!action || showPinnedPage) return;
@@ -2158,6 +2317,24 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     }
   }
 
+  // The chat stays unread for as long as this screen shows it; the next open puts New at the
+  // first reply from the message. ponytail: the hold lives in a ref, so it ends when the screen unmounts.
+  async function markUnreadFrom(message: MobileMessage) {
+    const target = groupId ?? botId;
+    if (!target) return;
+    heldUnread.current = target;
+    clearTimeout(readTimer.current);
+    try {
+      await rpc("threads/markUnread", {
+        ...(groupId ? { groupId } : { botId: botId! }),
+        messageId: message.id,
+      });
+    } catch (err) {
+      if (heldUnread.current === target) heldUnread.current = null;
+      Alert.alert(t("Could not update chat"), errorText(err, t("Try again.")));
+    }
+  }
+
   // Event actions read the latest committed screen state without invalidating settled rows.
   const currentRowActions: MessageRowActions = {
     reply: (message) => {
@@ -2169,6 +2346,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     speak,
     react: (message, reaction) => void reactToMessage(message, reaction),
     remember: (message) => void rememberMessage(message),
+    markUnread: (message) => void markUnreadFrom(message),
     answer: answerMessage,
     openBot,
     openComputer,
@@ -2217,6 +2395,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       speak: (message) => rowActionsRef.current.speak(message),
       react: (message, reaction) => rowActionsRef.current.react(message, reaction),
       remember: (message) => rowActionsRef.current.remember(message),
+      markUnread: (message) => rowActionsRef.current.markUnread(message),
       answer: (message, answer, username) =>
         rowActionsRef.current.answer(message, answer, username),
       openBot: (id, name) => rowActionsRef.current.openBot(id, name),
@@ -2269,7 +2448,9 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           members={snap?.members}
           readOnly={readOnly}
           onCall={onCall}
-          canAnswer={!readOnly && message.id === answerableAskMessageId}
+          canAnswer={
+            !readOnly && message.id === answerableAskMessageId && !ownerOnlyAskIds.has(message.id)
+          }
           highlighted={highlightedMessageId === message.id}
           separator={separatorIds.has(message.id)}
           unreadDivider={unreadMessageId === message.id}
@@ -2280,6 +2461,8 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           activityColor={activityBot?.color}
           activityStatus={activityStatus}
           inGroup={inGroup}
+          copyFeedback={copyFeedbackTarget === message.id ? copyFeedback : null}
+          copyText={copyText}
           windowWidth={windowWidth}
           enableJump={options?.enableJump ?? false}
           index={options?.index ?? 0}
@@ -2303,6 +2486,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       readOnly,
       onCall,
       answerableAskMessageId,
+      ownerOnlyAskIds,
       highlightedMessageId,
       separatorIds,
       unreadMessageId,
@@ -2410,8 +2594,17 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           paddingVertical: 10,
         }}
       >
-        <Text style={{ color: tokens.mutedForeground, fontSize: 13 }}>
-          {loadingOlder ? t("Loading…") : t("Load earlier messages")}
+        <Text
+          style={{
+            color: olderLoadFailed ? tokens.destructive : tokens.mutedForeground,
+            fontSize: 13,
+          }}
+        >
+          {loadingOlder
+            ? t("Loading…")
+            : olderLoadFailed
+              ? t("Could not load earlier messages")
+              : t("Load earlier messages")}
         </Text>
       </Pressable>
     ) : null;
@@ -2430,9 +2623,19 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       key={attempt.clientNonce}
       attempt={attempt}
       onRetry={() => void deliver(attempt, true)}
+      onCopy={() => copyText(attempt.payload.displayText)}
       onDelete={() => feedback.discard(attempt)}
     />
   ));
+  const failedCopyNotice =
+    copyFeedback && copyFeedbackTarget === null ? (
+      <Text
+        accessibilityLiveRegion="polite"
+        style={{ color: tokens.mutedForeground, fontSize: 12, marginTop: 4 }}
+      >
+        {copyFeedback}
+      </Text>
+    ) : null;
 
   return (
     <BotAccentContext.Provider value={inGroup ? null : (currentBot?.color ?? null)}>
@@ -2513,6 +2716,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 renderMessageRow(message, { enableJump: true, index }),
               )}
               {pinnedNewerCursor === null ? failedSendBubbles : null}
+              {pinnedNewerCursor === null ? failedCopyNotice : null}
               {pinnedNewerCursor === null ? runFailedNote : null}
               {pinnedNewerCursor === null ? (
                 workingFooter
@@ -2573,6 +2777,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 <>
                   {runFailedNote}
                   {failedSendBubbles}
+                  {failedCopyNotice}
                   {workingFooter}
                 </>
               }
@@ -2658,14 +2863,24 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           {/* Fades messages out above the composer, like the header fade. */}
           <View pointerEvents="none" style={styles.composerFade} />
           {runError ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("Dismiss")}
-              onPress={dismissRunError}
-              style={{ marginTop: 12 }}
-            >
-              <Text style={{ color: tokens.destructive, fontSize: 13 }}>{runError}</Text>
-            </Pressable>
+            <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("Dismiss")}
+                onPress={dismissRunError}
+                style={{ flex: 1 }}
+              >
+                <Text style={{ color: tokens.destructive, fontSize: 13 }}>{runError}</Text>
+              </Pressable>
+              {/* A key or billing failure is fixed in Models; there is no native retry yet. */}
+              {["models", "connection"].includes(runErrorAction(snap?.run?.error) ?? "") ? (
+                <Pressable accessibilityRole="button" onPress={() => router.push("/models")}>
+                  <Text style={{ color: tokens.foreground, fontSize: 13, fontWeight: "600" }}>
+                    {t("Models")}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           ) : null}
           {replyTarget ? (
             <GlassSurface
@@ -2707,6 +2922,15 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 }}
               />
             </GlassSurface>
+          ) : null}
+          {goalLine ? <GoalLine goal={goalLine} onClear={clearGoal} /> : null}
+          {goalNotice ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={{ color: tokens.mutedForeground, marginTop: 12, fontSize: 13 }}
+            >
+              {goalNotice}
+            </Text>
           ) : null}
           {attachmentNotice ? (
             <Text style={{ color: tokens.warning, marginTop: 12, fontSize: 13 }}>
@@ -3018,6 +3242,7 @@ type MessageRowActions = {
   speak: (message: MobileMessage) => void;
   react: (message: MobileMessage, reaction: MessageReaction) => void;
   remember: (message: MobileMessage) => void;
+  markUnread: (message: MobileMessage) => void;
   answer: (message: MobileMessage, answer: string, username?: string) => Promise<void>;
   openBot: (id: string, name: string) => void;
   openComputer: (id: string, name: string) => void;
@@ -3050,6 +3275,8 @@ type MessageRowProps = {
   activityColor?: string;
   activityStatus?: MobileBot["status"];
   inGroup: boolean;
+  copyFeedback: string | null;
+  copyText: (text: string, target?: string) => void;
   windowWidth: number;
   enableJump: boolean;
   index: number;
@@ -3077,6 +3304,8 @@ const MessageRow = memo(function MessageRow({
   activityColor,
   activityStatus,
   inGroup,
+  copyFeedback,
+  copyText,
   windowWidth,
   enableJump,
   index,
@@ -3119,6 +3348,7 @@ const MessageRow = memo(function MessageRow({
       message.role === "bot" &&
       canReactToThreadMessage(message) &&
       messageText.trim().length > 0;
+    const includeUnread = !readOnly && isStoredMessage(message);
     const reply = () => actions.reply(message);
     const quote = () => actions.quote(message);
     const speakMessage = () => actions.speak(message);
@@ -3126,14 +3356,15 @@ const MessageRow = memo(function MessageRow({
       actions.select(
         message.role === "user" ? messageText : selectableTextFromMarkdown(messageText),
       );
-    const copy = () => {
-      const text = copyableMobileMessageText(message);
-      if (text) void Clipboard.setStringAsync(text).catch(() => undefined);
-    };
+    const copy = () => copyText(copyableMobileMessageText(message), message.id);
     const react = (reaction: MessageReaction) => actions.react(message, reaction);
     const remember = () => actions.remember(message);
+    const markUnread = () => actions.markUnread(message);
     const menuActions = [
       ...(!readOnly ? [{ name: "reply", text: t("Reply"), onPress: reply }] : []),
+      ...(includeUnread
+        ? [{ name: "unread", text: t("Mark as unread"), onPress: markUnread }]
+        : []),
       ...(includeQuote ? [{ name: "quote", text: t("Quote"), onPress: quote }] : []),
       ...(includeReact
         ? [
@@ -3167,6 +3398,7 @@ const MessageRow = memo(function MessageRow({
         speak: t("Speak message"),
         select: t("Select text"),
         remember: t("Remember"),
+        unread: t("Mark as unread"),
       },
       reactions: MESSAGE_REACTIONS,
       include: {
@@ -3176,6 +3408,7 @@ const MessageRow = memo(function MessageRow({
         speak: includeSpeak,
         select: includeSelect,
         remember: includeRemember,
+        unread: includeUnread,
       },
     });
     const openSheet = () =>
@@ -3202,6 +3435,7 @@ const MessageRow = memo(function MessageRow({
         if (id === "speak") speakMessage();
         if (id === "select") select();
         if (id === "remember") remember();
+        if (id === "unread") markUnread();
       },
       actionProps: {
         onLongPress: Platform.OS === "ios" ? undefined : openSheet,
@@ -3301,6 +3535,14 @@ const MessageRow = memo(function MessageRow({
               />
             </ThreadReadOnlyContext.Provider>
           </MessageContextMenu>
+          {copyFeedback ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={{ color: tokens.mutedForeground, fontSize: 12, marginTop: 4 }}
+            >
+              {copyFeedback}
+            </Text>
+          ) : null}
           {messageReactions ? (
             <View
               style={{
@@ -3368,6 +3610,7 @@ const MessageBubble = memo(function MessageBubble({
   onPreviewImage: (target: ImageArtifactPreviewTarget) => void;
   actionProps: MessageActionProps;
 }) {
+  const router = useRouter();
   const colorScheme = useResolvedAppearance();
   const tokens = useAccentedTokens();
   const { t } = useI18n();
@@ -3475,10 +3718,23 @@ const MessageBubble = memo(function MessageBubble({
       </Pressable>
     );
   }
+  const goalBlock = message.blocks.find(
+    (block): block is Extract<MessageBlock, { kind: "goal" }> => block.kind === "goal",
+  );
+  if (goalBlock) return <GoalCard block={goalBlock} />;
   if (
     isCenteredAgentEvent(message.blocks) &&
     message.blocks.every((block) => block.kind === "meta")
   ) {
+    // A server-written link to a Data room item; other paths show as text only.
+    const metaHref = message.blocks.flatMap((block) =>
+      block.kind === "meta" && block.link ? [block.link] : [],
+    )[0];
+    const metaItemId = metaHref?.href.match(/^\/app\/data-room\?item=([^&]+)$/)?.[1];
+    const metaLink =
+      metaHref && metaItemId
+        ? { label: metaHref.label, itemId: decodeURIComponent(metaItemId) }
+        : null;
     return (
       <Pressable
         {...actionProps}
@@ -3486,6 +3742,16 @@ const MessageBubble = memo(function MessageBubble({
       >
         <Text style={{ color: tokens.mutedForeground, fontSize: 13.5, textAlign: "center" }}>
           {message.blocks.map((block) => (block.kind === "meta" ? block.text : "")).join("\n")}
+          {metaLink ? (
+            <Text
+              style={{ textDecorationLine: "underline" }}
+              onPress={() =>
+                router.push({ pathname: "/data-room-item", params: { itemId: metaLink.itemId } })
+              }
+            >
+              {` ${metaLink.label}`}
+            </Text>
+          ) : null}
         </Text>
       </Pressable>
     );
@@ -3509,8 +3775,37 @@ const MessageBubble = memo(function MessageBubble({
   }
   const special = message.blocks.find(
     (block) =>
-      block.kind === "subagent" || block.kind === "child_bot" || block.kind === "cloud_agent",
+      block.kind === "subagent" ||
+      block.kind === "child_bot" ||
+      block.kind === "cloud_agent" ||
+      block.kind === "page",
   );
+  if (special?.kind === "page") {
+    return (
+      <Pressable
+        {...actionProps}
+        onPress={() =>
+          router.push({
+            pathname: "/agent-page",
+            params: { botId: special.botId, pageId: special.pageId },
+          })
+        }
+        style={{
+          width: "90%",
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: tokens.border,
+          backgroundColor: tokens.card,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+        }}
+      >
+        <Text style={{ color: tokens.foreground, fontSize: 15, fontWeight: "600" }}>
+          {special.title}
+        </Text>
+      </Pressable>
+    );
+  }
   if (special?.kind === "subagent") {
     const running = special.status === "running";
     const failed = special.status === "failed";
@@ -3730,41 +4025,36 @@ const MessageBubble = memo(function MessageBubble({
               {askBlock.text}
             </Text>
           ) : null}
-          {askBlock.detail ? (
-            <Text
-              {...(askBlock.text ? {} : actionProps)}
-              style={{
-                color: tokens.mutedForeground,
-                marginTop: askBlock.text ? 8 : 0,
-                fontSize: 12.5,
-                fontFamily: "Menlo",
-                lineHeight: 20,
-              }}
-            >
-              {askBlock.detail}
-            </Text>
-          ) : null}
+          <AskContext
+            approvalReason={askBlock.approvalReason}
+            detail={askBlock.detail}
+            detailFolded={askBlock.detailFolded}
+            warning={
+              askBlock.status !== "answered" && askBlock.approvalReason === MAIL_ALREADY_SENT_REASON
+            }
+          />
           {askBlock.status === "answered" ? (
             <Text
               {...actionProps}
               style={{
-                color: tokens.success,
+                color: askBlock.mail?.outcome === "failed" ? tokens.destructive : tokens.success,
                 marginTop: 12,
                 fontSize: 13.5,
                 fontWeight: "600",
               }}
             >
-              {formatApprovalAnswer(
-                askBlock.answer,
-                askBlock.actions,
-                isApprovalAskBlock(askBlock),
-                Boolean(askBlock.consent),
-              )}
+              {mailOutcomeLabel(askBlock.mail) ??
+                formatApprovalAnswer(
+                  askBlock.answer,
+                  askBlock.actions,
+                  isApprovalAskBlock(askBlock),
+                  Boolean(askBlock.consent || askBlock.pageSource),
+                )}
             </Text>
-          ) : canAnswer && onAnswer ? (
+          ) : (canAnswer || askBlock.pageSource) && onAnswer ? (
             <AskActions
               actions={askBlock.actions}
-              consent={Boolean(askBlock.consent)}
+              consent={Boolean(askBlock.consent || askBlock.pageSource)}
               accessibilityActions={actionProps.accessibilityActions}
               onAccessibilityAction={actionProps.onAccessibilityAction}
               onAnswer={(answer) => onAnswer(message, answer)}
@@ -3875,6 +4165,8 @@ const MessageBubble = memo(function MessageBubble({
             ) : (
               <Pressable
                 {...actionProps}
+                accessibilityRole="button"
+                accessibilityLabel={t("Open image {name}", { name: attachment.name ?? t("Image") })}
                 key={`${attachment.artifactId ?? attachment.name ?? "image"}-${index}`}
                 onPress={() =>
                   attachment.artifactId
@@ -3902,6 +4194,10 @@ const MessageBubble = memo(function MessageBubble({
           ) : (
             <Pressable
               {...actionProps}
+              accessibilityRole="button"
+              accessibilityLabel={[attachment.name ?? t("File"), formatFileSize(attachment.size)]
+                .filter(Boolean)
+                .join(", ")}
               key={`${attachment.artifactId ?? attachment.name ?? "file"}-${index}`}
               onPress={() =>
                 attachment.artifactId

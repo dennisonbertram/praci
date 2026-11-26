@@ -53,6 +53,7 @@ export default function SignIn() {
   const [capabilityError, setCapabilityError] = useState(false);
   const [capabilityAttempt, setCapabilityAttempt] = useState(0);
   const [resetSent, setResetSent] = useState(false);
+  const [verifySent, setVerifySent] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -129,6 +130,7 @@ export default function SignIn() {
           name.trim() || trimmedEmail.split("@")[0] || "User",
         );
         if (result.verificationRequired) {
+          setVerifySent(true);
           setResetSent(true);
           return;
         }
@@ -198,12 +200,45 @@ export default function SignIn() {
               </Text>
               {resetSent ? (
                 <View style={{ alignItems: "center", marginTop: 28 }}>
+                  {verifySent && email.trim() ? (
+                    <Text
+                      style={{
+                        color: tokens.mutedForeground,
+                        fontSize: 15,
+                        textAlign: "center",
+                      }}
+                    >
+                      {t("A verification link is on its way to {email}.", {
+                        email: email.trim(),
+                      })}
+                    </Text>
+                  ) : null}
+                  {verifySent ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      hitSlop={8}
+                      onPress={() => {
+                        setMode("up");
+                        setVerifySent(false);
+                        setResetSent(false);
+                        setError(null);
+                      }}
+                      style={{ marginTop: 16 }}
+                    >
+                      <Text style={{ color: tokens.foreground, fontSize: 15, fontWeight: "600" }}>
+                        {t("Use a different email")}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     accessibilityRole="button"
+                    hitSlop={8}
                     onPress={() => {
                       setMode("in");
+                      setVerifySent(false);
                       setResetSent(false);
                     }}
+                    style={{ marginTop: verifySent ? 16 : 0 }}
                   >
                     <Text style={{ color: tokens.foreground, fontSize: 15, fontWeight: "600" }}>
                       {t("Back to sign in")}

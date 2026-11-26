@@ -17,7 +17,7 @@ function fixture(count = 30) {
     id: `message-${index}`,
     createdAt: "2026-01-01T00:00:00Z",
     role: "user" as const,
-    content: `Original discussion ${index}: ${"synthetic history ".repeat(30)}`,
+    content: `Original discussion ${index}: ${"synthetic history ".repeat(100)}`,
   }));
   const request: AgentRunRequest = {
     botId: "bot",
@@ -40,6 +40,47 @@ function fixture(count = 30) {
   const context: Context = { systemPrompt: request.instructions, tools: [], messages };
   return { request, context };
 }
+function connectorPages() {
+  const { request, context } = fixture(0);
+  const bodies = Array.from({ length: 14 }, (_, index) => `Page ${index}: ${"0".repeat(9500)}`);
+  context.messages.push({
+    role: "assistant",
+    content: bodies.map((_, index) => ({
+      type: "toolCall",
+      id: `page-${index}`,
+      name: "connectors_execute_tool",
+      arguments: {},
+    })),
+    timestamp: 101,
+  } as Message);
+  for (const [index, body] of bodies.entries()) {
+    context.messages.push({
+      role: "toolResult",
+      toolCallId: `page-${index}`,
+      toolName: "connectors_execute_tool",
+      content: [{ type: "text", text: body }],
+      isError: false,
+      timestamp: 102,
+    });
+  }
+  context.messages.push(
+    {
+      role: "assistant",
+      content: [{ type: "toolCall", id: "later", name: "shell", arguments: {} }],
+      timestamp: 103,
+    } as Message,
+    {
+      role: "toolResult",
+      toolCallId: "later",
+      toolName: "shell",
+      content: [{ type: "text", text: "ok" }],
+      isError: false,
+      timestamp: 104,
+    },
+  );
+  return { request, context, bodies };
+}
+
 describe("runtime context policy", () => {
   it("matches the qualified explicit strategy when backend history retrieval is usable", () => {
     const { request, context } = fixture();
@@ -117,7 +158,7 @@ describe("runtime context policy", () => {
       readOnly: false,
       content: `---\nname: daily-brief\n---\n${"1. Step kept for skill_update.\n".repeat(80)}`,
     });
-    const shellOutput = "synthetic shell output ".repeat(100);
+    const shellOutput = "synthetic shell output ".repeat(3000);
     context.messages.push(
       call("read", "skill_read"),
       result("read", "skill_read", skill),
@@ -125,12 +166,16 @@ describe("runtime context policy", () => {
       result("shell-1", "shell", shellOutput),
       call("shell-2", "shell"),
       result("shell-2", "shell", shellOutput),
+      call("shell-3", "shell"),
+      result("shell-3", "shell", shellOutput),
+      call("shell-4", "shell"),
+      result("shell-4", "shell", shellOutput),
     );
     const policy = createRuntimeContextPolicy({
       ...request,
       contextStrategy: DEFAULT_CONTEXT_STRATEGY,
     });
-    const prepared = policy.prepareContext(context, model);
+    const prepared = policy.prepareContext(context, { ...model, contextWindow: 100_000 });
     const body = (id: string) => {
       const message = prepared.messages.find(
         (message) => message.role === "toolResult" && message.toolCallId === id,
@@ -140,7 +185,9 @@ describe("runtime context policy", () => {
     expect(skill.length).toBeGreaterThan(2500);
     expect(body("read")).toBe(skill);
     expect(body("shell-1")).toContain("[Tool result truncated to fit context");
-    expect(body("shell-2")).toBe(shellOutput);
+    for (const id of ["shell-2", "shell-3", "shell-4"]) {
+      expect(body(id)).toBe(shellOutput);
+    }
   });
   it("keeps an earlier Inbox overview whole after later tool calls", () => {
     const { request, context } = fixture(2);
@@ -196,6 +243,84 @@ describe("runtime context policy", () => {
     );
   });
 
+  it.each([200_000, 80_000])(
+    "retains connector pages newest-first within a %i context budget",
+    (contextWindow) => {
+      const { request, context, bodies } = connectorPages();
+      const policy = createRuntimeContextPolicy({ ...request, contextStrategy: "retrieval" });
+      const prepared = policy.prepareContext(context, { ...model, contextWindow });
+      const pages = prepared.messages.filter(
+        (message) =>
+          message.role === "toolResult" && message.toolName === "connectors_execute_tool",
+      );
+      expect(pages).toHaveLength(14);
+      const whole = pages.map(
+        (message, index) =>
+          JSON.stringify(message.content) ===
+          JSON.stringify([{ type: "text", text: bodies[index] }]),
+      );
+      if (contextWindow === 200_000) expect(whole).toEqual(bodies.map(() => true));
+      else {
+        const firstWhole = whole.indexOf(true);
+        expect(firstWhole).toBeGreaterThan(0);
+        expect(firstWhole).toBeLessThan(10);
+        expect(whole).toEqual(whole.map((_, index) => index >= firstWhole));
+        for (const page of pages.slice(0, firstWhole))
+          expect(JSON.stringify(page.content)).toContain("Tool result truncated to fit context");
+      }
+      expect(policy.getDecision()!.estimatedInputTokens).toBeLessThanOrEqual(contextWindow - 4096);
+    },
+  );
+
+  it.each([65_536, 10_000])(
+    "retains individual parallel results within a %i budget",
+    (contextWindow) => {
+      const { request, context } = fixture(0);
+      const bodies = Array.from({ length: 4 }, (_, i) => `${i}: ${"evidence ".repeat(1333)}`);
+      context.messages.push({
+        role: "assistant",
+        content: bodies.slice(0, 3).map((_, i) => ({
+          type: "toolCall",
+          id: `call-${i}`,
+          name: "shell",
+          arguments: {},
+        })),
+        timestamp: 101,
+      } as Message);
+      for (const [i, body] of bodies.entries()) {
+        if (i === 3)
+          context.messages.push({
+            role: "assistant",
+            content: [{ type: "toolCall", id: `call-${i}`, name: "shell", arguments: {} }],
+            timestamp: 102,
+          } as Message);
+        context.messages.push({
+          role: "toolResult",
+          toolCallId: `call-${i}`,
+          toolName: "shell",
+          content: [{ type: "text", text: body }],
+          isError: false,
+          timestamp: 102,
+        });
+      }
+      context.messages.push({
+        role: "assistant",
+        content: [{ type: "text", text: "Continue" }],
+        timestamp: 103,
+      } as Message);
+      const policy = createRuntimeContextPolicy({ ...request, contextStrategy: "retrieval" });
+      const selected = policy.prepareContext(context, { ...model, contextWindow, maxTokens: 1024 });
+      const results = selected.messages.filter((message) => message.role === "toolResult");
+      expect(results).toHaveLength(4);
+      for (const [i, result] of results.entries()) {
+        if (contextWindow === 65_536 || i === 3)
+          expect(result.content).toEqual([{ type: "text", text: bodies[i] }]);
+        else
+          expect(JSON.stringify(result.content)).toContain("Tool result truncated to fit context");
+      }
+      expect(policy.getDecision()!.estimatedInputTokens).toBeLessThanOrEqual(contextWindow - 1024);
+    },
+  );
   it("leaves the baseline provider payload untouched", () => {
     const { request, context } = fixture();
     const policy = createRuntimeContextPolicy({ ...request, contextStrategy: "current" });

@@ -1,17 +1,6 @@
 import { BOT_COLORS } from "./ids.js";
-
-/** Index into BOT_COLORS for each page agent, chosen once so the pages stay distinct. */
-const PAGE_AGENT_COLOR: Record<string, number> = {
-  inbox: 2,
-  finance: 0,
-  "data-room": 1,
-  company: 4,
-  carta: 3,
-  investors: 3,
-  legal: 6,
-  // All seven palette entries are used; GTM deliberately shares this app colour.
-  gtm: 5,
-};
+import type { PageAgentKind } from "./page-agents.js";
+import { PAGE_AGENTS } from "./page-agents.js";
 
 /** The palette entry nearest each app's brand, keyed by lowercase app or provider name. */
 const APP_COLOR: Record<string, number> = {
@@ -35,8 +24,8 @@ const hashIndex = (text: string) => {
   return hash % BOT_COLORS.length;
 };
 
-export const pageAgentColor = (kind: keyof typeof PAGE_AGENT_COLOR | string): string =>
-  BOT_COLORS[PAGE_AGENT_COLOR[kind] ?? 0] ?? BOT_COLORS[0];
+export const pageAgentColor = (kind: PageAgentKind | string): string =>
+  BOT_COLORS[PAGE_AGENTS[kind as PageAgentKind]?.color ?? 0] ?? BOT_COLORS[0];
 
 /** An app agent's colour: the first name found in the brand map, else a stable hash of its spawn key. */
 export const appAgentColor = (

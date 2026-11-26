@@ -3331,4 +3331,117 @@ describePostgres("company foundation (PostgreSQL)", () => {
     const replay = await company.manualUpsert(approvedInput);
     expect((replay as { replayed?: boolean }).replayed).toBe(true);
   });
+
+  it("listEdges reads evidence and merges in a constant number of queries", async () => {
+    const company = companyForActor(prisma, actor);
+    const source = entityId(
+      await company.importEntity(
+        person(`Edge query source ${suffix}`, "edge-query-source", "edge-query-source-hash"),
+      ),
+    );
+    const target = entityId(
+      await company.importEntity(
+        person(`Edge query target ${suffix}`, "edge-query-target", "edge-query-target-hash"),
+      ),
+    );
+    const other = entityId(
+      await company.importEntity(
+        person(`Edge query other ${suffix}`, "edge-query-other", "edge-query-other-hash"),
+      ),
+    );
+    const merged = entityId(
+      await company.importEntity(
+        person(`Edge query merged ${suffix}`, "edge-query-merged", "edge-query-merged-hash"),
+      ),
+    );
+    const edgeInput = (fromId: string, toId: string, key: string) => ({
+      edge: {
+        fromId,
+        toId,
+        relation: "works_at" as const,
+        startsOn: { date: "2022-01-01", precision: "year" as const },
+        endsOn: null,
+        role: null,
+        confidence: 0.8,
+      },
+      evidence: evidence(`${key}-first`, `${key}-first-hash`),
+    });
+    const firstEdge = persisted(
+      await company.importEdge(edgeInput(source, target, "edge-query-first")),
+    );
+    // The replay adds a second evidence row extracted earlier, so ordering matters.
+    await company.importEdge({
+      ...edgeInput(source, target, "edge-query-first"),
+      evidence: {
+        ...evidence("edge-query-first-later", "edge-query-first-later-hash"),
+        extractedAt: "2025-12-31T00:00:00.000Z",
+      },
+    });
+    await company.importEdge(edgeInput(source, other, "edge-query-second"));
+
+    const counted = () => {
+      const counts = new Map<string, number>();
+      const counting = new Proxy(prisma, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (prop !== "companyEvidence" && prop !== "companyMerge") {
+            return typeof value === "function" ? value.bind(target) : value;
+          }
+          return new Proxy(value, {
+            get(model, method, modelReceiver) {
+              const fn = Reflect.get(model, method, modelReceiver);
+              if (typeof fn !== "function") return fn;
+              return (...args: unknown[]) => {
+                const key = `${String(prop)}.${String(method)}`;
+                counts.set(key, (counts.get(key) ?? 0) + 1);
+                return fn.apply(model, args);
+              };
+            },
+          });
+        },
+      });
+      return { counts, proxy: counting as PrismaClient };
+    };
+
+    const baselineRun = counted();
+    const baseline = await companyForActor(baselineRun.proxy, actor).listEdges();
+    expect(baseline).toHaveLength(2);
+    const baselineEvidenceOrder = baseline.find((edge) => edge.id === firstEdge.id)!.evidence;
+    expect(baselineEvidenceOrder.map((row) => row.extractedAt)).toEqual([
+      "2025-12-31T00:00:00.000Z",
+      "2026-01-02T03:04:05.000Z",
+    ]);
+
+    await company.merge(merged, source);
+    await company.importEdge(edgeInput(target, other, "edge-query-third"));
+    await company.importEdge(edgeInput(other, target, "edge-query-fourth"));
+    const viaMergedId = persisted(
+      await company.importEdge(edgeInput(merged, target, "edge-query-fifth")),
+    ).id;
+    await company.importEdge(edgeInput(other, source, "edge-query-sixth"));
+
+    const extendedRun = counted();
+    const extended = await companyForActor(extendedRun.proxy, actor).listEdges();
+    expect(extended).toHaveLength(6);
+    expect(Object.fromEntries(extendedRun.counts)).toEqual(Object.fromEntries(baselineRun.counts));
+    expect(extended.find((edge) => edge.id === viaMergedId)).toMatchObject({
+      fromId: source,
+      toId: target,
+    });
+    expect(extended.some((edge) => edge.fromId === merged || edge.toId === merged)).toBe(false);
+  });
+
+  it("matches LIKE metacharacters literally in company list search", async () => {
+    const company = companyForActor(prisma, actor);
+    await company.importEntity({
+      entity: { kind: "company", displayName: "1000 Labs", attrs: {}, confidence: 0.9 },
+      evidence: evidence("wildcard-company", "wildcard-company-hash"),
+    });
+    expect(
+      await Promise.all([
+        company.list({ kind: "company", text: "100%" }),
+        company.list({ kind: "company", text: "100％" }),
+      ]),
+    ).toEqual([[], []]);
+  });
 });

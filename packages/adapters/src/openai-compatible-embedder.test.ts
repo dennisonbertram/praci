@@ -188,9 +188,7 @@ describe("OpenAICompatibleEmbedder", () => {
     const cancel = vi.fn(async () => {});
     const e = new OpenAICompatibleEmbedder({
       ...base,
-      fetch: vi.fn(
-        async () => ({ ok: false, status: 500, body: { cancel } }) as unknown as Response,
-      ),
+      fetch: vi.fn(async () => new Response(new ReadableStream({ cancel }), { status: 500 })),
     });
     await expect(e.embed(["1"], ctx())).rejects.toThrow("500");
     expect(cancel).toHaveBeenCalled();

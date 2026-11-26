@@ -141,3 +141,17 @@ it("shows a sender with one message as an ordinary row", async () => {
   expect(document.querySelector("[aria-expanded]")).toBeNull();
   expect(document.querySelector('[data-row-id="solo"]')).not.toBeNull();
 });
+
+it("keeps the subject clear of the Archive icon while the header is selected", async () => {
+  const id = senderGroupId(group?.key as string);
+  await show({ onArchiveGroup: () => {}, selectedId: id });
+  const subject = [...(header()?.querySelectorAll("span") ?? [])].find((el) =>
+    el.textContent?.includes("Subject m1"),
+  );
+  expect(subject?.className.split(" ")).toContain("@md:pe-10");
+  await show({ onArchiveGroup: () => {}, selectedId: undefined });
+  const idle = [...(header()?.querySelectorAll("span") ?? [])].find((el) =>
+    el.textContent?.includes("Subject m1"),
+  );
+  expect(idle?.className.split(" ")).not.toContain("@md:pe-10");
+});

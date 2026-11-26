@@ -24,6 +24,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useComposeEditor } from "../../components/compose/RichTextEditor";
 import { PAGE_GUTTER_X, PageHeader } from "../../components/PageHeader";
+import { updateStatusNames } from "../../lib/investor-updates-list";
+import { UNDO_SEND_MS } from "../../lib/outbox";
+import { usePollWhile, useReloadWhenAgentIdle } from "../../lib/page-data";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { countTbd, TbdHighlight } from "./tbd-highlight";
@@ -33,14 +36,6 @@ const SENDING_POLL_MS = 1500;
 const DRAFT_POLL_MS = 2000;
 const DRAFT_WAIT_MS = 3 * 60_000;
 const SAVE_DELAY_MS = 600;
-
-const statusNames = () => ({
-  draft: t`Draft`,
-  sending: t`Sending`,
-  sent: t`Sent`,
-  partly_sent: t`Partly sent`,
-  posted: t`Posted`,
-});
 
 const stateNames = (): Record<InvestorDeliveryState, string> => ({
   sent: t`Sent`,
@@ -61,8 +56,14 @@ const accountText = (account: MailAccountSummary) =>
 const fieldsKey = (subject: string, body: string, ticked: readonly string[], from: string | null) =>
   JSON.stringify([subject, body, ticked, from]);
 
+const isConflict = (cause: unknown) => (cause as { code?: string } | null)?.code === "CONFLICT";
+
+/** Stops Send/Post when a queued save found the draft changed elsewhere. */
+const conflictError = () =>
+  Object.assign(new Error("This update changed elsewhere."), { code: "CONFLICT" });
+
 /** The update editor page: `/app/investors/updates/:id`. */
-export function UpdateEditor({ updateId }: { updateId: string }) {
+export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentBusy?: boolean }) {
   const navigate = useNavigate();
   const [update, setUpdate] = useState<InvestorUpdate | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -72,15 +73,30 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   const [body, setBody] = useState("");
   const [ticked, setTicked] = useState<string[]>([]);
   const [from, setFrom] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"saved" | "saving" | "failed">("saved");
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "failed" | "conflict">("saved");
+  const latestLoad = useRef(0);
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [asking, setAsking] = useState<"tbd" | null>(null);
   const [resend, setResend] = useState<string[] | null>(null);
+  const [partError, setPartError] = useState("");
+  const [contactsFailed, setContactsFailed] = useState(false);
+  const [reloads, setReloads] = useState(0);
+  // Send is held for UNDO_SEND_MS so the founder can take it back.
+  const [holding, setHolding] = useState(false);
+  const held = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const live = useRef(true);
   const loadedId = useRef<string | null>(null);
+  // Set in the same batch as the fields, so autosave never sees them half taken.
+  const [fieldsFor, setFieldsFor] = useState<string | null>(null);
   // The fields as the server last held them, so opening an update does not save it again.
   const saved = useRef("");
+  // The server version the fields were read from; sent on every save so a stale write is refused.
+  const version = useRef<string | null>(null);
+  // A save actually on the wire, and a count of refused saves (see flushSave).
+  const inflight = useRef(0);
+  const conflicts = useRef(0);
   const saving = useRef<Promise<unknown>>(Promise.resolve());
   const pending = useRef<{
     subject: string;
@@ -89,22 +105,51 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     from: string | null;
     key: string;
   } | null>(null);
-  // Leaving within the autosave delay still saves the last edit.
-  useEffect(
-    () => () => {
-      const last = pending.current;
-      if (last)
-        void rpc.investors.updates.save({
-          id: updateId,
-          subject: last.subject,
-          body: last.body,
-          recipientContactIds: last.ticked,
-          fromConnectionId: last.from,
+  const saveNow = useCallback(
+    (fields: {
+      subject: string;
+      body: string;
+      recipientContactIds: string[];
+      fromConnectionId: string | null;
+    }) => {
+      inflight.current += 1;
+      // The version is read when the request starts, not when it was scheduled.
+      return rpc.investors.updates
+        .save({ id: updateId, ...fields, updatedAt: version.current ?? undefined })
+        .finally(() => {
+          inflight.current -= 1;
         });
     },
     [updateId],
   );
+
+  // Leaving within the autosave delay still saves the last edit. A refused save is dropped: the
+  // newer version stays.
+  useEffect(
+    () => () => {
+      const last = pending.current;
+      if (last)
+        void saveNow({
+          subject: last.subject,
+          body: last.body,
+          recipientContactIds: last.ticked,
+          fromConnectionId: last.from,
+        }).catch(() => undefined);
+    },
+    [updateId, saveNow],
+  );
   const wasSending = useRef(false);
+  // Leaving during the hold sends now: the founder believes the update went out.
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      if (!held.current) return;
+      clearTimeout(held.current.timer);
+      void rpc.investors.updates.send({ id: held.current.id }).catch(() => undefined);
+      held.current = null;
+    };
+  }, []);
 
   // A revoked contact is never emailed: it is left out of the recipients whatever was saved.
   const recipients = useMemo(() => {
@@ -132,12 +177,16 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   });
 
   const load = useCallback(async () => {
+    const request = ++latestLoad.current;
     try {
       const next = await rpc.investors.updates.get({ id: updateId });
+      if (request !== latestLoad.current) return null;
       setUpdate(next);
       setLoadError("");
       return next;
     } catch (cause) {
+      if (request !== latestLoad.current) return null;
+      if ((cause as { code?: string } | null)?.code === "NOT_FOUND") setUpdate(null);
       setLoadError(errorText(cause, t`Could not load this update`));
       return null;
     }
@@ -145,83 +194,128 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
 
   // First load: the update, the audience's contacts and the Gmail accounts.
   useEffect(() => {
-    let live = true;
+    let current = true;
+    const failed = (cause: unknown) =>
+      current && setPartError(errorText(cause, t`Could not load recipients`));
+    setPartError("");
+    setContactsFailed(false);
     void load().then((next) => {
-      if (!live || !next) return;
+      if (!current || !next) return;
       void rpc.contacts
         .list({ kind: next.audience === "board" ? "board" : "investor" })
         .then((list) => {
-          if (live) setContacts(list);
+          if (current) setContacts(list);
         })
-        .catch(() => undefined);
+        .catch((cause) => {
+          if (current) setContactsFailed(true);
+          failed(cause);
+        });
     });
     void rpc.investors.updates
       .accounts()
-      .then((list) => live && setAccounts(list))
-      .catch(() => undefined);
+      .then((list) => current && setAccounts(list))
+      .catch(failed);
     return () => {
-      live = false;
+      current = false;
     };
-  }, [load]);
+  }, [load, reloads]);
+
+  // Fields take the server's values: first load, a refused save, or the agent's finished turn.
+  const seedFields = useCallback(
+    (next: InvestorUpdate) => {
+      setSubject(next.subject);
+      setBody(next.body);
+      setTicked(next.recipientContactIds);
+      setFrom(next.fromConnectionId);
+      saved.current = fieldsKey(
+        next.subject,
+        next.body,
+        next.recipientContactIds,
+        next.fromConnectionId,
+      );
+      version.current = next.updatedAt;
+      editor?.commands.setContent(next.body, { contentType: "markdown", emitUpdate: false });
+    },
+    [editor],
+  );
 
   // Fields take the stored values once per update, then belong to the founder.
   useEffect(() => {
     if (!update || !editor || loadedId.current === update.id) return;
     loadedId.current = update.id;
-    setSubject(update.subject);
-    setBody(update.body);
-    setTicked(update.recipientContactIds);
-    setFrom(update.fromConnectionId);
-    saved.current = fieldsKey(
-      update.subject,
-      update.body,
-      update.recipientContactIds,
-      update.fromConnectionId,
-    );
-    editor.commands.setContent(update.body, { contentType: "markdown", emitUpdate: false });
+    setFieldsFor(update.id);
+    seedFields(update);
     setSaveState("saved");
-  }, [update, editor]);
+  }, [update, editor, seedFields]);
+
+  // A save came back CONFLICT: the draft changed on the server (the agent, another tab). Take
+  // theirs and say so; a sent update just goes read-only through `update`.
+  const applyConflict = useCallback(
+    async (cause: unknown): Promise<boolean> => {
+      if (!isConflict(cause)) return false;
+      conflicts.current += 1;
+      const next = await load();
+      if (next?.status !== "draft" || !live.current) return true;
+      pending.current = null;
+      seedFields(next);
+      setSaveState("conflict");
+      return true;
+    },
+    [load, seedFields],
+  );
 
   // A sent update is read-only; the editor follows the status.
   useEffect(() => {
-    editor?.setEditable(draft === true, false);
-  }, [editor, draft]);
+    editor?.setEditable(draft === true && !drafting && !holding, false);
+  }, [editor, draft, drafting, holding]);
 
   // Autosave when a field differs from what the server holds.
   useEffect(() => {
     const key = fieldsKey(subject, body, recipients, from);
-    if (!draft || loadedId.current !== updateId || key === saved.current) return;
+    if (!draft || fieldsFor !== updateId || key === saved.current) return;
     setSaveState("saving");
     pending.current = { subject, body, ticked: recipients, from, key };
     const timer = setTimeout(() => {
       // One save at a time, in order, so an older request cannot land after a newer one.
       saving.current = saving.current
         .then(() =>
-          rpc.investors.updates.save({
-            id: updateId,
-            subject,
-            body,
-            recipientContactIds: recipients,
-            fromConnectionId: from,
-          }),
+          saveNow({ subject, body, recipientContactIds: recipients, fromConnectionId: from }),
         )
-        .then(() => {
+        .then((next) => {
+          if (next) version.current = next.updatedAt;
           saved.current = key;
           if (pending.current?.key === key) pending.current = null;
           setSaveState("saved");
         })
-        .catch(() => setSaveState("failed"));
+        .catch(async (cause) => {
+          if (await applyConflict(cause)) return;
+          setSaveState("failed");
+        });
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [subject, body, recipients, from, draft, updateId]);
+  }, [subject, body, recipients, from, draft, updateId, fieldsFor, saveNow, applyConflict]);
+
+  // When a docked agent turn ends, take what it wrote — unless the founder is mid-edit, in which
+  // case the version check catches the next save instead.
+  const refreshAfterAgent = useCallback(async () => {
+    const next = await load();
+    if (
+      !live.current ||
+      next?.status !== "draft" ||
+      held.current ||
+      drafting ||
+      pending.current !== null ||
+      inflight.current > 0 ||
+      fieldsKey(subject, body, recipients, from) !== saved.current
+    )
+      return;
+    seedFields(next);
+  }, [load, drafting, subject, body, recipients, from, seedFields]);
+  useReloadWhenAgentIdle(agentBusy, () => void refreshAfterAgent());
 
   // While a send runs, read it again until it ends.
   const sending = update?.status === "sending";
-  useEffect(() => {
-    if (!sending) return;
-    const timer = setInterval(() => void load(), SENDING_POLL_MS);
-    return () => clearInterval(timer);
-  }, [sending, load]);
+  usePollWhile(sending, SENDING_POLL_MS, () => void load());
 
   // A send that ended with every recipient delivered returns to Investors.
   useEffect(() => {
@@ -230,12 +324,12 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     wasSending.current = false;
     const count = update.deliveries.filter((d) => d.state === "sent").length;
     toast(t`Sent to ${count}`);
-    navigate("/app/investors");
+    navigate("/app/investors?tab=updates");
   }, [update, sending, navigate]);
 
   const tbd = useMemo(() => countTbd(body), [body]);
 
-  const run = async (action: () => Promise<InvestorUpdate | undefined | void>) => {
+  const run = async (action: () => Promise<InvestorUpdate | undefined | undefined>) => {
     setBusy(true);
     setActionError("");
     try {
@@ -250,24 +344,57 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   };
 
   const flushSave = async () => {
+    const before = conflicts.current;
     await saving.current;
+    // A queued save was refused while waiting: theirs is already on screen, so stop.
+    if (conflicts.current !== before) throw conflictError();
     pending.current = null;
-    return rpc.investors.updates.save({
-      id: updateId,
-      subject,
-      body,
-      recipientContactIds: recipients,
-      fromConnectionId: from,
-    });
+    try {
+      const next = await saveNow({
+        subject,
+        body,
+        recipientContactIds: recipients,
+        fromConnectionId: from,
+      });
+      version.current = next.updatedAt;
+      saved.current = fieldsKey(subject, body, recipients, from);
+      setSaveState("saved");
+      return next;
+    } catch (cause) {
+      await applyConflict(cause);
+      throw cause;
+    }
   };
 
   const send = () => {
     setAsking(null);
-    void run(async () => {
-      await flushSave();
-      wasSending.current = true;
-      return rpc.investors.updates.send({ id: updateId });
-    });
+    setBusy(true);
+    setActionError("");
+    flushSave()
+      .then(() => {
+        if (!live.current) return;
+        const id = updateId;
+        const timer = setTimeout(() => {
+          held.current = null;
+          setHolding(false);
+          void run(() => {
+            wasSending.current = true;
+            return rpc.investors.updates.send({ id });
+          });
+        }, UNDO_SEND_MS);
+        held.current = { id, timer };
+        setHolding(true);
+      })
+      .catch((cause) => {
+        // A conflict put the server's version on screen; the founder presses Send again.
+        if (live.current && !isConflict(cause)) setActionError(errorText(cause));
+      })
+      .finally(() => live.current && setBusy(false));
+  };
+  const undo = () => {
+    if (held.current) clearTimeout(held.current.timer);
+    held.current = null;
+    setHolding(false);
   };
   const trySend = () => (tbd > 0 ? setAsking("tbd") : send());
 
@@ -275,10 +402,15 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   const post = () => {
     setAsking(null);
     void run(async () => {
-      await flushSave();
+      try {
+        await flushSave();
+      } catch (cause) {
+        if (isConflict(cause)) return undefined;
+        throw cause;
+      }
       const result = await rpc.investors.updates.post({ id: updateId });
       toast(t`Posted · ${result.notified} notified`);
-      navigate("/app/investors");
+      navigate("/app/investors?tab=updates");
       return result.update;
     });
   };
@@ -307,22 +439,32 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
         text: `Use the investor-update skill to write the ${update.audience} update for ${update.period} into the existing draft ${update.id}: read it with investor_update_draft get, then save the body with investor_update_draft save. Do not ask questions; write TBD for anything you cannot source.`,
       });
       const until = Date.now() + DRAFT_WAIT_MS;
-      while (Date.now() < until) {
+      while (live.current && Date.now() < until) {
         await new Promise((resolve) => setTimeout(resolve, DRAFT_POLL_MS));
+        if (!live.current) return;
         const next = await rpc.investors.updates.get({ id: updateId });
+        if (!live.current) return;
         if (next.body.trim()) {
           setUpdate(next);
           setBody(next.body);
           editor?.commands.setContent(next.body, { contentType: "markdown", emitUpdate: false });
+          version.current = next.updatedAt;
+          saved.current = fieldsKey(
+            next.subject,
+            next.body,
+            next.recipientContactIds,
+            next.fromConnectionId,
+          );
           setDrafting(false);
           return;
         }
       }
       toast(t`The agent did not finish a draft`);
     } catch (cause) {
+      if (!live.current) return;
       toast(errorText(cause, t`Could not draft with the agent`));
     }
-    setDrafting(false);
+    if (live.current) setDrafting(false);
   };
 
   if (loadError && !update) {
@@ -345,7 +487,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     );
   }
 
-  const names = statusNames();
+  const names = updateStatusNames();
   const states = stateNames();
   const total = update.deliveries.length;
   const delivered = update.deliveries.filter((d) => d.state === "sent").length;
@@ -362,7 +504,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2`}>
         <Link
-          to="/app/investors"
+          to="/app/investors?tab=updates"
           className="mb-1 inline-flex min-h-6 items-center gap-1 text-sm text-muted-foreground hover:text-foreground pointer-coarse:min-h-11"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -383,6 +525,10 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
                     <span className="text-destructive">
                       <Trans>Not saved</Trans>
                     </span>
+                  ) : saveState === "conflict" ? (
+                    <span className="text-destructive">
+                      <Trans>Changed elsewhere</Trans>
+                    </span>
                   ) : (
                     <Trans>Saved</Trans>
                   )}
@@ -402,13 +548,22 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
             <Input
               id="update-subject"
               value={subject}
-              disabled={!draft}
+              disabled={!draft || holding}
               onChange={(event) => setSubject(event.target.value)}
             />
           </div>
 
-          {draft && gmail ? (
-            <fieldset className="flex flex-col gap-1.5">
+          {partError ? (
+            <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-destructive">{partError}</span>
+              <Button variant="outline" size="sm" onClick={() => setReloads((n) => n + 1)}>
+                <Trans>Try again</Trans>
+              </Button>
+            </div>
+          ) : null}
+
+          {draft && gmail && !contactsFailed ? (
+            <fieldset className="flex min-w-0 flex-col gap-1.5">
               <legend className="mb-1.5 text-sm font-medium">
                 <Trans>To</Trans>
               </legend>
@@ -433,7 +588,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
                     <Checkbox
                       id={`to-${contact.id}`}
                       checked={checked}
-                      disabled={noEmail || revoked}
+                      disabled={noEmail || revoked || holding}
                       onCheckedChange={(next) =>
                         setTicked((current) =>
                           next
@@ -542,7 +697,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={drafting}
+                  disabled={drafting || holding}
                   onClick={() => void draftWithAgent()}
                 >
                   {drafting ? <Trans>Drafting…</Trans> : <Trans>Draft with agent</Trans>}
@@ -561,6 +716,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
               </Label>
               <NativeSelect
                 id="update-from"
+                disabled={holding}
                 value={from ?? accounts[0]?.connectionId ?? ""}
                 onChange={(event) => setFrom(event.target.value)}
               >
@@ -597,7 +753,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
                   <Trans>Mark delivered</Trans>
                 </Button>
               ) : null}
-              <Button onClick={() => navigate("/app/investors")}>
+              <Button onClick={() => navigate("/app/investors?tab=updates")}>
                 <Trans>Done</Trans>
               </Button>
             </>
@@ -605,6 +761,15 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
             <Button disabled>
               <Trans>Sending</Trans>
             </Button>
+          ) : holding ? (
+            <>
+              <span className="me-auto text-sm text-muted-foreground" role="status">
+                <Trans>Sending…</Trans>
+              </span>
+              <Button variant="outline" className="pointer-coarse:min-h-11" onClick={undo}>
+                <Trans>Undo</Trans>
+              </Button>
+            </>
           ) : !gmail && update.audience === "board" ? (
             <Button render={<Link to="/app/integrations" />}>
               <Trans>Connect Gmail to send</Trans>
@@ -633,7 +798,12 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
           ) : (
             <Button
               disabled={
-                busy || drafting || accounts === null || recipients.length === 0 || bodyEmpty
+                busy ||
+                drafting ||
+                accounts === null ||
+                Boolean(partError) ||
+                recipients.length === 0 ||
+                bodyEmpty
               }
               onClick={trySend}
             >

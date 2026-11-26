@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "item": {
+        "id": "cmvszf54t0044cr9knrxfms3q",
+        "name": "MOCK Term Sheet Draft - Example Capital.pdf",
+        "mimeType": "application/pdf",
+        "size": 742,
+        "folderId": "cmvszf41n0022cr9kjo5pgq9e",
+        "source": "upload",
+        "sourceUrl": null,
+        "status": "ready",
+        "error": null,
+        "notIndexed": false,
+        "facets": {
+          "docType": null,
+          "docDate": null,
+          "parties": [],
+          "amountCents": null,
+          "currency": null,
+          "tags": [],
+          "summary": null
+        },
+        "createdAt": "2026-10-29T03:26:48.509Z",
+        "updatedAt": "2026-10-29T17:09:43.944Z",
+        "hasThumbnail": true,
+        "previewText": "MOCK DEMO DATA. Draft term sheet from Example Capital (Mock) for a seed round. Pre\n                money valuation 9000000 dollars. Mock demo data, not a real document."
+      },
+      "ordinal": 0,
+      "snippet": "MOCK DEMO DATA. Draft \u0001term\u0002 \u0001sheet\u0002 from Example Capital (Mock) for a seed round. Pre\n                money valuation 9000000 dollars. Mock demo data, not a real document",
+      "score": 0.2199999988079071
+    }
+  ],
+  "nextCursor": null
+}

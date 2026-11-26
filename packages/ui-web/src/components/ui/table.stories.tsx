@@ -188,3 +188,56 @@ export const ClickableRowsStory: Story = {
   name: "Clickable rows",
   render: () => <ClickableRows />,
 };
+
+/** Sortable headers: the arrow marks the sorted column and appears on hover or focus on the others. */
+export const SortableHeaders: Story = {
+  render: function Render() {
+    const [sort, setSort] = useState<{ key: "name" | "amount"; dir: "asc" | "desc" }>({
+      key: "name",
+      dir: "asc",
+    });
+    const toggle = (key: "name" | "amount") =>
+      setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
+    const dir = (key: "name" | "amount") => (sort.key === key ? sort.dir : null);
+    return (
+      <Table>
+        <TableHeader>
+          <TableHeadRow>
+            <TableHead
+              className="w-[45%]"
+              sortDirection={dir("name")}
+              onSort={() => toggle("name")}
+            >
+              Name
+            </TableHead>
+            <TableHead className="w-[35%]">Owner</TableHead>
+            <TableHead
+              className="w-24 text-end"
+              sortDirection={dir("amount")}
+              onSort={() => toggle("amount")}
+            >
+              Amount
+            </TableHead>
+          </TableHeadRow>
+        </TableHeader>
+        <TableBody>
+          {[...rows]
+            .sort((a, b) => {
+              const x = sort.key === "name" ? a.name : (a.amount ?? Number.POSITIVE_INFINITY);
+              const y = sort.key === "name" ? b.name : (b.amount ?? Number.POSITIVE_INFINITY);
+              return (x < y ? -1 : x > y ? 1 : 0) * (sort.dir === "asc" ? 1 : -1);
+            })
+            .map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="truncate">{r.name}</TableCell>
+                <TableCell className="truncate">{r.owner ?? dash}</TableCell>
+                <TableCell className="text-end tabular-nums">
+                  {r.amount == null ? dash : r.amount.toLocaleString("en")}
+                </TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+    );
+  },
+};

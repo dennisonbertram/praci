@@ -1,6 +1,6 @@
 import type { ComputerStatus } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { userEvent, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { ComputerWorkspace } from "./ComputerWorkspace";
 
@@ -59,6 +59,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const DockOnly: Story = {};
+
+export const BrowserToggleNeedsAWindow: Story = {
+  play: async ({ canvasElement }) => {
+    const browser = within(canvasElement).getByRole("button", { name: "Browser" });
+    await expect(browser).toBeDisabled();
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "Files" }));
+    await expect(browser).toBeEnabled();
+    const titleBar = within(canvasElement).getByRole("button", {
+      name: "Move Files window with arrow keys",
+    });
+    const window = titleBar.closest("section");
+    const before = window?.getAttribute("style");
+    titleBar.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    await expect(titleBar).toHaveFocus();
+    await expect(window).not.toHaveAttribute("style", before);
+  },
+};
 
 export const WithFilesWindow: Story = {
   play: async ({ canvasElement }) => {

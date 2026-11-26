@@ -1,7 +1,7 @@
 import type { TaughtSkill } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { TeachRecordingChrome, TeachStopButton } from "./TeachRecordingChrome";
+import { TeachCancelButton, TeachRecordingChrome, TeachStopButton } from "./TeachRecordingChrome";
 
 const recording: TaughtSkill = {
   id: "skill_demo",
@@ -29,7 +29,7 @@ const recording: TaughtSkill = {
 const meta = {
   title: "Chat/TeachRecordingChrome",
   component: TeachRecordingChrome,
-  args: { recording, botId: "bot_demo", onStop: () => undefined },
+  args: { recording, botId: "bot_demo", onStop: () => undefined, onCancel: () => undefined },
   beforeEach: () => mockRpc({ "computer.input": {} }),
   parameters: { docs: { description: { component: "Also shows: ProtectedTeachInput" } } },
 } satisfies Meta<typeof TeachRecordingChrome>;
@@ -37,6 +37,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Panel: Story = {};
+/** Panel bar: Stop teaching and Cancel. This recording is old, so Cancel asks first. */
 export const PanelBusy: Story = { args: { busy: true } };
 export const PanelNoExpiry: Story = { args: { recording: { ...recording, expiresAt: null } } };
 export const Overlay: Story = {
@@ -45,6 +46,7 @@ export const Overlay: Story = {
     <div className="flex w-96 items-center">
       <TeachRecordingChrome {...args} />
       <TeachStopButton onStop={() => undefined} />
+      <TeachCancelButton recording={recording} onCancel={() => undefined} />
     </div>
   ),
 };

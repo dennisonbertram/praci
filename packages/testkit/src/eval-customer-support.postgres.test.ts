@@ -105,19 +105,19 @@ describe.skipIf(!databaseAvailable)("offline Slack customer-support eval", () =>
         },
       });
 
-      model.assertComplete();
       expect(
         model.requests.some((request) =>
           JSON.stringify(request.messages).includes("You were just created"),
         ),
       ).toBe(false);
-      expect(result).toMatchObject({
+      expect(result, JSON.stringify(result)).toMatchObject({
         status: "passed",
         category: null,
         cleanupFailed: false,
-        toolCalls: 4,
+        toolCalls: 8,
       });
       expect(result.criteria.every((criterion) => criterion.pass)).toBe(true);
+      model.assertComplete();
     } finally {
       try {
         await model.close();

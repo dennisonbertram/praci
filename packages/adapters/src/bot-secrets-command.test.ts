@@ -30,6 +30,8 @@ type Row = {
   origin: string;
   auth: unknown;
   ciphertext: string;
+  lastUsedAt?: Date | null;
+  needsAttentionAt?: Date | null;
 };
 type Where = Record<string, unknown>;
 
@@ -164,6 +166,22 @@ describe("storing a command variable", () => {
         auth: { type: "bearer" },
       }),
     ).rejects.toThrow("Remove the existing credential before changing its destination");
+  });
+
+  it("clears the last-used time when a credential is replaced", async () => {
+    const db = fakeDatabase();
+    await save(db, "deploy-token", "first-value");
+    db.rows()[0]!.lastUsedAt = new Date();
+    await save(db, "deploy-token", "second-value");
+    expect(db.rows()[0]).toMatchObject({ lastUsedAt: null, needsAttentionAt: null });
+  });
+
+  it("reports whether forgetting removed a credential", async () => {
+    const db = fakeDatabase();
+    expect(await forgetBotSecret(db.prisma, scope, "missing")).toEqual({ removed: false });
+    await save(db, "deploy-token", "value");
+    expect(await forgetBotSecret(db.prisma, scope, "deploy-token")).toEqual({ removed: true });
+    expect(await forgetBotSecret(db.prisma, scope, "deploy-token")).toEqual({ removed: false });
   });
 
   it("refuses a second name exported as the same variable", async () => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { builtinAgentTools } from "./builtin-tools.js";
 import {
   addScratchpadItemFromTool,
+  addScratchpadItemsFromTool,
   clearPostStamp,
   completeScratchpadItemFromTool,
   consumeApprovedPost,
@@ -15,6 +16,7 @@ import {
   removeScratchpadItemFromUser,
   updateScratchpadItemFromTool,
   updateScratchpadItemFromUser,
+  updateScratchpadItemsFromTool,
 } from "./scratchpad-tools.js";
 
 const now = new Date("2026-08-25T12:00:00.000Z");
@@ -1241,6 +1243,52 @@ describe("scratchpad tools store", () => {
     }
   });
 
+  it("refuses to discard an open post already queued in Zernio", async () => {
+    const candidate = row({
+      status: "open",
+      proof: "zernio:post-1",
+      approvedAt: now,
+      approvedBy: "user",
+      scheduledFor: new Date("2026-08-25T13:00:00.000Z"),
+    });
+    const deleteMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = prismaWith({
+      findFirst: vi.fn(async () => candidate),
+      deleteMany,
+    });
+    await expect(
+      removeScratchpadItemFromUser(
+        { prisma: prisma as never, now: () => now },
+        { ...scope, itemId: candidate.id },
+      ),
+    ).resolves.toEqual({
+      error: "This post is queued in Zernio. You can discard it after its scheduled time.",
+    });
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("allows removing a queued post once its scheduled time has passed", async () => {
+    const candidate = row({
+      status: "open",
+      proof: "zernio:post-1",
+      approvedAt: now,
+      approvedBy: "user",
+      scheduledFor: new Date("2026-08-25T11:00:00.000Z"),
+    });
+    const deleteMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = prismaWith({
+      findFirst: vi.fn(async () => candidate),
+      deleteMany,
+    });
+    await expect(
+      removeScratchpadItemFromUser(
+        { prisma: prisma as never, now: () => now },
+        { ...scope, itemId: candidate.id },
+      ),
+    ).resolves.toMatchObject({ ok: true });
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+  });
+
   it("allows a founder to discard gated work with a scoped version and category guard", async () => {
     const candidate = row({
       status: "done",
@@ -1309,5 +1357,146 @@ describe("scratchpad tools store", () => {
         category: null,
       },
     });
+  });
+});
+
+describe("many rows at once", () => {
+  it("adds one open row per item, scoped to this bot, in one transaction", async () => {
+    const prisma = prismaWith();
+    const result = await addScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      {
+        ...scope,
+        items: [
+          { title: "Email person-a@example.com", notes: "Batch 1", waitingOn: "you" },
+          { title: "Email person-b@example.com", dueAt: "2026-12-01" },
+        ],
+      },
+    );
+    expect(result).toMatchObject({ added: 2 });
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+    expect(prisma.scratchpadItem.create).toHaveBeenCalledTimes(2);
+    expect(prisma.scratchpadItem.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        ...scope,
+        title: "Email person-a@example.com",
+        notes: "Batch 1",
+        status: "open",
+        waitingOn: "you",
+      }),
+    });
+  });
+
+  it("never sets a category from a row, so a row cannot be a gated item", async () => {
+    const prisma = prismaWith();
+    await addScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      {
+        ...scope,
+        items: [{ title: "Post", category: "public_post", channel: "x", status: "open" }],
+      },
+    );
+    const data = (prisma.scratchpadItem.create.mock.calls as unknown[][])[0]?.[0] as {
+      data: Record<string, unknown>;
+    };
+    expect(data.data).not.toHaveProperty("category");
+    expect(data.data).not.toHaveProperty("channel");
+    expect(data.data.status).toBe("open");
+  });
+
+  it("skips a row already open, so adding the list twice does not double it", async () => {
+    const prisma = prismaWith({
+      findMany: vi.fn(async () => [row({ id: "old", title: "Email person-a@example.com" })]),
+    });
+    const result = await addScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      {
+        ...scope,
+        items: [
+          { title: "Email person-a@example.com" },
+          { title: "Email person-b@example.com" },
+          { title: "Email person-b@example.com" },
+        ],
+      },
+    );
+    expect(result).toMatchObject({ added: 1, alreadyOpen: 1 });
+    expect(prisma.scratchpadItem.create).toHaveBeenCalledOnce();
+    expect(prisma.scratchpadItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ ...scope, status: { in: ["open", "parked"] } }),
+      }),
+    );
+  });
+
+  it.each([
+    ["no rows", []],
+    ["a row with no title", [{ title: " " }]],
+    ["a bad date", [{ title: "A", dueAt: "soon" }]],
+    ["too many rows", Array.from({ length: 51 }, (_, index) => ({ title: `Row ${index}` }))],
+    ["not a list", "A, B"],
+  ])("refuses %s and writes nothing", async (_label, items) => {
+    const prisma = prismaWith();
+    const result = await addScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      { ...scope, items },
+    );
+    expect(result).toHaveProperty("error");
+    expect(prisma.scratchpadItem.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses rows from an email chat, which keeps one to-do per email", async () => {
+    const prisma = prismaWith();
+    const result = await addScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      { ...scope, items: [{ title: "A" }], callerSpawnKey: "mail-thread:acct:thread" },
+    );
+    expect(result).toHaveProperty("error");
+    expect(prisma.scratchpadItem.create).not.toHaveBeenCalled();
+  });
+
+  it("updates each row through the normal update and reports the ones that failed", async () => {
+    const prisma = prismaWith({
+      findFirst: vi.fn(async ({ where }: { where: { id: string } }) =>
+        where.id === "missing"
+          ? null
+          : row({ id: where.id, status: "open", category: null, channel: null }),
+      ),
+    });
+    const result = await updateScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      { ...scope, itemIds: ["item-1", "missing", "item-2"], status: "done", notes: "Sent" },
+    );
+    expect(result).toEqual({
+      updated: 2,
+      failed: [{ itemId: "missing", error: "Scratchpad item not found." }],
+    });
+    expect(prisma.scratchpadItem.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "item-1", ...scope }),
+    });
+  });
+
+  it("keeps the gate on a gated row in a bulk update", async () => {
+    const prisma = prismaWith({
+      findFirst: vi.fn(async () =>
+        row({ status: "parked", category: "public_post", channel: "x" }),
+      ),
+    });
+    const result = await updateScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      { ...scope, itemIds: ["item-1"], status: "open" },
+    );
+    expect(result).toMatchObject({ updated: 0, failed: [{ itemId: "item-1" }] });
+  });
+
+  it.each([
+    ["no ids", []],
+    ["too many ids", Array.from({ length: 51 }, (_, index) => `item-${index}`)],
+  ])("refuses %s", async (_label, itemIds) => {
+    const prisma = prismaWith();
+    const result = await updateScratchpadItemsFromTool(
+      { prisma: prisma as never },
+      { ...scope, itemIds, status: "done" },
+    );
+    expect(result).toHaveProperty("error");
   });
 });

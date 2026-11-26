@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import type { NotificationMessage } from "@rakazo/adapter-kit";
-import type { NotificationEvents, PrismaClient } from "@rakazo/db";
-import { createNotification, NOTIFICATION_BODY_MAX, NOTIFICATION_TITLE_MAX } from "@rakazo/db";
+import type { CreateNotificationInput, NotificationEvents, Prisma, PrismaClient } from "@rakazo/db";
+import {
+  createNotification,
+  createNotificationInTransaction,
+  NOTIFICATION_BODY_MAX,
+  NOTIFICATION_TITLE_MAX,
+} from "@rakazo/db";
 
 type Db = Pick<
   PrismaClient,
@@ -28,18 +33,37 @@ const KIND = {
  * the user switched off creates nothing. `key` makes a repeat of the same event a no-op.
  */
 export async function notifyThreadEvent(
-  prisma: Db,
+  prisma: Db | Prisma.TransactionClient,
   events: NotificationEvents | undefined,
   run: { spaceId: string; userId: string; botId: string; threadId: string; id?: string },
   message: NotificationMessage,
   key: string,
 ): Promise<"created" | "off" | "duplicate"> {
+  const { status, publish } = await writeThreadNotification(prisma, events, run, message, key);
+  await publish?.();
+  return status;
+}
+
+/**
+ * The notification `notifyThreadEvent` stores, without publishing it. A caller that writes inside its
+ * own transaction keeps the returned publish thunk and runs it after the commit, so subscribers never
+ * hear about a row that is not yet theirs to read.
+ */
+export async function writeThreadNotification(
+  prisma: Db | Prisma.TransactionClient,
+  events: NotificationEvents | undefined,
+  run: { spaceId: string; userId: string; botId: string; threadId: string; id?: string },
+  message: NotificationMessage,
+  key: string,
+): Promise<{ status: "created" | "off" | "duplicate"; publish: (() => Promise<void>) | null }> {
   const preference = await prisma.notificationPreference.findUnique({
     where: { spaceId_userId: { spaceId: run.spaceId, userId: run.userId } },
     select: { finish: true, help: true, takeover: true },
   });
-  if (preference && preference[CATEGORY[message.kind]] === false) return "off";
-  const result = await createNotification(prisma, {
+  if (preference && preference[CATEGORY[message.kind]] === false) {
+    return { status: "off", publish: null };
+  }
+  const input: CreateNotificationInput = {
     spaceId: run.spaceId,
     userId: run.userId,
     botId: run.botId,
@@ -53,12 +77,20 @@ export async function notifyThreadEvent(
     kind: KIND[message.kind],
     dedupeKey: createHash("sha256").update(`${message.kind}\n${key}`).digest("hex").slice(0, 32),
     skipRateLimits: true,
-  });
-  if (result.status !== "created") return "duplicate";
+  };
+  const result =
+    "$transaction" in prisma
+      ? await createNotification(prisma, input)
+      : await createNotificationInTransaction(prisma, input);
+  if (result.status !== "created") return { status: "duplicate", publish: null };
   const { id, importance } = result.notification;
-  await events?.notify(
-    { spaceId: run.spaceId, userId: run.userId },
-    { id, surface: "thread", importance },
-  );
-  return "created";
+  return {
+    status: "created",
+    publish: async () => {
+      await events?.notify(
+        { spaceId: run.spaceId, userId: run.userId },
+        { id, surface: "thread", importance },
+      );
+    },
+  };
 }

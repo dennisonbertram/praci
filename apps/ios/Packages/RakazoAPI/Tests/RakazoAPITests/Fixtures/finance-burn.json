@@ -1,0 +1,96 @@
+{
+  "json": {
+    "monthlyCents": 6762116,
+    "series": [
+      {
+        "month": "2025-11",
+        "outCents": 0,
+        "revenueCents": 0,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2025-12",
+        "outCents": 0,
+        "revenueCents": 0,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-01",
+        "outCents": 0,
+        "revenueCents": 0,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-02",
+        "outCents": 0,
+        "revenueCents": 0,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-03",
+        "outCents": 7692783,
+        "revenueCents": 2750000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-04",
+        "outCents": 7711983,
+        "revenueCents": 2750000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-05",
+        "outCents": 7731183,
+        "revenueCents": 2750000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-06",
+        "outCents": 7750383,
+        "revenueCents": 2750000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-07",
+        "outCents": 7769583,
+        "revenueCents": 2750000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-08",
+        "outCents": 12588783,
+        "revenueCents": 2750000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-09",
+        "outCents": 8297983,
+        "revenueCents": 2870000,
+        "financingCents": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-10",
+        "outCents": 7888423,
+        "revenueCents": 2750000,
+        "financingCents": 25000000,
+        "partial": true
+      }
+    ],
+    "windowMonths": [
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ]
+  }
+}

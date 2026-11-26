@@ -1,0 +1,37 @@
+{
+  "json": {
+    "from": "Morgan Pretend <morgan@halcyon-logistics.example.test>",
+    "to": "Maya Chen (Mock) <mock-founder@northwind.example.test>",
+    "cc": "Dana Counselor <dana@halcyon-logistics.example.test>",
+    "replyAllDiffers": true,
+    "date": "2026-10-29T00:26:42.611Z",
+    "subject": "Re: [MOCK] Redlines on the Master Services Agreement",
+    "html": null,
+    "text": "Maya, if section 9 works for you, can we sign on Thursday?\n\nMorgan\n\n-- \nMock demo data: invented for UX testing. Not a real message.",
+    "attachments": [],
+    "unread": true,
+    "inInbox": true,
+    "thread": [
+      {
+        "id": "ca1549f0-1774-4934-9b99-59fd4d051319",
+        "from": "Morgan Pretend",
+        "receivedAt": "2026-10-27T21:26:42.611Z",
+        "snippet": "Maya,\n\nOur counsel returned redlines on sections 4 (liability cap) and 9 (termination). We can sign "
+      },
+      {
+        "id": "ea72b61c-619d-45d3-9450-497fcf1b0020",
+        "from": "Maya Chen (Mock)",
+        "receivedAt": "2026-10-28T01:26:42.611Z",
+        "snippet": "Thanks Morgan. Our counsel is reviewing both sections and I will reply by Thursday.\n\nMaya\n\n-- \nMock ",
+        "fromSelf": true
+      },
+      {
+        "id": "eea28f6a-7ef7-402d-8ade-bf48291b1074",
+        "from": "Dana Counselor",
+        "receivedAt": "2026-10-28T19:26:42.611Z",
+        "snippet": "Maya, to clarify section 9: we are asking for 60 days' notice of termination instead of 30. Section "
+      }
+    ],
+    "later": []
+  }
+}

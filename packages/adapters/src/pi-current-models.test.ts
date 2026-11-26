@@ -43,4 +43,13 @@ describe("current model compatibility", () => {
       supportsMidConvoToolChanges: true,
     });
   });
+  it.each([
+    ["google", "gemini-flash-latest"],
+    ["openai", "gpt-6-luna"],
+    ["mistral", "mistral-medium-latest"],
+    ["openrouter", "~anthropic/claude-sonnet-latest"],
+  ])("lists %s/%s first and the library still ships it", (provider, id) => {
+    expect(builtinModels().getModel(provider, id)).toBeDefined();
+    expect(listPiCatalog().find((entry) => entry.provider === provider)?.id).toBe(id);
+  });
 });

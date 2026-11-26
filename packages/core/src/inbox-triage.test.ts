@@ -8,6 +8,7 @@ import {
   needsLlmDetail,
   parseTriageResponse,
   planTodoSync,
+  replyGuard,
   selectTodoCandidates,
   TRIAGE_INSTRUCTIONS,
   TRIAGE_VERSION,
@@ -476,5 +477,60 @@ describe("selectTodoCandidates with sender marks", () => {
       message("vip", { senderMark: "important" }),
     ]).map((m) => m.id);
     expect(picked).toEqual(["vip", "plain"]);
+  });
+});
+
+describe("replyGuard", () => {
+  const base = {
+    fromAddress: "ann@example.test",
+    autoSubmitted: false,
+    priorContact: true as boolean | null,
+    messageCount: 3,
+    noReplyCount: 0,
+    protectedSender: false,
+  };
+  it("lets an ordinary sender through", () => {
+    expect(replyGuard(base)).toBeNull();
+  });
+  it.each(["no-reply@x.test", "noreply@x.test", "Do_Not_Reply@x.test", "notifications@x.test"])(
+    "blocks the no-reply address %s",
+    (fromAddress) => {
+      expect(replyGuard({ ...base, fromAddress })).toBe("no_reply_sender");
+    },
+  );
+  it("blocks Auto-Submitted mail", () => {
+    expect(replyGuard({ ...base, autoSubmitted: true })).toBe("no_reply_sender");
+  });
+  it("blocks a sender with 10 or more messages the user never answered", () => {
+    expect(replyGuard({ ...base, priorContact: false, messageCount: 10 })).toBe("rarely_answered");
+    expect(replyGuard({ ...base, priorContact: false, messageCount: 9 })).toBeNull();
+  });
+  it("does not block while prior contact is unknown or true", () => {
+    expect(replyGuard({ ...base, priorContact: null, messageCount: 50 })).toBeNull();
+    expect(replyGuard({ ...base, priorContact: true, messageCount: 50 })).toBeNull();
+  });
+  it("blocks a sender after three corrections, not two", () => {
+    expect(replyGuard({ ...base, noReplyCount: 3 })).toBe("corrected");
+    expect(replyGuard({ ...base, noReplyCount: 2 })).toBeNull();
+  });
+  it("never blocks a protected sender, whatever the reason", () => {
+    expect(
+      replyGuard({
+        ...base,
+        fromAddress: "no-reply@x.test",
+        autoSubmitted: true,
+        priorContact: false,
+        messageCount: 40,
+        noReplyCount: 5,
+        protectedSender: true,
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("triage prompt corrections hint", () => {
+  it("is on version 4 and tells the model what the hint means", () => {
+    expect(TRIAGE_VERSION).toBe(4);
+    expect(TRIAGE_INSTRUCTIONS).toContain("noReplyCorrections");
   });
 });

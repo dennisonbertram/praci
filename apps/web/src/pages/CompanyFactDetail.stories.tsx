@@ -78,3 +78,12 @@ export const PersonPrivacy: Story = {
     fact: { kind: "entity", record: { ...companyFixture.entities[1]!, status: "confirmed" } },
   },
 };
+export const EditingEvent: Story = {
+  args: {
+    initialEditing: true,
+    fact: {
+      kind: "event",
+      record: { ...companyFixture.events[0]!, amountCents: 250000, currency: "USD" },
+    },
+  },
+};

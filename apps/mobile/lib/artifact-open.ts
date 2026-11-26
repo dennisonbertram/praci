@@ -9,7 +9,12 @@ import { artifactCacheFileName, artifactShareFileName } from "./artifact-file";
 import { t } from "./i18n";
 import type { ImageSize } from "./inline-image";
 import { createKeyedPromiseCache } from "./inline-image";
-import { currentSessionGeneration, loadSessionToken } from "./session";
+import { currentSessionGeneration, loadSessionToken, registerSessionDiskCache } from "./session";
+
+registerSessionDiskCache(() => {
+  const root = new Directory(Paths.cache, "artifact-shares");
+  if (root.exists) root.delete();
+});
 
 export type MobileArtifactTarget = { botId: string } | { groupId: string };
 

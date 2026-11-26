@@ -9,13 +9,17 @@ public struct HTTPRequest: Sendable {
   public let method: String
   public let headers: [String: String]
   public let body: Data?
+  public let timeout: TimeInterval
 
-  public init(url: URL, method: String = "GET", headers: [String: String] = [:], body: Data? = nil)
-  {
+  public init(
+    url: URL, method: String = "GET", headers: [String: String] = [:], body: Data? = nil,
+    timeout: TimeInterval = 8
+  ) {
     self.url = url
     self.method = method
     self.headers = headers
     self.body = body
+    self.timeout = timeout
   }
 }
 
@@ -79,15 +83,15 @@ public struct URLSessionHTTPTransport: HTTPTransport {
     configuration.httpCookieStorage = nil
     configuration.httpShouldSetCookies = false
     configuration.httpCookieAcceptPolicy = .never
-    configuration.timeoutIntervalForRequest = 8
-    configuration.timeoutIntervalForResource = 8
+    configuration.timeoutIntervalForRequest = request.timeout
+    configuration.timeoutIntervalForResource = request.timeout
 
     let delegate = BoundedResponseDelegate(maximumResponseBytes: maximumResponseBytes)
     let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
     var urlRequest = URLRequest(
       url: request.url,
       cachePolicy: .reloadIgnoringLocalCacheData,
-      timeoutInterval: 8
+      timeoutInterval: request.timeout
     )
     urlRequest.httpMethod = request.method
     urlRequest.httpBody = request.body

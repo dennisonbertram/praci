@@ -1,0 +1,197 @@
+{
+  "json": {
+    "threadId": "id-placeholder-1",
+    "cursor": 1,
+    "messages": [
+      {
+        "id": "id-placeholder-2",
+        "threadId": "id-placeholder-1",
+        "seq": 0,
+        "role": "user",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "Morning. What do I need to know today?"
+          }
+        ],
+        "createdAt": "2026-10-25T13:54:54.426Z"
+      },
+      {
+        "id": "id-placeholder-3",
+        "threadId": "id-placeholder-1",
+        "seq": 1,
+        "role": "bot",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "Three things. Priya sent the Q3 investor update draft and wants your numbers check by Friday. The Halcyon security questionnaire is due Friday. And the Q3 board consent signature is 5 days overdue."
+          },
+          {
+            "kind": "steps",
+            "steps": [
+              {
+                "label": "Read the Inbox",
+                "count": 1,
+                "summary": "10 unread, 4 need a reply",
+                "lines": [
+                  {
+                    "text": "Priya Placeholder: Q3 investor update draft"
+                  },
+                  {
+                    "text": "Morgan Pretend: MSA redlines"
+                  }
+                ]
+              },
+              {
+                "label": "Checked Legal deadlines",
+                "count": 1,
+                "summary": "1 overdue, 3 due in the next 30 days",
+                "lines": []
+              }
+            ],
+            "durationMs": 4200
+          }
+        ],
+        "botId": "id-placeholder-4",
+        "createdAt": "2026-10-25T18:24:54.426Z"
+      },
+      {
+        "id": "id-placeholder-5",
+        "threadId": "id-placeholder-1",
+        "seq": 2,
+        "role": "user",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "When is the next board meeting?"
+          }
+        ],
+        "createdAt": "2026-10-25T22:54:54.426Z"
+      },
+      {
+        "id": "id-placeholder-6",
+        "threadId": "id-placeholder-1",
+        "seq": 3,
+        "role": "bot",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "The Q3 board meeting is on the 28th. I drafted the deck; it is in Artifacts as [Q3 Board Deck](/app/artifacts/id-placeholder-7)."
+          }
+        ],
+        "botId": "id-placeholder-4",
+        "createdAt": "2026-10-26T03:24:54.426Z"
+      },
+      {
+        "id": "id-placeholder-8",
+        "threadId": "id-placeholder-1",
+        "seq": 4,
+        "role": "user",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "What did we agree with Halcyon Logistics?"
+          }
+        ],
+        "createdAt": "2026-10-26T07:54:54.426Z"
+      },
+      {
+        "id": "id-placeholder-9",
+        "threadId": "id-placeholder-1",
+        "seq": 5,
+        "role": "bot",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "The pilot converted to an annual contract for 20 picking robots, starting in Q1. The MSA is $120,000 over 24 months and either side can end it on 60 days notice. A statement of work for the deployment is $48,000."
+          },
+          {
+            "kind": "steps",
+            "steps": [
+              {
+                "label": "Searched the Data room",
+                "count": 1,
+                "summary": "3 documents",
+                "lines": [
+                  {
+                    "text": "Master Services Agreement - Halcyon Logistics.pdf"
+                  },
+                  {
+                    "text": "Statement of Work - Halcyon Logistics.pdf"
+                  }
+                ]
+              }
+            ],
+            "durationMs": 4200
+          }
+        ],
+        "botId": "id-placeholder-4",
+        "createdAt": "2026-10-26T12:24:54.426Z"
+      },
+      {
+        "id": "id-placeholder-10",
+        "threadId": "id-placeholder-1",
+        "seq": 6,
+        "role": "user",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "Remind me where runway stands."
+          }
+        ],
+        "createdAt": "2026-10-26T16:54:54.426Z"
+      },
+      {
+        "id": "id-placeholder-11",
+        "threadId": "id-placeholder-1",
+        "seq": 7,
+        "role": "bot",
+        "blocks": [
+          {
+            "kind": "text",
+            "text": "24.2 months, until October 2028. Cash is $1,633,221 and the 3-month average net burn is $67,621. Payroll of $58,400 leaves on the 28th, which is the biggest payment coming up."
+          },
+          {
+            "kind": "card",
+            "lines": [
+              {
+                "k": "Cash",
+                "v": "$1,633,221"
+              },
+              {
+                "k": "Monthly burn",
+                "v": "$67,621"
+              },
+              {
+                "k": "Runway",
+                "v": "24.2 months"
+              }
+            ]
+          }
+        ],
+        "botId": "id-placeholder-4",
+        "createdAt": "2026-10-26T21:24:54.426Z"
+      }
+    ],
+    "olderCursor": null,
+    "lastReadSeq": -1,
+    "botId": "id-placeholder-4",
+    "run": null,
+    "computer": {
+      "botId": "id-placeholder-4",
+      "mode": "team",
+      "kind": "fake",
+      "state": "running",
+      "controlHolder": "bot",
+      "controlBotId": null,
+      "takeoverRequested": false,
+      "screenAvailable": true,
+      "screenWidth": 1280,
+      "screenHeight": 800,
+      "homeRevision": "empty",
+      "busyBotName": null,
+      "canUpdate": true,
+      "terminalAvailable": true
+    }
+  }
+}

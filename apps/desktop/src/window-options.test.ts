@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   browserWindowOptions,
   DEFAULT_WARM_WINDOW_TTL_MS,
@@ -77,5 +77,14 @@ describe("window background", () => {
       expect(browserWindowOptions(platform).backgroundColor).toBe(darkTokens.background);
       expect(setupWindowOptions(platform).backgroundColor).toBe(darkTokens.background);
     }
+  });
+});
+
+describe("restrictWebRtc", () => {
+  it("limits WebRTC to proxied UDP so a page cannot reach arbitrary STUN hosts", async () => {
+    const { restrictWebRtc } = await import("./window-options.js");
+    const setWebRTCIPHandlingPolicy = vi.fn();
+    restrictWebRtc({ setWebRTCIPHandlingPolicy });
+    expect(setWebRTCIPHandlingPolicy).toHaveBeenCalledExactlyOnceWith("disable_non_proxied_udp");
   });
 });

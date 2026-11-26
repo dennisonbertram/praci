@@ -1780,7 +1780,9 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     }
     const completed = await engine.progress(actor, created.runId);
     expect(completed.status).toBe("completed");
-    expect(completed.sources.map((source) => source.itemsRead)).toEqual([31, 30]);
+    expect(completed.sources.map((source) => source.itemsRead).sort((a, b) => a - b)).toEqual([
+      30, 31,
+    ]);
     expect(extracted.size).toBe(61);
     expect([...extracted.values()].every((count) => count === 1)).toBe(true);
     expect(calls).not.toContain("ACME_CREATE_RECORD");

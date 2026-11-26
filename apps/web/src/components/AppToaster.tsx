@@ -3,7 +3,12 @@ import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { useLocation, useMatch, useNavigate } from "react-router-dom";
 import { lookupBotApp } from "../lib/agent-app";
-import { hasApprovalToasts } from "../lib/approval-toasts";
+import {
+  clearApprovalToasts,
+  hasApprovalToast,
+  hasApprovalToasts,
+  setApprovalToastAvatar,
+} from "../lib/approval-toasts";
 import { authClient } from "../lib/auth";
 import { openChatBotId } from "../lib/docked-agent";
 import { i18n } from "../lib/i18n";
@@ -19,9 +24,10 @@ import {
 import { followNotifications } from "../lib/notification-stream";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../lib/use-sidebar-glance";
 import { AgentAvatar } from "./integrations/AgentAvatar";
 
-const announceChange = () => window.dispatchEvent(new CustomEvent("rakazo:notifications-changed"));
+const announceChange = () => window.dispatchEvent(new CustomEvent(NOTIFICATIONS_CHANGED_EVENT));
 
 /** The server already reports `shownAt`/`seenAt`; look the notification up again to see them. */
 async function wasShown(n: NotificationDto): Promise<boolean> {
@@ -45,12 +51,30 @@ const dismissApproval = (n: NotificationDto) => () =>
 
 const APPROVAL_POLL_MS = 2000;
 
+/**
+ * Rebuilds are numbered so an older answer never replaces a newer one that was already applied;
+ * a slow answer still applies when nothing newer has. The session number drops answers that come
+ * back after sign-out.
+ */
+let approvalSyncStarted = 0;
+let approvalSyncApplied = 0;
+let approvalSession = 0;
+export const stopApprovalSyncs = () => {
+  approvalSession += 1;
+};
+
 /** Lets the toasts follow the approvals still waiting for an answer, however long ago they were sent. */
 async function followUnansweredApprovals(
   openBotId: () => string | undefined,
   openPath: () => string,
+  userId: string | undefined,
 ) {
+  const request = ++approvalSyncStarted;
+  const session = approvalSession;
   const { notifications } = await rpc.notifications.pendingApprovals();
+  if (session !== approvalSession || request < approvalSyncApplied) return;
+  approvalSyncApplied = request;
+  const fresh = notifications.filter((n) => !hasApprovalToast(n.id));
   syncApprovalToasts(notifications, {
     complete: true,
     onSeen: (n) => () => void markOpened(n),
@@ -58,18 +82,27 @@ async function followUnansweredApprovals(
     // A bot chat or a group chat that is open already shows its own approval card.
     skip: (n) => approvalInOpenChat(n, openBotId(), openPath()),
   });
+  // The toasts show at once; each sender's avatar is added when its lookup returns (lookupBotApp
+  // caches, and a miss leaves the toast plain). A toast closed or cleared meanwhile is left alone.
+  await Promise.all(
+    fresh.map(async (n) => setApprovalToastAvatar(n.id, (await senderFor(n, userId)).avatar)),
+  );
 }
 
-/** The sending bot's avatar; a failed lookup just means a toast without one. */
-async function avatarFor(n: NotificationDto, userId: string | undefined) {
-  if (!n.botId || !userId) return undefined;
+/** The sending bot's avatar, name and app logo; a failed lookup just means a plain toast and OS alert. */
+async function senderFor(n: NotificationDto, userId: string | undefined) {
+  if (!n.botId || !userId) return {};
   try {
     const found = await lookupBotApp(userId, n.botId);
-    if (!found) return undefined;
+    if (!found) return {};
     const { bot, app } = found;
-    return <AgentAvatar app={app} color={bot.color} identity={bot.id} size={32} />;
+    return {
+      avatar: <AgentAvatar app={app} color={bot.color} identity={bot.id} size={32} />,
+      osTitle: n.kind === "done" ? bot.name : undefined,
+      icon: app?.logo ?? undefined,
+    };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -92,7 +125,11 @@ export function AppToaster() {
   const signedIn = Boolean(userId);
   useEffect(() => {
     // Signed out, every notifications call is a 401.
-    if (!signedIn) return;
+    if (!signedIn) {
+      // Log out leaves the toast host mounted, so the last session's approvals must go with it.
+      clearApprovalToasts();
+      return;
+    }
     const controller = new AbortController();
     // The browser switch, loaded once and reloaded when the settings change.
     let browserOn: Promise<boolean> | undefined;
@@ -122,7 +159,7 @@ export function AppToaster() {
             : deliverNotification(
                 {
                   ...attentionFromDto(n),
-                  avatar: await avatarFor(n, userIdRef.current),
+                  ...(await senderFor(n, userIdRef.current)),
                   onSeen: () => void markOpened(n),
                   onDismiss: dismissApproval(n),
                 },
@@ -149,17 +186,25 @@ export function AppToaster() {
       void followUnansweredApprovals(
         () => openChatBotId(openBotIdRef.current),
         () => pathRef.current,
+        userIdRef.current,
       ).catch(() => undefined);
     };
     syncApprovals();
-    window.addEventListener("rakazo:notifications-changed", syncApprovals);
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, syncApprovals);
+    // Nothing runs while the tab is hidden, so coming back rebuilds what it missed.
+    document.addEventListener("visibilitychange", syncApprovals);
+    window.addEventListener("focus", syncApprovals);
     const poll = setInterval(() => {
       if (hasApprovalToasts()) syncApprovals();
     }, APPROVAL_POLL_MS);
     return () => {
       controller.abort();
+      // A rebuild still on its way belongs to the session that is ending.
+      stopApprovalSyncs();
       clearInterval(poll);
-      window.removeEventListener("rakazo:notifications-changed", syncApprovals);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, syncApprovals);
+      document.removeEventListener("visibilitychange", syncApprovals);
+      window.removeEventListener("focus", syncApprovals);
       window.removeEventListener(NOTIFICATION_SETTINGS_CHANGED, reload);
     };
   }, [signedIn]);

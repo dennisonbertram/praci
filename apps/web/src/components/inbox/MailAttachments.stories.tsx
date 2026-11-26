@@ -18,6 +18,12 @@ const attachments = [
   },
 ];
 
+const REVIEW = `**What it is:** A sample services agreement between Example Co and Sample LLC, effective 2026-01-01, 12 months, 4,000 per month.
+
+**Needs action:** Sign and return by 2026-02-01.
+
+**Security:** No red flags found. The sender domain matches the email.`;
+
 const text = (value: string) => new TextEncoder().encode(value);
 const PDF =
   "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF";
@@ -46,6 +52,10 @@ function stub() {
   mockRpc({
     "dataRoom.emailImported": { files: [{ messageId: "msg_demo", attachmentId: "a4" }] },
     "dataRoom.importEmail": { imported: 1, duplicates: 0, failed: 0 },
+    "inbox.reviewAttachment": (input: { question?: string }) =>
+      input.question
+        ? { status: "ok", answer: "Yes. The signature block on page 2 is blank." }
+        : { status: "ok", answer: REVIEW },
     "files.spreadsheetPreview": {
       status: "ready",
       sheets: [{ name: "Budget", dimension: null }],
@@ -104,3 +114,16 @@ export const SheetPreview: Story = { play: openChip("budget.csv") };
 export const TextPreview: Story = { play: openChip("notes.txt") };
 export const NoPreview: Story = { play: openChip("archive.zip") };
 export const TooLarge: Story = { play: openChip("raw-footage") };
+
+const clickDialogButton =
+  (label: string): Story["play"] =>
+  async ({ canvasElement }) => {
+    await openChip("Sample agreement")?.({ canvasElement } as never);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const button = [...canvasElement.ownerDocument.querySelectorAll("[role=dialog] button")].find(
+      (b) => b.getAttribute("aria-label") === label,
+    );
+    (button as HTMLElement | undefined)?.click();
+  };
+/** Review with AI from the preview header; the chat is gone once it closes. */
+export const ReviewWithAi: Story = { play: clickDialogButton("Review with AI") };

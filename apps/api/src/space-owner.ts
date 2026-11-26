@@ -1,11 +1,9 @@
 import { ORPCError } from "@orpc/server";
 import type { Actor } from "@rakazo/contracts";
+import { isSpaceOwnerOrAdminRole, isSpaceOwnerRole } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 
-/** Better Auth stores multiple roles comma-joined, so "owner,admin" is an owner. */
-export function isSpaceOwnerRole(role: string | null | undefined): boolean {
-  return role?.split(",").some((r) => r.trim() === "owner") ?? false;
-}
+export { isSpaceOwnerOrAdminRole, isSpaceOwnerRole };
 
 export async function requireSpaceOwner(prisma: PrismaClient, actor: Actor): Promise<void> {
   const membership = await prisma.spaceMember.findUnique({

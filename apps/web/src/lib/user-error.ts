@@ -19,6 +19,12 @@ export function runErrorText(error: string): string {
   return plainRunError(error, {
     keyRejected: t`The model provider did not accept your API key. Check it in Settings > Models.`,
     generic: t`Something went wrong. Try again.`,
+    spendLimit: (resetsOn) =>
+      resetsOn
+        ? t`The AI key hit its spending limit. It resets ${resetsOn}. Raise the limit with your provider or use another key in Settings > Models.`
+        : t`The AI key hit its spending limit. Raise the limit with your provider or use another key in Settings > Models.`,
+    outOfCredits: t`The AI account is out of credits. Add credits with your provider or use another key in Settings > Models.`,
+    rateLimited: t`The model provider is rate limiting requests. Try again in a few minutes.`,
   });
 }
 

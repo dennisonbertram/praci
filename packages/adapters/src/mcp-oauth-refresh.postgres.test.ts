@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb } from "@rakazo/db";
+import { asSystem, createDb, runAsTenant } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { McpOAuthBroker } from "./mcp-oauth.js";
 import { EncryptedSecretStore } from "./secrets.js";
@@ -13,6 +13,8 @@ describePostgres("MCP OAuth token renewal across processes (PostgreSQL)", () => 
   const run = randomUUID().slice(0, 8);
   const ids = { user: `mor-user-${run}`, org: `mor-org-${run}`, space: `mor-space-${run}` };
   let prisma: PrismaClient;
+  // Fixtures are created and read as the owner of the data; the code under test runs in a tenant.
+  let fixture: PrismaClient;
   let close: () => Promise<void>;
   const secrets = new EncryptedSecretStore("test-key");
   const context = {
@@ -27,6 +29,7 @@ describePostgres("MCP OAuth token renewal across processes (PostgreSQL)", () => 
   beforeAll(async () => {
     const db = createDb(databaseUrl as string);
     prisma = db.prisma;
+    fixture = asSystem(prisma);
     close = async () => {
       await prisma.$disconnect();
       await db.pool.end();
@@ -42,8 +45,8 @@ describePostgres("MCP OAuth token renewal across processes (PostgreSQL)", () => 
     });
   });
   afterAll(async () => {
-    await prisma.mcpServer.deleteMany({ where: { spaceId: ids.space } });
-    await prisma.secret.deleteMany({ where: { spaceId: ids.space } });
+    await fixture.mcpServer.deleteMany({ where: { spaceId: ids.space } });
+    await fixture.secret.deleteMany({ where: { spaceId: ids.space } });
     await prisma.space.deleteMany({ where: { id: ids.space } });
     await prisma.organization.deleteMany({ where: { id: ids.org } });
     await prisma.user.deleteMany({ where: { id: ids.user } });
@@ -73,7 +76,7 @@ describePostgres("MCP OAuth token renewal across processes (PostgreSQL)", () => 
       },
     };
     const stored = await secrets.put(JSON.stringify(material), context);
-    await prisma.secret.create({
+    await fixture.secret.create({
       data: {
         id: stored.id,
         spaceId: ids.space,
@@ -82,7 +85,7 @@ describePostgres("MCP OAuth token renewal across processes (PostgreSQL)", () => 
         ciphertext: stored.ciphertext,
       },
     });
-    const server = await prisma.mcpServer.create({
+    const server = await fixture.mcpServer.create({
       data: {
         spaceId: ids.space,
         userId: ids.user,
@@ -116,15 +119,17 @@ describePostgres("MCP OAuth token renewal across processes (PostgreSQL)", () => 
     };
     const brokers = [1, 2].map(() => new McpOAuthBroker(prisma, secrets, network));
     const ref = { id: server.id, endpoint: server.endpoint, secretId: server.secretId };
-    const providers = await Promise.all(
-      brokers.map((broker) => broker.providerFor(ref, { spaceId: ids.space, userId: ids.user })),
+    const tenant = { spaceId: ids.space, userId: ids.user };
+    const tokens = await Promise.all(
+      brokers.map((broker) =>
+        runAsTenant(tenant, async () => (await broker.providerFor(ref, tenant))?.tokens()),
+      ),
     );
-    const tokens = await Promise.all(providers.map((provider) => provider?.tokens()));
 
     expect(calls).toBe(1);
     expect(tokens.map((token) => token?.access_token)).toEqual(["new-access", "new-access"]);
-    const row = await prisma.mcpServer.findUniqueOrThrow({ where: { id: server.id } });
-    const saved = await prisma.secret.findUniqueOrThrow({ where: { id: row.secretId as string } });
+    const row = await fixture.mcpServer.findUniqueOrThrow({ where: { id: server.id } });
+    const saved = await fixture.secret.findUniqueOrThrow({ where: { id: row.secretId as string } });
     expect(JSON.parse(await secrets.load(saved.ciphertext, saved.id)).oauth.tokens).toMatchObject({
       access_token: "new-access",
       refresh_token: "new-refresh",

@@ -99,6 +99,11 @@ export function plainTextLinkParts(text: string): PlainTextPart[] {
   return parts.length > 0 ? parts : [{ type: "text", value: text }];
 }
 
+/** An in-app path such as /app/pages/a/b: one leading slash, no backslash, space or control character. */
+export function isAppPath(url: string): boolean {
+  return /^\/app\/[^\s\\]*$/.test(url) && [...url].every((char) => char.charCodeAt(0) > 31);
+}
+
 export function sanitizeMarkdownUrl(url: string, allowRelative = false): string | undefined {
   const value = url.trim();
   const protocol = value.match(protocolPattern)?.[1]?.toLowerCase();

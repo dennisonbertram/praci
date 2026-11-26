@@ -192,6 +192,21 @@ export function previousPeriod(now: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+/** A stored period as people say it: "October 2026" for a month, "Q3 2026" for a quarter. */
+export function periodLabel(period: string): string {
+  const quarter = /^(\d{4})-Q([1-4])$/.exec(period);
+  if (quarter) return `Q${quarter[2]} ${quarter[1]}`;
+  const month = /^(\d{4})-(\d{2})$/.exec(period);
+  if (month) {
+    const name = new Date(Date.UTC(Number(month[1]), Number(month[2]) - 1, 1)).toLocaleString(
+      "en-US",
+      { month: "long", timeZone: "UTC" },
+    );
+    return `${name} ${month[1]}`;
+  }
+  return period;
+}
+
 /** Only contacts of the audience's kind that belong to the user can be recipients. */
 async function ownRecipients(
   prisma: Db,
@@ -241,7 +256,7 @@ export async function saveInvestorUpdate(
         ...scope,
         audience,
         period,
-        subject: input.subject || `${space?.name ?? "Company"} · ${period} update`,
+        subject: input.subject || `${space?.name ?? "Company"} · ${periodLabel(period)} update`,
         body: input.body ?? "",
         recipientContactIds: recipients,
         fromConnectionId: input.fromConnectionId ?? null,
@@ -255,7 +270,13 @@ export async function saveInvestorUpdate(
     : undefined;
   // The status check is part of the write, so a send that starts meanwhile wins.
   const { count } = await prisma.investorUpdate.updateMany({
-    where: { id: existing.id, ...scope, status: "draft" },
+    where: {
+      id: existing.id,
+      ...scope,
+      status: "draft",
+      // A given version refuses to overwrite a draft that changed since it was read.
+      ...(input.updatedAt === undefined ? {} : { updatedAt: new Date(input.updatedAt) }),
+    },
     data: {
       ...(input.subject === undefined ? {} : { subject: input.subject }),
       ...(input.period === undefined ? {} : { period: input.period }),
@@ -264,7 +285,10 @@ export async function saveInvestorUpdate(
       ...(input.fromConnectionId === undefined ? {} : { fromConnectionId: input.fromConnectionId }),
     },
   });
-  if (count === 0) throw new InvestorUpdateLockedError();
+  if (count === 0)
+    throw new InvestorUpdateLockedError(
+      existing.status === "draft" ? "This update changed elsewhere." : undefined,
+    );
   return getInvestorUpdate(prisma, scope, existing.id, now);
 }
 
@@ -343,6 +367,18 @@ export async function setInvestorUpdateRecipients(
   });
 }
 
+/** Gives a claimed send back to draft, for a claim that turned out to have nobody to send to. */
+export async function releaseInvestorUpdateSend(
+  prisma: Db,
+  actor: Scope,
+  id: string,
+): Promise<void> {
+  await prisma.investorUpdate.updateMany({
+    where: { id, ...ownerOf(actor), status: "sending" },
+    data: { status: "draft" },
+  });
+}
+
 /**
  * Starts a retry: a sent update, or one that stopped sending, goes back to sending. Returns the
  * recipients to send to (failed ones, and Unknown ones only when `resendUnknown`), or null when a send
@@ -401,10 +437,12 @@ export async function recordInvestorAttempt(
   const deliveries = deliveriesOf(row);
   const n = (deliveries[contactId]?.length ?? 0) + 1;
   deliveries[contactId] = [...(deliveries[contactId] ?? []), { n, at: now.toISOString() }];
-  await prisma.investorUpdate.updateMany({
+  const { count } = await prisma.investorUpdate.updateMany({
     where: { id, ...scope, status: "sending" },
     data: { deliveries: deliveries as unknown as Prisma.InputJsonValue },
   });
+  // The update is no longer sending (the founder settled it): nothing more may go out.
+  if (count === 0) throw new InvestorUpdateLockedError();
   return n;
 }
 

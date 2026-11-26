@@ -312,16 +312,53 @@ it("tells an open Inbox to reload once a switch changes", async () => {
   window.removeEventListener("rakazo:inbox-changed", changed);
 });
 
-it("renders nothing when there are no model recipients or the status cannot load", async () => {
+it("renders nothing when there are no model recipients", async () => {
   consent.aiConsentStatus.mockResolvedValue(
     statusOf([recipients[2] as AiConsentStatus["recipients"][number]]),
   );
   await render(<AiDataSharingSection />);
   expect(container.innerHTML).toBe("");
+});
 
+it("shows an error and retry when the status cannot load", async () => {
   consent.aiConsentStatus.mockRejectedValue(new Error("offline"));
-  await render(<AiDataSharingSection key="again" />);
-  expect(container.innerHTML).toBe("");
+  await render(<AiDataSharingSection />);
+  expect(container.textContent).toContain("AI data sharing");
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("offline");
+  const retry = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Retry",
+  );
+  expect(retry).not.toBeUndefined();
+
+  consent.aiConsentStatus.mockResolvedValue(statusOf());
+  await click(retry ?? null);
+  expect(container.querySelector('[aria-label="Allow AI models"]')).not.toBeNull();
+});
+
+it("keeps the master switch disabled until the recovery load finishes", async () => {
+  const initial = statusOf([
+    { ...modelA, allowed: false },
+    { ...modelB, allowed: false },
+  ]);
+  let fullReads = 0;
+  let finishReload: (status: AiConsentStatus) => void = () => undefined;
+  consent.allowRecipient
+    .mockResolvedValueOnce(statusOf([{ ...modelA, allowed: true }]))
+    .mockRejectedValueOnce(new Error("offline"));
+  consent.aiConsentStatus.mockImplementation((uses?: string[]) => {
+    if (uses) return Promise.resolve(initial);
+    fullReads += 1;
+    if (fullReads === 1) return Promise.resolve(initial);
+    return new Promise((resolve) => {
+      finishReload = resolve;
+    });
+  });
+  await render(<AiDataSharingSection />);
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  const master = container.querySelector('[aria-label="Allow AI models"]') as HTMLButtonElement;
+  expect(master.disabled).toBe(true);
+  await act(async () => finishReload(statusOf([{ ...modelA, allowed: true }])));
+  expect(master.disabled).toBe(false);
 });
 
 it("sends one grant even if Allow is pressed again while the first is in flight", async () => {

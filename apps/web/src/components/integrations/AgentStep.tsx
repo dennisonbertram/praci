@@ -3,7 +3,7 @@ import type { Bot } from "@rakazo/contracts";
 import { BotAvatar, Button, Checkbox, DialogDescription, DialogTitle } from "@rakazo/ui-web";
 import { useState } from "react";
 
-/** Step 2 of the connect dialogs: which agents get the new connection. All start checked. */
+/** Step 2 of the connect dialogs: which agents get the new connection. None start checked. */
 export function AgentStep({
   appName,
   bots,
@@ -19,7 +19,7 @@ export function AgentStep({
   onContinue: (botIds: string[]) => void;
   onSkip: () => void;
 }) {
-  const [checked, setChecked] = useState(() => new Set(bots.map((bot) => bot.id)));
+  const [checked, setChecked] = useState(() => new Set<string>());
   return (
     <div>
       <div className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">

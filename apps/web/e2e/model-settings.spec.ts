@@ -404,7 +404,9 @@ test("model settings connect, replace, and cancel provider authentication", asyn
     .first()
     .click();
   await page.getByRole("button", { name: /Sign in with ChatGPT Plus\/Pro/ }).click();
-  await expect(page.getByText(/Connected and using/)).toBeVisible();
+  // Scripted already holds the default, so this later connection is not in use yet.
+  await expect(page.getByText("Connected.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use this model", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in again", exact: true })).toBeVisible();
 
   // Disconnect removes the credential and its Connected marker.

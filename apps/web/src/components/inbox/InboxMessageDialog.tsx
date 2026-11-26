@@ -1,8 +1,21 @@
 import { i18n } from "@lingui/core";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { Bot as AgentBot, ComposeMode, InboxThreadMessage } from "@rakazo/contracts";
+import type {
+  Bot as AgentBot,
+  ComposeMode,
+  InboxThreadMessage,
+  UnsubscribeOutput,
+} from "@rakazo/contracts";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   cn,
   Dialog,
@@ -12,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
   Spinner,
@@ -23,17 +37,22 @@ import {
   ChevronDown,
   ChevronUp,
   Ellipsis,
+  Eye,
   Forward,
   Inbox,
   Mail,
   MailOpen,
+  MailX,
   Reply,
   ReplyAll,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { ComposeRestore } from "../../components/ComposeEmail";
-import { ComposeEmail } from "../../components/ComposeEmail";
 import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -45,11 +64,21 @@ import {
   peekInboxMessage,
   prefetchInboxMessage,
 } from "../../lib/inbox-message-cache";
+import type { MailMoveOp } from "../../lib/inbox-move";
+import { useContextPanelOpen } from "../../lib/mail-context-panel";
 import { MAIL_SENT_EVENT } from "../../lib/outbox";
+import { recipientPeople, splitEntries } from "../../lib/recipients";
 import { errorText } from "../../lib/user-error";
 import type { ComposerDraft } from "../BotToolControls";
+import type { ContextPerson } from "./ContextPanel";
 import { EmailAgentPanel } from "./EmailAgentPanel";
+import type { EmailPanelTab } from "./EmailSidePanel";
+import { EmailSidePanel } from "./EmailSidePanel";
 import { MailAttachments } from "./MailAttachments";
+
+const ComposeEmail = lazy(() =>
+  import("../../components/ComposeEmail").then((module) => ({ default: module.ComposeEmail })),
+);
 
 /** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
 /** A recipient line where each `<address>` stays on one line: it may wrap between recipients, not inside an address. */
@@ -79,9 +108,14 @@ export function InboxMessageDialog({
   onMoveToInbox,
   onRead,
   onReplyDone,
+  tracked,
+  onTrack,
   replyDoneText,
   onAskAgent,
   onAskAgentPanel,
+  moves,
+  onMove,
+  onUnsubscribe,
   notice,
   onClose,
 }: {
@@ -107,12 +141,20 @@ export function InboxMessageDialog({
   onRead?: (read: boolean) => void;
   /** Adds Mark reply done, for a reply to-do the list page hides because this mail is under Needs reply. */
   onReplyDone?: () => void;
+  /** With `onTrack`, adds Track or Stop tracking to More and shows a Tracked mark while it is on. */
+  tracked?: boolean;
+  onTrack?: (track: boolean) => void;
   /** The to-do `onReplyDone` completes; the menu item names it. */
   replyDoneText?: string;
   /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
   onAskAgent?: () => Promise<unknown>;
   /** Instead of `onAskAgent`: Ask agent opens this email's agent in a panel inside the dialog. */
   onAskAgentPanel?: () => Promise<AgentBot>;
+  /** With `onMove`, adds these to More; the page closes the dialog, as Archive does. */
+  moves?: readonly MailMoveOp[];
+  onMove?: (op: MailMoveOp) => void;
+  /** Adds Unsubscribe to More. Called with true after the user agrees to send an unsubscribe email. */
+  onUnsubscribe?: (confirmMailto: boolean) => Promise<UnsubscribeOutput>;
   /** A brief message with its own action, shown here because the page behind the dialog is inert. */
   notice?: React.ReactNode;
   onClose: () => void;
@@ -129,6 +171,10 @@ export function InboxMessageDialog({
   // The email's own agent, docked on the right of the dialog until it is closed.
   const [agentBot, setAgentBot] = useState<AgentBot | null>(null);
   useEffect(() => setAgentBot(null), [messageId]);
+  // The side panel beside the email: Context by default, open or closed as the user left it.
+  const [panelOpen, setPanelOpen] = useContextPanelOpen(messageId);
+  const [tab, setTab] = useState<EmailPanelTab>("context");
+  useEffect(() => setTab("context"), [messageId]);
   return (
     <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>
       {/* Anchored at the top on wide screens, so a loading body or a notice grows it downward instead
@@ -139,14 +185,14 @@ export function InboxMessageDialog({
         tabIndex={-1}
         showCloseButton={false}
         className={cn(
-          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:transition-[left,width,transform] md:duration-200",
-          // From 1280px the dialog grows to up to 1152px, stays centred so both side gutters stay equal,
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(1200px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:transition-[left,width,transform] md:duration-200",
+          // From 1280px the dialog grows to up to 1440px, stays centred so both side gutters stay equal,
           // and the panel sits beside the email. Below that the panel overlays
           // the dialog's right side and the email column reserves that space, so no text runs under it.
           // The `!` is needed because Tailwind emits an arbitrary min-width variant before `md`, which
           // would otherwise win.
-          agentBot &&
-            "md:h-[85vh] min-[1280px]:w-[min(1152px,calc(50vw+376px))]! min-[1280px]:flex-row min-[1280px]:gap-0",
+          panelOpen &&
+            "md:h-[85vh] min-[1280px]:w-[min(1440px,calc(50vw+376px))]! min-[1280px]:flex-row min-[1280px]:gap-0",
           composing && "invisible",
         )}
       >
@@ -165,14 +211,24 @@ export function InboxMessageDialog({
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
             onReplyDone={onReplyDone}
+            tracked={tracked}
+            onTrack={onTrack}
             replyDoneText={replyDoneText}
             onAskAgent={onAskAgent}
             onAskAgentPanel={onAskAgentPanel}
+            moves={moves}
+            onMove={onMove}
+            onUnsubscribe={onUnsubscribe}
             agentBot={agentBot}
             setAgentBot={setAgentBot}
+            panelOpen={panelOpen}
+            setPanelOpen={setPanelOpen}
+            tab={tab}
+            setTab={setTab}
             notice={notice}
             composing={composing}
             setComposing={setComposing}
+            closeDialog={onClose}
           />
         ) : null}
       </DialogContent>
@@ -195,14 +251,24 @@ function InboxMessage({
   onMoveToInbox,
   onRead,
   onReplyDone,
+  tracked,
+  onTrack,
   replyDoneText,
   onAskAgent,
   onAskAgentPanel,
+  moves,
+  onMove,
+  onUnsubscribe,
   agentBot,
   setAgentBot,
+  panelOpen,
+  setPanelOpen,
+  tab,
+  setTab,
   notice,
   composing,
   setComposing,
+  closeDialog,
 }: {
   messageId: string;
   subject?: string;
@@ -216,14 +282,24 @@ function InboxMessage({
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
   onReplyDone?: () => void;
+  tracked?: boolean;
+  onTrack?: (track: boolean) => void;
   replyDoneText?: string;
   onAskAgent?: () => Promise<unknown>;
   onAskAgentPanel?: () => Promise<AgentBot>;
+  moves?: readonly MailMoveOp[];
+  onMove?: (op: MailMoveOp) => void;
+  onUnsubscribe?: (confirmMailto: boolean) => Promise<UnsubscribeOutput>;
   agentBot: AgentBot | null;
   setAgentBot: (bot: AgentBot | null) => void;
+  panelOpen: boolean;
+  setPanelOpen: (open: boolean) => void;
+  tab: EmailPanelTab;
+  setTab: (tab: EmailPanelTab) => void;
   notice?: React.ReactNode;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
+  closeDialog: () => void;
 }) {
   const { t } = useLingui();
   useHideAmounts();
@@ -248,6 +324,18 @@ function InboxMessage({
   const [askError, setAskError] = useState("");
   // The agent's draft for the Reply composer, until that composer closes.
   const [agentDraft, setAgentDraft] = useState<string | undefined>();
+  // The unsubscribe question inside the dialog: first the warning, then a mailto confirm or a link.
+  const [unsub, setUnsub] = useState<
+    { step: "ask" } | { step: "confirm"; mailTo: string } | { step: "link"; openUrl: string } | null
+  >(null);
+  const [unsubBusy, setUnsubBusy] = useState(false);
+  // A finished unsubscribe drops the menu item for this open message.
+  const [unsubbed, setUnsubbed] = useState(false);
+  const [unsubLine, setUnsubLine] = useState<
+    { alert: true; text: string; openUrl?: string } | { alert: false; text: string } | null
+  >(null);
+  // Bumped on every call and every close: a late answer is then ignored.
+  const unsubAttempt = useRef(0);
   // A failed send reopened as written, so its recipients and subject survive.
   const [failedDraft, setFailedDraft] = useState<ComposerDraft | undefined>();
   const restore = useMemo<ComposeRestore | undefined>(
@@ -290,8 +378,10 @@ function InboxMessage({
       })
       .catch((cause) => {
         if (!live) return;
-        if ((cause as { code?: string } | null)?.code === "NOT_FOUND") setGone(true);
-        else setError(errorText(cause));
+        if ((cause as { code?: string } | null)?.code === "NOT_FOUND") {
+          setMessage(null);
+          setGone(true);
+        } else setError(errorText(cause));
       });
     return () => {
       live = false;
@@ -321,7 +411,8 @@ function InboxMessage({
   // The server compares the recipients of Reply and Reply all; an older server says nothing.
   const canReplyAll = message?.replyAllDiffers !== false;
   useEffect(() => {
-    if (!onNavigate || composing) return;
+    // While the unsubscribe question is open no key may act on the message behind it.
+    if (!onNavigate || composing || unsub !== null) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -333,12 +424,52 @@ function InboxMessage({
       if (step) {
         if (allowStep(event)) onNavigate(step);
       } else if (event.key === "e" && canArchive) canArchive();
-      else if (message && event.key in COMPOSE_KEYS && (event.key !== "a" || canReplyAll))
+      else if (event.key === "u" && !event.repeat && onRead && shownUnread !== undefined) {
+        // Back to the list, so the read timer cannot mark it read again.
+        onRead(false);
+        closeDialog();
+      } else if (message && event.key in COMPOSE_KEYS && (event.key !== "a" || canReplyAll))
         setComposing(COMPOSE_KEYS[event.key] ?? null);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onNavigate, composing, setComposing, nextId, previousId, message, canArchive, canReplyAll]);
+  }, [
+    onNavigate,
+    composing,
+    setComposing,
+    nextId,
+    previousId,
+    message,
+    canArchive,
+    canReplyAll,
+    onRead,
+    shownUnread,
+    closeDialog,
+    unsub,
+  ]);
+
+  // Ask agent and the Agent tab both open this email's agent beside it.
+  const askAgent = () => {
+    setAsking(true);
+    setAskError("");
+    (onAskAgentPanel
+      ? onAskAgentPanel().then((bot) => {
+          // This message is gone if the user moved on or closed the dialog meanwhile.
+          if (!mounted.current) return;
+          setAgentBot(bot);
+          setTab("agent");
+          setPanelOpen(true);
+        })
+      : (onAskAgent?.() ?? Promise.resolve())
+    ).then(
+      () => setAsking(false),
+      (cause) => {
+        setAsking(false);
+        setAskError(errorText(cause));
+      },
+    );
+  };
+  const people = useMemo(() => contextPeople(message), [message]);
 
   const title = gone
     ? t`Email not found`
@@ -346,15 +477,64 @@ function InboxMessage({
   const sent = message ? new Date(message.date) : null;
   const parsed = splitSender(message?.from ?? "");
   // The user's own message, such as their reply found by search, says "You" as the conversation does.
-  const sender = message?.fromSelf
-    ? { name: t`You`, address: parsed.address || parsed.name }
-    : parsed;
+  const sender = message?.fromSelf ? t`You` : parsed.name;
+  const senderAddress = message?.fromSelf ? parsed.address || parsed.name : parsed.address;
+
+  const showUnsub = Boolean(onUnsubscribe && message && !message.fromSelf && !unsubbed);
+  const moveMeta: Record<MailMoveOp, { name: string; Icon: typeof Archive }> = {
+    spam: { name: t`Spam`, Icon: ShieldAlert },
+    trash: { name: t`Trash`, Icon: Trash2 },
+    notSpam: { name: t`Not spam`, Icon: ShieldCheck },
+  };
+  const closeUnsub = () => {
+    unsubAttempt.current += 1;
+    setUnsub(null);
+    setUnsubBusy(false);
+  };
+  const runUnsub = async (confirmMailto: boolean) => {
+    if (!onUnsubscribe || unsubBusy) return;
+    const attempt = (unsubAttempt.current += 1);
+    setUnsubBusy(true);
+    const name = sender;
+    try {
+      const out = await onUnsubscribe(confirmMailto);
+      if (!mounted.current || attempt !== unsubAttempt.current) return;
+      setUnsubBusy(false);
+      if (out.status === "needs_confirmation") {
+        setUnsub({ step: "confirm", mailTo: out.mailTo ?? "" });
+      } else if (out.status === "opened" && out.openUrl) {
+        // A tab opened after a request is blocked, so the user's own click must open it.
+        setUnsub({ step: "link", openUrl: out.openUrl });
+      } else if (
+        out.status === "done" ||
+        out.status === "sent" ||
+        out.status === "unknown" ||
+        out.status === "opened"
+      ) {
+        // unknown counts as done, as Cleanup counts it.
+        closeUnsub();
+        setUnsubbed(true);
+        setUnsubLine({ alert: false, text: t`Unsubscribed from ${sender}` });
+      } else {
+        closeUnsub();
+        setUnsubLine({
+          alert: true,
+          text: t`Couldn't unsubscribe from ${name}`,
+          openUrl: out.status === "failed" ? out.openUrl : undefined,
+        });
+      }
+    } catch (cause) {
+      if (!mounted.current || attempt !== unsubAttempt.current) return;
+      closeUnsub();
+      setUnsubLine({ alert: true, text: errorText(cause) });
+    }
+  };
   return (
     <>
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
-          agentBot && "md:pe-96 min-[1280px]:pe-4!",
+          panelOpen && "md:pe-96 min-[1280px]:pe-4!",
         )}
       >
         <div className="flex items-start gap-2">
@@ -399,16 +579,22 @@ function InboxMessage({
           <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
             <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
               <span dir="auto" className="min-w-0 break-words sm:truncate">
-                <span className="font-semibold text-foreground">{sender.name}</span>
-                {sender.address ? (
+                <span className="font-semibold text-foreground">{sender}</span>
+                {senderAddress ? (
                   <span className="block text-xs break-all sm:inline sm:whitespace-nowrap">
                     {" "}
-                    {`<${sender.address}>`}
+                    {`<${senderAddress}>`}
                   </span>
                 ) : null}
               </span>
               <span className="flex shrink-0 items-baseline gap-2">
                 {message.fromSelf ? <SentMark /> : null}
+                {tracked ? (
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <Eye aria-hidden="true" className="size-3" />
+                    <Trans>Tracked</Trans>
+                  </span>
+                ) : null}
                 <time
                   dateTime={sent && !Number.isNaN(sent.getTime()) ? sent.toISOString() : undefined}
                   className="text-xs tabular-nums"
@@ -457,7 +643,7 @@ function InboxMessage({
         )}
         {/* The actions need only the id, so they show while the body loads. */}
         {message || !gone ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 max-md:flex-nowrap">
             <Button size="sm" onClick={() => setComposing("reply")}>
               <Reply aria-hidden="true" />
               <Trans>Reply</Trans>
@@ -478,30 +664,32 @@ function InboxMessage({
               <Button
                 variant="outline"
                 size="sm"
+                className="max-md:hidden"
                 disabled={asking}
-                aria-pressed={onAskAgentPanel ? Boolean(agentBot) : undefined}
-                onClick={() => {
-                  setAsking(true);
-                  setAskError("");
-                  (onAskAgentPanel
-                    ? onAskAgentPanel().then((bot) => {
-                        // This message is gone if the user moved on or closed the dialog meanwhile.
-                        if (mounted.current) setAgentBot(bot);
-                      })
-                    : (onAskAgent?.() ?? Promise.resolve())
-                  ).then(
-                    () => setAsking(false),
-                    (cause) => {
-                      setAsking(false);
-                      setAskError(errorText(cause));
-                    },
-                  );
-                }}
+                aria-pressed={onAskAgentPanel ? Boolean(agentBot) && panelOpen : undefined}
+                onClick={askAgent}
               >
                 {asking ? <Spinner aria-hidden="true" /> : <Bot aria-hidden="true" />}
                 <Trans>Ask agent</Trans>
               </Button>
             ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              className="md:w-7 md:px-0 pointer-coarse:md:w-11"
+              aria-label={t`Context`}
+              aria-pressed={panelOpen && tab === "context"}
+              onClick={() => {
+                const closing = panelOpen && tab === "context";
+                setTab("context");
+                setPanelOpen(!closing);
+              }}
+            >
+              <UserRound aria-hidden="true" />
+              <span className="md:hidden">
+                <Trans>Context</Trans>
+              </span>
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={<Button variant="outline" size="icon-sm" aria-label={t`More`} />}
@@ -509,6 +697,18 @@ function InboxMessage({
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
+                {onAskAgent || onAskAgentPanel ? (
+                  <DropdownMenuItem className="md:hidden" disabled={asking} onClick={askAgent}>
+                    <Bot aria-hidden="true" />
+                    <Trans>Ask agent</Trans>
+                  </DropdownMenuItem>
+                ) : null}
+                {onTrack ? (
+                  <DropdownMenuItem className="whitespace-nowrap" onClick={() => onTrack(!tracked)}>
+                    <Eye aria-hidden="true" />
+                    {tracked ? <Trans>Stop tracking</Trans> : <Trans>Track</Trans>}
+                  </DropdownMenuItem>
+                ) : null}
                 {canReplyAll ? (
                   <DropdownMenuItem onClick={() => setComposing("replyAll")}>
                     <ReplyAll aria-hidden="true" />
@@ -535,15 +735,61 @@ function InboxMessage({
                     )}
                   </DropdownMenuItem>
                 ) : null}
+                {(onMove && moves?.length) || showUnsub ? <DropdownMenuSeparator /> : null}
+                {onMove
+                  ? moves?.map((op) => {
+                      const { name, Icon } = moveMeta[op];
+                      return (
+                        <DropdownMenuItem key={op} onClick={() => onMove(op)}>
+                          <Icon aria-hidden="true" />
+                          {name}
+                        </DropdownMenuItem>
+                      );
+                    })
+                  : null}
+                {showUnsub ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => {
+                      setUnsubLine(null);
+                      setUnsub({ step: "ask" });
+                    }}
+                  >
+                    <MailX aria-hidden="true" />
+                    <Trans>Unsubscribe</Trans>
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
             {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
-            {notice ? <div className="ms-auto flex min-w-0 max-w-full">{notice}</div> : null}
+            {/* Always present, so a notice added later is announced. */}
+            <div role="status" className="ms-auto flex min-w-0 max-w-full">
+              {notice}
+            </div>
           </div>
         ) : null}
         {askError ? (
           <p role="alert" className="text-sm text-destructive">
             {askError}
+          </p>
+        ) : null}
+        {unsubLine?.alert ? (
+          <p role="alert" className="flex flex-wrap items-center gap-x-3 text-sm text-destructive">
+            <span dir="auto">{unsubLine.text}</span>
+            {unsubLine.openUrl ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                render={<a href={unsubLine.openUrl} target="_blank" rel="noopener noreferrer" />}
+              >
+                <Trans>Open link</Trans>
+              </Button>
+            ) : null}
+          </p>
+        ) : unsubLine ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            {unsubLine.text}
           </p>
         ) : null}
         {message && !composing && draft ? (
@@ -560,17 +806,21 @@ function InboxMessage({
           </p>
         ) : null}
         {seed ? (
-          <ComposeEmail
-            seed={seed}
-            accounts={[]}
-            draft={composing === "reply" ? agentDraft : undefined}
-            restore={restore}
-            onClose={() => {
-              setComposing(null);
-              setAgentDraft(undefined);
-              setFailedDraft(undefined);
-            }}
-          />
+          <Suspense fallback={null}>
+            <ComposeEmail
+              seed={seed}
+              accounts={[]}
+              draft={composing === "reply" ? agentDraft : undefined}
+              restore={restore}
+              // Send closes the preview too; Undo and a failed send bring the composer back (MailOutbox).
+              onSent={closeDialog}
+              onClose={() => {
+                setComposing(null);
+                setAgentDraft(undefined);
+                setFailedDraft(undefined);
+              }}
+            />
+          </Suspense>
         ) : null}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {message?.thread?.length ? (
@@ -630,7 +880,10 @@ function InboxMessage({
               <SandboxedHtmlViewer html={message.html} title={message.subject} email />
             </div>
           ) : (
-            <p dir="auto" className="whitespace-pre-wrap py-4 wrap-anywhere text-sm">
+            <p
+              dir="auto"
+              className="mt-3 whitespace-pre-wrap rounded-lg border border-border bg-card px-4 py-6 wrap-anywhere text-sm sm:px-8"
+            >
               {maskCurrencyWhenHidden(message.text ?? "")}
             </p>
           )}
@@ -644,21 +897,85 @@ function InboxMessage({
           ) : null}
         </div>
       </div>
-      {agentBot ? (
-        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl min-[1280px]:relative min-[1280px]:-my-4 min-[1280px]:-me-4 min-[1280px]:w-96 min-[1280px]:max-w-none min-[1280px]:shrink-0 min-[1280px]:shadow-none">
-          <EmailAgentPanel
-            bot={agentBot}
-            onClose={() => setAgentBot(null)}
-            onReplyWithDraft={(text, failed) => {
-              setAgentDraft(text);
-              setFailedDraft(failed);
-              setComposing("reply");
-            }}
+      {panelOpen ? (
+        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl max-md:inset-x-0 max-md:inset-y-auto max-md:bottom-0 max-md:h-3/5 max-md:max-w-none max-md:overflow-hidden max-md:rounded-t-xl max-md:border-t min-[1280px]:relative min-[1280px]:-my-4 min-[1280px]:-me-4 min-[1280px]:w-96 min-[1280px]:max-w-none min-[1280px]:shrink-0 min-[1280px]:shadow-none">
+          <EmailSidePanel
+            people={people}
+            tab={tab}
+            onTab={
+              onAskAgentPanel
+                ? (next) => (next === "agent" && !agentBot ? askAgent() : setTab(next))
+                : undefined
+            }
+            agentLoading={asking}
+            fullScreenTo={agentBot ? `/app/${agentBot.id}` : undefined}
+            onClose={() => setPanelOpen(false)}
+            agent={
+              agentBot ? (
+                <EmailAgentPanel
+                  embedded
+                  bot={agentBot}
+                  onClose={() => setPanelOpen(false)}
+                  onReplyWithDraft={(text, failed) => {
+                    setAgentDraft(text);
+                    setFailedDraft(failed);
+                    setComposing("reply");
+                  }}
+                />
+              ) : null
+            }
           />
         </div>
       ) : null}
+      <AlertDialog open={unsub !== null} onOpenChange={(open) => !open && closeUnsub()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {unsub?.step === "confirm"
+                ? t`Send an unsubscribe email to ${unsub.mailTo}?`
+                : t`Unsubscribe from ${sender}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <Trans>This can't be undone.</Trans>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Trans>Cancel</Trans>
+            </AlertDialogCancel>
+            {unsub?.step === "link" ? (
+              <AlertDialogAction
+                render={<a href={unsub.openUrl} target="_blank" rel="noopener noreferrer" />}
+                onClick={closeUnsub}
+              >
+                <Trans>Open link</Trans>
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                disabled={unsubBusy}
+                onClick={() => void runUnsub(unsub?.step === "confirm")}
+              >
+                {unsubBusy ? <Spinner aria-hidden="true" /> : null}
+                {unsub?.step === "confirm" ? <Trans>Send</Trans> : <Trans>Unsubscribe</Trans>}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
+}
+
+/**
+ * Who the side panel is about: the sender of a received message, or the recipients of one the user
+ * wrote. Thread rows carry only a display name, so earlier senders cannot be added.
+ */
+function contextPeople(message: InboxMessageOutput | null): ContextPerson[] {
+  if (!message) return [];
+  const entries = message.fromSelf
+    ? [...splitEntries(message.to), ...splitEntries(message.cc)]
+    : [message.from];
+  return recipientPeople(entries);
 }
 
 /** False for a mail whose HTML has no text and no picture, which would show as a blank frame. */

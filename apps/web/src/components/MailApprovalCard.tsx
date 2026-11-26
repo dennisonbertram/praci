@@ -1,7 +1,8 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { MailAccountSummary, MailApproval, MailEdits } from "@rakazo/contracts";
-import { isClosedApprovalAnswer } from "@rakazo/core";
+import type { MailApproval, MailEdits } from "@rakazo/contracts";
+import { MAIL_ALREADY_SENT_REASON } from "@rakazo/contracts";
+import { isClosedApprovalAnswer, SKIPPED_APPROVAL_ANSWER } from "@rakazo/core";
 import {
   Button,
   cn,
@@ -14,8 +15,10 @@ import {
   NativeSelectOption,
   Textarea,
 } from "@rakazo/ui-web";
-import { ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { gmailFolderUrl } from "../lib/gmail-link";
+import { holdCommit } from "../lib/outbox";
 import { parseRecipient, splitEntries } from "../lib/recipients";
 import { errorText } from "../lib/user-error";
 import { invalidAddressText } from "./compose/RecipientField";
@@ -55,7 +58,8 @@ function Row({
 
 /**
  * The approval card for a mail_draft or mail_send call. Send approves the same pending call, with
- * the fields the person changed; Discard denies it. The server checks the edits again.
+ * the fields the person changed; Discard denies it. On a draft, Send now sends it instead of
+ * saving it, and a saved draft offers Send. The server checks the edits again.
  */
 export function MailApprovalCard({
   mail,
@@ -66,14 +70,15 @@ export function MailApprovalCard({
   onAnswer,
   onDisableTool,
   onOpenComposer,
+  canSend = false,
+  onSendDraft,
   initialEditing = false,
   allowLabel,
   allowDisabled = false,
   onFieldsChange,
   toOnly = false,
-  accounts = [],
-  accountsStatus = "ready",
-  onRetryAccounts,
+  reason,
+  embedded,
 }: {
   mail: MailApproval;
   status: "pending" | "answered";
@@ -85,23 +90,29 @@ export function MailApprovalCard({
   onDisableTool?: (tool: MailApproval["tool"]) => Promise<void>;
   /** Offered when the person's own edited send did not go out. */
   onOpenComposer?: (mail: MailApproval) => void;
+  /** Sending is on for this bot: only then does a draft offer Send now, or a saved draft Send. */
+  canSend?: boolean;
+  /** Sends the draft this card saved; the server finds it. */
+  onSendDraft?: () => Promise<void>;
   initialEditing?: boolean;
+  /** One plain line on why the call asked (background run, rule, outside content). */
+  reason?: string;
   allowLabel?: string;
   allowDisabled?: boolean;
-  onFieldsChange?: (fields: Required<Omit<MailEdits, "account">>) => void;
+  onFieldsChange?: (fields: Required<Omit<MailEdits, "account" | "send">>) => void;
   toOnly?: boolean;
-  /** The person's connected mail accounts; with more than one, the card lets them pick the sender. */
-  accounts?: readonly MailAccountSummary[];
-  /** Until the accounts are known, a send that names no sender cannot go out. */
-  accountsStatus?: "loading" | "error" | "ready";
-  onRetryAccounts?: () => void;
+  /** A row of a card that has its own header and buttons: shows only the fields. */
+  embedded?: { editing: boolean };
 }) {
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
   const [account, setAccount] = useState("");
-  const [editing, setEditing] = useState(initialEditing);
+  const [ownEditing, setEditing] = useState(initialEditing);
+  const editing = embedded ? embedded.editing : ownEditing;
   const outcomeNeedsAttention = mail.outcome === "failed" || mail.outcome === "unknown";
-  const [open, setOpen] = useState(status !== "answered" || outcomeNeedsAttention);
+  const [open, setOpen] = useState(
+    status !== "answered" || outcomeNeedsAttention || Boolean(embedded),
+  );
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -117,22 +128,26 @@ export function MailApprovalCard({
   const confirmId = useId();
   const ownAnswer = useRef(false);
   const answered = status === "answered";
+  // Send stops being the obvious press; sending again stays possible.
+  const alreadySent = reason === MAIL_ALREADY_SENT_REASON;
   const interactive = !answered && canAnswer;
   const busy = pendingAction !== null;
   const draft = mail.tool === "mail_draft";
+  const gmailUrl = answered ? gmailFolderUrl(mail) : null;
   // A send of a saved draft: the agent named only the draft, so there is nothing to edit or show.
   const savedDraftSend = !draft && Boolean(mail.locked);
   const shown = answered ? initial : fields;
-  // With no sender named, the send waits for the accounts, and for a pick when there are several.
-  const senderOpen = interactive && !mail.account && !mail.locked;
-  const chooseAccount = senderOpen && accountsStatus === "ready" && accounts.length > 1;
-  const needsAccount =
-    senderOpen && (accountsStatus !== "ready" || (accounts.length > 1 && !account));
+  const canSendSaved = answered && draft && mail.outcome === "saved" && canSend && !!onSendDraft;
+  const canSendNow = interactive && draft && canSend && !allowLabel;
+  // The server lists the accounts this agent may send from when it could not pick one itself.
+  const accounts = mail.choices ?? [];
+  const chooseAccount = interactive && !mail.account && !mail.locked && accounts.length > 1;
+  const needsAccount = chooseAccount && !account;
 
   // A finished card folds up to its header, unless the person still has something to do with it.
   useEffect(() => {
-    if (answered) setOpen(outcomeNeedsAttention);
-  }, [answered, outcomeNeedsAttention]);
+    if (answered && !embedded) setOpen(outcomeNeedsAttention);
+  }, [answered, outcomeNeedsAttention, embedded]);
 
   // Answering from this card removes the button that had focus; keep it on the card's header.
   useEffect(() => {
@@ -167,15 +182,28 @@ export function MailApprovalCard({
     onFieldsChange?.(next);
   };
 
-  async function submit(action: "allow" | "deny" | "disable") {
+  async function submit(action: "allow" | "deny" | "disable" | "send", sendNow = false) {
     if (busy || (action === "allow" && (allowDisabled || needsAccount))) return;
     let edits: MailEdits | undefined;
+    if (action === "send") {
+      setPendingAction(action);
+      setError(null);
+      holdCommit(
+        async () => void (await onSendDraft?.()),
+        (problem) => {
+          if (typeof problem === "string") setError(problem || t`Could not submit this answer`);
+          setPendingAction(null);
+        },
+      );
+      return;
+    }
     if (action === "allow") {
       const changed = (Object.keys(fields) as (keyof Fields)[]).filter(
         (key) => fields[key] !== initial[key],
       );
       if (changed.length) edits = Object.fromEntries(changed.map((key) => [key, fields[key]]));
       if (chooseAccount) edits = { ...edits, account };
+      if (sendNow) edits = { ...edits, send: true };
       const recipients = [fields.to, fields.cc, fields.bcc].flatMap((text) =>
         splitEntries(text)
           .map((entry) => entry.trim())
@@ -187,9 +215,22 @@ export function MailApprovalCard({
       if (!draft && !savedDraftSend && recipients.length === 0)
         return setError(t`Add a recipient.`);
     }
-    setPendingAction(action);
+    setPendingAction(sendNow ? "sendNow" : action);
     setError(null);
     ownAnswer.current = true;
+    // A send waits out the bottom toast's undo window; saving a draft and denying go at once.
+    if (action === "allow" && (sendNow || !draft)) {
+      holdCommit(
+        async () => void (await onAnswer("allow", undefined, edits)),
+        (problem) => {
+          if (problem === null) setEditing(false);
+          else ownAnswer.current = false;
+          if (typeof problem === "string") setError(problem || t`Could not submit this answer`);
+          setPendingAction(null);
+        },
+      );
+      return;
+    }
     try {
       if (action === "disable") {
         await onDisableTool?.(mail.tool);
@@ -234,6 +275,8 @@ export function MailApprovalCard({
       )
     ) : mail.outcome === "unknown" ? (
       <Trans>Unknown</Trans>
+    ) : answer === SKIPPED_APPROVAL_ANSWER ? (
+      <Trans>Skipped</Trans>
     ) : isClosedApprovalAnswer(answer) ? (
       // The server closed this card (replaced by a newer one, or its run failed): never sent.
       <Trans>Not sent</Trans>
@@ -291,40 +334,69 @@ export function MailApprovalCard({
       className={cn(
         "@container w-160 max-w-full overflow-hidden rounded-3xl bg-muted",
         editing ? "ring-2 ring-primary" : interactive && "ring-1 ring-inset ring-border",
+        embedded && "bg-card pt-3.5",
       )}
     >
-      <div className="flex items-center gap-3 px-5 py-3.5">
-        {answered ? (
-          <button
-            ref={toggleRef}
-            type="button"
-            aria-expanded={open}
-            onClick={() => setOpen((value) => !value)}
-            className="flex min-w-0 flex-1 items-center gap-3 text-start"
-          >
-            {tile}
-            {headerText}
-            <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-          </button>
-        ) : (
-          <>
-            {tile}
-            {headerText}
-            {interactive && !mail.locked ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full"
-                disabled={busy}
-                aria-pressed={editing}
-                onClick={() => setEditing((value) => !value)}
+      {embedded ? null : (
+        <div className="flex items-center gap-3 px-5 py-3.5">
+          {answered ? (
+            <>
+              <button
+                ref={toggleRef}
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpen((value) => !value)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-start"
               >
-                {editing ? <Trans>Done</Trans> : <Trans>Edit</Trans>}
-              </Button>
-            ) : null}
-          </>
-        )}
-      </div>
+                {tile}
+                {headerText}
+                <ChevronsUpDown
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-muted-foreground"
+                />
+              </button>
+              {gmailUrl ? (
+                <a
+                  href={gmailUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t`Open in Gmail`}
+                  className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <ArrowUpRight aria-hidden="true" className="size-4" />
+                </a>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {tile}
+              {headerText}
+              {interactive && !mail.locked ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={busy}
+                  aria-pressed={editing}
+                  onClick={() => setEditing((value) => !value)}
+                >
+                  {editing ? <Trans>Done</Trans> : <Trans>Edit</Trans>}
+                </Button>
+              ) : null}
+            </>
+          )}
+          {canSendSaved ? (
+            <Button
+              size="sm"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => void submit("send")}
+            >
+              <Trans>Send</Trans>
+            </Button>
+          ) : null}
+        </div>
+      )}
       {open ? (
         <div className="px-5 pb-5 @sm:px-6">
           <div className={cn("mt-1.5 mb-3", !shown.subject && !editing && "hidden")}>
@@ -363,12 +435,6 @@ export function MailApprovalCard({
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
-              </Row>
-            ) : senderOpen && accountsStatus === "error" ? (
-              <Row label={t`From`}>
-                <Button variant="link" className="h-auto p-0" onClick={onRetryAccounts}>
-                  <Trans>Retry</Trans>
-                </Button>
               </Row>
             ) : mail.account ? (
               <Row label={t`From`}>
@@ -465,11 +531,31 @@ export function MailApprovalCard({
                 <Trans>Cancel</Trans>
               </Button>
             </fieldset>
-          ) : interactive ? (
+          ) : interactive && !embedded ? (
             <>
+              {reason ? (
+                <p
+                  className={cn(
+                    "pt-3 text-[13px]",
+                    alreadySent ? "font-medium text-warning" : "text-muted-foreground",
+                  )}
+                >
+                  {reason}
+                </p>
+              ) : null}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
                 <div className="flex items-center gap-2">
+                  {canSendNow ? (
+                    <Button
+                      className="rounded-full"
+                      disabled={busy || allowDisabled || needsAccount}
+                      onClick={() => void submit("allow", true)}
+                    >
+                      <Trans>Send now</Trans>
+                    </Button>
+                  ) : null}
                   <Button
+                    variant={canSendNow || alreadySent ? "secondary" : "default"}
                     className="rounded-full"
                     disabled={busy || allowDisabled || needsAccount}
                     aria-describedby={chooseAccount && !account ? `${confirmId}-hint` : undefined}
@@ -477,12 +563,8 @@ export function MailApprovalCard({
                   >
                     {allowLabel ? (
                       allowLabel
-                    ) : pendingAction === "allow" ? (
-                      draft ? (
-                        <Trans>Saving…</Trans>
-                      ) : (
-                        <Trans>Sending…</Trans>
-                      )
+                    ) : pendingAction === "allow" && draft ? (
+                      <Trans>Saving…</Trans>
                     ) : draft ? (
                       <Trans>Save draft</Trans>
                     ) : savedDraftSend ? (

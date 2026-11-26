@@ -54,6 +54,25 @@ export function approvalEffectKey(
 }
 
 /**
+ * What the owner approves of one reply batch row. Every outgoing message is built from a row with
+ * this hash, so nothing but the exact text on the card can go out.
+ */
+export function mailReplyHash(row: {
+  connectionId: string;
+  replyToId: string | null;
+  to: readonly string[];
+  cc: readonly string[];
+  bcc: readonly string[];
+  subject: string;
+  body: string;
+}): string {
+  const { connectionId, replyToId, to, cc, bcc, subject, body } = row;
+  return createHash("sha256")
+    .update(stableJsonValue({ connectionId, replyToId, to, cc, bcc, subject, body }))
+    .digest("hex");
+}
+
+/**
  * Stable mutating-tool key for a run, tool, args, and live occurrence.
  * Model tool-call ids change on replay, so they must not be part of the key.
  * Occurrence 0 keeps the unsuffixed form so existing rows still match.

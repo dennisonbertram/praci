@@ -1,6 +1,6 @@
 import type { Space } from "@rakazo/contracts";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, ScrollView, Text, TextInput } from "react-native";
 import { NativeActionButton } from "../components/native-action-button";
 import { cancelHeaderOptions } from "../components/sheet-header";
@@ -19,6 +19,13 @@ export default function NewSpace() {
   const [name, setName] = useState(rename.name ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const active = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   async function create() {
     const trimmed = name.trim();
@@ -28,32 +35,43 @@ export default function NewSpace() {
     try {
       if (rename.spaceId) {
         await rpc("spaces/rename", { spaceId: rename.spaceId, name: trimmed });
+        if (!active.current) return;
         router.back();
         return;
       }
       const space = await rpc<Space>("spaces/create", { name: trimmed });
+      if (!active.current) return;
       if (!(await selectSpace(space.id))) {
+        if (!active.current) return;
         Alert.alert(t("Space created"), t("It could not be opened. Try again from the sidebar."));
         router.dismissAll();
         router.replace("/");
         return;
       }
+      if (!active.current) return;
       router.dismissAll();
       router.replace("/");
     } catch (reason) {
+      if (!active.current) return;
       setError(
         errorText(
           reason,
           rename.spaceId ? t("Could not rename space") : t("Could not create space"),
         ),
       );
-      setPending(false);
+    } finally {
+      if (active.current) setPending(false);
     }
   }
 
   return (
     <>
-      <Stack.Screen options={cancelHeaderOptions(t("Cancel"), () => router.back())} />
+      <Stack.Screen
+        options={{
+          ...cancelHeaderOptions(t("Cancel"), () => router.back()),
+          title: rename.spaceId ? t("Rename space") : t("New space"),
+        }}
+      />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={{ flex: 1, backgroundColor: tokens.background }}
@@ -82,7 +100,15 @@ export default function NewSpace() {
         {error ? <Text style={{ color: tokens.destructive, marginTop: 14 }}>{error}</Text> : null}
         <NativeActionButton
           disabled={!name.trim() || pending}
-          label={rename.spaceId ? t("Rename space") : pending ? t("Creating…") : t("Create space")}
+          label={
+            rename.spaceId
+              ? pending
+                ? t("Saving…")
+                : t("Save")
+              : pending
+                ? t("Creating…")
+                : t("Create space")
+          }
           onPress={() => void create()}
           style={{ marginTop: 20 }}
         />

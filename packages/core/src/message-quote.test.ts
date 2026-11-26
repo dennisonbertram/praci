@@ -206,6 +206,7 @@ const visibleBlocks: Array<[MessageBlock, string]> = [
     "Release notes",
   ],
   [{ kind: "chart", name: "Adoption", spec: {}, data: [] }, "Adoption"],
+  [{ kind: "ui", block: { type: "callout", tone: "info", body: "Heads up" } }, "Heads up"],
   [{ kind: "choice", question: "Choose a version", options: [] }, "Choose a version"],
   [{ kind: "card", lines: [{ k: "Version", v: "One" }] }, "Version: One"],
   [{ kind: "connect", name: "Mail", initial: "M", color: "test", status: "pending" }, "Mail"],

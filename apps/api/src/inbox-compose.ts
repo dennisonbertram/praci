@@ -248,7 +248,11 @@ function draftOf(input: ComposeFields, providerMessageId: string | undefined, le
 type Row = { id: string; connectionId: string; draftId: string | null; state: string };
 
 /** The compose record for this client id, created on first use. It never changes accounts. */
-async function composeRow(deps: ComposeDeps, actor: Actor, input: ComposeFields): Promise<Row> {
+async function composeRow(
+  deps: ComposeDeps,
+  actor: Actor,
+  input: Pick<ComposeFields, "clientId" | "connectionId">,
+): Promise<Row> {
   const key = { spaceId: actor.spaceId, userId: actor.userId, clientId: input.clientId };
   const select = { id: true, connectionId: true, draftId: true, state: true } as const;
   // Prisma's upsert is not atomic: two first requests can both insert. The loser reads the winner's row.
@@ -456,16 +460,7 @@ export async function inboxComposeSend(
     : undefined;
   const draft = draftOf(input, original?.providerMessageId, false);
   const row = await composeRow(deps, actor, input);
-
-  // Only one request moves a record out of draft/failed; every other one reports what happened.
-  const claim = await deps.prisma.composeSend.updateMany({
-    where: { id: row.id, state: { in: ["draft", "failed"] } },
-    data: { state: "pending" },
-  });
-  if (claim.count === 0) return settled(deps, row.id);
-
-  let sending = false;
-  try {
+  return claimAndSend(deps, account, row, context, async () => {
     const files =
       forwarded && input.forwardOf
         ? await forwardedFiles(
@@ -477,13 +472,51 @@ export async function inboxComposeSend(
             context,
           )
         : [];
-    const draftId = await writeDraft(
+    return writeDraft(
       deps,
       account,
       row,
       files.length ? { ...draft, attachments: [...(draft.attachments ?? []), ...files] } : draft,
       context,
     );
+  });
+}
+
+/**
+ * Sends a draft that is already saved at the provider, under the same one-send-per-record rule as
+ * the composer: a repeat reports what the first request settled on and never sends again.
+ */
+export async function inboxComposeSendDraft(
+  deps: ComposeDeps,
+  actor: Actor,
+  input: { clientId: string; connectionId: string; draftId: string },
+): Promise<ComposeResult> {
+  if (deps.mailWritesDisabled) return { status: "disabled" };
+  const context = mailContext(actor, "inbox.compose.send", AbortSignal.timeout(SEND_DEADLINE_MS));
+  const account = await ownAccount(deps, actor, input.connectionId, context);
+  const row = await composeRow(deps, actor, input);
+  if (row.draftId && row.draftId !== input.draftId) return { status: "failed" };
+  return claimAndSend(deps, account, row, context, async () => input.draftId);
+}
+
+/** Moves the record to pending (one request only), saves the draft with `prepare`, and sends it. */
+async function claimAndSend(
+  deps: ComposeDeps,
+  account: MailAccount,
+  row: Row,
+  context: AdapterContext,
+  prepare: () => Promise<string>,
+): Promise<ComposeResult> {
+  // Only one request moves a record out of draft/failed; every other one reports what happened.
+  const claim = await deps.prisma.composeSend.updateMany({
+    where: { id: row.id, state: { in: ["draft", "failed"] } },
+    data: { state: "pending" },
+  });
+  if (claim.count === 0) return settled(deps, row.id);
+
+  let sending = false;
+  try {
+    const draftId = await prepare();
     await deps.prisma.composeSend.update({ where: { id: row.id }, data: { draftId } });
     sending = true;
     const sent = await deps.mail.sendDraft(account, draftId, context);

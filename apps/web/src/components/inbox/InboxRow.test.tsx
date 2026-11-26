@@ -285,6 +285,28 @@ it("keeps Spam and Trash out of the inline hover buttons", async () => {
   expect(inline).not.toContain("Trash");
 });
 
+it("offers No reply needed in the More menu and inline for fine pointers, only on a Needs reply row", async () => {
+  const onNoReply = vi.fn();
+  await show({ row: { ...row, needsReply: true }, onNoReply });
+  // Wide rows with a mouse hide the More menu, so the action is also an inline button.
+  const inline = document.querySelector<HTMLButtonElement>(
+    'div.absolute button[aria-label="No reply needed"]',
+  );
+  expect(inline).not.toBeNull();
+  await act(async () => inline?.click());
+  expect(onNoReply).toHaveBeenCalledTimes(1);
+  const items = await menuItems();
+  expect(items.map((el) => el.textContent)).toEqual(["Archive", "Mark read", "No reply needed"]);
+  await act(async () => items[2]?.click());
+  expect(onNoReply).toHaveBeenCalledTimes(2);
+});
+
+it("offers no No reply needed item on a row that does not need a reply", async () => {
+  await show({ row: { ...row, needsReply: false }, onNoReply: () => {} });
+  expect(document.querySelector('button[aria-label="No reply needed"]')).toBeNull();
+  expect((await menuItems()).map((el) => el.textContent)).not.toContain("No reply needed");
+});
+
 it("offers Not spam, not Spam, for a row in the Spam pile", async () => {
   const onMove = vi.fn();
   await show({ row: { ...row, inInbox: false, pile: "spam" }, onMove });
@@ -328,4 +350,26 @@ it("shows a paperclip by the time only when the message has an attachment", asyn
   expect(document.querySelector('[aria-label="Has attachment"]')).toBeNull();
   await show({ row: { ...row, hasAttachment: true } });
   expect(document.querySelector('[aria-label="Has attachment"]')).not.toBeNull();
+});
+
+it("tracks an untracked row and offers Stop tracking, pressed, on a tracked one", async () => {
+  const onTrack = vi.fn();
+  await show({ onTrack });
+  const track = document.querySelector<HTMLElement>('button[aria-label="Track"]');
+  expect(track?.getAttribute("aria-pressed")).toBe("false");
+  await act(async () => track?.click());
+  expect(onTrack).toHaveBeenCalledWith("m1", true);
+
+  await show({ onTrack, row: { ...row, tracked: true } });
+  const stop = document.querySelector<HTMLElement>('button[aria-label="Stop tracking"]');
+  expect(stop?.getAttribute("aria-pressed")).toBe("true");
+  await act(async () => stop?.click());
+  expect(onTrack).toHaveBeenLastCalledWith("m1", false);
+});
+
+it("marks a tracked row with an eye by the time", async () => {
+  await show();
+  expect(document.querySelector('time [aria-label="Tracked"]')).toBeNull();
+  await show({ row: { ...row, tracked: true } });
+  expect(document.querySelector('time [aria-label="Tracked"]')).not.toBeNull();
 });

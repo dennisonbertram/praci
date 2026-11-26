@@ -25,7 +25,9 @@ const meta = {
       "aiConsent.status": { recipients: [] },
       "notifications.preferences": { channels: {}, hasPhone: false, hasImessage: false },
       "approvalRules.list": [],
-      "autoReview.get": { enabled: false, checkerAvailable: true },
+      "autoReview.get": { enabled: false, background: false, checkerAvailable: true },
+      "autoReview.recent": [],
+      "autoReview.approvals": { rows: [] },
       "memory.list": [],
       "bots.list": [],
       "bots.listArchived": [],
@@ -60,21 +62,31 @@ const meta = {
         hasCustomer: true,
       },
     });
-    // The General section reads the sign-in options with fetch.
+    // The General section reads the sign-in options and capabilities with fetch.
     const original = window.fetch;
-    window.fetch = async (input, init) =>
-      String(input).includes("/api/auth/account-security")
-        ? new Response(
-            JSON.stringify({
-              hasPassword: true,
-              passwordChangeEnabled: true,
-              freshOidcAuth: false,
-              ssoLinked: false,
-              emailDeletion: false,
-              sso: null,
-            }),
-          )
-        : original(input, init);
+    window.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes("/api/auth/account-security"))
+        return new Response(
+          JSON.stringify({
+            hasPassword: true,
+            passwordChangeEnabled: true,
+            freshOidcAuth: false,
+            ssoLinked: false,
+            emailDeletion: false,
+            sso: null,
+          }),
+        );
+      if (url.includes("/api/auth/capabilities"))
+        return Response.json({
+          sso: null,
+          passwordAuth: true,
+          passwordReset: false,
+          resetUrl: null,
+          passkey: false,
+        });
+      return original(input, init);
+    };
     return () => {
       window.fetch = original;
     };

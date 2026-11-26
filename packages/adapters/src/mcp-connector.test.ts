@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import type { ConnectorCall, ConnectorEvent } from "@rakazo/adapter-kit";
+import { BrexApiEmulator } from "@rakazo/brex-mcp";
 import {
+  BREX_CARDS_MCP_ENDPOINT,
+  BREX_CARDS_READ_TOOLS,
+  BREX_CARDS_WRITE_TOOLS,
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
   CARTA_WRITE_TOOLS,
@@ -24,7 +28,14 @@ import { ComposedSecretStore } from "./secret-store-factory.js";
 import { infisicalFake } from "./secret-store-fake.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+/** Moves the clock past the connector's tool-list cache so the next discovery asks the server. */
+function expireToolListCache() {
+  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 31_000);
+}
 
 const SERVER = {
   id: "server-1",
@@ -65,6 +76,11 @@ function mcpFetch(
   state: {
     failNext: boolean;
     initializations: number;
+    /** Tool requests to answer 404, as a server that expired the session. */
+    sessionNotFound?: number;
+    /** Overrides the 404 with another rejection, e.g. the SDK's 400 after a restart. */
+    sessionNotFoundResponse?: { status: number; body: string };
+    rejectedRequests?: string[];
     headers?: Record<string, string>[];
     tools?: Array<{
       name: string;
@@ -89,6 +105,15 @@ function mcpFetch(
       method?: string;
       params?: { name?: string };
     };
+    if (
+      (message.method === "tools/call" || message.method === "tools/list") &&
+      state.sessionNotFound
+    ) {
+      state.sessionNotFound -= 1;
+      state.rejectedRequests?.push(message.method);
+      const rejection = state.sessionNotFoundResponse ?? { status: 404, body: "Session not found" };
+      return new Response(rejection.body, { status: rejection.status });
+    }
     if (message.method === "initialize") {
       state.initializations += 1;
       return Response.json({
@@ -294,6 +319,53 @@ describe("MCP connector session cache", () => {
       await api.close();
       await worker.close();
       await fanout.close();
+    }
+  });
+
+  it("reconnects when another process stored a new credential record", async () => {
+    const store = new EncryptedSecretStore("test-encryption-key-of-sufficient-length");
+    const context = {
+      operationId: "test",
+      traceId: "test",
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    };
+    const first = await store.put(
+      JSON.stringify({ headers: { Authorization: "Bearer initial" } }),
+      context,
+    );
+    let current = { id: first.id, ciphertext: first.ciphertext };
+    const assignment = () => ({ ...ASSIGNMENT, server: { ...SERVER, secretId: current.id } });
+    const prisma = {
+      botMcpServer: {
+        findMany: vi.fn(async () => [assignment()]),
+        findFirst: vi.fn(async () => assignment()),
+      },
+      secret: { findFirst: vi.fn(async () => current) },
+    };
+    const state = { failNext: false, initializations: 0, headers: [] as Record<string, string>[] };
+    vi.stubGlobal("fetch", mcpFetch(state));
+    const connector = new McpConnector(prisma as never, store, { network: TEST_NETWORK });
+    try {
+      await connector.discoverTools(context);
+      await connector.discoverTools(context);
+      expect(state.initializations).toBe(1);
+
+      // A credential write from the worker leaves the old record readable here
+      // and does not bump the server revision.
+      const next = await store.put(
+        JSON.stringify({ headers: { Authorization: "Bearer from-worker" } }),
+        context,
+      );
+      current = { id: next.id, ciphertext: next.ciphertext };
+      await connector.discoverTools(context);
+
+      expect(state.initializations).toBe(2);
+      expect(state.headers.at(-1)?.authorization).toBe("Bearer from-worker");
+    } finally {
+      await connector.close();
     }
   });
 
@@ -696,6 +768,132 @@ describe("MCP connector session cache", () => {
     await connector.close();
   });
 
+  describe("a server the user has to fix", () => {
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    } as never;
+    const connectorWith = (network = TEST_NETWORK) =>
+      new McpConnector(
+        { botMcpServer: { findMany: vi.fn(async () => [ASSIGNMENT]) } } as never,
+        {} as never,
+        { network },
+      );
+
+    it("warns instead of reporting an error when the server rejects the credentials", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response("unauthorized", { status: 401 })),
+      );
+      const connector = connectorWith();
+      const error = vi.spyOn(getLogger(), "error");
+      const warn = vi.spyOn(getLogger(), "warn");
+      try {
+        expect(await connector.discoverTools(context)).toEqual([]);
+        expect(error).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith(
+          "mcp discovery failed for server demo",
+          expect.objectContaining({ reason: expect.any(String) }),
+        );
+      } finally {
+        await connector.close();
+      }
+    });
+
+    it("warns when the host no longer resolves", async () => {
+      vi.stubGlobal("fetch", mcpFetch({ failNext: false, initializations: 0 }));
+      const connector = connectorWith({
+        ...TEST_NETWORK,
+        resolveHostname: async () => {
+          throw Object.assign(new Error("getaddrinfo ENOTFOUND mcp.example.test"), {
+            code: "ENOTFOUND",
+          });
+        },
+      });
+      const error = vi.spyOn(getLogger(), "error");
+      const warn = vi.spyOn(getLogger(), "warn");
+      try {
+        expect(await connector.discoverTools(context)).toEqual([]);
+        expect(error).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith("mcp discovery failed for server demo", {
+          reason: expect.stringContaining("ENOTFOUND"),
+        });
+      } finally {
+        await connector.close();
+      }
+    });
+
+    it("warns when the host times out", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new TypeError("fetch failed", {
+            cause: Object.assign(new Error("connect ETIMEDOUT 192.0.2.1:443"), {
+              code: "ETIMEDOUT",
+            }),
+          });
+        }),
+      );
+      const connector = connectorWith();
+      const error = vi.spyOn(getLogger(), "error");
+      const warn = vi.spyOn(getLogger(), "warn");
+      try {
+        expect(await connector.discoverTools(context)).toEqual([]);
+        expect(error).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith("mcp discovery failed for server demo", {
+          reason: expect.any(String),
+        });
+      } finally {
+        await connector.close();
+      }
+    });
+
+    it("warns when a stdio server cannot run on this deployment", async () => {
+      const connector = new McpConnector(
+        {
+          botMcpServer: {
+            findMany: vi.fn(async () => [
+              {
+                ...ASSIGNMENT,
+                server: { ...SERVER, transport: "stdio", endpoint: null, command: "npx" },
+              },
+            ]),
+          },
+        } as never,
+        {} as never,
+        { network: TEST_NETWORK, stdioEnabled: false },
+      );
+      const error = vi.spyOn(getLogger(), "error");
+      const warn = vi.spyOn(getLogger(), "warn");
+      try {
+        expect(await connector.discoverTools(context)).toEqual([]);
+        expect(error).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith("mcp discovery failed for server demo", {
+          reason: "Stdio MCP servers aren't available here",
+        });
+      } finally {
+        await connector.close();
+      }
+    });
+
+    it("still reports an unexpected server failure as an error", async () => {
+      vi.stubGlobal("fetch", mcpFetch({ failNext: true, initializations: 0 }));
+      const connector = connectorWith();
+      const error = vi.spyOn(getLogger(), "error");
+      try {
+        expect(await connector.discoverTools(context)).toEqual([]);
+        expect(error).toHaveBeenCalledWith(
+          "mcp discovery failed for server demo:",
+          expect.any(String),
+        );
+      } finally {
+        await connector.close();
+      }
+    });
+  });
+
   it("leaves no discovery event when the failure happens outside a run", async () => {
     vi.stubGlobal("fetch", mcpFetch({ failNext: true, initializations: 0 }));
     const append = vi.fn().mockResolvedValue(undefined);
@@ -1024,6 +1222,138 @@ describe("MCP connector session cache", () => {
     },
   );
 
+  it("records that a refused OAuth sign-in needs reconnecting, in the server's own space and user", async () => {
+    const provider = new StoredMcpOAuthProvider(
+      "server-1",
+      {
+        oauth: {
+          redirectUri: "https://app.example.test/mcp/oauth/callback",
+          tokens: { access_token: "fake-stale", token_type: "bearer" },
+          clientInformation: { client_id: "fake-client" },
+        },
+      },
+      async () => undefined,
+    );
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const connector = new McpConnector(
+      {
+        botMcpServer: { findMany: vi.fn().mockResolvedValue([ASSIGNMENT]) },
+        mcpServer: { updateMany },
+      } as never,
+      {} as never,
+      {
+        network: {
+          resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+          fetch: vi.fn(async () => new Response(null, { status: 401 })),
+        },
+      },
+      { providerFor: vi.fn().mockResolvedValue(provider) } as unknown as McpOAuthBroker,
+    );
+    try {
+      await connector.discoverTools({
+        spaceId: "w1",
+        userId: "u1",
+        botId: "bot-1",
+        signal: new AbortController().signal,
+      } as never);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { id: "server-1", spaceId: "w1", userId: "u1" },
+        data: { oauthReauthAt: expect.any(Date) },
+      });
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("clears a recorded refusal when the OAuth connect works again", async () => {
+    const state = { failNext: false, initializations: 0 };
+    const provider = new StoredMcpOAuthProvider(
+      "server-1",
+      {
+        oauth: {
+          redirectUri: "https://app.example.test/mcp/oauth/callback",
+          tokens: { access_token: "fake-good", token_type: "bearer" },
+          clientInformation: { client_id: "fake-client" },
+        },
+      },
+      async () => undefined,
+    );
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const connector = new McpConnector(
+      {
+        botMcpServer: { findMany: vi.fn().mockResolvedValue([ASSIGNMENT]) },
+        mcpServer: { updateMany },
+      } as never,
+      {} as never,
+      { network: { resolveHostname: TEST_NETWORK.resolveHostname, fetch: mcpFetch(state) } },
+      { providerFor: vi.fn().mockResolvedValue(provider) } as unknown as McpOAuthBroker,
+    );
+    try {
+      await connector.discoverTools({
+        spaceId: "w1",
+        userId: "u1",
+        botId: "bot-1",
+        signal: new AbortController().signal,
+      } as never);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { id: "server-1", spaceId: "w1", userId: "u1", oauthReauthAt: { not: null } },
+        data: { oauthReauthAt: null },
+      });
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("records a refusal that comes on a tool call after a healthy connect", async () => {
+    const state = { failNext: false, initializations: 0 };
+    const good = mcpFetch(state);
+    const provider = new StoredMcpOAuthProvider(
+      "server-1",
+      {
+        oauth: {
+          redirectUri: "https://app.example.test/mcp/oauth/callback",
+          tokens: { access_token: "fake-good", token_type: "bearer" },
+          clientInformation: { client_id: "fake-client" },
+        },
+      },
+      async () => undefined,
+    );
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const connector = new McpConnector(
+      { mcpServer: { updateMany } } as never,
+      {} as never,
+      {
+        network: {
+          resolveHostname: TEST_NETWORK.resolveHostname,
+          fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+            const request = new Request(input, init);
+            if (request.method === "POST" && (await request.clone().text()).includes('"tools/call"'))
+              return new Response(null, { status: 401 });
+            if (logicalHref(input, init) !== SERVER.endpoint) return new Response(null, { status: 404 });
+            return good(input, init);
+          }),
+        },
+      },
+      { providerFor: vi.fn().mockResolvedValue(provider) } as unknown as McpOAuthBroker,
+    );
+    try {
+      await expect(
+        connector.callServerTool(
+          SERVER as never,
+          { spaceId: "w1", userId: "u1", signal: new AbortController().signal } as never,
+          "echo",
+          {},
+        ),
+      ).rejects.toMatchObject({ expected: "reconnect" });
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { id: "server-1", spaceId: "w1", userId: "u1" },
+        data: { oauthReauthAt: expect.any(Date) },
+      });
+    } finally {
+      await connector.close();
+    }
+  });
+
   it("connects to an explicitly configured localhost HTTP server", async () => {
     const state = { failNext: false, initializations: 0 };
     const localAssignment = {
@@ -1125,6 +1455,198 @@ describe("MCP connector session cache", () => {
     await connector.close();
   });
 
+  it("retries a call once on a fresh session when the server expired the cached one", async () => {
+    const state = {
+      failNext: false,
+      initializations: 0,
+      calls: [] as string[],
+      sessionNotFound: 0,
+      rejectedRequests: [] as string[],
+    };
+    vi.stubGlobal("fetch", mcpFetch(state));
+    const prisma = {
+      botMcpServer: {
+        findMany: vi.fn().mockResolvedValue([ASSIGNMENT]),
+        findFirst: vi.fn().mockResolvedValue(ASSIGNMENT),
+      },
+    };
+    const connector = new McpConnector(prisma as never, {} as never, {
+      network: TEST_NETWORK,
+    });
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    } as never;
+    const call = {
+      tool: "mcp__demo__echo",
+      args: {},
+      route: { connectorId: "mcp", resourceId: "server-1", toolName: "echo" },
+    } as never;
+
+    await connector.discoverTools(context);
+    state.sessionNotFound = 1;
+    const events: unknown[] = [];
+    for await (const event of connector.execute(call, context)) events.push(event);
+    expect(events).toMatchObject([{ type: "result" }]);
+    expect(state.initializations).toBe(2);
+    expect(state.calls).toEqual(["echo"]);
+
+    expect(state.rejectedRequests).toEqual(["tools/call"]);
+
+    // A server that keeps forgetting the session gets one retry, not a loop.
+    state.sessionNotFound = 2;
+    const failed: unknown[] = [];
+    for await (const event of connector.execute(call, context)) failed.push(event);
+    expect(failed).toMatchObject([{ type: "error" }]);
+    expect(state.initializations).toBe(3);
+    expect(state.rejectedRequests).toEqual(["tools/call", "tools/call", "tools/call"]);
+    expect(state.sessionNotFound).toBe(0);
+    expect(state.calls).toEqual(["echo"]);
+
+    await connector.close();
+  });
+
+  it("retries concurrent calls on an expired session without closing in-flight requests", async () => {
+    const state = { failNext: false, initializations: 0, calls: [] as string[] };
+    const fetch = mcpFetch(state);
+    let startBoth!: () => void;
+    const bothStarted = new Promise<void>((resolve) => {
+      startBoth = resolve;
+    });
+    let reconnect!: () => void;
+    const reconnected = new Promise<void>((resolve) => {
+      reconnect = resolve;
+    });
+    let expiredCalls = 0;
+    vi.stubGlobal("fetch", async (input: string | URL | Request, init?: RequestInit) => {
+      const request = new Request(input, init);
+      if (request.method === "POST") {
+        const message = JSON.parse(await request.clone().text());
+        if (message.method === "initialize" && state.initializations === 1) reconnect();
+        if (message.method === "tools/call" && expiredCalls < 2) {
+          expiredCalls += 1;
+          if (expiredCalls === 1) await bothStarted;
+          else {
+            startBoth();
+            await reconnected;
+          }
+          return new Response("Session not found", { status: 404 });
+        }
+      }
+      return fetch(input, init);
+    });
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockResolvedValue([ASSIGNMENT]),
+          findFirst: vi.fn().mockResolvedValue(ASSIGNMENT),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    } as never;
+    try {
+      await connector.discoverTools(context);
+      const execute = async (toolName: string) => {
+        const events = [];
+        for await (const event of connector.execute(
+          {
+            tool: `mcp__demo__${toolName}`,
+            args: {},
+            executionId: toolName,
+            route: { connectorId: "mcp", resourceId: "server-1", toolName },
+          },
+          context,
+        ))
+          events.push(event);
+        return events;
+      };
+      const results = await Promise.all([execute("first"), execute("second")]);
+      expect(results).toMatchObject([[{ type: "result" }], [{ type: "result" }]]);
+      expect(expiredCalls).toBe(2);
+      expect(state.initializations).toBe(2);
+      expect(state.calls.sort()).toEqual(["first", "second"]);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("keeps a server's tools when discovery finds the cached session expired", async () => {
+    const state = { failNext: false, initializations: 0, sessionNotFound: 0 };
+    vi.stubGlobal("fetch", mcpFetch(state));
+    const prisma = { botMcpServer: { findMany: vi.fn().mockResolvedValue([ASSIGNMENT]) } };
+    const connector = new McpConnector(prisma as never, {} as never, {
+      network: TEST_NETWORK,
+    });
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    } as never;
+
+    await connector.discoverTools(context);
+    state.sessionNotFound = 1;
+    expireToolListCache();
+    const tools = await connector.discoverTools(context);
+    expect(tools.map((tool) => tool.name)).toEqual(["mcp__demo__echo"]);
+    expect(state.initializations).toBe(2);
+
+    await connector.close();
+  });
+
+  it.each([
+    "Bad Request: Server not initialized",
+    "Bad Request: No valid session ID",
+    "Bad Request: No valid session ID provided",
+    "Bad Request: No valid session ID or initialization request",
+    "Bad Request: Mcp-Session-Id header is required",
+    JSON.stringify({ error: { code: -32000, message: "Bad Request: Server not initialized" } }),
+    "bad request: server not initialized",
+  ])("retries a 400 that names the lost session, but not other bad requests (%s)", async (body) => {
+    const state = {
+      failNext: false,
+      initializations: 0,
+      sessionNotFound: 0,
+      sessionNotFoundResponse: { status: 400, body },
+    };
+    vi.stubGlobal("fetch", mcpFetch(state));
+    const prisma = { botMcpServer: { findMany: vi.fn().mockResolvedValue([ASSIGNMENT]) } };
+    const connector = new McpConnector(prisma as never, {} as never, {
+      network: TEST_NETWORK,
+    });
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    } as never;
+
+    await connector.discoverTools(context);
+    state.sessionNotFound = 1;
+    expireToolListCache();
+    expect((await connector.discoverTools(context)).map((tool) => tool.name)).toEqual([
+      "mcp__demo__echo",
+    ]);
+    expect(state.initializations).toBe(2);
+
+    state.sessionNotFound = 1;
+    state.sessionNotFoundResponse = { status: 400, body: "Bad Request: Invalid session parameter" };
+    expireToolListCache();
+    expect(await connector.discoverTools(context)).toEqual([]);
+    expect(state.initializations).toBe(2);
+
+    await connector.close();
+  });
+
   it("does not reuse one session across workspaces", async () => {
     const state = { failNext: false, initializations: 0 };
     vi.stubGlobal("fetch", mcpFetch(state));
@@ -1209,6 +1731,58 @@ describe("MCP connector HTTP failures", () => {
       }
     }
   });
+});
+
+describe("MCP connector callServerTool redaction", () => {
+  it.each([false, true])(
+    "redacts the server's key from an echoed result (isError %s)",
+    async (isError) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+          const request = input instanceof Request ? input : new Request(input, init);
+          const message = JSON.parse(await request.text()) as { id?: number; method?: string };
+          if (message.method === "initialize")
+            return Response.json({
+              jsonrpc: "2.0",
+              id: message.id,
+              result: {
+                protocolVersion: "2025-11-25",
+                capabilities: { tools: {} },
+                serverInfo: { name: "test", version: "1" },
+              },
+            });
+          if (message.method === "tools/call")
+            return Response.json({
+              jsonrpc: "2.0",
+              id: message.id,
+              result: {
+                isError,
+                content: [{ type: "text", text: '{"echo":"token-abc123"}' }],
+                structuredContent: { echo: "token-abc123" },
+              },
+            });
+          return new Response(null, { status: 202 });
+        }),
+      );
+      const prisma = {
+        secret: { findFirst: vi.fn().mockResolvedValue({ id: "secret-1", ciphertext: "x" }) },
+      };
+      const connector = new McpConnector(
+        prisma as never,
+        { load: vi.fn().mockReturnValue(JSON.stringify({ secret: "token-abc123" })) } as never,
+        { network: TEST_NETWORK },
+      );
+      const result = await connector.callServerTool(
+        { ...SERVER, secretId: "secret-1" } as never,
+        { spaceId: "w1", userId: "u1", signal: new AbortController().signal } as never,
+        "getAccounts",
+        {},
+      );
+      expect(JSON.stringify(result)).not.toContain("token-abc123");
+      await connector.close();
+    },
+  );
 });
 
 describe("MCP connector private endpoints", () => {
@@ -1580,6 +2154,24 @@ describe("MCP connector integration agents", () => {
       } finally {
         await connector.close();
       }
+    }
+  });
+
+  it("runs an annotation-only read and refuses a write for an ordinary bot on a released bank server", async () => {
+    const released = { agentBotId: null, agentExclusive: false, agentBot: null };
+    const { connector, state, names, call } = await setup("other", { spawnKey: null }, released);
+    try {
+      expect(await names()).toContain("annotatedRead");
+      expect(await call("annotatedRead", true)).toMatchObject([{ type: "result" }]);
+      expect(state.calls).toEqual(["annotatedRead"]);
+      state.tools = TOOLS.map((tool) =>
+        tool.name === "mystery" ? { ...tool, annotations: { readOnlyHint: false } } : tool,
+      );
+      expect(await call("mystery")).toMatchObject([{ type: "error" }]);
+      expect(await call("requestSendMoney")).toMatchObject([{ type: "error" }]);
+      expect(state.calls).toEqual(["annotatedRead"]);
+    } finally {
+      await connector.close();
     }
   });
 
@@ -2543,5 +3135,422 @@ describe("MCP connector Devin agent", () => {
           true,
         ),
       ).toBe(false);
+  });
+});
+
+describe("MCP connector Brex cards (in-process server)", () => {
+  const TOKEN = "bxt_connector_token_1234567890";
+  const agentBot = {
+    id: "agent-1",
+    spawnKey: "integration-agent:server-1",
+    spaceId: "w1",
+    userId: "u1",
+    archivedAt: null,
+  };
+  const CREATE = {
+    cardName: "Notion",
+    ownerUserId: "u_ada",
+    ownerName: "Ada Example",
+    amountCents: 25_000,
+    duration: "MONTHLY",
+  };
+  const emulators: BrexApiEmulator[] = [];
+  const connectors: McpConnector[] = [];
+  afterEach(async () => {
+    await Promise.all(connectors.splice(0).map((connector) => connector.close()));
+    await Promise.all(emulators.splice(0).map((emulator) => emulator.stop()));
+  });
+
+  /** One Brex cards server per space; `asBot` is who calls (the server's agent or another bot). */
+  async function setup({
+    writesEnabled = true,
+    asAgent = true,
+    lazy = false,
+    secret = { secret: TOKEN } as Record<string, unknown>,
+  }: {
+    writesEnabled?: boolean;
+    asAgent?: boolean;
+    lazy?: boolean;
+    /** What the row's decrypted secret holds. */
+    secret?: Record<string, unknown>;
+  } = {}) {
+    const emulator = new BrexApiEmulator({ token: TOKEN });
+    emulators.push(emulator);
+    const baseUrl = await emulator.start();
+    const bot = asAgent ? agentBot : { ...agentBot, id: "other", spawnKey: null };
+    const assignments = new Map<string, Record<string, unknown> & { server: any }>();
+    const connections = new Map<string, Record<string, unknown>>();
+    const reservations: Array<{ spaceId: string; status: string }> = [];
+    for (const space of ["w1", "w2"]) {
+      const serverId = `server-${space}`;
+      assignments.set(space, {
+        ...ASSIGNMENT,
+        botId: bot.id,
+        serverId,
+        spaceId: space,
+        userId: `u-${space}`,
+        bot: {
+          ...bot,
+          spaceId: space,
+          userId: `u-${space}`,
+          spawnKey: bot.spawnKey && `integration-agent:${serverId}`,
+        },
+        server: {
+          ...SERVER,
+          id: serverId,
+          slug: "brex-cards",
+          name: "Brex cards",
+          endpoint: BREX_CARDS_MCP_ENDPOINT,
+          secretId: "secret-1",
+          spaceId: space,
+          userId: `u-${space}`,
+          writesEnabled,
+          agentExclusive: true,
+          agentBotId: `${bot.id}`,
+          agentBot: {
+            ...agentBot,
+            spaceId: space,
+            userId: `u-${space}`,
+            spawnKey: `integration-agent:${serverId}`,
+          },
+        },
+      });
+      connections.set(serverId, {
+        serverId,
+        spaceId: space,
+        brexAccountId: "cmp_example",
+        maxNewCardLimitCents: 100_000,
+        maxCardLimitCents: 500_000,
+        maxSpendLimitBaseCents: 1_000_000,
+        maxCardsPerDay: 5,
+        allowedDurations: ["MONTHLY", "ONE_TIME"],
+        oneTimeMaxDays: 90,
+      });
+    }
+    const extraState = {
+      failNext: false,
+      initializations: 0,
+      calls: [] as string[],
+      tools: Array.from({ length: DIRECT_TOOL_LIMIT + 1 }, (_, i) => ({
+        name: `read_${i}`,
+        inputSchema: { type: "object" },
+        annotations: { readOnlyHint: true },
+      })),
+    };
+    // The lazy-catalog case needs a second, large server over HTTP; Brex itself goes to its emulator.
+    const realFetch = globalThis.fetch;
+    const extraFetch = mcpFetch(extraState);
+    vi.stubGlobal("fetch", (input: string | URL | Request, init?: RequestInit) =>
+      logicalHref(input, init).startsWith(baseUrl)
+        ? realFetch(input, init)
+        : extraFetch(input, init),
+    );
+    const extra = {
+      ...ASSIGNMENT,
+      botId: bot.id,
+      serverId: "extra-server",
+      server: { ...SERVER, id: "extra-server", slug: "extra" },
+    };
+    const secretLookups: Array<{ spaceId: string }> = [];
+    /** Space roles by user id; anyone not listed owns the space, as the server rows' users do. */
+    const roles = new Map<string, string>();
+    const prisma = {
+      spaceMember: {
+        findUnique: vi.fn(async ({ where }: { where: { spaceId_userId: { userId: string } } }) => ({
+          role: roles.get(where.spaceId_userId.userId) ?? "owner",
+        })),
+      },
+      botMcpServer: {
+        findMany: vi.fn(async ({ where }: { where: { spaceId: string } }) => [
+          assignments.get(where.spaceId),
+          ...(lazy ? [{ ...extra, spaceId: where.spaceId }] : []),
+        ]),
+        findFirst: vi.fn(async ({ where }: { where: { spaceId: string; serverId: string } }) =>
+          where.serverId === "extra-server" ? extra : assignments.get(where.spaceId),
+        ),
+      },
+      secret: {
+        findFirst: vi.fn(async ({ where }: { where: { spaceId: string } }) => {
+          secretLookups.push({ spaceId: where.spaceId });
+          return { id: "secret-1", ciphertext: "encrypted" };
+        }),
+      },
+      brexCardsConnection: {
+        findFirst: vi.fn(
+          async ({ where }: { where: { serverId: string } }) =>
+            connections.get(where.serverId) ?? null,
+        ),
+      },
+      brexCardReservation: {
+        updateMany: vi.fn(
+          async ({ where, data }: { where: { id: string }; data: { status: string } }) => {
+            const row = reservations[Number(where.id)];
+            if (row) row.status = data.status;
+            return { count: row ? 1 : 0 };
+          },
+        ),
+      },
+      $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          $executeRaw: vi.fn(async () => 1),
+          brexCardReservation: {
+            count: vi.fn(async () => reservations.filter((r) => r.status !== "failed").length),
+            create: vi.fn(async ({ data }: { data: { spaceId: string; status: string } }) => {
+              reservations.push({ spaceId: data.spaceId, status: data.status });
+              return { id: String(reservations.length - 1) };
+            }),
+          },
+        }),
+      ),
+    };
+    const connector = new McpConnector(
+      prisma as never,
+      { load: vi.fn(async () => JSON.stringify(secret)) } as never,
+      { network: TEST_NETWORK, brexApi: { baseUrl } } as never,
+    );
+    connectors.push(connector);
+    const contextFor = (space: string) => ({
+      operationId: "test",
+      traceId: "test",
+      spaceId: space,
+      userId: `u-${space}`,
+      botId: bot.id,
+      signal: new AbortController().signal,
+    });
+    const execute = async (call: ConnectorCall, space = "w1") => {
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(call, contextFor(space))) events.push(event);
+      return events;
+    };
+    const callTool = (
+      name: string,
+      args: Record<string, unknown>,
+      effectId: string,
+      space = "w1",
+    ) =>
+      execute(
+        {
+          tool: `mcp__brex-cards__${name}`,
+          args,
+          executionId: effectId,
+          route: {
+            connectorId: "mcp",
+            resourceId: `server-${space}`,
+            toolName: name,
+            endpoint: BREX_CARDS_MCP_ENDPOINT,
+            discoveredReadOnly: (BREX_CARDS_READ_TOOLS as readonly string[]).includes(name),
+          },
+        },
+        space,
+      );
+    const posts = () =>
+      emulator.requests.filter((r) => r.method === "POST" && r.path === "/v2/cards");
+    return {
+      assignments,
+      roles,
+      connector,
+      contextFor,
+      emulator,
+      execute,
+      callTool,
+      posts,
+      reservations,
+      secretLookups,
+      extraState,
+    };
+  }
+
+  const toolNames = async (s: Awaited<ReturnType<typeof setup>>, space = "w1") =>
+    (await s.connector.discoverTools(s.contextFor(space))).map((t) => t.route?.toolName);
+
+  it("offers the agent the closed allowlist, reads only until changes are on, with no unlock tool", async () => {
+    const off = await setup({ writesEnabled: false });
+    expect(await toolNames(off)).toEqual(expect.arrayContaining([...BREX_CARDS_READ_TOOLS]));
+    const offNames = await toolNames(off);
+    for (const name of BREX_CARDS_WRITE_TOOLS) expect(offNames).not.toContain(name);
+
+    const on = await setup({ writesEnabled: true });
+    const onNames = await toolNames(on);
+    expect([...onNames].sort()).toEqual(
+      [...BREX_CARDS_READ_TOOLS, ...BREX_CARDS_WRITE_TOOLS].sort(),
+    );
+    expect(onNames.filter((name) => /unlock/i.test(String(name)))).toEqual([]);
+  });
+
+  it("serves reads from the in-process server with the secret's token", async () => {
+    const s = await setup({ writesEnabled: false });
+    const [event] = await s.callTool("list_cards", {}, "read-1");
+    expect(event).toMatchObject({ type: "result" });
+    expect(s.emulator.requests[0]?.authorization).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("denies a write until changes are on, and again if they are switched off after discovery", async () => {
+    const s = await setup({ writesEnabled: false });
+    expect(await s.callTool("create_vendor_card", CREATE, "effect-1")).toMatchObject([
+      { type: "error", message: expect.stringContaining("Changes are off") },
+    ]);
+    expect(s.posts()).toEqual([]);
+
+    s.assignments.get("w1")!.server.writesEnabled = true;
+    expect(await s.callTool("create_vendor_card", CREATE, "effect-1")).toMatchObject([
+      { type: "result" },
+    ]);
+    s.assignments.get("w1")!.server.writesEnabled = false;
+    expect(await s.callTool("create_vendor_card", CREATE, "effect-2")).toMatchObject([
+      { type: "error" },
+    ]);
+    expect(s.posts()).toHaveLength(1);
+  });
+
+  it("refuses the session once the server row's user is no longer an owner of the space, even on a warm session", async () => {
+    const s = await setup({ writesEnabled: true });
+    expect(await s.callTool("list_cards", {}, "read-1")).toMatchObject([{ type: "result" }]);
+    const reached = s.emulator.requests.length;
+
+    // The user who connected Brex cards is demoted; the bot they own keeps its assignment.
+    s.roles.set("u-w1", "member");
+    expect(await s.callTool("list_cards", {}, "read-2")).toMatchObject([
+      { type: "error", message: expect.stringContaining("no longer an owner") },
+    ]);
+    expect(await s.callTool("create_vendor_card", CREATE, "effect-1")).toMatchObject([
+      { type: "error" },
+    ]);
+    expect(s.emulator.requests).toHaveLength(reached);
+
+    // A fresh connector refuses too, and another space's owner is unaffected.
+    expect(await s.callTool("list_cards", {}, "read-3", "w2")).toMatchObject([{ type: "result" }]);
+    s.roles.set("u-w2", "owner,admin");
+    expect(await s.callTool("list_cards", {}, "read-4", "w2")).toMatchObject([{ type: "result" }]);
+  });
+
+  it("gives a bot that is not the server's agent nothing, and its calls never reach Brex", async () => {
+    const s = await setup({ asAgent: false });
+    expect(await toolNames(s)).toEqual([]);
+    expect(await s.callTool("list_cards", {}, "read-1")).toMatchObject([{ type: "error" }]);
+    expect(await s.callTool("create_vendor_card", CREATE, "effect-1")).toMatchObject([
+      { type: "error" },
+    ]);
+    expect(s.emulator.requests).toEqual([]);
+  });
+
+  it("uses the executor's effect id as Brex's idempotency key: a retry reuses it, another approval does not", async () => {
+    const s = await setup();
+    const before = s.emulator.cards.length;
+    const first = await s.callTool("create_vendor_card", CREATE, "effect-1");
+    const retry = await s.callTool("create_vendor_card", CREATE, "effect-1");
+    expect(first).toEqual(retry);
+    expect(s.emulator.cards.length).toBe(before + 1);
+    await s.callTool("create_vendor_card", CREATE, "effect-2");
+    expect(s.emulator.cards.length).toBe(before + 2);
+    expect(s.posts().map((post) => post.idempotencyKey)).toEqual([
+      "effect-1",
+      "effect-1",
+      "effect-2",
+    ]);
+  });
+
+  it("never reuses a session across spaces: each space connects, reads its own row and reserves under its own id", async () => {
+    const s = await setup();
+    await s.callTool("create_vendor_card", CREATE, "effect-w1", "w1");
+    await s.callTool("list_cards", {}, "read-w1", "w1");
+    expect(s.secretLookups).toEqual([{ spaceId: "w1" }]);
+
+    await s.callTool("create_vendor_card", { ...CREATE, cardName: "Linear" }, "effect-w2", "w2");
+    expect(s.secretLookups).toEqual([{ spaceId: "w1" }, { spaceId: "w2" }]);
+    expect(s.reservations.map((r) => r.spaceId)).toEqual(["w1", "w2"]);
+  });
+
+  it("runs the same gates in lazy-catalog mode: the catalog call executes the write, and writes-off still denies it", async () => {
+    const s = await setup({ lazy: true, writesEnabled: false });
+    const wrappers = await s.connector.discoverTools(s.contextFor("w1"));
+    expect(wrappers.map((entry) => entry.route?.toolName)).toEqual([
+      "__catalog_search",
+      "__catalog_load",
+      "__catalog_execute",
+    ]);
+    const catalogCall = (effectId: string): ConnectorCall => ({
+      tool: "catalog_mcp_execute_tool",
+      args: { id: "server-w1:create_vendor_card", arguments: CREATE },
+      executionId: effectId,
+      route: { connectorId: "mcp", toolName: "__catalog_execute" },
+    });
+    // Off: the write is not even in the catalog.
+    await expect(
+      s.connector.resolveCall(catalogCall("effect-1"), s.contextFor("w1")),
+    ).rejects.toThrow("not authorized");
+    expect(s.posts()).toEqual([]);
+
+    s.assignments.get("w1")!.server.writesEnabled = true;
+    const resolved = await s.connector.resolveCall(catalogCall("effect-1"), s.contextFor("w1"));
+    expect(resolved?.tool.route?.toolName).toBe("create_vendor_card");
+    expect(await s.execute(resolved!.call)).toMatchObject([{ type: "result" }]);
+    expect(s.posts().map((post) => post.idempotencyKey)).toEqual(["effect-1"]);
+  });
+
+  it("keeps the token out of what the model sees when Brex rejects it", async () => {
+    const wrong = "bxt_wrong_token_abcdefghijklmnop";
+    const s = await setup({ secret: { secret: wrong } });
+    const events = await s.callTool("list_cards", {}, "read-1");
+    const seen = JSON.stringify(events);
+    expect(seen).toContain("Brex rejected the token");
+    expect(seen).not.toContain(wrong);
+    expect(seen).not.toContain(TOKEN);
+  });
+
+  it("refuses to connect without a token in the row's secret, and never reaches Brex", async () => {
+    const s = await setup({ secret: {} });
+    expect(await s.callTool("list_cards", {}, "read-1")).toMatchObject([
+      { type: "error", message: expect.stringContaining("token is missing") },
+    ]);
+    expect(s.emulator.requests).toEqual([]);
+  });
+
+  it("sends the idempotency key to Brex cards only: other servers' calls carry no request metadata", async () => {
+    const bodies: Array<{ method?: string; params?: { _meta?: unknown } }> = [];
+    const state = { failNext: false, initializations: 0 };
+    const inner = mcpFetch(state);
+    vi.stubGlobal("fetch", (input: string | URL | Request, init?: RequestInit) => {
+      const request = input instanceof Request ? input.clone() : new Request(input, init);
+      if (request.method === "POST")
+        void request
+          .text()
+          .then((text) => bodies.push(JSON.parse(text)))
+          .catch(() => undefined);
+      return inner(input, init);
+    });
+    const assignment = { ...ASSIGNMENT, bot: null, server: { ...SERVER, slug: "demo" } };
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn(async () => [assignment]),
+          findFirst: vi.fn(async () => assignment),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    connectors.push(connector);
+    const context = {
+      operationId: "test",
+      traceId: "test",
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    };
+    for await (const event of connector.execute(
+      {
+        tool: "mcp__demo__echo",
+        args: {},
+        executionId: "effect-1",
+        route: { connectorId: "mcp", resourceId: "server-1", toolName: "echo" },
+      },
+      context,
+    ))
+      expect(event.type).toBe("result");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const calls = bodies.filter((body) => body.method === "tools/call");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.params?._meta).not.toHaveProperty("idempotencyKey");
   });
 });

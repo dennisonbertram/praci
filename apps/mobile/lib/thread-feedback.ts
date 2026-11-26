@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { rpc } from "./api";
 import { t } from "./i18n";
 import type { PickedAttachment } from "./pick-attachments";
+import { isGoalReply } from "./thread-goal";
 
 export type ComposerSnapshot = {
   promptText: string;
@@ -51,6 +52,8 @@ export type SendAttempt = {
 };
 
 const UPLOAD_TIMEOUT_MS = 60_000;
+/** Transient answers worth another send later; the nonce dedupes a dispatch that landed. */
+const RETRYABLE_STATUSES = [408, 425, 429];
 
 export async function deliverSend(
   payload: SendPayload,
@@ -105,6 +108,7 @@ export type OutboxScope = Pick<SendAttempt, "apiBase" | "spaceId" | "userId" | "
 export type UnsentDisk = {
   admit(attempt: SendAttempt): boolean;
   hydrate(attempt: SendAttempt): Promise<void>;
+  markDiscarded?(attempt: SendAttempt): boolean;
   forget(attempt: SendAttempt): void;
   save(attempts: SendAttempt[]): void;
   load(session: number, scope: OutboxScope): SendAttempt[];
@@ -122,6 +126,7 @@ type Config = {
   disk: UnsentDisk;
   errorText(error: unknown): string;
   notDelivered(attempt: SendAttempt): void;
+  announceFailure?(): void;
 };
 let config: Config | undefined;
 let unsentSends: SendAttempt[] = [];
@@ -132,9 +137,16 @@ let running: Promise<void> | undefined;
 let pendingForce: boolean | null = null;
 const watchers = new Set<() => void>();
 const deliveredListeners = new Set<(attempt: SendAttempt) => void>();
+const goalReplyListeners = new Set<(threadKey: string, text: string) => void>();
 const echoes = new Map<string, Set<number>>();
 const screens = new Map<string, number>();
+const visibleThreadBubbles = new Set<string>();
 export const OUTBOX_MAX_ENTRIES = 20;
+
+export function setThreadBubblesVisible(threadKey: string, visible: boolean) {
+  if (visible) visibleThreadBubbles.add(threadKey);
+  else visibleThreadBubbles.delete(threadKey);
+}
 
 function subscribe(watcher: () => void) {
   watchers.add(watcher);
@@ -159,6 +171,12 @@ function inScope(attempt: SendAttempt) {
     attempt.userId === scope.userId &&
     attempt.cacheSession === scope.cacheSession
   );
+}
+export function isSendAttemptInScope(attempt: SendAttempt) {
+  return inScope(attempt);
+}
+export function isThreadMounted(threadKey: string) {
+  return screens.has(threadKey);
 }
 function remove(attempt: SendAttempt) {
   config?.disk.forget(attempt);
@@ -205,6 +223,12 @@ export function subscribeDelivered(listener: (attempt: SendAttempt) => void) {
     deliveredListeners.delete(listener);
   };
 }
+export function subscribeGoalReply(listener: (threadKey: string, text: string) => void) {
+  goalReplyListeners.add(listener);
+  return () => {
+    goalReplyListeners.delete(listener);
+  };
+}
 export function sendWaitingMessages(force = false): Promise<void> {
   if (running) {
     pendingForce = pendingForce === true || force;
@@ -240,18 +264,32 @@ export function sendWaitingMessages(force = false): Promise<void> {
           else changed();
         } catch (error) {
           if (!inScope(attempt)) continue;
+          if (isGoalReply(error)) {
+            // The answer to a bare /goal is a status, not a failed send: nothing to retry or keep.
+            remove(attempt);
+            const text = (error as Error).message;
+            for (const listener of goalReplyListeners)
+              listener(attempt.payload.originThreadKey, text);
+            continue;
+          }
           const detail = error as { status?: number; cause?: { status?: number } } | null;
           const status = detail?.status;
-          const offline = isServerUnreachable(error) || (status ?? detail?.cause?.status) === 429;
+          const offline =
+            isServerUnreachable(error) ||
+            RETRYABLE_STATUSES.includes(status ?? detail?.cause?.status ?? 0);
           attempt.state = offline
             ? "queued"
-            : status && status >= 400 && status < 500 && ![408, 425, 429].includes(status)
+            : status && status >= 400 && status < 500 && !RETRYABLE_STATUSES.includes(status)
               ? "refused"
               : "failed";
           attempt.error = config.errorText(error);
           changed();
           if (offline) break;
-          config.notDelivered(attempt);
+          if (visibleThreadBubbles.has(attempt.payload.originThreadKey)) {
+            config.announceFailure?.();
+          } else {
+            config.notDelivered(attempt);
+          }
         } finally {
           for (const attachment of attempt.payload.attachments) attachment.contentBase64 = "";
         }
@@ -329,7 +367,10 @@ export function useThreadFeedback(threadKey: string | undefined, newNonce: () =>
       return inScope(attempt) && attempt.acceptedSeq !== undefined;
     },
     discard(attempt: SendAttempt) {
-      if (attempt.state !== "pending") remove(attempt);
+      if (attempt.state === "pending") return;
+      // Memory-only adapters have no durable queue that could replay after restart.
+      if (config?.disk.markDiscarded?.(attempt) === false) return;
+      remove(attempt);
     },
   };
 }

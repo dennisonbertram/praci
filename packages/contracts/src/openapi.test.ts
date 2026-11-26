@@ -3,6 +3,12 @@ import { fileURLToPath } from "node:url";
 import { eventIterator, isContractProcedure, oc } from "@orpc/contract";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
+import {
+  MeetingCaptureActiveSchema,
+  MeetingCaptureStartOutputSchema,
+  StoredMeetingDetailSchema,
+  StoredMeetingsPageSchema,
+} from "./meetings.js";
 import { createOpenAPIDocument, renderOpenAPIDocument } from "./openapi.js";
 import { startLocalHealthServer } from "./openapi-test-server.js";
 import { appContract } from "./rpc.js";
@@ -44,7 +50,9 @@ function operationAt(document: ReturnType<typeof createOpenAPIDocument>, path: s
 describe("OpenAPI export", () => {
   it("covers every appContract procedure with a stable sorted RPC path", () => {
     const document = createOpenAPIDocument();
-    const expectedPaths = collectContractPaths(appContract);
+    // The cap table ledger is web and desktop only, so it is left out of the native document.
+    const { equity: _webOnly, ...nativeContract } = appContract;
+    const expectedPaths = collectContractPaths(nativeContract);
 
     expect(Object.keys(document.paths)).toEqual(expectedPaths);
     expect(Object.keys(document.paths)).toHaveLength(expectedPaths.length);
@@ -197,6 +205,28 @@ describe("OpenAPI export", () => {
     );
   });
 
+  it("exposes only the single-board RPC surface", () => {
+    const document = createOpenAPIDocument();
+    const paths = Object.keys(document.paths).filter((path) =>
+      /^\/rpc\/(boards|tickets)\//.test(path),
+    );
+    expect(paths.sort()).toEqual([
+      "/rpc/boards/subscribe",
+      "/rpc/tickets/comment",
+      "/rpc/tickets/comments",
+      "/rpc/tickets/create",
+      "/rpc/tickets/list",
+      "/rpc/tickets/move",
+      "/rpc/tickets/update",
+    ]);
+    const body = operationAt(document, "/rpc/tickets/list").requestBody;
+    const request = body.content["application/json"]!.schema.properties as Record<
+      string,
+      { properties?: Record<string, unknown> }
+    >;
+    expect(Object.keys(request.json!.properties ?? {})).toEqual([]);
+  });
+
   it("allows only the declared event-iterator procedures as text/event-stream", () => {
     const document = createOpenAPIDocument();
     const streamPaths = Object.entries(document.paths)
@@ -266,5 +296,31 @@ describe("OpenAPI export", () => {
     } finally {
       await server.close();
     }
+  });
+});
+
+describe("iOS meeting fixtures", () => {
+  const fixture = (name: string) =>
+    (
+      JSON.parse(
+        readFileSync(
+          fileURLToPath(
+            new URL(
+              `../../../apps/ios/Packages/RakazoAPI/Tests/RakazoAPITests/Fixtures/${name}.json`,
+              import.meta.url,
+            ),
+          ),
+          "utf8",
+        ),
+      ) as { json: unknown }
+    ).json;
+
+  it("match the contract schemas", () => {
+    expect(() => StoredMeetingsPageSchema.parse(fixture("meetings-list"))).not.toThrow();
+    expect(() => StoredMeetingDetailSchema.parse(fixture("meetings-get"))).not.toThrow();
+    expect(() => StoredMeetingDetailSchema.parse(fixture("meetings-get-partial"))).not.toThrow();
+    expect(() => MeetingCaptureStartOutputSchema.parse(fixture("capture-start"))).not.toThrow();
+    expect(() => MeetingCaptureActiveSchema.parse(fixture("capture-active"))).not.toThrow();
+    expect(MeetingCaptureActiveSchema.parse(fixture("capture-active-null"))).toBeNull();
   });
 });

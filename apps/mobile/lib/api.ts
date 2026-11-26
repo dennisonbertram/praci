@@ -37,6 +37,7 @@ import {
   selectableMessageText,
   signupRequiresEmailVerification,
   toolPhrase,
+  uiBlockText,
 } from "@rakazo/core";
 import * as SecureStore from "expo-secure-store";
 import { promptAiConsent } from "./ai-consent";
@@ -166,6 +167,7 @@ export async function loadApiBase() {
   return currentApiBase();
 }
 
+// A pushed screen must call router.dismissTo("/") before selecting another space.
 export async function selectSpace(id: string) {
   const requestGeneration = ++spaceSelectionRequestGeneration;
   if (!(await clearStoredValue(SPACE_ROLLBACK_KEY))) return false;
@@ -817,8 +819,13 @@ export async function rpc<T>(
     if (!res.ok) {
       // oRPC sends a failure as `{ json: { code, status, message } }`; the message is the
       // server's user-facing copy.
-      const error = parsed.json as { message?: unknown } | undefined;
-      const message = errorText(typeof error?.message === "string" ? error.message : "");
+      const error = parsed.json as { message?: unknown; data?: unknown } | undefined;
+      // The answer to a bare /goal is sent as an error; show its text as written.
+      const goalReply = (error?.data as { goalReply?: unknown } | undefined)?.goalReply === true;
+      const message =
+        goalReply && typeof error?.message === "string"
+          ? error.message
+          : errorText(typeof error?.message === "string" ? error.message : "");
       const unauthorized = res.status === 401;
       // Without a Space header a 401 means the server no longer accepts the
       // session itself; Space recovery below probes the same way. Clearing it
@@ -905,7 +912,10 @@ export async function rpc<T>(
         if (!selectedSpaceId()) await clearStaleSpaceSelection();
         throw new Error(message);
       }
-      throw Object.defineProperty(new Error(message), "status", { value: res.status });
+      throw Object.defineProperties(new Error(message), {
+        status: { value: res.status },
+        ...(goalReply ? { data: { value: { goalReply: true } } } : {}),
+      });
     }
     const verifiedUser = parsed.json as { userId?: unknown; spaceId?: unknown } | null;
     if (
@@ -956,6 +966,9 @@ export type MobileBot = Pick<
   | "modelId"
   | "thinkingLevel"
   | "autoSpeak"
+  | "crossSpaceCommunication"
+  | "firewall"
+  | "spawnKey"
 > &
   Partial<Pick<Bot, "parentBotId" | "spaceId" | "runPhase" | "runErrorId">>;
 
@@ -1110,7 +1123,9 @@ export function blockText(message: MobileMessage) {
       if (block.kind === "child_bot") {
         return `${block.status === "archived" ? "Archived" : block.status === "deleted" ? "Deleted" : "Bot"} ${block.name ?? ""}`;
       }
+      if (block.kind === "page") return block.title;
       if (block.kind === "emails") return emailCardsText(block.emails);
+      if (block.kind === "ui") return uiBlockText(block.block);
       if (block.kind === "mail_thread") {
         return `Email thread · ${block.messages.length} ${block.messages.length === 1 ? "message" : "messages"}`;
       }

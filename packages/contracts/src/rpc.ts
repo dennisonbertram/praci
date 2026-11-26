@@ -1,6 +1,7 @@
 import { eventIterator, oc } from "@orpc/contract";
 import * as z from "zod";
 import { AiConsentQuerySchema, AiConsentStatusSchema } from "./ai-consent.js";
+import { AppControlAppSchema, AppControlStatusOutputSchema } from "./app-control.js";
 import {
   ARTIFACT_DESCRIPTION_MAX_LENGTH,
   ARTIFACT_NAME_MAX_LENGTH,
@@ -9,19 +10,38 @@ import {
 } from "./attachments.js";
 import {
   BoardEventSchema,
-  BoardSchema,
   CommentTicketInput,
   CreateTicketInput,
-  GetTicketInput,
   ListTicketsInput,
   ListTicketsOutput,
   MoveTicketInput,
-  RenameBoardInput,
   TicketCommentSchema,
   TicketSchema,
   UpdateTicketInput,
 } from "./board.js";
-import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
+import {
+  BotSecretMetadata,
+  BotSecretName,
+  BotSecretPutInput,
+  StoredBotSecretName,
+} from "./bot-secrets.js";
+import {
+  BrexAccountsSchema,
+  BrexActivitySchema,
+  BrexCardsConnectInputSchema,
+  BrexCardsConnectOutputSchema,
+  BrexCardsControlsSchema,
+  BrexCardsListSchema,
+  BrexCardsOverviewSchema,
+  BrexCardsViewSchema,
+  BrexExpensesSchema,
+  BrexLimitsSchema,
+  BrexPeopleSchema,
+  BrexSpendingInputSchema,
+  BrexSpendingSchema,
+  BrexTripsSchema,
+} from "./brex-cards.js";
+import { CalendarAgendaInputSchema, CalendarAgendaSchema } from "./calendar.js";
 import {
   CapTableChangeSourceInputSchema,
   CapTableSaveInputSchema,
@@ -61,6 +81,7 @@ import {
 } from "./company-privacy.js";
 import { CompanyReviewResolveSchema, CompanyReviewSchema } from "./company-review.js";
 import {
+  ContactDetailSchema,
   ContactLinkedSchema,
   ContactListInputSchema,
   ContactSaveInputSchema,
@@ -102,7 +123,9 @@ import {
 } from "./data-room-autosort.js";
 import { DevinAgentOutputSchema, DevinKeyInputSchema, DevinSessionsOutputSchema } from "./devin.js";
 import {
+  ActionApprovalEffectSchema,
   ActionApprovalRuleSchema,
+  ActionAutoReviewRecentSchema,
   ActionAutoReviewSettingsSchema,
   AgentSecretInputSchema,
   AgentSecretSchema,
@@ -110,9 +133,14 @@ import {
   AgentSkillDraftSchema,
   AgentSkillSchema,
   AppBootstrapSchema,
+  ApprovalActionTypeSchema,
+  ApprovalChoiceSchema,
+  ApprovalTableRowSchema,
   ArtifactSchema,
+  ArtifactShareSchema,
   ArtifactVersionSchema,
   ArtifactWithContentSchema,
+  AutoApprovalSchema,
   AvatarStyleSchema,
   BillingStatusSchema,
   BotAgentSkillSchema,
@@ -120,6 +148,8 @@ import {
   BotSchema,
   BotSectionSchema,
   CapabilityInstallSchema,
+  CompanyContextRevisionSchema,
+  CompanyContextSectionSchema,
   ComputerModeSchema,
   ComputerReleaseReasonSchema,
   ComputerStatusSchema,
@@ -152,6 +182,8 @@ import {
   ModelConnectInputSchema,
   ModelCredentialSchema,
   ModelOAuthBeginSchema,
+  PermissionLevelSchema,
+  PermissionSettingsSchema,
   REPLY_QUOTE_MAX_LENGTH,
   ReorderBotsInput,
   RoutineSchema,
@@ -168,10 +200,13 @@ import {
   SpreadsheetPreviewInputSchema,
   SpreadsheetPreviewSchema,
   TaughtSkillSchema,
+  TaughtSkillSummarySchema,
   TeachRecordingEventSchema,
+  THREAD_MESSAGE_MAX_LENGTH,
   ThinkingLevelSchema,
   ThreadMessagePageSchema,
   ThreadSnapshotSchema,
+  TimeZoneSchema,
   UpdateAgentSkillInput,
   UpdateBotInput,
   UpdateExternalConversationPolicyInput,
@@ -181,8 +216,19 @@ import {
   VoiceCredentialSchema,
   VoiceInfoSchema,
   VoiceStatusSchema,
+  WaitingOnYouItemSchema,
 } from "./domain.js";
-import { ComputerCommandSchema, MailEditsSchema, ProductEventSchema } from "./events.js";
+import { equityContract } from "./equity/rpc.js";
+import {
+  ComputerCommandSchema,
+  MAX_MAIL_REPLY_BATCH,
+  MailBatchComposerDraftSchema,
+  MailBatchPressRowSchema,
+  MailBatchPreviewSchema,
+  MailBatchSchema,
+  MailEditsSchema,
+  ProductEventSchema,
+} from "./events.js";
 import {
   BalanceSeriesInputSchema,
   BalanceSeriesOutputSchema,
@@ -190,6 +236,9 @@ import {
   FinanceAccountsOutputSchema,
   FinanceBurnOutputSchema,
   FinanceCategoryOutputSchema,
+  FinanceChartNoteAddInputSchema,
+  FinanceChartNoteSchema,
+  FinanceChartNotesInputSchema,
   FinanceConnectInputSchema,
   FinanceConnectOutputSchema,
   FinanceCryptoConnectInputSchema,
@@ -232,6 +281,10 @@ import {
   FundraiseRoundSaveInputSchema,
   FundraiseRoundSchema,
   FundraisingOverviewSchema,
+  PipelineAutoUndoInputSchema,
+  PipelineCallLogInputSchema,
+  PipelineCallLogResultSchema,
+  PipelineImportCardSchema,
   ProspectSaveInputSchema,
   SafeAssignInputSchema,
   SafeMarkInputSchema,
@@ -239,6 +292,13 @@ import {
   SafeSchema,
 } from "./fundraising.js";
 import { GtmOverviewSchema, GtmQueueInputSchema, GtmQueueOutputSchema } from "./gtm.js";
+import {
+  LocalMeetingsConnectInputSchema,
+  LocalMeetingsDisconnectInputSchema,
+  LocalMeetingsImportInputSchema,
+  LocalMeetingsImportOutputSchema,
+  LocalMeetingsStatusSchema,
+} from "./hex.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   CleanupArchiveInputSchema,
@@ -251,6 +311,8 @@ import {
   ComposePrefillInputSchema,
   ComposePrefillOutputSchema,
   ComposeResultSchema,
+  InboxAttachmentReviewInputSchema,
+  InboxAttachmentReviewOutputSchema,
   InboxBulkInputSchema,
   InboxBulkResultSchema,
   InboxFeedbackInputSchema,
@@ -258,12 +320,19 @@ import {
   InboxListInputSchema,
   InboxListOutputSchema,
   InboxMarkReadInputSchema,
+  InboxMarkReadManyInputSchema,
   InboxMessageSchema,
   InboxMoveInputSchema,
   InboxMoveOutputSchema,
+  InboxNoReplyInputSchema,
+  InboxNoReplyOutputSchema,
+  InboxPersonContextSchema,
+  InboxPersonInputSchema,
+  InboxPersonSummaryOutputSchema,
   InboxRefreshInputSchema,
   InboxRefreshOutputSchema,
   InboxScopeInputSchema,
+  InboxTodoDoneSchema,
   InboxTodoSchema,
   InboxTodosOutputSchema,
   MailAccountSchema,
@@ -302,8 +371,24 @@ import {
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
 import {
+  CreateMcpTokenInput,
+  McpActionDecisionInput,
+  McpActivityCallSchema,
+  McpConnectionListSchema,
+  McpConnectionSchema,
+  McpPendingActionSchema,
+  UpdateMcpConnectionInput,
+} from "./mcp-connections.js";
+import {
+  MeetingCaptureActiveSchema,
+  MeetingCaptureAppendTextInputSchema,
+  MeetingCaptureFinishInputSchema,
+  MeetingCaptureStartInputSchema,
+  MeetingCaptureStartOutputSchema,
   MeetingConnectInputSchema,
+  MeetingRecordingPolicySchema,
   MeetingsStatusSchema,
+  StoredMeetingDetailSchema,
   StoredMeetingsPageSchema,
 } from "./meetings.js";
 import {
@@ -317,10 +402,36 @@ import {
   NotificationSignalSchema,
 } from "./notification.js";
 import {
+  OmiCloudConnectInputSchema,
+  OmiCloudStatusSchema,
+  OmiConnectInputSchema,
+  OmiDisconnectInputSchema,
+  OmiSegmentMoveInputSchema,
+  OmiSegmentSchema,
+  OmiSegmentsListInputSchema,
+  OmiStatusSchema,
+} from "./omi.js";
+import {
+  PageDataInputSchema,
+  PageDataSchema,
+  PageRefreshInputSchema,
+  PageShareInputSchema,
+  PageShareOutputSchema,
+  PageSourceRemoveInputSchema,
+  PageSourceScheduleInputSchema,
+  PageSourceSchema,
+  PageSourcesListInputSchema,
+} from "./page-sources.js";
+import {
+  BotPageCreateInputSchema,
   BotPageGetInputSchema,
+  BotPageListInputSchema,
+  BotPageRemoveInputSchema,
+  BotPageRenameInputSchema,
   BotPageSaveInputSchema,
   BotPageSaveOutputSchema,
   BotPageSchema,
+  BotPageSummarySchema,
 } from "./pages.js";
 import {
   BotPinsGetInputSchema,
@@ -331,6 +442,7 @@ import {
   BotPinsSchema,
 } from "./pins.js";
 import { MessageReactionSchema } from "./reactions.js";
+import { CheckInGetInput, CheckInSchema, CheckInSetInput, WatchSpecSchema } from "./routines.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
 import {
@@ -370,7 +482,7 @@ const structuredMentionTarget = z.discriminatedUnion("kind", [
 
 const threadSendInput = threadTarget
   .safeExtend({
-    text: z.string().optional(),
+    text: z.string().max(THREAD_MESSAGE_MAX_LENGTH).optional(),
     artifactIds: z.array(Id).max(ATTACHMENT_MAX_COUNT).optional(),
     /** Data room files sent by reference, to a bot thread only; the agent opens them by id. */
     dataRoomItemIds: z.array(Id).max(ATTACHMENT_MAX_COUNT).optional(),
@@ -402,7 +514,16 @@ const threadSendInput = threadTarget
     }
   });
 
-const ConnectionAccessSchema = z.object({ allAgents: z.boolean(), botIds: z.array(Id) });
+const ConnectionAccessSchema = z.object({
+  allAgents: z.boolean(),
+  botIds: z.array(Id),
+  /** The "Let other agents use it" switch of an agent-linked connection; stays on while no other agent has access. */
+  agentShared: z.boolean(),
+  /** Granted agents that may also make changes (each still asks the owner), while the connection's changes switch is on. */
+  writeBotIds: z.array(Id),
+  /** Firewalled agents that read only the mail carrying this label, by agent id. Only labelled agents appear. */
+  supportLabels: z.record(Id, z.string()),
+});
 /** Who can really use each connection, computed by the server with the executor's rules. */
 const EffectiveAccessSchema = z.record(
   Id,
@@ -438,6 +559,7 @@ export const AccountExportSchema = z.object({
   progress: z.number().int().min(0).max(100),
   /** When the zip is deleted. */
   expiresAt: IsoDate,
+  missingFiles: z.number().int().min(0).optional(),
 });
 export type AccountExport = z.infer<typeof AccountExportSchema>;
 
@@ -459,6 +581,24 @@ export const appContract = {
   },
   health: oc.output(z.object({ ok: z.literal(true), version: z.string() })),
   me: oc.output(MeSchema),
+  /** Outside AI clients connected to the member's Spaces. Every call is limited to the caller's own connections. */
+  mcpConnections: {
+    list: oc.output(McpConnectionListSchema),
+    /** The token appears in this reply only; the server keeps a hash. */
+    createToken: oc
+      .input(CreateMcpTokenInput)
+      .output(z.object({ connection: McpConnectionSchema, token: z.string() })),
+    update: oc.input(UpdateMcpConnectionInput).output(McpConnectionSchema),
+    revoke: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    /** The last 20 calls of one connection, newest first. */
+    activity: oc.input(z.object({ id: Id })).output(z.array(McpActivityCallSchema)),
+    /** Changes outside clients asked for that wait for this member's approval. */
+    pendingActions: oc.output(z.array(McpPendingActionSchema)),
+    /** Approving runs the change once; a second answer to the same action is a conflict. */
+    decideAction: oc
+      .input(McpActionDecisionInput)
+      .output(z.object({ status: z.enum(["done", "failed", "denied"]) })),
+  },
   billing: {
     status: oc.output(BillingStatusSchema),
     checkout: oc.output(z.object({ url: z.string().url() })),
@@ -487,8 +627,16 @@ export const appContract = {
     remove: oc
       .input(z.object({ spaceId: Id }))
       .output(z.object({ ok: z.literal(true), activeSpaceId: Id })),
+    /** Owners and admins set whether meetings may be recorded in the current space. Applies to new captures. FORBIDDEN for members. */
+    setMeetingRecording: oc
+      .input(z.object({ policy: MeetingRecordingPolicySchema }))
+      .output(z.object({ policy: MeetingRecordingPolicySchema })),
   },
   bootstrap: oc.input(z.object({ botId: Id.optional() })).output(AppBootstrapSchema),
+  appControl: {
+    status: oc.output(AppControlStatusOutputSchema),
+    apps: oc.output(z.object({ apps: z.array(AppControlAppSchema) })),
+  },
   deployment: {
     get: oc.output(DeploymentSettingsSchema),
     update: oc
@@ -597,6 +745,11 @@ export const appContract = {
     reorder: oc.input(ReorderBotsInput).output(z.object({ ok: z.literal(true) })),
     update: oc.input(UpdateBotInput).output(BotSchema),
     setComputer: oc.input(z.object({ botId: Id, mode: ComputerModeSchema })).output(BotSchema),
+    instructionsUpgrade: oc
+      .input(botId)
+      .output(z.object({ current: z.string(), next: z.string() }).nullable()),
+    upgradeInstructions: oc.input(z.object({ botId: Id, from: z.string() })).output(BotSchema),
+    dismissInstructionsUpgrade: oc.input(botId).output(z.object({ ok: z.literal(true) })),
     archive: oc.input(botId).output(z.object({ ok: z.literal(true) })),
     restore: oc.input(botId).output(z.object({ ok: z.literal(true) })),
     remove: oc
@@ -714,6 +867,8 @@ export const appContract = {
       )
       .output(z.object({ ok: z.literal(true) })),
     clear: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
+    /** End the bot thread's open goal. */
+    clearGoal: oc.input(botId).output(z.object({ ok: z.literal(true) })),
     answer: oc
       .input(
         threadTarget.safeExtend({
@@ -729,6 +884,78 @@ export const appContract = {
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
+    /** What a list import card shows, for the run's own user. */
+    pipelineImport: oc
+      .input(threadTarget.safeExtend({ runId: Id, messageId: Id }))
+      .output(PipelineImportCardSchema),
+    /**
+     * Add on a list import card, with every question answered. A list or contact that changed since
+     * `hash` was read rejects the press and changes nothing. Only the web and desktop card sends it.
+     */
+    applyPipelineImport: oc
+      .input(
+        threadTarget.safeExtend({
+          runId: Id,
+          messageId: Id,
+          hash: z.string().max(128),
+          answers: z.record(z.string().max(300), z.string().max(300)),
+        }),
+      )
+      .output(z.object({ ok: z.literal(true) })),
+    /** The rows of a reply batch card, for the run's own user. Flags and hashes are the server's. */
+    mailBatch: oc
+      .input(threadTarget.safeExtend({ runId: Id, messageId: Id }))
+      .output(MailBatchSchema),
+    /**
+     * Send selected on a reply batch card. Rows not posted are skipped. Any mismatch rejects the
+     * whole press and changes nothing.
+     */
+    sendMailBatch: oc
+      .input(
+        threadTarget.safeExtend({
+          runId: Id,
+          messageId: Id,
+          rows: z.array(MailBatchPressRowSchema).min(1).max(MAX_MAIL_REPLY_BATCH),
+        }),
+      )
+      .output(z.object({ ok: z.literal(true) })),
+    /** Retry failed on a settled reply batch card. Needs no waiting run and does not wake the agent. */
+    retryMailBatch: oc
+      .input(
+        threadTarget.safeExtend({
+          runId: Id,
+          messageId: Id,
+          rows: z
+            .array(MailBatchPressRowSchema.pick({ itemId: true, seenMessageId: true }))
+            .min(1)
+            .max(MAX_MAIL_REPLY_BATCH),
+        }),
+      )
+      .output(z.object({ ok: z.literal(true), count: z.number().int().nonnegative() })),
+    /** The flags these edits would give each row. Stores nothing. */
+    previewMailBatch: oc
+      .input(
+        threadTarget.safeExtend({
+          runId: Id,
+          messageId: Id,
+          rows: z
+            .array(MailBatchPressRowSchema.pick({ itemId: true, edits: true }))
+            .min(1)
+            .max(MAX_MAIL_REPLY_BATCH),
+        }),
+      )
+      .output(MailBatchPreviewSchema),
+    /** Open in composer on a row that did not go out. Retry can no longer send that row. */
+    mailBatchToComposer: oc
+      .input(threadTarget.safeExtend({ runId: Id, messageId: Id, itemId: Id }))
+      .output(MailBatchComposerDraftSchema),
+    /**
+     * Sends the draft a mail_draft card saved. The draft and account come from the server's record
+     * of that tool call; the client only names the card.
+     */
+    sendDraft: oc
+      .input(threadTarget.safeExtend({ runId: Id, messageId: Id }))
+      .output(ComposeResultSchema),
     /**
      * Moves the read boundary forward to the message `upToMessageId` (the newest when omitted);
      * never backward, and an unknown id changes nothing. `toEnd` says the reader reached the end of
@@ -739,7 +966,10 @@ export const appContract = {
         threadTarget.safeExtend({ upToMessageId: Id.optional(), toEnd: z.boolean().optional() }),
       )
       .output(z.object({ ok: z.literal(true) })),
-    markUnread: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
+    /** With `messageId`, the chat reads as unread from that message: the next open puts New above it. */
+    markUnread: oc
+      .input(threadTarget.safeExtend({ messageId: Id.optional() }))
+      .output(z.object({ ok: z.literal(true) })),
   },
   computer: {
     status: oc.input(botId).output(ComputerStatusSchema),
@@ -803,9 +1033,19 @@ export const appContract = {
       .input(z.object({ botId: Id.optional(), scope: z.enum(["bot", "user"]).optional() }))
       .output(z.array(MemoryDocumentSchema)),
     update: oc
-      .input(z.object({ documentId: Id, content: z.string() }))
+      .input(
+        z.object({
+          documentId: Id,
+          content: z.string(),
+          /** When set, the update fails with CONFLICT unless the document is still at this revision. */
+          expectedRevision: z.number().int().optional(),
+        }),
+      )
       .output(MemoryDocumentSchema),
-    exportMarkdown: oc.input(z.object({ botId: Id.optional() })).output(z.string()),
+    /** Deletes one memory and its history, only if it is still at `revision`. */
+    remove: oc
+      .input(z.object({ documentId: Id, revision: z.number().int() }))
+      .output(z.object({ ok: z.literal(true) })),
     providerConfig: oc.output(SpaceMemoryConfigSchema.nullable()),
     connectProvider: oc
       .input(
@@ -822,9 +1062,47 @@ export const appContract = {
       .output(SpaceMemoryConfigSchema),
     disconnectProvider: oc.output(z.object({ ok: z.literal(true) })),
   },
+  companyContext: {
+    list: oc.output(z.array(CompanyContextSectionSchema)),
+    /** Creates a section (no id) or replaces one's text. CONFLICT when the revision moved or the name is taken. */
+    save: oc
+      .input(
+        z.object({
+          id: Id.optional(),
+          title: z.string(),
+          text: z.string(),
+          expectedRevision: z.number().int().optional(),
+        }),
+      )
+      .output(CompanyContextSectionSchema),
+    history: oc.input(z.object({ id: Id })).output(z.array(CompanyContextRevisionSchema)),
+    /** Saves an old revision's text as a new revision. */
+    restore: oc
+      .input(z.object({ id: Id, revision: z.number().int(), expectedRevision: z.number().int() }))
+      .output(CompanyContextSectionSchema),
+    /** Deletes a section and its history, only if it is still at `revision`. */
+    remove: oc
+      .input(z.object({ id: Id, revision: z.number().int() }))
+      .output(z.object({ ok: z.literal(true) })),
+  },
   pages: {
     get: oc.input(BotPageGetInputSchema).output(BotPageSchema.nullable()),
     save: oc.input(BotPageSaveInputSchema).output(BotPageSaveOutputSchema),
+    list: oc.input(BotPageListInputSchema).output(z.array(BotPageSummarySchema)),
+    create: oc.input(BotPageCreateInputSchema).output(BotPageSchema),
+    rename: oc.input(BotPageRenameInputSchema).output(BotPageSummarySchema),
+    remove: oc.input(BotPageRemoveInputSchema).output(z.object({ ok: z.literal(true) })),
+    data: oc.input(PageDataInputSchema).output(PageDataSchema.nullable()),
+    refresh: oc.input(PageRefreshInputSchema).output(PageDataSchema.nullable()),
+    share: oc.input(PageShareInputSchema).output(PageShareOutputSchema.nullable()),
+    shareStatus: oc
+      .input(PageShareInputSchema)
+      .output(z.object({ artifactId: z.string(), expiresAt: z.string() }).nullable()),
+    sources: oc.input(PageSourcesListInputSchema).output(z.array(PageSourceSchema)),
+    removeSource: oc.input(PageSourceRemoveInputSchema).output(z.object({ ok: z.literal(true) })),
+    setSourceSchedule: oc.input(PageSourceScheduleInputSchema).output(PageSourceSchema),
+    pauseSource: oc.input(PageSourceRemoveInputSchema).output(PageSourceSchema),
+    resumeSource: oc.input(PageSourceRemoveInputSchema).output(PageSourceSchema),
   },
   pins: {
     get: oc.input(BotPinsGetInputSchema).output(BotPinsSchema.nullable()),
@@ -844,8 +1122,10 @@ export const appContract = {
             routineId: Id,
             name: z.string().optional(),
             prompt: z.string().optional(),
+            /** A saved taught skill on this bot; null returns the routine to its own prompt. */
+            taughtSkillId: Id.nullable().optional(),
             crons: z.array(z.string().min(1)).optional(),
-            timezone: z.string().optional(),
+            timezone: TimeZoneSchema.optional(),
             active: z.boolean().optional(),
             notify: z.boolean().optional(),
             webhookEnabled: z.boolean().optional(),
@@ -860,14 +1140,19 @@ export const appContract = {
             /** Null clears the routine's own model and runs it on the bot's. */
             modelProvider: z.string().trim().min(1).max(80).nullable().optional(),
             modelId: z.string().trim().min(1).max(200).nullable().optional(),
+            modelCredentialId: Id.nullable().optional(),
             thinkingLevel: ThinkingLevelSchema.nullable().optional(),
             /** ISO datetime to arm a never-run one-shot. */
             runAt: IsoDate.optional(),
+            quiet: z.boolean().optional(),
+            /** Null removes the watch. A connected-app watch is accepted only unchanged (the editor sends it back). */
+            watch: WatchSpecSchema.nullable().optional(),
           })
           .superRefine((value, ctx) => {
             if (
               value.crons &&
               value.crons.length === 0 &&
+              !value.watch &&
               value.webhookEnabled === false &&
               value.githubEnabled === false &&
               value.messageProvider === null
@@ -882,6 +1167,12 @@ export const appContract = {
       )
       .output(RoutineSchema),
     remove: oc.input(z.object({ routineId: Id })).output(z.object({ ok: z.literal(true) })),
+    /**
+     * Clears a pause the system set (a paused watch check or an out-of-credit hold) and schedules
+     * the routine's next run, the way turning it off and back on does. Refuses a routine that is
+     * not system-paused.
+     */
+    resume: oc.input(z.object({ routineId: Id })).output(RoutineSchema),
     testRun: oc
       .input(
         z.object({
@@ -890,6 +1181,10 @@ export const appContract = {
         }),
       )
       .output(z.object({ runId: Id })),
+  },
+  checkIn: {
+    get: oc.input(CheckInGetInput).output(CheckInSchema),
+    set: oc.input(CheckInSetInput).output(CheckInSchema),
   },
   scratchpad: {
     list: oc
@@ -901,6 +1196,8 @@ export const appContract = {
         }),
       )
       .output(z.array(ScratchpadItemSchema)),
+    /** Open items across the caller's bots that wait on them or are past due. */
+    waitingOnYou: oc.input(z.object({})).output(z.array(WaitingOnYouItemSchema)),
     create: oc.input(CreateScratchpadItemInput).output(ScratchpadItemSchema),
     update: oc
       .input(
@@ -912,6 +1209,10 @@ export const appContract = {
             notes: z.string().max(4_000).optional(),
             target: z.string().max(200).optional(),
             scheduledFor: z.iso.datetime({ offset: true }).optional(),
+            /** Null clears. */
+            dueAt: z.iso.datetime({ offset: true }).nullable().optional(),
+            waitingOn: z.string().max(200).nullable().optional(),
+            resolvedReason: z.string().max(500).nullable().optional(),
             proof: z.string().max(2_000).optional(),
             updatedAt: z.iso.datetime({ offset: true }).optional(),
             reapprove: z.boolean().optional(),
@@ -922,14 +1223,10 @@ export const appContract = {
     remove: oc.input(z.object({ itemId: Id })).output(z.object({ ok: z.literal(true) })),
   },
   boards: {
-    list: oc.output(z.array(BoardSchema)),
-    get: oc.output(BoardSchema),
-    rename: oc.input(RenameBoardInput).output(BoardSchema),
     subscribe: oc.output(eventIterator(BoardEventSchema)),
   },
   tickets: {
     list: oc.input(ListTicketsInput).output(ListTicketsOutput),
-    get: oc.input(GetTicketInput).output(TicketSchema),
     create: oc.input(CreateTicketInput).output(TicketSchema),
     update: oc.input(UpdateTicketInput).output(TicketSchema),
     move: oc.input(MoveTicketInput).output(TicketSchema),
@@ -949,11 +1246,15 @@ export const appContract = {
     stop: oc.input(z.object({ skillId: Id })).output(TaughtSkillSchema),
     updateDraft: oc
       .input(
-        z.object({
-          skillId: Id,
-          name: z.string().optional(),
-          playbook: SkillPlaybookSchema,
-        }),
+        z
+          .object({
+            skillId: Id,
+            name: z.string().optional(),
+            playbook: SkillPlaybookSchema,
+          })
+          .refine(({ playbook }) => JSON.stringify(playbook).length <= 100_000, {
+            message: "Playbook must be at most 100000 characters.",
+          }),
       )
       .output(TaughtSkillSchema),
     save: oc
@@ -963,6 +1264,30 @@ export const appContract = {
       .input(z.object({ skillId: Id, prompt: z.string().optional() }))
       .output(z.object({ runId: Id })),
     remove: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  /** Saved taught skills and the login steps of a fresh recording. Recording itself stays under `skills`. */
+  taughtSkills: {
+    list: oc.input(botId).output(z.array(TaughtSkillSummarySchema)),
+    delete: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Saves the held password as a login for `site` and rewrites the step to fill it. */
+    saveLogin: oc
+      .input(
+        z.object({
+          skillId: Id,
+          stepIndex: z.number().int().min(0),
+          name: BotSecretName,
+          site: z.string().min(1).max(2048),
+          /** The username the user confirmed; the server never guesses it. */
+          username: z.string().min(1).max(512),
+        }),
+      )
+      .output(TaughtSkillSchema),
+    /** Deletes the held password; the step becomes "Ask the user to sign in". */
+    skipLogin: oc
+      .input(z.object({ skillId: Id, stepIndex: z.number().int().min(0) }))
+      .output(TaughtSkillSchema),
+    /** Ends the recording and keeps nothing: no recording, held values or skill. */
+    cancel: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
   },
   /** Claude Agent Skills (SKILL.md recipes) shared across assistants (not taught/demo skills). Pi already understands this format; we persist and inject them. */
   agentSkills: {
@@ -987,7 +1312,9 @@ export const appContract = {
     remove: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
     /** Agent-written skills and revisions waiting for the owner. */
     drafts: oc.output(z.array(AgentSkillDraftSchema)),
-    approveDraft: oc.input(z.object({ skillId: Id })).output(AgentSkillSchema),
+    approveDraft: oc
+      .input(z.object({ skillId: Id, toolHash: z.string().optional() }))
+      .output(AgentSkillSchema),
     discardDraft: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
     /** The catalog with this bot's on/off switch per skill. */
     forBot: oc.input(botId).output(z.array(BotAgentSkillSchema)),
@@ -1026,6 +1353,29 @@ export const appContract = {
       )
       .output(CapabilityInstallSchema),
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Idempotent: returns the source's agent, creating it when the install could not. */
+    createAgent: oc.input(z.object({ id: Id })).output(z.object({ botId: Id })),
+    rename: oc
+      .input(z.object({ id: Id, name: z.string().trim().min(1).max(120) }))
+      .output(CapabilityInstallSchema),
+    setWrites: oc.input(z.object({ id: Id, enabled: z.boolean() })).output(CapabilityInstallSchema),
+    /** Only the source's agent may use it, or others may be added one by one. */
+    setExclusive: oc
+      .input(z.object({ id: Id, exclusive: z.boolean() }))
+      .output(CapabilityInstallSchema),
+    /** All (every internal agent, later ones too) or None (only the source's own agent). */
+    setAllAgents: oc.input(z.object({ id: Id, on: z.boolean() })).output(CapabilityInstallSchema),
+    /** One agent's switch and "Allow changes"; the server changes only that agent's grant. */
+    setAgentAccess: oc
+      .input(
+        z.object({
+          id: Id,
+          botId: Id,
+          on: z.boolean(),
+          canWrite: z.boolean().optional(),
+        }),
+      )
+      .output(CapabilityInstallSchema),
   },
   integrationAgents: {
     /** Idempotent: returns the server's agent bot, creating it on first call. */
@@ -1056,6 +1406,10 @@ export const appContract = {
       remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
       /** Turns the server's write tools on or off (Carta, or any server that has an agent). */
       setWrites: oc.input(z.object({ id: Id, enabled: z.boolean() })).output(McpServerSchema),
+      /** Gives one agent a server or takes it away, atomically; other agents' assignments are untouched. */
+      setAgentAssignment: oc
+        .input(z.object({ serverId: Id, botId: Id, on: z.boolean() }))
+        .output(z.object({ ok: z.literal(true) })),
     },
     assignments: {
       list: oc.input(botId).output(z.array(BotMcpServerSchema)),
@@ -1148,6 +1502,8 @@ export const appContract = {
           displayName: z.string(),
           /** `desktop`: Google returns to the app's loopback listener instead of the web callback. */
           redirect: z.literal("desktop").optional(),
+          /** `ios`: Composio and Pipedream return to the iOS app, which has no web session. */
+          client: z.literal("ios").optional(),
           /** Reconnect: the account of this connection may sign in again and takes its place. */
           replacesConnectionId: Id.optional(),
           /** Native Google only: also ask for permission to manage Gmail filters. */
@@ -1173,15 +1529,39 @@ export const appContract = {
       )
       .output(ConnectionSchema),
     rename: oc
-      .input(z.object({ connectionId: Id, displayName: z.string().trim().min(1).max(80) }))
+      .input(z.object({ connectionId: Id, displayName: z.string().trim().min(1).max(60) }))
       .output(ConnectionSchema),
     revoke: oc.input(z.object({ connectionId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Re-checks a Gmail connection now and returns it with its current `needsReconnect`. */
+    check: oc.input(z.object({ connectionId: Id })).output(ConnectionSchema),
     /** Which agents may use this connection's tools. */
     access: oc.input(z.object({ connectionId: Id })).output(ConnectionAccessSchema),
     /** The agents that can really use each of the caller's connections, in one call. */
     effectiveAccess: oc.output(EffectiveAccessSchema),
+    /** The stored access of every live connection of the caller, in one call. */
+    accessAll: oc.output(z.record(Id, ConnectionAccessSchema)),
     setAccess: oc
       .input(z.object({ connectionId: Id, allAgents: z.boolean(), botIds: z.array(Id).max(500) }))
+      .output(ConnectionAccessSchema),
+    /**
+     * Turns one agent on or off for a connection, atomically: the server changes only that agent's
+     * grant under a row lock, so two clients cannot overwrite each other. The connection's own agent stays on.
+     */
+    setAgentAccess: oc
+      .input(
+        z.object({
+          connectionId: Id,
+          botId: Id,
+          on: z.boolean(),
+          /** "Allow changes" for this agent. Left out, an agent already on keeps its setting and a new one starts read-only. */
+          canWrite: z.boolean().optional(),
+          /**
+           * The mail label a firewalled agent's access is limited to. Left out, a stored label stays;
+           * null clears it. Only a mail connection granted to a firewalled agent accepts one.
+           */
+          supportLabel: z.string().trim().min(1).max(100).nullable().optional(),
+        }),
+      )
       .output(ConnectionAccessSchema),
     createAgent: oc.input(z.object({ connectionId: Id })).output(z.object({ botId: Id })),
     setWrites: oc
@@ -1244,26 +1624,56 @@ export const appContract = {
     set: oc
       .input(
         z.object({
-          effect: z.enum(["always_allow", "require_approval"]),
-          matchKind: z.enum(["tool", "connector", "category"]),
+          effect: ActionApprovalEffectSchema,
+          matchKind: z.enum(["tool", "connector", "category", "site"]),
           matchValue: z.string().min(1),
+          botId: Id.optional(),
         }),
       )
       .output(ActionApprovalRuleSchema),
+    /** The action-type table as the gate decides at the effective `level`; with a botId, rows also show that bot's override. */
+    table: oc
+      .input(z.object({ botId: Id.optional() }))
+      .output(z.object({ rows: z.array(ApprovalTableRowSchema), level: PermissionLevelSchema })),
+    /** effect null clears the bot override, or resets the space row to its default. */
+    setActionType: oc
+      .input(
+        z.object({
+          actionType: ApprovalActionTypeSchema,
+          botId: Id.optional(),
+          effect: ApprovalChoiceSchema.nullable(),
+        }),
+      )
+      .output(z.object({ ok: z.literal(true) })),
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  permissions: {
+    get: oc.output(PermissionSettingsSchema),
+    /** level null returns the space to the deployment default. */
+    set: oc
+      .input(z.object({ level: PermissionLevelSchema.nullable() }))
+      .output(PermissionSettingsSchema),
   },
   autoReview: {
     get: oc.output(ActionAutoReviewSettingsSchema),
-    set: oc.input(z.object({ enabled: z.boolean() })).output(ActionAutoReviewSettingsSchema),
+    set: oc
+      .input(z.object({ enabled: z.boolean().optional(), background: z.boolean().optional() }))
+      .output(ActionAutoReviewSettingsSchema),
+    recent: oc.output(z.array(ActionAutoReviewRecentSchema)),
+    /** The caller's automatic approvals in this space, newest first. */
+    approvals: oc.output(z.object({ rows: z.array(AutoApprovalSchema) })),
+    /** Reverts one with the tool's own undo, and resets that target's precedent. */
+    undo: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
   },
   artifacts: {
-    list: oc.input(botId).output(z.array(ArtifactSchema)),
     listSpace: oc
       .input(
         z.object({
           botId: Id.optional(),
           cursor: z.string().optional(),
           limit: z.number().int().min(1).max(60).optional(),
+          /** Matches latest-version names and descriptions by substring; omit to list them all. */
+          q: z.string().trim().max(200).optional(),
         }),
       )
       .output(
@@ -1290,6 +1700,14 @@ export const appContract = {
     get: oc.input(threadTarget.and(z.object({ artifactId: Id }))).output(ArtifactWithContentSchema),
     getById: oc.input(z.object({ artifactId: Id })).output(ArtifactWithContentSchema),
     remove: oc.input(z.object({ artifactId: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  artifactShares: {
+    get: oc.input(z.object({ artifactId: Id })).output(ArtifactShareSchema.nullable()),
+    /** The link is in the answer once; only its hash is stored. A live link of the same artifact ends. */
+    create: oc
+      .input(z.object({ artifactId: Id }))
+      .output(z.object({ url: z.string(), share: ArtifactShareSchema })),
+    revoke: oc.input(z.object({ artifactId: Id })).output(z.object({ ok: z.literal(true) })),
   },
   files: {
     /** One page of a spreadsheet (.xlsx, .xlsm, .csv, .tsv) from an artifact or a Data room item. */
@@ -1324,6 +1742,8 @@ export const appContract = {
           token: z.string().min(8).max(512).regex(/^\S+$/),
           /** This device's previous token, removed when the token rotated. */
           replacesToken: z.string().min(8).max(512).regex(/^\S+$/).optional(),
+          /** Which push service issued the token. A client that omits it is an Expo client. */
+          platform: z.enum(["expo", "apns"]).optional(),
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
@@ -1382,6 +1802,8 @@ export const appContract = {
         devinNeedsYou: z.number().int(),
         /** The space has a Devin connection; the Devin page shows in the sidebar only then. */
         devinConnected: z.boolean(),
+        /** The current space owner has connected Brex cards; the Brex page shows in the sidebar only then. */
+        brexConnected: z.boolean(),
         /** Parked gated GTM items still waiting for the founder on their active GTM agent. */
         gtmNeedsYou: z.number().int(),
         dataRoomWaiting: z.number().int(),
@@ -1418,9 +1840,19 @@ export const appContract = {
     catalog: oc.output(z.array(VoiceCatalogEntrySchema)),
     status: oc.output(VoiceStatusSchema),
     credentials: oc.output(z.array(VoiceCredentialSchema)),
-    /** Select a transcription provider with its own key. The key is never returned. */
+    /**
+     * Select a transcription provider with its own key. The key is never returned.
+     * An OpenAI-compatible server sends `baseUrl` and `model` and may omit the key.
+     */
     setTranscription: oc
-      .input(z.object({ provider: z.string().min(1), apiKey: z.string().min(8) }))
+      .input(
+        z.object({
+          provider: z.string().min(1),
+          apiKey: z.string().min(8).optional(),
+          baseUrl: z.string().max(2048).optional(),
+          model: z.string().max(120).optional(),
+        }),
+      )
       .output(z.object({ provider: z.string() })),
     clearTranscription: oc.output(z.object({ ok: z.literal(true) })),
     connect: oc
@@ -1469,12 +1901,28 @@ export const appContract = {
     agent: oc.output(BotSchema),
     /** Idempotent per mail conversation: opens the agent made for the message's thread, with the thread as context. */
     askAgent: oc.input(z.object({ messageId: Id })).output(BotSchema),
+    /** A disposable AI review of one attachment of the user's own message; nothing is stored. */
+    reviewAttachment: oc
+      .input(InboxAttachmentReviewInputSchema)
+      .output(InboxAttachmentReviewOutputSchema),
+    /** Facts about one address from the user's own contacts, mail, calendar, meetings, Data room and to-dos; no model. */
+    personContext: oc.input(InboxPersonInputSchema).output(InboxPersonContextSchema),
+    /** A short model summary of `personContext`; facts do not wait for it. */
+    personSummary: oc.input(InboxPersonInputSchema).output(InboxPersonSummaryOutputSchema),
     list: oc.input(InboxListInputSchema).output(InboxListOutputSchema),
     refresh: oc.input(InboxRefreshInputSchema).output(InboxRefreshOutputSchema),
     get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),
     unreadCount: oc.output(z.object({ count: z.number().int() })),
     feedback: oc.input(InboxFeedbackInputSchema).output(InboxFeedbackOutputSchema),
     markRead: oc.input(InboxMarkReadInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** `read: true` marks each whole thread read; `read: false` marks only each message unread. */
+    markReadMany: oc.input(InboxMarkReadManyInputSchema).output(InboxBulkResultSchema),
+    /** The user says this message needs no reply; the third for one sender stops Needs reply for it. `undo` restores the mail and takes the count back by one. */
+    noReply: oc.input(InboxNoReplyInputSchema).output(InboxNoReplyOutputSchema),
+    /** Adds the message's thread to the Chief's Open work. Tracking a tracked thread does nothing. */
+    track: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Marks the thread's open Chief item done. */
+    untrack: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     archive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     unarchive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     archiveMany: oc.input(InboxBulkInputSchema).output(InboxBulkResultSchema),
@@ -1500,7 +1948,7 @@ export const appContract = {
     },
     todos: {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
-      setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
+      setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoDoneSchema),
     },
   },
   company: {
@@ -1604,6 +2052,10 @@ export const appContract = {
       undo: oc.input(z.object({ batchId: Id })).output(AutoSortUndoOutputSchema),
     },
   },
+  scanner: {
+    /** Idempotent: creates the Scanner page agent; returns the bot to open. */
+    agent: oc.output(BotSchema),
+  },
   meetings: {
     /** Checks the Granola key with one list call, stores it, connects, provisions the agent and queues a sync. Trims the key. Errors: "Granola rejected this key", "Could not reach Granola". */
     connect: oc.input(MeetingConnectInputSchema).output(z.object({ ok: z.literal(true) })),
@@ -1615,10 +2067,74 @@ export const appContract = {
     refresh: oc.output(z.object({ ok: z.literal(true) })),
     /** The caller's stored meetings, newest first; a plain query that works with consent off and after disconnect. */
     list: oc
-      .input(z.object({ cursor: z.string().max(200).optional() }))
+      .input(
+        z.object({
+          cursor: z.string().max(200).optional(),
+          /** Case-insensitive text the title contains. */
+          q: z.string().max(200).optional(),
+          /** Exact source id, such as "granola". */
+          provider: z.string().max(64).optional(),
+          /** Exact attendee email; only meetings that list it among their attendees. */
+          attendee: z.string().max(320).optional(),
+        }),
+      )
       .output(StoredMeetingsPageSchema),
+    /** One of the caller's meetings with its digest, to-dos and transcript. NOT_FOUND for anyone else's. */
+    get: oc.input(z.object({ meetingId: Id })).output(StoredMeetingDetailSchema),
+    /** Merges one of the caller's meetings into the previous one (same source, ended within 30 minutes before this one began): the earlier meeting keeps its row with the joined span, transcript, notes and to-dos, and the later one is deleted so sync does not bring it back. Returns the surviving meeting's id. NOT_FOUND for anyone else's meeting or when nothing qualifies. */
+    mergeWithPrevious: oc.input(z.object({ meetingId: Id })).output(z.object({ meetingId: Id })),
     /** Deletes one of the caller's meetings with its to-dos; sync does not bring it back. */
     delete: oc.input(z.object({ meetingId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Creates or reuses the caller's one connection for a source that runs on their computer (Hex), with its agent. */
+    connectLocal: oc.input(LocalMeetingsConnectInputSchema).output(z.object({ connectionId: Id })),
+    /** The local source's connection and what it imported; null before connecting. */
+    localStatus: oc.output(LocalMeetingsStatusSchema),
+    /** Stores up to 10 meetings the desktop app read from the user's computer. Idempotent by source id; the user becomes the only attendee; a meeting already recorded another way is skipped. */
+    importLocal: oc.input(LocalMeetingsImportInputSchema).output(LocalMeetingsImportOutputSchema),
+    /** Stops importing; imported meetings stay unless `deleteMeetings` is true. */
+    disconnectLocal: oc
+      .input(LocalMeetingsDisconnectInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+  },
+  meetingCaptures: {
+    /** Starts a recording. Idempotent by `clientId`. FORBIDDEN when the space's policy is off; BAD_REQUEST without `consentConfirmed: true` when it is confirm. Audio goes to POST /api/meeting-captures/:id/chunks. */
+    start: oc.input(MeetingCaptureStartInputSchema).output(MeetingCaptureStartOutputSchema),
+    /** Device engine only: one chunk of text. Idempotent by (captureId, track, seq). NOT_FOUND for anyone else's capture. */
+    appendText: oc
+      .input(MeetingCaptureAppendTextInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    /** Stops recording and queues the stored meeting. Idempotent. */
+    finish: oc.input(MeetingCaptureFinishInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** Deletes the capture's chunks and audio; no meeting is stored. */
+    discard: oc.input(z.object({ captureId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** The caller's recording or waiting capture, for the recording indicator. */
+    active: oc.output(MeetingCaptureActiveSchema),
+  },
+  omiCloud: {
+    /** Checks the Omi Developer key with one list call, stores it, connects and queues a sync. Errors: "Omi rejected this key", "This is an MCP key. Create a Developer key in the Omi app.", "Could not reach Omi". */
+    connect: oc.input(OmiCloudConnectInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** The caller's Developer key route; null before a key was pasted. Never returns the key. */
+    status: oc.output(OmiCloudStatusSchema),
+    /** Deletes the stored key and stops the sync; stored meetings stay. */
+    disconnect: oc.output(z.object({ ok: z.literal(true) })),
+  },
+  omi: {
+    /** Creates or reuses the caller's one Omi connection for this space and its agent. */
+    connect: oc.input(OmiConnectInputSchema).output(z.object({ connectionId: Id })),
+    /** The caller's Omi connection with upload and recording counts; null before connecting. */
+    status: oc.output(OmiStatusSchema),
+    /** Revokes the connection; recordings stay unless `deleteRecordings` is true. */
+    /** Deletes every recording, transcript, meeting and note; the connection stays. */
+    deleteRecordings: oc.output(z.object({ ok: z.literal(true) })),
+    disconnect: oc.input(OmiDisconnectInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** Queues transcription again for the caller's recordings that failed or still lack a transcript. */
+    retryTranscription: oc.output(z.object({ ok: z.literal(true) })),
+    segments: {
+      /** The caller's sorted stretches, newest first. */
+      list: oc.input(OmiSegmentsListInputSchema).output(z.array(OmiSegmentSchema)),
+      /** Moves one stretch to Meeting, Note or Trash; a re-sort keeps the choice. */
+      move: oc.input(OmiSegmentMoveInputSchema).output(OmiSegmentSchema),
+    },
   },
   devin: {
     /** Any member reads the space's cached sessions; a read older than a minute refreshes them first. */
@@ -1630,6 +2146,27 @@ export const appContract = {
     /** Space owners only. The old rows and key go; the acting owner becomes the connector. */
     replaceKey: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
     disconnect: oc.output(z.object({ ok: z.literal(true) })),
+  },
+  /** Every procedure here needs the current space owner. */
+  brexCards: {
+    /** Checks the token with Brex first; nothing is stored for a refused token. Writes stay off. */
+    connect: oc.input(BrexCardsConnectInputSchema).output(BrexCardsConnectOutputSchema),
+    /** Checks the new token first; a refused token keeps the old one. Controls and model are kept. */
+    replaceToken: oc.input(BrexCardsConnectInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** The raw card list from Brex's `list_cards`. */
+    cards: oc.output(BrexCardsListSchema),
+    /** Owner-only live read model for the Brex page. */
+    overview: oc.output(BrexCardsOverviewSchema),
+    cardsView: oc.output(BrexCardsViewSchema),
+    spending: oc.input(BrexSpendingInputSchema).output(BrexSpendingSchema),
+    limits: oc.output(BrexLimitsSchema),
+    people: oc.output(BrexPeopleSchema),
+    expenses: oc.output(BrexExpensesSchema),
+    accounts: oc.output(BrexAccountsSchema),
+    trips: oc.output(BrexTripsSchema),
+    activity: oc.output(BrexActivitySchema),
+    getControls: oc.output(BrexCardsControlsSchema),
+    setControls: oc.input(BrexCardsControlsSchema).output(BrexCardsControlsSchema),
   },
   gtm: {
     /** Idempotent: creates the GTM agent and hourly work routine. */
@@ -1733,6 +2270,16 @@ export const appContract = {
       /** Clears Waiting for Mercury. */
       notSent: oc.input(z.object({ id: Id })).output(ContactSchema),
     },
+    calls: {
+      /** Adds a call to the record's timeline; moves status forward only (Spoke: before Met becomes Met). */
+      log: oc.input(PipelineCallLogInputSchema).output(PipelineCallLogResultSchema),
+      /** Removes a logged call and puts back the status and next call it changed. */
+      undo: oc.input(z.object({ eventId: Id })).output(z.object({ ok: z.literal(true) })),
+    },
+    auto: {
+      /** Undoes one automatic change: each field goes back only while it still holds what the job set. */
+      undo: oc.input(PipelineAutoUndoInputSchema).output(z.object({ ok: z.literal(true) })),
+    },
     safes: {
       list: oc.output(z.array(SafeSchema)),
       /** Adds a native Draft; CONFLICT when the contact already has a SAFE, BAD_REQUEST without a cap. */
@@ -1749,8 +2296,14 @@ export const appContract = {
   carta: {
     agent: oc.output(BotSchema),
   },
+  calendar: {
+    /** One time-sorted list for the range: Google events from every connected account, bot to-dos, check-backs and each run of repeating routines in the range. */
+    agenda: oc.input(CalendarAgendaInputSchema).output(CalendarAgendaSchema),
+  },
   contacts: {
     list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
+    /** One contact with its related mail, meetings, documents and SAFEs; NOT_FOUND when it is not the user's. */
+    detail: oc.input(z.object({ id: Id })).output(ContactDetailSchema),
     save: oc.input(ContactSaveInputSchema).output(ContactSchema),
     delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     /** What deleting the contact would remove besides its own fields. */
@@ -1776,6 +2329,9 @@ export const appContract = {
     runway: oc.output(FinanceRunwayOutputSchema),
     preferences: oc.output(FinancePreferencesSchema),
     setPreferences: oc.input(FinancePreferencesSchema).output(FinancePreferencesSchema),
+    chartNotes: oc.input(FinanceChartNotesInputSchema).output(z.array(FinanceChartNoteSchema)),
+    chartNoteAdd: oc.input(FinanceChartNoteAddInputSchema).output(FinanceChartNoteSchema),
+    chartNoteDelete: oc.input(z.object({ id: z.string().min(1).max(100) })).output(z.object({})),
     cryptoHistory: oc
       .input(FinanceCryptoHistoryInputSchema)
       .output(FinanceCryptoHistoryOutputSchema),
@@ -1833,6 +2389,8 @@ export const appContract = {
       .input(FinanceStatementAccountRenameInputSchema)
       .output(z.object({ ok: z.literal(true) })),
   },
+  /** The cap table ledger: packages/contracts/src/equity/rpc.ts. */
+  equity: equityContract,
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),
     put: oc.input(BotSecretPutInput).output(BotSecretMetadata),

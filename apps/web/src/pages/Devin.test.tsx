@@ -137,6 +137,38 @@ it("shows an empty organization as one line and a link to Devin, with no tiles o
   expect(container.querySelector("h2")).toBeNull();
 });
 
+it("keeps the first connected read loading until Devin sessions have been fetched", async () => {
+  vi.useFakeTimers();
+  await show({ ...emptyOverview, fetchedAt: null });
+  expect(container.textContent).not.toContain("No Devin sessions yet.");
+  expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(1);
+  await act(async () => void vi.advanceTimersByTime(2_999));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(1);
+  await act(async () => void vi.advanceTimersByTime(1));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(2);
+  // Still unread: it keeps reading every 3 s, then after 10 tries shows the empty state.
+  await act(async () => void vi.advanceTimersByTime(3_000));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(3);
+  for (let i = 0; i < 8; i++) await act(async () => void vi.advanceTimersByTime(3_000));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(11);
+  expect(container.textContent).toContain("No Devin sessions yet.");
+  // No more first-read retries (the regular 60 s poll is separate).
+  await act(async () => void vi.advanceTimersByTime(20_000));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(11);
+});
+
+it("keeps retrying the first read when a reload fails, then shows the empty state", async () => {
+  vi.useFakeTimers();
+  await show({ ...emptyOverview, fetchedAt: null });
+  rpcMock.sessions.mockRejectedValue(new Error("down"));
+  for (let i = 0; i < 10; i++) await act(async () => void vi.advanceTimersByTime(3_000));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(11);
+  expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+  await act(async () => void vi.advanceTimersByTime(20_000));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(11);
+});
+
 it("replaces the tiles with the rejected notice, offers Reconnect to owners only and mutes the rows", async () => {
   const onReconnect = vi.fn();
   await show(rejected, { onReconnect });
@@ -218,8 +250,55 @@ it("re-reads every minute while visible and on focus, and tells the sidebar afte
   window.removeEventListener("rakazo:notifications-changed", changed);
 });
 
+it("reads once when visibilitychange and focus arrive together on return to the tab", async () => {
+  await show(overview);
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(1);
+  // Separate tasks, as in a browser: the second event must not start a second read.
+  await act(async () => void document.dispatchEvent(new Event("visibilitychange")));
+  await act(async () => void window.dispatchEvent(new Event("focus")));
+  expect(rpcMock.sessions).toHaveBeenCalledTimes(2);
+});
+
+it("keeps the rows without an error notice when Devin is unreachable", async () => {
+  await show({
+    ...overview,
+    stale: true,
+    connection: { ...overview.connection, status: "unreachable" },
+  });
+  expect(table()).toBeTruthy();
+  expect(container.textContent).not.toContain("Could not load Devin sessions.");
+  expect(container.textContent).toContain("Updated");
+  await show({
+    ...emptyOverview,
+    stale: true,
+    connection: { ...emptyOverview.connection, status: "unreachable" },
+  });
+  expect(container.textContent).toContain("Could not load Devin sessions.");
+});
+
 it("does not call a partly read, empty listing an empty organization", async () => {
   await show({ ...emptyOverview, partial: true });
   expect(container.textContent).toContain("Some sessions could not be read.");
   expect(container.textContent).not.toContain("No Devin sessions yet.");
+});
+
+it("sorts by a header, searches, and shows No matches with Clear filters", async () => {
+  await show(overview);
+  const titles = () =>
+    [...table().querySelectorAll("tbody tr:not(:has(th)) a")].map((a) => a.textContent ?? "");
+  // Newest first by default; the Session header sorts by title.
+  const byUpdate = titles();
+  const head = [...table().querySelectorAll("th button")].find((b) => b.textContent === "Session")!;
+  await act(async () => (head as HTMLElement).click());
+  expect(table().querySelector("th[aria-sort=ascending]")?.textContent).toBe("Session");
+  expect(titles()).not.toEqual(byUpdate);
+  const search = container.querySelector("input[type=search]") as HTMLInputElement;
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    set.call(search, "no such session");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(container.textContent).toContain("No matches");
+  await act(async () => button("Clear filters")!.click());
+  expect(container.textContent).not.toContain("No matches");
 });

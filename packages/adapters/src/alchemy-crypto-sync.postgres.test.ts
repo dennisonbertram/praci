@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb } from "@rakazo/db";
+import { asSystem, createDb, runAsTenant } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   hasAlchemyKey,
@@ -34,7 +34,9 @@ describePostgres("crypto sync with an Alchemy key (PostgreSQL)", () => {
   const spaceId = `alc-space-${suffix}`;
   const userId = `alc-user-${suffix}`;
   const otherUserId = `alc-other-${suffix}`;
+  // Fixtures and assertions run as the system; the sync under test runs as the tenant, as a request does.
   let prisma: PrismaClient;
+  let runtime: PrismaClient;
   let close: () => Promise<void>;
   let alchemyCalls: string[] = [];
   let alchemyReply: () => Response = () => json({ data: { tokens: [] } });
@@ -48,10 +50,12 @@ describePostgres("crypto sync with an Alchemy key (PostgreSQL)", () => {
     return rpc.fetch(input, init);
   }) as typeof fetch;
   const sync = (user = userId) =>
-    syncCryptoHoldings(
-      { prisma, secrets, fetch: fetchFn, callGapMs: 0, retryDelayMs: 0 },
-      { spaceId, userId: user },
-      { force: true },
+    runAsTenant({ spaceId, userId: user }, () =>
+      syncCryptoHoldings(
+        { prisma: runtime, secrets, fetch: fetchFn, callGapMs: 0, retryDelayMs: 0 },
+        { spaceId, userId: user },
+        { force: true },
+      ),
     );
   const rows = (owner = userId) =>
     prisma.financeCryptoHolding.findMany({
@@ -95,7 +99,8 @@ describePostgres("crypto sync with an Alchemy key (PostgreSQL)", () => {
 
   beforeAll(async () => {
     const db = createDb(databaseUrl as string);
-    prisma = db.prisma;
+    runtime = db.prisma;
+    prisma = asSystem(db.prisma);
     close = async () => {
       await db.prisma.$disconnect();
       await db.pool.end();

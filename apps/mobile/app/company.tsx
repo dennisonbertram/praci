@@ -6,7 +6,12 @@ import type {
   CompanyReview,
 } from "@rakazo/contracts";
 import { companyFactIsVisible } from "@rakazo/contracts";
-import { companyDate, companyFactTitle, companyHistoryItems } from "@rakazo/core";
+import {
+  companyDate,
+  companyFactTitle,
+  companyHistoryItems,
+  companyRelationKind,
+} from "@rakazo/core";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
@@ -16,6 +21,7 @@ import { NativeActionButton } from "../components/native-action-button";
 import { SettingsSwitch } from "../components/settings-group";
 import { rpc } from "../lib/api";
 import { companyCanCancel, companyCanPause, companyMonthOffset } from "../lib/company";
+import { companyRelationLabel } from "../lib/company-relation-label";
 import { maskAmountsWhenHidden, setHideAmounts, useHideAmounts } from "../lib/hide-amounts";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
@@ -63,6 +69,7 @@ function CompanyMap({ view }: { view: string }) {
     const entities = data.entities.filter(companyFactIsVisible);
     const edges = data.edges.filter(companyFactIsVisible);
     const events = data.events.filter(companyFactIsVisible);
+    const profile = entities.find((entity) => entity.kind === "company");
     if (view === "people") {
       for (const person of entities.filter((entity) => entity.kind === "person")) {
         rows.push({
@@ -82,9 +89,10 @@ function CompanyMap({ view }: { view: string }) {
           });
       }
     } else if (view === "history") {
-      for (const item of companyHistoryItems({ entities, edges, events }).sort((a, b) =>
-        b.start.date.localeCompare(a.start.date),
-      ))
+      for (const item of companyHistoryItems(
+        { entities, edges, events },
+        companyRelationLabel,
+      ).sort((a, b) => b.start.date.localeCompare(a.start.date)))
         rows.push({
           id: `${item.kind}:${item.id}`,
           title: maskAmountsWhenHidden(item.title),
@@ -121,7 +129,7 @@ function CompanyMap({ view }: { view: string }) {
         {
           key: "progress",
           title: t("Import progress"),
-          detail: data.latestRun?.status.replaceAll("_", " "),
+          detail: data.latestRun ? companyImportStatusName(t, data.latestRun.status) : undefined,
         },
       ];
       rows.push(
@@ -132,13 +140,30 @@ function CompanyMap({ view }: { view: string }) {
           onPress: () => router.push({ pathname: "/company", params: { view: key } }),
         })),
       );
-      for (const entity of entities.filter((entity) => entity.kind === "organisation"))
+      const relationLabels = {
+        supplier: t("Supplier"),
+        customer: t("Customer"),
+        investor: t("Investor"),
+        lawFirm: t("Law firm"),
+      };
+      for (const entity of entities.filter((entity) => entity.kind === "organisation")) {
+        const relation = profile
+          ? edges
+              .filter(
+                (edge) =>
+                  (edge.fromId === entity.id && edge.toId === profile.id) ||
+                  (edge.fromId === profile.id && edge.toId === entity.id),
+              )
+              .map((edge) => companyRelationKind(edge, profile.id))
+              .find((kind) => kind !== null)
+          : null;
         rows.push({
           id: entity.id,
           title: maskAmountsWhenHidden(entity.displayName),
-          detail: t("Organisation"),
+          detail: relation ? relationLabels[relation] : t("Organisation"),
           onPress: () => openFact("entity", entity.id),
         });
+      }
     }
   }
   return (
@@ -261,7 +286,9 @@ function CompanyReviewList() {
               }
             : {
                 id: item.id,
-                title: maskAmountsWhenHidden(companyFactTitle(item.fact)),
+                title: maskAmountsWhenHidden(
+                  companyFactTitle(item.fact, undefined, companyRelationLabel),
+                ),
                 detail:
                   item.reason === "contradiction" ? t("Conflicting evidence") : t("Not confirmed"),
                 onPress: () =>
@@ -275,7 +302,9 @@ function CompanyReviewList() {
                       onReject: () =>
                         Alert.alert(
                           t("Reject fact?"),
-                          maskAmountsWhenHidden(companyFactTitle(item.fact)),
+                          maskAmountsWhenHidden(
+                            companyFactTitle(item.fact, undefined, companyRelationLabel),
+                          ),
                           [
                             { text: t("Cancel"), style: "cancel" },
                             {
@@ -320,7 +349,7 @@ function CompanyProgress() {
       <QueryStatus {...query} />
       {progress ? (
         <View style={{ padding: 16, gap: 12 }}>
-          <Text style={{ color: native.label }}>{progress.status.replaceAll("_", " ")}</Text>
+          <Text style={{ color: native.label }}>{companyImportStatusName(t, progress.status)}</Text>
           <Text style={{ color: native.secondaryLabel }}>
             {t("Tokens")}: {progress.inputTokensUsed + progress.outputTokensUsed} /{" "}
             {progress.tokenCap}
@@ -364,11 +393,29 @@ function CompanyProgress() {
           id: source.id,
           title:
             query.data?.sources.find((entry) => entry.id === source.id)?.label ?? source.sourceKind,
-          detail: `${source.status.replaceAll("_", " ")} · ${source.itemsRead} / ${source.itemsDiscovered} ${t("items")} · ${source.factsFound} ${t("facts")} · ${source.inputTokensUsed + source.outputTokensUsed} ${t("tokens")}${source.lastError ? ` · ${source.lastError}` : ""}`,
+          detail: `${companyImportStatusName(t, source.status)} · ${source.itemsRead} / ${source.itemsDiscovered} ${t("items")} · ${source.factsFound} ${t("facts")} · ${source.inputTokensUsed + source.outputTokensUsed} ${t("tokens")}${source.lastError ? ` · ${source.lastError}` : ""}`,
         }))}
       />
     </>
   );
+}
+
+function companyImportStatusName(t: (id: string) => string, status: string): string {
+  const names: Record<string, string> = {
+    running: t("Importing"),
+    paused: t("Paused"),
+    awaiting_consent: t("Consent required"),
+    budget_reached: t("Token cap reached"),
+    preview_ready: t("Sample ready"),
+    completed: t("Done"),
+    partial: t("Partial import"),
+    failed: t("Failed"),
+    cancelled: t("Cancelled"),
+    discarded: t("Discarded"),
+    waiting: t("Waiting"),
+    reading: t("Reading"),
+  };
+  return names[status] ?? status.replaceAll("_", " ");
 }
 
 function QueryStatus({

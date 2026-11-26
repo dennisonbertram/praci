@@ -9,7 +9,7 @@ import type { CallToolResult, ListToolsResult } from "@modelcontextprotocol/sdk/
 import { isLocalMcpHost } from "@rakazo/contracts";
 import { combineSignals } from "./connector-safety.js";
 import type { RemoteTransportDependencies, SafeRemoteFetch } from "./remote-mcp.js";
-import { createSafeRemoteFetch } from "./remote-mcp.js";
+import { createSafeRemoteFetch, listMcpTools } from "./remote-mcp.js";
 
 export type McpRemoteTransport = "streamable-http" | "sse";
 
@@ -42,8 +42,13 @@ export interface McpRemoteOptions {
   allowLegacySse?: boolean;
   /** Fall back to SSE only after a fresh Streamable HTTP client fails. */
   fallbackToSse?: boolean;
-  /** Let the official SDK own token refresh, re-authentication, and request retry. */
-  authProvider?: OAuthClientProvider;
+  /**
+   * Let the official SDK own re-authentication and request retry. `wrapFetch`
+   * lets the provider serve the SDK's token refresh itself.
+   */
+  authProvider?: OAuthClientProvider & {
+    wrapFetch?: (fetch: typeof globalThis.fetch) => typeof globalThis.fetch;
+  };
   network?: RemoteTransportDependencies;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -61,6 +66,14 @@ export interface McpStdioOptions {
   timeoutMs?: number;
 }
 
+/** How long a tool call may go without an answer or a progress report. Real calls (a
+ * search across mail folders, a document export) take minutes; connecting stays short.
+ * Below the HTTP client's default five-minute header wait, so this timeout fires first. */
+export const MCP_TOOL_TIMEOUT_MS = 4 * 60_000;
+/** Progress restarts the wait, but never past this. The run's own cancellation still
+ * ends a call at any time. */
+export const MCP_TOOL_MAX_TOTAL_MS = 15 * 60_000;
+
 export interface McpClientOptions {
   name?: string;
   version?: string;
@@ -70,6 +83,12 @@ export interface McpClientOptions {
 const DEFAULT_HEADERS = ["accept", "content-type", "authorization", "user-agent"];
 const RESOURCE_HEADERS = new Set(["mcp-session-id", "mcp-protocol-version", "last-event-id"]);
 const DEFAULT_MAX_URL_LENGTH = 2_048;
+/**
+ * An authorization URL is opened by the browser, not fetched by the server, and carries
+ * every scope the MCP server publishes (PostHog lists over 150, about 3,000 characters).
+ * Bound it separately from MCP endpoints, at a size browsers and common web servers accept.
+ */
+export const MAX_AUTHORIZATION_URL_LENGTH = 8_192;
 
 function validateUrl(raw: string | URL, policy: McpUrlPolicy = {}): URL {
   const url = new URL(raw.toString());
@@ -222,6 +241,23 @@ export function withEndpointOriginFallback(
   };
 }
 
+/** The deployment's stdio settings, as MCP_STDIO_ENABLED and MCP_STDIO_ALLOWED_COMMANDS set them. */
+export type McpStdioPolicy = { stdioEnabled?: boolean; allowedCommands?: readonly string[] };
+
+/** Whether this deployment can run any stdio MCP server. */
+export function mcpStdioAvailable(policy: McpStdioPolicy): boolean {
+  return policy.stdioEnabled === true && (policy.allowedCommands?.length ?? 0) > 0;
+}
+
+/** Why this deployment can't run a stdio server with `command`, or undefined when it can. */
+export function mcpStdioRefusal(command: string, policy: McpStdioPolicy): string | undefined {
+  if (!mcpStdioAvailable(policy)) return "Stdio MCP servers aren't available here";
+  const trimmed = command.trim();
+  if (!trimmed || !policy.allowedCommands?.includes(trimmed))
+    return "This stdio command isn't allowed here";
+  return undefined;
+}
+
 function stdioParams(options: McpStdioOptions): StdioServerParameters {
   const command = options.command.trim();
   if (!command || !options.allowedCommands.includes(command)) {
@@ -275,7 +311,8 @@ export class McpSession {
       options.network,
     );
     this.remoteFetch = safeFetch;
-    const fetch = withEndpointOriginFallback(url.origin, safeFetch);
+    const originFetch = withEndpointOriginFallback(url.origin, safeFetch);
+    const fetch = options.authProvider?.wrapFetch?.(originFetch) ?? originFetch;
     const signal = combineSignals(options.signal, AbortSignal.timeout(options.timeoutMs ?? 15_000));
     let usedFallback = false;
     const connect = async (kind: McpRemoteTransport): Promise<void> => {
@@ -337,7 +374,16 @@ export class McpSession {
   async connectStdio(options: McpStdioOptions): Promise<void> {
     if (this.connected || this.connecting)
       throw new Error("MCP session is already connected or connecting");
-    const transport = new StdioClientTransport(stdioParams(options));
+    await this.connectTransport(new StdioClientTransport(stdioParams(options)), options);
+  }
+
+  /** Connects over a transport the caller built, such as one side of an in-process linked pair. */
+  async connectTransport(
+    transport: Transport,
+    options: { signal?: AbortSignal; timeoutMs?: number } = {},
+  ): Promise<void> {
+    if (this.connected || this.connecting)
+      throw new Error("MCP session is already connected or connecting");
     this.transport = transport;
     const signal = combineSignals(options.signal, AbortSignal.timeout(options.timeoutMs ?? 15_000));
     this.connecting = this.client
@@ -353,18 +399,28 @@ export class McpSession {
 
   async listTools(options?: { signal?: AbortSignal }): Promise<ListToolsResult> {
     this.assertConnected();
-    return this.client.listTools({}, { signal: options?.signal });
+    return { tools: await listMcpTools(this.client, { signal: options?.signal }) };
   }
 
   async callTool(
     name: string,
     args: Record<string, unknown> = {},
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal; meta?: Record<string, unknown>; timeoutMs?: number },
   ): Promise<CallToolResult> {
     this.assertConnected();
-    return (await this.client.callTool({ name, arguments: args }, undefined, {
-      signal: options?.signal,
-    })) as CallToolResult;
+    const timeout = options?.timeoutMs ?? MCP_TOOL_TIMEOUT_MS;
+    return (await this.client.callTool(
+      { name, arguments: args, ...(options?.meta ? { _meta: options.meta } : {}) },
+      undefined,
+      {
+        signal: options?.signal,
+        timeout,
+        // A progress handler is what asks the server for progress reports at all.
+        onprogress: () => undefined,
+        resetTimeoutOnProgress: true,
+        maxTotalTimeout: Math.max(timeout, MCP_TOOL_MAX_TOTAL_MS),
+      },
+    )) as CallToolResult;
   }
 
   async close(): Promise<void> {

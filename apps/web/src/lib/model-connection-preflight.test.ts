@@ -4,7 +4,6 @@ import {
   loadStoredModelAuth,
   modelPreflightSuccessMessage,
   runModelConnectionPreflight,
-  sanitizeModelConnectionError,
   unavailableSelectedModel,
 } from "./model-connection-preflight.js";
 
@@ -14,15 +13,47 @@ vi.mock("@lingui/core/macro", () => ({
     (value === 1 ? forms.one : forms.other).replaceAll("#", String(value)),
 }));
 
-describe("sanitizeModelConnectionError", () => {
-  it("redacts api key patterns", () => {
-    expect(sanitizeModelConnectionError("Invalid sk-secretkey1234567890")).not.toContain(
-      "sk-secretkey1234567890",
-    );
-  });
-});
-
 describe("classifyModelConnectionFailure", () => {
+  it("never shows the key the connection was tested with", () => {
+    const failure = classifyModelConnectionFailure(
+      new Error("401 Unauthorized: key plain-typed-value-1234 is not valid"),
+      { secrets: ["plain-typed-value-1234"] },
+    );
+    expect(failure.outcome).toBe("unauthorized");
+    expect(failure.message).not.toContain("plain-typed-value-1234");
+  });
+
+  it("hides the key a failed catalog test sent", async () => {
+    const result = await runModelConnectionPreflight({
+      authKind: "api-key",
+      provider: "openai",
+      apiKey: "plain-typed-value-1234",
+      catalogProbe: true,
+      probeCatalog: async ({ apiKey }) => {
+        throw new Error(`Request failed: ${apiKey} rejected`);
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.failure.message).not.toContain("plain-typed-value-1234");
+  });
+
+  it.each([
+    ["rate_limit", "429 Too Many Requests"],
+    ["rate_limit", "HTTP 429"],
+    ["unauthorized", "Request failed with status 401"],
+    ["unauthorized", "HTTP 403: forbidden"],
+  ])("reads %s from the status code in %j", (outcome, message) => {
+    expect(classifyModelConnectionFailure(new Error(message)).outcome).toBe(outcome);
+  });
+
+  it.each([
+    "connect ECONNREFUSED 127.0.0.1:4030",
+    "connect ECONNREFUSED 127.0.0.1:14290",
+    "connect ECONNREFUSED 10.0.0.1:34010",
+  ])("does not read a port or id as a status code in %j", (message) => {
+    expect(classifyModelConnectionFailure(new Error(message)).outcome).toBe("unreachable");
+  });
+
   it("detects rate limits and timeouts", () => {
     expect(classifyModelConnectionFailure(new Error("429 rate limit")).outcome).toBe("rate_limit");
     expect(classifyModelConnectionFailure(new Error("probe timed out")).outcome).toBe("timeout");

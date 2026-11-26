@@ -23,6 +23,7 @@ import type { BotIntroHarness } from "./discard-bot-intro.js";
 import { discardBotIntroFromCreate } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
 import { isolatedDatabase } from "./isolated-database.js";
+import { grantTestModelConsent } from "./test-consent.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 process.env.WAKEUP_DRIVER = "memory";
@@ -1214,14 +1215,26 @@ describeJourneys("required product journeys", () => {
       name: "routine.wakeup",
       payload: { routineId: routine.id, scheduledFor: dueAt.toISOString() },
     });
-    const snap = await waitFor(app, cookie, bot.id, (s) =>
-      s.messages.some(
-        (m) =>
-          JSON.stringify(m.blocks).includes("routine-ok") ||
-          JSON.stringify(m.blocks).includes("writing"),
-      ),
+    const waiting = await waitFor(
+      app,
+      cookie,
+      bot.id,
+      (snap) => snap.run?.status === "waiting_input",
     );
+    const runId = waiting.run?.id;
+    if (!runId) throw new Error("routine run was not found while it awaited approval");
+    await answerPendingApproval(app, cookie, bot.id, runId, "allow", waiting);
+    await waitForDatabase(async () => {
+      const run = await prisma.run.findUnique({ where: { id: runId }, select: { status: true } });
+      return run?.status === "completed";
+    });
+    const snap = await rpc<Snap>(app, cookie, "threads/get", { botId: bot.id });
     expect(snap.messages.length).toBeGreaterThan(0);
+    const file = await rpc<{ content: string }>(app, cookie, "computer/readFile", {
+      botId: bot.id,
+      path: "notes/result.txt",
+    });
+    expect(file.content).toContain("routine-ok");
     const routineRuns = await prisma.run.count({
       where: { botId: bot.id, trigger: "routine" },
     });
@@ -1478,7 +1491,30 @@ describeJourneys("required product journeys", () => {
       label: "test",
       modelId: "scripted",
     });
-    await sendAndWait(app, cookie, bot.id, "write this to the destination crm as a note");
+    const storedBot = await prisma.bot.findUniqueOrThrow({ where: { id: bot.id } });
+    await grantTestModelConsent(prisma, storedBot, {
+      provider: "openrouter",
+      modelId: "scripted",
+    });
+    const sent = await rpc<{ runId: string }>(app, cookie, "threads/send", {
+      botId: bot.id,
+      text: "write this to the destination crm as a note",
+    });
+    const waiting = await waitFor(
+      app,
+      cookie,
+      bot.id,
+      (snap) => snap.run?.status === "waiting_input",
+    );
+    expect(connector.records).toHaveLength(before);
+    await answerPendingApproval(app, cookie, bot.id, sent.runId, "allow", waiting);
+    await waitForDatabase(async () => {
+      const run = await prisma.run.findUnique({
+        where: { id: sent.runId },
+        select: { status: true },
+      });
+      return run?.status === "completed";
+    });
     expect(connector.records.length).toBeGreaterThan(before);
     const snap = await rpc<Snap>(app, cookie, "threads/get", { botId: bot.id });
     expect(JSON.stringify(snap)).not.toContain(secret);
@@ -1501,12 +1537,21 @@ describeJourneys("required product journeys", () => {
       botId: bot.id,
       text: "write this to the destination crm as a note",
     });
-    await waitFor(
+    const waiting = await waitFor(
       app,
       cookie,
       bot.id,
-      (s) => !s.run || ["completed", "failed", "cancelled"].includes(s.run.status),
+      (s) => s.run?.id === sent.runId && s.run.status === "waiting_input",
     );
+    expect(connector.records).toHaveLength(before);
+    await answerPendingApproval(app, cookie, bot.id, sent.runId, "allow", waiting);
+    await waitForDatabase(async () => {
+      const run = await prisma.run.findUnique({
+        where: { id: sent.runId },
+        select: { status: true },
+      });
+      return run?.status === "completed";
+    });
     const afterFirst = connector.records.length;
     expect(afterFirst).toBeGreaterThan(before);
     await prisma.run.update({
@@ -1531,6 +1576,11 @@ describeJourneys("required product journeys", () => {
       provider: "openrouter",
       apiKey: secret,
       label: "hidden",
+      modelId: "scripted",
+    });
+    const storedBot = await prisma.bot.findUniqueOrThrow({ where: { id: bot.id } });
+    await grantTestModelConsent(prisma, storedBot, {
+      provider: "openrouter",
       modelId: "scripted",
     });
     await sendAndWait(
@@ -1744,17 +1794,38 @@ describeJourneys("required product journeys", () => {
       (s) => !s.run || ["completed", "failed", "cancelled"].includes(s.run.status),
     );
 
-    await sendAndWait(app, cookie, parent.id, "delete the bot named Nested");
+    async function askToDelete(name: string) {
+      const sent = await rpc<{ runId: string }>(app, cookie, "threads/send", {
+        botId: parent.id,
+        text: `delete the bot named ${name}`,
+      });
+      const waiting = await waitFor(
+        app,
+        cookie,
+        parent.id,
+        (snap) => snap.run?.id === sent.runId && snap.run.status === "waiting_input",
+      );
+      await answerPendingApproval(app, cookie, parent.id, sent.runId, "allow", waiting);
+      await waitForDatabase(async () => {
+        const run = await prisma.run.findUnique({
+          where: { id: sent.runId },
+          select: { status: true },
+        });
+        return Boolean(run && ["completed", "failed", "cancelled"].includes(run.status));
+      });
+    }
+
+    await askToDelete("Nested");
     expect((await rpc<Bot[]>(app, cookie, "bots/list")).some((bot) => bot.id === nested!.id)).toBe(
       true,
     );
 
-    await sendAndWait(app, cookie, parent.id, "delete the bot named WrongName");
+    await askToDelete("WrongName");
     expect((await rpc<Bot[]>(app, cookie, "bots/list")).some((bot) => bot.id === scout!.id)).toBe(
       true,
     );
 
-    await sendAndWait(app, cookie, parent.id, "delete the bot named Scout");
+    await askToDelete("Scout");
     const afterScout = await rpc<Bot[]>(app, cookie, "bots/list");
     expect(afterScout.some((bot) => bot.id === scout!.id)).toBe(false);
     expect(afterScout.some((bot) => bot.id === nested!.id)).toBe(true);
@@ -1763,7 +1834,7 @@ describeJourneys("required product journeys", () => {
     expect((await rpc<Bot[]>(app, cookie, "bots/list")).map((bot) => bot.name)).toEqual(["Nested"]);
   });
 
-  it("12b: a bot can silence and resume its own finish notifications", async () => {
+  it("12b: the owner can silence and resume a bot's finish notifications", async () => {
     const cookie = await signup(app, `notify-finish-j-${stamp}@rakazo.test`, "Notify");
     const bot = await rpc<Bot>(app, cookie, "bots/create", {
       name: "Chief",
@@ -1774,12 +1845,12 @@ describeJourneys("required product journeys", () => {
     });
     expect(bot.notifyOnFinish).toBe(true);
 
-    await sendAndWait(app, cookie, bot.id, "silence finish notifications");
+    await rpc(app, cookie, "bots/update", { botId: bot.id, notifyOnFinish: false });
     const silenced = (await rpc<Bot[]>(app, cookie, "bots/list")).find((row) => row.id === bot.id);
     expect(silenced?.notifyOnFinish).toBe(false);
     expect((await rpc<Bot>(app, cookie, "bots/get", { botId: bot.id })).notifyOnFinish).toBe(false);
 
-    await sendAndWait(app, cookie, bot.id, "resume finish notifications");
+    await rpc(app, cookie, "bots/update", { botId: bot.id, notifyOnFinish: true });
     expect(
       (await rpc<Bot[]>(app, cookie, "bots/list")).find((row) => row.id === bot.id)?.notifyOnFinish,
     ).toBe(true);
@@ -2003,12 +2074,20 @@ describeJourneys("required product journeys", () => {
       routineId: routine.id,
     });
     expect(tested.runId).toBeTruthy();
-    await waitFor(
+    const waiting = await waitFor(
       app,
       ada,
       bot.id,
-      (s) => !s.run || ["completed", "failed", "cancelled"].includes(s.run.status),
+      (snap) => snap.run?.id === tested.runId && snap.run.status === "waiting_input",
     );
+    await answerPendingApproval(app, ada, bot.id, tested.runId, "allow", waiting);
+    await waitForDatabase(async () => {
+      const run = await prisma.run.findUnique({
+        where: { id: tested.runId },
+        select: { status: true },
+      });
+      return run?.status === "completed";
+    });
     const file = await rpc<{ content: string }>(app, ada, "computer/readFile", {
       botId: bot.id,
       path: "notes/result.txt",
@@ -2649,7 +2728,7 @@ describeJourneys("required product journeys", () => {
     expect(deniedEffect?.status).toBe("denied");
   });
 
-  it("20: actions run by default and specific exceptions override broad review rules", async () => {
+  it("20: a specific tool allowance overrides connector review and a later tool rule", async () => {
     const cookie = await signup(app, `always-j-${stamp}@rakazo.test`, "Always");
     const bot = await rpc<Bot>(app, cookie, "bots/create", {
       name: "Chief",
@@ -2660,8 +2739,25 @@ describeJourneys("required product journeys", () => {
     });
     const prompt = "write this to the destination crm as a note";
     const recordsBefore = connector.records.length;
-
-    await sendAndWait(app, cookie, bot.id, prompt);
+    const first = await rpc<{ runId: string }>(app, cookie, "threads/send", {
+      botId: bot.id,
+      text: prompt,
+    });
+    const firstWaiting = await waitFor(
+      app,
+      cookie,
+      bot.id,
+      (snap) => snap.run?.id === first.runId && snap.run.status === "waiting_input",
+    );
+    expect(connector.records).toHaveLength(recordsBefore);
+    await answerPendingApproval(app, cookie, bot.id, first.runId, "allow", firstWaiting);
+    await waitForDatabase(async () => {
+      const run = await prisma.run.findUnique({
+        where: { id: first.runId },
+        select: { status: true },
+      });
+      return run?.status === "completed";
+    });
     expect(connector.records.length).toBeGreaterThan(recordsBefore);
     const recordsAfterDefault = connector.records.length;
 
@@ -2760,6 +2856,14 @@ describeJourneys("required product journeys", () => {
       (snap) => !snap.run || ["completed", "failed", "cancelled"].includes(snap.run.status),
     );
     expect(connector.records.length).toBeGreaterThan(recordsBefore);
+    // A test run counts as the last run for the status line.
+    const listed = await rpc<Array<{ id: string; lastRunAt: string | null }>>(
+      app,
+      cookie,
+      "routines/list",
+      { botId: bot.id },
+    );
+    expect(listed.find((r) => r.id === routine.id)?.lastRunAt).toBeTruthy();
   });
 
   it("22: a routine schedule with any malformed or mixed one-shot cron is rejected", async () => {
@@ -2791,6 +2895,62 @@ describeJourneys("required product journeys", () => {
       active: false,
     });
     expect(mixedOneShot.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("routine timezone writes reject invalid zones without changing persisted schedules", async () => {
+    const cookie = await signup(app, `routine-zones-j-${stamp}@rakazo.test`, "Routine Zones");
+    const bot = await rpc<Bot>(app, cookie, "bots/create", { name: "Scheduler" });
+    const input = {
+      botId: bot.id,
+      name: "Daily",
+      prompt: "Check",
+      crons: ["0 9 * * *"],
+      active: false,
+    };
+    for (const timezone of ["Mars/Olympus_Mons", "", "+01:00"]) {
+      const response = await raw(app, cookie, "routines/create", { ...input, timezone });
+      expect.soft(response.status).toBe(400);
+    }
+    expect.soft(await prisma.routine.count({ where: { botId: bot.id } })).toBe(0);
+    const routine = await rpc<{ id: string; timezone: string }>(
+      app,
+      cookie,
+      "routines/create",
+      input,
+    );
+    expect(routine.timezone).toBe("UTC");
+    const before = await prisma.routine.findUniqueOrThrow({ where: { id: routine.id } });
+    for (const timezone of ["Mars/Olympus_Mons", "", "+01:00"]) {
+      const response = await raw(app, cookie, "routines/update", {
+        routineId: routine.id,
+        timezone,
+        name: "Changed",
+      });
+      expect.soft(response.status).toBe(400);
+      expect
+        .soft(await prisma.routine.findUniqueOrThrow({ where: { id: routine.id } }))
+        .toEqual(before);
+    }
+    for (const timezone of ["Pacific/Auckland", "UTC"]) {
+      const created = await rpc<{ id: string; timezone: string }>(app, cookie, "routines/create", {
+        ...input,
+        timezone,
+      });
+      expect(created.timezone).toBe(timezone);
+      const updated = await rpc<{ timezone: string }>(app, cookie, "routines/update", {
+        routineId: routine.id,
+        timezone,
+      });
+      expect(updated.timezone).toBe(timezone);
+      expect((await prisma.routine.findUniqueOrThrow({ where: { id: routine.id } })).timezone).toBe(
+        timezone,
+      );
+    }
+    const renamed = await rpc<{ timezone: string }>(app, cookie, "routines/update", {
+      routineId: routine.id,
+      name: "Renamed",
+    });
+    expect(renamed.timezone).toBe("UTC");
   });
 
   it("23: never-run one-shot templates can be armed with a future runAt", async () => {

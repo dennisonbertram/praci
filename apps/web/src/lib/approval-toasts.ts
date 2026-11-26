@@ -17,8 +17,10 @@ export type ApprovalChat = {
 const pending = new Map<string, { toast: NotificationToastInput; chat: ApprovalChat }>();
 /** Approvals the person dismissed: a later rebuild from the server must not show them again. */
 const dismissed = new Set<string>();
+/** Approvals hidden with the group's X this session: hidden here, still pending on the server. */
+const hidden = new Set<string>();
 const shown = new Set<string>();
-/** The approval whose group toast was just opened: opening clears it alone, dismissing clears all. */
+/** The approval whose group toast was just opened: opening clears it alone, dismissing hides the rest. */
 let openedId: string | undefined;
 /** True while this module closes toasts itself, so their `onClose` does not count as the person's dismissal. */
 let syncing = false;
@@ -33,6 +35,7 @@ function wanted(): NotificationToastInput[] {
       id: GROUP_ID,
       title: t`${entries.length} need approval`,
       href: newest.toast.href,
+      avatar: newest.toast.avatar,
       onSeen: () => {
         openedId = newest.toast.id;
         newest.toast.onSeen?.();
@@ -66,13 +69,20 @@ function sync() {
     const onClose = () => {
       if (syncing) return;
       shown.delete(id);
-      const opened = openedId !== undefined && (id === GROUP_ID || openedId === id);
-      const gone = id !== GROUP_ID ? [id] : openedId ? [openedId] : [...pending.keys()];
-      // Dismissing the group dismisses every approval in it. Opening one only clears its toast:
-      // it comes back if the person leaves the chat without answering.
+      const opened =
+        id === GROUP_ID ? openedId !== undefined && pending.has(openedId) : openedId === id;
+      const gone = id !== GROUP_ID ? [id] : opened && openedId ? [openedId] : [...pending.keys()];
+      // Dismissing the group hides its approvals for this session only: they are still pending
+      // on the server. Opening one only clears its toast: it comes back if the person leaves the
+      // chat without answering.
       for (const goneId of gone) {
         const entry = pending.get(goneId);
         pending.delete(goneId);
+        if (goneId === openedId) openedId = undefined;
+        if (id === GROUP_ID) {
+          if (!opened) hidden.add(goneId);
+          continue;
+        }
         if (opened) continue;
         dismissed.add(goneId);
         entry?.chat.onDismiss?.();
@@ -104,7 +114,8 @@ export function markApprovalChatOpen(botId: string) {
 }
 
 export function enqueueApprovalToast(toast: NotificationToastInput, chat: ApprovalChat = {}) {
-  if (dismissed.has(toast.id) || (chat.botId && openBots.has(chat.botId))) return;
+  if (dismissed.has(toast.id) || hidden.has(toast.id) || (chat.botId && openBots.has(chat.botId)))
+    return;
   pending.set(toast.id, { toast: { ...toast, timeout: 0 }, chat: { href: toast.href, ...chat } });
   sync();
 }
@@ -116,19 +127,50 @@ export function enqueueApprovalToast(toast: NotificationToastInput, chat: Approv
 export function dismissApprovalToasts(chat: string | ApprovalChat) {
   const ref = typeof chat === "string" ? { href: chat } : chat;
   let changed = false;
+  let reset = false;
   for (const [id, entry] of pending)
-    if ((ref.href && entry.chat.href === ref.href) || (ref.botId && entry.chat.botId === ref.botId))
+    if (
+      (ref.href && entry.chat.href === ref.href) ||
+      (ref.botId && entry.chat.botId === ref.botId)
+    ) {
       changed = pending.delete(id) || changed;
+      if (id === openedId) reset = true;
+    }
+  if (reset) openedId = undefined;
   if (changed) sync();
 }
 
 /** Keeps only the approvals the server still reports unanswered; the others were answered elsewhere. */
 export function retainApprovalToasts(unansweredIds: ReadonlySet<string>) {
+  // A hidden approval that was answered is forgotten, so a later one reusing its id shows again.
+  for (const id of [...hidden]) if (!unansweredIds.has(id)) hidden.delete(id);
   let changed = false;
+  let reset = false;
   for (const id of [...pending.keys()])
-    if (!unansweredIds.has(id)) changed = pending.delete(id) || changed;
+    if (!unansweredIds.has(id)) {
+      changed = pending.delete(id) || changed;
+      if (id === openedId) reset = true;
+    }
+  if (reset) openedId = undefined;
   if (changed) sync();
 }
 
 export const hasApprovalToast = (id: string) => pending.has(id) || dismissed.has(id);
 export const hasApprovalToasts = () => pending.size > 0;
+
+/** Adds the sender's avatar once it is known; the toast shows without waiting for it. */
+export function setApprovalToastAvatar(id: string, avatar: NotificationToastInput["avatar"]) {
+  const entry = pending.get(id);
+  if (!entry || entry.toast.avatar || !avatar) return;
+  entry.toast = { ...entry.toast, avatar };
+  sync();
+}
+
+/** The session ended: close every approval toast and forget what was dismissed, so the next sign-in starts clean. */
+export function clearApprovalToasts() {
+  pending.clear();
+  dismissed.clear();
+  hidden.clear();
+  openedId = undefined;
+  sync();
+}

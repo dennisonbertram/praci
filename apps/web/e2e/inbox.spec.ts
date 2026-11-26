@@ -58,6 +58,15 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   await tabs.getByRole("tab", { name: "All" }).click();
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
 
+  // Checking two rows shows the selection bar with its bulk actions.
+  await main.getByRole("checkbox", { name: "Select Sam Rivera" }).click();
+  await main.getByRole("checkbox", { name: "Select GitHub" }).click();
+  await expect(main.getByText("2 selected")).toBeVisible();
+  await expect(main.getByRole("button", { name: "Mark read" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "inbox-selection-bar");
+  await page.keyboard.press("Escape");
+  await expect(main.getByText("2 selected")).toHaveCount(0);
+
   // The message's remote image and link point at hosts the test serves itself, so it stays offline.
   const bannerSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="96"><rect width="320" height="96" fill="#d97706"/><text x="16" y="56" font-size="28" fill="#fff" font-family="sans-serif">Offsite Oct 14</text></svg>';
@@ -94,6 +103,14 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
       .toBe(true);
   }
   await captureScreenshot(page, testInfo, "inbox-message-open");
+
+  // More holds the message's moves: Spam and Trash while it is in the inbox.
+  await dialog.getByRole("button", { name: "More" }).click();
+  await expect(page.getByRole("menuitem", { name: "Spam" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Trash" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "inbox-message-more");
+  await dialog.getByText("Offsite dates", { exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "Spam" })).toHaveCount(0);
 
   // Links open in a new tab that cannot reach the app; a javascript: link has no target.
   await expect(body.locator("a#unsafe")).not.toHaveAttribute("href", /./);

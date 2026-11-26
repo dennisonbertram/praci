@@ -1,0 +1,23 @@
+{
+  "json": {
+    "tickets": [
+      {
+        "id": "ticket-placeholder",
+        "boardId": "board-placeholder",
+        "spaceId": "space-placeholder",
+        "number": 1,
+        "ref": "RAK-1",
+        "title": "Review the mock onboarding flow",
+        "description": "Check the first run experience with invented data.",
+        "status": "doing",
+        "priority": "high",
+        "assigneeBotId": "bot-placeholder",
+        "createdByBotId": null,
+        "createdByUserId": "user-placeholder",
+        "createdAt": "2026-11-14T12:00:00Z",
+        "updatedAt": "2026-11-14T12:30:00Z",
+        "completedAt": null
+      }
+    ]
+  }
+}

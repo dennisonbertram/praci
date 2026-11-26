@@ -146,7 +146,7 @@ it("links Synced to the stored-meetings list and shows no key field while connec
   const link = [...container.querySelectorAll("a")].find(
     (a) => a.textContent === "Synced 3 meetings",
   );
-  expect(link?.getAttribute("href")).toBe("/app/integrations/granola/meetings");
+  expect(link?.getAttribute("href")).toBe("/app/meetings?source=granola");
   expect(field()).toBeNull();
   expect(text()).not.toContain("Sends your meeting notes");
   expect(text()).not.toContain("Sign-in");
@@ -156,7 +156,7 @@ it("links Synced to the stored-meetings list and shows no key field while connec
 
 const listHref = (label: string) =>
   [...container.querySelectorAll("a")].find((a) => a.textContent === label)?.getAttribute("href");
-const LIST = "/app/integrations/granola/meetings";
+const LIST = "/app/meetings?source=granola";
 
 it("says Synced 1 meeting for one stored meeting", async () => {
   await show({ ...base, syncedCount: 1 });

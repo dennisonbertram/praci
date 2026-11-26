@@ -39,7 +39,50 @@ const fullSkill = (e: BotAgentSkill): AgentSkill => ({
   updatedAt: "2026-01-01T00:00:00.000Z",
 });
 
+const taughtRows = [
+  {
+    id: "taught_1",
+    name: "Export the weekly report",
+    goal: "Export the weekly report from the demo dashboard",
+    lastRunAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "taught_2",
+    name: "File sample invoices",
+    goal: "Check each new invoice and file it",
+    lastRunAt: null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+];
+
+const taughtFull = {
+  id: "taught_1",
+  botId: "bot_demo",
+  name: "Export the weekly report",
+  goal: "Export the weekly report from the demo dashboard",
+  status: "saved",
+  playbook: {
+    whenToUse: "Every Monday.",
+    inputs: [],
+    steps: ["Open the demo dashboard", "Click Export", "Save the file to Documents"],
+    howToCheck: "The file exists.",
+    whatToReturn: "The file name.",
+    approvalBoundaries: "",
+    failureHandling: "",
+  },
+  recording: { events: [], snapshots: [] },
+  startedAt: null,
+  expiresAt: null,
+  stoppedAt: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+
 const loaded = {
+  "taughtSkills.list": taughtRows,
+  "skills.get": taughtFull,
+  "routines.list": [],
   "agentSkills.forBot": skills,
   "agentSkills.drafts": [],
   "agentSkills.setEnabled": { ok: true },
@@ -96,6 +139,71 @@ export const AgentDrafts: Story = {
     }),
 };
 
+/** Taught skills sit under the bot's own skills, with the last run and a menu that deletes. */
+export const TaughtGroup: Story = {};
+
+export const TaughtSkillOpen: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: /Export the weekly report/ }),
+    );
+  },
+};
+
+export const TaughtDeleteConfirm: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "routines.list": [{ id: "routine_1", taughtSkill: { id: "taught_1", name: "Export" } }],
+    }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", {
+        name: "Actions for Export the weekly report",
+      }),
+    );
+    await userEvent.click(await within(document.body).findByRole("menuitem", { name: "Delete" }));
+  },
+};
+
+const toolSource =
+  "function run(input) {\n  const total = input.transactions.reduce((sum, t) => sum + t.amount, 0);\n  return { total, perWeek: total / 4 };\n}";
+
+/** A bot-built tool waiting for approval: its two plain lines, the test run and the script. */
+export const ToolDraft: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "agentSkills.drafts": [
+        {
+          id: "draft_tool",
+          name: "weekly_burn",
+          description: "Total spend and average per week from a list of transactions.",
+          content:
+            "---\nname: weekly_burn\ndescription: Total spend and average per week from a list of transactions.\n---\n\nFetch the transactions, then call tool_run.\n",
+          revision: false,
+          tool: {
+            source: toolSource,
+            hash: "0".repeat(64),
+            reads: "The transactions you pass in",
+            writes: "nothing",
+            sampleInput: { transactions: [{ amount: 120, date: "2026-01-02" }] },
+            sampleOutput: { total: 120, perWeek: 30 },
+          },
+        },
+      ],
+    }),
+};
+
+/** An approved tool carries a small Tool label in the list. */
+export const ActiveTool: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "agentSkills.forBot": [{ ...entry("skill_9", "weekly_burn", "user"), tool: true }, ...skills],
+    }),
+};
+
 export const AddSkill: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add skill" }));
@@ -144,6 +252,16 @@ export const LoadFailed: Story = {
   beforeEach: () =>
     mockRpc({
       "agentSkills.forBot": () => {
+        throw new Error("offline");
+      },
+    }),
+};
+
+export const TaughtLoadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "taughtSkills.list": () => {
         throw new Error("offline");
       },
     }),

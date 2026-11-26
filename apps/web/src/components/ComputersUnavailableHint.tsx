@@ -25,6 +25,8 @@ type ComputersUnavailableHintProps = {
   onRecoveryDismissed?: () => void;
   /** When false, hides Check again (e.g. inline preview without actions). */
   showRetry?: boolean;
+  /** Only owners can change the server environment; members get a one-line message. */
+  deploymentOwner?: boolean;
 };
 
 export function ComputersUnavailableHint({
@@ -34,6 +36,7 @@ export function ComputersUnavailableHint({
   onRecovered,
   onRecoveryDismissed,
   showRetry = true,
+  deploymentOwner = false,
 }: ComputersUnavailableHintProps) {
   const { t } = useLingui();
   const [provider, setProvider] = useState(initialProvider);
@@ -100,7 +103,13 @@ export function ComputersUnavailableHint({
         <SuccessPop label={t`Computers are available. Reload or open a bot to continue.`} />
       ) : null}
 
-      {showUnavailableCopy ? <UnavailableCopy kind={kind} failureMessage={failureMessage} /> : null}
+      {showUnavailableCopy ? (
+        <UnavailableCopy
+          kind={kind}
+          failureMessage={failureMessage}
+          deploymentOwner={deploymentOwner}
+        />
+      ) : null}
 
       {showRetry && (unavailable || phase === "failure") ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -114,7 +123,7 @@ export function ComputersUnavailableHint({
           >
             {phase === "loading" ? <Trans>Checking…</Trans> : <Trans>Check again</Trans>}
           </Button>
-          {onOpenComputerSettings ? (
+          {deploymentOwner && onOpenComputerSettings ? (
             <Button
               type="button"
               variant="outline"
@@ -125,15 +134,17 @@ export function ComputersUnavailableHint({
               <Trans>Open computer settings</Trans>
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="rounded-full"
-            onClick={() => copy(sandboxEnvGuidanceText())}
-          >
-            {copied ? <Trans>Copied</Trans> : <Trans>Copy .env example</Trans>}
-          </Button>
+          {deploymentOwner ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              onClick={() => copy(sandboxEnvGuidanceText())}
+            >
+              {copied ? <Trans>Copied</Trans> : <Trans>Copy .env example</Trans>}
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -143,10 +154,20 @@ export function ComputersUnavailableHint({
 function UnavailableCopy({
   kind,
   failureMessage,
+  deploymentOwner,
 }: {
   kind: ReturnType<typeof classifySandboxProvider>;
   failureMessage: string | null;
+  deploymentOwner: boolean;
 }) {
+  if (!deploymentOwner && !failureMessage) {
+    return (
+      <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <Trans>Computers are off. Ask the server owner to turn them on.</Trans>
+      </p>
+    );
+  }
+
   if (failureMessage) {
     return (
       <p className="text-[13px] leading-relaxed text-muted-foreground">

@@ -3,7 +3,11 @@ import type { ComposeRestore } from "../components/ComposeEmail";
 /** Fired on `window` after a message is sent, so the Inbox can refresh. */
 export const MAIL_SENT_EVENT = "rakazo:mail-sent";
 
-/** How long Undo stays available after Send or Discard. Closing the tab inside this window sends nothing. */
+/**
+ * How long Undo stays available after Send or Discard. Closing the tab inside this window sends
+ * nothing: the message was saved as a draft first, so it stays in Gmail Drafts, and the browser
+ * asks before leaving.
+ */
 export const UNDO_SEND_MS = 5_000;
 const SENT_MS = 3_000;
 
@@ -14,15 +18,38 @@ export interface OutboxSnapshot {
   restoring: ComposeRestore | null;
 }
 
+/** Called once a held item is over: null when it went out, the reason when it did not, undefined when undone. */
+type HoldEnd = (problem: string | null | undefined) => void;
+
 /** Sends the message; resolves to null when it went out, or to the reason it did not. */
 type Run = () => Promise<string | null>;
 
 let snapshot: OutboxSnapshot = { view: null, restoring: null };
 let held:
-  | { run: Run; restore: ComposeRestore; discard: boolean; timer: ReturnType<typeof setTimeout> }
+  | {
+      run: Run;
+      restore?: ComposeRestore;
+      discard: boolean;
+      /** Asks the browser to confirm leaving while this is held. */
+      leave: boolean;
+      timer: ReturnType<typeof setTimeout>;
+      onEnd?: HoldEnd;
+    }
   | undefined;
 let sentTimer: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
+
+const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+/**
+ * Asks the browser to confirm leaving while a held send could still be lost. Undo-friendly: the
+ * text is already a draft. Not in the desktop app, whose window this would block from closing.
+ */
+function askBeforeLeaving(on: boolean) {
+  if (typeof window === "undefined") return;
+  if (!on) return void window.removeEventListener("beforeunload", onBeforeUnload);
+  if (window.rakazoDesktop) return;
+  window.addEventListener("beforeunload", onBeforeUnload);
+}
 
 function set(next: Partial<OutboxSnapshot>) {
   snapshot = { ...snapshot, ...next };
@@ -37,8 +64,9 @@ export const getOutbox = () => snapshot;
 
 async function fire() {
   if (!held) return;
-  const { run, restore, discard } = held;
+  const { run, restore, discard, onEnd, leave } = held;
   held = undefined;
+  if (leave) askBeforeLeaving(false);
   if (discard) {
     set({ view: null });
     void run().catch(() => undefined);
@@ -57,22 +85,54 @@ async function fire() {
     clearTimeout(sentTimer);
     sentTimer = setTimeout(() => set({ view: null }), SENT_MS);
   } else {
-    set({ view: null, restoring: { ...restore, notice: problem } });
+    set({ view: null, ...(restore ? { restoring: { ...restore, notice: problem } } : {}) });
   }
+  onEnd?.(problem);
 }
 
-function hold(run: Run, restore: ComposeRestore, discard: boolean) {
+function hold(
+  run: Run,
+  restore: ComposeRestore | undefined,
+  discard: boolean,
+  onEnd?: HoldEnd,
+  leave = false,
+) {
   if (held) {
     clearTimeout(held.timer);
     void fire();
   }
   clearTimeout(sentTimer);
-  held = { run, restore, discard, timer: setTimeout(() => void fire(), UNDO_SEND_MS) };
+  held = {
+    run,
+    restore,
+    discard,
+    onEnd,
+    leave,
+    timer: setTimeout(() => void fire(), UNDO_SEND_MS),
+  };
+  if (leave) askBeforeLeaving(true);
   set({ view: discard ? { kind: "discarded" } : { kind: "sending", undoable: true } });
 }
 
 /** Holds a send for `UNDO_SEND_MS`, then runs it. A send already held goes out first. */
-export const holdSend = (run: Run, restore: ComposeRestore) => hold(run, restore, false);
+export const holdSend = (run: Run, restore: ComposeRestore) =>
+  hold(run, restore, false, undefined, true);
+
+/**
+ * Holds any other send (a chat card's Allow or Send) for `UNDO_SEND_MS`, then runs `commit`. Undo
+ * runs nothing; `onEnd` tells the caller how it ended. A failure shows no composer.
+ */
+export const holdCommit = (commit: () => Promise<unknown>, onEnd: HoldEnd) =>
+  hold(
+    () =>
+      commit().then(
+        () => null,
+        (cause) => (cause instanceof Error ? cause.message : ""),
+      ),
+    undefined,
+    false,
+    onEnd,
+  );
 
 /**
  * Holds a discard for `UNDO_SEND_MS`, then runs `run` (which removes the server draft). Undo
@@ -85,9 +145,11 @@ export const holdDiscard = (run: () => Promise<unknown>, restore: ComposeRestore
 export function undoSend() {
   if (!held) return;
   clearTimeout(held.timer);
-  const { restore } = held;
+  const { restore, onEnd, leave } = held;
   held = undefined;
-  set({ view: null, restoring: restore });
+  if (leave) askBeforeLeaving(false);
+  set({ view: null, ...(restore ? { restoring: restore } : {}) });
+  onEnd?.(undefined);
 }
 
 export const closeRestored = () => set({ restoring: null });

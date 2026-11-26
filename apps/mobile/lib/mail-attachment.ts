@@ -3,6 +3,12 @@ import { canPreviewSpreadsheet } from "@rakazo/core";
 import { Directory, File, Paths } from "expo-file-system";
 import { authHeaders, currentApiBase } from "./api";
 import { artifactCacheFileName } from "./artifact-file";
+import { registerSessionDiskCache } from "./session";
+
+registerSessionDiskCache(() => {
+  const root = new Directory(Paths.cache, "mail-attachments");
+  if (root.exists) root.delete();
+});
 
 export type MailAttachmentRef = { id: string; filename: string; mimeType: string; size: number };
 
@@ -26,19 +32,26 @@ export function attachmentKind({ filename, mimeType, size }: MailAttachmentRef):
 export async function downloadMailAttachment(
   messageId: string,
   attachment: MailAttachmentRef,
+  signal?: AbortSignal,
 ): Promise<File> {
-  const response = await fetch(
-    `${currentApiBase()}/api/inbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`,
-    { headers: await authHeaders() },
-  );
-  if (!response.ok) throw new Error(`Attachment download failed (${response.status})`);
   const dir = new Directory(Paths.cache, "mail-attachments");
   if (!dir.exists) dir.create({ intermediates: true });
   const file = new File(
     dir,
     artifactCacheFileName(`${messageId}-${attachment.id}`, attachment.mimeType),
   );
-  file.create({ overwrite: true });
-  file.write(new Uint8Array(await response.arrayBuffer()));
-  return file;
+  try {
+    return await File.downloadFileAsync(
+      `${currentApiBase()}/api/inbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`,
+      file,
+      { headers: await authHeaders(), idempotent: true, signal },
+    );
+  } catch (cause) {
+    try {
+      if (file.exists) file.delete();
+    } catch {
+      // Keep the download error as the failure surfaced to the caller.
+    }
+    throw cause;
+  }
 }

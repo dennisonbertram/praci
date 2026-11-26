@@ -4,6 +4,7 @@ import { ChartDataSchema, ChartSpecSchema, refineChartRows } from "./chart.js";
 import { Id } from "./ids.js";
 import { MAX_COMPOSE_BODY } from "./inbox.js";
 import { McpTransportSchema } from "./mcp.js";
+import { UiBlockSchema } from "./ui-block.js";
 
 export const ProductEventType = z.enum([
   "thread.message.created",
@@ -21,7 +22,10 @@ export const ProductEventType = z.enum([
   /** payload: { pending: string[] } messages of this thread whose delegate waits for approval */
   "thread.delegate_pending",
   "thread.call.ended",
+  /** payload: { goal: ThreadGoal | null } the thread's open goal after a change; null once none is open */
+  "thread.goal.updated",
   "run.started",
+  "run.steering.claimed",
   "run.checkpointed",
   /** payload: RunPhase */
   "run.phase",
@@ -35,8 +39,10 @@ export const ProductEventType = z.enum([
   "computer.takeover.released",
   "computer.command",
   "memory.revised",
-  /** payload: { revision, updatedBy } */
+  /** payload: { pageId, revision, updatedBy } (older events have no pageId) */
   "page.updated",
+  /** payload: { pageId } — a page's live data changed (a source refreshed, or was added or removed) */
+  "page.data",
   /** payload: { revision, updatedBy } */
   "pins.updated",
   "routine.created",
@@ -47,6 +53,8 @@ export const ProductEventType = z.enum([
   "skill.draft.created",
   "skill.saved",
   "effect.recorded",
+  /** payload: { tool, actionType, decision, source, unattended, tainted }; never the arguments */
+  "approval.decided",
   "agent.tool.called",
   "agent.tool.completed",
   "effect.reconciled",
@@ -62,6 +70,12 @@ export const ProductEventType = z.enum([
   "heartbeat",
 ]);
 export type ProductEventType = z.infer<typeof ProductEventType>;
+
+/** The card reason when a call asks only because the chat read a meeting; the web card adds Clear conversation. */
+/** Why a mail card warns: the same email went to the same people moments ago. Clients match it. */
+export const MAIL_ALREADY_SENT_REASON = "Already sent to this person a few minutes ago";
+
+export const MEETING_MARK_REASON = "This chat read a meeting, so it asks first.";
 
 export const MessageRole = z.enum(["user", "bot", "system"]);
 export const BotMessageIntent = z.enum(["request", "result", "question", "status", "fyi"]);
@@ -99,6 +113,8 @@ export const EmailCardSchema = z.object({
   receivedAt: z.string(),
   /** Absent when the count could not be read. */
   attachments: z.number().int().nonnegative().optional(),
+  /** The agent's own one-line reason this matters or what to do. Plain text. */
+  note: z.string().max(80).optional(),
 });
 export type EmailCard = z.infer<typeof EmailCardSchema>;
 
@@ -155,6 +171,12 @@ export const MailApprovalSchema = z.object({
   tool: z.enum(["mail_draft", "mail_send"]),
   /** Connected account address, when the call named one. */
   account: z.string().optional(),
+  /** With no account named and several the agent may use: the accounts to choose the sender from. */
+  choices: z
+    .array(
+      z.object({ connectionId: z.string(), label: z.string(), address: z.string().optional() }),
+    )
+    .optional(),
   to: z.array(z.string()),
   cc: z.array(z.string()),
   bcc: z.array(z.string()),
@@ -166,6 +188,10 @@ export const MailApprovalSchema = z.object({
   locked: z.boolean().optional(),
   /** Set after the person edited it and sent it themselves: how that ended. */
   outcome: z.enum(["sent", "saved", "unknown", "failed"]).optional(),
+  /** With a sent or saved outcome: the provider's ids, recorded by the server, to link to the mail. */
+  threadId: z.string().optional(),
+  messageId: z.string().optional(),
+  draftId: z.string().optional(),
   /** With a failed outcome: the connection the composer should open on. */
   connectionId: z.string().optional(),
   /** With a failed outcome: why, in words the person can act on. */
@@ -183,10 +209,131 @@ export const MailEditsSchema = z
     bcc: z.string().max(4_000),
     subject: z.string().max(998),
     body: z.string().max(MAX_COMPOSE_BODY),
+    /** Send now: the person sends the mail themselves instead of saving the draft. */
+    send: z.boolean(),
   })
   .partial()
   .strict();
 export type MailEdits = z.infer<typeof MailEditsSchema>;
+
+/** The tool that proposes several replies on one card. */
+export const MAIL_REPLY_BATCH_TOOL = "mail_reply_batch";
+/** Rows per call. Over this the call is refused with a message to split it. */
+export const MAX_MAIL_REPLY_BATCH = 20;
+/** A row held because its account has used its daily limit for new recipients. */
+export const MAIL_REPLY_LIMIT_HOLD = "daily_limit";
+/** A new email held because its agent became firewalled or external after the card was made. */
+export const MAIL_REPLY_FIREWALL_HOLD = "firewall";
+/** A row held because a new message arrived on its thread after the card was made. */
+export const MAIL_REPLY_NEW_MESSAGE_HOLD = "new_message";
+/** A row held because sending was turned off for its agent. */
+export const MAIL_REPLY_SWITCH_HOLD = "switch";
+/** A row held because the agent may no longer write with its account. */
+export const MAIL_REPLY_GRANT_HOLD = "grant";
+/** A row held because its account is no longer connected. */
+export const MAIL_REPLY_ACCOUNT_HOLD = "account";
+
+/** What a reply batch card shows at a glance; the rows come from `threads.mailBatch`. */
+export const MailBatchCountsSchema = z.object({
+  count: z.number().int().positive(),
+  sent: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  unknown: z.number().int().nonnegative(),
+  /** Nothing is left to send, so Retry failed is open. */
+  settled: z.boolean().optional(),
+});
+export type MailBatchCounts = z.infer<typeof MailBatchCountsSchema>;
+
+/**
+ * Reasons to look at one row, most serious first. All but the last three start the row unticked.
+ * `new_recipient` does too when the run had read outside content.
+ */
+export const MAIL_REPLY_FLAGS = [
+  "not_on_thread",
+  "new_message",
+  "important_sender",
+  "no_reply_address",
+  "no_reply_needed",
+  "already_sent",
+  "duplicate_email",
+  "new_recipient",
+  "has_link",
+  "same_text",
+] as const;
+/** These inform. Every other flag makes the owner tick the row deliberately. */
+export const MAIL_REPLY_INFORMING_FLAGS = ["has_link", "new_recipient", "same_text"] as const;
+export const MailReplyFlagSchema = z.enum(MAIL_REPLY_FLAGS);
+export type MailReplyFlag = z.infer<typeof MailReplyFlagSchema>;
+
+/** One row of a reply batch card. Recipients are bare addresses: a display name can say anything. */
+export const MailBatchRowSchema = z.object({
+  itemId: Id,
+  /** Null for a new email, which answers nothing. */
+  replyToId: z.string().nullable(),
+  to: z.array(z.string()),
+  cc: z.array(z.string()),
+  bcc: z.array(z.string()),
+  subject: z.string(),
+  body: z.string(),
+  /** Of the stored row; posted back with the press. */
+  hash: z.string().length(64),
+  /** The newest inbound message now; posting it back acknowledges it. */
+  seenMessageId: z.string().nullable(),
+  flags: z.array(MailReplyFlagSchema),
+  /** See MAIL_REPLY_FLAGS for which flags start a row unticked. */
+  startsUnticked: z.boolean(),
+  state: z.enum(["reviewing", "sending", "sent", "not_sent", "unknown", "skipped", "composer"]),
+  /** Why a row is not sent, when it was held before any send attempt. */
+  error: z.string().nullable(),
+  /** Retry failed can pick this row up. */
+  retryable: z.boolean(),
+});
+export type MailBatchRow = z.infer<typeof MailBatchRowSchema>;
+
+export const MailBatchSchema = z.object({
+  /** The address every row goes out from. */
+  account: z.string().nullable(),
+  effectStatus: z.string(),
+  rows: z.array(MailBatchRowSchema),
+});
+export type MailBatch = z.infer<typeof MailBatchSchema>;
+
+/** One ticked row of Send selected. Edits replace the row's fields before its hash is approved. */
+export const MailBatchPressRowSchema = z.object({
+  itemId: Id,
+  hash: z.string().length(64),
+  seenMessageId: z.string().max(500).nullable(),
+  /** The flags the card showed for this row, edits included. The server recomputes them. */
+  flags: z.array(MailReplyFlagSchema),
+  edits: MailEditsSchema.omit({ account: true, send: true }).optional(),
+});
+export type MailBatchPressRow = z.infer<typeof MailBatchPressRowSchema>;
+
+/** The flags rows would have with their unsaved edits. */
+export const MailBatchPreviewSchema = z.object({
+  rows: z.array(
+    z.object({
+      itemId: Id,
+      flags: z.array(MailReplyFlagSchema),
+      startsUnticked: z.boolean(),
+    }),
+  ),
+});
+export type MailBatchPreview = z.infer<typeof MailBatchPreviewSchema>;
+
+/** What the composer opens with when the owner takes a row that did not go out. */
+export const MailBatchComposerDraftSchema = z.object({
+  connectionId: z.string(),
+  account: z.string(),
+  to: z.array(z.string()),
+  cc: z.array(z.string()),
+  bcc: z.array(z.string()),
+  subject: z.string(),
+  body: z.string(),
+  /** The synced message answered, so the reply stays in its thread. */
+  replyToId: z.string().optional(),
+});
+export type MailBatchComposerDraft = z.infer<typeof MailBatchComposerDraftSchema>;
 
 /** The effect kind of a bot-to-bot message held for the owner before it reaches an external bot. */
 export const BOT_SHARE_EFFECT_KIND = "bot_message_share";
@@ -203,13 +350,21 @@ export const MessageBlock = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("ask"),
     text: z.string(),
+    /** One plain sentence under the card, only for background or rule-caused asks. */
+    approvalReason: z.string().optional(),
     approvalEffectId: Id.optional(),
+    /** The exact tool id the call uses, shown behind a chevron under the friendly title. */
+    toolId: z.string().optional(),
     detail: z.string().optional(),
     /** Show `detail` behind a "Details" disclosure (raw tool arguments), not open on the card. */
     detailFolded: z.boolean().optional(),
     /** The service that must still approve a money request on its own side after the person allows it. */
     waitsFor: z.string().optional(),
     mail: MailApprovalSchema.optional(),
+    /** A reply batch: Discard is the card's only action; Send selected is its own request. */
+    mailBatch: MailBatchCountsSchema.optional(),
+    /** A list import: Deny is the card's only action; Add is its own request, on web and desktop. */
+    pipelineImport: z.object({ importId: Id }).optional(),
     /**
      * A held message from one bot to an external bot: Allow delivers exactly the text on the card,
      * once. It is answered without a waiting run.
@@ -217,6 +372,11 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     share: z.boolean().optional(),
     /** An AI data sharing request: the card's Allow records consent for the disclosure `version`. */
     consent: z.object({ version: z.string() }).optional(),
+    /**
+     * The owner's approval of a page source's exact call. It is answered without a waiting run and
+     * only if `callHash` still matches the source's current call.
+     */
+    pageSource: z.object({ sourceId: Id, callHash: z.string().length(64) }).optional(),
     input: z.enum(["text", "secret"]).optional(),
     /** Why the secret is needed; drives field label on the masked card. */
     purpose: SecretAskPurpose.optional(),
@@ -224,6 +384,8 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     // an ask persisted before an owner toggles the private-HTTP flag still
     // validates on replay.
     credential: botSecretDestinationSchema({ allowPrivateHttpOrigin: true }).optional(),
+    /** On a fetch approval, the site an "always" answer allows. */
+    site: z.string().optional(),
     status: z.enum(["pending", "answered"]).optional(),
     answer: z.string().optional(),
     actions: z
@@ -275,7 +437,20 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     title: z.string(),
     farewell: z.string(),
   }),
-  z.object({ kind: z.literal("meta"), text: z.string() }),
+  z.object({
+    /** Left in the thread when the agent creates a page. Ids only; the client reads the page through the page routes. */
+    kind: z.literal("page"),
+    botId: Id,
+    pageId: Id,
+    /** The title when the page was created; clients show the current one when they can. */
+    title: z.string(),
+  }),
+  z.object({
+    kind: z.literal("meta"),
+    text: z.string(),
+    /** A server-written link shown after the text, to an app path such as a Data room item. */
+    link: z.object({ label: z.string(), href: z.string() }).optional(),
+  }),
   z.object({
     kind: z.literal("progress"),
     text: z.string(),
@@ -381,6 +556,8 @@ export const MessageBlock = z.discriminatedUnion("kind", [
       .min(1),
   }),
   z.object({ kind: z.literal("finance"), card: FinanceCardSchema }),
+  /** A typed layout block the bot produced with render_ui: table, sections, stats and so on. */
+  z.object({ kind: z.literal("ui"), block: UiBlockSchema }),
   z.object({
     kind: z.literal("image"),
     artifactId: Id,
@@ -447,6 +624,17 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     externalOrigin: z.boolean().optional(),
     /** Name of the bot that started an external chain, from stored data, for the notice. */
     externalOriginName: z.string().max(200).optional(),
+    /** A result that arrived while the receiver still waits on these delegates. Server-written. */
+    stillWaitingFor: z.array(z.string()).optional(),
+  }),
+  z.object({
+    /** How a /goal ended. `text` is the plain line that clients without a renderer show. */
+    kind: z.literal("goal"),
+    outcome: z.enum(["met", "blocked", "stopped"]),
+    reason: z.string(),
+    /** The tool results the goal check cited; only for `met`. */
+    evidence: z.array(z.object({ id: z.string(), text: z.string() })).optional(),
+    text: z.string(),
   }),
 ]);
 export type MessageBlock = z.infer<typeof MessageBlock>;
@@ -463,6 +651,7 @@ export const ComputerCommandKind = z.enum([
   "attach_file",
   "open_path",
   "launch_app",
+  "desktop_app",
 ]);
 export type ComputerCommandKind = z.infer<typeof ComputerCommandKind>;
 export const ComputerCommandSchema = z.object({
@@ -534,6 +723,8 @@ export const ThreadMessageSchema = z.object({
   routineName: z.string().optional(),
   /** Set when the message was sent from a live voice call; groups one call's transcript. */
   callId: z.string().optional(),
+  /** Label of the outside MCP connection that sent this message. */
+  via: z.string().optional(),
   createdAt: z.string(),
 });
 export type ThreadMessage = z.infer<typeof ThreadMessageSchema>;

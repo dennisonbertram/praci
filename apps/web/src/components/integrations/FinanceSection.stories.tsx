@@ -3,7 +3,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { FinanceSection, useFinanceStatus } from "./FinanceSection";
 
-function Standalone(props: { sources: FinanceSource[]; onChanged: () => void }) {
+function Standalone(props: {
+  sources: FinanceSource[];
+  onChanged: () => void;
+  extras?: Parameters<typeof FinanceSection>[0]["extras"];
+}) {
   return <FinanceSection {...props} status={useFinanceStatus()} />;
 }
 
@@ -72,8 +76,26 @@ export const Loading: Story = {
     }),
 };
 
+export const StatusLoadError: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.crypto": () => {
+        throw new Error("Offline");
+      },
+      "finance.exchanges": () => {
+        throw new Error("Offline");
+      },
+    }),
+};
+
 export const AllConnected: Story = {
-  args: { sources: [source("mercury", "ok"), source("brex", "ok")] },
+  args: {
+    sources: [source("mercury", "ok"), source("brex", "ok")],
+    extras: {
+      mercury: <span className="text-xs text-muted-foreground">Used by Finance agent</span>,
+      crypto: <span className="text-xs text-muted-foreground">Used by Finance agent</span>,
+    },
+  },
   beforeEach: () =>
     mockRpc({
       "finance.crypto": crypto(true),

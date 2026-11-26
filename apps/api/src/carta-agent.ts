@@ -7,22 +7,23 @@ import {
   isCartaEndpoint,
   pageAgentColor,
 } from "@rakazo/contracts";
-import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
+import { ACTIVE_RUN_STATUSES, newRunUnattended } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
-import { appendEventInTransaction, createThreadMessageInTransaction } from "@rakazo/db";
+import {
+  appendEventInTransaction,
+  createThreadMessageInTransaction,
+  equityLedgerHasData,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { lockLiveBot } from "./bot-lock.js";
+import type { BuiltInAgent } from "./page-agent-ensure.js";
+import { ensurePageAgent } from "./page-agent-ensure.js";
 
-const CARTA_AGENT_INSTRUCTIONS =
-  "You are the user's Carta agent. You manage their company's cap table and investor relationships from Carta, which you read; you change Carta only with the write tools if the user turned them on, and each of those asks first. cap_table_read and contacts_list give what the Investors page already shows: answer cap table and investor questions from them first, and use Carta for anything newer or missing. Keep the Investors page current with cap_table_update, using exact Carta figures and null for anything Carta does not give you. Add new investors and auditors with contacts_add; contacts_save changes an existing contact. Other bots may message you about the cap table or investors; answer them from Carta. You do not draft investor updates or answer audit requests: for those, or for the investor portal, tell the user to ask the Investors agent. When the user asks for a change in Carta (an option grant, a new holder, a transfer) and you have no write tools, say that changes in Carta are off and that they can turn them on with the 'Allow changes in Carta' switch under Integrations, Carta; until then, tell them what to do in Carta. A SAFE is not a Carta change: SAFEs are recorded in Mercury, so send the user there and never suggest that switch for one. Never invent a figure: write TBD where you do not have one. Never sign anything in DocuSign and never confirm anything in an investor portal; tell the user what needs their signature. Send email only with the full to, cc, bcc, subject and body in the send call, after the user approves that exact message; every message needs its own approval.";
+export const CARTA_AGENT_INSTRUCTIONS =
+  "You are the user's Carta agent. You manage their company's cap table and investor relationships from Carta, which you read; you change Carta only with the write tools if the user turned them on, and each of those needs the user's approval first. cap_table_read and contacts_list give what the Investors page already shows: answer cap table and investor questions from them first, and use Carta for anything newer or missing. Keep the Investors page current with cap_table_update, using exact Carta figures and null for anything Carta does not give you. Add new investors and auditors with contacts_add; contacts_save changes an existing contact. Other bots may message you about the cap table or investors; answer them from Carta. You do not draft investor updates or answer audit requests: for those, or for the investor portal, tell the user to ask the Investors agent. When the user asks for a change in Carta (an option grant, a new holder, a transfer) and you have no write tools, say that changes in Carta are off and that they can turn them on with the 'Allow changes in Carta' switch under Integrations, Carta; until then, tell them what to do in Carta. A SAFE is not a Carta change: SAFEs are recorded in Mercury, so send the user there and never suggest that switch for one. For \"what is our cap table\" give ownership by group (founders, investors, option pool) in a line or two, then the five largest holders with their percentages and the count of the rest; do not list every holder, since the Investors page shows the table. For \"how much does X own\" give one sentence with the percentage and share count. Round percentages to one decimal and mention the as-of date only when it is old. When another bot asks, answer it with the complete figures it needs, largest first. Never invent a figure: write TBD where you do not have one. Never sign anything in DocuSign and never confirm anything in an investor portal; tell the user what needs their signature. Send email only with the full to, cc, bcc, subject and body in the send call, after the user approves that exact message; every message needs its own approval.";
 
 const CARTA_SYNC_PROMPT =
   "Fill in the Investors page from Carta. Read the company's cap table from Carta: use discover or search_tools to find the right fetch and read_tool commands, and set_context or list_accounts to pick the company. As soon as you have read the cap table, make cap_table_update your very next tool call, before any other tool, because older tool results are shortened after your next call; use the exact figures from Carta, never estimate, and leave a field null when Carta does not give it. If you can read Carta's ledger export, pass its certificate rows as ledger (issuance, transfer, cancellation, conversion, with the cash paid) and leave each holder's amountUsd to the tool. Next, call contacts_list, and add every investor holder who is not already a contact with contacts_add (kind investor, organization is the fund). Do not search mail or read anything else: the user only asked to refresh the page. The Investors page already shows the figures and contacts, so finish with one short sentence and no figures, lists or headings: that the cap table is up to date and who you added as a contact, or what you could not read. Do not mention charts you cannot show.";
-
-/** The default before the SAFE guidance was added. A bot still storing it is upgraded; an edited bot is left alone. */
-const PREVIOUS_CARTA_AGENT_INSTRUCTIONS = CARTA_AGENT_INSTRUCTIONS.replace(
-  " A SAFE is not a Carta change: SAFEs are recorded in Mercury, so send the user there and never suggest that switch for one.",
-  "",
-);
 
 /**
  * Gives the bot each of the user's enabled Carta MCP servers: the read tools, plus the write tools
@@ -36,16 +37,7 @@ async function assignCartaServers(
 ): Promise<void> {
   if (!botId) return;
   await prisma.$transaction(async (tx) => {
-    const activeBot = await tx.bot.updateMany({
-      where: {
-        id: botId,
-        ...actorScope(actor),
-        spawnKey: cartaAgentSpawnKey(actor.userId),
-        archivedAt: null,
-      },
-      data: { updatedAt: new Date() },
-    });
-    if (!activeBot.count) return;
+    if (!(await lockLiveBot(tx, actor, botId, cartaAgentSpawnKey(actor.userId)))) return;
     const servers = (
       await tx.mcpServer.findMany({
         where: { ...actorScope(actor) },
@@ -115,6 +107,16 @@ export async function assignToExistingCartaAgent(
 const CARTA_DESCRIPTION = "Reads Carta to keep your cap table and contacts current.";
 const OLD_CARTA_DESCRIPTION = "Keeps your cap table and investor contacts.";
 
+export const CARTA_AGENT: BuiltInAgent = {
+  kind: "carta",
+  spawnKey: cartaAgentSpawnKey,
+  name: "Carta agent",
+  description: CARTA_DESCRIPTION,
+  instructions: CARTA_AGENT_INSTRUCTIONS,
+  color: pageAgentColor("carta"),
+  pastDescription: OLD_CARTA_DESCRIPTION,
+};
+
 /** The only way a Carta agent is created; idempotent through the unique (spaceId, spawnKey) index. */
 export async function ensureCartaAgent(
   deps: {
@@ -123,27 +125,9 @@ export async function ensureCartaAgent(
   },
   actor: Actor,
 ): Promise<Bot> {
-  const bot = await deps.repos.createBot(actor, {
-    spawnKey: cartaAgentSpawnKey(actor.userId),
-    name: "Carta agent",
-    title: "",
-    description: CARTA_DESCRIPTION,
-    instructions: CARTA_AGENT_INSTRUCTIONS,
-    notifyOnFinish: true,
-    color: pageAgentColor("carta"),
-  });
-  await assignCartaServers(deps.prisma, actor, bot.id);
-  // An agent created earlier keeps its stored description; refresh it only while it is still the old default.
-  await deps.prisma.bot.updateMany({
-    where: { id: bot.id, ...actorScope(actor), description: OLD_CARTA_DESCRIPTION },
-    data: { description: CARTA_DESCRIPTION },
-  });
-  if (bot.instructions !== PREVIOUS_CARTA_AGENT_INSTRUCTIONS) return bot;
-  await deps.repos.replaceBotInstructions(actor, bot.id, {
-    from: bot.instructions,
-    to: CARTA_AGENT_INSTRUCTIONS,
-  });
-  return { ...bot, instructions: CARTA_AGENT_INSTRUCTIONS };
+  return ensurePageAgent(deps, actor, CARTA_AGENT, (bot) =>
+    assignCartaServers(deps.prisma, actor, bot.id),
+  );
 }
 
 /** Matches the user's populate runs: the Carta agent's runs that no routine and no typed message started. */
@@ -170,7 +154,14 @@ export async function isCartaSyncing(
 export type CartaSyncDeps = {
   prisma: Pick<
     PrismaClient,
-    "bot" | "mcpServer" | "botMcpServer" | "run" | "capTableSnapshot" | "$transaction"
+    | "bot"
+    | "mcpServer"
+    | "botMcpServer"
+    | "run"
+    | "capTableSnapshot"
+    | "equityStakeholder"
+    | "equityShareClass"
+    | "$transaction"
   >;
   repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
   /** False when no model is set up, so a run would only fail. */
@@ -197,7 +188,12 @@ export async function startCartaSync(
     where: { spaceId_userId: { spaceId: actor.spaceId, userId: actor.userId } },
     select: { source: true },
   });
-  if (table && table.source !== "carta") return "other_source";
+  // Once the ledger has data it is the record, and a Carta read would only write the stale table.
+  if (
+    (table && table.source !== "carta") ||
+    (await equityLedgerHasData(deps.prisma, actorScope(actor)))
+  )
+    return "other_source";
   const bot = await ensureCartaAgent(deps, actor);
   if (!(await deps.hasModel(actor))) return "no_model";
   const runId = await deps.prisma.$transaction(async (tx) => {
@@ -247,6 +243,7 @@ export async function startCartaSync(
         taskId: task.id,
         status: "queued",
         trigger: "routine",
+        unattended: newRunUnattended({ trigger: "routine" }),
       },
       select: { id: true },
     });

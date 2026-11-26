@@ -1,4 +1,5 @@
 import { PiAgentRuntime } from "@rakazo/adapters";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { compactHistory } from "../../adapters/src/history-compaction.js";
@@ -59,6 +60,8 @@ describe("history compaction with real Pi", () => {
           },
         ]),
       },
+      // Compaction sends history to the model only with the owner's consent (d013317c6).
+      aiDataConsent: { findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })) },
       usageRecord: { createMany, create },
     };
     const memoryProviders = { resolve: vi.fn(async () => null) };

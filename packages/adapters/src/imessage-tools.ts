@@ -1,7 +1,7 @@
 import type { AdapterContext, MessagingSurface, ToolProgress } from "@rakazo/adapter-kit";
 import { clampInt, messagingProviderBlocksBot } from "@rakazo/core";
 import { normalizeIMessageHandle } from "./bluebubbles-adapter.js";
-import { providerOfThreadId } from "./chat-sdk-surface.js";
+import { MessagingSendError, providerOfThreadId } from "./chat-sdk-surface.js";
 import { mailToolsAllowed } from "./mail-tools.js";
 import { MESSAGING_AI_DISCLOSURE } from "./messaging-delivery.js";
 
@@ -64,10 +64,18 @@ export type IMessageToolDeps = {
   surface: IMessageSurface;
   /** From imessageLineProviders for this run's bot. */
   providers: string[];
+  /**
+   * Which of these normalized handles are linked to another user or space on this deployment. The
+   * line is shared, so their conversations are not this run's to list, read or write. A throw fails
+   * the tool closed.
+   */
+  foreignHandles: (provider: string, handles: string[]) => Promise<Set<string>>;
   /** Stable per tool call, from the run; keys the adapter send so a replay never sends twice. */
   idempotencyKey?: string;
   progress?: (progress: ToolProgress) => void;
 };
+
+const NO_CONVERSATION = "No such conversation on the iMessage line";
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
@@ -90,10 +98,21 @@ export async function imessageToolFromTool(
 }
 
 function sanitizedMessage(error: unknown): string | undefined {
-  const name = error instanceof Error ? error.name : "";
+  // The surface wraps send failures; the adapter's own error is the cause.
+  const root = error instanceof MessagingSendError ? error.cause : error;
+  const name = root instanceof Error ? root.name : "";
   return name === "BlueBubblesError" || name === "PhotonError"
-    ? (error as Error).message
+    ? (root as Error).message
     : undefined;
+}
+
+async function isForeign(
+  deps: Pick<IMessageToolDeps, "foreignHandles">,
+  provider: string,
+  handle: string,
+): Promise<boolean> {
+  const normalized = normalizeIMessageHandle(handle);
+  return normalized ? (await deps.foreignHandles(provider, [normalized])).has(normalized) : false;
 }
 
 /** The line a thread id belongs to, if this run may use it. */
@@ -114,7 +133,17 @@ async function list(
       const conversations = await deps.surface
         .history?.(provider)
         ?.listConversations({ limit }, context);
-      return (conversations ?? []).map((conversation) => ({ line: provider, ...conversation }));
+      const own = (conversations ?? []).map((conversation) => ({
+        conversation,
+        handle: normalizeIMessageHandle(conversation.handle),
+      }));
+      const foreign = await deps.foreignHandles(
+        provider,
+        own.flatMap(({ handle }) => (handle ? [handle] : [])),
+      );
+      return own
+        .filter(({ handle }) => !handle || !foreign.has(handle))
+        .map(({ conversation }) => ({ line: provider, ...conversation }));
     }),
   );
   const conversations = lines
@@ -144,7 +173,8 @@ async function read(
     },
     context,
   );
-  if (!page) return { error: "No such conversation on the iMessage line" };
+  if (!page) return { error: NO_CONVERSATION };
+  if (await isForeign(deps, provider, page.handle)) return { error: NO_CONVERSATION };
   deps.progress?.({
     text: `Reading iMessages with ${page.handle}`,
     summary: `Read iMessages with ${page.handle}`,
@@ -173,7 +203,7 @@ export type IMessageTarget = {
  * the check that a given thread is an existing direct iMessage chat on an allowed line.
  */
 export async function resolveIMessageTarget(
-  deps: Pick<IMessageToolDeps, "surface" | "providers">,
+  deps: Pick<IMessageToolDeps, "surface" | "providers" | "foreignHandles">,
   context: AdapterContext,
   args: Record<string, unknown>,
 ): Promise<IMessageTarget | { error: string }> {
@@ -212,6 +242,7 @@ export async function resolveIMessageTarget(
       return { handle: handle ?? "", messages: [] };
     });
   handle = existing.handle;
+  if (await isForeign(deps, provider, handle)) return { error: NO_CONVERSATION };
   return { provider, threadId, handle, isNew: existing.messages.length === 0 };
 }
 

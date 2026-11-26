@@ -1,7 +1,7 @@
-import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN } from "@rakazo/contracts";
+import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN, GROUP_NAME_MAX } from "@rakazo/contracts";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TextInput } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { BotMemberPicker } from "../components/bot-member-picker";
 import { glassHeaderOptions } from "../components/glass-title";
 import { NativeActionButton } from "../components/native-action-button";
@@ -21,10 +21,12 @@ export default function GroupSettingsScreen() {
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!groupId) return;
+    setLoadError(null);
     void Promise.all([
       rpc<MobileGroup[]>("groups/list").then(
         (groups) => groups.find((row) => row.id === groupId) ?? null,
@@ -38,8 +40,43 @@ export default function GroupSettingsScreen() {
         setSelected(nextGroup.members.map((member) => member.botId));
         setBots(nextBots.filter((bot) => !bot.archivedAt));
       })
-      .catch((err) => setError(errorText(err, t("Could not load group"))));
-  }, [groupId]);
+      .catch((err) => setLoadError(errorText(err, t("Could not load group"))));
+  }, [groupId, t]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (!group) {
+    return (
+      <>
+        <Stack.Screen options={glassHeaderOptions(t("Group settings"))} />
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: tokens.background,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          {loadError ? (
+            <>
+              <Text
+                accessibilityRole="alert"
+                style={{ color: tokens.destructive, marginBottom: 16 }}
+              >
+                {loadError}
+              </Text>
+              <NativeActionButton label={t("Try again")} onPress={load} />
+            </>
+          ) : (
+            <ActivityIndicator color={tokens.mutedForeground} />
+          )}
+        </View>
+      </>
+    );
+  }
 
   async function save() {
     if (!groupId || !group || pending) return;
@@ -60,20 +97,28 @@ export default function GroupSettingsScreen() {
   }
 
   function remove() {
-    if (!groupId || !group) return;
-    Alert.alert(group.name, t("Delete this group? Bots and their solo threads are kept."), [
-      { text: t("Cancel"), style: "cancel" },
-      {
-        text: t("Delete"),
-        style: "destructive",
-        onPress: () =>
-          void rpc("groups/remove", { groupId })
-            .then(() => router.replace("/"))
-            .catch((err) =>
-              Alert.alert(t("Could not delete group"), errorText(err, t("Try again."))),
-            ),
-      },
-    ]);
+    if (!groupId || !group || pending) return;
+    Alert.alert(
+      group.name,
+      `${t("Delete this group? Bots and their solo threads are kept.")} ${t("This can't be undone.")}`,
+      [
+        { text: t("Cancel"), style: "cancel" },
+        {
+          text: t("Delete"),
+          style: "destructive",
+          onPress: () => {
+            if (pending) return;
+            setPending(true);
+            void rpc("groups/remove", { groupId })
+              .then(() => router.replace("/"))
+              .catch((err) => {
+                setPending(false);
+                Alert.alert(t("Could not delete group"), errorText(err, t("Try again.")));
+              });
+          },
+        },
+      ],
+    );
   }
 
   return (
@@ -88,6 +133,8 @@ export default function GroupSettingsScreen() {
         <TextInput
           value={name}
           onChangeText={setName}
+          maxLength={GROUP_NAME_MAX}
+          editable={!pending}
           placeholder={t("Group name")}
           placeholderTextColor={tokens.mutedForeground}
           style={{
@@ -105,7 +152,12 @@ export default function GroupSettingsScreen() {
         <BotMemberPicker
           bots={bots}
           selected={selected}
-          onChange={setSelected}
+          onChange={(nextSelected) => {
+            const originalMembers = group.members.map((member) => member.botId);
+            const retainedMembers = originalMembers.filter((id) => nextSelected.includes(id));
+            const addedMembers = nextSelected.filter((id) => !originalMembers.includes(id));
+            setSelected([...retainedMembers, ...addedMembers]);
+          }}
           disabled={pending}
         />
         {error ? <Text style={{ color: tokens.destructive, marginTop: 12 }}>{error}</Text> : null}
@@ -121,6 +173,7 @@ export default function GroupSettingsScreen() {
           style={{ marginTop: 24 }}
         />
         <NativeActionButton
+          disabled={pending}
           label={t("Delete group")}
           onPress={remove}
           prominence="destructive"

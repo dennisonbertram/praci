@@ -60,8 +60,10 @@ export async function rememberThreadMessage(
   const path = rememberedPath(messageId);
   const existing = await deps.memory.read({ scope: "bot", botId, path }, context);
   if (existing.documents.length) return;
+  // Remember is the owner's explicit choice, so the memory is pinned and never fades,
+  // the same as a memory the owner edits by hand.
   await deps.memory.commit(
-    { scope: "bot", botId, path, content, sourceThreadId: target.threadId },
+    { scope: "bot", botId, path, content, byOwner: true, sourceThreadId: target.threadId },
     context,
   );
 }

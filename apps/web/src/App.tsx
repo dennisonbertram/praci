@@ -19,7 +19,6 @@ import {
   Routes,
   useLocation,
   useNavigate,
-  useParams,
   useSearchParams,
 } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
@@ -49,7 +48,9 @@ import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
 import { PortalDead } from "./pages/portal/PortalDead";
 import { PortalHome } from "./pages/portal/PortalHome";
 import { PortalOpen } from "./pages/portal/PortalOpen";
+import { SharedArtifactPage } from "./pages/SharedArtifact";
 import { ShellPage } from "./pages/Shell";
+import { APP_PAGES } from "./pages/shell/pages";
 
 const AuthPage = lazy(() =>
   import("./pages/Auth").then((module) => ({ default: module.AuthPage })),
@@ -59,6 +60,9 @@ const PasswordResetPage = lazy(() =>
 );
 const OnboardingPage = lazy(() =>
   import("./pages/Onboarding").then((module) => ({ default: module.OnboardingPage })),
+);
+const McpConsentPage = lazy(() =>
+  import("./pages/McpConsent").then((module) => ({ default: module.McpConsentPage })),
 );
 const WelcomePage = lazy(() =>
   import("./pages/Welcome").then((module) => ({ default: module.WelcomePage })),
@@ -111,6 +115,8 @@ export function App() {
               <SsoCallbackPage />
             ) : window.location.pathname.startsWith("/portal") ? (
               <PortalApp />
+            ) : window.location.pathname === "/s" ? (
+              <SharedArtifactPage />
             ) : window.location.pathname === LOCAL_SETTINGS_PAGE ? (
               <LocalSettingsPage />
             ) : (
@@ -234,26 +240,16 @@ function SessionApp() {
             }
           >
             <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/oauth/consent" element={<McpConsentPage />} />
             <Route path="/app" element={<ShellPage />} />
             <Route path="/app/g/:groupId" element={<ShellPage />} />
-            <Route path="/app/artifacts" element={<ShellPage />} />
-            <Route path="/app/artifacts/:artifactId" element={<ShellPage />} />
-            {/* The board opens inside the shell, so the sidebar stays. */}
-            {ticketBoardEnabled ? <Route path="/app/board" element={<ShellPage />} /> : null}
-            <Route path="/app/inbox" element={<ShellPage />} />
-            <Route path="/app/integrations/*" element={<ShellPage />} />
-            <Route path="/app/finance/*" element={<ShellPage />} />
-            <Route path="/app/legal" element={<ShellPage />} />
-            <Route path="/app/gtm" element={<ShellPage />} />
-            <Route path="/app/devin" element={<ShellPage />} />
-            <Route path="/app/company/*" element={<ShellPage />} />
-            <Route path="/app/data-room" element={<ShellPage />} />
-            <Route path="/app/investors/*" element={<ShellPage />} />
-            <Route path="/app/fundraising" element={<ShellPage />} />
-            <Route path="/app/cap-table/*" element={<CapTableRedirect />} />
+            {APP_PAGES.filter((page) => !page.needsTicketBoard || ticketBoardEnabled).flatMap(
+              (page) =>
+                page.paths.map((path) => <Route key={path} path={path} element={<ShellPage />} />),
+            )}
             {/* Settings is a dialog over the shell; the shell opens it from this query. */}
             <Route path="/app/settings" element={<Navigate to="/app?settings=general" replace />} />
-            <Route path="/app/contacts" element={<ShellPage />} />
+            <Route path="/app/pages/:botId/:pageId" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
@@ -271,19 +267,6 @@ function SessionApp() {
 function LegacySetupRedirect() {
   const { search } = useLocation();
   return <Navigate to={`/app/integrations/setup${search}`} replace />;
-}
-
-/** Cap table became Investors; old links keep their query, minus the Carta-only kinds that no longer filter. */
-function CapTableRedirect() {
-  const { search } = useLocation();
-  const rest = useParams()["*"];
-  const params = new URLSearchParams(search);
-  if (params.get("kind") === "shareholder" || params.get("kind") === "options")
-    params.delete("kind");
-  const query = params.toString();
-  return (
-    <Navigate to={`/app/investors${rest ? `/${rest}` : ""}${query ? `?${query}` : ""}`} replace />
-  );
 }
 
 /** Signed-out visits to an app page come back to that page after sign-in. */

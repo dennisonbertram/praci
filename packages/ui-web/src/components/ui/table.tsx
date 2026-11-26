@@ -1,4 +1,5 @@
 import { cn } from "@rakazo/ui-web/lib/utils";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type * as React from "react";
 
 // `compact` is for dense lists of short rows: columns size to their content (no fixed layout, so
@@ -67,14 +68,56 @@ function TableHeadRow({ className, ...props }: React.ComponentProps<"tr">) {
   return <tr data-slot="table-head-row" className={cn(className)} {...props} />;
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+// With `onSort` the header is a button that sorts by its column. `sortDirection` is the column's
+// current sort (null when another column is sorted): the arrow shows while it is set, and on
+// hover or focus otherwise. Without `onSort` it is a plain header.
+function TableHead({
+  className,
+  children,
+  sortDirection,
+  onSort,
+  ...props
+}: React.ComponentProps<"th"> & { sortDirection?: "asc" | "desc" | null; onSort?: () => void }) {
+  const Arrow = sortDirection === "desc" ? ArrowDown : ArrowUp;
   return (
     <th
       data-slot="table-head"
       scope="col"
+      aria-sort={
+        onSort
+          ? sortDirection === "asc"
+            ? "ascending"
+            : sortDirection === "desc"
+              ? "descending"
+              : "none"
+          : undefined
+      }
       className={cn("py-2 pe-3 text-start text-xs font-medium text-muted-foreground", className)}
       {...props}
-    />
+    >
+      {onSort ? (
+        <button
+          type="button"
+          onClick={onSort}
+          className={cn(
+            "group/sort inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+            sortDirection && "text-foreground",
+          )}
+        >
+          {children}
+          <Arrow
+            aria-hidden="true"
+            className={cn(
+              "size-3",
+              !sortDirection &&
+                "opacity-0 group-hover/sort:opacity-60 group-focus-visible/sort:opacity-60",
+            )}
+          />
+        </button>
+      ) : (
+        children
+      )}
+    </th>
   );
 }
 

@@ -2,16 +2,18 @@ import type {
   AdapterContext,
   AgentHomeStore,
   ArtifactStore,
+  ComputerRef,
   JobPublisher,
   SandboxProvider,
 } from "@rakazo/adapter-kit";
 import { routineJobKey, runContinueJob, runJobKey } from "@rakazo/adapter-kit";
 import type { Actor, Bot, ComputerMode } from "@rakazo/contracts";
 import { GROUP_MEMBER_MIN, isVoiceAgentSpawnKey } from "@rakazo/contracts";
-import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
+import { ACTIVE_RUN_STATUSES, chainedRunMode } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import {
   cancelRunsInTransaction,
+  clearEndedRunState,
   computerScopeKey,
   createRepos,
   createThreadMessageInTransaction,
@@ -176,6 +178,14 @@ async function ensureSpawnRun(
           status: "queued",
         },
       });
+      // A sub-agent inherits its parent's mode: it cannot become attended or untainted.
+      const mode = chainedRunMode(
+        "spawn",
+        await tx.run.findUnique({
+          where: { id: input.sourceRunId },
+          select: { unattended: true, externalTaint: true, readOutsideContent: true },
+        }),
+      );
       return tx.run.create({
         data: {
           spaceId: input.spaceId,
@@ -185,6 +195,9 @@ async function ensureSpawnRun(
           userId: input.userId,
           status: "queued",
           trigger: "spawn",
+          unattended: mode.unattended,
+          externalTaint: mode.externalTaint,
+          readOutsideContent: mode.readOutsideContent,
           clientNonce,
         },
       });
@@ -209,7 +222,7 @@ type LifecycleBot = {
   id: string;
   spaceId: string;
   name: string;
-  userId?: string;
+  userId: string;
   archivedAt: Date | null;
   computerId?: string | null;
   webhookSecretId?: string | null;
@@ -275,7 +288,7 @@ async function lockAgentConnections(tx: Pick<PrismaClient, "$queryRaw">, botId: 
  * that was exclusive to it stays exclusive, so with no agent no bot can use it.
  */
 async function releaseAgentServers(
-  tx: Pick<PrismaClient, "mcpServer" | "connection" | "botConnectionAccess">,
+  tx: Pick<PrismaClient, "mcpServer" | "connection" | "botConnectionAccess" | "capabilityInstall">,
   bot: Pick<LifecycleBot, "id" | "spaceId" | "userId">,
 ) {
   const scope = {
@@ -283,6 +296,11 @@ async function releaseAgentServers(
     spaceId: bot.spaceId,
     ...(bot.userId ? { userId: bot.userId } : {}),
   };
+  // A directly connected source keeps its access policy; with no agent it is read-only.
+  await tx.capabilityInstall.updateMany({
+    where: scope,
+    data: { agentBotId: null, writesEnabled: false },
+  });
   const [servers, connections] = await Promise.all([
     // Servers made by provisioning stay exclusive; ones set exclusive by hand are shared again.
     (async () => {
@@ -301,18 +319,37 @@ async function releaseAgentServers(
         select: { id: true },
       });
       if (linked.length === 0) return { count: 0 };
-      // A connection Praci made private on connect stays private with no agent; older ones
-      // go back to shared.
-      const stayPrivate = { ...scope, privateByDefault: true };
+      // The connection keeps its access policy: "all agents" stays that, and a list that names other
+      // agents stays a list (minus this agent, removed below). One that only ever named this agent
+      // goes back to shared, unless Praci made it private on connect.
+      const others = new Set(
+        (
+          await tx.botConnectionAccess.findMany({
+            where: {
+              connectionId: { in: linked.map((connection) => connection.id) },
+              botId: { not: bot.id },
+            },
+            select: { connectionId: true },
+          })
+        ).map((entry) => entry.connectionId),
+      );
+      const reshare = (
+        await tx.connection.findMany({
+          where: { ...scope, allAgents: false, agentShared: false, privateByDefault: false },
+          select: { id: true },
+        })
+      )
+        .map((connection) => connection.id)
+        .filter((id) => !others.has(id));
       const released = await tx.connection.updateMany({
-        where: stayPrivate,
-        data: { agentBotId: null, writesEnabled: false, allAgents: false },
-      });
-      const shared = await tx.connection.updateMany({
         where: scope,
-        data: { agentBotId: null, writesEnabled: false, allAgents: true },
+        data: { agentBotId: null, writesEnabled: false, agentShared: false },
       });
-      released.count += shared.count;
+      if (reshare.length > 0)
+        await tx.connection.updateMany({
+          where: { id: { in: reshare } },
+          data: { allAgents: true },
+        });
       await tx.botConnectionAccess.deleteMany({
         where: {
           botId: bot.id,
@@ -334,28 +371,27 @@ export async function archiveBot(
 ) {
   const [dedicated, activeRuns, activeRoutines] = await Promise.all([
     deps.prisma.computer.findUnique({
-      where: { scopeKey: computerScopeKey("dedicated", bot.spaceId, bot.id) },
+      where: {
+        scopeKey: computerScopeKey({
+          mode: "dedicated",
+          spaceId: bot.spaceId,
+          userId: bot.userId,
+          botId: bot.id,
+        }),
+      },
     }),
     deps.prisma.run.findMany({
       where: { botId: bot.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
-      select: { id: true },
+      select: { id: true, taskId: true },
     }),
     deps.prisma.routine.findMany({
       where: { botId: bot.id, active: true },
       select: { id: true },
     }),
   ]);
-  const runIds = activeRuns.map((run) => run.id);
   const now = new Date();
-  await deps.prisma.$transaction(async (tx) => {
-    await tx.run.updateMany({
-      where: { id: { in: runIds } },
-      data: { status: "cancelled", completedAt: now },
-    });
-    await tx.task.updateMany({
-      where: { runs: { some: { id: { in: runIds } } } },
-      data: { status: "cancelled" },
-    });
+  const cancelledRuns = await deps.prisma.$transaction(async (tx) => {
+    const cancelled = await cancelRunsInTransaction(tx, activeRuns, now);
     await tx.routine.updateMany({
       where: { botId: bot.id },
       data: { active: false, nextRunAt: null },
@@ -379,9 +415,10 @@ export async function archiveBot(
       data: { archivedAt: bot.archivedAt ?? now, pinned: false },
     });
     await releaseAgentServers(tx, bot);
+    return cancelled;
   });
   await Promise.allSettled([
-    ...activeRuns.map((run) => deps.jobs.cancel(runJobKey(run.id))),
+    ...cancelledRuns.map((run) => deps.jobs.cancel(runJobKey(run.id))),
     ...activeRoutines.map((routine) => deps.jobs.cancel(routineJobKey(routine.id))),
   ]);
   await releaseTeamComputerScreen(deps, bot, dedicated?.id, context);
@@ -411,7 +448,14 @@ export async function destroyBot(
 ) {
   const [dedicated, activeRuns, routines] = await Promise.all([
     deps.prisma.computer.findUnique({
-      where: { scopeKey: computerScopeKey("dedicated", bot.spaceId, bot.id) },
+      where: {
+        scopeKey: computerScopeKey({
+          mode: "dedicated",
+          spaceId: bot.spaceId,
+          userId: bot.userId,
+          botId: bot.id,
+        }),
+      },
     }),
     deps.prisma.run.findMany({
       where: { botId: bot.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
@@ -424,6 +468,7 @@ export async function destroyBot(
     where: { id: { in: runIds } },
     data: { status: "cancelled", completedAt: new Date() },
   });
+  await clearEndedRunState(deps.prisma, runIds);
   await Promise.allSettled([
     ...activeRuns.map((run) => deps.jobs.cancel(runJobKey(run.id))),
     ...routines.map((routine) => deps.jobs.cancel(routineJobKey(routine.id))),
@@ -729,14 +774,13 @@ async function removeTeamBrowserProfile(
   // the server. See removeTeamBotWorkspace.
   if (computer.providerRef && deps.sandbox.releaseScreen && computer.state === "running") {
     await withCleanupDeadline(profileContext, LIVE_CLEANUP_BUDGET_MS, (cleanupContext) =>
-      removeComputerWorkspaceDirectories(
-        deps.sandbox,
-        toComputerRef(computer),
-        ".browser-profiles",
-        [name],
-        cleanupContext,
-      ),
+      removeProfileOnceClosed(deps.sandbox, toComputerRef(computer), name, cleanupContext),
     ).catch((error) => {
+      // Chromium's helpers can hold the profile's databases open briefly after the stop.
+      if (isBusyError(error)) {
+        getLogger().warn("team browser profile still open; removed on next boot");
+        return;
+      }
       getLogger().error("team browser profile cleanup", error);
     });
   }
@@ -748,6 +792,41 @@ async function removeTeamBrowserProfile(
     });
 }
 
+const PROFILE_BUSY_ATTEMPTS = 3;
+const PROFILE_BUSY_RETRY_MS = 1_000;
+
+function isBusyError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  return (
+    (error as NodeJS.ErrnoException).code === "EBUSY" ||
+    error.message.includes("Device or resource busy")
+  );
+}
+
+async function removeProfileOnceClosed(
+  sandbox: SandboxProvider,
+  computer: ComputerRef,
+  name: string,
+  context: AdapterContext,
+) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await removeComputerWorkspaceDirectories(
+        sandbox,
+        computer,
+        ".browser-profiles",
+        [name],
+        context,
+      );
+      return;
+    } catch (error) {
+      if (!isBusyError(error) || attempt >= PROFILE_BUSY_ATTEMPTS) throw error;
+      await new Promise((resolve) => setTimeout(resolve, PROFILE_BUSY_RETRY_MS));
+      context.signal.throwIfAborted();
+    }
+  }
+}
+
 /** A Team Computer that is not running removes the folder when it next boots. */
 async function removeTeamBotWorkspace(
   deps: BotLifecycleDeps,
@@ -755,9 +834,12 @@ async function removeTeamBotWorkspace(
   context: AdapterContext,
 ) {
   if (!isTeamBotFolderName(bot.id)) return;
-  // Look the computer up by space: a bot moved to its own computer can still have a folder here.
+  // Look the owner's Team Computer up by scope: a bot moved to its own computer can still have
+  // a folder there. Any other team computer in the space drops it on boot (botDeletion).
   const computer = await deps.prisma.computer.findUnique({
-    where: { scopeKey: computerScopeKey("team", bot.spaceId) },
+    where: {
+      scopeKey: computerScopeKey({ mode: "team", spaceId: bot.spaceId, userId: bot.userId }),
+    },
   });
   if (!computer) return;
   // Remote providers keep a stored copy that only the server writes, and replacement computers

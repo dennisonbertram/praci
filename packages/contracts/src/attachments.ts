@@ -40,6 +40,16 @@ export function isAttachmentImageMimeType(mimeType: string): boolean {
   return (ATTACHMENT_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType);
 }
 
+/** What a public share link can show: HTML, UI artifacts, images and PDF. */
+export function isShareableArtifactMimeType(mimeType: string): boolean {
+  return (
+    mimeType === "text/html" ||
+    mimeType === UI_ARTIFACT_MIME_TYPE ||
+    mimeType === "application/pdf" ||
+    isAttachmentImageMimeType(mimeType)
+  );
+}
+
 export function isAllowedAttachmentMimeType(mimeType: string): mimeType is AttachmentMimeType {
   return (ATTACHMENT_ALLOWED_MIME_TYPES as readonly string[]).includes(mimeType);
 }

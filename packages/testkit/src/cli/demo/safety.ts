@@ -29,6 +29,8 @@ export function childEnv(parent: NodeJS.ProcessEnv, own: NodeJS.ProcessEnv): Nod
 
 export const DEMO_LABEL = "rakazo.demo";
 export const SLOT_LABEL = "rakazo.demo.slot";
+/** The checkout root that created the container; the demo and slot labels are identical across checkouts, so they cannot prove ownership. */
+export const CHECKOUT_LABEL = "rakazo.demo.checkout";
 
 /** Ports and container name for a demo slot (0-9), so several stacks can run side by side. */
 export function slotConfig(raw: string | undefined) {
@@ -49,11 +51,17 @@ export interface ContainerInfo {
   labels: Record<string, string> | null;
 }
 
-/** Throws unless the container is this slot's own: labeled, same slot, and the one recorded at start. */
+/**
+ * Throws unless the container is this slot's own and provably created by this checkout: the one
+ * recorded when this checkout started it, or (when no id was recorded) one carrying this
+ * checkout's label. A checkout label cannot override a recorded id mismatch. Anything else may
+ * be another engine's demo and still hold data, so it is never removed automatically.
+ */
 export function assertDemoContainer(
   info: ContainerInfo | null,
-  recordedId?: string,
-  slot = 0,
+  recordedId: string | undefined,
+  slot: number,
+  root: string,
 ): void {
   if (!info) return;
   const { container } = slotConfig(String(slot));
@@ -66,10 +74,14 @@ export function assertDemoContainer(
     throw new Error(
       `The ${container} container belongs to a different demo slot; refusing to remove it.`,
     );
-  if (recordedId && info.id !== recordedId)
-    throw new Error(
-      `The ${container} container is not the one this demo started; refusing to remove it.`,
-    );
+  if (recordedId !== undefined ? info.id === recordedId : info.labels?.[CHECKOUT_LABEL] === root)
+    return;
+  const owner = info.labels?.[CHECKOUT_LABEL];
+  throw new Error(
+    `The ${container} container cannot be shown to belong to this checkout` +
+      `${owner ? ` (its label names ${owner})` : ""}; refusing to remove it, since it may still hold another demo's data. ` +
+      `If it is really a stale leftover, remove it yourself with \`docker rm -f -v ${container}\` and re-run this command.`,
+  );
 }
 
 /** Slot 0 keeps `.demo/`; other slots use `.demo/slot-N/` so their state never mixes. */

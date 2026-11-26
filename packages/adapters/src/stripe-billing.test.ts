@@ -127,6 +127,29 @@ describe("Stripe billing HTTP boundary", () => {
     expect(wire.subscriptions.map((s) => s.status)).toEqual(["canceled", "canceled"]);
   });
 
+  it("cancels unpaid and paused subscriptions before a new checkout, and no others", async () => {
+    const { wire, provider } = setup();
+    const { customerId } = await provider.createCustomer({
+      email: "owner@example.com",
+      organizationId: "org_1",
+    });
+    const statuses = ["past_due", "incomplete", "unpaid", "paused"];
+    for (const status of statuses) {
+      await provider.createCheckout({ customerId, seats: 1, ...urls });
+      wire.completeCheckout(customerId, status);
+    }
+    await provider.createCheckout({ customerId, seats: 1, ...urls });
+    expect(wire.subscriptions.map((s) => s.status)).toEqual([
+      "past_due",
+      "incomplete",
+      "canceled",
+      "canceled",
+    ]);
+    const deletes = wire.requests.filter((request) => request.method === "DELETE");
+    expect(deletes.length).toBeGreaterThan(0);
+    expect(deletes.every((request) => request.form.invoice_now === undefined)).toBe(true);
+  });
+
   it("maps Stripe statuses onto the neutral set", () => {
     for (const status of ["trialing", "active", "past_due", "incomplete"])
       expect(mapStripeSubscriptionStatus(status)).toBe(status);

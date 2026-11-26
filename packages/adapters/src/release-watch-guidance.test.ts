@@ -16,7 +16,7 @@ describe("release-watch guidance", () => {
     const prompt = schema.oneOf?.find((branch) => branch.required?.includes("cron"))?.properties
       ?.prompt;
     expect(prompt?.description ?? "").toContain("GITHUB_LIST_RELEASES");
-    expect(prompt?.description ?? "").toMatch(/Prefer plugin tools over computer browser/i);
+    expect(prompt?.description ?? "").toMatch(/preferring them over the computer browser/i);
   });
 
   it("exposes an exclusive timing schema for schedule_create", () => {

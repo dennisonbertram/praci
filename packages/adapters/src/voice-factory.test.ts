@@ -47,12 +47,14 @@ describe("createVoiceProvider", () => {
       "openai",
       "cartesia",
       "fish-audio",
+      "openai-compatible",
     ]);
     expect(listVoiceCatalog().map((entry) => entry.id)).toEqual([
       "elevenlabs",
       "openai",
       "cartesia",
       "fish-audio",
+      "openai-compatible",
     ]);
     expect(createVoiceProvider("elevenlabs").describe().id).toBe("elevenlabs");
     expect(createVoiceProvider("openai").describe().capabilities.transcribe).toBe(true);
@@ -759,8 +761,9 @@ describe("ScriptedVoiceProvider", () => {
 describe("transcription adapter", () => {
   it("flags the catalog for speech", () => {
     for (const entry of VOICE_CATALOG) {
-      expect(entry.speech).toBe(true);
+      expect(entry.speech).toBe(entry.id !== "openai-compatible");
     }
+    expect(isVoiceProviderId("openai-compatible")).toBe(false);
   });
 
   it("adapts providers that transcribe and refuses those that do not", () => {
@@ -796,7 +799,7 @@ describe("transcription catalog", () => {
   it("lists transcribing voice providers, plus the transcription-only fixture when scripted", () => {
     vi.stubEnv("AGENT_RUNTIME", "");
     const ids = listTranscriptionCatalog().map((entry) => entry.id);
-    expect(ids).toEqual(["elevenlabs", "openai", "fish-audio"]);
+    expect(ids).toEqual(["elevenlabs", "openai", "fish-audio", "openai-compatible"]);
     expect(isTranscriptionProviderId("scripted-transcribe")).toBe(false);
     expect(() => createTranscriptionProvider("scripted-transcribe")).toThrow();
 

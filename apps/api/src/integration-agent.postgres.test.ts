@@ -400,24 +400,29 @@ describePostgres("integration agents (PostgreSQL)", () => {
   /** A router whose first server updateMany first runs `before`, to land a change between check and update. */
   const racingClient = (before: () => Promise<unknown>, extra: object = {}) => {
     let fired = false;
-    const racing = new Proxy(prisma, {
-      get(target, prop, receiver) {
-        const value = Reflect.get(target, prop, receiver);
-        if (prop !== "mcpServer") return value;
-        return new Proxy(value, {
-          get(model, method, r) {
-            if (method !== "updateMany") return Reflect.get(model, method, r);
-            return async (args: never) => {
-              if (!fired) {
-                fired = true;
-                await before();
-              }
-              return model.updateMany(args);
-            };
-          },
-        });
-      },
-    });
+    const wrap = (client: PrismaClient): PrismaClient =>
+      new Proxy(client, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (prop === "$transaction")
+            return (fn: (tx: PrismaClient) => unknown) =>
+              target.$transaction(((tx: PrismaClient) => fn(wrap(tx))) as never);
+          if (prop !== "mcpServer") return value;
+          return new Proxy(value, {
+            get(model, method, r) {
+              if (method !== "updateMany") return Reflect.get(model, method, r);
+              return async (args: never) => {
+                if (!fired) {
+                  fired = true;
+                  await before();
+                }
+                return model.updateMany(args);
+              };
+            },
+          });
+        },
+      });
+    const racing = wrap(prisma);
     return createRouterClient(
       createRouter({
         prisma: racing,
@@ -619,6 +624,30 @@ describePostgres("integration agents (PostgreSQL)", () => {
     await racer.mcp.assignments.replace({ botId: other.id, assignments: [] });
     expect(fired).toBe(true);
     expect(await prisma.botMcpServer.count({ where: { botId: other.id, serverId: s.id } })).toBe(1);
+  });
+
+  it("turning sharing on grants no other agent, even ones granted before sharing was turned off", async () => {
+    const s = await mkServer(userA, "share-clears", "https://api.brex.com/mcp");
+    const made = await client(a).integrationAgents.create({ serverId: s.id });
+    await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: false });
+    const other = await repos.createBot(a, {
+      name: "Other3",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: false,
+    });
+    await client(a).mcp.assignments.replace({
+      botId: other.id,
+      assignments: [{ serverId: s.id, allowAllTools: true, allowedTools: [] }],
+    });
+    await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: true });
+    await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: false });
+    const holders = await prisma.botMcpServer.findMany({
+      where: { serverId: s.id },
+      select: { botId: true },
+    });
+    expect(holders.map((row) => row.botId)).toEqual([made.botId]);
   });
 
   it("editing a server's endpoint to Carta links its specialized agent", async () => {

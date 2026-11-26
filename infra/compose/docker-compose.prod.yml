@@ -88,6 +88,34 @@ services:
       seaweedfs:
         condition: service_healthy
 
+  # Applies migrations as the database owner, creates the runtime login, and exits. Only this
+  # container gets the owner login: the API and worker connect as rakazo_app, which row-level
+  # security binds, so code running in either cannot find a login that bypasses it.
+  migrate:
+    image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/compose/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-}
+    command: ["pnpm", "db:migrate"]
+    restart: "no"
+    logging: *logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: 1536m
+    environment:
+      DATABASE_URL: postgres://rakazo_app:${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
+      DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     # The tag is what the updater moves. `docker compose pull` fetches it, `up -d` recreates onto
     # it, and the previous tag stays in .env so a rollback is one redeploy rather than a rebuild.
@@ -102,10 +130,7 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-}
     restart: unless-stopped
-    command:
-      - bash
-      - -lc
-      - pnpm --filter @rakazo/db exec prisma migrate deploy && pnpm --filter @rakazo/api start
+    command: ["pnpm", "--filter", "@rakazo/api", "start"]
     init: true
     logging: *logging
     security_opt:
@@ -114,8 +139,6 @@ services:
       - ALL
     pids_limit: 256
     mem_limit: 1536m
-    env_file:
-      - ../../.env
     environment:
       SECRET_STORE: ${SECRET_STORE:-encrypted}
       INFISICAL_URL: ${INFISICAL_URL:-}
@@ -133,8 +156,12 @@ services:
       OIDC_NAME: ${OIDC_NAME:-SSO}
       OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
       OIDC_ALLOW_SIGNUP_BYPASS: ${OIDC_ALLOW_SIGNUP_BYPASS:-false}
+      # Public MCP address and extra trusted browser origins: API only.
+      PUBLIC_MCP_URL:
+      RAKAZO_TRUSTED_ORIGINS:
       AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}
-      DATABASE_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
+      # The app's own login, subject to row-level security (docs/self-host.md#database-roles).
+      DATABASE_URL: postgres://rakazo_app:${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
       DATA_DIR: /data
       SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-e2b}
       CLOUD_AGENT_PROVIDER: ${CLOUD_AGENT_PROVIDER:-none}
@@ -150,6 +177,189 @@ services:
       https_proxy: ${https_proxy:-${HTTPS_PROXY:-}}
       no_proxy: ${no_proxy:-${NO_PROXY:-}}
       RAKAZO_UPDATER_URL: http://updater:7092
+      # Pass-through: Compose fills each from .env when set. Only what this process reads.
+      AI_GATEWAY_API_KEY:
+      ANTHROPIC_API_KEY:
+      ANTHROPIC_AUTH_TOKEN:
+      ANTHROPIC_OAUTH_TOKEN:
+      ANT_LING_API_KEY:
+      API_PORT:
+      API_URL:
+      AWS_ACCESS_KEY_ID:
+      AWS_BEARER_TOKEN_BEDROCK:
+      AWS_CONTAINER_CREDENTIALS_FULL_URI:
+      AWS_CONTAINER_CREDENTIALS_RELATIVE_URI:
+      AWS_DEFAULT_REGION:
+      AWS_PROFILE:
+      AWS_REGION:
+      AWS_ROLE_ARN:
+      AWS_SECRET_ACCESS_KEY:
+      AWS_SESSION_TOKEN:
+      AWS_WEB_IDENTITY_TOKEN_FILE:
+      AXIOM_DATASET:
+      AXIOM_EDGE:
+      AXIOM_EDGE_URL:
+      AXIOM_TOKEN:
+      AZURE_OPENAI_API_KEY:
+      BASETEN_API_KEY:
+      BETTER_AUTH_SECRET:
+      BETTER_AUTH_URL:
+      BLUEBUBBLES_PASSWORD:
+      BLUEBUBBLES_URL:
+      BLUEBUBBLES_WEBHOOK_TOKEN:
+      BOX_API_KEY:
+      BOX_API_URL:
+      BOX_BASE_URL:
+      BROWSER_PROVIDER:
+      CEREBRAS_API_KEY:
+      CLOUDFLARE_API_KEY:
+      COMPOSIO_API_KEY:
+      COMPUTER_TAKEOVER_TTL_MS:
+      COPILOT_GITHUB_TOKEN:
+      CREATEOS_SANDBOX_API_KEY:
+      CREATEOS_SANDBOX_BASE_URL:
+      CREATEOS_SANDBOX_ROOTFS:
+      CREATEOS_SANDBOX_SHAPE:
+      DAYTONA_API_KEY:
+      DAYTONA_API_URL:
+      DAYTONA_SNAPSHOT:
+      DAYTONA_TARGET:
+      DB_POOL_MAX:
+      DEEPSEEK_API_KEY:
+      E2B_API_KEY:
+      EMAIL_FROM:
+      ENCRYPTION_KEY:
+      FIREWORKS_API_KEY:
+      FISH_ASR_MODEL:
+      FISH_TTS_MODEL:
+      GCLOUD_PROJECT:
+      GEMINI_API_KEY:
+      GMAIL_PUSH_AUDIENCE:
+      GMAIL_PUSH_SERVICE_ACCOUNT:
+      GMAIL_PUSH_TOPIC:
+      GOOGLE_APPLICATION_CREDENTIALS:
+      GOOGLE_CLOUD_API_KEY:
+      GOOGLE_CLOUD_LOCATION:
+      GOOGLE_CLOUD_PROJECT:
+      GROQ_API_KEY:
+      HF_TOKEN:
+      INTEGRATIONS_CATALOG_URL:
+      KIMI_API_KEY:
+      LARK_APP_ID:
+      LARK_APP_SECRET:
+      LARK_DOMAIN:
+      LARK_ENCRYPT_KEY:
+      LARK_VERIFICATION_TOKEN:
+      LOG_FORMAT:
+      LOG_LEVEL:
+      MAIL_WRITES_DISABLED:
+      MAX_TOOL_CALLS_PER_TURN:
+      MCP_ALLOW_PRIVATE_ENDPOINT:
+      MCP_STDIO_ALLOWED_COMMANDS:
+      MCP_STDIO_ENABLED:
+      MESSAGING_OPEN_SIGNUP:
+      META_API_KEY:
+      MINIMAX_API_KEY:
+      MINIMAX_CN_API_KEY:
+      MISTRAL_API_KEY:
+      MODEL_STREAM_MAX_RETRIES:
+      MOONSHOT_API_KEY:
+      NVIDIA_API_KEY:
+      OPENAI_API_KEY:
+      OPENCODE_API_KEY:
+      OPENROUTER_API_KEY:
+      OTEL_EXPORTER_OTLP_HEADERS:
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
+      OTEL_EXPORTER_OTLP_TRACES_HEADERS:
+      PHOTON_IMESSAGE_ADDRESS:
+      PHOTON_PROJECT_ID:
+      PHOTON_PROJECT_SECRET:
+      PHOTON_WEBHOOK_SECRET:
+      PIPEDREAM_CLIENT_ID:
+      PIPEDREAM_CLIENT_SECRET:
+      PIPEDREAM_ENVIRONMENT:
+      PIPEDREAM_PROJECT_ID:
+      PI_DEFAULT_CREDENTIALS:
+      PI_DEFAULT_MODEL:
+      PI_DEFAULT_PROVIDER:
+      PI_SESSION_RECORDING:
+      PRIVACY_POLICY_URL:
+      QWEN_TOKEN_PLAN_API_KEY:
+      QWEN_TOKEN_PLAN_CN_API_KEY:
+      RADIUS_API_KEY:
+      RAKAZO_AGENT_HOME_STORE:
+      RAKAZO_AUTO_REVIEW:
+      RAKAZO_AUTO_REVIEW_MIN_CONFIDENCE:
+      RAKAZO_AUTO_REVIEW_MODEL:
+      RAKAZO_AUTO_REVIEW_PROVIDER:
+      RAKAZO_AUTO_REVIEW_TIMEOUT_MS:
+      RAKAZO_DESKTOP_STACK_TOKEN:
+      RAKAZO_GIT_SHA:
+      RAKAZO_IMAGE_TAG:
+      RAKAZO_INBOX_CLASSIFIER_MODEL:
+      RAKAZO_INBOX_CLASSIFIER_PROVIDER:
+      RAKAZO_LOCAL_CONTEXT_WINDOW:
+      RAKAZO_LOCAL_MAX_TOKENS:
+      RAKAZO_LOCAL_MODELS:
+      RAKAZO_LOCAL_MODELS_URL:
+      RAKAZO_LOCAL_VISION_MODELS:
+      RAKAZO_OPENAI_COMPATIBLE_VISION_MODELS:
+      RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC:
+      RAKAZO_OPENAI_COMPAT_PRIVATE_HOSTS:
+      RAKAZO_S3_ACCESS_KEY_ID:
+      RAKAZO_S3_BUCKET:
+      RAKAZO_S3_ENDPOINT:
+      RAKAZO_S3_FORCE_PATH_STYLE:
+      RAKAZO_S3_PREFIX:
+      RAKAZO_S3_REGION:
+      RAKAZO_S3_SECRET_ACCESS_KEY:
+      RAKAZO_SECRETS_ALLOW_PRIVATE_HTTP:
+      RAKAZO_UPDATER_TOKEN:
+      RAKAZO_UPDATE_RESTART_SUPERVISOR:
+      REALTIME_DATABASE_URL:
+      RELEASE_WATCH_EVAL_MODEL:
+      SANDBOX_COMMAND_TIMEOUT_MS:
+      SANDBOX_IDLE_MS:
+      SANDBOX_MAX_COMPUTERS_PER_USER:
+      SANDBOX_SUPERVISOR_TOKEN:
+      SANDBOX_SUPERVISOR_URL:
+      SCREEN_PROXY_SECRET:
+      SENDBLUE_API_KEY_ID:
+      SENDBLUE_API_SECRET:
+      SENDBLUE_PHONE_NUMBER:
+      SENDBLUE_SIGNING_SECRET:
+      SIGNUPS_ENABLED:
+      SIGNUP_ALLOWLIST:
+      SLACK_BOT_TOKEN:
+      SLACK_RAKAZO_BOT_ID:
+      SLACK_SIGNING_SECRET:
+      SMTP_URL:
+      SPACE_TEARDOWN_TIMEOUT_MS:
+      STRIPE_PRICE_ID:
+      STRIPE_SECRET_KEY:
+      STRIPE_WEBHOOK_SECRET:
+      TEACH_RECORDING_TTL_MS:
+      TEAM_CHAT_BOT_ID:
+      TEAM_CHAT_JUDGE_MODEL:
+      TEAM_CHAT_JUDGE_PROVIDER:
+      TELEGRAM_BOT_TOKEN:
+      TELEGRAM_WEBHOOK_SECRET_TOKEN:
+      TICKET_BOARD_ENABLED:
+      TOGETHER_API_KEY:
+      TYPESAFE_API_KEY:
+      WEB_ORIGIN:
+      WEB_PROVIDER:
+      WHATSAPP_ACCESS_TOKEN:
+      WHATSAPP_APP_SECRET:
+      WHATSAPP_PHONE_NUMBER_ID:
+      WHATSAPP_VERIFY_TOKEN:
+      XAI_API_KEY:
+      XIAOMI_API_KEY:
+      XIAOMI_TOKEN_PLAN_AMS_API_KEY:
+      XIAOMI_TOKEN_PLAN_CN_API_KEY:
+      XIAOMI_TOKEN_PLAN_SGP_API_KEY:
+      ZAI_API_KEY:
+      ZAI_CODING_CN_API_KEY:
     expose:
       - "3100"
     volumes:
@@ -159,6 +369,8 @@ services:
       - data
       - control
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       seaweedfs-init:
         condition: service_completed_successfully
         required: false
@@ -191,8 +403,6 @@ services:
       - ALL
     pids_limit: 512
     mem_limit: 2g
-    env_file:
-      - ../../.env
     environment:
       SECRET_STORE: ${SECRET_STORE:-encrypted}
       INFISICAL_URL: ${INFISICAL_URL:-}
@@ -202,19 +412,14 @@ services:
       INFISICAL_PROJECT_ID: ${INFISICAL_PROJECT_ID:-}
       INFISICAL_ENVIRONMENT: ${INFISICAL_ENVIRONMENT:-}
       INFISICAL_FOLDER: ${INFISICAL_FOLDER:-}
-      BETTER_AUTH_SECRET: ""
-      OIDC_ISSUER: ""
-      OIDC_CLIENT_ID: ""
-      OIDC_CLIENT_SECRET: ""
-      AUTH_PASSWORD_ENABLED: "true"
       NODE_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
+      # The app's own login, subject to row-level security (docs/self-host.md#database-roles).
+      DATABASE_URL: postgres://rakazo_app:${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
       DATA_DIR: /data
       SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-e2b}
       CLOUD_AGENT_PROVIDER: ${CLOUD_AGENT_PROVIDER:-none}
       CLOUD_AGENT_SPACE_ID: ${CLOUD_AGENT_SPACE_ID:-}
       CURSOR_API_KEY: ${CURSOR_API_KEY:-}
-      SCREEN_PROXY_SECRET: ""
       WAKEUP_DRIVER: graphile
       AGENT_RUNTIME: pi
       # Optional egress proxy (Mainland / corporate). Empty = unset; either case works.
@@ -224,6 +429,169 @@ services:
       http_proxy: ${http_proxy:-${HTTP_PROXY:-}}
       https_proxy: ${https_proxy:-${HTTPS_PROXY:-}}
       no_proxy: ${no_proxy:-${NO_PROXY:-}}
+      # Pass-through: Compose fills each from .env when set. Only what this process reads.
+      AI_GATEWAY_API_KEY:
+      ANTHROPIC_API_KEY:
+      ANTHROPIC_AUTH_TOKEN:
+      ANTHROPIC_OAUTH_TOKEN:
+      ANT_LING_API_KEY:
+      AWS_ACCESS_KEY_ID:
+      AWS_BEARER_TOKEN_BEDROCK:
+      AWS_CONTAINER_CREDENTIALS_FULL_URI:
+      AWS_CONTAINER_CREDENTIALS_RELATIVE_URI:
+      AWS_DEFAULT_REGION:
+      AWS_PROFILE:
+      AWS_REGION:
+      AWS_ROLE_ARN:
+      AWS_SECRET_ACCESS_KEY:
+      AWS_SESSION_TOKEN:
+      AWS_WEB_IDENTITY_TOKEN_FILE:
+      AXIOM_DATASET:
+      AXIOM_EDGE:
+      AXIOM_EDGE_URL:
+      AXIOM_TOKEN:
+      AZURE_OPENAI_API_KEY:
+      BASETEN_API_KEY:
+      BLUEBUBBLES_PASSWORD:
+      BLUEBUBBLES_URL:
+      BLUEBUBBLES_WEBHOOK_TOKEN:
+      BOX_API_KEY:
+      API_URL:
+      BOX_API_URL:
+      BOX_BASE_URL:
+      BROWSER_PROVIDER:
+      CEREBRAS_API_KEY:
+      CLOUDFLARE_API_KEY:
+      COMPOSIO_API_KEY:
+      COMPUTER_TAKEOVER_TTL_MS:
+      COPILOT_GITHUB_TOKEN:
+      CREATEOS_SANDBOX_API_KEY:
+      CREATEOS_SANDBOX_BASE_URL:
+      CREATEOS_SANDBOX_ROOTFS:
+      CREATEOS_SANDBOX_SHAPE:
+      DAYTONA_API_KEY:
+      DAYTONA_API_URL:
+      DAYTONA_SNAPSHOT:
+      DAYTONA_TARGET:
+      DB_POOL_MAX:
+      DEEPSEEK_API_KEY:
+      E2B_API_KEY:
+      ENCRYPTION_KEY:
+      FIREWORKS_API_KEY:
+      FISH_ASR_MODEL:
+      FISH_TTS_MODEL:
+      GCLOUD_PROJECT:
+      GEMINI_API_KEY:
+      GMAIL_PUSH_AUDIENCE:
+      GMAIL_PUSH_SERVICE_ACCOUNT:
+      GMAIL_PUSH_TOPIC:
+      GOOGLE_APPLICATION_CREDENTIALS:
+      GOOGLE_CLOUD_API_KEY:
+      GOOGLE_CLOUD_LOCATION:
+      GOOGLE_CLOUD_PROJECT:
+      GRAPHILE_WORKER_CONCURRENCY:
+      GROQ_API_KEY:
+      HF_TOKEN:
+      KIMI_API_KEY:
+      LARK_APP_ID:
+      LARK_APP_SECRET:
+      LARK_DOMAIN:
+      LARK_ENCRYPT_KEY:
+      LARK_VERIFICATION_TOKEN:
+      LOG_FORMAT:
+      LOG_LEVEL:
+      MAIL_WRITES_DISABLED:
+      MAX_TOOL_CALLS_PER_TURN:
+      MCP_ALLOW_PRIVATE_ENDPOINT:
+      MCP_STDIO_ALLOWED_COMMANDS:
+      MCP_STDIO_ENABLED:
+      MESSAGING_OPEN_SIGNUP:
+      META_API_KEY:
+      MINIMAX_API_KEY:
+      MINIMAX_CN_API_KEY:
+      MISTRAL_API_KEY:
+      MODEL_STREAM_MAX_RETRIES:
+      MOONSHOT_API_KEY:
+      NVIDIA_API_KEY:
+      OPENAI_API_KEY:
+      OPENCODE_API_KEY:
+      OPENROUTER_API_KEY:
+      OTEL_EXPORTER_OTLP_HEADERS:
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
+      OTEL_EXPORTER_OTLP_TRACES_HEADERS:
+      PHOTON_IMESSAGE_ADDRESS:
+      PHOTON_PROJECT_ID:
+      PHOTON_PROJECT_SECRET:
+      PHOTON_WEBHOOK_SECRET:
+      PIPEDREAM_CLIENT_ID:
+      PIPEDREAM_CLIENT_SECRET:
+      PIPEDREAM_ENVIRONMENT:
+      PIPEDREAM_PROJECT_ID:
+      PI_DEFAULT_CREDENTIALS:
+      PI_DEFAULT_MODEL:
+      PI_DEFAULT_PROVIDER:
+      PI_SESSION_RECORDING:
+      QWEN_TOKEN_PLAN_API_KEY:
+      QWEN_TOKEN_PLAN_CN_API_KEY:
+      RADIUS_API_KEY:
+      RAKAZO_AGENT_HOME_STORE:
+      RAKAZO_AUTO_REVIEW:
+      RAKAZO_AUTO_REVIEW_MIN_CONFIDENCE:
+      RAKAZO_AUTO_REVIEW_MODEL:
+      RAKAZO_AUTO_REVIEW_PROVIDER:
+      RAKAZO_AUTO_REVIEW_TIMEOUT_MS:
+      RAKAZO_IMAGE_TAG:
+      RAKAZO_INBOX_CLASSIFIER_MODEL:
+      RAKAZO_INBOX_CLASSIFIER_PROVIDER:
+      RAKAZO_LOCAL_CONTEXT_WINDOW:
+      RAKAZO_LOCAL_MAX_TOKENS:
+      RAKAZO_LOCAL_MODELS:
+      RAKAZO_LOCAL_MODELS_URL:
+      RAKAZO_LOCAL_VISION_MODELS:
+      RAKAZO_OPENAI_COMPATIBLE_VISION_MODELS:
+      RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC:
+      RAKAZO_OPENAI_COMPAT_PRIVATE_HOSTS:
+      RAKAZO_S3_ACCESS_KEY_ID:
+      RAKAZO_S3_BUCKET:
+      RAKAZO_S3_ENDPOINT:
+      RAKAZO_S3_FORCE_PATH_STYLE:
+      RAKAZO_S3_PREFIX:
+      RAKAZO_S3_REGION:
+      RAKAZO_S3_SECRET_ACCESS_KEY:
+      RAKAZO_SECRETS_ALLOW_PRIVATE_HTTP:
+      RAKAZO_UPDATE_RESTART_SUPERVISOR:
+      REALTIME_DATABASE_URL:
+      RELEASE_WATCH_EVAL_MODEL:
+      SANDBOX_COMMAND_TIMEOUT_MS:
+      SANDBOX_IDLE_MS:
+      SANDBOX_MAX_COMPUTERS_PER_USER:
+      SANDBOX_SUPERVISOR_TOKEN:
+      SANDBOX_SUPERVISOR_URL:
+      SENDBLUE_API_KEY_ID:
+      SENDBLUE_API_SECRET:
+      SENDBLUE_PHONE_NUMBER:
+      SENDBLUE_SIGNING_SECRET:
+      SLACK_BOT_TOKEN:
+      SLACK_SIGNING_SECRET:
+      TEACH_RECORDING_TTL_MS:
+      TELEGRAM_BOT_TOKEN:
+      TELEGRAM_WEBHOOK_SECRET_TOKEN:
+      TICKET_BOARD_ENABLED:
+      TOGETHER_API_KEY:
+      TYPESAFE_API_KEY:
+      WEB_ORIGIN:
+      WEB_PROVIDER:
+      WHATSAPP_ACCESS_TOKEN:
+      WHATSAPP_APP_SECRET:
+      WHATSAPP_PHONE_NUMBER_ID:
+      WHATSAPP_VERIFY_TOKEN:
+      XAI_API_KEY:
+      XIAOMI_API_KEY:
+      XIAOMI_TOKEN_PLAN_AMS_API_KEY:
+      XIAOMI_TOKEN_PLAN_CN_API_KEY:
+      XIAOMI_TOKEN_PLAN_SGP_API_KEY:
+      ZAI_API_KEY:
+      ZAI_CODING_CN_API_KEY:
     volumes:
       - appdata:/data
     networks:

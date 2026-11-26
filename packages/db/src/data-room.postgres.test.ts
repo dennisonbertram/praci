@@ -759,4 +759,34 @@ describePostgres("data room repository (PostgreSQL)", () => {
     expect(await dr.setThumbnail(a, item.id, "t1")).toBe(true);
     expect((await dr.getItem(a, item.id)).thumbnailKey).toBe("t1");
   });
+
+  it("does not release a thumbnail claim from another space", async () => {
+    const { item } = await upload(a, `thumb-release-${run}.pdf`, `thumb-release-${run}`);
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([item.id]);
+
+    expect(await dr.releaseThumbnail(b, item.id)).toBe(false);
+    expect((await dr.getItem(a, item.id)).thumbnailTriedAt).not.toBeNull();
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([]);
+
+    expect(await dr.releaseThumbnail(a, item.id)).toBe(true);
+    expect((await dr.getItem(a, item.id)).thumbnailTriedAt).toBeNull();
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([item.id]);
+  });
+
+  it("does not release a thumbnail claim from another user in the same space", async () => {
+    const { item } = await upload(a, `thumb-user-release-${run}.pdf`, `thumb-user-release-${run}`);
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([item.id]);
+
+    expect(await dr.releaseThumbnail(a2, item.id)).toBe(false);
+    expect((await dr.getItem(a, item.id)).thumbnailTriedAt).not.toBeNull();
+  });
+
+  it("does not release a thumbnail claim after a thumbnail key is set", async () => {
+    const { item } = await upload(a, `thumb-key-release-${run}.pdf`, `thumb-key-release-${run}`);
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([item.id]);
+    expect(await dr.setThumbnail(a, item.id, "thumbnail-key")).toBe(true);
+
+    expect(await dr.releaseThumbnail(a, item.id)).toBe(false);
+    expect((await dr.getItem(a, item.id)).thumbnailTriedAt).not.toBeNull();
+  });
 });

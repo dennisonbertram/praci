@@ -13,13 +13,30 @@ import {
 } from "@rakazo/core";
 import type { NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  announceDelegatePending,
   appendEventInTransaction,
   expireStuckRun,
   externalChannels,
+  settleApprovalsOfEndedRuns,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
   withTransactionRetry,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { notifyThreadEvent } from "./run-notification.js";
+
+const STUCK_CANDIDATE_SELECT = {
+  id: true,
+  status: true,
+  updatedAt: true,
+  spaceId: true,
+  threadId: true,
+  botId: true,
+  userId: true,
+  taskId: true,
+  unattended: true,
+  bot: { select: { name: true, notifyOnFinish: true } },
+  thread: { select: { groupId: true } },
+} as const;
 
 type StuckCursor = { at: Date; id: string };
 
@@ -32,6 +49,7 @@ type StuckCandidate = {
   botId: string;
   userId: string;
   taskId: string;
+  unattended: boolean;
   bot: { name: string; notifyOnFinish: boolean };
   thread: { groupId: string | null };
 };
@@ -77,18 +95,7 @@ export async function reconcileStuckWork(deps: {
     },
     orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
     take: deps.batchSize,
-    select: {
-      id: true,
-      status: true,
-      updatedAt: true,
-      spaceId: true,
-      threadId: true,
-      botId: true,
-      userId: true,
-      taskId: true,
-      bot: { select: { name: true, notifyOnFinish: true } },
-      thread: { select: { groupId: true } },
-    },
+    select: STUCK_CANDIDATE_SELECT,
   });
 
   const due = runs.flatMap((run) => {
@@ -127,6 +134,49 @@ export async function reconcileStuckWork(deps: {
   return { at: last.updatedAt, id: last.id };
 }
 
+/**
+ * A new run of a routine closes the routine's earlier background runs that are still waiting on
+ * an approval: their cards show "Expired" and their pending effects can never run, so a late
+ * answer cannot resume a stale run. Runs that are running, attended or waiting for a takeover stay.
+ */
+export async function expireSupersededRoutineRuns(
+  deps: {
+    prisma: PrismaClient;
+    jobs: JobPublisher;
+    events?: ThreadEvents;
+    notificationEvents?: NotificationEvents;
+    now: Date;
+  },
+  input: { routineId: string; exceptRunId: string },
+) {
+  // Only runs started before the initiating one: a slow sweep must not close a newer run.
+  const starter = await deps.prisma.run.findUnique({
+    where: { id: input.exceptRunId },
+    select: { createdAt: true },
+  });
+  if (!starter) return;
+  const older = await deps.prisma.run.findMany({
+    where: {
+      routineId: input.routineId,
+      OR: [
+        { createdAt: { lt: starter.createdAt } },
+        { createdAt: starter.createdAt, id: { lt: input.exceptRunId } },
+      ],
+      trigger: "routine",
+      unattended: true,
+      status: "waiting_input",
+    },
+    select: STUCK_CANDIDATE_SELECT,
+  });
+  for (const run of older) {
+    try {
+      await expireOne(deps, { ...run, status: "waiting_input" });
+    } catch (error) {
+      getLogger().error("routine supersede", error);
+    }
+  }
+}
+
 function readyStuckRun(
   run: Omit<Partial<StuckCandidate>, "status"> & { id: string; status?: string },
   now: Date,
@@ -145,6 +195,7 @@ function readyStuckRun(
     botId: run.botId,
     userId: run.userId,
     taskId: run.taskId,
+    unattended: run.unattended ?? false,
     bot: run.bot,
     thread: run.thread,
   };
@@ -209,7 +260,10 @@ async function remindStuckRun(
   // device registered later is still reminded during this wait.
   if ((await externalChannels(deps.prisma, run)).length === 0) return;
   const claimId = await withTransactionRetry(() =>
-    deps.prisma.$transaction((tx) => claimStuckReminder(tx, run, deps.now)),
+    deps.prisma.$transaction(
+      (tx) => claimStuckReminder(tx, run, deps.now),
+      THREAD_LOCK_TRANSACTION_OPTIONS,
+    ),
   );
   if (!claimId) return;
   const reminder = stuckWorkReminder(run.status, run.bot.name);
@@ -222,7 +276,10 @@ async function remindStuckRun(
   });
   if (delivery === "delivered") {
     await withTransactionRetry(() =>
-      deps.prisma.$transaction((tx) => markStuckNoticeDelivered(tx, claimId, run)),
+      deps.prisma.$transaction(
+        (tx) => markStuckNoticeDelivered(tx, claimId, run),
+        THREAD_LOCK_TRANSACTION_OPTIONS,
+      ),
     );
     return;
   }
@@ -312,17 +369,44 @@ async function expireOne(
   run: StuckCandidate,
 ) {
   const expired = await withTransactionRetry(() =>
-    deps.prisma.$transaction((tx) =>
-      expireStuckRun(tx, {
+    deps.prisma.$transaction(async (tx) => {
+      // A background run's unanswered approval card shows "Expired" and its pending effects can
+      // never run. Closed first, because a cancelled run can no longer write to the thread.
+      // Attended runs and plain questions keep today's behaviour.
+      if (run.status === "waiting_input" && run.unattended) {
+        await tx.$queryRaw`SELECT id FROM threads WHERE id = ${run.threadId} FOR UPDATE`;
+        const current = await tx.run.findUnique({
+          where: { id: run.id },
+          select: { status: true, updatedAt: true },
+        });
+        if (
+          current?.status !== run.status ||
+          current.updatedAt.getTime() !== run.updatedAt.getTime()
+        ) {
+          return null;
+        }
+        await settleApprovalsOfEndedRuns(tx, {
+          spaceId: run.spaceId,
+          threadId: run.threadId,
+          botId: run.botId,
+          runIds: [run.id],
+          answer: "expired",
+        });
+      }
+      return expireStuckRun(tx, {
         runId: run.id,
         threadId: run.threadId,
         status: run.status,
         updatedAt: run.updatedAt,
         now: deps.now,
-      }),
-    ),
+      });
+    }, THREAD_LOCK_TRANSACTION_OPTIONS),
   );
   if (!expired) return;
+  if (run.unattended) {
+    // A chat that sent this work shows a link to the card; it must drop the closed one.
+    await announceDelegatePending(deps.prisma, undefined, run.id).catch(() => undefined);
+  }
   await deps.events?.notify(run.threadId, expired.seq).catch((error) => {
     getLogger().error("stuck work realtime notification", error);
   });

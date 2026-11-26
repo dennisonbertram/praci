@@ -5,6 +5,7 @@ import {
   cryptoHistoryPoints,
   cryptoPartsOn,
   holdingParts,
+  impersonators,
   parseWalletInput,
   summarizeCrypto,
   usdValueCents,
@@ -104,6 +105,36 @@ describe("summarizeCrypto", () => {
     ]);
     expect(s.totalCents).toBe(100);
     expect(s.unpricedTokenCount).toBe(1);
+  });
+  it("ignores an unpriced token that copies a priced symbol from another contract", () => {
+    const real = holding({ symbol: "USDC", tokenAddress: "0xreal", usdValueCents: 100 });
+    const fake = holding({
+      symbol: "usdc",
+      tokenAddress: "0xfake",
+      usdPrice: null,
+      usdValueCents: null,
+      rawBalance: "9",
+    });
+    const otherChain = holding({
+      symbol: "USDC",
+      chainId: 8453,
+      tokenAddress: "0xfake",
+      usdPrice: null,
+      usdValueCents: null,
+      rawBalance: "9",
+    });
+    const samePlain = holding({
+      symbol: "ZZZ",
+      tokenAddress: "0xzzz",
+      usdPrice: null,
+      usdValueCents: null,
+      rawBalance: "9",
+    });
+    const all = [real, fake, otherChain, samePlain];
+    expect([...impersonators(all)]).toEqual([fake]);
+    // The other chain has no priced USDC, and ZZZ copies nothing, so both still count as unpriced.
+    expect(summarizeCrypto(all).unpricedTokenCount).toBe(2);
+    expect(summarizeCrypto(all).totalCents).toBe(100);
   });
   it("uses the oldest sync time and is empty-safe", () => {
     const s = summarizeCrypto([

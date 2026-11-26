@@ -22,6 +22,7 @@ import {
   FileText,
   FolderPlus,
   MoreHorizontal,
+  Sparkles,
 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -36,6 +37,7 @@ import { ArtifactPreview } from "../ArtifactPreview";
 import { PdfViewer } from "../PdfViewer";
 import { SandboxedHtmlViewer } from "../SandboxedHtmlViewer";
 import { SheetPreview } from "../SheetPreview";
+import { AttachmentReviewDialog } from "./AttachmentReviewDialog";
 
 export type MailAttachmentItem = {
   id: string;
@@ -275,6 +277,7 @@ function AttachmentPreviewDialog({
   filed,
   onAdd,
   onDownload,
+  onReview,
 }: {
   messageId: string;
   attachments: MailAttachmentItem[];
@@ -284,6 +287,7 @@ function AttachmentPreviewDialog({
   filed: Record<string, Filed>;
   onAdd: (attachment: MailAttachmentItem) => void;
   onDownload: (attachment: MailAttachmentItem) => void;
+  onReview: (attachment: MailAttachmentItem) => void;
 }) {
   const downloadRef = useRef<HTMLButtonElement>(null);
   const attachment = attachments[index];
@@ -337,6 +341,17 @@ function AttachmentPreviewDialog({
           <DialogTitle dir="auto" className="min-w-0 flex-1 truncate text-sm font-medium">
             {attachment.filename}
           </DialogTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={t`Review with AI`}
+            onClick={() => onReview(attachment)}
+          >
+            <Sparkles aria-hidden="true" />
+            <span className="hidden sm:inline">
+              <Trans>Review with AI</Trans>
+            </span>
+          </Button>
           <DataRoomAction state={filed[attachment.id] ?? "idle"} onAdd={() => onAdd(attachment)} />
           <Button
             ref={downloadRef}
@@ -376,6 +391,7 @@ export function MailAttachments({
     null,
   );
   const [open, setOpen] = useState<number | null>(null);
+  const [review, setReview] = useState<MailAttachmentItem | null>(null);
   const { filed, add, error } = useAddToDataRoom(messageId, attachments, () =>
     setResult({ ok: true, filename: "", added: true }),
   );
@@ -432,6 +448,10 @@ export function MailAttachments({
                   <MoreHorizontal aria-hidden="true" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setReview(attachment)}>
+                    <Sparkles aria-hidden="true" />
+                    <Trans>Review with AI</Trans>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => download(attachment)}>
                     <Download aria-hidden="true" />
                     <Trans>Download</Trans>
@@ -479,6 +499,15 @@ export function MailAttachments({
           filed={filed}
           onAdd={add}
           onDownload={download}
+          onReview={setReview}
+        />
+      ) : null}
+      {review ? (
+        <AttachmentReviewDialog
+          key={review.id}
+          messageId={messageId}
+          attachment={review}
+          onClose={() => setReview(null)}
         />
       ) : null}
     </div>

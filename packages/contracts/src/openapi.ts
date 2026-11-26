@@ -325,7 +325,10 @@ function operationFor(
   return operation;
 }
 
-export function createOpenAPIDocument(contract: unknown = appContract): OpenAPIDocument {
+/** The cap table ledger (`equity`) is web and desktop only; the iOS client keeps the read-only summary. */
+const { equity: _webOnly, ...nativeContract } = appContract;
+
+export function createOpenAPIDocument(contract: unknown = nativeContract): OpenAPIDocument {
   const entries = collectProcedures(contract);
   const components: Record<string, JSONSchema> = {
     RPCError: {
@@ -370,6 +373,6 @@ export function createOpenAPIDocument(contract: unknown = appContract): OpenAPID
   };
 }
 
-export function renderOpenAPIDocument(contract: unknown = appContract): string {
+export function renderOpenAPIDocument(contract: unknown = nativeContract): string {
   return `${JSON.stringify(createOpenAPIDocument(contract), null, 2)}\n`;
 }

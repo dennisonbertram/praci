@@ -1,6 +1,7 @@
 import type { RoutineHistory, RoutineRun } from "@rakazo/contracts";
+import { PINNED_CONNECTION_LOST_MESSAGE } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { userEvent, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { RoutineRunHistory } from "./RoutineRunHistory";
 
@@ -9,6 +10,7 @@ const run = (n: number, status: RoutineRun["status"], chat = true): RoutineRun =
   botId: "bot_demo",
   groupId: null,
   status,
+  error: status === "failed" ? "504: request timed out" : null,
   createdAt: `2026-01-0${n}T09:00:00.000Z`,
   startedAt: `2026-01-0${n}T09:00:05.000Z`,
   completedAt: status === "completed" || status === "failed" ? `2026-01-0${n}T09:01:35.000Z` : null,
@@ -76,6 +78,37 @@ export const WithOlderRuns: Story = {
   },
 };
 
+export const RefreshFailedWithOlderRuns: Story = {
+  beforeEach: () => {
+    let firstPageRequests = 0;
+    return mockRpc({
+      "routines.history": (input: unknown) => {
+        if ((input as { before?: unknown }).before) {
+          return { runs: [run(1, "completed")], nextCursor: null };
+        }
+        firstPageRequests += 1;
+        if (firstPageRequests > 1) throw new Error("offline");
+        return {
+          ...history,
+          nextCursor: { id: "run_2", createdAt: "2026-01-02T09:00:00.000Z" },
+        };
+      },
+    });
+  },
+  play: async (context) => {
+    await expand(context);
+    await userEvent.click(
+      await within(context.canvasElement).findByRole("button", { name: "Load older runs" }),
+    );
+    await userEvent.click(
+      await within(context.canvasElement).findByRole("button", { name: "Refresh" }),
+    );
+    await within(context.canvasElement).findByRole("alert");
+    await within(context.canvasElement).findAllByTestId("routine-run-row");
+    expect(within(context.canvasElement).getAllByTestId("routine-run-row")).toHaveLength(4);
+  },
+};
+
 export const Empty: Story = {
   beforeEach: () => mockRpc({ "routines.history": { runs: [], nextCursor: null } }),
 };
@@ -91,4 +124,35 @@ export const LoadFailed: Story = {
         throw new Error("offline");
       },
     }),
+};
+
+/** The newest failed run offers its fix; the older identical failure stays text-only. */
+export const NewestFailedWithFix: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "routines.history": {
+        runs: [
+          { ...run(5, "failed", false), error: PINNED_CONNECTION_LOST_MESSAGE },
+          { ...run(4, "failed", false), error: PINNED_CONNECTION_LOST_MESSAGE },
+          run(3, "completed"),
+        ],
+        nextCursor: null,
+      },
+    }),
+  args: {
+    onOpenModelSettings: () => undefined,
+    onOpenBotSettings: () => undefined,
+  },
+  play: expand,
+};
+
+export const SilentRun: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "routines.history": {
+        runs: [{ ...run(5, "completed", false), silent: true }, run(4, "completed")],
+        nextCursor: null,
+      },
+    }),
+  play: expand,
 };

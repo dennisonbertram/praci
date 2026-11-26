@@ -3,6 +3,7 @@ import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN } from "@rakazo/contracts";
 import { cancelRunsInTransaction } from "./cancel-runs.js";
 import type { Prisma, PrismaClient } from "./client.js";
 import { expireComputerExecutionLeases } from "./computers.js";
+import { withNewestThreadMessages } from "./preview-messages.js";
 import { IsolationError } from "./scope.js";
 import { lockSpaceForContentCreation } from "./spaces.js";
 import { activeRunSelection, activeRunStatuses, previewFromBlocks } from "./thread-listing.js";
@@ -53,7 +54,7 @@ function mapGroupMembers(members: GroupRecord["members"]): GroupMember[] {
 }
 
 function mapGroup(group: GroupRecord): Group {
-  if (!group.thread) throw new IsolationError("Group is missing its thread");
+  if (!group.thread) throw new Error("Group is missing its thread");
   const preview = previewFromBlocks(group.thread.messages[0]?.blocks);
   return {
     id: group.id,
@@ -73,7 +74,7 @@ function mapGroup(group: GroupRecord): Group {
 }
 
 function mapSpaceGroup(group: SpaceGroupRecord): SpaceGroup {
-  if (!group.thread) throw new IsolationError("Group is missing its thread");
+  if (!group.thread) throw new Error("Group is missing its thread");
   return {
     id: group.id,
     spaceId: group.spaceId,
@@ -138,11 +139,7 @@ function memberRowsInOrder(groupId: string, botIds: string[], base = Date.now())
 const groupMemberOrder = [{ createdAt: "asc" as const }, { botId: "asc" as const }];
 
 const groupInclude = {
-  thread: {
-    include: {
-      messages: { orderBy: { seq: "desc" as const }, take: 1 },
-    },
-  },
+  thread: true,
   members: {
     where: { bot: { archivedAt: null } },
     include: {
@@ -256,37 +253,53 @@ async function resumeArchivedGroupTeardown(tx: Prisma.TransactionClient, threadI
   return { cancelledRunIds: leasedRunIds, computers: targets };
 }
 
+/**
+ * Newest message for one group's preview. A top-level `take` is sent as LIMIT.
+ */
+async function attachNewestGroupMessage<T extends { thread: { id: string } | null }>(
+  client: PrismaClient | Prisma.TransactionClient,
+  group: T,
+) {
+  if (!group.thread) return group;
+  const messages = await client.message.findMany({
+    where: { threadId: group.thread.id },
+    orderBy: { seq: "desc" },
+    take: 1,
+  });
+  return { ...group, thread: { ...group.thread, messages } };
+}
+
 export function createGroupRepos(prisma: PrismaClient) {
   async function listSpaceGroupsForSpaces(actor: Actor, spaceIds: string[]): Promise<SpaceGroup[]> {
     if (spaceIds.length === 0) return [];
-    const groups = await prisma.chatGroup.findMany({
-      where: {
-        spaceId: { in: spaceIds },
-        userId: actor.userId,
-        archivedAt: null,
-      },
-      select: {
-        id: true,
-        spaceId: true,
-        name: true,
-        pinned: true,
-        sectionId: true,
-        position: true,
-        updatedAt: true,
-        thread: {
-          select: {
-            unread: true,
-            messages: {
-              orderBy: { seq: "desc" },
-              take: 1,
-              select: { blocks: true },
+    const groups = await withNewestThreadMessages(
+      prisma,
+      await prisma.chatGroup.findMany({
+        where: {
+          spaceId: { in: spaceIds },
+          userId: actor.userId,
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          spaceId: true,
+          name: true,
+          pinned: true,
+          sectionId: true,
+          position: true,
+          updatedAt: true,
+          thread: {
+            select: {
+              id: true,
+              unread: true,
             },
           },
+          members: groupInclude.members,
         },
-        members: groupInclude.members,
-      },
-      orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
-    });
+        orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
+      }),
+      1,
+    );
     return groups
       .filter((group) => hasMinimumActiveMembers(group.members))
       .map((group) => mapSpaceGroup(group));
@@ -294,15 +307,19 @@ export function createGroupRepos(prisma: PrismaClient) {
 
   return {
     async listGroups(actor: Actor, options: { archived?: boolean } = {}): Promise<Group[]> {
-      const groups = await prisma.chatGroup.findMany({
-        where: {
-          spaceId: actor.spaceId,
-          userId: actor.userId,
-          archivedAt: options.archived ? { not: null } : null,
-        },
-        include: groupInclude,
-        orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
-      });
+      const groups = await withNewestThreadMessages(
+        prisma,
+        await prisma.chatGroup.findMany({
+          where: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            archivedAt: options.archived ? { not: null } : null,
+          },
+          include: groupInclude,
+          orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
+        }),
+        1,
+      );
       return groups
         .filter((group) => hasMinimumActiveMembers(group.members))
         .map((group) => mapGroup(group as GroupRecord));
@@ -321,7 +338,7 @@ export function createGroupRepos(prisma: PrismaClient) {
         include: groupInclude,
       });
       if (!group || !hasMinimumActiveMembers(group.members)) throw new IsolationError();
-      return group as GroupRecord;
+      return (await attachNewestGroupMessage(prisma, group)) as GroupRecord;
     },
 
     async getGroupTarget(actor: Actor, groupId: string) {
@@ -365,10 +382,11 @@ export function createGroupRepos(prisma: PrismaClient) {
             userId: actor.userId,
           },
         });
-        return tx.chatGroup.findFirstOrThrow({
+        const loaded = await tx.chatGroup.findFirstOrThrow({
           where: { id: group.id },
           include: groupInclude,
         });
+        return attachNewestGroupMessage(tx, loaded);
       });
       return mapGroup(created as GroupRecord);
     },
@@ -382,7 +400,7 @@ export function createGroupRepos(prisma: PrismaClient) {
         pinned?: boolean;
         sectionId?: string | null;
       },
-    ): Promise<{ group: Group; cancelledRunIds: string[] }> {
+    ): Promise<{ group: Group; cancelledRunIds: string[]; computers: RunTeardownTarget[] }> {
       const members = input.botIds ? await assertOwnedBots(prisma, actor, input.botIds) : undefined;
       const updated = await prisma.$transaction(async (tx) => {
         await lockOwnedGroup(tx, actor, input.groupId);
@@ -398,7 +416,8 @@ export function createGroupRepos(prisma: PrismaClient) {
             thread: { select: { id: true } },
           },
         });
-        if (!current?.thread) throw new IsolationError();
+        if (!current) throw new IsolationError();
+        if (!current.thread) throw new Error("Group is missing its thread");
         if (
           !members &&
           !hasMinimumActiveMembers(
@@ -425,9 +444,15 @@ export function createGroupRepos(prisma: PrismaClient) {
               select: { id: true, taskId: true },
             })
           : [];
+        const cancelledRunIds = activeRuns.map((run) => run.id);
+        // Snapshot before cancellation commits: an expired lease still names its screen.
+        const { targets: computers } = await snapshotRunTeardownTargets(tx, cancelledRunIds);
         if (activeRuns.length) {
           const now = new Date();
           await cancelRunsInTransaction(tx, activeRuns, now);
+          await tx.event.deleteMany({
+            where: { type: "thread.progress", runId: { in: cancelledRunIds } },
+          });
         }
         if (input.name !== undefined) {
           await tx.chatGroup.update({
@@ -452,17 +477,21 @@ export function createGroupRepos(prisma: PrismaClient) {
             sectionId: input.sectionId,
           },
         });
-        return tx.chatGroup
-          .findFirstOrThrow({
-            where: { id: input.groupId },
-            include: groupInclude,
-          })
-          .then((group) => ({ group, cancelledRunIds: activeRuns.map((run) => run.id) }));
+        const loaded = await tx.chatGroup.findFirstOrThrow({
+          where: { id: input.groupId },
+          include: groupInclude,
+        });
+        return {
+          group: await attachNewestGroupMessage(tx, loaded),
+          cancelledRunIds,
+          computers,
+        };
       });
-      if (!updated.group.thread) throw new IsolationError();
+      if (!updated.group.thread) throw new Error("Group is missing its thread");
       return {
         group: mapGroup(updated.group as GroupRecord),
         cancelledRunIds: updated.cancelledRunIds,
+        computers: updated.computers,
       };
     },
 
@@ -477,7 +506,8 @@ export function createGroupRepos(prisma: PrismaClient) {
           },
           select: { archivedAt: true, thread: { select: { id: true } } },
         });
-        if (!current?.thread) throw new IsolationError();
+        if (!current) throw new IsolationError();
+        if (!current.thread) throw new Error("Group is missing its thread");
         if (current.archivedAt) return resumeArchivedGroupTeardown(tx, current.thread.id);
 
         const activeRuns = await tx.run.findMany({
@@ -534,19 +564,67 @@ export function createGroupRepos(prisma: PrismaClient) {
     async removeGroup(actor: Actor, groupId: string) {
       return prisma.$transaction(async (tx) => {
         await lockOwnedGroup(tx, actor, groupId);
+        // Wait out the thread's writers before taking the group row exclusively: their
+        // foreign-key share on the group would otherwise wait on this transaction.
+        const lockedThread = await tx.thread.findUnique({
+          where: { groupId },
+          select: { id: true },
+        });
+        if (lockedThread) {
+          await tx.$queryRaw`SELECT id FROM threads WHERE id = ${lockedThread.id} FOR UPDATE`;
+        }
+        // Exclusive from here, so no upload can reference the group after the snapshot below.
+        await lockOwnedGroup(tx, actor, groupId, { forDelete: true });
         const group = await tx.chatGroup.findUnique({
           where: { id: groupId },
           select: {
+            archivedAt: true,
+            thread: { select: { id: true } },
             artifacts: { select: { storageKey: true } },
             members: { orderBy: groupMemberOrder, take: 1, select: { botId: true } },
           },
         });
         const contextBotId = group?.members[0]?.botId;
         if (!contextBotId) throw new IsolationError();
+        let cancelledRunIds: string[] = [];
+        let computers: RunTeardownTarget[] = [];
+        if (group.thread) {
+          const activeRuns = await tx.run.findMany({
+            where: { threadId: group.thread.id, status: { in: activeRunStatuses } },
+            select: { id: true, taskId: true },
+          });
+          const activeRunIds = activeRuns.map((run) => run.id);
+          // Snapshot before cancellation commits: an expired lease still names its screen.
+          const snapshot = await snapshotRunTeardownTargets(tx, activeRunIds);
+          await cancelRunsInTransaction(tx, activeRuns, new Date());
+          cancelledRunIds = activeRunIds;
+          computers = snapshot.targets;
+          if (group.archivedAt) {
+            // An interrupted archive teardown may have left leases on cancelled runs.
+            const resumed = await resumeArchivedGroupTeardown(tx, group.thread.id).catch(
+              (error) => {
+                if (error instanceof IsolationError) return null;
+                throw error;
+              },
+            );
+            if (resumed) {
+              cancelledRunIds = [...new Set([...cancelledRunIds, ...resumed.cancelledRunIds])];
+              const seen = new Set(computers.map((computer) => `${computer.id}:${computer.runId}`));
+              computers = [
+                ...computers,
+                ...resumed.computers.filter(
+                  (computer) => !seen.has(`${computer.id}:${computer.runId}`),
+                ),
+              ];
+            }
+          }
+        }
         await tx.chatGroup.delete({ where: { id: groupId } });
         return {
           contextBotId,
           artifactStorageKeys: group.artifacts.map((artifact) => artifact.storageKey),
+          cancelledRunIds,
+          computers,
         };
       });
     },
@@ -555,19 +633,36 @@ export function createGroupRepos(prisma: PrismaClient) {
   };
 }
 
+/**
+ * Serializes writers of one group. Callers lock the group before its thread, while a thread
+ * writer that writes the thread row twice (message, then event counter) takes a foreign-key
+ * share on the group row under its thread lock. FOR NO KEY UPDATE lets that share through so
+ * the two orders cannot deadlock. Deleting the group locks its thread next and only then
+ * upgrades to FOR UPDATE, which keeps new rows from referencing it.
+ */
 export async function lockOwnedGroup(
   prisma: Pick<Prisma.TransactionClient, "$queryRaw">,
   actor: Pick<Actor, "spaceId" | "userId">,
   groupId: string,
+  options: { forDelete?: boolean } = {},
 ) {
-  const locked = await prisma.$queryRaw<Array<{ id: string }>>`
-    SELECT id
-    FROM chat_groups
-    WHERE id = ${groupId}
-      AND "spaceId" = ${actor.spaceId}
-      AND "userId" = ${actor.userId}
-    FOR UPDATE
-  `;
+  const locked = options.forDelete
+    ? await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM chat_groups
+        WHERE id = ${groupId}
+          AND "spaceId" = ${actor.spaceId}
+          AND "userId" = ${actor.userId}
+        FOR UPDATE
+      `
+    : await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM chat_groups
+        WHERE id = ${groupId}
+          AND "spaceId" = ${actor.spaceId}
+          AND "userId" = ${actor.userId}
+        FOR NO KEY UPDATE
+      `;
   if (locked.length !== 1) throw new IsolationError();
 }
 

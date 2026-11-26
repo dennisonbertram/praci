@@ -12,6 +12,8 @@ const secrets: BotSecretMetadata[] = [
     auth: { type: "bearer" },
     createdAt: at,
     updatedAt: at,
+    lastUsedAt: null,
+    needsAttentionAt: null,
   },
   {
     name: "demo-header",
@@ -19,6 +21,8 @@ const secrets: BotSecretMetadata[] = [
     auth: { type: "header", name: "X-Demo-Key" },
     createdAt: at,
     updatedAt: at,
+    lastUsedAt: null,
+    needsAttentionAt: null,
   },
   {
     name: "demo-basic",
@@ -26,6 +30,8 @@ const secrets: BotSecretMetadata[] = [
     auth: { type: "basic", username: "demo-user" },
     createdAt: at,
     updatedAt: at,
+    lastUsedAt: null,
+    needsAttentionAt: null,
   },
   {
     name: "demo-login",
@@ -33,14 +39,35 @@ const secrets: BotSecretMetadata[] = [
     auth: { type: "login" },
     createdAt: at,
     updatedAt: at,
+    lastUsedAt: null,
+    needsAttentionAt: null,
   },
-  { name: "demo_token", origin: "", auth: { type: "command" }, createdAt: at, updatedAt: at },
+  {
+    name: "demo_token",
+    origin: "",
+    auth: { type: "command" },
+    createdAt: at,
+    updatedAt: at,
+    lastUsedAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    needsAttentionAt: null,
+  },
+  {
+    name: "demo-expired",
+    origin: "https://expired.example.com",
+    auth: { type: "bearer" },
+    createdAt: at,
+    updatedAt: at,
+    lastUsedAt: null,
+    needsAttentionAt: at,
+  },
   {
     name: "Legacy Name",
     origin: "https://old.example.com",
     auth: null,
     createdAt: at,
     updatedAt: at,
+    lastUsedAt: null,
+    needsAttentionAt: null,
   },
 ];
 

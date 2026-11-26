@@ -27,10 +27,12 @@ type Story = StoryObj<typeof meta>;
 
 export const TrialAvailable: Story = {};
 
+export const SeveralSeats: Story = { args: { status: { ...status, seats: 3 } } };
+
 export const Subscribe: Story = { args: { status: { ...status, trialAvailable: false } } };
 
-export const PastDueWithPortal: Story = {
-  args: { status: { ...status, trialAvailable: false, state: "past_due", hasCustomer: true } },
+export const CanceledWithPortal: Story = {
+  args: { status: { ...status, trialAvailable: false, state: "canceled", hasCustomer: true } },
 };
 
 /** Members cannot subscribe; they can only log out. */

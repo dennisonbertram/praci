@@ -16,6 +16,8 @@ export const RUN_TRIGGERS = [
   "cloud_agent",
   "created",
   "tickets",
+  "mcp",
+  "goal",
 ] as const;
 export const RunTriggerSchema = z.enum(RUN_TRIGGERS);
 export type RunTrigger = z.infer<typeof RunTriggerSchema>;
@@ -25,12 +27,16 @@ export const RoutineRunSchema = z.object({
   botId: Id,
   groupId: Id.nullable(),
   status: RunStatus,
+  /** Why a failed run stopped, clamped for display. */
+  error: z.string().nullable(),
   createdAt: IsoDate,
   startedAt: IsoDate.nullable(),
   completedAt: IsoDate.nullable(),
   messageId: Id.nullable(),
   /** First line of the run's reply, when it has text. */
   preview: z.string().nullable().optional(),
+  /** The run ended without a message because nothing needed the user. */
+  silent: z.boolean().optional(),
   /** Name of the agent this finished run asked and that is still working on it. */
   waitingOn: z.string().nullable().optional(),
 });
@@ -57,6 +63,12 @@ export const RunActivityRowSchema = z.object({
   promptSnippet: z.string(),
   /** The held card is an approval (an action to allow), not a question. */
   needsApproval: z.boolean().optional(),
+  /** Sanitized reason a run failed, when available. */
+  error: z.string().nullable().optional(),
+  /** The run's reply message, when one exists. */
+  messageId: Id.nullable().optional(),
+  /** A completed routine run that posted nothing because nothing needed the user. Not counted as Finished. */
+  silent: z.boolean().optional(),
   updatedAt: z.string(),
 });
 export type RunActivityRow = z.infer<typeof RunActivityRowSchema>;

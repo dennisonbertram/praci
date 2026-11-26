@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Compose runs database migrations in a one-shot `migrate` service, the only one given the database owner login. Code running in the API or worker can no longer read that login from the container and bypass row-level security.
+- The API and worker can run as a separate, least-privilege database login (`rakazo_app`) with row-level security on the tables that hold Space and user content, so a query that forgets its Space filter returns nothing from another Space. Migrations run as the owner (`DATABASE_MIGRATION_URL`). With only `DATABASE_URL` set, everything keeps working as before and the API and worker warn that row-level security is not enforced. See [database roles](docs/self-host.md#database-roles).
 - Message bubbles in the web/PWA transcript use more of a wide window's width (70%/74% caps raised to 84%/88%, still leaving room for the hover-actions gutter), instead of leaving a quarter to a third of a long message's row empty.
 - Every run's system instructions now state the current date and time (UTC), so bots judge deadlines, recency and scheduling from the real present instead of guessing it from training data or quoted timestamps.
 - Connect Slack, WhatsApp Business Cloud, or Telegram DMs to a bot from Messaging settings, alongside iMessage/SMS. Each app can use a different bot. Group conversations remain iMessage-only.
@@ -44,6 +46,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Removed
 
 - Nonfunctional Grant folder picker in the desktop app.
+
+### Self-host upgrade notes
+
+- Compose stacks connect the API and worker as `rakazo_app`, whose password is `POSTGRES_APP_PASSWORD` in `.env`. `install-images.sh`, the updater, the desktop app and `deploy-main.sh` add it when it is missing. If you upgrade a source checkout (`docker-compose.yml`) or run the production Compose commands by hand, first run `echo "POSTGRES_APP_PASSWORD=$(openssl rand -hex 16)" >> .env`. Otherwise Compose stops with `Set POSTGRES_APP_PASSWORD in .env`. A source checkout that runs the API on the host with one `DATABASE_URL` needs no change.
 
 ### Messaging upgrade notes
 

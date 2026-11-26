@@ -18,7 +18,17 @@ const api = vi.hoisted(() => ({
   approveDraft: vi.fn(),
   discardDraft: vi.fn(),
 }));
-vi.mock("../../lib/rpc", () => ({ rpc: { agentSkills: api } }));
+const taughtApi = vi.hoisted(() => ({ list: vi.fn(), delete: vi.fn() }));
+const routinesApi = vi.hoisted(() => ({ list: vi.fn() }));
+vi.mock("../../lib/rpc", () => ({
+  rpc: {
+    agentSkills: api,
+    taughtSkills: taughtApi,
+    routines: routinesApi,
+    skills: { get: vi.fn() },
+  },
+}));
+vi.mock("../../components/teach/SkillDraftCard", () => ({ SkillDraftCard: () => null }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => text + part + (values[index] ?? ""), "");
@@ -48,6 +58,22 @@ vi.mock("@rakazo/ui-web", () => {
         onChange={(event) => onCheckedChange(event.target.checked)}
         {...props}
       />
+    ),
+    Dialog: Container,
+    DialogContent: Container,
+    DialogTitle: Container,
+    AlertDialog: ({ open, children }: { open: boolean; children?: ReactNode }) =>
+      open ? <div data-testid="confirm">{children}</div> : null,
+    AlertDialogContent: Container,
+    AlertDialogHeader: Container,
+    AlertDialogFooter: Container,
+    AlertDialogTitle: Container,
+    AlertDialogDescription: Container,
+    AlertDialogCancel: Container,
+    AlertDialogAction: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
+      <button type="button" data-testid="confirm-delete" onClick={onClick}>
+        {children}
+      </button>
     ),
     DropdownMenu: Container,
     DropdownMenuContent: Container,
@@ -86,6 +112,11 @@ beforeEach(() => {
     skill("builtin:inbox-search", "inbox-search", "builtin"),
     skill("user-1", "greeting", "user", false),
   ];
+  taughtApi.list.mockReset();
+  taughtApi.delete.mockReset();
+  routinesApi.list.mockReset();
+  taughtApi.list.mockResolvedValue([]);
+  routinesApi.list.mockResolvedValue([]);
   api.forBot.mockImplementation(async () => catalog);
   api.drafts.mockResolvedValue([]);
   api.get.mockImplementation(async ({ skillId }: { skillId: string }) => {
@@ -150,6 +181,17 @@ it("saves the switch and puts it back when saving fails", async () => {
   await act(async () => view.toggle("Researcher").click());
   expect(view.toggle("Researcher").checked).toBe(true);
   expect(view.container.textContent).toContain("Could not save skill");
+  await view.unmount();
+});
+
+it("disables a skill switch while its save is pending", async () => {
+  api.setEnabled.mockReturnValueOnce(new Promise(() => undefined));
+  const view = await mount();
+  const toggle = view.toggle("greeting");
+  await act(async () => toggle.click());
+  expect(toggle.disabled).toBe(true);
+  await act(async () => toggle.click());
+  expect(api.setEnabled).toHaveBeenCalledTimes(1);
   await view.unmount();
 });
 
@@ -309,6 +351,32 @@ it("shows agent drafts with their content and approves one", async () => {
   expect(view.container.querySelector('[data-testid="bot-skills-drafts"]')).toBeNull();
 });
 
+it("shows a tool draft's lines, test run and script, and approves it with the shown hash", async () => {
+  api.drafts
+    .mockResolvedValueOnce([
+      {
+        ...draftSkill,
+        tool: {
+          source: "function run(i) { return i; }",
+          hash: "abc",
+          reads: "Numbers you pass in",
+          writes: "nothing",
+          sampleInput: { n: 1 },
+          sampleOutput: { n: 1 },
+        },
+      },
+    ])
+    .mockResolvedValue([]);
+  api.approveDraft.mockResolvedValue({});
+  const view = await mount();
+  const tool = view.container.querySelector('[data-testid="bot-skill-draft-tool"]');
+  expect(tool?.textContent).toContain("Reads: Numbers you pass in");
+  expect(tool?.textContent).toContain("Writes: nothing");
+  expect(tool?.textContent).toContain("function run(i)");
+  await act(async () => view.button("Approve").click());
+  expect(api.approveDraft).toHaveBeenCalledWith({ skillId: "draft-1", toolHash: "abc" });
+});
+
 it("opens a draft by default with a count, one description and a primary Approve", async () => {
   api.drafts.mockResolvedValueOnce([draftSkill]).mockResolvedValue([]);
   const view = await mount();
@@ -343,4 +411,32 @@ it("badges only agent-written skills", async () => {
   const view = await mount();
   expect(view.button("from-agent").textContent).toContain("Agent");
   expect(view.button("mine").textContent).not.toContain("Agent");
+});
+
+it("lists taught skills with their last run and deletes one after a confirm", async () => {
+  const taught = [{ id: "t1", name: "Export report", goal: "g", lastRunAt: null, updatedAt: "" }];
+  taughtApi.list.mockResolvedValueOnce(taught).mockResolvedValue([]);
+  routinesApi.list.mockResolvedValue([
+    { id: "r1", taughtSkill: { id: "t1", name: "Export report" } },
+  ]);
+  taughtApi.delete.mockResolvedValue({ ok: true });
+  const view = await mount();
+  const group = view.container.querySelector('[data-testid="bot-skills-taught"]');
+  expect(group?.textContent).toContain("Export report");
+  expect(group?.textContent).toContain("Not run yet");
+  await act(async () => view.button("Delete").click());
+  expect(view.container.textContent).toContain("Routines that use it will stop using it.");
+  await act(async () =>
+    view.container.querySelector<HTMLButtonElement>('[data-testid="confirm-delete"]')?.click(),
+  );
+  expect(taughtApi.delete).toHaveBeenCalledWith({ skillId: "t1" });
+  expect(view.container.querySelector('[data-testid="bot-skills-taught"]')).toBeNull();
+  await view.unmount();
+});
+
+it("shows a load error when taught skills cannot be loaded", async () => {
+  taughtApi.list.mockRejectedValueOnce(new Error("offline"));
+  const view = await mount();
+  expect(view.container.textContent).toContain("Could not load");
+  await view.unmount();
 });

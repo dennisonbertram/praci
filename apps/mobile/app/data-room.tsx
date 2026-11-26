@@ -22,7 +22,7 @@ import { native, useThemedStyles } from "../lib/native";
 import { currentSessionGeneration, subscribeSessionGeneration } from "../lib/session";
 import { errorText } from "../lib/user-error";
 
-export default function DataRoomScreen() {
+export default function DataRoomScreen({ source }: { source?: "scan" } = {}) {
   const { folderId } = useLocalSearchParams<{ folderId?: string }>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -42,7 +42,9 @@ export default function DataRoomScreen() {
   const focusScope = useRef("");
   const scope = () =>
     JSON.stringify([currentSessionGeneration(), currentApiBase(), selectedSpaceId()]);
-  const title = folders.find((folder) => folder.id === folderId)?.name ?? t("Data room");
+  const title =
+    folders.find((folder) => folder.id === folderId)?.name ??
+    (source === "scan" ? t("Scanner") : t("Data room"));
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(query.trim()), 250);
@@ -85,7 +87,7 @@ export default function DataRoomScreen() {
       try {
         const [nextFolders, page] = await Promise.all([
           listDataRoomFolders(),
-          listDataRoomItems({ folderId, query: search }),
+          listDataRoomItems({ folderId, source, query: search }),
         ]);
         if (request !== generation.current || started !== scope()) return;
         setFolders(nextFolders);
@@ -100,7 +102,7 @@ export default function DataRoomScreen() {
         if (request === generation.current) setRefreshing(false);
       }
     },
-    [folderId, search, t],
+    [folderId, source, search, t],
   );
 
   useFocusEffect(
@@ -134,7 +136,7 @@ export default function DataRoomScreen() {
     setLoadingMore(true);
     setError("");
     try {
-      const page = await listDataRoomItems({ folderId, query: search, cursor });
+      const page = await listDataRoomItems({ folderId, source, query: search, cursor });
       if (request !== generation.current || started !== scope()) return;
       setItems((previous) => [
         ...new Map([...(previous ?? []), ...page.items].map((item) => [item.id, item])).values(),
@@ -153,7 +155,8 @@ export default function DataRoomScreen() {
     }
   }
 
-  const children = search ? [] : folders.filter((folder) => folder.parentId === (folderId ?? null));
+  const children =
+    search || source ? [] : folders.filter((folder) => folder.parentId === (folderId ?? null));
   return (
     <View style={styles.screen}>
       {Platform.OS !== "ios" ? (
@@ -200,7 +203,10 @@ export default function DataRoomScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={folder.name}
                   onPress={() =>
-                    router.push({ pathname: "/data-room", params: { folderId: folder.id } })
+                    router.push({
+                      pathname: source ? "/scanner" : "/data-room",
+                      params: { folderId: folder.id },
+                    })
                   }
                   style={styles.row}
                 >
@@ -226,7 +232,10 @@ export default function DataRoomScreen() {
               <Text style={styles.name} numberOfLines={2}>
                 {item.name}
               </Text>
-              <Text style={[styles.status, item.status === "failed" && styles.failed]}>
+              <Text
+                numberOfLines={1}
+                style={[styles.status, item.status === "failed" && styles.failed]}
+              >
                 {dataRoomStatus(item)}
               </Text>
             </View>

@@ -165,7 +165,7 @@ const areaOf = (f) => {
   return `Web ${parts.length > 1 ? parts[0] : "root"}`;
 };
 const mobileAreaOf = (f) =>
-  `Mobile ${f.split("/")[2] === "app" || f.split("/")[1] === "app" ? "app (screens)" : f.split("/")[1]}`;
+  `Mobile ${f.split("/")[2] === "app" ? "app (screens)" : f.split("/")[1]}`;
 
 export function renderComponentsMd({ web, mobile, native = [] }) {
   const rel = (to) => path.posix.relative(DOCS, to);
@@ -288,19 +288,21 @@ const TOKEN_GROUPS = [
   ],
 ];
 
-function parseTokensCss() {
-  const css = fs.readFileSync(path.join(ROOT, "packages/ui-tokens/src/tokens.css"), "utf8");
+export function parseTokensCss(css) {
   const block = (sel) => {
-    const body = css.split(sel)[1]?.split("}")[0] ?? "";
+    const part = css.split(sel)[1];
+    if (part === undefined) throw new Error(`tokens.css is missing the selector ${sel.trim()}`);
     return Object.fromEntries(
-      [...body.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
+      [...part.split("}")[0].matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
     );
   };
   return { dark: block(':root,\n[data-theme="dark"] {'), light: block('[data-theme="light"] {') };
 }
 
 export function renderTokenTables() {
-  const { dark, light } = parseTokensCss();
+  const { dark, light } = parseTokensCss(
+    fs.readFileSync(path.join(ROOT, "packages/ui-tokens/src/tokens.css"), "utf8"),
+  );
   const listed = new Set(TOKEN_GROUPS.flatMap((g) => g[2]));
   const missing = Object.keys(dark).filter((k) => k !== "radius" && !listed.has(k));
   if (missing.length)

@@ -1,0 +1,15 @@
+[
+  {"kind":"ask","text":"Review before Message bot","approvalReason":"Asked because this ran in the background.","approvalEffectId":"effect-1","toolId":"message_bot","status":"pending","actions":[{"id":"allow","label":"Allow once"},{"id":"deny","label":"Deny"}]},
+  {"kind":"ask","text":"Share your chats and mail with the AI model that runs your agents?","approvalEffectId":"effect-2","detail":"Messages and attachments are sent to run your agents.","consent":{"version":"2026-09-14"},"status":"answered","answer":"allow","actions":[{"id":"allow","label":"Allow"},{"id":"deny","label":"Not now"}]},
+  {"kind":"ask","text":"Which three items should I check?","status":"pending","actions":[{"id":"choice-1","label":"Tax deadline"},{"id":"choice-2","label":"All three"}]},
+  {"kind":"ask","text":"Send a payment of $100 to Example Vendor?","approvalEffectId":"effect-3","waitsFor":"Mercury","status":"answered","answer":"allow","actions":[{"id":"allow","label":"Send $100.00"},{"id":"deny","label":"Deny"}]},
+  {"kind":"ask","text":"Review before Message bot","approvalEffectId":"effect-4","status":"answered","answer":"superseded","actions":[{"id":"allow","label":"Allow once"},{"id":"deny","label":"Deny"}]},
+  {"kind":"ask","text":"Sign in to Example Portal","input":"secret","purpose":"password","credential":{"name":"portal","origin":"https://portal.example.test","auth":{"type":"login"}},"status":"pending"},
+  {"kind":"ask","text":"Send this reply?","approvalEffectId":"effect-5","status":"pending","actions":[{"id":"allow","label":"Allow once"},{"id":"deny","label":"Deny"}],"mail":{"tool":"mail_draft","to":["ana@example.test"],"cc":[],"bcc":[],"subject":"Pilot timeline","body":"Hi Ana, Thursday works.","reply":true}},
+  {"kind":"choice","question":"What do you want me for?","options":[{"id":"setup-research","letter":"A","label":"Research something"},{"id":"setup-email","letter":"B","label":"Help with email"}]},
+  {"kind":"choice","question":"What do you want me for?","options":[{"id":"setup-research","letter":"A","label":"Research something"}],"answerId":"_dismissed"},
+  {"kind":"mcp_approval","name":"Sheets","serverId":"server-1","transport":"http","endpoint":"https://mcp.example.test/sse","needsOAuth":false,"status":"pending"},
+  {"kind":"app_connect","provider":"example","name":"Example App","description":"Read your example data.","logo":null,"status":"pending"},
+  {"kind":"connect","name":"Example App","initial":"E","color":"#336699","status":"connected"},
+  {"kind":"future_kind","anything":1}
+]

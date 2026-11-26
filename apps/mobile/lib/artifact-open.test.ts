@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   token: "fake-token-a",
   getSize: vi.fn(),
   rpc: vi.fn(),
+  sessionDiskCaches: [] as Array<() => void>,
 }));
 vi.mock("expo-file-system", () => {
   class Node {
@@ -61,6 +62,7 @@ vi.mock("./i18n", () => ({ t: (value: string) => value }));
 vi.mock("./session", () => ({
   currentSessionGeneration: () => state.generation,
   loadSessionToken: async () => state.token,
+  registerSessionDiskCache: (clear: () => void) => state.sessionDiskCaches.push(clear),
 }));
 vi.mock("./api", () => ({
   rpc: state.rpc,
@@ -85,6 +87,7 @@ beforeEach(() => {
   state.apiBase = "https://api.example.test";
   state.userId = "user-a";
   state.token = "fake-token-a";
+  state.sessionDiskCaches = [];
   state.rpc
     .mockReset()
     .mockImplementation(async (proc: string) =>
@@ -94,6 +97,20 @@ beforeEach(() => {
 });
 
 describe("artifact preview caches", () => {
+  it("clears shared artifact copies when the session changes", async () => {
+    const api = await load();
+    vi.mocked(Sharing.isAvailableAsync).mockImplementationOnce(async () => true);
+    vi.mocked(Sharing.shareAsync).mockImplementationOnce(async () => undefined);
+    const source = api.writeArtifactCacheFile("art-1", "image/png", "aGk=");
+    await api.shareLocalFile(source.uri, "image/png", "photo.png");
+    const sharedDirectory = "file:///cache/artifact-shares";
+    expect(state.files.has(sharedDirectory)).toBe(true);
+
+    expect(state.sessionDiskCaches).toHaveLength(1);
+    state.sessionDiskCaches[0]?.();
+    expect(state.files.has(sharedDirectory)).toBe(false);
+  });
+
   it("keeps the large-payload download timeout and captured auth context", async () => {
     const api = await load();
     await api.readMobileArtifactText(target, "art-1", "text/plain");

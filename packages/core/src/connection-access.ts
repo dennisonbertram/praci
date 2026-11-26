@@ -1,30 +1,23 @@
 import {
   inboxAgentSpawnKey,
   integrationAgentSpawnKey,
-  isCartaAgentSpawnKey,
-  isCompanyAgentSpawnKey,
-  isCompanyImporterSpawnKey,
-  isDataRoomAgentSpawnKey,
-  isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
-  isInvestorsAgentSpawnKey,
-  isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
   isMailThreadAgentSpawnKey,
-  isVoiceAgentSpawnKey,
+  pageAgentDefOf,
 } from "@rakazo/contracts";
 
 export type StatusKind = "connected" | "reconnect" | "failed" | "connecting";
 
-/** Status of one managed app, from all of its account rows. A working account wins. */
+/** Status of one managed app, from all of its account rows. Any signed-out account shows as reconnect. */
 export function appStatus(
   rows: readonly { status: string; needsReconnect?: boolean }[],
 ): StatusKind | null {
   const live = rows.filter((row) => row.status === "connected");
-  if (live.some((row) => !row.needsReconnect)) return "connected";
-  // Every account is connected on paper, but its provider refuses the sign-in.
-  if (live.length > 0) return "reconnect";
+  // Connected on paper, but a provider refuses at least one account's sign-in.
+  if (live.some((row) => row.needsReconnect)) return "reconnect";
+  if (live.length > 0) return "connected";
   if (rows.some((row) => row.status === "pending")) return "connecting";
   if (rows.some((row) => row.status === "error")) return "failed";
   return null;
@@ -44,14 +37,70 @@ export type ConnectionAccessRow = {
 };
 
 /**
- * What an external bot sees of the connection rows: "all agents" does not reach it, only an
- * explicit access row does. Every place that reads connection rows for a run applies this.
+ * What an external or firewalled bot sees of the connection rows: "all agents" does not reach it,
+ * only an explicit access row does. Every place that reads connection rows for a run applies this.
  */
 export function connectionRowsForAudience<T extends { allAgents: boolean }>(
   rows: T[],
   audience: string | null | undefined,
+  firewall?: boolean,
 ): T[] {
-  return audience === "external" ? rows.map((row) => ({ ...row, allAgents: false })) : rows;
+  return audience === "external" || firewall === true
+    ? rows.map((row) => ({ ...row, allAgents: false }))
+    : rows;
+}
+
+/**
+ * Whether a bot that is NOT the connection's own agent may make changes on an agent-linked
+ * connection: only with its own write grant, only while the connection's changes switch is on, and
+ * never for an external bot. `botAccess` holds the grants being considered for this bot.
+ */
+export function nonOwnerMayWrite(
+  row: { writesEnabled?: boolean; botAccess: { canWrite?: boolean }[] },
+  bot: { audience?: string | null },
+): boolean {
+  return (
+    row.writesEnabled === true &&
+    bot.audience !== "external" &&
+    row.botAccess.some((entry) => entry.canWrite === true)
+  );
+}
+
+/** Built-in Google tools that change something. Only these follow an agent-linked connection's write rule. */
+export const GOOGLE_BUILTIN_WRITES: ReadonlySet<string> = new Set([
+  "mail_draft",
+  "mail_modify",
+  "mail_send",
+  "mail_reply_batch",
+  "calendar_create_event",
+  "calendar_update_event",
+  "calendar_delete_event",
+  "drive_create_file",
+  "drive_update_file",
+]);
+
+/**
+ * Whether this bot may use the built-in Google tool on the account now. The account must exist in
+ * the rows read for this bot, be connected and be open to it; a write on an agent-linked connection
+ * also follows the agent rule. Rows are read fresh by the caller, so a changed switch applies.
+ */
+export function accountAllowedIn<
+  T extends ConnectionAccessRow & {
+    writesEnabled?: boolean;
+    botAccess: { botId: string; canWrite?: boolean }[];
+  },
+>(
+  rows: T[],
+  accountId: string,
+  toolName: string,
+  bot: { id: string; audience?: string | null },
+): boolean {
+  const row = rows.find((candidate) => candidate.id === accountId);
+  if (!row || row.status !== "connected" || deniedConnectionIds(rows).has(row.id)) return false;
+  if (!GOOGLE_BUILTIN_WRITES.has(toolName) || row.agentBotId === null) return true;
+  if (row.agentBotId === bot.id) return row.writesEnabled === true;
+  // Another agent changes it only with its own write grant, still asking before each change.
+  return nonOwnerMayWrite(row, bot);
 }
 
 /** A connection limited to chosen agents is usable only by a bot with an access row. */
@@ -93,25 +142,15 @@ export function withInboxAgentStandIn<
 export function botUsesConnectorTools(spawnKey: string | null | undefined): boolean {
   return !(
     isMailAgentSpawnKey(spawnKey) ||
-    isFinanceAgentSpawnKey(spawnKey) ||
-    isLegalAgentSpawnKey(spawnKey) ||
-    isInvestorsAgentSpawnKey(spawnKey) ||
-    isDataRoomAgentSpawnKey(spawnKey) ||
-    isVoiceAgentSpawnKey(spawnKey) ||
-    isCartaAgentSpawnKey(spawnKey) ||
-    isCompanyAgentSpawnKey(spawnKey) ||
-    isCompanyImporterSpawnKey(spawnKey) ||
-    isIntegrationAgentSpawnKey(spawnKey)
+    isIntegrationAgentSpawnKey(spawnKey) ||
+    pageAgentDefOf(spawnKey)?.connectorTools === false
   );
 }
 
 /** Whether the bot is offered the built-in mail, calendar and Drive tools of native Google. */
 export function botUsesNativeGoogle(spawnKey: string | null | undefined): boolean {
   return !(
-    isIntegrationAgentSpawnKey(spawnKey) ||
-    isVoiceAgentSpawnKey(spawnKey) ||
-    isCompanyAgentSpawnKey(spawnKey) ||
-    isCompanyImporterSpawnKey(spawnKey)
+    isIntegrationAgentSpawnKey(spawnKey) || pageAgentDefOf(spawnKey)?.nativeGoogle === false
   );
 }
 
@@ -175,7 +214,13 @@ export type EffectiveAccess = { shared: "all" | "some" | "none"; botIds: string[
  */
 export function effectiveAccessByConnection(
   rows: ConnectionAccessRow[],
-  bots: { id: string; spawnKey: string | null; archivedAt: Date | null; audience?: string }[],
+  bots: {
+    id: string;
+    spawnKey: string | null;
+    archivedAt: Date | null;
+    audience?: string;
+    firewall?: boolean;
+  }[],
 ): Record<string, EffectiveAccess> {
   const active = bots.filter((bot) => !bot.archivedAt);
   // An email's own agent is judged by the Inbox agent's grants alone, as the executor reads them.
@@ -189,6 +234,7 @@ export function effectiveAccessByConnection(
         botAccess: row.botAccess.filter((entry) => entry.botId === grantee),
       })),
       bot.audience,
+      bot.firewall,
     );
     const denied = deniedConnectionIds(own);
     for (const row of own) {
@@ -207,4 +253,28 @@ export function effectiveAccessByConnection(
       return [row.id, { shared, botIds }];
     }),
   );
+}
+
+/**
+ * What a bot may do with a directly connected source (MCP, API or GraphQL install). The source's
+ * own agent reads it; every other internal agent needs "all agents" or its own grant. A change
+ * needs the source's "Allow changes" switch, and for a non-owner either "all agents" or its own
+ * write grant. External and firewalled bots get nothing, like the "all agents" rule on connections.
+ */
+export function sourceAccessFor(
+  source: {
+    agentBotId: string | null;
+    allAgents: boolean;
+    writesEnabled: boolean;
+    botAccess: { botId: string; canWrite: boolean }[];
+  },
+  bot: { id: string; audience?: string | null; firewall?: boolean },
+): { read: boolean; write: boolean } {
+  if (bot.audience === "external" || bot.firewall === true) return { read: false, write: false };
+  if (source.agentBotId === bot.id) return { read: true, write: source.writesEnabled };
+  const grant = source.botAccess.find((entry) => entry.botId === bot.id);
+  if (grant) return { read: true, write: source.writesEnabled && grant.canWrite };
+  return source.allAgents
+    ? { read: true, write: source.writesEnabled }
+    : { read: false, write: false };
 }

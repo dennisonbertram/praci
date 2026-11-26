@@ -13,7 +13,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -23,7 +27,7 @@ const rpcMock = vi.hoisted(() => ({
   list: vi.fn(),
   save: vi.fn(),
   remove: vi.fn(),
-  linked: vi.fn(async () => ({ portal: false, documents: [] })),
+  linked: vi.fn(async () => ({ portal: false, documents: [], safes: 0 })),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -36,6 +40,8 @@ vi.mock("../lib/rpc", () => ({
   },
 }));
 
+import { resetDeletedContacts } from "../lib/use-contact-notices";
+import { RETURN_DEDUPE_MS } from "../lib/use-refetch-while-open";
 import { ContactsPage } from "./Contacts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -56,8 +62,11 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
 let search = "";
+let path = "";
 const Where = () => {
-  search = useLocation().search;
+  const location = useLocation();
+  search = location.search;
+  path = location.pathname + location.search;
   return null;
 };
 const show = async (url = "/app/contacts", onAskAgent?: () => void) => {
@@ -74,6 +83,12 @@ const show = async (url = "/app/contacts", onAskAgent?: () => void) => {
 };
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent === label);
+const menuItem = (label: string) =>
+  [...document.querySelectorAll<HTMLElement>("[role=menuitem]")].find(
+    (item) => item.textContent === label,
+  );
+const rowActions = (name: string) =>
+  container.querySelector<HTMLElement>(`button[aria-label="Actions for ${name}"]`) ?? undefined;
 const click = (el: Element | undefined) =>
   act(async () => (el as HTMLElement | undefined)?.click());
 const typeInto = (input: HTMLInputElement | HTMLTextAreaElement, value: string) =>
@@ -90,6 +105,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => notificationToastManager.close());
+  resetDeletedContacts();
+  vi.useRealTimers();
   act(() => root.unmount());
   container.remove();
   vi.resetAllMocks();
@@ -187,20 +204,41 @@ it("retries the load from the error", async () => {
   expect(container.querySelector("[role=alert]")).toBeNull();
 });
 
-it("deletes with an Undo that restores, and marks the saved row", async () => {
-  const ada = contact("c1", "Ada", "other");
-  rpcMock.list.mockResolvedValue([ada]);
-  rpcMock.remove.mockResolvedValue({ ok: true });
-  rpcMock.save.mockResolvedValue({ ...ada, id: "c9" });
+it("keeps the list and refreshing when a background refresh fails", async () => {
+  rpcMock.list
+    .mockResolvedValueOnce([contact("c1", "Ada", "other")])
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValue([contact("c1", "Ada", "other"), contact("c2", "Bo", "investor")]);
   await show();
-  await click(container.querySelector("tbody button") as HTMLElement);
-  await click(button("Delete"));
-  expect(document.body.textContent).toContain("Deleted Ada");
-  await click(button("Undo"));
-  expect(rpcMock.save).toHaveBeenCalledWith(
-    expect.objectContaining({ name: "Ada", kind: "other" }),
-  );
-  expect(document.body.textContent).toContain("Restored Ada");
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  await flush();
+  // The failed refresh leaves Ada on screen, with no error in her place.
+  expect(container.textContent).toContain("Ada");
+  expect(container.textContent).not.toContain("Could not load contacts");
+  // A second return inside the dedupe window would count as the same return.
+  const now = vi.spyOn(Date, "now").mockReturnValue(Date.now() + RETURN_DEDUPE_MS + 1);
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  await flush();
+  now.mockRestore();
+  expect(container.textContent).toContain("Bo");
+});
+
+it("shows a contact an agent added once the window regains focus", async () => {
+  rpcMock.list
+    .mockResolvedValueOnce([contact("c1", "Ada", "other")])
+    .mockResolvedValue([contact("c1", "Ada", "other"), contact("c2", "Bo", "investor")]);
+  await show();
+  expect(container.textContent).not.toContain("Bo");
+  expect(document.visibilityState).toBe("visible");
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  await flush();
+  expect(container.textContent).toContain("Bo");
 });
 
 it("starts a new contact with the kind filter's kind and no Carta hint", async () => {
@@ -217,42 +255,74 @@ it("starts a new contact with the kind filter's kind and no Carta hint", async (
   );
 });
 
-it("sends null when Notes is cleared, and names the agent that added the contact", async () => {
-  const ada = {
-    ...contact("c1", "Ada", "legal"),
-    notes: "Old note",
-    addedBy: { id: "b1", name: "Chief" },
-  };
-  rpcMock.list.mockResolvedValue([ada]);
-  rpcMock.save.mockResolvedValue(ada);
-  await show();
-  await click(container.querySelector("tbody button") as HTMLElement);
-  expect(document.body.textContent).toContain("Added by Chief");
-  await typeInto(document.getElementById("contact-notes") as HTMLTextAreaElement, "");
-  await click(button("Save"));
-  expect(rpcMock.save).toHaveBeenCalledWith(expect.objectContaining({ id: "c1", notes: null }));
+it("opens the contact page from any cell of its row, keeping the search and filter", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
+  await show("/app/contacts?q=ada&kind=other");
+  await click(container.querySelector("tbody td:nth-child(3)") as HTMLElement);
+  expect(path).toBe("/app/contacts/c1?q=ada&kind=other");
 });
 
-it("editing the Email clears a duplicate-email error", async () => {
-  const ada = contact("c1", "Ada", "other");
-  const cy = contact("c2", "Cy", "vendor");
-  rpcMock.list.mockResolvedValue([ada, cy]);
-  rpcMock.save.mockRejectedValue(new Error("Another contact already has this email."));
-  await show();
-  await click(container.querySelector("tbody button") as HTMLElement);
-  await typeInto(document.getElementById("contact-email") as HTMLInputElement, "cy@example.test");
-  await click(button("Save"));
-  expect(document.body.textContent).toContain("Another contact already has this email.");
-  expect(button("Open Cy")).toBeDefined();
-  await typeInto(document.getElementById("contact-email") as HTMLInputElement, "cy2@example.test");
-  expect(document.body.textContent).not.toContain("Another contact already has this email.");
-});
-
-it("opens a contact from any cell of its row", async () => {
+it("edits a contact from its row menu, staying on the list", async () => {
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
   await show();
-  await click(container.querySelector("tbody td:nth-child(3)") as HTMLElement);
-  expect(document.getElementById("contact-name")).not.toBeNull();
+  await click(rowActions("Ada"));
+  await click(menuItem("Edit"));
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Ada");
+  expect(path).toBe("/app/contacts");
+});
+
+/** Runs `body` with fake timers, so the Undo window can be crossed without waiting. */
+const withClock = async (body: () => Promise<void>) => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    await body();
+  } finally {
+    vi.useRealTimers();
+  }
+};
+const passUndoWindow = () => act(async () => vi.advanceTimersByTime(5001));
+
+it("deletes a contact from its row menu behind Undo, holding the server call inside the window", () =>
+  withClock(async () => {
+    rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other"), contact("c2", "Bo", "vendor")]);
+    rpcMock.remove.mockResolvedValue({ ok: true });
+    await show();
+    await click(rowActions("Ada"));
+    await click(menuItem("Delete"));
+    expect(container.querySelector('[data-contact-id="c1"]')).toBeNull();
+    expect(document.body.textContent).toContain("Deleted Ada");
+    expect(button("Undo")).toBeDefined();
+    expect(rpcMock.remove).not.toHaveBeenCalled();
+    await passUndoWindow();
+    expect(rpcMock.remove).toHaveBeenCalledWith({ id: "c1" });
+  }));
+
+it("asks before deleting a contact with links, and Cancel deletes nothing", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
+  rpcMock.linked.mockResolvedValue({ portal: true, documents: [], safes: 0 });
+  await show();
+  await click(rowActions("Ada"));
+  await click(menuItem("Delete"));
+  const dialog = document.querySelector('[role="alertdialog"]');
+  expect(dialog?.textContent).toContain("Delete Ada?");
+  expect(rpcMock.remove).not.toHaveBeenCalled();
+  await click(
+    [...(dialog?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Cancel"),
+  );
+  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  expect(rpcMock.remove).not.toHaveBeenCalled();
+  expect(container.querySelector('[data-contact-id="c1"]')).not.toBeNull();
+});
+
+it("opens the row menu and chooses an item without opening the contact page", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
+  await show();
+  await click(rowActions("Ada"));
+  expect(path).toBe("/app/contacts");
+  // The menu renders in a portal as divs, so an unguarded click would reach the row and navigate.
+  await click(menuItem("Delete"));
+  expect(path).toBe("/app/contacts");
+  expect(document.body.textContent).toContain("Deleted Ada");
 });
 
 it("returns focus to Add contact when the new-contact dialog closes", async () => {
@@ -277,21 +347,6 @@ it("focuses Search after Clear filters", async () => {
   expect(document.activeElement).toBe(container.querySelector("input[name=contacts-search]"));
 });
 
-it("focuses the restored contact's name after Undo", async () => {
-  const ada = contact("c1", "Ada", "other");
-  rpcMock.remove.mockResolvedValue({ ok: true });
-  rpcMock.save.mockResolvedValue({ ...ada, id: "c9" });
-  rpcMock.list.mockResolvedValue([ada]);
-  await show();
-  await click(container.querySelector("tbody button") as HTMLElement);
-  await click(button("Delete"));
-  rpcMock.list.mockResolvedValue([{ ...ada, id: "c9" }]);
-  await click(button("Undo"));
-  await flush();
-  expect(document.activeElement?.textContent).toBe("Ada");
-  expect(document.activeElement?.closest("tr")?.getAttribute("data-contact-id")).toBe("c9");
-});
-
 it.each(["not an email", "name@example..com"])(
   "reports the invalid email %s under the field and focuses it, without saving",
   async (bad) => {
@@ -312,33 +367,28 @@ it.each(["not an email", "name@example..com"])(
   },
 );
 
-it("marks the Email invalid and focuses it when another contact has it", async () => {
-  const cy = contact("c2", "Cy", "vendor");
-  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other"), cy]);
-  rpcMock.save.mockRejectedValue(new Error("Another contact already has this email."));
-  await show();
-  await click(container.querySelector("tbody button") as HTMLElement);
-  const email = document.getElementById("contact-email") as HTMLInputElement;
-  await typeInto(email, "cy@example.test");
-  await click(button("Save"));
-  expect(email.getAttribute("aria-invalid")).toBe("true");
-  expect(
-    document.getElementById(email.getAttribute("aria-describedby") ?? "")?.textContent,
-  ).toContain("Another contact already has this email.");
-  expect(document.activeElement).toBe(email);
-});
-
-it("shows the organization, else the email, under the name", async () => {
+it("shows the organization and the email under the name", async () => {
   rpcMock.list.mockResolvedValue([
     contact("c1", "Ada", "customer"),
     { ...contact("c3", "Cy", "vendor"), organization: null },
     { ...contact("c4", "Di", "other"), email: null },
   ]);
   await show();
-  const under = [...container.querySelectorAll("tbody td:first-child div")].map(
+  const under = [...container.querySelectorAll("tbody td:first-child div.flex.flex-wrap")].map(
     (div) => div.textContent,
   );
-  expect(under).toEqual(["Acme Corp", "cy@example.test", "Acme Corp"]);
+  expect(under).toEqual(["Acme Corp·ada@example.test", "cy@example.test", "Acme Corp"]);
+});
+
+it("clears the search and confirms when a new contact is saved", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "vendor")]);
+  rpcMock.save.mockResolvedValue(contact("c2", "Cy", "vendor"));
+  await show("/app/contacts?q=ada");
+  await click(button("Add contact"));
+  await typeInto(document.getElementById("contact-name") as HTMLInputElement, "Cy");
+  await click(button("Save"));
+  expect(search).toBe("");
+  expect(document.body.textContent).toContain("Added Cy");
 });
 
 it("lets the table fill the page and titles a long email", async () => {
@@ -365,4 +415,60 @@ it("keeps the header out of the scrolling list", async () => {
   const scroller = container.querySelector(".rk-scroll");
   expect(scroller?.querySelector("[data-page-header]")).toBeNull();
   expect(scroller?.querySelector("table")).not.toBeNull();
+});
+
+const names = () =>
+  [...container.querySelectorAll("tbody [data-row-open]")].map((b) => b.textContent);
+const head = (label: string) =>
+  [...container.querySelectorAll<HTMLElement>("thead th button")].find(
+    (b) => b.textContent === label,
+  );
+
+it("sorts by a column header, keeps the order unless asked, and carries the sort to the detail page", async () => {
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Cy", "vendor"),
+    contact("c2", "Ada", "customer"),
+    contact("c3", "Bo", "advisor"),
+  ]);
+  await show();
+  expect(names()).toEqual(["Cy", "Ada", "Bo"]);
+  await click(head("Name"));
+  expect(names()).toEqual(["Ada", "Bo", "Cy"]);
+  expect(search).toBe("?sort=name&dir=asc");
+  await click(head("Name"));
+  expect(names()).toEqual(["Cy", "Bo", "Ada"]);
+  await click(head("Kind"));
+  expect(names()).toEqual(["Bo", "Ada", "Cy"]); // Advisor, Customer, Vendor
+  await click(container.querySelector("[data-contact-id=c2] [data-row-open]") ?? undefined);
+  expect(path).toBe("/app/contacts/c2?sort=kind&dir=asc");
+});
+
+it("gives the avatar the contact's photo when there is one", async () => {
+  // The avatar shows its image only once the browser has loaded it; jsdom never does.
+  class LoadedImage {
+    onload: (() => void) | null = null;
+    set src(_: string) {
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+  vi.stubGlobal("Image", LoadedImage);
+  try {
+    rpcMock.list.mockResolvedValue([
+      {
+        ...contact("c1", "Ada", "customer"),
+        photoUrl: "/api/contacts/photo?email=ada%40example.test",
+      },
+      contact("c2", "Bo", "vendor"),
+    ]);
+    await show();
+    await flush();
+    const rowOf = (name: string) =>
+      [...container.querySelectorAll("tbody tr")].find((row) => row.textContent?.includes(name));
+    expect(rowOf("Ada")?.querySelector("img")?.getAttribute("src")).toBe(
+      "/api/contacts/photo?email=ada%40example.test",
+    );
+    expect(rowOf("Bo")?.querySelector("img")).toBeNull();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

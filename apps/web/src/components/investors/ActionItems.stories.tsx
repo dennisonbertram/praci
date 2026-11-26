@@ -30,6 +30,12 @@ export const UpdateDraft: Story = {
   args: { drafts: [draft("u1", "Example Co · 2026-09 update", "2026-10-01T09:00:00.000Z")] },
 };
 
+/** Phone: one line with a count until opened. */
+export const CollapsedOnPhone: Story = {
+  args: { drafts: [draft("u1", "Example Co · 2026-09 update", "2026-10-01T09:00:00.000Z")] },
+  globals: { viewport: { value: "mobile1" } },
+};
+
 export const SeveralDrafts: Story = {
   args: {
     drafts: [
@@ -82,10 +88,12 @@ export const AuditWarnings: Story = {
   },
 };
 
+/** The agent's reply is drafted in the mail thread: Open draft is the row's one filled button. */
 export const AuditDraftReady: Story = {
   args: {
     drafts: [],
     audits: [audit({ status: "drafted", draftRef: "d1", newMail: true })],
+    mailAccounts: [{ connectionId: "k1", label: "Me", address: "me@example.test" }],
   },
 };
 

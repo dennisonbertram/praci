@@ -40,9 +40,16 @@ import { iosAtLeast } from "../lib/native-controls";
 import { errorText } from "../lib/user-error";
 
 type ContentState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; artifact: MobileArtifactWithContent; file: File; preview: PreviewContent };
+  | { status: "loading"; artifactId: string; versionId: string }
+  | { status: "error"; artifactId: string; versionId: string; message: string }
+  | {
+      status: "ready";
+      artifactId: string;
+      versionId: string;
+      artifact: MobileArtifactWithContent;
+      file: File;
+      preview: PreviewContent;
+    };
 
 export default function ArtifactDetailScreen() {
   const { artifactId } = useLocalSearchParams<{ artifactId: string }>();
@@ -55,7 +62,17 @@ export default function ArtifactDetailScreen() {
 
   const [versions, setVersions] = useState<ArtifactVersion[] | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
-  const [content, setContent] = useState<ContentState>({ status: "loading" });
+  const [content, setContent] = useState<ContentState>({
+    status: "loading",
+    artifactId,
+    versionId: artifactId,
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+  const currentVersionId = selectedVersionId ?? artifactId;
+  const visibleContent: ContentState =
+    content.artifactId === artifactId && content.versionId === currentVersionId
+      ? content
+      : { status: "loading", artifactId, versionId: currentVersionId };
 
   useEffect(() => {
     let cancelled = false;
@@ -78,18 +95,27 @@ export default function ArtifactDetailScreen() {
   useEffect(() => {
     if (!selectedVersionId) return;
     let cancelled = false;
-    setContent({ status: "loading" });
+    setContent({ status: "loading", artifactId, versionId: selectedVersionId });
     void getArtifactById(selectedVersionId)
       .then(async (artifact) => {
         const file = writeArtifactCacheFile(artifact.id, artifact.mimeType, artifact.contentBase64);
         const preview = await computePreview(artifact, file);
         if (cancelled) return;
-        setContent({ status: "ready", artifact, file, preview });
+        setContent({
+          status: "ready",
+          artifactId,
+          versionId: selectedVersionId,
+          artifact,
+          file,
+          preview,
+        });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
           setContent({
             status: "error",
+            artifactId,
+            versionId: selectedVersionId,
             message: errorText(error, t("Could not load this artifact.")),
           });
         }
@@ -97,11 +123,11 @@ export default function ArtifactDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [selectedVersionId, t]);
+  }, [artifactId, selectedVersionId, reloadKey, t]);
 
   const confirmDelete = useCallback(() => {
-    if (content.status !== "ready") return;
-    const name = content.artifact.name;
+    if (visibleContent.status !== "ready") return;
+    const name = visibleContent.artifact.name;
     const versionCount = versions?.length ?? 1;
     Alert.alert(
       t('Delete "{name}"?', { name }),
@@ -124,19 +150,20 @@ export default function ArtifactDetailScreen() {
         },
       ],
     );
-  }, [artifactId, content, router, t, versions]);
+  }, [artifactId, visibleContent, router, t, versions]);
 
   // The full-screen viewer fetches through the thread the artifact belongs to.
-  const imageTarget = content.status === "ready" ? artifactThreadTarget(content.artifact) : null;
+  const imageTarget =
+    visibleContent.status === "ready" ? artifactThreadTarget(visibleContent.artifact) : null;
   const openImage =
-    content.status === "ready" && imageTarget
+    visibleContent.status === "ready" && imageTarget
       ? () =>
           router.push({
             pathname: "/image",
             params: {
-              artifactId: content.artifact.id,
-              name: content.artifact.name,
-              mimeType: content.artifact.mimeType,
+              artifactId: visibleContent.artifact.id,
+              name: visibleContent.artifact.name,
+              mimeType: visibleContent.artifact.mimeType,
               ...imageTarget,
             },
           })
@@ -157,19 +184,23 @@ export default function ArtifactDetailScreen() {
   }
 
   const share = useCallback(async () => {
-    if (content.status !== "ready") return;
+    if (visibleContent.status !== "ready") return;
     try {
-      await shareLocalFile(content.file.uri, content.artifact.mimeType, content.artifact.name);
+      await shareLocalFile(
+        visibleContent.file.uri,
+        visibleContent.artifact.mimeType,
+        visibleContent.artifact.name,
+      );
     } catch (error) {
       Alert.alert(t("Could not share this artifact"), errorText(error, t("Try again.")));
     }
-  }, [content, t]);
+  }, [visibleContent, t]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: content.status === "ready" ? content.artifact.name : t("Loading…"),
+      title: visibleContent.status === "ready" ? visibleContent.artifact.name : t("Loading…"),
       headerRight: () =>
-        content.status === "ready" ? (
+        visibleContent.status === "ready" ? (
           <View style={styles.headerActions}>
             <Pressable
               accessibilityLabel={t("Share")}
@@ -197,12 +228,15 @@ export default function ArtifactDetailScreen() {
       ...(iosAtLeast(26)
         ? {
             unstable_headerRightItems: () =>
-              content.status === "ready"
+              visibleContent.status === "ready"
                 ? [
                     {
                       type: "button" as const,
                       label: t("Share"),
-                      icon: { type: "sfSymbol" as const, name: "square.and.arrow.up" },
+                      icon: {
+                        type: "sfSymbol" as const,
+                        name: "square.and.arrow.up",
+                      },
                       onPress: () => void share(),
                     },
                     {
@@ -217,15 +251,15 @@ export default function ArtifactDetailScreen() {
           }
         : {}),
     });
-  }, [confirmDelete, content, navigation, share, styles, t]);
+  }, [confirmDelete, visibleContent, navigation, share, styles, t]);
 
-  const scrolling = content.status === "ready" && content.preview.kind === "markdown";
+  const scrolling = visibleContent.status === "ready" && visibleContent.preview.kind === "markdown";
   const versionPicker =
-    content.status === "ready" && versions && versions.length > 1 ? (
+    visibleContent.status === "ready" && versions && versions.length > 1 ? (
       <View style={styles.pillRow}>
         <Pressable accessibilityRole="button" onPress={pickVersion} style={styles.pill}>
           <Text style={styles.pillText}>
-            {`v${content.artifact.version} · ${formatActivityRelativeTime(content.artifact.createdAt)}`}
+            {`v${visibleContent.artifact.version} · ${formatActivityRelativeTime(visibleContent.artifact.createdAt)}`}
           </Text>
           <NativeSymbol
             ios="chevron.down"
@@ -241,19 +275,22 @@ export default function ArtifactDetailScreen() {
     <View style={[styles.screen, { paddingTop: scrolling ? 0 : headerInset }]}>
       {scrolling ? null : versionPicker}
       <View style={styles.body}>
-        {content.status === "loading" ? (
+        {visibleContent.status === "loading" ? (
           <View style={styles.centered}>
             <ActivityIndicator color={native.secondaryLabel} />
           </View>
-        ) : content.status === "error" ? (
+        ) : visibleContent.status === "error" ? (
           <View style={styles.centered}>
-            <Text style={styles.errorText}>{content.message}</Text>
+            <Text style={styles.errorText}>{visibleContent.message}</Text>
+            <Pressable accessibilityRole="button" onPress={() => setReloadKey((key) => key + 1)}>
+              <Text style={styles.errorText}>{t("Try again.")}</Text>
+            </Pressable>
           </View>
         ) : (
           <ArtifactPreview
-            preview={content.preview}
+            preview={visibleContent.preview}
             scrollHeader={scrolling ? versionPicker : undefined}
-            imageLabel={content.artifact.name}
+            imageLabel={visibleContent.artifact.name}
             onOpenImage={openImage}
             onOpenFile={() => void share()}
           />
@@ -367,9 +404,24 @@ function createStyles() {
       backgroundColor: native.fill,
     },
     pillText: { color: native.label, fontSize: 13, fontWeight: "600" },
-    body: { flex: 1, margin: 16, marginTop: 8, borderRadius: 18, overflow: "hidden" },
-    centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-    errorText: { color: native.secondaryLabel, fontSize: 14, textAlign: "center" },
+    body: {
+      flex: 1,
+      margin: 16,
+      marginTop: 8,
+      borderRadius: 18,
+      overflow: "hidden",
+    },
+    centered: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    errorText: {
+      color: native.secondaryLabel,
+      fontSize: 14,
+      textAlign: "center",
+    },
     previewCard: { flex: 1, borderRadius: 18, overflow: "hidden" },
     markdownScroll: { padding: 20 },
     imageWrap: {

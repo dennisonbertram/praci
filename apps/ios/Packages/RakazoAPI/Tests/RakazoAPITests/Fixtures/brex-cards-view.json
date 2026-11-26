@@ -1,0 +1,28 @@
+{
+  "json": {
+    "serverId": "server_demo_1",
+    "agentBotId": "bot_demo_brex",
+    "writesEnabled": true,
+    "partial": false,
+    "cards": [{
+      "cardId": "card_demo_1",
+      "name": "Design tools",
+      "lastFour": "4242",
+      "ownerUserId": "user_demo_1",
+      "status": "ACTIVE",
+      "limitCents": 10000,
+      "currency": "USD",
+      "duration": "MONTHLY",
+      "cardType": "VIRTUAL",
+      "lockAfterDate": null,
+      "allowedMerchants": ["Figma"],
+      "blockedMerchants": [],
+      "ownerName": "Alex Example",
+      "period": { "start": "2026-11-01", "end": "2026-11-30" },
+      "periodSpendCents": 9600,
+      "series": [{ "day": "2026-11-03", "cents": 9600 }],
+      "usage": { "usedCents": 9600, "limitCents": 10000, "percent": 96 },
+      "partial": false
+    }]
+  }
+}

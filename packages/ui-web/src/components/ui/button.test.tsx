@@ -36,3 +36,13 @@ it("still renders a native button by default", async () => {
   expect(container.querySelector("button")?.getAttribute("type")).toBe("button");
   unmount();
 });
+
+it("enumerates the transitioned properties instead of transition-all", async () => {
+  const { container, unmount } = await mount(<Button>Save</Button>);
+  const className = container.querySelector("button")?.className ?? "";
+  expect(className).not.toContain("transition-all");
+  // The focus ring (box-shadow) and the :active press (transform) keep animating.
+  expect(className).toContain("box-shadow");
+  expect(className).toContain("transform");
+  unmount();
+});

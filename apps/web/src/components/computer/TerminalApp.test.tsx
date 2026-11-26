@@ -8,10 +8,17 @@ import { publishComputerCommand } from "../../lib/computer-workspace";
 
 const history = vi.hoisted(() => ({
   impl: vi.fn<(...args: unknown[]) => Promise<ComputerCommand[]>>(),
+  appendEvent: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }));
 
 vi.mock("../../lib/rpc", () => ({
-  rpc: { computer: { commands: (...args: unknown[]) => history.impl(...args) } },
+  rpc: {
+    computer: {
+      commands: (...args: unknown[]) => history.impl(...args),
+      terminalUrl: () => new Promise(() => undefined),
+    },
+    skills: { appendEvent: (...args: unknown[]) => history.appendEvent(...args) },
+  },
 }));
 
 vi.mock("@lingui/react/macro", () => {
@@ -23,6 +30,15 @@ vi.mock("@lingui/react/macro", () => {
 const term = vi.hoisted(() => {
   const api = {
     writes: [] as string[],
+    typed: (_data: string) => {},
+    cols: 80,
+    rows: 24,
+    focus: vi.fn(),
+    onResize: () => ({ dispose() {} }),
+    onData(callback: (data: string) => void) {
+      api.typed = callback;
+      return { dispose() {} };
+    },
     loadAddon: vi.fn(),
     open: vi.fn(),
     dispose: vi.fn(),
@@ -81,7 +97,7 @@ function hangHistory() {
   return resolve;
 }
 
-async function renderTerminal() {
+async function renderTerminal(props: { canUseShell?: boolean; recordingSkillId?: string } = {}) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal(
     "ResizeObserver",
@@ -95,9 +111,10 @@ async function renderTerminal() {
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(<TerminalApp botId="bot-1" canUseShell={false} />);
+    root.render(<TerminalApp botId="bot-1" canUseShell={props.canUseShell ?? false} {...props} />);
   });
   return {
+    container,
     async cleanup() {
       await act(async () => root.unmount());
       container.remove();
@@ -148,5 +165,43 @@ it("shows a live command that arrives before history and keeps it when that page
     ]);
   } finally {
     await view.cleanup();
+  }
+});
+
+async function openShell(view: Awaited<ReturnType<typeof renderTerminal>>) {
+  const tab = [...view.container.querySelectorAll('[role="tab"]')].find(
+    (element) => element.textContent === "Shell",
+  ) as HTMLElement;
+  await act(async () => tab.click());
+}
+
+it("adds a submitted shell command to the recording, and only while recording", async () => {
+  history.impl.mockResolvedValue([]);
+  history.appendEvent.mockResolvedValue({});
+  const view = await renderTerminal({ canUseShell: true, recordingSkillId: "skill-1" });
+  try {
+    await openShell(view);
+    await act(async () => {
+      for (const key of "lss") term.typed(key);
+      term.typed("\x7f");
+      term.typed(" -a");
+      term.typed("\r");
+    });
+    expect(history.appendEvent).toHaveBeenCalledTimes(1);
+    expect(history.appendEvent).toHaveBeenCalledWith({
+      skillId: "skill-1",
+      event: { at: expect.any(String), kind: "command", command: "ls -a" },
+    });
+  } finally {
+    await view.cleanup();
+  }
+  history.appendEvent.mockClear();
+  const idle = await renderTerminal({ canUseShell: true });
+  try {
+    await openShell(idle);
+    await act(async () => term.typed("ls\r"));
+    expect(history.appendEvent).not.toHaveBeenCalled();
+  } finally {
+    await idle.cleanup();
   }
 });

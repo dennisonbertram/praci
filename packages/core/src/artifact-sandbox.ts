@@ -9,6 +9,12 @@ export const SANDBOXED_EMAIL_CSP = SANDBOXED_ARTIFACT_CSP.replace(
   "script-src 'none'",
 ).replace("img-src data:", "img-src data: https:");
 
+/**
+ * Hostile HTML could leak data by encoding it in a hostname that the browser resolves ahead of time
+ * (<link rel="dns-prefetch">). CSP does not cover that, so every sandboxed document starts with this tag.
+ */
+export const DNS_PREFETCH_OFF_META = '<meta http-equiv="x-dns-prefetch-control" content="off">';
+
 const PLAIN_HTML_DOCTYPE = /^\s*<!doctype\s+html\s*>/i;
 
 /**
@@ -23,9 +29,26 @@ const PLAIN_HTML_DOCTYPE = /^\s*<!doctype\s+html\s*>/i;
  */
 export function withSandboxedArtifactCsp(html: string, options: { email?: boolean } = {}): string {
   const csp = options.email ? SANDBOXED_EMAIL_CSP : SANDBOXED_ARTIFACT_CSP;
-  const meta = `<meta http-equiv="Content-Security-Policy" content="${csp}">`;
+  const meta = `${DNS_PREFETCH_OFF_META}<meta http-equiv="Content-Security-Policy" content="${csp}">`;
   const leadingDoctype = html.match(PLAIN_HTML_DOCTYPE);
   if (!leadingDoctype) return `<!DOCTYPE html>${meta}${html}`;
   const end = leadingDoctype[0].length;
   return `${html.slice(0, end)}${meta}${html.slice(end)}`;
+}
+
+/**
+ * JavaScript that delivers an HTML page's data as the "praci-data" message event the live viewer
+ * posts. The data goes in as a JSON string the page-side code parses, so it stays plain data
+ * whatever it contains. `<` and U+2028/2029 are escaped so it is also safe inside a <script> element.
+ */
+export function htmlPageDataScript(sources: unknown): string {
+  const escapeForScript = (text: string) =>
+    text
+      .replace(/</g, "\\u003c")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+  const literal = escapeForScript(
+    JSON.stringify(escapeForScript(JSON.stringify({ type: "praci-data", sources }))),
+  );
+  return `(function(){window.dispatchEvent(new MessageEvent("message",{data:JSON.parse(${literal})}))})();true;`;
 }

@@ -60,6 +60,8 @@ One bot has one continuous visible thread because continuity is part of its iden
 Team Computers share a persisted browser identity and isolate simultaneous live desktops when supported because shared login state and safe concurrency are both required.
 Private Computers isolate the entire working home because some trust boundaries must be stronger than collaboration convenience.
 Connections belong to the user or space rather than requiring repetitive per-bot setup because bots differ through role and state, not account plumbing.
+Runs nobody is watching are read-only: they read freely, and anything that sends, changes or runs something asks first, because an unattended bot has no one to catch a mistake.
+A task a user teaches by demonstration never stores a typed password: the user saves it as a login or skips it, and runs of the taught skill follow the same approval rules as any other background run.
 
 ## Scope
 

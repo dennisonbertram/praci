@@ -2,6 +2,7 @@ import { BUILTIN_TOOL_NAMES } from "@rakazo/contracts";
 import { buildSkillMd, formatSkillsCatalogInstruction, parseSkillMd } from "@rakazo/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BUILTIN_AGENT_SKILLS, INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
+import { builtinAgentTools } from "./builtin-tools.js";
 import {
   listAgentSkillRecords,
   skillCreateFromTool,
@@ -346,7 +347,10 @@ describe("skill tools", () => {
     const parsed = parseSkillMd(skill?.content ?? "");
     if ("error" in parsed) throw new Error(parsed.error);
     expect(parsed.body).toContain("show_emails");
-    expect(parsed.body).toContain("within_3_days");
+    // How to fill the table is in the tool's own description, which is offered with the tool.
+    expect(builtinAgentTools.find((tool) => tool.name === "show_emails")?.description).toContain(
+      "within_3_days",
+    );
     expect(BUILTIN_TOOL_NAMES).toContain("show_emails");
   });
 

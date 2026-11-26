@@ -47,3 +47,28 @@ function localTimeLine(now: Date, timeZone: string): string | undefined {
     return undefined;
   }
 }
+
+/** "Saturday, 2026-10-17 22:15 (UTC+13:00)", or undefined for an unusable timezone. */
+export function localDateTime(now: Date, timeZone: string): string | undefined {
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "long",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZoneName: "longOffset",
+    }).formatToParts(now);
+  } catch {
+    return undefined;
+  }
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  // "GMT+13:00" / "GMT" from longOffset, shown as UTC to match the instant beside it.
+  const offset = part("timeZoneName").replace(/^GMT/, "UTC") || "UTC";
+  return `${part("weekday")}, ${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")} (${offset === "UTC" ? "UTC+00:00" : offset})`;
+}

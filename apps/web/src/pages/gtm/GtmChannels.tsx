@@ -5,6 +5,8 @@ import { GTM_CHANNELS } from "@rakazo/contracts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rakazo/ui-web";
 
 export function GtmChannels({ overview }: { overview: GtmOverview }) {
+  if (overview.channels.length === 0) return null;
+
   const policy = overview.directoryPolicy;
   const statuses = {
     connected: t`Connected`,

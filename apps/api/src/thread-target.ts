@@ -14,6 +14,7 @@ import type {
 import {
   botCanReadDataRoom,
   GROUP_MEMBER_MIN,
+  MAIL_REPLY_BATCH_TOOL,
   MessageBlock as MessageBlockSchema,
   RunPhaseSchema,
 } from "@rakazo/contracts";
@@ -24,6 +25,8 @@ import {
   dataRoomReferenceLine,
   isActive,
   isConversationalRun,
+  newRunUnattended,
+  parseGoalCommand,
   projectMessages,
   resolveGroupTargetBotIds,
   runFailureError,
@@ -33,6 +36,9 @@ import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
   answerWaitingRunWithTextInTransaction,
   appendEventInTransaction,
+  cancelRunsInTransaction,
+  clearEndedRunState,
+  clearOpenGoal,
   createDataRoomRepos,
   createGroupRepos,
   createRepos,
@@ -40,8 +46,16 @@ import {
   delegatePendingAgents,
   delegatePendingIds,
   expireComputerExecutionLeases,
+  findOpenGoal,
   IsolationError,
   lockOwnedGroup,
+  pauseActiveGoal,
+  resumePausedGoal,
+  settleApprovalsOfEndedRuns,
+  skipWaitingApprovalsInTransaction,
+  startGoal,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
+  threadGoalView,
   touchGroupUpdatedAt,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -244,7 +258,7 @@ function sendEventRunIds(payload: Prisma.JsonValue | undefined): string[] {
 
 function sendResult(message: { seq: number }, runs: Array<{ id: string; taskId: string }>) {
   const first = runs[0];
-  if (!first) throw new IsolationError("Send did not create a run");
+  if (!first) throw new Error("Send did not create a run");
   return {
     taskId: first.taskId,
     runId: first.id,
@@ -273,6 +287,10 @@ export async function cancelSupersededQueuedRuns(
     where: { id: { in: superseded.map((run) => run.id) } },
     data: { status: "cancelled", completedAt: now },
   });
+  await clearEndedRunState(
+    tx,
+    superseded.map((run) => run.id),
+  );
   await tx.task.updateMany({
     where: { id: { in: superseded.map((run) => run.taskId) } },
     data: { status: "cancelled" },
@@ -319,7 +337,8 @@ export async function resolveThreadTarget(
   const groupRepos = createGroupRepos(prisma);
   if (input.botId) {
     const bot = await repos.getBot(actor, input.botId, options);
-    if (!bot.thread) throw new IsolationError();
+    // The bot resolved for this actor, so a missing thread is broken data, not an access answer.
+    if (!bot.thread) throw new Error("Bot is missing its thread");
     return {
       kind: "bot",
       botId: bot.id,
@@ -329,7 +348,7 @@ export async function resolveThreadTarget(
   }
   if (input.groupId) {
     const group = await groupRepos.getGroupTarget(actor, input.groupId);
-    if (!group.thread) throw new IsolationError();
+    if (!group.thread) throw new Error("Group is missing its thread");
     const members = group.members.map((member) => ({
       botId: member.bot.id,
       name: member.bot.name,
@@ -390,7 +409,7 @@ export async function threadSnapshot(
       deps.prisma.$transaction(
         async (tx) => {
           await tx.$queryRaw`SELECT id FROM threads WHERE id = ${target.threadId} FOR SHARE`;
-          const [messagePage, last, waitingRun, busyOrFailed] = await Promise.all([
+          const [messagePage, last, waitingRun, busyOrFailed, goal] = await Promise.all([
             loadMessagePage(tx, target.threadId, undefined, THREAD_MESSAGE_PAGE_SIZE),
             tx.event.findFirst({
               where: { threadId: target.threadId },
@@ -418,6 +437,11 @@ export async function threadSnapshot(
               // The id tiebreak keeps ordering deterministic under equal
               // timestamps, matching the supersession probe below.
               orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            }),
+            findOpenGoal(tx, {
+              spaceId: target.bot.spaceId,
+              userId: target.bot.userId,
+              threadId: target.threadId,
             }),
           ]);
           const run = waitingRun ?? busyOrFailed;
@@ -452,6 +476,8 @@ export async function threadSnapshot(
                       in: [
                         "thread.progress",
                         "thread.subagent",
+                        "run.waiting_input",
+                        "computer.takeover.requested",
                         "agent.tool.called",
                         "agent.tool.completed",
                       ],
@@ -460,7 +486,7 @@ export async function threadSnapshot(
                   orderBy: { seq: "asc" },
                 })
               : [];
-          return { messagePage, last, run: currentRun, liveEvents };
+          return { messagePage, last, run: currentRun, liveEvents, goal };
         },
         { timeout: 15_000, maxWait: 5_000 },
       ),
@@ -469,11 +495,16 @@ export async function threadSnapshot(
       botId: target.botId,
       threadId: target.threadId,
       cursor: core.last?.seq ?? -1,
-      messages: messagesWithLiveEvents(core.messagePage.messages, core.liveEvents),
+      messages: messagesWithLiveEvents(
+        core.messagePage.messages,
+        core.liveEvents,
+        core.run ? [core.run] : [],
+      ),
       olderCursor: core.messagePage.olderCursor,
       run: core.run ? mapRun(core.run) : null,
       ...(await delegatePendingField(deps.prisma, target)),
       computer: toComputerStatus(target.botId, target.bot.computer, busyBotName),
+      goal: threadGoalView(core.goal),
     };
   }
 
@@ -522,6 +553,8 @@ export async function threadSnapshot(
                   in: [
                     "thread.progress",
                     "thread.subagent",
+                    "run.waiting_input",
+                    "computer.takeover.requested",
                     "agent.tool.called",
                     "agent.tool.completed",
                   ],
@@ -547,7 +580,7 @@ export async function threadSnapshot(
     members: target.members,
     threadId: target.threadId,
     cursor: core.last?.seq ?? -1,
-    messages: messagesWithLiveEvents(core.messagePage.messages, core.liveEvents),
+    messages: messagesWithLiveEvents(core.messagePage.messages, core.liveEvents, core.activeRuns),
     olderCursor: core.messagePage.olderCursor,
     // Match the live reducer: a failed latest terminal stays in run even while siblings are
     // still active or start late. A newer completed/cancelled terminal clears it.
@@ -595,8 +628,9 @@ function pickLatestTerminalRun<T extends { id: string; createdAt: Date; complete
 function messagesWithLiveEvents(
   persisted: ThreadSnapshot["messages"],
   liveEvents: Parameters<typeof projectMessages>[0],
+  runs: NonNullable<Parameters<typeof projectMessages>[1]>,
 ) {
-  const live = projectMessages(liveEvents).filter((message) => {
+  const live = projectMessages(liveEvents, runs).filter((message) => {
     if (message.blocks.some((block) => block.kind === "progress" || block.kind === "steps")) {
       return true;
     }
@@ -612,6 +646,7 @@ function messagesWithLiveEvents(
 
 function mapRun(run: {
   id: string;
+  userId?: string;
   botId: string;
   threadId: string;
   taskId: string;
@@ -628,6 +663,7 @@ function mapRun(run: {
 }) {
   return {
     id: run.id,
+    ...(run.userId ? { userId: run.userId } : {}),
     botId: run.botId,
     threadId: run.threadId,
     taskId: run.taskId,
@@ -709,6 +745,36 @@ async function findRetriedUserMessage(
   return parsed.success && plainText(parsed.data) === sent ? last : null;
 }
 
+/**
+ * Every client already shows a send error in the composer, so the goal commands that change nothing
+ * to send answer through one. `data.goalReply` tells a client it is a status line, not a failure.
+ */
+function goalReply(message: string) {
+  return new ORPCError("BAD_REQUEST", { message, data: { goalReply: true } });
+}
+
+/** Ends the bot thread's open goal under the thread lock. Returns whether a goal was open. */
+export async function clearThreadGoal(
+  deps: { prisma: PrismaClient; events: ThreadEvents },
+  actor: Actor,
+  target: Extract<ThreadTarget, { kind: "bot" }>,
+) {
+  const seq = await deps.prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${target.threadId} FOR UPDATE`;
+    return clearOpenGoal(tx, {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      threadId: target.threadId,
+      botId: target.botId,
+    });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
+  if (seq === null) return false;
+  await deps.events.notify(target.threadId, seq).catch((error) => {
+    getLogger().error("thread goal realtime notification", error);
+  });
+  return true;
+}
+
 export async function sendThreadMessage(
   deps: {
     prisma: PrismaClient;
@@ -729,6 +795,30 @@ export async function sendThreadMessage(
 ) {
   const existing = await replayExistingSend(deps, target.threadId, input.clientNonce);
   if (existing) return existing;
+  // `/goal` is only a command at the start of the owner's own message, not in a reply.
+  const goalCommand = input.replyToMessageId ? null : parseGoalCommand(input.text ?? "");
+  if (goalCommand) {
+    if (target.kind !== "bot") {
+      throw new ORPCError("BAD_REQUEST", { message: "Goals work in a bot's own chat." });
+    }
+    if (goalCommand.kind === "too_long") {
+      throw new ORPCError("BAD_REQUEST", { message: "Keep the goal under 2,000 characters." });
+    }
+    if (goalCommand.kind === "show") {
+      const goal = await findOpenGoal(deps.prisma, {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        threadId: target.threadId,
+      });
+      throw goalReply(
+        goal ? `Goal: ${goal.text}${goal.status === "paused" ? " (paused)" : ""}` : "No goal set.",
+      );
+    }
+    if (goalCommand.kind === "clear") {
+      const cleared = await clearThreadGoal(deps, actor, target);
+      throw goalReply(cleared ? "Goal cleared." : "No goal set.");
+    }
+  }
   // Live events carry the call id so a spoken turn joins the call card on first
   // paint; without it the bubble shows loose until a refetch reads the nonce.
   const callId = callIdFromClientNonce(input.clientNonce);
@@ -744,7 +834,11 @@ export async function sendThreadMessage(
     input.dataRoomItemIds,
   );
   // The references ride in the text, so the message, the run's prompt and later history all carry them.
-  const sendText = [input.text?.trim(), references.join("\n")].filter(Boolean).join("\n\n");
+  const withReferences = (text: string | undefined) =>
+    [text?.trim(), references.join("\n")].filter(Boolean).join("\n\n");
+  const sendText = withReferences(input.text);
+  // The message keeps `/goal` as typed; the run is asked for the goal itself.
+  const promptText = goalCommand?.kind === "set" ? withReferences(goalCommand.text) : sendText;
 
   const commit = () =>
     deps.prisma.$transaction(async (tx) => {
@@ -808,6 +902,29 @@ export async function sendThreadMessage(
           mentionTargets.connectorMentionIds,
         );
         const blocks = buildUserMessageBlocks(sendText, attachmentBlocks);
+        const goalScope = {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          threadId: target.threadId,
+          botId: target.botId,
+        };
+        // A new goal replaces the open one. Otherwise any message resumes a paused goal, and
+        // runs this send creates work toward the active one.
+        if (goalCommand?.kind === "set") await startGoal(tx, goalScope, goalCommand.text);
+        else await resumePausedGoal(tx, goalScope);
+        const goalId = (await findOpenGoal(tx, goalScope))?.id;
+        // A new goal also takes over runs that are already live on the thread.
+        const adoptLiveRuns = () =>
+          goalCommand?.kind === "set"
+            ? tx.run.updateMany({
+                where: {
+                  spaceId: actor.spaceId,
+                  threadId: target.threadId,
+                  status: { in: [...ACTIVE_RUN_STATUSES] },
+                },
+                data: { goalId },
+              })
+            : undefined;
         const retried = replyToMessageId
           ? null
           : await findRetriedUserMessage(tx, target.threadId, blocks);
@@ -840,50 +957,81 @@ export async function sendThreadMessage(
           },
           select: { id: true, taskId: true, status: true, trigger: true },
         });
-        const waitingRuns = activeRuns.filter((run) => run.status === "waiting_input");
+        // A run whose reply batch is sending has no question left to answer: its card is answered and
+        // it waits only for the sends. The message waits too: that run takes it when it resumes, or a
+        // follow-up does if it ends without doing so.
+        const allWaiting = activeRuns.filter((run) => run.status === "waiting_input");
+        const sendingRunIds = allWaiting.length
+          ? new Set(
+              (
+                await tx.externalEffect.findMany({
+                  where: {
+                    spaceId: actor.spaceId,
+                    runId: { in: allWaiting.map((run) => run.id) },
+                    kind: MAIL_REPLY_BATCH_TOOL,
+                    status: "executing",
+                  },
+                  select: { runId: true },
+                })
+              ).map((effect) => effect.runId),
+            )
+          : new Set<string>();
+        const waitingRuns = allWaiting.filter((run) => !sendingRunIds.has(run.id));
         if (waitingRuns.length && !activeRuns.some(steersUserMessage)) {
           const answerText = input.text?.trim();
-          if (!answerText) {
-            throw new ORPCError("CONFLICT", {
-              message: "Answer the pending ask first.",
-            });
-          }
+          // Approval cards are moved past, not answered by text: each is skipped as a decline and
+          // its run resumes with this message as steering. A question takes the text as its answer;
+          // a secret request refuses the send.
+          const answered = [];
           for (const run of waitingRuns) {
-            const answered = await answerWaitingRunWithTextInTransaction(tx, {
+            const skipped = await skipWaitingApprovalsInTransaction(tx, {
               spaceId: actor.spaceId,
               threadId: target.threadId,
               runId: run.id,
-              answeredByUserId: actor.userId,
-              answer: answerText,
             });
-            if (!answered) {
+            if (skipped) {
+              run.status = "queued";
+              continue;
+            }
+            const result =
+              answerText &&
+              (await answerWaitingRunWithTextInTransaction(tx, {
+                spaceId: actor.spaceId,
+                threadId: target.threadId,
+                runId: run.id,
+                answeredByUserId: actor.userId,
+                answer: answerText,
+              }));
+            if (!result) {
               throw new ORPCError("CONFLICT", {
                 message: "Answer the pending ask first.",
               });
             }
+            answered.push({ ...run, status: "queued" });
           }
-          const answered = waitingRuns.map((run) => ({ ...run, status: "queued" }));
           const primary = answered[0];
-          if (!primary) throw new IsolationError();
-          await tx.message.update({ where: { id: message.id }, data: { runId: primary.id } });
-          const event = await appendEventInTransaction(tx, {
-            spaceId: actor.spaceId,
-            threadId: target.threadId,
-            botId: target.botId,
-            type: "thread.message.created",
-            runId: primary.id,
-            payload: {
-              messageId: message.id,
-              role: "user",
-              blocks,
-              callId,
-              runIds: answered.map((run) => run.id),
-              replyToMessageId,
-              replyQuote,
-              replyPreview,
-            },
-          });
-          return { message, runs: answered, eventSeq: event.seq };
+          if (primary) {
+            await adoptLiveRuns();
+            await tx.message.update({ where: { id: message.id }, data: { runId: primary.id } });
+            const event = await appendEventInTransaction(tx, {
+              spaceId: actor.spaceId,
+              threadId: target.threadId,
+              botId: target.botId,
+              type: "thread.message.created",
+              runId: primary.id,
+              payload: {
+                messageId: message.id,
+                role: "user",
+                blocks,
+                callId,
+                runIds: answered.map((run) => run.id),
+                replyToMessageId,
+                replyQuote,
+                replyPreview,
+              },
+            });
+            return { message, runs: answered, eventSeq: event.seq };
+          }
         }
         if (
           activeRuns.some(
@@ -896,6 +1044,7 @@ export async function sendThreadMessage(
         }
         const active = activeRuns.find(steersUserMessage) ?? activeRuns[0];
         if (active) {
+          await adoptLiveRuns();
           await tx.steeringMessage.create({
             data: {
               messageId: message.id,
@@ -929,7 +1078,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(sendText, artifacts, connectorNames),
+            prompt: buildSendPrompt(promptText, artifacts, connectorNames),
             status: "queued",
           },
         });
@@ -942,6 +1091,8 @@ export async function sendThreadMessage(
             userId: actor.userId,
             status: "queued",
             trigger: "user",
+            goalId,
+            unattended: newRunUnattended({ trigger: "user" }),
             // The message keeps its first nonce; a retry's own nonce is recorded on its run so a
             // repeat of either request replays this send.
             clientNonce: retried
@@ -1022,29 +1173,36 @@ export async function sendThreadMessage(
       for (const run of activeRuns) {
         if (run.status === "waiting_input") {
           if (conversationalBotIds.has(run.botId)) continue;
-          const answerText = input.text?.trim();
-          if (!answerText) {
-            throw new ORPCError("CONFLICT", {
-              message: "Answer the pending ask first.",
-            });
-          }
-          const answered = await answerWaitingRunWithTextInTransaction(tx, {
+          // Approval cards are skipped as a decline and the run takes this message as steering.
+          const skipped = await skipWaitingApprovalsInTransaction(tx, {
             spaceId: actor.spaceId,
             threadId: target.threadId,
             runId: run.id,
-            answeredByUserId: actor.userId,
-            answer: answerText,
           });
-          if (!answered) {
-            throw new ORPCError("CONFLICT", {
-              message: "Answer the pending ask first.",
-            });
+          if (skipped) {
+            run.status = "queued";
+          } else {
+            const answerText = input.text?.trim();
+            const answered =
+              answerText &&
+              (await answerWaitingRunWithTextInTransaction(tx, {
+                spaceId: actor.spaceId,
+                threadId: target.threadId,
+                runId: run.id,
+                answeredByUserId: actor.userId,
+                answer: answerText,
+              }));
+            if (!answered) {
+              throw new ORPCError("CONFLICT", {
+                message: "Answer the pending ask first.",
+              });
+            }
+            const queuedRun = { ...run, status: "queued" };
+            const queuedForBot = answeredByBotId.get(run.botId);
+            if (queuedForBot) queuedForBot.push(queuedRun);
+            else answeredByBotId.set(run.botId, [queuedRun]);
+            continue;
           }
-          const queuedRun = { ...run, status: "queued" };
-          const queuedForBot = answeredByBotId.get(run.botId);
-          if (queuedForBot) queuedForBot.push(queuedRun);
-          else answeredByBotId.set(run.botId, [queuedRun]);
-          continue;
         }
         if (!STEERABLE_RUN_STATUSES.has(run.status)) {
           throw new ORPCError("CONFLICT", {
@@ -1095,6 +1253,7 @@ export async function sendThreadMessage(
             userId: actor.userId,
             status: "queued",
             trigger: "user",
+            unattended: newRunUnattended({ trigger: "user" }),
             clientNonce: sendRunClientNonce(input.clientNonce, message.id, botId),
             sourceMessageId: message.id,
           },
@@ -1103,7 +1262,7 @@ export async function sendThreadMessage(
       }
       const firstRun = runs[0];
       const eventBotId = firstRun?.botId ?? targetBotIds[0];
-      if (!eventBotId) throw new IsolationError("Group send did not resolve a target");
+      if (!eventBotId) throw new Error("Group send did not resolve a target");
       if (firstRun) {
         await tx.message.update({ where: { id: message.id }, data: { runId: firstRun.id } });
         const createdRuns = runs.filter(
@@ -1136,7 +1295,7 @@ export async function sendThreadMessage(
         },
       });
       return { message, runs, eventSeq: event.seq };
-    });
+    }, THREAD_LOCK_TRANSACTION_OPTIONS);
 
   const committed = await withSerializableRetry(commit).catch(async (error) => {
     const winner = await replayExistingSend(deps, target.threadId, input.clientNonce);
@@ -1167,6 +1326,9 @@ export async function reactToThreadMessage(
   },
 ) {
   return deps.prisma.$transaction(async (tx) => {
+    // Group before thread, the order every group writer uses; touchGroupUpdatedAt writes the
+    // group below, so taking the thread first would deadlock against them.
+    if (target.kind === "group") await lockOwnedGroup(tx, actor, target.groupId);
     await tx.$queryRaw`SELECT id FROM threads WHERE id = ${target.threadId} FOR UPDATE`;
     const parent = await tx.message.findFirst({
       where: { id: input.messageId, threadId: target.threadId },
@@ -1199,7 +1361,7 @@ export async function reactToThreadMessage(
       payload: { messageId: message.id, role: "user", blocks, replyToMessageId: parent.id },
     });
     return { eventSeq: event.seq };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
 }
 
 export async function stopThreadRuns(
@@ -1213,15 +1375,25 @@ export async function stopThreadRuns(
 ) {
   const { runIds, computers, leases, eventSeq } = await deps.prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM threads WHERE id = ${target.threadId} FOR UPDATE`;
-    const cancelled = await tx.run.updateManyAndReturn({
-      where: {
-        threadId: target.threadId,
-        status: { in: [...ACTIVE_RUN_STATUSES] },
-      },
-      data: { status: "cancelled", completedAt: new Date() },
-      select: { id: true, botId: true },
+    // A stopped run answers no card: close each open approval and the effects behind it, so a
+    // stored card can never be approved later. Closed before the runs are cancelled, because a
+    // cancelled run can no longer write to the thread. Grouped by bot: each card event names one.
+    const stopping = await tx.run.findMany({
+      where: { threadId: target.threadId, status: { in: [...ACTIVE_RUN_STATUSES] } },
+      select: { id: true, botId: true, taskId: true },
     });
-    const ids = cancelled.map((run) => run.id);
+    for (const botId of new Set(stopping.map((run) => run.botId))) {
+      await settleApprovalsOfEndedRuns(tx, {
+        spaceId: actor.spaceId,
+        threadId: target.threadId,
+        botId,
+        runIds: stopping.filter((run) => run.botId === botId).map((run) => run.id),
+        answer: "stopped",
+      });
+    }
+    // The full cancellation primitive: run, attempts, task and lease fields, then ended-run state.
+    await cancelRunsInTransaction(tx, stopping, new Date());
+    const ids = stopping.map((run) => run.id);
     await tx.steeringMessage.deleteMany({
       where: {
         botId: { in: target.kind === "bot" ? [target.botId] : target.memberBotIds },
@@ -1263,7 +1435,7 @@ export async function stopThreadRuns(
     // the fresh seq keeps max(seq) above every deleted progress row so a client
     // whose cursor pointed at one never discards later refreshes as stale.
     let eventSeq: number | null = null;
-    for (const run of cancelled) {
+    for (const run of stopping) {
       const event = await appendEventInTransaction(tx, {
         spaceId: actor.spaceId,
         threadId: target.threadId,
@@ -1274,6 +1446,15 @@ export async function stopThreadRuns(
       });
       eventSeq = event.seq;
     }
+    if (target.kind === "bot") {
+      const goalSeq = await pauseActiveGoal(tx, {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        threadId: target.threadId,
+        botId: target.botId,
+      });
+      eventSeq = goalSeq ?? eventSeq;
+    }
     if (ids.length) {
       await tx.event.deleteMany({
         where: {
@@ -1283,7 +1464,7 @@ export async function stopThreadRuns(
       });
     }
     return { runIds: ids, computers, leases, eventSeq };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (eventSeq !== null) {
     // The events are durable; subscribers refetch from their persisted cursor.
     await deps.events.notify(target.threadId, eventSeq).catch((error) => {
@@ -1359,6 +1540,7 @@ export async function stopThreadRuns(
       executionLeaseExpiresAt: null,
     },
   });
+  return { runIds };
 }
 
 /** A snapshot plus the caller's read boundary, for the "New" divider. Scoped to the caller's space and user. */
@@ -1378,6 +1560,34 @@ export async function threadSnapshotForReader(
 }
 
 /**
+ * Marks the thread unread from one of its messages: the read boundary moves to just before it, so
+ * the next open puts the "New" divider at the first reply from it. A message that is not in this
+ * thread is NOT_FOUND. One statement scoped to the caller's space and user.
+ * (Upstream elie222/rakazo f6a1ef222, #1933.)
+ */
+export async function markThreadUnreadFrom(
+  prisma: PrismaClient,
+  actor: Actor,
+  target: ThreadTarget,
+  messageId: string,
+): Promise<boolean> {
+  // `prev` reads the flag in the same statement; returns whether `unread` changed.
+  const rows = await prisma.$queryRaw<{ changed: boolean }[]>`
+    WITH prev AS (
+      SELECT t.id, t."unread" AS was FROM threads t
+      WHERE t.id = ${target.threadId} AND t."spaceId" = ${actor.spaceId}
+        AND t."userId" = ${actor.userId}
+    )
+    UPDATE threads SET "unread" = true, "lastReadSeq" = m."seq" - 1
+    FROM messages m, prev
+    WHERE m."id" = ${messageId} AND m."threadId" = threads.id AND prev.id = threads.id
+    RETURNING prev.was <> threads."unread" AS changed`;
+  if (rows.length === 0) throw new ORPCError("NOT_FOUND");
+  if (rows.length > 1) throw new IsolationError();
+  return rows[0]!.changed;
+}
+
+/**
  * Marking read moves the read boundary forward to the message `upToMessageId` (the newest when
  * omitted), never backward, and clears `unread` at the newest message or when the reader reports
  * `toEnd`. An id that is not in this thread changes nothing. Marking unread moves the boundary back
@@ -1389,21 +1599,34 @@ export async function setThreadUnreadState(
   target: ThreadTarget,
   unread: boolean,
   read: { upToMessageId?: string; toEnd?: boolean } = {},
-) {
+): Promise<boolean> {
+  // `prev` reads the flag in the same statement; the result says whether `unread` changed.
   if (unread) {
-    const count = await prisma.$executeRaw`
+    const rows = await prisma.$queryRaw<{ changed: boolean }[]>`
+      WITH prev AS (
+        SELECT t.id, t."unread" AS was FROM threads t
+        WHERE t.id = ${target.threadId} AND t."spaceId" = ${actor.spaceId}
+          AND t."userId" = ${actor.userId}
+      )
       UPDATE threads SET
         "unread" = true,
         "lastReadSeq" = LEAST("lastReadSeq", COALESCE(
           (SELECT MAX(m."seq") - 1 FROM messages m WHERE m."threadId" = threads.id AND m."role" <> 'user'),
           "lastReadSeq"))
-      WHERE id = ${target.threadId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}`;
-    if (count > 1) throw new IsolationError();
-    return;
+      FROM prev
+      WHERE threads.id = prev.id
+      RETURNING prev.was <> threads."unread" AS changed`;
+    if (rows.length > 1) throw new IsolationError();
+    return rows[0]?.changed ?? false;
   }
   const upTo = read.upToMessageId ?? null;
   // GREATEST keeps the boundary monotonic under concurrent tabs; the WHERE keeps it the caller's.
-  const rows = await prisma.$queryRaw<{ id: string }[]>`
+  const rows = await prisma.$queryRaw<{ changed: boolean }[]>`
+    WITH prev AS (
+      SELECT t.id, t."unread" AS was FROM threads t
+      WHERE t.id = ${target.threadId} AND t."spaceId" = ${actor.spaceId}
+        AND t."userId" = ${actor.userId}
+    )
     UPDATE threads SET
       "lastReadSeq" = GREATEST("lastReadSeq", LEAST(r.seq, "nextMessageSeq" - 1)),
       "unread" = CASE
@@ -1413,8 +1636,9 @@ export async function setThreadUnreadState(
     FROM (SELECT COALESCE(
       (SELECT m."seq" FROM messages m WHERE m."id" = ${upTo}::text AND m."threadId" = ${target.threadId}),
       CASE WHEN ${upTo}::text IS NULL THEN 2147483647 END) AS seq) r
-    WHERE threads.id = ${target.threadId} AND threads."spaceId" = ${actor.spaceId}
-      AND threads."userId" = ${actor.userId} AND r.seq IS NOT NULL
-    RETURNING threads.id`;
+      , prev
+    WHERE threads.id = prev.id AND r.seq IS NOT NULL
+    RETURNING prev.was <> threads."unread" AS changed`;
   if (rows.length > 1) throw new IsolationError();
+  return rows[0]?.changed ?? false;
 }

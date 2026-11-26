@@ -4,6 +4,7 @@ import {
   closeRestored,
   createAgentSendWatch,
   getOutbox,
+  holdCommit,
   holdDiscard,
   holdSend,
   MAIL_SENT_EVENT,
@@ -21,6 +22,57 @@ afterEach(() => {
   closeRestored();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+const leaveListeners = () =>
+  (vi.mocked(window.addEventListener).mock.calls as unknown[][]).filter(
+    ([type]) => type === "beforeunload",
+  );
+
+it("asks the browser to confirm leaving while a send is held", async () => {
+  vi.spyOn(window, "addEventListener");
+  vi.spyOn(window, "removeEventListener");
+  holdSend(() => Promise.resolve(null), restore);
+  const [[, handler]] = leaveListeners() as [
+    [string, (event: { preventDefault: () => void }) => void],
+  ];
+  expect(handler).toBeTypeOf("function");
+  const event = { preventDefault: vi.fn() };
+  handler(event);
+  expect(event.preventDefault).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", handler);
+});
+
+it("stops asking once the send is undone", () => {
+  vi.spyOn(window, "addEventListener");
+  vi.spyOn(window, "removeEventListener");
+  holdSend(() => Promise.resolve(null), restore);
+  const [, handler] = leaveListeners()[0] as [string, () => void];
+  undoSend();
+  expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", handler);
+});
+
+it("never asks to confirm leaving for a discard or a chat card's commit", () => {
+  vi.spyOn(window, "addEventListener");
+  holdDiscard(() => Promise.resolve(undefined), restore);
+  holdCommit(
+    () => Promise.resolve(undefined),
+    () => undefined,
+  );
+  expect(leaveListeners()).toEqual([]);
+});
+
+it("does not ask to confirm leaving in the desktop app, whose window it would block", () => {
+  vi.spyOn(window, "addEventListener");
+  const desktop = window as unknown as { rakazoDesktop?: unknown };
+  desktop.rakazoDesktop = {};
+  try {
+    holdSend(() => Promise.resolve(null), restore);
+    expect(leaveListeners()).toEqual([]);
+  } finally {
+    delete desktop.rakazoDesktop;
+  }
 });
 
 it("sends only after the undo window", async () => {
@@ -105,4 +157,36 @@ it("announces an approved agent send once the run that sends it ends", () => {
   watch.running(true);
   watch.running(false);
   expect(sent).toHaveBeenCalledTimes(2);
+});
+
+it("holds a generic commit, runs it after the window and reports it went out", async () => {
+  const commit = vi.fn().mockResolvedValue(undefined);
+  const onEnd = vi.fn();
+  holdCommit(commit, onEnd);
+  expect(getOutbox().view).toEqual({ kind: "sending", undoable: true });
+  await vi.advanceTimersByTimeAsync(UNDO_SEND_MS - 1);
+  expect(commit).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(commit).toHaveBeenCalledTimes(1);
+  expect(onEnd).toHaveBeenCalledWith(null);
+  expect(getOutbox().view).toEqual({ kind: "sent" });
+});
+
+it("undo prevents a held commit and opens no composer", async () => {
+  const commit = vi.fn().mockResolvedValue(undefined);
+  const onEnd = vi.fn();
+  holdCommit(commit, onEnd);
+  undoSend();
+  await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  expect(commit).not.toHaveBeenCalled();
+  expect(onEnd).toHaveBeenCalledWith(undefined);
+  expect(getOutbox()).toEqual({ view: null, restoring: null });
+});
+
+it("a failed commit clears the toast, opens no composer and reports the reason", async () => {
+  const onEnd = vi.fn();
+  holdCommit(() => Promise.reject(new Error("Mail is off")), onEnd);
+  await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  expect(onEnd).toHaveBeenCalledWith("Mail is off");
+  expect(getOutbox()).toEqual({ view: null, restoring: null });
 });

@@ -1,4 +1,4 @@
-import type { Board, Ticket, TicketComment, TicketPriority, TicketStatus } from "@rakazo/contracts";
+import type { Ticket, TicketComment, TicketPriority, TicketStatus } from "@rakazo/contracts";
 import {
   parseTicketRef,
   TicketPrioritySchema,
@@ -24,13 +24,6 @@ export async function ensureBoard(prisma: PrismaClient, spaceId: string): Promis
   const name = space?.name.trim() || "Board";
   await prisma.board.createMany({ data: [{ spaceId, name }], skipDuplicates: true });
   return prisma.board.findUniqueOrThrow({ where: { spaceId } });
-}
-
-export async function listBoards(prisma: PrismaClient, spaceId: string): Promise<BoardRow[]> {
-  return prisma.board.findMany({
-    where: { spaceId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
 }
 
 /**
@@ -66,17 +59,6 @@ export async function findTicket(
   return prisma.ticket.findFirst({
     where: { number: parsed.number, spaceId, boardId: board.id },
   });
-}
-
-export function toBoardDto(row: BoardRow): Board {
-  return {
-    id: row.id,
-    spaceId: row.spaceId,
-    name: row.name,
-    ticketPrefix: row.ticketPrefix,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  };
 }
 
 /** Unknown or legacy status strings fall back to `todo`, so an old row still renders. */

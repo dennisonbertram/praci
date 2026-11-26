@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   CreateTicketInput,
-  GetTicketInput,
   isTicketCompletedStatus,
   parseTicketRef,
   TICKET_PRIORITIES,
@@ -81,13 +80,6 @@ describe("ticket contracts", () => {
       CreateTicketInput.parse({ title: "Ship", assigneeBotId: "bot-1", priority: "whenever" }),
     ).toThrow();
     expect(TICKET_PRIORITIES).toEqual(["low", "normal", "high", "urgent"]);
-  });
-
-  it("requires exactly one of id or ref when fetching", () => {
-    expect(GetTicketInput.parse({ ref: "RAK-1" })).toEqual({ ref: "RAK-1" });
-    expect(GetTicketInput.parse({ id: "ticket-1" })).toEqual({ id: "ticket-1" });
-    expect(() => GetTicketInput.parse({})).toThrow();
-    expect(() => GetTicketInput.parse({ id: "ticket-1", ref: "RAK-1" })).toThrow();
   });
 
   it("requires an owner bot when creating a ticket", () => {

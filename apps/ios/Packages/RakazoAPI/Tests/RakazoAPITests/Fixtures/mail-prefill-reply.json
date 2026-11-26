@@ -1,0 +1,16 @@
+{
+  "json": {
+    "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+    "account": {
+      "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+      "label": "Founder mail",
+      "address": "mock-founder@northwind.example.test"
+    },
+    "to": "Morgan Pretend <morgan@halcyon-logistics.example.test>",
+    "cc": "",
+    "subject": "Re: [MOCK] Redlines on the Master Services Agreement",
+    "body": "\n\nOn Thu, Oct 29, 2026, 12:26 AM, Morgan Pretend <morgan@halcyon-logistics.example.test> wrote:\n> Maya, if section 9 works for you, can we sign on Thursday?\n>\n> Morgan\n>\n> -- \n> Mock demo data: invented for UX testing. Not a real message.",
+    "replyToMessageId": "73c6f557-0996-4300-bee9-debb6164f0ef",
+    "attachments": []
+  }
+}

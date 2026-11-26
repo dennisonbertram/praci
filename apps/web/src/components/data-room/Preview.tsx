@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiItem, DataRoomConsentStatus } from "@rakazo/contracts";
+import type { Contact, DataRoomApiItem, DataRoomConsentStatus } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { FileText, RotateCw, Trash2, Upload, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
@@ -35,6 +35,7 @@ import { ItemMenu } from "./ItemMenu";
 import {
   FileViewer,
   FullScreenPreview,
+  isAudio,
   isShowable,
   PreviewActions,
   useFileUrl,
@@ -138,9 +139,17 @@ function usePaneWidth() {
   return { width, handle };
 }
 
-/** How many investors have the file; null until known (or when it cannot be shared). */
-function useShareCount(item: DataRoomApiItem) {
-  const [shared, setShared] = useState<{ id: string; count: number | null } | null>(null);
+/**
+ * Who can open the file through the investor portal: the shared contact ids and, once they load,
+ * the investor contacts. `contacts` is null when the list cannot be read, so the count shows
+ * instead; null overall until known (or when the file cannot be shared).
+ */
+function useSharedWith(item: DataRoomApiItem) {
+  const [shared, setShared] = useState<{
+    id: string;
+    ids: string[];
+    contacts: Contact[] | null;
+  } | null>(null);
   const canShare = item.status !== "failed";
   useEffect(() => {
     if (!canShare) return;
@@ -148,7 +157,17 @@ function useShareCount(item: DataRoomApiItem) {
     const load = () =>
       rpc.investors
         .shares({ itemId: item.id })
-        .then((ids) => live && setShared({ id: item.id, count: ids.length }))
+        .then((ids) => {
+          if (!live) return;
+          if (ids.length === 0) {
+            setShared({ id: item.id, ids, contacts: [] });
+            return;
+          }
+          rpc.contacts
+            .list({ kind: "investor" })
+            .then((contacts) => live && setShared({ id: item.id, ids, contacts }))
+            .catch(() => live && setShared({ id: item.id, ids, contacts: null }));
+        })
         .catch(() => live && setShared(null));
     void load();
     window.addEventListener(SHARES_CHANGED, load);
@@ -157,7 +176,7 @@ function useShareCount(item: DataRoomApiItem) {
       window.removeEventListener(SHARES_CHANGED, load);
     };
   }, [item.id, canShare]);
-  return canShare && shared?.id === item.id ? shared.count : null;
+  return canShare && shared?.id === item.id ? shared : null;
 }
 
 /** Uploads another file into the same folder, then deletes the unreadable one it replaces. */
@@ -270,7 +289,14 @@ export function Preview({
   onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
 }) {
   const [error, setError] = useState("");
-  const shareCount = useShareCount(item);
+  const shared = useSharedWith(item);
+  const shareCount = shared?.ids.length ?? 0;
+  // A revoked investor cannot open the file, so they are not named.
+  const names = (shared?.contacts ?? [])
+    .filter((contact) => shared?.ids.includes(contact.id) && !contact.portalBlockedAt)
+    .map((contact) => contact.name);
+  const shown = names.slice(0, 3);
+  const unnamed = names.length - shown.length;
   const { facets } = item;
   // Only a picture can't be masked; text and PDF previews stay readable.
   const hidden = useHideAmounts() && canPreviewImage(item);
@@ -281,7 +307,8 @@ export function Preview({
   const showFile = !sheet && !hidden;
   const file = useFileUrl(item, showFile);
   const canFullScreen =
-    item.status !== "failed" && (sheet || (showFile && isShowable(item) && !file.failed));
+    item.status !== "failed" &&
+    (sheet || (showFile && isShowable(item) && !isAudio(item) && !file.failed));
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the pane from any control inside it
     <aside
@@ -375,7 +402,7 @@ export function Preview({
       ) : facets.summary ? (
         <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
-      {isSettled(item.status, !!item.previewText) && item.notIndexed ? (
+      {isAudio(item) ? null : isSettled(item.status, !!item.previewText) && item.notIndexed ? (
         <p className="text-xs text-muted-foreground">{t`Too large to search inside`}</p>
       ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
@@ -427,10 +454,27 @@ export function Preview({
           )}
         </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
-        {shareCount ? (
-          <Field label={t`Shared`}>
-            {shareCount === 1 ? t`With 1 investor` : t`With ${shareCount} investors`}
-          </Field>
+        {shared && shareCount > 0 ? (
+          shared.contacts === null ? (
+            <Field label={t`Shared`}>
+              {shareCount === 1 ? t`With 1 investor` : t`With ${shareCount} investors`}
+            </Field>
+          ) : names.length > 0 ? (
+            <Field label={t`Shared`}>
+              <Button
+                variant="link"
+                size="xs"
+                className="h-auto max-w-full min-w-0 p-0"
+                title={names.join(", ")}
+                onClick={() => onAction("share", item)}
+              >
+                <span className="truncate">
+                  {shown.join(", ")}
+                  {unnamed > 0 ? ` ${t`+${unnamed} more`}` : null}
+                </span>
+              </Button>
+            </Field>
+          ) : null
         ) : null}
       </dl>
       {/* Delete for a file that can't be read; Try again is under the heading, Open and Download in the header. */}

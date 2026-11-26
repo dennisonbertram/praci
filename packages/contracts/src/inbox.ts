@@ -1,11 +1,11 @@
 import * as z from "zod";
 import { Id } from "./ids.js";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 
-/** The one place the Inbox agent's spawn key is built. */
-export const inboxAgentSpawnKey = (userId: string) => `inbox-agent:${userId}`;
+export const inboxAgentSpawnKey = (userId: string) => pageAgentSpawnKey("inbox", userId);
 
 export const isInboxAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(inboxAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "inbox";
 
 /** One agent per mail conversation, so asking twice about the same thread opens the same chat. */
 export const mailThreadAgentSpawnKey = (connectionId: string, threadId: string) =>
@@ -37,6 +37,22 @@ export const MailAccountSchema = z.object({
 });
 
 export type MailAccountSummary = z.infer<typeof MailAccountSchema>;
+
+/** The renamed label, or the address when two labels read the same (or no label is set). */
+export function accountTabNames(accounts: MailAccountSummary[]): string[] {
+  const seen = new Map<string, number>();
+  for (const { label } of accounts) {
+    const key = label.trim().toLowerCase();
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
+  return accounts.map(
+    ({ label, address }) =>
+      ((seen.get(label.trim().toLowerCase()) ?? 0) > 1 ? address : undefined) ||
+      label ||
+      address ||
+      "",
+  );
+}
 
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
 export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
@@ -144,6 +160,10 @@ export const MailRowSchema = z.object({
   pile: InboxPileSchema.nullable().optional(),
   /** The message carries an attached file; optional for older servers and rows synced before it was recorded. */
   hasAttachment: z.boolean().optional(),
+  /** The message's own headers offer an unsubscribe target the server accepts; optional for older servers and rows synced before signals were recorded. */
+  canUnsubscribe: z.boolean().optional(),
+  /** The Chief tracks this thread in Open work; optional for older servers. */
+  tracked: z.boolean().optional(),
 });
 
 /** Which account a request covers; omitted means every connected mail account. */
@@ -302,6 +322,8 @@ export const CleanupSenderSchema = z.object({
   rule: SenderRuleStatusSchema.optional(),
   /** The pile the model chose for this sender often enough that its mail now goes there without it. Optional so older apps still parse. */
   learnedPile: InboxPileSchema.nullable().optional(),
+  /** Messages the user said needed no reply; Needs reply stops for the sender at 3. Omitted when 0. */
+  noReplyCount: z.number().int().positive().optional(),
 });
 
 export const CleanupListInputSchema = InboxScopeInputSchema;
@@ -414,6 +436,17 @@ export const InboxTodoSchema = z.object({
   /** YYYY-MM-DD */
   dueOn: z.string().nullable(),
   doneAt: z.string().nullable(),
+});
+
+/** "No reply needed" on one message, or its Undo (restores the mail and takes the count back by one). */
+export const InboxNoReplyInputSchema = z.object({ messageId: Id, undo: z.boolean().optional() });
+/** `stopped` names the sender when this correction stopped Needs reply for it. */
+export const InboxNoReplyOutputSchema = z.object({ stopped: z.string().nullable() });
+
+/** A finished to-do; `stoppedSender` is set when finishing it stopped Needs reply for that sender, `dismissedReply` when it took the mail out of Needs reply. */
+export const InboxTodoDoneSchema = InboxTodoSchema.extend({
+  stoppedSender: z.string().optional(),
+  dismissedReply: z.boolean().optional(),
 });
 
 export const InboxTodosOutputSchema = z.object({
@@ -584,11 +617,18 @@ export const InboxFeedbackOutputSchema = z.object({ mark: InboxMarkSchema.nullab
 /** `read: false` marks only this message unread; `read: true` marks the whole thread read. */
 export const InboxMarkReadInputSchema = z.object({ messageId: Id, read: z.boolean() });
 
+/** `read: true` marks each whole thread read; `read: false` marks only each message unread. */
+export const InboxMarkReadManyInputSchema = z.object({
+  messageIds: z.array(Id).min(1).max(MAX_BULK_ARCHIVE),
+  read: z.boolean(),
+});
+
 export type ComposeFields = z.infer<typeof ComposeFieldsSchema>;
 export type ComposeMode = z.infer<typeof ComposeModeSchema>;
 export type ComposePrefillOutput = z.infer<typeof ComposePrefillOutputSchema>;
 export type ComposeResult = z.infer<typeof ComposeResultSchema>;
 export type InboxMarkReadInput = z.infer<typeof InboxMarkReadInputSchema>;
+export type InboxMarkReadManyInput = z.infer<typeof InboxMarkReadManyInputSchema>;
 export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
 export type InboxBulkInput = z.infer<typeof InboxBulkInputSchema>;
 export type InboxBulkResult = z.infer<typeof InboxBulkResultSchema>;
@@ -597,6 +637,7 @@ export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;
 export type InboxThreadMessage = z.infer<typeof InboxThreadMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
+export type InboxTodoDone = z.infer<typeof InboxTodoDoneSchema>;
 export type InboxTodosOutput = z.infer<typeof InboxTodosOutputSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;
@@ -617,3 +658,68 @@ export type MailActionKind = z.infer<typeof MailActionKindSchema>;
 export type MailActionsListOutput = z.infer<typeof MailActionsListOutputSchema>;
 export type MailActionUndoInput = z.infer<typeof MailActionUndoInputSchema>;
 export type MailActionUndoOutput = z.infer<typeof MailActionUndoOutputSchema>;
+
+/** One turn of the throwaway chat about an attachment; the browser holds it and sends it back. */
+export const InboxAttachmentReviewInputSchema = z.object({
+  messageId: Id,
+  attachmentId: z.string().min(1).max(1024),
+  /** Absent for the first review; a follow-up question otherwise. */
+  question: z.string().trim().min(1).max(2000).optional(),
+  /** The chat so far, starting with the review. */
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(20_000) }))
+    .max(20)
+    .default([]),
+});
+
+export const InboxAttachmentReviewOutputSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("ok"), answer: z.string() }),
+  z.object({
+    status: z.literal("needs_consent"),
+    recipient: z.object({ key: z.string(), name: z.string() }),
+  }),
+  z.object({ status: z.literal("unavailable") }),
+]);
+export type InboxAttachmentReviewInput = z.input<typeof InboxAttachmentReviewInputSchema>;
+export type InboxAttachmentReviewOutput = z.infer<typeof InboxAttachmentReviewOutputSchema>;
+
+/** The address of a person the user is reading or writing to. */
+export const InboxPersonInputSchema = z.object({ email: z.string().trim().min(3).max(254) });
+
+const PersonMeetingSchema = z.object({
+  title: z.string(),
+  start: z.string(),
+  /** Where the meeting can be opened; null when its source has no page. */
+  href: z.string().nullable(),
+});
+
+/** What the user already has about one person. Every source is optional: a failed one is left empty. */
+export const InboxPersonContextSchema = z.object({
+  email: z.string(),
+  name: z.string().nullable(),
+  organization: z.string().nullable(),
+  /** The contact's kind, such as "investor"; null when the address is not a contact. */
+  kind: z.string().nullable(),
+  contactId: Id.nullable(),
+  /** The user's newest message to this address. */
+  lastEmailedAt: z.string().nullable(),
+  threadCount: z.number().int().nonnegative(),
+  /** Newest first; `id` opens the thread's newest cached message. */
+  threads: z.array(z.object({ id: Id, subject: z.string(), receivedAt: z.string() })),
+  lastMeeting: PersonMeetingSchema.nullable(),
+  nextMeeting: PersonMeetingSchema.nullable(),
+  documents: z.array(z.object({ id: Id, name: z.string() })),
+  todos: z.array(z.object({ id: Id, text: z.string(), dueOn: z.string().nullable() })),
+});
+
+export const InboxPersonSummaryOutputSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("ok"), summary: z.string() }),
+  z.object({
+    status: z.literal("needs_consent"),
+    recipient: z.object({ key: z.string(), name: z.string() }),
+  }),
+  z.object({ status: z.literal("unavailable") }),
+]);
+export type InboxPersonInput = z.input<typeof InboxPersonInputSchema>;
+export type InboxPersonContext = z.infer<typeof InboxPersonContextSchema>;
+export type InboxPersonSummaryOutput = z.infer<typeof InboxPersonSummaryOutputSchema>;

@@ -64,13 +64,22 @@ export default function InboxCleanupScreen() {
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState<Item[]>([]);
   const seeded = useRef(false);
+  const mutating = useRef(false);
+  const loadSequence = useRef(0);
+  const hasSenders = useRef(false);
+  // A failed refresh over a shown list alerts once, until a load succeeds again.
+  const loadAlerted = useRef(false);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     try {
       const [next, actions] = await Promise.all([listCleanup(), listMailActions()]);
+      if (sequence !== loadSequence.current) return;
       setError("");
       setList(next);
       setHistory(actions.actions);
+      hasSenders.current = next.senders.length > 0;
+      loadAlerted.current = false;
       const keys = new Set(next.senders.map((s) => senderKey(s.connectionId, s.address)));
       // The first answer ticks the preselected senders; later ones keep what the user ticked.
       const first = !seeded.current;
@@ -85,7 +94,12 @@ export default function InboxCleanupScreen() {
       );
       seeded.current = true;
     } catch (cause) {
-      setError(errorText(cause, t("Could not load senders")));
+      if (sequence !== loadSequence.current) return;
+      if (!hasSenders.current) setError(errorText(cause, t("Could not load senders")));
+      else if (!loadAlerted.current) {
+        loadAlerted.current = true;
+        Alert.alert(t("Could not load senders"), errorText(cause));
+      }
     }
   }, [t]);
 
@@ -122,21 +136,36 @@ export default function InboxCleanupScreen() {
         text: t("Send"),
         onPress: () =>
           void (async () => {
+            if (mutating.current) return;
+            mutating.current = true;
             setBusy(true);
-            const result = await runCleanup("unsubscribe", [next.sender], api, {
-              confirmMailto: true,
-            });
-            record(result);
-            await load();
-            setBusy(false);
-            askToSend(rest);
+            let sent = false;
+            try {
+              const result = await runCleanup("unsubscribe", [next.sender], api, {
+                confirmMailto: true,
+              });
+              record(result);
+              sent = true;
+            } catch (cause) {
+              Alert.alert(errorText(cause));
+            } finally {
+              try {
+                await load();
+              } finally {
+                mutating.current = false;
+                setBusy(false);
+              }
+            }
+            if (sent) askToSend(rest);
           })(),
       },
     ]);
   };
 
   const run = async (kind: CleanupKind) => {
+    if (mutating.current) return;
     const targets = cleanupTargets(kind, senders, selected);
+    mutating.current = true;
     setBusy(true);
     setNotes([]);
     try {
@@ -144,7 +173,10 @@ export default function InboxCleanupScreen() {
       record(result);
       await load();
       askToSend(result.confirm);
+    } catch (cause) {
+      Alert.alert(errorText(cause));
     } finally {
+      mutating.current = false;
       setBusy(false);
     }
   };
@@ -159,12 +191,21 @@ export default function InboxCleanupScreen() {
   };
 
   const stop = async (sender: CleanupSender, learned = false) => {
+    if (mutating.current) return;
+    mutating.current = true;
+    setBusy(true);
     try {
       await forgetCleanupSender(sender.connectionId, sender.address, learned);
     } catch (cause) {
       Alert.alert(errorText(cause));
+    } finally {
+      try {
+        await load();
+      } finally {
+        mutating.current = false;
+        setBusy(false);
+      }
     }
-    await load();
   };
 
   const undo = (action: MailAction) => {
@@ -174,9 +215,25 @@ export default function InboxCleanupScreen() {
       {
         text: t("Undo"),
         onPress: () =>
-          void undoMailAction(action.batchId)
-            .catch((cause: unknown) => Alert.alert(errorText(cause)))
-            .then(() => load()),
+          void (async () => {
+            if (mutating.current) return;
+            mutating.current = true;
+            setBusy(true);
+            try {
+              const result = await undoMailAction(action.batchId);
+              if (result.failed > 0)
+                Alert.alert(t("Could not move {count}", { count: result.failed }));
+            } catch (cause) {
+              Alert.alert(errorText(cause));
+            } finally {
+              try {
+                await load();
+              } finally {
+                mutating.current = false;
+                setBusy(false);
+              }
+            }
+          })(),
       },
     ]);
   };
@@ -342,6 +399,7 @@ export default function InboxCleanupScreen() {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
               accessibilityLabel={sender.name}
+              disabled={busy}
               onPress={() => toggle(key)}
               style={styles.row}
             >
@@ -373,6 +431,7 @@ export default function InboxCleanupScreen() {
                     <Pressable
                       accessibilityRole="button"
                       hitSlop={8}
+                      disabled={busy}
                       onPress={() => void stop(sender)}
                     >
                       <Text style={styles.link}>{t("Stop")}</Text>
@@ -384,6 +443,19 @@ export default function InboxCleanupScreen() {
                     ) : null}
                   </View>
                 ) : null}
+                {(sender.noReplyCount ?? 0) >= 3 ? (
+                  <View style={styles.skipping}>
+                    <Text style={styles.meta}>{t("Needs reply stopped")}</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      hitSlop={8}
+                      disabled={busy}
+                      onPress={() => void stop(sender, true)}
+                    >
+                      <Text style={styles.link}>{t("Forget")}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
                 {sender.learnedPile ? (
                   <View style={styles.skipping}>
                     <Text style={styles.meta}>
@@ -392,6 +464,7 @@ export default function InboxCleanupScreen() {
                     <Pressable
                       accessibilityRole="button"
                       hitSlop={8}
+                      disabled={busy}
                       onPress={() => void stop(sender, true)}
                     >
                       <Text style={styles.link}>{t("Forget")}</Text>
@@ -410,9 +483,9 @@ export default function InboxCleanupScreen() {
                 <Pressable
                   key={action.batchId}
                   accessibilityRole="button"
-                  disabled={action.undone}
+                  disabled={action.undone || busy}
                   onPress={() => undo(action)}
-                  style={[styles.row, action.undone && styles.dimmed]}
+                  style={[styles.row, (action.undone || busy) && styles.dimmed]}
                 >
                   <Text style={styles.name} numberOfLines={1}>
                     {historyLine(action)}

@@ -35,3 +35,15 @@ export const OneSection: Story = {
   args: { sessions: sessions.filter((s) => s.kind === "working") },
   decorators: inContainer("w-[1000px]"),
 };
+
+/** A search that matches no session: the toolbar, No matches and Clear filters. */
+export const NoMatches: Story = {
+  parameters: { initialEntries: ["/?q=zzz"] },
+  decorators: inContainer("w-[1000px]"),
+};
+
+/** Filtered to one status and sorted by title. */
+export const Filtered: Story = {
+  parameters: { initialEntries: ["/?status=working&sort=title"] },
+  decorators: inContainer("w-[1000px]"),
+};

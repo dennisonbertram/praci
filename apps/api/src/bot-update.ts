@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@rakazo/db";
-import { appendEventInTransaction } from "@rakazo/db";
+import { appendEventInTransaction, THREAD_LOCK_TRANSACTION_OPTIONS } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
 type AppendEvent = typeof appendEventInTransaction;
@@ -48,7 +48,7 @@ export async function commitBotUpdate(
       },
     });
     return { updated, seq: event.seq };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
 
   await options.notify(options.threadId, committed.seq).catch((error) => {
     getLogger().error("bot.updated realtime notification", error);

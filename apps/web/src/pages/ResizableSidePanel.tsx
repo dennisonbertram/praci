@@ -46,6 +46,18 @@ export function ResizableSidePanel({
   const [maxWidth, setMaxWidth] = useState(() => maximumWidth(reservedLeadingPx));
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; width: number; direction: number } | null>(null);
+  const wasOpen = useRef(false);
+  const opener = useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const returnFocusOnClose = useRef(false);
+  if (open && !wasOpen.current) {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  } else if (!open && wasOpen.current) {
+    const activeElement = document.activeElement;
+    returnFocusOnClose.current =
+      activeElement === document.body || Boolean(panelRef.current?.contains(activeElement));
+  }
+  wasOpen.current = open;
   const width = Math.max(MIN_WIDTH, Math.min(maxWidth, preferredWidth));
 
   useEffect(() => {
@@ -64,6 +76,31 @@ export function ResizableSidePanel({
     window.addEventListener("resize", syncMax);
     return () => window.removeEventListener("resize", syncMax);
   }, [reservedLeadingPx]);
+
+  useEffect(() => {
+    if (open) {
+      if (!window.matchMedia("(max-width: 1279px)").matches) return;
+      const panelElement = panelRef.current;
+      if (!panelElement || panelElement.contains(document.activeElement)) return;
+      const firstFocusable = Array.from(
+        panelElement.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).find(
+        (element) =>
+          element.tagName !== "HR" &&
+          getComputedStyle(element).display !== "none" &&
+          getComputedStyle(element).visibility !== "hidden",
+      );
+      firstFocusable?.focus();
+      return;
+    }
+    if (returnFocusOnClose.current) {
+      const focusTarget = opener.current;
+      if (focusTarget && document.contains(focusTarget)) focusTarget.focus();
+    }
+    returnFocusOnClose.current = false;
+  }, [open]);
 
   useEffect(() => {
     if (!open || !onClose) return;
@@ -101,11 +138,12 @@ export function ResizableSidePanel({
         />
       ) : null}
       <aside
+        ref={panelRef}
         data-testid="side-panel"
         data-toast-panel=""
         data-panel={panel}
         style={{ "--panel-width": `${width}px` } as CSSProperties}
-        className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background pb-[var(--toast-page-reserve,0px)] xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
+        className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background pb-[var(--toast-page-reserve,0px)] xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] max-sm:max-w-none border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
       >
         <hr
           tabIndex={0}

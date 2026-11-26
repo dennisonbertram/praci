@@ -72,7 +72,12 @@ export function renderTicketContext(
 
 export async function loadAgentTicketContext(
   deps: { prisma: PrismaClient; ticketBoardEnabled?: boolean },
-  input: { spaceId: string; text: string },
+  input: {
+    spaceId: string;
+    text: string;
+    /** Agents with Firewall on; tickets and comments they wrote are left out. */
+    firewalled?: () => Promise<ReadonlySet<string>>;
+  },
   maxBytes = MAX_TICKET_CONTEXT_BYTES,
 ): Promise<string | undefined> {
   if (!deps.ticketBoardEnabled || !TICKET_REF_HINT.test(input.text)) return undefined;
@@ -97,11 +102,14 @@ export async function loadAgentTicketContext(
     },
   });
   if (rows.length === 0) return undefined;
+  const untrusted = input.firewalled ? await input.firewalled() : new Set<string>();
+  const authored = (botId: string | null | undefined) => botId != null && untrusted.has(botId);
 
-  const comments = await deps.prisma.ticketComment.findMany({
+  const allComments = await deps.prisma.ticketComment.findMany({
     where: { spaceId: input.spaceId, ticketId: { in: rows.map((row) => row.id) } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
+  const comments = allComments.filter((comment) => !authored(comment.authorBotId));
   const lastCommentByTicket = new Map<string, string>();
   for (const comment of comments) lastCommentByTicket.set(comment.ticketId, comment.body);
 
@@ -122,7 +130,7 @@ export async function loadAgentTicketContext(
   const entries: TicketContextEntry[] = [];
   for (const item of wanted) {
     const row = rowByNumber.get(item.number);
-    if (!row) continue;
+    if (!row || authored(row.createdByBotId)) continue;
     entries.push({
       ref: item.ref,
       title: row.title,

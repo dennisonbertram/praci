@@ -15,6 +15,7 @@ const emails: EmailCard[] = [
     snippet: "Your sample invoice is due today. Please review the attached statement.",
     receivedAt: ago(20),
     attachments: 2,
+    note: "Pay before the late fee applies",
   },
   {
     id: "mail_2",
@@ -23,6 +24,7 @@ const emails: EmailCard[] = [
     subject: "Draft agenda for Thursday",
     snippet: "Attached is a first pass at the agenda. Tell me what to cut.",
     receivedAt: ago(300),
+    note: "Reply with what to cut",
   },
   {
     id: "mail_3",
@@ -31,6 +33,7 @@ const emails: EmailCard[] = [
     subject: "Renewal reminder",
     snippet: "Your demo plan renews at the end of the week.",
     receivedAt: ago(60 * 30),
+    note: "Decide whether to renew",
   },
   {
     id: "mail_4",
@@ -57,7 +60,11 @@ const meta = { title: "Chat/EmailCards", component: EmailCards } satisfies Meta<
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const AllUrgencies: Story = { args: { block: block(emails) } };
+export const MixedUrgencyWithNotes: Story = { args: { block: block(emails) } };
+
+export const Attachments: Story = {
+  args: { block: block(emails.filter((email) => email.attachments)) },
+};
 
 export const SingleUrgent: Story = { args: { block: block(emails.slice(0, 1)) } };
 
@@ -69,10 +76,10 @@ export const LongContent: Story = {
       {
         id: "mail_long",
         urgency: "today",
-        from: "A sender with a very long display name that cannot fit on one line of the card",
+        from: "A sender with a very long display name that cannot fit on one line of the table",
         subject: "A very long subject line that keeps going well past the width of the card itself",
-        snippet:
-          "A long preview that runs over several lines so the card has to cut it off after two lines of text, which is the limit for the preview.",
+        snippet: "A long preview that is never shown in the table.",
+        note: "A note that is also much too long to fit on one line of the table row",
         receivedAt: ago(5),
         attachments: 12,
       },
@@ -80,12 +87,12 @@ export const LongContent: Story = {
   },
 };
 
-/** The transcript gives the cards its full width; this frame is wide so the one-line layout shows. */
+/** Wide frame: the Time column shows. */
 export const Wide: Story = {
   args: { block: block(emails) },
   decorators: [
     (Story) => (
-      <div className="@container w-[1200px] max-w-full">
+      <div className="w-[720px] max-w-full">
         <Story />
       </div>
     ),
@@ -96,7 +103,7 @@ export const Phone: Story = {
   args: { block: block(emails) },
   decorators: [
     (Story) => (
-      <div className="@container w-[375px] max-w-full">
+      <div className="w-[360px] max-w-full">
         <Story />
       </div>
     ),

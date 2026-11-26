@@ -103,6 +103,17 @@ const loadedWith =
   (bot: ReturnType<typeof makeBot>, thread = snapshot) =>
   () =>
     mockRpc({
+      bootstrap: {
+        me: demoMe,
+        bots: [bot, ...mockBots],
+        groups: [],
+        botSections: [],
+        archivedBots: [],
+        archivedGroups: [],
+        thread: { ...thread, botId: bot.id },
+        routines: [],
+        spaces: [space],
+      },
       "spaces.list": {
         ...navigation,
         current: { ...navigation.current, bots: [bot, ...mockBots] },
@@ -115,8 +126,15 @@ const loadedWith =
       "skills.list": [],
       "connections.list": [],
       "connections.catalog": [],
+      "pages.list": [],
+      "sidebarPages.list": { pages: [], addable: [], botPages: [] },
+      "bots.list": [bot, ...mockBots],
+      "runs.list": { runs: [] },
+      "scratchpad.waitingOnYou": [],
+      "mcp.servers.list": [],
       "connections.featured": [],
       "agentSkills.list": [],
+      "taughtSkills.list": [],
       "threads.subscribe": () =>
         (async function* () {
           await new Promise(() => undefined);
@@ -399,6 +417,48 @@ export const PersonalFolders: Story = {
 export const Conversation: Story = {
   decorators: [at("/app/bot_ada")],
   beforeEach: loaded,
+};
+
+const longThread = {
+  ...snapshot,
+  cursor: 42,
+  messages: [
+    {
+      id: "msg_0",
+      threadId: "thread_demo",
+      seq: 0,
+      role: "bot" as const,
+      botId: "bot_ada",
+      blocks: [
+        {
+          kind: "choice" as const,
+          question: "What should I work on first?",
+          options: [
+            { id: "day", letter: "A", label: "Day-to-day work" },
+            { id: "inbox", letter: "B", label: "Inbox & email" },
+          ],
+        },
+      ],
+      createdAt: "2026-01-01T10:00:00.000Z",
+    },
+    ...Array.from({ length: 40 }, (_, i) =>
+      message(i + 1, i % 2 ? "bot" : "user", `Message ${i + 1}: a line of sample conversation.`),
+    ),
+  ],
+};
+
+/** A long thread scrolls inside its own container, opens at the newest message, and keeps the composer on screen. */
+export const ConversationLongThread: Story = {
+  decorators: [
+    at("/app/bot_ada"),
+    // The app mounts into #root, which fills the window; Storybook's root does not.
+    (Story) => (
+      <div className="h-dvh">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: loadedWith(mockBots[0] as ReturnType<typeof makeBot>, longThread as never),
 };
 
 /** A bot with no computer in use: the button and the panel are titled Routines, with no empty screen. */

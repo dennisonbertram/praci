@@ -46,8 +46,10 @@ cd praci
 cp .env.example .env
 ```
 
-Set `POSTGRES_PASSWORD` (for example `openssl rand -hex 16`), then put the same value in
-`DATABASE_URL`. Set `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to independent
+Set `POSTGRES_PASSWORD` and `POSTGRES_APP_PASSWORD` to two values from `openssl rand -hex 16`,
+then put them in `DATABASE_MIGRATION_URL` and `DATABASE_URL`. The app connects as its own
+`rakazo_app` login, which row-level security applies to; migrations run as the owner
+([database roles](docs/self-host.md#database-roles)). Set `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to independent
 long random values, and `SANDBOX_SUPERVISOR_TOKEN` for Docker sandboxes. For host-side development
 with Docker Desktop, set `SANDBOX_CONTROL_VIA_LOOPBACK=true`. You can set `OPENROUTER_API_KEY`, or
 connect a model provider during onboarding.

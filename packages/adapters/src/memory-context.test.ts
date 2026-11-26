@@ -60,6 +60,67 @@ describe("agent memory context", () => {
   });
 });
 
+describe("agent memory fading", () => {
+  const now = new Date("2026-11-05T12:00:00.000Z");
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+
+  it("leaves weak memories out, ranks by strength and records use of what it injected", async () => {
+    const recordUse = vi.fn(async (_ids: string[], _context: AdapterContext) => {});
+    const read = vi.fn(async ({ scope }: { scope: "bot" | "user" }) =>
+      snapshot(
+        scope === "user"
+          ? [
+              { ...document("stale-task", "todo.md", "stale task", 1, daysAgo(60)), kind: "task" },
+              { ...document("fresh-fact", "fact.md", "fresh fact", 1, daysAgo(1)), kind: "fact" },
+            ]
+          : [
+              {
+                ...document("old-pref", "pref.md", "old preference", 1, daysAgo(200)),
+                kind: "preference",
+                useCount: 30,
+                lastUsedAt: daysAgo(1),
+              },
+            ],
+      ),
+    );
+
+    const result = await loadAgentMemoryContext(
+      { read, recordUse } as unknown as MemoryStore,
+      "bot-1",
+      context,
+      undefined,
+      true,
+      now,
+    );
+
+    expect(result).not.toContain("stale task");
+    expect(result).toContain("fresh fact");
+    expect(result).toContain("old preference");
+    expect(result!.indexOf("fresh fact")).toBeLessThan(result!.indexOf("old preference"));
+    expect(recordUse).toHaveBeenCalledWith(
+      expect.arrayContaining(["fresh-fact", "old-pref"]),
+      context,
+    );
+    expect(recordUse.mock.calls[0]![0]).not.toContain("stale-task");
+  });
+
+  it("still returns the prompt when recording use fails", async () => {
+    const read = vi.fn(async () => snapshot([document("a", "a.md", "kept", 1, daysAgo(1))]));
+    const recordUse = vi.fn(async () => {
+      throw new Error("db down");
+    });
+    const result = await loadAgentMemoryContext(
+      { read, recordUse } as unknown as MemoryStore,
+      "bot-1",
+      context,
+      undefined,
+      false,
+      now,
+    );
+    expect(result).toContain("kept");
+  });
+});
+
 function document(id: string, path: string, content: string, revision: number, updatedAt: string) {
   return { id, path, content, revision, updatedAt };
 }

@@ -1,4 +1,4 @@
-import type { CompanyEntityRecord, CompanyPageData } from "@rakazo/contracts";
+import type { CompanyEdgeRecord, CompanyEntityRecord, CompanyPageData } from "@rakazo/contracts";
 
 const evidence = {
   id: "evidence",
@@ -121,4 +121,70 @@ export const companyFixture: CompanyPageData = {
     },
   ],
   latestRun: { id: "run", status: "completed" },
+};
+
+const orgEdge = (
+  id: string,
+  fromId: string,
+  toId: string,
+  relation: CompanyEdgeRecord["relation"],
+  role: string,
+  startsOn: string,
+  endsOn: string | null,
+): CompanyEdgeRecord => ({
+  ...companyFixture.edges[0]!,
+  id,
+  fromId,
+  toId,
+  relation,
+  role,
+  startsOn: { date: startsOn, precision: "year" },
+  endsOn: endsOn ? { date: endsOn, precision: "year" } : null,
+  evidence: [{ ...evidence, factKind: "edge", factId: id, quote: `${role} at ${fromId}.` }],
+});
+
+/** Organisations with relationships to the company: a current vendor, an ended investor, and a person at the vendor. */
+export const companyOrganisationsPage: CompanyPageData = {
+  ...companyFixture,
+  entities: [
+    ...companyFixture.entities,
+    {
+      ...entity,
+      id: "investor",
+      kind: "organisation",
+      displayName: "Kestrel Capital",
+      normalizedName: "kestrel capital",
+      attrs: { type: "investor" },
+    },
+    {
+      ...entity,
+      id: "vendor-person",
+      kind: "person",
+      displayName: "Dana Fox",
+      normalizedName: "dana fox",
+      attrs: {},
+    },
+  ],
+  edges: [
+    ...companyFixture.edges,
+    orgEdge("vendor-of", "vendor", "company", "vendor_of", "Parts supplier", "2023-05-01", null),
+    orgEdge(
+      "invested-in",
+      "investor",
+      "company",
+      "invested_in",
+      "Seed investor",
+      "2021-06-01",
+      "2022-06-01",
+    ),
+    orgEdge(
+      "vendor-employment",
+      "vendor-person",
+      "vendor",
+      "works_at",
+      "Sales lead",
+      "2024-02-01",
+      null,
+    ),
+  ],
 };

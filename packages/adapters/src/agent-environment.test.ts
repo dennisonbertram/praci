@@ -1,3 +1,4 @@
+import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
 import {
   decryptAgentEnvironment,
@@ -23,12 +24,58 @@ describe("agent-environment", () => {
     });
   });
 
-  it("rejects invalid secret names", async () => {
+  it("skips invalid secret names", async () => {
+    const env = await decryptAgentEnvironment(
+      [
+        { name: "lowercase", secret: { id: "sec", ciphertext: "x" } },
+        { name: "GOOD", secret: { id: "sec-2", ciphertext: "y" } },
+      ],
+      { load: async () => "fake-value" },
+    );
+    expect(env).toEqual({ GOOD: "fake-value" });
+  });
+
+  it("skips rows whose load throws a plain error", async () => {
+    const env = await decryptAgentEnvironment(
+      [
+        { name: "BAD", secret: { id: "sec-bad", ciphertext: "x" } },
+        { name: "GOOD", secret: { id: "sec-good", ciphertext: "y" } },
+      ],
+      {
+        load: async (_ciphertext, id) => {
+          if (id === "sec-bad") throw new Error("decrypt failed");
+          return "fake-value";
+        },
+      },
+    );
+    expect(env).toEqual({ GOOD: "fake-value" });
+  });
+
+  it("rejects when the secret store is unavailable", async () => {
     await expect(
-      decryptAgentEnvironment([{ name: "lowercase", secret: { id: "sec", ciphertext: "x" } }], {
-        load: async () => "x",
+      decryptAgentEnvironment([{ name: "GOOD", secret: { id: "sec", ciphertext: "x" } }], {
+        load: async () => {
+          throw new SecretStoreUnavailableError(503);
+        },
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(SecretStoreUnavailableError);
+  });
+
+  it("omits reserved names and empty or NUL-containing values", async () => {
+    const env = await decryptAgentEnvironment(
+      [
+        { name: "PATH", secret: { id: "s1", ciphertext: "a" } },
+        { name: "LD_PRELOAD", secret: { id: "s2", ciphertext: "b" } },
+        { name: "HAS_NUL", secret: { id: "s3", ciphertext: "c" } },
+        { name: "EMPTY", secret: { id: "s4", ciphertext: "d" } },
+        { name: "GOOD", secret: { id: "s5", ciphertext: "e" } },
+      ],
+      {
+        load: async (_ciphertext, id) =>
+          id === "s3" ? "fake\0value" : id === "s4" ? "" : "fake-value",
+      },
+    );
+    expect(env).toEqual({ GOOD: "fake-value" });
   });
 
   it("formats an instruction only when secrets exist", () => {

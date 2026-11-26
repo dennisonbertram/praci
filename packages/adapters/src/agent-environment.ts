@@ -1,24 +1,35 @@
 import type { SecretStore } from "@rakazo/adapter-kit";
-import { AgentSecretInputSchema } from "@rakazo/contracts";
+import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
+import { commandVariableProblem } from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
+import { getLogger } from "@rakazo/logging";
 
 type EncryptedAgentSecret = {
   name: string;
   secret: { id: string; ciphertext: string };
 };
 
+/** One bad row leaves its variable unset; it must not stop the others. Only a store outage rejects. */
 export async function decryptAgentEnvironment(
   rows: EncryptedAgentSecret[],
   secrets: Pick<SecretStore, "load">,
 ): Promise<Record<string, string>> {
-  return Object.fromEntries(
-    await Promise.all(
-      rows.map(async (row) => {
-        AgentSecretInputSchema.shape.name.parse(row.name);
-        return [row.name, await secrets.load(row.secret.ciphertext, row.secret.id)];
-      }),
-    ),
+  const entries = await Promise.all(
+    rows.map(async (row): Promise<[string, string] | undefined> => {
+      let value: string | undefined;
+      if (commandVariableProblem(row.name) === undefined) {
+        try {
+          value = await secrets.load(row.secret.ciphertext, row.secret.id);
+        } catch (error) {
+          if (error instanceof SecretStoreUnavailableError) throw error;
+        }
+      }
+      if (value && !value.includes("\0")) return [row.name, value];
+      getLogger().warn("skipping unusable agent secret", { secretId: row.secret.id });
+      return undefined;
+    }),
   );
+  return Object.fromEntries(entries.filter((entry) => entry !== undefined));
 }
 
 export function formatAgentEnvironmentInstruction(

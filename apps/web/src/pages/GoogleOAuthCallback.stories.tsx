@@ -35,7 +35,9 @@ export const ConnectedPopup: Story = {
 };
 
 export const Cancelled: Story = {
-  parameters: { initialEntries: ["/oauth/google?error_description=Access%20was%20denied"] },
+  parameters: {
+    initialEntries: ["/oauth/google?error=access_denied&error_description=Access%20was%20denied"],
+  },
 };
 
 export const CancelledPopup: Story = {

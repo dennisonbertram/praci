@@ -5,7 +5,7 @@ import { Code2, Download, FileArchive, FileText, X } from "lucide-react";
 import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ArtifactTarget } from "../lib/artifact-open";
-import { downloadArtifact, downloadArtifactBytes, fetchArtifactBytes } from "../lib/artifact-open";
+import { downloadArtifact, fetchArtifactBytes, openArtifactBytes } from "../lib/artifact-open";
 import { formatBytes } from "../lib/format-bytes";
 import { errorText } from "../lib/user-error";
 import { ArtifactPreview, canPreviewArtifact } from "./ArtifactPreview";
@@ -155,7 +155,7 @@ function FilePreview({
             void (async () => {
               setDownloadError(null);
               try {
-                if (state.status === "ready") downloadArtifactBytes(name, mimeType, state.bytes);
+                if (state.status === "ready") await openArtifactBytes(name, mimeType, () => state.bytes);
                 else await downloadArtifact(target, artifactId, name, mimeType);
               } catch {
                 setDownloadError(t`Could not download ${name}. Try again.`);

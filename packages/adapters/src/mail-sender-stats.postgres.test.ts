@@ -23,6 +23,7 @@ const describePostgres =
 
 const DAY = 86_400_000;
 const NOW = new Date("2026-10-15T12:00:00Z");
+const LATER = new Date(NOW.getTime() + DAY);
 const WINDOW_START = new Date(NOW.getTime() - 14 * DAY);
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * DAY);
 
@@ -373,7 +374,12 @@ describePostgres("sender stats (PostgreSQL)", () => {
       await refresh(account);
 
       await prisma.$transaction(async (tx) => {
-        await markPriorContactFromSent(tx, scopeOf(account.id), ["c@example.test"], NOW);
+        await markPriorContactFromSent(
+          tx,
+          scopeOf(account.id),
+          [{ address: "c@example.test", at: NOW }],
+          NOW,
+        );
         await storePriorContact(
           tx,
           scopeOf(account.id),
@@ -398,6 +404,59 @@ describePostgres("sender stats (PostgreSQL)", () => {
       });
     });
 
+    it("resets the no-reply corrections of a sender the user writes to, and of no one else", async () => {
+      const account = await connect("prior-reset");
+      await cache(account, "pal@example.test", 1);
+      await cache(account, "other@example.test", 1);
+      await refresh(account);
+      await prisma.mailSenderStat.updateMany({
+        where: { connectionId: account.id },
+        data: { noReplyCount: 3, noReplyAt: NOW },
+      });
+
+      await prisma.$transaction((tx) =>
+        markPriorContactFromSent(
+          tx,
+          scopeOf(account.id),
+          [{ address: "pal@example.test", at: LATER }],
+          NOW,
+        ),
+      );
+
+      expect(await statFor(account.id, "pal@example.test")).toMatchObject({
+        noReplyCount: 0,
+        noReplyAt: null,
+      });
+      expect(await statFor(account.id, "other@example.test")).toMatchObject({ noReplyCount: 3 });
+    });
+
+    it("resets corrections for a new send but not for a replay of an older one", async () => {
+      const account = await connect("prior-replay");
+      await cache(account, "pal@example.test", 1);
+      await refresh(account);
+      await prisma.mailSenderStat.updateMany({
+        where: { connectionId: account.id },
+        data: { noReplyCount: 3, noReplyAt: NOW },
+      });
+      const send = (at: Date) =>
+        prisma.$transaction((tx) =>
+          markPriorContactFromSent(
+            tx,
+            scopeOf(account.id),
+            [{ address: "pal@example.test", at }],
+            at,
+          ),
+        );
+
+      // The same old sent message, synced again and again.
+      await send(new Date(NOW.getTime() - DAY));
+      await send(new Date(NOW.getTime() - DAY));
+      expect(await statFor(account.id, "pal@example.test")).toMatchObject({ noReplyCount: 3 });
+
+      await send(LATER);
+      expect(await statFor(account.id, "pal@example.test")).toMatchObject({ noReplyCount: 0 });
+    });
+
     it("flips false to true when a later sent message names the sender, and ignores other scopes", async () => {
       const account = await connect("prior-flip");
       const stranger = await connect("prior-flip-other", otherUserId);
@@ -416,7 +475,10 @@ describePostgres("sender stats (PostgreSQL)", () => {
         markPriorContactFromSent(
           tx,
           scopeOf(account.id),
-          ["pal@example.test", "nobody@example.test"],
+          [
+            { address: "pal@example.test", at: NOW },
+            { address: "nobody@example.test", at: NOW },
+          ],
           NOW,
         ),
       );

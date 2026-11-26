@@ -23,3 +23,18 @@ export function callIdFromClientNonce(clientNonce: string | null | undefined): s
   const suffixAt = rest.lastIndexOf(":");
   return suffixAt === -1 ? undefined : rest.slice(0, suffixAt) || undefined;
 }
+
+/** clientNonce prefix for messages an outside MCP client sends to an agent: `mcp:<connectionId>:<key>`. */
+export const MCP_CLIENT_NONCE_PREFIX = "mcp:";
+
+export function mcpClientNonce(connectionId: string, key: string): string {
+  return `${MCP_CLIENT_NONCE_PREFIX}${connectionId}:${key}`;
+}
+
+/** The MCP connection that sent a message, read from its clientNonce. */
+export function mcpConnectionIdFromNonce(
+  clientNonce: string | null | undefined,
+): string | undefined {
+  if (!clientNonce?.startsWith(MCP_CLIENT_NONCE_PREFIX)) return undefined;
+  return clientNonce.slice(MCP_CLIENT_NONCE_PREFIX.length).split(":")[0] || undefined;
+}

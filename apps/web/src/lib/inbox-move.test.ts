@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { moveInChunks } from "./inbox-move";
+import { availableMoves, moveInChunks } from "./inbox-move";
 
 const ids = Array.from({ length: 120 }, (_, i) => `m${i}`);
 
@@ -29,4 +29,15 @@ it("keeps the batch ids of finished slices when a later slice throws", async () 
   await expect(moveInChunks("spam", ids, call, batchIds)).rejects.toThrow("offline");
 
   expect(batchIds).toEqual(["first"]);
+});
+
+it("lists the moves a row allows, in the row's order", () => {
+  // Inbox mail can be reported as spam or trashed.
+  expect(availableMoves({ inInbox: true, pile: "important" })).toEqual(["spam", "trash"]);
+  expect(availableMoves({ inInbox: true, pile: "newsletters" })).toEqual(["spam", "trash"]);
+  // Mail in the Spam pile can only be cleared.
+  expect(availableMoves({ inInbox: false, pile: "spam" })).toEqual(["notSpam"]);
+  // Archived mail, such as a search result, has no move.
+  expect(availableMoves({ inInbox: false, pile: "important" })).toEqual([]);
+  expect(availableMoves({ inInbox: false, pile: null })).toEqual([]);
 });

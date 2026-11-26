@@ -129,6 +129,8 @@ export function createCompanySourceWorker(deps: {
     return {
       spaceId: context.actor.spaceId,
       userId: context.actor.userId,
+      // Meeting notes are not company documents.
+      source: { not: "meeting" },
       ...(scope.itemIds ? { id: { in: [...new Set(scope.itemIds)] } } : {}),
       ...(scope.folderIds
         ? {

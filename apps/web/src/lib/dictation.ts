@@ -1,4 +1,5 @@
 import { readBoundedResponseBytes } from "@rakazo/core";
+import { transcribeOnDevice } from "./device-speech";
 import { getActiveUiLocale } from "./i18n.js";
 import { selectedSpaceId, withSpaceHeaders } from "./rpc.js";
 import type { UiLocale } from "./ui-locale.js";
@@ -6,10 +7,14 @@ import { errorText } from "./user-error.js";
 
 export type DictationMode = "hold" | "endpoint";
 
+export type DictationStatus = "idle" | "listening" | "transcribing";
+
 export type DictationSnapshot = {
-  status: "idle" | "listening" | "transcribing";
+  status: DictationStatus;
   transcript: string;
   error?: string;
+  /** "permission": the browser refused the microphone, so the person can fix it in site settings. */
+  errorKind?: "permission";
 };
 
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
@@ -124,6 +129,23 @@ export function transcriptionLanguage(): string | undefined {
   return tag ? tag.split("-")[0]?.toLowerCase() : undefined;
 }
 
+/** Puts `insert` in place of the selection, with a space on a side only where words would touch. */
+export function insertAtCursor(
+  draft: string,
+  start: number,
+  end: number,
+  insert: string,
+): { text: string; caret: number } {
+  const before = draft.slice(0, start);
+  const after = draft.slice(end);
+  const lead = before && !/\s$/u.test(before) ? " " : "";
+  const trail = after && !/^\s/u.test(after) ? " " : "";
+  return {
+    text: `${before}${lead}${insert}${trail}${after}`,
+    caret: before.length + lead.length + insert.length,
+  };
+}
+
 function normalizedTranscript(text: string): string {
   return text.trim().replace(/\s+/g, " ");
 }
@@ -181,6 +203,7 @@ export class Dictation {
   private media: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private token = 0;
+  private device = false;
   private silenceTimer: ReturnType<typeof setTimeout> | undefined;
   private restartTimer: ReturnType<typeof setTimeout> | undefined;
   private transcribeAbort: AbortController | null = null;
@@ -244,6 +267,10 @@ export class Dictation {
   async listen(opts: {
     mode: DictationMode;
     transcribe?: boolean;
+    /** Record and transcribe on the server even where on-device speech exists. */
+    server?: boolean;
+    /** Transcribe on this computer through the desktop app; no audio is uploaded. */
+    device?: boolean;
     endpointMs?: number;
     onFinal: (text: string) => void;
   }): Promise<void> {
@@ -253,9 +280,14 @@ export class Dictation {
     this.onFinal = opts.onFinal;
     this.set({ status: "listening", transcript: "" });
     const transcribe = Boolean(opts.transcribe);
+    this.device = Boolean(opts.device);
+    if (this.device) {
+      await this.listenRecorder(mine, opts.mode, opts.endpointMs ?? ENDPOINT_SILENCE_MS, spaceId);
+      return;
+    }
     // An unknown capability is not a refusal: a device whose browser cannot hold the
     // microphone open goes to the server even before the voice status has loaded.
-    if (prefersServerDictation() && opts.transcribe !== false) {
+    if (opts.server || (prefersServerDictation() && opts.transcribe !== false)) {
       await this.listenRecorder(mine, opts.mode, opts.endpointMs ?? ENDPOINT_SILENCE_MS, spaceId);
       return;
     }
@@ -336,6 +368,7 @@ export class Dictation {
       this.set({
         ...IDLE,
         error: event.error ? `Dictation failed: ${event.error}` : "Dictation failed.",
+        ...(event.error === "not-allowed" ? { errorKind: "permission" as const } : {}),
       });
     };
     rec.onend = () => {
@@ -437,7 +470,10 @@ export class Dictation {
         audio: { echoCancellation: true, noiseSuppression: true },
       });
     } catch (error) {
-      this.failListening(mine, errorText(error, "Microphone failed"));
+      const denied =
+        error instanceof DOMException &&
+        (error.name === "NotAllowedError" || error.name === "SecurityError");
+      this.failListening(mine, errorText(error, "Microphone failed"), false, denied);
       return;
     }
     if (this.token !== mine) {
@@ -559,6 +595,22 @@ export class Dictation {
       TRANSCRIPTION_RESPONSE_TIMEOUT_MS,
     );
     try {
+      if (this.device) {
+        const result = await transcribeOnDevice(blob);
+        if (this.token !== mine) return;
+        if (!result.ok) {
+          this.failListening(mine, "Could not transcribe that recording.");
+          return;
+        }
+        const prefix = normalizedTranscript(this.snapshot.transcript);
+        this.finish(
+          prefix
+            ? [prefix, normalizedTranscript(result.text)].filter(Boolean).join(" ")
+            : result.text,
+          mine,
+        );
+        return;
+      }
       const audioBase64 = await blobToBase64(blob);
       if (this.token !== mine) return;
       const res = await withAbort(
@@ -620,14 +672,14 @@ export class Dictation {
     this.finish(this.snapshot.transcript, this.token);
   }
 
-  private failListening(mine: number, message: string, showError = false) {
+  private failListening(mine: number, message: string, showError = false, denied = false) {
     if (this.token !== mine) return;
     const prefix = normalizedTranscript(this.snapshot.transcript);
     if (prefix) {
       this.finish(prefix, mine, showError ? message : undefined);
       return;
     }
-    this.set({ ...IDLE, error: message });
+    this.set({ ...IDLE, error: message, ...(denied ? { errorKind: "permission" as const } : {}) });
   }
 
   private finish(text: string, mine: number, error?: string) {

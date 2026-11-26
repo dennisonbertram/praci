@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
+import { currentDbContext, runAsTenant } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { beginOpenRouterOAuth, completeOpenRouterOAuth } from "./openrouter-oauth.js";
 
@@ -69,6 +70,26 @@ async function begin(db: ReturnType<typeof fakeDb>, scope = alice) {
 }
 
 describe("OpenRouter sign-in", () => {
+  it("expires abandoned sign-ins in every Space, but counts only the caller's own", async () => {
+    const db = fakeDb();
+    const seen: { op: string; kind?: string }[] = [];
+    const model = db.prisma.modelOAuthState;
+    const { deleteMany, count } = model;
+    model.deleteMany = (async (args: { where: Record<string, unknown> }) => {
+      seen.push({ op: "deleteMany", kind: currentDbContext()?.kind });
+      return deleteMany(args);
+    }) as typeof model.deleteMany;
+    model.count = (async (args: { where: Record<string, unknown> }) => {
+      seen.push({ op: "count", kind: currentDbContext()?.kind });
+      return count(args);
+    }) as typeof model.count;
+    await runAsTenant({ userId: alice.userId, spaceId: alice.spaceId }, () => begin(db));
+    expect(seen).toEqual([
+      { op: "deleteMany", kind: "system" },
+      { op: "count", kind: "tenant" },
+    ]);
+  });
+
   it("sends an S256 challenge, checks state, exchanges the code, and returns the key", async () => {
     const db = fakeDb();
     const url = await begin(db);

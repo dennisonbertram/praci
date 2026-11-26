@@ -524,6 +524,7 @@ describe("background computer maintenance", () => {
       name: "run.continue",
       payload: { runId: "run-1" },
       replaceKey: "run:run-1",
+      priority: -1,
     });
     expect(harness.jobs.enqueue).not.toHaveBeenCalledWith(
       expect.objectContaining({ name: "computer.update" }),

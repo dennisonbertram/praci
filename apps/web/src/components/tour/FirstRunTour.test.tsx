@@ -98,7 +98,7 @@ it("keeps Back and the primary button in the same slots on every stop", async ()
   expect(button("Back").className).toBe(middle[0]);
   expect(button("Done").className).toContain("min-w-16");
   expect(button("Next")).toBeUndefined();
-  // Hidden (not just invisible), so the 9/9 counter sits at the card edge.
+  // Hidden (not just invisible), so the 10/10 counter sits at the card edge.
   expect(button("Skip tour")).toBeUndefined();
 });
 
@@ -278,6 +278,7 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     "sidebar-legal",
     "sidebar-data-room",
     "sidebar-chat",
+    "routines",
     "sidebar-integrations",
     "user-menu",
   ];
@@ -292,16 +293,19 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     seen.push(document.querySelector("[data-testid='tour-popover'] p")?.textContent ?? "");
     if (i < order.length - 1) await click("Next");
   }
-  expect(document.body.textContent).toContain("9/9");
+  expect(document.body.textContent).toContain("10/10");
   expect(seen[0]).toBe("Search: Find any page, chat or email.");
   expect(seen[6]).toContain("Ask Chief");
   expect(seen[1]).toContain("create a bot");
   // New users already ask before email and purchases, so the tour sends nobody to Settings.
   expect(seen[6]).not.toContain("Settings");
-  expect(seen[7]).toContain("Integrations");
-  expect(seen[7]).toContain("bots");
+  expect(seen[7]).toContain("Routines");
+  expect(seen[7]).toContain("ask before");
+  expect(seen[8]).toContain("Integrations");
+  expect(seen[8]).toContain("bots");
   expect(seen.join(" ")).not.toMatch(/agent|apps/i);
-  expect(seen[8]).toContain("retake this tour");
+  expect(seen[9]).toContain("Approvals");
+  expect(seen[9]).toContain("retake this tour");
   expect(button("Done")).toBeTruthy();
   expect(button("Ask Chief")).toBeTruthy();
 });

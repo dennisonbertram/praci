@@ -6,6 +6,7 @@ import type {
   BillingSubscriptionSnapshot,
   BillingSubscriptionStatus,
 } from "@rakazo/adapter-kit";
+import { readBoundedJsonResponse } from "@rakazo/core";
 import { z } from "zod";
 
 export const STRIPE_API_VERSION = "2025-08-27.basil";
@@ -110,7 +111,10 @@ export class StripeBillingProvider implements BillingProvider {
   async createCheckout(input: BillingCheckoutRequest) {
     // An abandoned session has no subscription yet, so the access check still passes.
     // Expire it before opening another; a completed session is not open and stays paid once.
+    // Unpaid and paused subscriptions map to canceled, which offers checkout, but paying an old
+    // invoice would revive them beside the new one, so cancel them first.
     await this.expireOpenCheckouts(input.customerId);
+    await this.cancelLapsedSubscriptions(input.customerId);
     const body = encodeStripeForm({
       mode: "subscription",
       customer: input.customerId,
@@ -167,6 +171,13 @@ export class StripeBillingProvider implements BillingProvider {
     return parseStripeWebhook(this.config.webhookSecret, rawBody, headers, this.now());
   }
 
+  private async cancelLapsedSubscriptions(customerId: string): Promise<void> {
+    for (const subscription of await this.listSubscriptions(customerId)) {
+      if (subscription.status !== "unpaid" && subscription.status !== "paused") continue;
+      await this.request("DELETE", `/v1/subscriptions/${encodeURIComponent(subscription.id)}`);
+    }
+  }
+
   private async expireOpenCheckouts(customerId: string): Promise<void> {
     const seen = new Set<string>();
     for (;;) {
@@ -212,11 +223,12 @@ export class StripeBillingProvider implements BillingProvider {
     params?: Record<string, unknown> | string,
     idempotencyKey?: string,
   ): Promise<unknown> {
+    const signal = AbortSignal.timeout(30_000);
     const body = typeof params === "string" ? params : params && encodeStripeForm(params);
     const response = await this.fetchImpl(`${this.apiBase}${path}`, {
       method,
       redirect: "error",
-      signal: AbortSignal.timeout(30_000),
+      signal,
       headers: {
         Authorization: `Bearer ${this.config.secretKey}`,
         "Stripe-Version": STRIPE_API_VERSION,
@@ -226,7 +238,9 @@ export class StripeBillingProvider implements BillingProvider {
       },
       body,
     });
-    const json: unknown = await response.json().catch(() => undefined);
+    const json: unknown = await readBoundedJsonResponse<unknown>(response, 4_194_304, signal).catch(
+      () => undefined,
+    );
     if (!response.ok) {
       const message = z
         .object({ error: z.object({ message: z.string() }) })

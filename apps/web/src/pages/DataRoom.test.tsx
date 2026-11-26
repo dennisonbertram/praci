@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
@@ -8,21 +10,6 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-
-const text = vi.hoisted(
-  () =>
-    (parts: TemplateStringsArray, ...values: unknown[]) =>
-      parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
-);
-vi.mock("@lingui/core/macro", () => ({
-  t: text,
-  plural: (n: number, forms: { one: string; other: string }) =>
-    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
-}));
-vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: text }),
-  Trans: ({ children }: { children: ReactNode }) => children,
-}));
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock("@rakazo/ui-web", async (original) => ({
@@ -45,6 +32,9 @@ const rpcMock = vi.hoisted(() => ({
   processing: vi.fn(),
   imports: vi.fn(),
   inboxList: vi.fn(),
+  investorsShare: vi.fn(),
+  investorsUnshare: vi.fn(),
+  contactsList: vi.fn(),
 }));
 const bulk = vi.hoisted(() => ({ save: vi.fn(), blob: vi.fn(), composed: vi.fn() }));
 vi.mock("../lib/data-room", async (original) => ({
@@ -61,7 +51,12 @@ vi.mock("../components/ComposeEmail", () => ({
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
-    investors: { shares: async () => [] },
+    investors: {
+      shares: async () => [],
+      share: rpcMock.investorsShare,
+      unshare: rpcMock.investorsUnshare,
+    },
+    contacts: { list: rpcMock.contactsList },
     inbox: { list: rpcMock.inboxList },
     connections: { list: rpcMock.connections, catalog: async () => [] },
     mcp: { servers: { list: async () => [] } },
@@ -85,7 +80,10 @@ vi.mock("../lib/rpc", () => ({
 }));
 
 import { Snippet } from "../components/data-room/ItemRows";
+import { DATA_ROOM_CHANGED } from "../lib/data-room";
 import { DataRoomPage } from "./DataRoom";
+
+i18n.loadAndActivate({ locale: "en", messages: {} });
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -116,13 +114,23 @@ const item = (name: string): DataRoomApiItem => ({
 });
 
 let container: HTMLDivElement;
-let root: ReturnType<typeof createRoot>;
+let root: { render: (children: ReactNode) => void; unmount: () => void };
+
+function createI18nRoot() {
+  const reactRoot = createRoot(container);
+  return {
+    render: (children: ReactNode) =>
+      reactRoot.render(<I18nProvider i18n={i18n}>{children}</I18nProvider>),
+    unmount: () => reactRoot.unmount(),
+  };
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
   rpcMock.connections.mockResolvedValue([]);
   rpcMock.folders.mockResolvedValue([]);
   rpcMock.imports.mockResolvedValue([]);
+  rpcMock.contactsList.mockResolvedValue([]);
   rpcMock.processing.mockResolvedValue({
     reading: 0,
     tagging: 0,
@@ -144,7 +152,7 @@ beforeEach(() => {
   localStorage.clear();
   container = document.createElement("div");
   document.body.append(container);
-  root = createRoot(container);
+  root = createI18nRoot();
 });
 
 afterEach(() => {
@@ -181,11 +189,11 @@ function GoAll() {
   );
 }
 
-async function renderPage(entry = "/") {
+async function renderPage(entry = "/", source?: "scan") {
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={[entry]}>
-        <DataRoomPage />
+        <DataRoomPage source={source} />
         <GoToB />
         <GoFailed />
         <GoAll />
@@ -196,16 +204,33 @@ async function renderPage(entry = "/") {
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((done) => {
+  let reject: (cause: unknown) => void = () => undefined;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 const settle = () =>
   act(async () => {
     await vi.advanceTimersByTimeAsync(10);
   });
+
+it("locks the Scanner list and facets to scan source even when a URL requests another source", async () => {
+  await renderPage("/app/scanner?source=upload", "scan");
+  expect(rpcMock.list).toHaveBeenCalledWith(expect.objectContaining({ source: "scan" }));
+  expect(rpcMock.facetValues).toHaveBeenCalledWith(expect.objectContaining({ source: "scan" }));
+  expect(container.querySelector("h1")?.textContent).toBe("Scanner");
+});
+
+it("rejects a non-scan item deep link on the Scanner page", async () => {
+  rpcMock.item.mockResolvedValue({ ...item("ordinary"), id: "ordinary" });
+  await renderPage("/app/scanner?item=ordinary", "scan");
+  await settle();
+  expect(toastTitles()).toContain("That document could not be found");
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+});
 
 /** Clicks the nth row, as a user choosing a file to preview. */
 const clickRow = (n: number) =>
@@ -378,6 +403,146 @@ it("disables Load more while a refresh is in flight", async () => {
   refresh.resolve({ items: [item("fresh.txt")], nextCursor: null });
   await settle();
   expect(names()).toEqual(["fresh.txt"]);
+});
+
+it("shows a file added elsewhere when the window regains focus", async () => {
+  await renderPage();
+  expect(names()).toEqual(["b.txt", "a.txt"]);
+  rpcMock.list.mockResolvedValue({ items: [item("new.txt"), item("b.txt")], nextCursor: null });
+  const before = rpcMock.list.mock.calls.length;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(rpcMock.list).toHaveBeenCalledTimes(before + 1);
+  expect(names()).toEqual(["new.txt", "b.txt"]);
+});
+
+it("does not reload the list on focus while searching or after Load more", async () => {
+  await renderPage();
+  const beforeSearch = rpcMock.search.mock.calls.length;
+  await typeSearch("lease");
+  const duringSearch = rpcMock.search.mock.calls.length;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(rpcMock.search).toHaveBeenCalledTimes(duringSearch);
+  expect(rpcMock.search.mock.calls.length).toBeGreaterThan(beforeSearch);
+
+  await typeSearch("");
+  rpcMock.list.mockResolvedValueOnce({
+    items: [item("a.txt")],
+    nextCursor: "c000000000000000000000002",
+  });
+  // Reload the first page to get a cursor for the pagination case.
+  await act(async () => window.dispatchEvent(new Event("rakazo:data-room-changed")));
+  await settle();
+  rpcMock.list.mockResolvedValueOnce({ items: [item("next.txt")], nextCursor: null });
+  const more = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "Load more",
+  );
+  await act(async () => more?.click());
+  await settle();
+  const afterMore = rpcMock.list.mock.calls.length;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(rpcMock.list).toHaveBeenCalledTimes(afterMore);
+});
+
+it("keeps the list on focus while a file is ticked", async () => {
+  rpcMock.list.mockResolvedValue({ items: [item("a.txt"), item("b.txt")], nextCursor: null });
+  await renderPage();
+  await act(async () => container.querySelectorAll<HTMLElement>('[role="checkbox"]')[1]?.click());
+  await settle();
+  const before = rpcMock.list.mock.calls.length;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(rpcMock.list).toHaveBeenCalledTimes(before);
+});
+
+it("shares the ticked files in one batch call and keeps the failures ticked", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [item("a.txt"), item("b.txt"), item("c.txt")],
+    nextCursor: null,
+  });
+  rpcMock.contactsList.mockResolvedValue([
+    {
+      id: "c1",
+      name: "Ada",
+      email: "ada@example.test",
+      kind: "investor",
+      portalBlockedAt: null,
+    },
+  ]);
+  rpcMock.investorsShare.mockResolvedValue({
+    links: [],
+    items: [
+      { itemId: "id-a.txt", shared: true },
+      { itemId: "id-b.txt", shared: false },
+      { itemId: "id-c.txt", shared: true },
+    ],
+  });
+  await renderPage();
+  const ticks = () => container.querySelectorAll<HTMLElement>('[role="checkbox"]');
+  await act(async () => ticks()[1]?.click());
+  await act(async () => ticks()[2]?.click());
+  await act(async () => ticks()[3]?.click());
+  const bar = () => container.querySelector('[data-testid="data-room-selection"]');
+  expect(bar()?.textContent).toContain("3 selected");
+  // The batch Share shows once the selection holds shareable files.
+  const share = [...(bar()?.querySelectorAll("button") ?? [])].find(
+    (b) => b.textContent === "Share",
+  );
+  await act(async () => share?.click());
+  await settle();
+  const dialog = () => document.querySelector('[role="dialog"]');
+  expect(dialog()?.textContent).toContain("Share 3 files");
+  expect(dialog()?.textContent).toContain("Email them a link");
+  await act(async () => document.getElementById("share-c1")?.click());
+  const shareNow = [...(dialog()?.querySelectorAll("button") ?? [])].find(
+    (b) => b.textContent === "Share",
+  );
+  await act(async () => shareNow?.click());
+  await settle();
+  // One call for the whole selection, not one per file.
+  expect(rpcMock.investorsShare).toHaveBeenCalledTimes(1);
+  expect(rpcMock.investorsShare).toHaveBeenCalledWith({
+    itemIds: ["id-a.txt", "id-b.txt", "id-c.txt"],
+    contactIds: ["c1"],
+    emailLink: true,
+  });
+  expect(toastTitles()).toContain("Shared 2 files with Ada");
+  expect(toastTitles()).toContain("Couldn't share 1 file");
+  // The shared files left the selection; the one that failed stays ticked for a retry.
+  expect(bar()?.textContent).toContain("1 selected");
+});
+
+it("offers no Share when the ticked files are only meeting notes", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("notes.md"), source: "meeting" }],
+    nextCursor: null,
+  });
+  await renderPage();
+  await act(async () => container.querySelectorAll<HTMLElement>('[role="checkbox"]')[1]?.click());
+  const bar = container.querySelector('[data-testid="data-room-selection"]');
+  expect([...(bar?.querySelectorAll("button") ?? [])].some((b) => b.textContent === "Share")).toBe(
+    false,
+  );
+});
+
+it("does not cancel a Load more on its way when the window regains focus", async () => {
+  rpcMock.list.mockResolvedValueOnce({
+    items: [item("a.txt")],
+    nextCursor: "c000000000000000000000002",
+  });
+  await renderPage();
+  await settle();
+  rpcMock.list.mockImplementationOnce(() => new Promise(() => {}));
+  const more = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "Load more",
+  );
+  await act(async () => more?.click());
+  const during = rpcMock.list.mock.calls.length;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(rpcMock.list).toHaveBeenCalledTimes(during);
 });
 
 it("asks for a file being read no more than once per 10 seconds, and only through the processing counts", async () => {
@@ -796,7 +961,7 @@ it("remembers the view and sort across visits", async () => {
     container.querySelector<HTMLButtonElement>('button[aria-label="Sort ascending"]')?.click();
   });
   act(() => root.unmount());
-  root = createRoot(container);
+  root = createI18nRoot();
   await renderPage();
   expect(
     container.querySelector('button[aria-label="Grid view"]')?.getAttribute("aria-pressed"),
@@ -990,6 +1155,180 @@ it("offers every type and party in the folder, also those not on the loaded page
   await act(async () => contract?.click());
   await settle();
   expect(rpcMock.facetValues).toHaveBeenLastCalledWith({ docType: "contract" });
+});
+
+it("keeps the previous facet choices while a changed filter read is pending", async () => {
+  const nextFacets = deferred<{
+    types: string[];
+    parties: string[];
+    sources: string[];
+    hasDates: boolean;
+  }>();
+  rpcMock.facetValues
+    .mockResolvedValueOnce({
+      types: ["SAFE"],
+      parties: [],
+      sources: ["upload", "gmail"],
+      hasDates: true,
+    })
+    .mockReturnValueOnce(nextFacets.promise);
+  await renderPage();
+  await settle();
+
+  const initialTypeFilter = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Filter by Type"]',
+  );
+  await act(async () => initialTypeFilter?.click());
+  const memo = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')).find(
+    (el) => el.textContent === "Memo",
+  );
+  expect(memo).toBeDefined();
+  await act(async () => memo?.click());
+
+  expect(container.querySelector('button[aria-label="Filter by Source"]')).not.toBeNull();
+  const typeFilter = container.querySelector<HTMLButtonElement>('button[aria-label="Type: Memo"]');
+  await act(async () => typeFilter?.click());
+  expect(
+    Array.from(document.querySelectorAll('[role="menuitemradio"]')).map((el) => el.textContent),
+  ).toContain("SAFE");
+  await act(async () => nextFacets.reject(new Error("facet read failed")));
+  await settle();
+  expect(container.querySelector('button[aria-label="Filter by Source"]')).not.toBeNull();
+  expect(
+    Array.from(document.querySelectorAll('[role="menuitemradio"]')).map((el) => el.textContent),
+  ).toContain("SAFE");
+});
+
+it.each(["pending", "failed"] as const)(
+  "keeps Source and Document date sort choices when a filter matches no rows and facets are %s",
+  async (facetState) => {
+    const nextFacets = deferred<{
+      types: string[];
+      parties: string[];
+      sources: string[];
+      hasDates: boolean;
+    }>();
+    rpcMock.facetValues
+      .mockResolvedValueOnce({
+        types: ["SAFE"],
+        parties: [],
+        sources: ["upload", "gmail"],
+        hasDates: true,
+      })
+      .mockReturnValueOnce(nextFacets.promise);
+    rpcMock.list.mockImplementation((filters: { docType?: string }) =>
+      Promise.resolve(
+        filters.docType === "SAFE"
+          ? { items: [], nextCursor: null }
+          : { items: [item("b.txt"), item("a.txt")], nextCursor: null },
+      ),
+    );
+    await renderPage();
+    await settle();
+
+    const typeChip = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Filter by Type"]',
+    );
+    await act(async () => typeChip?.click());
+    const safe = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')).find(
+      (el) => el.textContent === "SAFE",
+    );
+    await act(async () => safe?.click());
+    if (facetState === "failed") {
+      await act(async () => nextFacets.reject(new Error("facet read failed")));
+      await settle();
+    }
+
+    expect(container.querySelector('button[aria-label="Filter by Source"]')).not.toBeNull();
+    const sort = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent?.startsWith("Sort:"),
+    );
+    await act(async () => sort?.click());
+    expect(
+      Array.from(document.querySelectorAll('[role="menuitemradio"]')).map((el) => el.textContent),
+    ).toContain("Document date");
+  },
+);
+
+it("does not offer facet values from another folder when the new folder read fails", async () => {
+  function GoToFolder() {
+    const navigate = useNavigate();
+    return (
+      <button type="button" data-testid="go-f2" onClick={() => navigate("/?folder=f2")}>
+        folder two
+      </button>
+    );
+  }
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "One", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+    { id: "f2", name: "Two", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  rpcMock.facetValues
+    .mockResolvedValueOnce({ types: ["SAFE"], parties: [], sources: [], hasDates: false })
+    .mockRejectedValueOnce(new Error("facet read failed"));
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=f1"]}>
+        <DataRoomPage />
+        <GoToFolder />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>('[data-testid="go-f2"]')?.click(),
+  );
+  await settle();
+
+  const typeFilter = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Filter by Type"]',
+  );
+  await act(async () => typeFilter?.click());
+  expect(
+    Array.from(document.querySelectorAll('[role="menuitemradio"]')).map((el) => el.textContent),
+  ).not.toContain("SAFE");
+});
+
+it("shows a toast when folders fail on first load and keeps the linked folder in the URL", async () => {
+  rpcMock.folders.mockRejectedValue(new Error("folder read failed"));
+  let search = "";
+  function Location() {
+    search = useLocation().search;
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=f1"]}>
+        <DataRoomPage />
+        <Location />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+
+  expect(toastTitles()).toContain("folder read failed");
+  expect(search).toBe("?folder=f1");
+
+  const toastCount = toastTitles().length;
+  await act(async () => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)));
+  await settle();
+  expect(toastTitles()).toHaveLength(toastCount);
+  expect(search).toBe("?folder=f1");
+});
+
+it("does not show a folder-load toast when a later refresh fails", async () => {
+  rpcMock.folders
+    .mockResolvedValueOnce([
+      { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+    ])
+    .mockRejectedValueOnce(new Error("later folder read failed"));
+  await renderPage("/?folder=f1");
+  await settle();
+
+  expect(toastTitles()).not.toContain("later folder read failed");
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(toastTitles()).not.toContain("later folder read failed");
 });
 
 it("says so when the open folder was deleted elsewhere, and shows All items", async () => {
@@ -1286,7 +1625,15 @@ it("downloads the ticked files and opens the mail composer with them attached", 
 
 it("sends every ticked file to the chosen agent in one go", async () => {
   const onSendToAgent = vi.fn();
-  vi.stubGlobal("matchMedia", () => ({ matches: true }) as MediaQueryList);
+  vi.stubGlobal(
+    "matchMedia",
+    () =>
+      ({
+        matches: true,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList,
+  );
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={["/"]}>
@@ -1381,4 +1728,34 @@ it("shows the files list, not Stats, when the failed-files badge is followed fro
   });
   expect(container.querySelector('[data-testid="data-room-stats"]')).toBeNull();
   expect(rpcMock.list.mock.calls.at(-1)?.[0]).toMatchObject({ status: "failed" });
+});
+
+const processingWithFailed = (failed: number) => ({
+  reading: 0,
+  tagging: 0,
+  indexing: 0,
+  failed,
+  current: null,
+});
+
+it("explains the sidebar failed count with a chip that filters to the failed files, gone at 0", async () => {
+  rpcMock.processing.mockResolvedValue(processingWithFailed(1));
+  await renderPage();
+  const chip = () => container.querySelector<HTMLButtonElement>('[data-testid="failed-chip"]');
+  expect(chip()?.textContent).toBe("1 failed");
+  await act(async () => chip()?.click());
+  expect(rpcMock.list.mock.calls.at(-1)?.[0]).toMatchObject({ status: "failed" });
+  // The Status filter shows the state now, so the chip steps aside.
+  expect(chip()).toBeNull();
+  // Clearing the filter brings the chip back while a file is still failed.
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-all"]')?.click();
+  });
+  expect(chip()).not.toBeNull();
+  rpcMock.processing.mockResolvedValue(processingWithFailed(0));
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  await settle();
+  expect(chip()).toBeNull();
 });

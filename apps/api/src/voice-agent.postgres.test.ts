@@ -30,9 +30,12 @@ describePostgres("voice.agent (PostgreSQL)", () => {
   let close: () => Promise<void>;
 
   const client = (who: Actor) =>
-    createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
-      context: { actor: who } as never,
-    });
+    createRouterClient(
+      createRouter({ prisma, env: { mailWritesDisabled: false } } as unknown as RouterDeps),
+      {
+        context: { actor: who } as never,
+      },
+    );
 
   beforeAll(async () => {
     const db = createDb(databaseUrl as string);

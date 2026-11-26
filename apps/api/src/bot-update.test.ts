@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@rakazo/db", () => ({
   appendEventInTransaction: vi.fn(),
+  THREAD_LOCK_TRANSACTION_OPTIONS: { timeout: 20_000 },
 }));
 
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";

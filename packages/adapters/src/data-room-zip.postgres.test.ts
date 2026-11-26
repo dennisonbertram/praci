@@ -100,42 +100,48 @@ describePostgres("Data room zip unpacking (PostgreSQL)", () => {
     files = createFileDataRoomItem({ prisma, artifacts, jobs }, createDataRoomRepos(prisma));
   });
 
-  it("queues a zip as one import and files nothing during the request", async () => {
-    const zip = zipSync({ "a.txt": text("alpha"), "docs/b.txt": text("bravo") });
-    const result = await files.fileItem(owner, zipInput("queued.zip", zip));
-    expect(result).toMatchObject({ item: null, created: true });
-    const importId = (result as { importId: string }).importId;
-    expect(await prisma.dataRoomItem.count({ where: owned(owner) })).toBe(0);
-    expect(await prisma.dataRoomImport.findUnique({ where: { id: importId } })).toMatchObject({
-      source: "upload",
-      total: 2,
-    });
-    // The zip waits in storage, with one unpack job and a delayed backstop cleanup.
-    expect(artifacts.blobs.size).toBe(1);
-    const queued = jobs.take();
-    const unpackJob = queued.find((job) => job.name === "dataroom.zip.unpack") as UnpackJob;
-    expect(unpackJob.payload).toMatchObject({
-      spaceId,
-      userId: owner.userId,
-      importId,
-      entries: 2,
-      size: zip.length,
-    });
-    expect(unpackJob.replaceKey).toBe(
-      `dataroom.zip.unpack:${spaceId}:${unpackJob.payload.storageKey}`,
-    );
-    const cleanup = queued.find((job) => job.name === "dataroom.blob.delete");
-    expect(cleanup?.availableAt?.getTime()).toBeGreaterThan(Date.now() + 60 * 60 * 1000);
+  it.each(["upload", "scan"] as const)(
+    "queues a %s zip with its source and files nothing during the request",
+    async (source) => {
+      const blobsBefore = artifacts.blobs.size;
+      const zip = zipSync({ "a.txt": text("alpha"), "docs/b.txt": text("bravo") });
+      const result = await files.fileItem(owner, { ...zipInput("queued.zip", zip), source });
+      expect(result).toMatchObject({ item: null, created: true });
+      const importId = (result as { importId: string }).importId;
+      expect(await prisma.dataRoomItem.count({ where: owned(owner) })).toBe(0);
+      expect(await prisma.dataRoomImport.findUnique({ where: { id: importId } })).toMatchObject({
+        source,
+        total: 2,
+      });
+      // The zip waits in storage, with one unpack job and a delayed backstop cleanup.
+      expect(artifacts.blobs.size).toBe(blobsBefore + 1);
+      const queued = jobs.take();
+      const unpackJob = queued.find((job) => job.name === "dataroom.zip.unpack") as UnpackJob;
+      expect(unpackJob.payload).toMatchObject({
+        spaceId,
+        userId: owner.userId,
+        importId,
+        entries: 2,
+        size: zip.length,
+        source,
+      });
+      expect(unpackJob.replaceKey).toBe(
+        `dataroom.zip.unpack:${spaceId}:${unpackJob.payload.storageKey}`,
+      );
+      const cleanup = queued.find((job) => job.name === "dataroom.blob.delete");
+      expect(cleanup?.availableAt?.getTime()).toBeGreaterThan(Date.now() + 60 * 60 * 1000);
 
-    // Running the job files the entries and removes the zip.
-    await unpack(unpackJob);
-    expect(await itemNames(owner)).toEqual(["a.txt", "b.txt"]);
-    expect(artifacts.blobs.has(unpackJob.payload.storageKey)).toBe(false);
-    for (const item of await prisma.dataRoomItem.findMany({ where: owned(owner) })) {
-      await prisma.dataRoomItem.delete({ where: { id: item.id } });
-    }
-    await prisma.dataRoomFolder.deleteMany({ where: { spaceId } });
-  });
+      // Running the job files the entries and removes the zip.
+      await unpack(unpackJob);
+      expect(await itemNames(owner)).toEqual(["a.txt", "b.txt"]);
+      expect(artifacts.blobs.has(unpackJob.payload.storageKey)).toBe(false);
+      for (const item of await prisma.dataRoomItem.findMany({ where: owned(owner) })) {
+        expect(item.source).toBe(source);
+        await prisma.dataRoomItem.delete({ where: { id: item.id } });
+      }
+      await prisma.dataRoomFolder.deleteMany({ where: { spaceId } });
+    },
+  );
 
   it("creates only the folders that receive a new file when a zip is re-uploaded elsewhere", async () => {
     const dr = createDataRoomRepos(prisma);

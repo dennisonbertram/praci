@@ -7,6 +7,7 @@ import type {
   SecretStore,
 } from "@rakazo/adapter-kit";
 import { SecretNotFoundError, SecretStoreUnavailableError } from "@rakazo/adapter-kit";
+import { readBoundedJsonResponse } from "@rakazo/core";
 import { getLogger } from "@rakazo/logging";
 import { credentialDigest } from "./credential-digest.js";
 import { SecretChanges } from "./secret-changes.js";
@@ -371,7 +372,7 @@ export class InfisicalSecretStore extends SecretChanges implements SecretStore {
           this.degraded = false;
           return {};
         }
-        const result = (await response.json()) as RestResult;
+        const result = await readBoundedJsonResponse<RestResult>(response, 1_048_576, signal);
         this.degraded = false;
         return result;
       } catch (error) {

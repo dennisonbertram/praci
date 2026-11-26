@@ -43,3 +43,22 @@ it.each([
     "https://api.example.com",
   );
 });
+
+it.each([
+  ["command", "Command variable · $EXAMPLE_API_KEY", true],
+  ["bearer", "https://api.example.com", false],
+] as const)(
+  "warns that the bot can read a %s credential only when it can",
+  (type, label, warns) => {
+    const container = document.createElement("div");
+    const block: AskBlock = {
+      ...secretAsk("Key please"),
+      credential: { name: "EXAMPLE_API_KEY", origin: "https://api.example.com", auth: { type } },
+    };
+    act(() => createRoot(container).render(<AskCard block={block} canAnswer onAnswer={vi.fn()} />));
+    expect(container.querySelector('[data-testid="secret-ask-destination"]')?.textContent).toBe(
+      label,
+    );
+    expect(container.textContent?.includes("The bot can read this value.")).toBe(warns);
+  },
+);

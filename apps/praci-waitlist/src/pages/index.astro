@@ -1,6 +1,10 @@
 ---
 import "../styles/global.css";
 import { logos } from "../logos";
+import SocialMeta from "../components/SocialMeta.astro";
+const title = "Praci — The Startup OS";
+const description =
+  "The Startup OS: an AI team for the work that runs your company. Open source, self-hosted or in our cloud.";
 const github = "https://github.com/dennisonbertram/praci";
 ---
 
@@ -8,8 +12,9 @@ const github = "https://github.com/dennisonbertram/praci";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Praci — The Startup OS</title>
-    <meta name="description" content="The Startup OS: an AI team for the work that runs your company. Open source, self-hosted or in our cloud." />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <SocialMeta title={title} {description} />
   </head>
   <body>
     <header>

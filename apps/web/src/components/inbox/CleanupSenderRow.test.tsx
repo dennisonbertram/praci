@@ -109,6 +109,18 @@ it("shows the learned pile with a Forget button only for a sender with one", asy
   expect(document.body.textContent).not.toContain("Learned");
 });
 
+it("says Needs reply stopped, with Forget, once a sender has three corrections", async () => {
+  const onForgetLearned = vi.fn();
+  await show({ sender: { ...sender, noReplyCount: 3 }, onForgetLearned });
+  expect(document.body.textContent).toContain("Needs reply stopped");
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Forget")?.click(),
+  );
+  expect(onForgetLearned).toHaveBeenCalledTimes(1);
+  await show({ sender: { ...sender, noReplyCount: 2 }, onForgetLearned });
+  expect(document.body.textContent).not.toContain("Needs reply stopped");
+});
+
 it("names the account when the list has several", async () => {
   await show({ accountLabel: "Work" });
   expect(document.body.textContent).toContain("Work");

@@ -94,6 +94,7 @@ export const Attention: StoryObj<typeof AttentionStrip> = {
   render: () => (
     <AttentionStrip
       now={new Date("2026-10-21T12:00:00.000Z")}
+      onOpen={() => {}}
       onMark={() => {}}
       safes={[
         safe("s2", "Harbor Angels", signed),
@@ -106,6 +107,18 @@ export const Attention: StoryObj<typeof AttentionStrip> = {
 
 export const MarkDate: StoryObj<typeof MarkDateDialog> = {
   render: () => <MarkDateDialog step="funded" onClose={() => {}} onSave={async () => {}} />,
+};
+
+/** Change date on a marked SAFE: same dialog, seeded with the stored day, titled and saved plainly. */
+export const ChangeDate: StoryObj<typeof MarkDateDialog> = {
+  render: () => (
+    <MarkDateDialog
+      step="funded"
+      changeDay="2026-10-10"
+      onClose={() => {}}
+      onSave={async () => {}}
+    />
+  ),
 };
 
 /** A Mercury SAFE with no contact offers Assign to contact; an attached one offers Unassign; a deposit links to Finance. */

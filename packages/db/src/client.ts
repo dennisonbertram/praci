@@ -2,6 +2,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import type { PoolClient } from "pg";
 import { Pool } from "pg";
 import { PrismaClient } from "./generated/prisma/client.js";
+import {
+  installDbContext,
+  WRAPPED_OPERATION_OPTIONS,
+  withRowLevelSecurity,
+} from "./row-security.js";
+import { withTextSanitization } from "./text-sanitization.js";
 
 export type Db = PrismaClient;
 
@@ -12,6 +18,18 @@ export interface DbClientOptions {
 
 const DEFAULT_POOL_MAX = 4;
 const CONNECT_RETRY_ATTEMPTS = 8;
+
+/**
+ * Probe a quiet connection after 10s instead of the OS default of hours, so one a failover cut
+ * without closing it is found dead within seconds instead of hanging the work that holds it.
+ */
+export const DATABASE_KEEPALIVE = { keepAlive: true, keepAliveInitialDelayMillis: 10_000 };
+
+/**
+ * A query that never answers is on a connection that died mid-query. Longer than the longest
+ * transaction any work may hold, so it only ends queries no server is running anymore.
+ */
+const QUERY_TIMEOUT_MS = WRAPPED_OPERATION_OPTIONS.timeout + 30_000;
 
 export function createPool(connectionString: string, options: DbClientOptions = {}): Pool {
   const pool = new Pool({
@@ -24,7 +42,8 @@ export function createPool(connectionString: string, options: DbClientOptions = 
     // next job burst is how a tight Postgres hits 53300; keep what we already have.
     idleTimeoutMillis: 0,
     application_name: options.applicationName,
-    keepAlive: true,
+    query_timeout: QUERY_TIMEOUT_MS,
+    ...DATABASE_KEEPALIVE,
   });
   // graphile-worker (and Node itself) require an 'error' listener on a shared
   // pool: an idle-client disconnect is otherwise an unhandled error that kills
@@ -34,6 +53,7 @@ export function createPool(connectionString: string, options: DbClientOptions = 
     client.on("error", () => undefined);
   });
   installConnectRetry(pool);
+  installDbContext(pool);
   return pool;
 }
 
@@ -43,7 +63,9 @@ export function createDb(
 ): { prisma: PrismaClient; pool: Pool } {
   const pool = createPool(connectionString, options);
   const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
+  // Text is cleaned for Postgres before any query sees it. Row-level security wraps
+  // everything else, so its findUnique rewrite still runs through the sanitizer.
+  const prisma = withRowLevelSecurity(withTextSanitization(new PrismaClient({ adapter })));
   return { prisma, pool };
 }
 
@@ -84,6 +106,8 @@ const INTERRUPTION_MESSAGES = [
   "Connection terminated unexpectedly",
   "Connection terminated due to connection timeout",
   "terminating connection due to administrator command",
+  // node-postgres `query_timeout` firing on a connection a failover cut mid-query.
+  "Query read timeout",
 ];
 
 /**

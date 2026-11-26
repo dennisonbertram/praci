@@ -39,6 +39,8 @@ export const DataRoomApiItemSchema = z.object({
   name: z.string(),
   mimeType: z.string(),
   size: z.number().int(),
+  /** Stored bytes' digest; older servers may omit it. Never confirm a scan without it. */
+  sha256: z.string().optional(),
   folderId: NullableId,
   source: z.string(),
   /** An app path back to where an imported file came from; null for uploads. */

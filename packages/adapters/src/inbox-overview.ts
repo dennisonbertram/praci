@@ -193,7 +193,7 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
     needsReplyListed: failed.length
       ? `incomplete: ${failed.length} account(s) failed to refresh`
       : needsReply.length === waiting.length
-        ? `complete: all ${waiting.length} messages that need a reply are listed`
+        ? `complete: all ${waiting.length} messages that need a reply are listed; lead with the most important few, not every one`
         : `${needsReply.length} of ${waiting.length} listed, highest priority first`,
   };
 }

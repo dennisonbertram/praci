@@ -12,9 +12,10 @@ const state = vi.hoisted(() => ({
   setOptions: vi.fn(),
   openBrowser: vi.fn(),
   alert: vi.fn(),
+  messageId: "m1",
 }));
 vi.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ messageId: "m1" }),
+  useLocalSearchParams: () => ({ messageId: state.messageId }),
   useNavigation: () => ({ setOptions: state.setOptions }),
   useRouter: () => ({ push: state.push }),
 }));
@@ -32,6 +33,13 @@ vi.mock("./i18n", () => {
 });
 vi.mock("../components/native-symbol", () => ({
   NativeSymbol: ({ color }: { color?: string }) => <i data-testid="check" data-color={color} />,
+}));
+vi.mock("../components/native-action-button", () => ({
+  NativeActionButton: ({ label, onPress }: { label: string; onPress: () => void }) => (
+    <button type="button" onClick={onPress}>
+      {label}
+    </button>
+  ),
 }));
 vi.mock("../components/sandboxed-html-preview", () => ({
   SandboxedHtmlPreview: ({
@@ -94,6 +102,7 @@ const message = (extra: Record<string, unknown> = {}) => ({
   subject: "Quarterly plan",
   html: null,
   text: "Plain body line",
+  attachments: [],
   ...extra,
 });
 
@@ -107,6 +116,7 @@ beforeEach(() => {
   state.setOptions.mockReset();
   state.openBrowser.mockReset().mockResolvedValue({ type: "dismiss" });
   state.alert.mockReset();
+  state.messageId = "m1";
   state.rpc.mockReset().mockImplementation(async (proc: string) => {
     if (proc === "inbox/get") return getReply();
     if (proc === "inbox/agent") return { id: "bot-9", name: "Inbox agent" };
@@ -173,6 +183,28 @@ it("falls back to selectable plain text when there is no HTML part", async () =>
   expect(body?.getAttribute("data-selectable")).toBe("yes");
 });
 
+it("falls back to selectable text when the HTML part has no visible content", async () => {
+  getReply = async () =>
+    message({
+      html: "<html><body><style>.hidden { display: none }</style></body></html>",
+      text: "Hello",
+    });
+  await render();
+  expect(container.querySelector('[data-testid="preview"]')).toBeNull();
+  const body = [...container.querySelectorAll("span")].find((s) => s.textContent === "Hello");
+  expect(body?.getAttribute("data-selectable")).toBe("yes");
+});
+
+it("shows a labeled Cc line only when Cc addresses are present", async () => {
+  getReply = async () => message({ cc: "Ann <ann@example.test>" });
+  await render();
+  expect(container.textContent).toContain("Cc Ann <ann@example.test>");
+  getReply = async () => message({ cc: "" });
+  state.messageId = "m2";
+  await act(async () => root.render(<InboxMessageScreen />));
+  expect(container.textContent).not.toContain("Cc");
+});
+
 it("shows an inline error when the message cannot be loaded", async () => {
   getReply = async () => {
     throw new Error("Offline");
@@ -180,6 +212,69 @@ it("shows an inline error when the message cannot be loaded", async () => {
   await render();
   expect(container.textContent).toContain("Offline");
   expect(container.querySelector('[data-testid="spinner"]')).toBeNull();
+});
+
+it("clears the previous message while a changed route message loads", async () => {
+  await render();
+  let resolveNext!: (value: unknown) => void;
+  getReply = () =>
+    new Promise((resolve) => {
+      resolveNext = resolve;
+    });
+  state.messageId = "m2";
+  await act(async () => root.render(<InboxMessageScreen />));
+  expect(container.textContent).not.toContain("Ada <ada@example.test>");
+  expect(container.querySelector('[data-testid="spinner"]')).not.toBeNull();
+  await act(async () => resolveNext(message({ from: "New sender", subject: "New subject" })));
+});
+
+it("retries a failed message fetch", async () => {
+  let attempts = 0;
+  getReply = async () => {
+    attempts += 1;
+    if (attempts === 1) throw new Error("Offline");
+    return message();
+  };
+  await render();
+  const retry = [...container.querySelectorAll("button")].find(
+    (item) => item.textContent === "Try again",
+  );
+  expect(retry).toBeDefined();
+  await act(async () => retry?.click());
+  expect(container.textContent).toContain("Ada <ada@example.test>");
+});
+
+it("ignores a retry response after the route changes", async () => {
+  let firstReject!: (error: Error) => void;
+  let retryResolve!: (value: unknown) => void;
+  let messageBResolve!: (value: unknown) => void;
+  let calls = 0;
+  getReply = () => {
+    calls += 1;
+    if (calls === 1)
+      return new Promise((_, reject) => {
+        firstReject = reject;
+      });
+    if (calls === 2)
+      return new Promise((resolve) => {
+        retryResolve = resolve;
+      });
+    return new Promise((resolve) => {
+      messageBResolve = resolve;
+    });
+  };
+  await render();
+  await act(async () => firstReject(new Error("Offline")));
+  const retry = [...container.querySelectorAll("button")].find(
+    (item) => item.textContent === "Try again",
+  );
+  await act(async () => retry?.click());
+  state.messageId = "m2";
+  await act(async () => root.render(<InboxMessageScreen />));
+  await act(async () => messageBResolve(message({ from: "B sender" })));
+  await act(async () => retryResolve(message({ from: "A sender" })));
+  expect(container.textContent).toContain("B sender");
+  expect(container.textContent).not.toContain("A sender");
 });
 
 it("opens the Inbox agent thread from the header item", async () => {

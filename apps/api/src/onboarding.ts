@@ -6,6 +6,7 @@ import {
   appendEventInTransaction,
   createThreadMessageInTransaction,
   IsolationError,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
 } from "@rakazo/db";
 import { requireBotThread, updateBlocks } from "./bot-thread.js";
 
@@ -56,6 +57,17 @@ const FOCUS_OPTIONS: FocusOption[] = [
   },
 ];
 
+/**
+ * What a new blank bot asks first. Picking one sends its label as the user's first message (see the
+ * onboarding.choose handler), so the bot sets itself up from it; typing something else does the same.
+ */
+export const SETUP_QUESTION = "What do you want me for?";
+export const SETUP_OPTIONS = [
+  { id: "setup-research", letter: "A", label: "Research something" },
+  { id: "setup-recurring", letter: "B", label: "A recurring task" },
+  { id: "setup-email", letter: "C", label: "Help with email" },
+] as const;
+
 const APP_DESCRIPTIONS: Record<string, string> = {
   slack: "Search, read, and send messages.",
   // The one Gmail description, shared with the Integrations card.
@@ -85,7 +97,7 @@ async function post(
       payload: { messageId: message.id, role: "bot", blocks },
     });
     return { message, event };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   await deps.events.notify(target.threadId, committed.event.seq);
   return committed.message.id;
 }
@@ -112,12 +124,22 @@ export async function seedBlankBotGreeting(
     fullName && fullName.toLowerCase() !== emailHandle ? fullName.split(/\s+/)[0] : undefined;
   const hi = firstName ? `Hi ${firstName}` : "Hi";
   // A blank bot is usually renamed right after it is created, so its greeting does not name it.
-  const text = options.first
-    ? `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and your investors, find investor documents in the Data room, and draft updates and research for you.`
-    : `${hi}. I'm a blank slate right now, so you get to decide what I become. What's the main thing you'd want me handling for you?`;
-  await post(deps, { spaceId: actor.spaceId, botId: bot.id, threadId: bot.threadId }, [
-    { kind: "text", text },
-  ]);
+  const blocks: MessageBlock[] = options.first
+    ? [
+        {
+          kind: "text",
+          text: `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and your investors, find investor documents in the Data room, and draft updates and research for you.`,
+        },
+      ]
+    : [
+        { kind: "text", text: `${hi}.` },
+        {
+          kind: "choice",
+          question: SETUP_QUESTION,
+          options: SETUP_OPTIONS.map(({ id, letter, label }) => ({ id, letter, label })),
+        },
+      ];
+  await post(deps, { spaceId: actor.spaceId, botId: bot.id, threadId: bot.threadId }, blocks);
 }
 
 /** Sentinel answerId for a focus card the user dismissed without choosing. */
@@ -183,7 +205,7 @@ export async function promptFocus(
       payload: { messageId: message.id, role: "bot", blocks },
     });
     return { message, event };
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (!committed) return;
   await deps.events.notify(target.threadId, committed.event.seq);
 }
@@ -228,8 +250,9 @@ export async function dismissFocus(
 ): Promise<void> {
   const { bot, thread } = await requireBotThread(deps, actor, botId);
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };
-  const claimed = await deps.prisma.$transaction((tx: Prisma.TransactionClient) =>
-    dismissPendingChoiceInTransaction(tx, target),
+  const claimed = await deps.prisma.$transaction(
+    (tx: Prisma.TransactionClient) => dismissPendingChoiceInTransaction(tx, target),
+    THREAD_LOCK_TRANSACTION_OPTIONS,
   );
   if (!claimed) return;
   await deps.events.notify(target.threadId, claimed.event.seq);
@@ -247,32 +270,6 @@ export async function chooseFocus(
   if (!option) throw new IsolationError();
   const { bot, thread } = await requireBotThread(deps, actor, botId);
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };
-
-  const claimed = await deps.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.$executeRaw`SELECT id FROM threads WHERE id = ${thread.id} FOR UPDATE`;
-    const recent = await tx.message.findMany({
-      where: { threadId: thread.id },
-      orderBy: { createdAt: "asc" },
-    });
-    const pending = recent.find((message) =>
-      messageHasPendingChoice(message.blocks as MessageBlock[]),
-    );
-    if (!pending) return null;
-    const blocks = (pending.blocks as MessageBlock[]).map((block) =>
-      block.kind === "choice" ? { ...block, answerId: option.id } : block,
-    );
-    await tx.message.update({ where: { id: pending.id }, data: { blocks } });
-    const event = await appendEventInTransaction(tx, {
-      spaceId: target.spaceId,
-      threadId: target.threadId,
-      botId: target.botId,
-      type: "thread.message.updated",
-      payload: { messageId: pending.id, role: "bot", blocks },
-    });
-    return { messageId: pending.id, blocks, event };
-  });
-  if (!claimed) return;
-  await deps.events.notify(target.threadId, claimed.event.seq);
 
   // Keep the name and title the user chose when creating the bot; the focus
   // step only suggests apps, it must not rename the bot.
@@ -313,28 +310,77 @@ export async function chooseFocus(
     ];
   });
   const got = `Got it. ${capitalize(option.summary)}.`;
+  let replies: MessageBlock[][];
   if (!cards.length) {
-    await post(deps, target, [{ kind: "text", text: got }]);
-    await post(deps, target, [
-      { kind: "text", text: option.note ?? "What would you like to work on first?" },
-    ]);
-    return;
+    replies = [
+      [{ kind: "text", text: got }],
+      [{ kind: "text", text: option.note ?? "What would you like to work on first?" }],
+    ];
+  } else {
+    const cardNames = cards
+      .map((card) => (card.kind === "app_connect" ? card.name : ""))
+      .filter(Boolean);
+    const named =
+      cardNames.length > 2
+        ? `${cardNames.slice(0, -1).join(", ")}, and ${cardNames.at(-1)}`
+        : cardNames.join(" and ");
+    replies = [
+      [
+        {
+          kind: "text",
+          // One sentence above the cards; the sidebar already links Finance, Investors and the Data room.
+          text: `Connect ${named} here and I’ll use what you already have.`,
+        },
+      ],
+      cards,
+    ];
   }
-  const cardNames = cards
-    .map((card) => (card.kind === "app_connect" ? card.name : ""))
-    .filter(Boolean);
-  const named =
-    cardNames.length > 2
-      ? `${cardNames.slice(0, -1).join(", ")}, and ${cardNames.at(-1)}`
-      : cardNames.join(" and ");
-  await post(deps, target, [
-    {
-      kind: "text",
-      // One sentence above the cards; the sidebar already links Finance, Investors and the Data room.
-      text: `Connect ${named} here and I’ll use what you already have.`,
-    },
-  ]);
-  await post(deps, target, cards);
+
+  // Answer the card and post the replies in one transaction, so a failure leaves the card pending
+  // and a retry starts over instead of finding nothing to answer.
+  const lastSeq = await deps.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$executeRaw`SELECT id FROM threads WHERE id = ${thread.id} FOR UPDATE`;
+    const recent = await tx.message.findMany({
+      where: { threadId: thread.id },
+      orderBy: { createdAt: "asc" },
+    });
+    const pending = recent.find((message) =>
+      messageHasPendingChoice(message.blocks as MessageBlock[]),
+    );
+    if (!pending) return null;
+    const answered = (pending.blocks as MessageBlock[]).map((block) =>
+      block.kind === "choice" ? { ...block, answerId: option.id } : block,
+    );
+    await tx.message.update({ where: { id: pending.id }, data: { blocks: answered } });
+    let seq = (
+      await appendEventInTransaction(tx, {
+        spaceId: target.spaceId,
+        threadId: target.threadId,
+        botId: target.botId,
+        type: "thread.message.updated",
+        payload: { messageId: pending.id, role: "bot", blocks: answered },
+      })
+    ).seq;
+    for (const blocks of replies) {
+      const message = await createThreadMessageInTransaction(tx, {
+        threadId: target.threadId,
+        role: "bot",
+        blocks,
+      });
+      seq = (
+        await appendEventInTransaction(tx, {
+          spaceId: target.spaceId,
+          threadId: target.threadId,
+          botId: target.botId,
+          type: "thread.message.created",
+          payload: { messageId: message.id, role: "bot", blocks },
+        })
+      ).seq;
+    }
+    return seq;
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
+  if (lastSeq === null) return;
+  await deps.events.notify(target.threadId, lastSeq);
 }
 
 export async function markAppConnected(

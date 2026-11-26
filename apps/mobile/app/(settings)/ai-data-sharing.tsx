@@ -1,6 +1,7 @@
 import type { AiConsentStatus } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES, AI_PRIVACY_URL } from "@rakazo/contracts";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet } from "react-native";
 import {
   SettingsFooter,
@@ -25,35 +26,56 @@ export default function AiDataSharing() {
   const [status, setStatus] = useState<AiConsentStatus | null>(null);
   const [pending, setPending] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const loadId = useRef(0);
+  const statusRef = useRef(status);
+  statusRef.current = status;
   const placeholder = aiDataSharingPlaceholder(status, loadFailed);
   const styles = useThemedStyles(createStyles);
   const stacked = useStackedSettings();
+  // A change's answer is newer than any status read still in flight.
+  const applyChange = (next: AiConsentStatus) => {
+    loadId.current += 1;
+    setStatus(next);
+  };
   const error = (cause: unknown) =>
     Alert.alert(t("AI data sharing"), errorText(cause, t("Could not load permissions.")));
-  useEffect(() => {
-    reload();
-  }, []);
+  const reload = useCallback(
+    (showInitialError = true) => {
+      const requestId = ++loadId.current;
+      setLoadFailed(false);
+      void rpc<AiConsentStatus>("aiConsent/status")
+        .then((next) => {
+          if (loadId.current === requestId) setStatus(next);
+        })
+        .catch((cause: unknown) => {
+          if (loadId.current !== requestId) return;
+          setLoadFailed(true);
+          if (showInitialError && !statusRef.current)
+            Alert.alert(t("AI data sharing"), errorText(cause, t("Could not load permissions.")), [
+              { text: t("Cancel"), style: "cancel" },
+              { text: t("Retry"), onPress: () => reload() },
+            ]);
+        });
+    },
+    [t],
+  );
 
-  function reload() {
-    setLoadFailed(false);
-    void rpc<AiConsentStatus>("aiConsent/status")
-      .then(setStatus)
-      .catch((cause: unknown) => {
-        setLoadFailed(true);
-        Alert.alert(t("AI data sharing"), errorText(cause, t("Could not load permissions.")), [
-          { text: t("Cancel"), style: "cancel" },
-          { text: t("Retry"), onPress: reload },
-        ]);
-      });
-  }
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      return () => {
+        loadId.current += 1;
+      };
+    }, [reload]),
+  );
 
   function setAllowed(recipient: AiConsentStatus["recipients"][number], allowed: boolean) {
     if (!status) return;
     setPending(true);
     void (async () => {
-      if (!allowed) setStatus(await rpc("aiConsent/revoke", { key: recipient.key }));
+      if (!allowed) applyChange(await rpc("aiConsent/revoke", { key: recipient.key }));
       else if (await promptAiConsent(recipient, status.privacyUrl))
-        setStatus(
+        applyChange(
           await rpc("aiConsent/allow", {
             scope: status.scope,
             version: status.version,
@@ -61,7 +83,10 @@ export default function AiDataSharing() {
           }),
         );
     })()
-      .catch(error)
+      .catch((cause: unknown) => {
+        error(cause);
+        reload(false);
+      })
       .finally(() => setPending(false));
   }
 
@@ -79,8 +104,11 @@ export default function AiDataSharing() {
           onPress: () => {
             setPending(true);
             void rpc<AiConsentStatus>("aiConsent/revoke", { key: null })
-              .then(setStatus)
-              .catch(error)
+              .then(applyChange)
+              .catch((cause: unknown) => {
+                error(cause);
+                reload(false);
+              })
               .finally(() => setPending(false));
           },
         },

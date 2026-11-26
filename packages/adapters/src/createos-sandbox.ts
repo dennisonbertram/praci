@@ -36,6 +36,7 @@ import {
   shouldSkipPortableWorkspaceFile,
 } from "./computer-workspace.js";
 import { sandboxCommandArgv } from "./sandbox-command-environment.js";
+import { shellExportScript } from "./sandbox-shell-environment.js";
 import { readBodyCapped } from "./web-ssrf.js";
 
 const CREATEOS_WORKSPACE = "/home/desktop/rakazo-home";
@@ -1394,20 +1395,23 @@ raise SystemExit(1)
     timeoutMs: number,
   ): Promise<CreateOSExecResponse> {
     const cwd = createosCwd(request.cwd);
-    const env = request.env
-      ? Object.entries(request.env)
-          .map(([key, value]) => `${key}=${shellQuote(value)}`)
-          .join(" ")
-      : "";
+    // Exec's env field only takes names declared when the sandbox was created, and command text
+    // shows in `ps`, so the env travels on stdin. Loading it leaves `argv` with an empty stdin.
+    const environment = shellExportScript(request.env ?? {});
     const command = [
       `mkdir -p ${shellQuote(cwd)}`,
       `cd ${shellQuote(cwd)}`,
-      `${env ? `${env} ` : ""}${sandboxCommandArgv(request).map(shellQuote).join(" ")}`,
+      ...(environment ? ['eval "$(cat)"'] : []),
+      sandboxCommandArgv(request).map(shellQuote).join(" "),
     ].join(" && ");
     const seconds = Math.max(1, Math.ceil(timeoutMs / 1_000));
     return this.postJson<CreateOSExecResponse>(
       `/v1/sandboxes/${encodeURIComponent(computer.providerRef)}/exec`,
-      { cmd: "timeout", args: [`${seconds}s`, "bash", "-lc", command] },
+      {
+        cmd: "timeout",
+        args: [`${seconds}s`, "bash", "-lc", command],
+        ...(environment ? { stdin: environment } : {}),
+      },
       context,
       timeoutMs + 5_000,
     );

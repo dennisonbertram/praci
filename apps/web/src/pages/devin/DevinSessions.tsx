@@ -3,6 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import type { DevinSessionView } from "@rakazo/contracts";
 import { devinSessionUrl } from "@rakazo/contracts";
 import {
+  Button,
   cn,
   Table,
   TableBody,
@@ -13,6 +14,7 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { ExternalLink } from "lucide-react";
+import { PickFilter, SearchField, SortControl } from "../../components/ListControls";
 import type { DevinSection } from "../../lib/devin-format";
 import {
   kindSection,
@@ -21,7 +23,10 @@ import {
   statusLabel,
   waitingLabel,
 } from "../../lib/devin-format";
+import { useListParams } from "../../lib/list-params";
 import { formatRelativeTime } from "../../lib/relative-time";
+import type { SessionSort } from "./session-list";
+import { DEFAULT_SESSION_SORT, filterSessions, SESSION_SORTS, sortSessions } from "./session-list";
 
 const SECTIONS: DevinSection[] = ["needs_you", "working", "earlier"];
 const dash = "—";
@@ -134,12 +139,86 @@ export function DevinSessions({
   sessions: DevinSessionView[];
   muted?: boolean;
 }) {
+  // Search, filters and sort live in the URL: ?q=, status, source, sort, dir.
+  const list = useListParams(SESSION_SORTS, DEFAULT_SESSION_SORT);
+  const filters = {
+    q: list.param("q"),
+    status: list.param("status"),
+    source: list.param("source"),
+  };
+  const filtered = Object.values(filters).some(Boolean);
+  const shown = sortSessions(filterSessions(sessions, filters), list.sort, (s) =>
+    statusLabel(s.kind, s.status),
+  );
   const groups = SECTIONS.map((section) => ({
     section,
-    rows: sessions.filter((s) => kindSection(s.kind) === section),
+    rows: shown.filter((s) => kindSection(s.kind) === section),
   })).filter((group) => group.rows.length > 0);
+  const options = (pick: (s: DevinSessionView) => [string, string]): [string, string][] => [
+    ...new Map(sessions.map(pick)),
+  ];
+  const sortNames: Record<SessionSort, string> = {
+    title: t`Session`,
+    status: t`Status`,
+    updated: t`Updated`,
+  };
+  const sortHead = (field: SessionSort) => ({
+    sortDirection: list.sort.field === field ? list.sort.dir : null,
+    onSort: () => list.toggleSort(field),
+  });
+  const toolbar = (
+    <div className="mb-2 flex flex-wrap items-center gap-2">
+      <SearchField
+        name="devin-search"
+        value={filters.q ?? ""}
+        onChange={(value) => list.setParam("q", value)}
+        placeholder={t`Search sessions`}
+        label={t`Search sessions`}
+        className="w-56"
+      />
+      <PickFilter
+        label={t`Status`}
+        value={filters.status}
+        options={options((s) => [s.kind, statusLabel(s.kind, s.status)])}
+        onChange={(value) => list.setParam("status", value)}
+      />
+      <PickFilter
+        label={t`Source`}
+        value={filters.source}
+        options={options((s) => [s.origin, sourceLabel(s.origin)])}
+        onChange={(value) => list.setParam("source", value)}
+      />
+      {/* Wide, the column headers sort; narrow, there are none. */}
+      <span className="ms-auto flex items-center gap-1 @2xl:hidden">
+        <SortControl
+          fields={SESSION_SORTS.map((field) => [field, sortNames[field]])}
+          field={list.sort.field}
+          fieldLabel={sortNames[list.sort.field]}
+          direction={list.sort.dir}
+          onField={(field) => list.setSort({ field, dir: field === "updated" ? "desc" : "asc" })}
+          onDirection={(dir) => list.setSort({ field: list.sort.field, dir })}
+        />
+      </span>
+    </div>
+  );
+  if (groups.length === 0 && filtered) {
+    return (
+      <>
+        {toolbar}
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            <Trans>No matches</Trans>
+          </p>
+          <Button variant="outline" size="sm" onClick={() => list.clear("q", "status", "source")}>
+            <Trans>Clear filters</Trans>
+          </Button>
+        </div>
+      </>
+    );
+  }
   return (
     <>
+      {toolbar}
       <div data-muted={muted} className={cn("@2xl:hidden", muted && "text-muted-foreground")}>
         {groups.map(({ section, rows }) => (
           <section key={section} aria-label={sectionName(section)}>
@@ -179,10 +258,10 @@ export function DevinSessions({
         </colgroup>
         <TableHeader>
           <TableHeadRow>
-            <TableHead>
+            <TableHead {...sortHead("title")}>
               <Trans>Session</Trans>
             </TableHead>
-            <TableHead>
+            <TableHead {...sortHead("status")}>
               <Trans>Status</Trans>
             </TableHead>
             <TableHead>
@@ -191,7 +270,7 @@ export function DevinSessions({
             <TableHead>
               <Trans>Source</Trans>
             </TableHead>
-            <TableHead>
+            <TableHead {...sortHead("updated")}>
               <Trans>Updated</Trans>
             </TableHead>
           </TableHeadRow>

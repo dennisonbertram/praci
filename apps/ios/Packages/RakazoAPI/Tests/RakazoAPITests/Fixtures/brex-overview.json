@@ -1,0 +1,24 @@
+{
+  "json": {
+    "serverId": "server_demo_1",
+    "agentBotId": null,
+    "writesEnabled": false,
+    "partial": true,
+    "cash": { "totalCents": 148325, "availableCents": 121400, "accountCount": 2 },
+    "cardSpend": {
+      "partial": false,
+      "monthToDateCents": 48250,
+      "previousMonthToDateCents": 39100,
+      "changePercent": 23.4,
+      "sparkline": [{ "day": "2026-11-03", "cents": 12000 }]
+    },
+    "cards": { "active": 3, "locked": 1, "terminated": 2 },
+    "nearLimit": {
+      "partial": true,
+      "count": 1,
+      "items": [{ "kind": "card", "id": "card_demo_1", "name": "Design tools", "usedCents": 9600, "limitCents": 10000, "percent": 96 }]
+    },
+    "sankey": { "partial": false, "totalCents": 48250, "categories": [] },
+    "topVendors": []
+  }
+}

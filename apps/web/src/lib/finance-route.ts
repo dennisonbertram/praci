@@ -15,6 +15,8 @@ export type FinanceRoute =
   | { page: "month"; month: string }
   | { page: "runway" }
   | { page: "crypto" }
+  | { page: "upcoming" }
+  | { page: "subscriptions" }
   | {
       page: "spend";
       period: SpendPeriod;
@@ -42,6 +44,8 @@ export const financePath = {
   month: (month: string) => `${BASE}/month/${enc(month)}`,
   runway: () => `${BASE}/runway`,
   crypto: () => `${BASE}/crypto`,
+  upcoming: () => `${BASE}/upcoming`,
+  subscriptions: () => `${BASE}/subscriptions`,
   spend: (
     period: SpendPeriod = "month",
     category?: string | null,
@@ -87,7 +91,14 @@ export function parseFinanceRoute(pathname: string, search = ""): FinanceRoute {
         ? { page: "accounts", source: null, unknownSource: raw.slice(0, 40) }
         : { page: "accounts", source: null };
     }
-    if (name === "burn" || name === "runway" || name === "crypto") return { page: name };
+    if (
+      name === "burn" ||
+      name === "runway" ||
+      name === "crypto" ||
+      name === "upcoming" ||
+      name === "subscriptions"
+    )
+      return { page: name };
     if (name === "spend") {
       const params = new URLSearchParams(search);
       const period = SpendPeriodSchema.safeParse(params.get("period"));

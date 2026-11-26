@@ -7,10 +7,12 @@ import { NativeSymbol } from "./native-symbol";
 export function FailedSendBubble({
   attempt,
   onRetry,
+  onCopy,
   onDelete,
 }: {
   attempt: SendAttempt;
   onRetry: () => void;
+  onCopy: () => void;
   onDelete: () => void;
 }) {
   const { t } = useI18n();
@@ -18,6 +20,7 @@ export function FailedSendBubble({
   const { payload, state } = attempt;
   const sending = state === "pending";
   const retryable = state === "failed" || state === "queued";
+  const copyable = !sending && payload.displayText.trim().length > 0;
   const caption = sending
     ? t("Sending…")
     : retryable
@@ -29,35 +32,49 @@ export function FailedSendBubble({
   const color = sending ? tokens.mutedForeground : tokens.destructive;
 
   function showActions() {
+    const options = [
+      ...(retryable ? [{ text: t("Try Again"), action: onRetry }] : []),
+      ...(copyable ? [{ text: t("Copy"), action: onCopy }] : []),
+      { text: t("Delete"), action: onDelete, destructive: true },
+      { text: t("Cancel"), cancel: true },
+    ];
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           message: attempt.error,
-          options: retryable
-            ? [t("Try Again"), t("Delete"), t("Cancel")]
-            : [t("Delete"), t("Cancel")],
-          destructiveButtonIndex: retryable ? 1 : 0,
-          cancelButtonIndex: retryable ? 2 : 1,
+          options: options.map(({ text }) => text),
+          destructiveButtonIndex: options.findIndex((option) => option.destructive),
+          cancelButtonIndex: options.findIndex((option) => option.cancel),
         },
-        (index) => {
-          if (retryable && index === 0) onRetry();
-          if (index === (retryable ? 1 : 0)) onDelete();
-        },
+        (index) => options[index]?.action?.(),
       );
     } else {
-      Alert.alert(caption, attempt.error, [
-        ...(retryable ? [{ text: t("Try Again"), onPress: onRetry }] : []),
-        { text: t("Delete"), style: "destructive", onPress: onDelete },
-        { text: t("Cancel"), style: "cancel" },
-      ]);
+      Alert.alert(
+        caption,
+        attempt.error,
+        options.map(({ text, action, destructive, cancel }) => ({
+          text,
+          onPress: action,
+          ...(destructive ? { style: "destructive" as const } : {}),
+          ...(cancel ? { style: "cancel" as const } : {}),
+        })),
+      );
     }
   }
 
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={retryable ? "button" : undefined}
       accessibilityLabel={messageLabel ? `${messageLabel}. ${caption}` : caption}
       accessibilityHint={sending ? undefined : t("Long press to delete")}
+      accessibilityActions={sending ? undefined : [{ name: "delete", label: t("Delete") }]}
+      onAccessibilityAction={
+        sending
+          ? undefined
+          : (event) => {
+              if (event.nativeEvent.actionName === "delete") showActions();
+            }
+      }
       accessibilityState={{ disabled: sending }}
       disabled={sending}
       onPress={retryable ? onRetry : undefined}

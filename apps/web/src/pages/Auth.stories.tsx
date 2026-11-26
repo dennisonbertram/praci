@@ -1,6 +1,7 @@
 import type { AuthCapabilities } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { userEvent, within } from "storybook/test";
 import { AuthFrame, AuthPage, PasswordResetPage } from "./Auth";
 
 /**
@@ -52,6 +53,11 @@ export const SignIn: Story = {
   beforeEach: () => capabilities(json(passwordOnly)),
 };
 
+export const SignInWithPasskey: Story = {
+  render: () => <AuthPage mode="in" />,
+  beforeEach: () => capabilities(json({ ...passwordOnly, passkey: true })),
+};
+
 export const SignUp: Story = {
   render: () => <AuthPage mode="up" />,
   beforeEach: () => capabilities(json(passwordOnly)),
@@ -91,9 +97,25 @@ export const OptionsFailed: Story = {
   beforeEach: () => capabilities(() => Promise.resolve(new Response("nope", { status: 500 }))),
 };
 
+/** The check-your-email screen reads the address from session storage, never from the URL. */
+const verifyingAs = (email: string | null) => () => {
+  const restore = capabilities(json(passwordOnly));
+  if (email) sessionStorage.setItem("rakazo.auth.verify-email", email);
+  else sessionStorage.removeItem("rakazo.auth.verify-email");
+  return () => {
+    sessionStorage.removeItem("rakazo.auth.verify-email");
+    restore();
+  };
+};
+
 export const CheckYourEmail: Story = {
   render: () => <At path="/sign-up" element={<AuthPage mode="up" />} to="/sign-up?verify=email" />,
-  beforeEach: () => capabilities(json(passwordOnly)),
+  beforeEach: verifyingAs("new.user@example.test"),
+};
+
+export const CheckYourEmailNoAddress: Story = {
+  render: () => <At path="/sign-up" element={<AuthPage mode="up" />} to="/sign-up?verify=email" />,
+  beforeEach: verifyingAs(null),
 };
 
 export const LinkError: Story = {
@@ -105,6 +127,30 @@ export const LinkError: Story = {
 
 export const ResetPassword: Story = {
   render: () => <At path="/reset" element={<PasswordResetPage />} to="/reset?token=demo-token" />,
+};
+
+const resetForm = <At path="/reset" element={<PasswordResetPage />} to="/reset?token=demo-token" />;
+
+/** Submitting a short password turns the rule under it red. */
+export const ResetPasswordTooShort: Story = {
+  render: () => resetForm,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText("New password"), "short");
+    await userEvent.type(await canvas.findByLabelText("Confirm password"), "short");
+    await userEvent.click(await canvas.findByRole("button", { name: "Reset password" }));
+  },
+};
+
+/** A confirmation that differs is reported under the confirm field. */
+export const ResetPasswordMismatch: Story = {
+  render: () => resetForm,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText("New password"), "password123");
+    await userEvent.type(await canvas.findByLabelText("Confirm password"), "password124");
+    await userEvent.click(await canvas.findByRole("button", { name: "Reset password" }));
+  },
 };
 
 export const ResetLinkInvalid: Story = {

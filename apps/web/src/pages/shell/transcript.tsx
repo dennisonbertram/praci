@@ -3,7 +3,7 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ChatMarkdownProps } from "@rakazo/chat-ui/web";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
-import type { MailEdits, MessageReaction, ThreadMessage } from "@rakazo/contracts";
+import type { MailEdits, MessageReaction, ThreadMessage, UiBlock } from "@rakazo/contracts";
 import { canReactToThreadMessage, MESSAGE_REACTIONS } from "@rakazo/contracts";
 import {
   DEFAULT_BOT_COLOR,
@@ -31,6 +31,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  enqueueNotificationToast,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -41,6 +42,7 @@ import {
   BookmarkCheck,
   BookmarkPlus,
   Copy,
+  MessageSquareDot,
   MoreHorizontal,
   Reply,
   Smile,
@@ -62,17 +64,22 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { ArtifactFileCard } from "../../components/ArtifactFileCard";
 import { AskCard } from "../../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../../components/ai/CollaborationMarker";
 import { BotToolControlsContext } from "../../components/BotToolControls";
 import { CloudAgentCard } from "../../components/CloudAgentCard";
 import { VoiceChatCard } from "../../components/call/VoiceChatCard";
+import type { SendTarget } from "../../components/data-room/SendToAgent";
+import { SendToAgentMenu } from "../../components/data-room/SendToAgent";
 import { EmailCards } from "../../components/EmailCards";
 import { FinanceCardGroup } from "../../components/FinanceCards";
 import { MailApprovalCard } from "../../components/MailApprovalCard";
+import { MailReplyBatchCard } from "../../components/MailReplyBatchCard";
 import { MailThreadCard } from "../../components/MailThreadCard";
 import { MessageHoverMetadata } from "../../components/MessageHoverMetadata";
+import { PipelineImportCard } from "../../components/PipelineImportCard";
 import {
   LIVE_TOOL_STEP_WINDOW,
   StandaloneToolActivity,
@@ -81,8 +88,10 @@ import {
   ToolSteps,
 } from "../../components/ToolActivityDisclosure";
 import { SkillDraftCard } from "../../components/teach/SkillDraftCard";
+import { UiBlockView } from "../../components/UiBlockView";
 import { bubbleMeasure, UserTextBubble } from "../../components/UserTextBubble";
 import type { ArtifactTarget } from "../../lib/artifact-open";
+import { pendingSentBlocks } from "../../lib/delegate-wait";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
@@ -101,11 +110,11 @@ import {
   transcriptShouldSnap,
   transcriptUserJustSent,
 } from "../../lib/transcript-scroll";
-import { useMailAccounts } from "../../lib/use-mail-accounts";
 import type { RememberControls } from "../../lib/use-remembered-messages";
 import { useAttended } from "../../lib/use-sidebar-glance";
 import type { WorkingActivity } from "../../lib/working-activity";
 import { previewMessageText, ReplyLine, TimeSeparator } from "./chat-context";
+import { GoalBlockView } from "./goal";
 import {
   AppConnectCard,
   ArtifactImageGrid,
@@ -114,6 +123,7 @@ import {
   McpApprovalCard,
   ResultCard,
 } from "./message-cards";
+import { PageCard } from "./page-card";
 import { toolActionLabel } from "./working-label";
 
 /** Opens an in-app path through the router; unset outside the page, where links load normally. */
@@ -123,6 +133,22 @@ const AppNavigateContext = createContext<((href: string) => void) | undefined>(u
 function ThreadMarkdown(props: ChatMarkdownProps) {
   const onNavigate = useContext(AppNavigateContext);
   return <ChatMarkdown {...props} onNavigate={onNavigate} />;
+}
+
+function useStableCallback<Callback extends (...args: never[]) => unknown>(
+  callback: Callback,
+): Callback {
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+  return useCallback(
+    ((...args: Parameters<Callback>) => callbackRef.current(...args)) as Callback,
+    [],
+  );
+}
+
+/** A render_ui block whose app links navigate in place. */
+function ThreadUiBlock({ block }: { block: UiBlock }) {
+  return <UiBlockView block={block} onNavigate={useContext(AppNavigateContext)} />;
 }
 
 /** A thin line in the bot's accent (neutral without one) marking where unread messages start. */
@@ -141,6 +167,7 @@ export function UnreadDivider() {
 
 export const Transcript = memo(function Transcript({
   scrollRef,
+  delegateStates,
   sentHere,
   scrollRequest,
   onScrollRequestHandled,
@@ -151,6 +178,7 @@ export const Transcript = memo(function Transcript({
   olderCursor,
   loadingOlder,
   answerableAskMessageId,
+  ownerOnlyAskMessageIds,
   running,
   workingBots,
   workingActivity: activity,
@@ -163,6 +191,9 @@ export const Transcript = memo(function Transcript({
   onOpenBot,
   onAnswer,
   onReply,
+  onMarkUnread,
+  sendTargets,
+  onSendFiles,
   onQuote,
   onReact,
   remember,
@@ -188,12 +219,16 @@ export const Transcript = memo(function Transcript({
   onScrollRequestHandled: () => void;
   artifactTarget: ArtifactTarget;
   messages: ThreadMessage[];
+  /** Each sent request's state by message id and block index, from the whole thread. */
+  delegateStates?: ReadonlyMap<string, ReadonlyMap<number, "pending" | "answered">>;
   /** The agent this chat is waiting on, worked out from the full thread (the display list drops handoff replies). */
   delegate?: string | null;
   showToolActivity: boolean;
   olderCursor: number | null;
   loadingOlder: boolean;
   answerableAskMessageId: string | null;
+  /** Credential requests this viewer sees without fields, because another user's run asked. */
+  ownerOnlyAskMessageIds?: ReadonlySet<string>;
   running: boolean;
   workingBots: GroupAvatarMember[];
   workingActivity?: WorkingActivity;
@@ -213,6 +248,10 @@ export const Transcript = memo(function Transcript({
     mail?: MailEdits,
   ) => Promise<void>;
   onReply: (message: ThreadMessage) => void;
+  onMarkUnread?: (message: ThreadMessage) => void;
+  /** Agents a message's files can be sent to; with `onSendFiles`, adds Send to agent to the More menu. */
+  sendTargets?: SendTarget[];
+  onSendFiles?: (message: ThreadMessage, agent: SendTarget) => void;
   onQuote: (message: ThreadMessage, quote: string) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
   remember?: RememberControls;
@@ -222,7 +261,7 @@ export const Transcript = memo(function Transcript({
   peerBot: (botId: string) => { name?: string; color: string; status?: string } | undefined;
   onRefresh: () => Promise<void>;
   onBotChanged: () => Promise<void>;
-  onAddRoutine: (name: string, prompt: string) => void;
+  onAddRoutine: (skill: { id: string; name: string }) => void;
   voiceReady: boolean;
   speakingMessageId: string | null;
   onSpeak: (message: ThreadMessage) => void;
@@ -235,6 +274,18 @@ export const Transcript = memo(function Transcript({
   anchorToUnread?: boolean;
 }) {
   const { t } = useLingui();
+  const onOpenBotStable = useStableCallback(onOpenBot);
+  const onOpenPeerMessagesStable = useStableCallback(onOpenPeerMessages);
+  const onAnswerStable = useStableCallback(onAnswer);
+  const onReplyStable = useStableCallback(onReply);
+  const onJumpToMessageStable = useStableCallback(onJumpToMessage);
+  const onRefreshStable = useStableCallback(onRefresh);
+  const onBotChangedStable = useStableCallback(onBotChanged);
+  const onAddRoutineStable = useStableCallback(onAddRoutine);
+  const onSpeakStable = useStableCallback(onSpeak);
+  const onOpenComputerStable = useStableCallback(onOpenComputer);
+  const memberNameStable = useStableCallback(memberName ?? (() => undefined));
+  const peerBotStable = useStableCallback(peerBot);
   const [atEnd, setAtEnd] = useState(true);
   const following = useRef(true);
   const autoScrolling = useRef(false);
@@ -247,6 +298,9 @@ export const Transcript = memo(function Transcript({
     () => new Map(messages.map((message) => [message.id, message])),
     [messages],
   );
+  // Computed from the unfiltered thread when given: a delegate's reply is collapsed out of `messages`.
+  const ownSentStates = useMemo(() => pendingSentBlocks(messages, Date.now()), [messages]);
+  const sentStates = delegateStates ?? ownSentStates;
   const reactionView = useMemo(() => projectMessageReactions(messages), [messages]);
   // One Tab stop for all the messages' More buttons (roving): the newest, or the one last focused.
   // Up and Down move between them, so Tab reaches the composer in a few presses on a long chat.
@@ -444,6 +498,23 @@ export const Transcript = memo(function Transcript({
     for (const child of element.children) observer.observe(child);
     return () => observer.disconnect();
   }, [scrollRef, messages]);
+
+  // The toaster pads the thread through --toast-reserve on <html>. That changes the scroll height
+  // without resizing the element or its children, so follow it here and keep the newest message
+  // clear above the toast.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const observer = new MutationObserver(() => {
+      if (!following.current || jumpScrolling.current) return;
+      if (element.scrollHeight - element.scrollTop - element.clientHeight > 1) {
+        element.scrollTop = element.scrollHeight;
+        setAtEnd(true);
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+  }, [scrollRef]);
 
   const jumpToLatest = useCallback(() => {
     const element = scrollRef.current;
@@ -725,7 +796,7 @@ export const Transcript = memo(function Transcript({
           }
         }}
         data-transcript=""
-        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pt-5 pb-[calc(1.25rem+var(--toast-reserve,0px))] md:px-[max(1.75rem,calc((100%-900px)/2))] md:pt-6 md:pb-[calc(1.5rem+var(--toast-reserve,0px))]"
+        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pt-5 pb-[calc(1.25rem+var(--toast-reserve,0px))] md:px-[max(1.75rem,calc((100%-720px)/2))] md:pt-6 md:pb-[calc(1.5rem+var(--toast-reserve,0px))]"
       >
         {olderCursor != null ? (
           <button
@@ -804,10 +875,18 @@ export const Transcript = memo(function Transcript({
               {showDividerId === message.id ? <UnreadDivider /> : null}
               {message.routineName ? (
                 <p
-                  className="mb-1 truncate text-xs text-muted-foreground"
+                  className="mb-1 shrink-0 truncate text-xs text-muted-foreground"
                   data-testid="routine-label"
                 >
                   {t`From routine: ${message.routineName}`}
+                </p>
+              ) : null}
+              {message.via ? (
+                <p
+                  className="mb-1 shrink-0 truncate text-end text-xs text-muted-foreground"
+                  data-testid="via-label"
+                >
+                  {t`via ${message.via}`}
                 </p>
               ) : null}
               <div
@@ -819,8 +898,14 @@ export const Transcript = memo(function Transcript({
                     : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
                       // hover time above and the actions below need room of their own.
                       `group/message relative hover:z-20 @max-md:[@media(hover:hover)]:pt-4 @max-sm:[@media(hover:hover)]:pb-5 ${
-                        // A full-width row has no gutter, so touch reserves a line under it for the rail.
-                        (fullWidth || mailCard) && !cardOnly ? "[@media(hover:none)]:pb-11" : ""
+                        // A full-width row has no gutter, so it reserves room under it for the rail (and the hover time).
+                        fullWidth || mailCard
+                          ? // Whole class names only: Tailwind finds a class by its text, and one glued to `${…}` is never generated.
+                            cn(
+                              "[@media(hover:hover)]:pb-14 @max-sm:[@media(hover:hover)]:pb-14",
+                              !cardOnly && "[@media(hover:none)]:pb-11",
+                            )
+                          : ""
                       }`
                 }
               >
@@ -852,9 +937,11 @@ export const Transcript = memo(function Transcript({
                       artifactTarget={artifactTarget}
                       message={message}
                       canAnswer={message.id === answerableAskMessageId}
-                      onOpenBot={onOpenBot}
-                      onOpenPeerMessages={onOpenPeerMessages}
-                      onAnswer={onAnswer}
+                      ownerOnly={ownerOnlyAskMessageIds?.has(message.id) ?? false}
+                      onOpenBot={onOpenBotStable}
+                      onOpenPeerMessages={onOpenPeerMessagesStable}
+                      sentStates={sentStates.get(message.id)}
+                      onAnswer={onAnswerStable}
                       speakerName={
                         peerReceipt
                           ? undefined
@@ -862,22 +949,22 @@ export const Transcript = memo(function Transcript({
                             ? memberName?.(message.botId)
                             : undefined
                       }
-                      memberName={memberName}
-                      peerBot={peerBot}
+                      memberName={memberNameStable}
+                      peerBot={peerBotStable}
                       replyParent={
                         message.replyToMessageId
                           ? messageById.get(message.replyToMessageId)
                           : undefined
                       }
-                      onJumpToMessage={onJumpToMessage}
-                      onRefresh={onRefresh}
-                      onBotChanged={onBotChanged}
-                      onAddRoutine={onAddRoutine}
+                      onJumpToMessage={onJumpToMessageStable}
+                      onRefresh={onRefreshStable}
+                      onBotChanged={onBotChangedStable}
+                      onAddRoutine={onAddRoutineStable}
                       voiceReady={voiceReady}
                       speaking={speakingMessageId === message.id}
-                      onSpeak={() => onSpeak(message)}
-                      onOpenComputer={onOpenComputer}
-                      onReply={onReply}
+                      onSpeak={onSpeakStable}
+                      onOpenComputer={onOpenComputerStable}
+                      onReply={onReplyStable}
                       showToolActivity={showToolActivity}
                     />
                     {peerReceipt ? null : (
@@ -888,6 +975,9 @@ export const Transcript = memo(function Transcript({
                         below={fullWidth || mailCard}
                         hideOnTouch={cardOnly}
                         onReply={onReply}
+                        onMarkUnread={onMarkUnread}
+                        sendTargets={sendTargets}
+                        onSendFiles={onSendFiles}
                         onReact={onReact}
                         remember={remember}
                         tabbable={message.id === tabbableMoreId}
@@ -1173,11 +1263,20 @@ const CARD_CONTROL_KINDS: ReadonlySet<string> = new Set([
   "emails",
 ]);
 
+/** A block that carries a stored file the person can forward to another agent. */
+export const isForwardableBlock = (block: { kind: string }) =>
+  block.kind === "file" || block.kind === "image";
+
+let copyToastId = 0;
+
 function MessageHoverActions({
   message,
   side,
   hasReactions = false,
   onReply,
+  onMarkUnread,
+  sendTargets,
+  onSendFiles,
   onReact,
   remember,
   below,
@@ -1191,6 +1290,9 @@ function MessageHoverActions({
   hideOnTouch?: boolean;
   hasReactions?: boolean;
   onReply: (message: ThreadMessage) => void;
+  onMarkUnread?: (message: ThreadMessage) => void;
+  sendTargets?: SendTarget[];
+  onSendFiles?: (message: ThreadMessage, agent: SendTarget) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
   remember?: RememberControls;
   tabbable?: boolean;
@@ -1205,8 +1307,17 @@ function MessageHoverActions({
 
   function copyMessage() {
     const text = maskCurrencyWhenHidden(copyableMessageText(message));
-    if (!text || !navigator.clipboard) return;
-    void navigator.clipboard.writeText(text).catch(() => undefined);
+    if (!text) return;
+    const say = (title: string) =>
+      enqueueNotificationToast({ id: `copy-${++copyToastId}`, title, timeout: 2000 });
+    if (!navigator.clipboard) {
+      say(t`Couldn't copy`);
+      return;
+    }
+    navigator.clipboard.writeText(text).then(
+      () => say(t`Copied`),
+      () => say(t`Couldn't copy`),
+    );
   }
 
   const iconButtonClass =
@@ -1322,7 +1433,7 @@ function MessageHoverActions({
           >
             <MoreHorizontal size={15} strokeWidth={1.7} />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={side === "end" ? "start" : "end"}>
+          <DropdownMenuContent align={side === "end" ? "start" : "end"} className="w-auto">
             {canReactToThreadMessage(message) ? (
               // The row's buttons are not Tab stops (one stop per message), so this menu is the keyboard route to every action.
               <div className="grid w-33 grid-cols-3 pb-1">
@@ -1347,10 +1458,31 @@ function MessageHoverActions({
               <Reply size={14} strokeWidth={1.7} />
               <Trans>Reply</Trans>
             </DropdownMenuItem>
+            {onMarkUnread && isStoredMessage(message) ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  setMoreOpen(false);
+                  onMarkUnread(message);
+                }}
+              >
+                <MessageSquareDot size={14} strokeWidth={1.7} />
+                <Trans>Mark as unread</Trans>
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem onClick={copyMessage}>
               <Copy size={14} strokeWidth={1.7} />
               <Trans>Copy</Trans>
             </DropdownMenuItem>
+            {onSendFiles && message.blocks.some(isForwardableBlock) ? (
+              <SendToAgentMenu
+                menu="dropdown"
+                agents={sendTargets}
+                onPick={(agent) => {
+                  setMoreOpen(false);
+                  onSendFiles(message, agent);
+                }}
+              />
+            ) : null}
             {canRemember ? (
               <DropdownMenuItem
                 disabled={remembered}
@@ -1438,10 +1570,12 @@ function SpeakerHeader({
 const MessageView = memo(function MessageView({
   artifactTarget,
   canAnswer,
+  ownerOnly,
   message,
   onAnswer,
   onOpenBot,
   onOpenPeerMessages,
+  sentStates,
   speakerName,
   memberName,
   peerBot,
@@ -1459,6 +1593,7 @@ const MessageView = memo(function MessageView({
 }: {
   artifactTarget: ArtifactTarget;
   canAnswer: boolean;
+  ownerOnly: boolean;
   message: ThreadMessage;
   onAnswer: (
     message: ThreadMessage,
@@ -1468,6 +1603,8 @@ const MessageView = memo(function MessageView({
   ) => Promise<void>;
   onOpenBot: (botId: string) => void;
   onOpenPeerMessages: (peer: { peerBotId: string; peerBotName: string }) => void;
+  /** State of this message's sent requests by block index: awaiting an answer, or answered. */
+  sentStates?: ReadonlyMap<number, "pending" | "answered">;
   speakerName?: string;
   memberName?: (botId: string | undefined) => string | undefined;
   peerBot: (botId: string) => { name?: string; color: string; status?: string } | undefined;
@@ -1475,10 +1612,10 @@ const MessageView = memo(function MessageView({
   onJumpToMessage?: (messageId: string) => void;
   onRefresh: () => Promise<void>;
   onBotChanged: () => Promise<void>;
-  onAddRoutine: (name: string, prompt: string) => void;
+  onAddRoutine: (skill: { id: string; name: string }) => void;
   voiceReady: boolean;
   speaking: boolean;
-  onSpeak: () => void;
+  onSpeak: (message: ThreadMessage) => void;
   onOpenComputer: (botId?: string) => void;
   onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
@@ -1486,18 +1623,6 @@ const MessageView = memo(function MessageView({
   useHideAmounts();
   const { t } = useLingui();
   const botToolControls = useContext(BotToolControlsContext);
-  // A pending mail approval that names no sender: the card lists the accounts so the person can pick.
-  const mailAccounts = useMailAccounts(
-    canAnswer &&
-      message.blocks.some(
-        (block) =>
-          block.kind === "ask" &&
-          block.status !== "answered" &&
-          block.mail !== undefined &&
-          !block.mail.account &&
-          isApprovalAskBlock(block),
-      ),
-  );
   const isNarration =
     message.role === "bot" &&
     message.blocks.length > 0 &&
@@ -1584,6 +1709,7 @@ const MessageView = memo(function MessageView({
                 return (
                   <div
                     key={i}
+                    aria-live={block.kind === "progress" ? "off" : undefined}
                     data-quote-message-id={block.kind === "text" ? quoteMessageId : undefined}
                   >
                     <ThreadMarkdown streaming={block.kind === "progress"}>
@@ -1598,7 +1724,7 @@ const MessageView = memo(function MessageView({
               <button
                 type="button"
                 aria-label={speaking ? t`Stop speaking` : t`Speak this reply`}
-                onClick={onSpeak}
+                onClick={() => onSpeak(message)}
                 className="text-[12px] text-muted-foreground hover:text-foreground"
               >
                 {speaking ? <Trans>Stop</Trans> : <Trans>Speak</Trans>}
@@ -1646,7 +1772,15 @@ const MessageView = memo(function MessageView({
           const sent = block.kind === "bot_message_sent";
           const peer = sent ? block.toBotName : block.fromBotName;
           const peerBotId = sent ? block.toBotId : block.fromBotId;
-          const label = sent ? t`Messaged ${peer}` : t`Message from ${peer}`;
+          const state = sent ? sentStates?.get(i) : undefined;
+          const asking = state === "pending";
+          const label = asking
+            ? t`Asking ${peer}…`
+            : state === "answered"
+              ? t`${peer} replied`
+              : sent
+                ? t`Messaged ${peer}`
+                : t`Message from ${peer}`;
           return (
             <CollaborationMarker
               key={i}
@@ -1654,6 +1788,7 @@ const MessageView = memo(function MessageView({
               color={peerBot(peerBotId)?.color ?? DEFAULT_BOT_COLOR}
               identity={peerBotId}
               label={label}
+              pending={asking}
               onClick={() => onOpenPeerMessages({ peerBotId, peerBotName: peer })}
             />
           );
@@ -1671,6 +1806,7 @@ const MessageView = memo(function MessageView({
             </div>
           );
         }
+        if (block.kind === "goal") return <GoalBlockView key={i} block={block} />;
         if (block.kind === "meta") {
           return (
             <div
@@ -1679,6 +1815,11 @@ const MessageView = memo(function MessageView({
             >
               <span className="text-warning">◷</span>
               <span>{maskCurrencyWhenHidden(block.text)}</span>
+              {block.link?.href.startsWith("/app/") ? (
+                <Link to={block.link.href} className="underline underline-offset-2">
+                  {block.link.label}
+                </Link>
+              ) : null}
             </div>
           );
         }
@@ -1690,6 +1831,7 @@ const MessageView = memo(function MessageView({
             >
               <div
                 data-testid="message-bot-bubble"
+                aria-live="off"
                 className="max-w-full rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground/90"
                 dir="auto"
               >
@@ -1774,6 +1916,13 @@ const MessageView = memo(function MessageView({
             </button>
           );
         }
+        if (block.kind === "page") {
+          return (
+            <div key={i} className="flex justify-start">
+              <PageCard botId={block.botId} pageId={block.pageId} title={block.title} />
+            </div>
+          );
+        }
         if (block.kind === "choice") {
           const botId = "botId" in artifactTarget ? artifactTarget.botId : message.botId;
           if (!botId) return null;
@@ -1790,7 +1939,7 @@ const MessageView = memo(function MessageView({
         }
         if (block.kind === "chart") {
           return (
-            <div key={i} className="flex justify-start">
+            <div key={i} className={`flex justify-start ${i > 0 ? "mt-5" : ""}`}>
               <ChartBlockView name={block.name} spec={block.spec} data={block.data} />
             </div>
           );
@@ -1858,7 +2007,7 @@ const MessageView = memo(function MessageView({
                   <button
                     type="button"
                     aria-label={speaking ? t`Stop speaking` : t`Speak this reply`}
-                    onClick={onSpeak}
+                    onClick={() => onSpeak(message)}
                     className="mt-2 text-[12px] text-muted-foreground hover:text-foreground"
                   >
                     {speaking ? <Trans>Stop</Trans> : <Trans>Speak</Trans>}
@@ -1869,23 +2018,82 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "card") {
-          return <ResultCard key={i} block={block} />;
+          return (
+            <div key={i} className={i > 0 ? "mt-5" : undefined}>
+              <ResultCard block={block} />
+            </div>
+          );
+        }
+        if (block.kind === "ui") {
+          return (
+            <div key={i} className={`flex justify-start ${i > 0 ? "mt-5" : ""}`}>
+              <ThreadUiBlock block={block.block} />
+            </div>
+          );
         }
         if (block.kind === "ask") {
           // A card after text in the same message sits one message-gap (20 px) below it.
           const gap = i > 0 ? "mt-5" : undefined;
+          if (block.pipelineImport && block.approvalEffectId && message.botId) {
+            return (
+              <div key={i} className={gap}>
+                <PipelineImportCard
+                  block={block}
+                  botId={message.botId}
+                  message={message}
+                  canAnswer={canAnswer}
+                  onAnswer={(text) => onAnswer(message, text)}
+                  fallback={
+                    <AskCard
+                      // Its detail is the phone apps' text: it sends the reader here.
+                      block={{ ...block, detail: undefined }}
+                      requestedAt={message.createdAt}
+                      canAnswer={canAnswer}
+                      ownerOnly={ownerOnly}
+                      onAnswer={(text, username) => onAnswer(message, text, username)}
+                    />
+                  }
+                />
+              </div>
+            );
+          }
+          if (block.mailBatch && block.approvalEffectId && message.botId) {
+            return (
+              <div key={i} className={gap}>
+                <MailReplyBatchCard
+                  block={block}
+                  botId={message.botId}
+                  message={message}
+                  canAnswer={canAnswer}
+                  onAnswer={(text) => onAnswer(message, text)}
+                  onOpenComposer={botToolControls?.openComposer}
+                  fallback={
+                    <AskCard
+                      block={block}
+                      requestedAt={message.createdAt}
+                      canAnswer={canAnswer}
+                      ownerOnly={ownerOnly}
+                      onAnswer={(text, username) => onAnswer(message, text, username)}
+                    />
+                  }
+                />
+              </div>
+            );
+          }
           if (block.mail && isApprovalAskBlock(block)) {
             return (
               <div key={i} className={gap}>
                 <MailApprovalCard
                   mail={block.mail}
-                  accounts={mailAccounts.accounts}
-                  accountsStatus={mailAccounts.status}
-                  onRetryAccounts={mailAccounts.retry}
+                  reason={block.approvalReason}
                   status={block.status === "answered" ? "answered" : "pending"}
                   answer={block.answer}
                   canAnswer={canAnswer}
                   botName={botToolControls?.editableBotName(message.botId)}
+                  canSend={botToolControls?.canSend(message.botId) ?? false}
+                  onSendDraft={
+                    botToolControls ? () => botToolControls.sendDraft(message) : undefined
+                  }
                   onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
                   onOpenComposer={
                     botToolControls
@@ -1915,8 +2123,9 @@ const MessageView = memo(function MessageView({
               <AskCard
                 block={block}
                 requestedAt={message.createdAt}
-                // A held message is answered without a waiting run, so it stays answerable.
-                canAnswer={canAnswer || block.share === true}
+                // A held message or a page source request is answered without a waiting run, so it stays answerable.
+                canAnswer={canAnswer || block.share === true || Boolean(block.pageSource)}
+                ownerOnly={ownerOnly}
                 onAnswer={(text, username) => onAnswer(message, text, username)}
               />
             </div>

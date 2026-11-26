@@ -20,7 +20,7 @@ const meta = {
   decorators: [withPageBehind()],
   args: {
     contact,
-    linked: { portal: true, documents: ["Deck.pdf", "Terms.pdf"] },
+    linked: { portal: true, documents: ["Deck.pdf", "Terms.pdf"], safes: 0 },
     onCancel: () => {},
     onConfirm: () => {},
   },
@@ -29,6 +29,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PortalAndDocuments: Story = {};
-export const PortalOnly: Story = { args: { linked: { portal: true, documents: [] } } };
-export const OneDocument: Story = { args: { linked: { portal: false, documents: ["Deck.pdf"] } } };
+export const PortalOnly: Story = { args: { linked: { portal: true, documents: [], safes: 0 } } };
+export const OneDocument: Story = {
+  args: { linked: { portal: false, documents: ["Deck.pdf"], safes: 0 } },
+};
 export const Deleting: Story = { args: { busy: true } };
+export const OneSafe: Story = { args: { linked: { portal: false, documents: [], safes: 1 } } };

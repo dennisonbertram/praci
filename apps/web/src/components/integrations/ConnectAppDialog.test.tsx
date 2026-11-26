@@ -69,6 +69,7 @@ const data = (connections: Connection[] = []): IntegrationsData => ({
   setup: null,
   feedEnabled: false,
   catalogFailed: false,
+  meetingsFailed: false,
   refresh: vi.fn().mockResolvedValue(undefined),
 });
 
@@ -205,6 +206,20 @@ it("still asks which bots get a connection that has no agent", async () => {
   expect(text()).toContain("Which bots can use Slack?");
 });
 
+it("saves least access when the bot step is skipped, so no other bot gets the connection", async () => {
+  api.setAccess.mockResolvedValue({});
+  await connect(pendingRow("connected"));
+  await act(async () => {
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Skip")?.click();
+  });
+  expect(api.setAccess).toHaveBeenCalledWith({
+    connectionId: "conn-1",
+    allAgents: false,
+    botIds: [],
+  });
+  expect(text()).toContain("Slack connected");
+});
+
 it("does not promise a bot choice before sign-in", async () => {
   vi.spyOn(window, "open").mockReturnValue(null);
   await mount([], true);
@@ -217,4 +232,60 @@ it("shows only the title once connected, without repeating the result", async ()
   expect(text()).toContain("Slack connected");
   expect(text()).not.toContain("is ready");
   expect(text()).not.toContain("now appears under Connected");
+});
+
+it("names a second Gmail account plainly, since its address tells it apart, but numbers other apps", async () => {
+  vi.spyOn(window, "open").mockReturnValue({ closed: false, close: vi.fn() } as unknown as Window);
+  const gmail = { ...item, connectorId: "google", slug: "gmail", name: "Gmail" };
+  const connected = pendingRow("connected", {
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "Gmail",
+  });
+  await mount([connected], false, { item: gmail });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(api.begin.mock.calls[0]?.[0]).toMatchObject({ displayName: "Gmail" });
+  api.begin.mockClear();
+  document.body.innerHTML = "";
+  await mount([pendingRow("connected")]);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(api.begin.mock.calls[0]?.[0]).toMatchObject({ displayName: "Slack 2" });
+});
+
+async function closeWhilePending(completeAtClose: Connection, onConnected?: () => void) {
+  vi.spyOn(window, "open").mockReturnValue(null);
+  const d = data();
+  await mount([], false, { data: d, onConnected });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  api.complete.mockResolvedValue(completeAtClose);
+  await act(async () => {
+    const closeButton = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "Close" || b.getAttribute("aria-label") === "Close",
+    );
+    closeButton?.click();
+  });
+  return d;
+}
+
+it("keeps an account that finished sign-in just before Close, instead of revoking it", async () => {
+  const onConnected = vi.fn();
+  const d = await closeWhilePending(pendingRow("connected"), onConnected);
+  expect(onConnected).toHaveBeenCalledTimes(1);
+  expect(api.complete).toHaveBeenLastCalledWith({ connectionId: "conn-1" });
+  expect(api.revoke).not.toHaveBeenCalled();
+  expect(d.refresh).toHaveBeenCalled();
+});
+
+it("revokes the pending row on Close when sign-in has not finished", async () => {
+  const onConnected = vi.fn();
+  const d = await closeWhilePending(pendingRow("pending"), onConnected);
+  expect(onConnected).not.toHaveBeenCalled();
+  expect(api.revoke).toHaveBeenCalledWith({ connectionId: "conn-1" });
+  expect(d.refresh).toHaveBeenCalled();
 });

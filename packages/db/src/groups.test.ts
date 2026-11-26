@@ -14,8 +14,8 @@ describe("listSpaceGroupsForSpaces", () => {
         sectionId: null,
         updatedAt: new Date("2026-08-20T00:00:00.000Z"),
         thread: {
+          id: "thread-1",
           unread: true,
-          messages: [{ blocks: [{ kind: "text", text: "Escalation pending" }] }],
         },
         members: [
           { bot: { id: "bot-1", name: "Triage", color: "#111", runs: [] } },
@@ -30,7 +30,24 @@ describe("listSpaceGroupsForSpaces", () => {
         ],
       },
     ]);
-    const repos = createGroupRepos({ chatGroup: { findMany } } as unknown as PrismaClient);
+    const repos = createGroupRepos({
+      chatGroup: { findMany },
+      $queryRaw: vi.fn(async () => [
+        {
+          id: "message-1",
+          threadId: "thread-1",
+          seq: 1,
+          role: "user",
+          blocks: [{ kind: "text", text: "Escalation pending" }],
+          botId: null,
+          replyToMessageId: null,
+          replyQuote: null,
+          runId: null,
+          clientNonce: null,
+          createdAt: new Date("2026-08-20T00:00:00.000Z"),
+        },
+      ]),
+    } as unknown as PrismaClient);
     const actor = {
       spaceId: "workspace-1",
       userId: "user-1",
@@ -138,7 +155,9 @@ describe("archiveGroup", () => {
     findManyComputers = vi.fn(async ({ where }: { where: ComputerWhere }) =>
       computerRows.filter((row) => matches(row, where)),
     );
-    runUpdateMany = vi.fn();
+    runUpdateMany = vi.fn(async ({ where }: { where: { id: { in: string[] } } }) =>
+      where.id.in.map((id) => ({ id })),
+    );
     attemptUpdateMany = vi.fn();
     taskUpdateMany = vi.fn();
     // computer-1 is a Team computer: bot-2's lease there belongs to a run outside this group.
@@ -203,9 +222,13 @@ describe("archiveGroup", () => {
     eventDeleteMany = vi.fn();
     groupUpdate = vi.fn();
     const tx = {
+      externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: queryRaw,
       chatGroup: { findFirst, update: groupUpdate },
-      run: { findMany: findManyRuns, updateMany: runUpdateMany },
+      run: { findMany: findManyRuns, updateManyAndReturn: runUpdateMany },
+      secret: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       attempt: { updateMany: attemptUpdateMany },
       task: { updateMany: taskUpdateMany },
       computerExecutionLease: { findMany: leaseFindMany, updateMany: leaseUpdateMany },
@@ -449,6 +472,7 @@ describe("createGroup", () => {
       },
       chatGroupMember: { createMany },
       thread: { create: vi.fn() },
+      message: { findMany: vi.fn(async () => []) },
     };
     // The bots come back in a different order than the caller asked for, so the recorded
     // order has to come from the input, not from the lookup.
@@ -486,5 +510,175 @@ describe("createGroup", () => {
       }),
     );
     expect(group.members.map((member) => member.botId)).toEqual(["lead", "build"]);
+  });
+});
+
+describe("group teardown on removal", () => {
+  const actor = {
+    spaceId: "workspace-1",
+    userId: "user-1",
+    email: "user@example.com",
+    isDeploymentOwner: true,
+  };
+
+  function harness(groupRow: Record<string, unknown>) {
+    const calls: string[] = [];
+    const secretDeleteMany = vi.fn(async () => {
+      calls.push("delete secrets");
+      return { count: 1 };
+    });
+    const eventDeleteMany = vi.fn(async () => ({ count: 0 }));
+    const groupDelete = vi.fn(async () => {
+      calls.push("delete group");
+    });
+    const runFindMany = vi.fn(async (args: { select: Record<string, boolean> }) =>
+      args.select.userId
+        ? [{ id: "run-1", userId: "user-1", spaceId: "workspace-1" }]
+        : [{ id: "run-1", taskId: "task-1" }],
+    );
+    const tx = {
+      externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "group-1" }]),
+      thread: { findUnique: vi.fn().mockResolvedValue({ id: "thread-1" }) },
+      chatGroup: {
+        findUnique: vi.fn().mockResolvedValue(groupRow),
+        findFirst: vi.fn().mockResolvedValue(groupRow),
+        findFirstOrThrow: vi.fn().mockResolvedValue({
+          id: "group-1",
+          spaceId: "workspace-1",
+          name: "Group",
+          pinned: false,
+          sectionId: null,
+          position: 0,
+          archivedAt: null,
+          members: [],
+          thread: { id: "thread-1", unread: false, messages: [] },
+          updatedAt: new Date(0),
+          createdAt: new Date(0),
+        }),
+        update: vi.fn(),
+        delete: groupDelete,
+      },
+      chatGroupMember: { deleteMany: vi.fn(), createMany: vi.fn() },
+      message: { findMany: vi.fn().mockResolvedValue([]) },
+      run: {
+        findMany: runFindMany,
+        updateManyAndReturn: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) => {
+          calls.push("cancel runs");
+          return where.id.in.map((id) => ({ id }));
+        }),
+      },
+      attempt: { updateMany: vi.fn() },
+      task: { updateMany: vi.fn() },
+      secret: { deleteMany: secretDeleteMany },
+      computerExecutionLease: {
+        findMany: vi.fn(async () => {
+          calls.push("snapshot");
+          return [{ computerId: "computer-1", botId: "bot-1", runId: "run-1", fence: 3 }];
+        }),
+      },
+      computer: {
+        findMany: vi.fn(async () => [
+          {
+            id: "computer-1",
+            homeKey: "home-1",
+            kind: "docker",
+            providerRef: "ref-1",
+            executionBotId: null,
+            executionRunId: null,
+          },
+        ]),
+      },
+      event: { deleteMany: eventDeleteMany },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      bot: { findMany: vi.fn().mockResolvedValue([{ id: "bot-2" }, { id: "bot-3" }]) },
+    } as unknown as PrismaClient;
+    return { prisma, calls, secretDeleteMany, eventDeleteMany };
+  }
+
+  const computer = {
+    id: "computer-1",
+    homeKey: "home-1",
+    kind: "docker",
+    providerRef: "ref-1",
+    botId: "bot-1",
+    runId: "run-1",
+    fence: 3,
+  };
+
+  it("removeGroup cancels active runs and returns their computers before deleting the group", async () => {
+    const { prisma, calls, secretDeleteMany } = harness({
+      archivedAt: null,
+      thread: { id: "thread-1" },
+      artifacts: [{ storageKey: "key-1" }],
+      members: [{ botId: "bot-1" }],
+    });
+
+    await expect(createGroupRepos(prisma).removeGroup(actor, "group-1")).resolves.toEqual({
+      contextBotId: "bot-1",
+      artifactStorageKeys: ["key-1"],
+      cancelledRunIds: ["run-1"],
+      computers: [computer],
+    });
+    expect(calls).toEqual(["snapshot", "cancel runs", "delete secrets", "delete group"]);
+    expect(secretDeleteMany).toHaveBeenCalledWith({
+      where: {
+        OR: [{ userId: "user-1", spaceId: "workspace-1", kind: "run-secret:run-1" }],
+      },
+    });
+  });
+
+  it("removeGroup locks the group without blocking key checks, then the thread, then the group exclusively", async () => {
+    const sql: string[] = [];
+    const { prisma } = harness({
+      archivedAt: null,
+      thread: { id: "thread-1" },
+      artifacts: [],
+      members: [{ botId: "bot-1" }],
+    });
+    const tx = await new Promise<{ $queryRaw: ReturnType<typeof vi.fn> }>((resolve) => {
+      const original = prisma.$transaction as unknown as (cb: (t: never) => unknown) => unknown;
+      (prisma as { $transaction: unknown }).$transaction = (cb: (t: never) => unknown) =>
+        original((t: never) => {
+          resolve(t as never);
+          return cb(t);
+        });
+      void createGroupRepos(prisma).removeGroup(actor, "group-1");
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    for (const call of tx.$queryRaw.mock.calls) sql.push((call[0] as string[]).join("?"));
+    expect(sql.map((text) => text.match(/FROM (\w+)[\s\S]*FOR ([A-Z ]+)/)?.slice(1, 3))).toEqual([
+      ["chat_groups", "NO KEY UPDATE"],
+      ["threads", "UPDATE"],
+      ["chat_groups", "UPDATE"],
+    ]);
+  });
+
+  it("updateGroup returns the computers of a removed member's cancelled runs", async () => {
+    const { prisma, calls, eventDeleteMany } = harness({
+      archivedAt: null,
+      thread: { id: "thread-1" },
+      members: [
+        { botId: "bot-1", bot: { archivedAt: null } },
+        { botId: "bot-2", bot: { archivedAt: null } },
+        { botId: "bot-3", bot: { archivedAt: null } },
+      ],
+    });
+
+    const updated = await createGroupRepos(prisma).updateGroup(actor, {
+      groupId: "group-1",
+      botIds: ["bot-2", "bot-3"],
+    });
+
+    expect(updated.cancelledRunIds).toEqual(["run-1"]);
+    expect(updated.computers).toEqual([computer]);
+    expect(calls.slice(0, 2)).toEqual(["snapshot", "cancel runs"]);
+    expect(eventDeleteMany).toHaveBeenCalledWith({
+      where: { type: "thread.progress", runId: { in: ["run-1"] } },
+    });
   });
 });

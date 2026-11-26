@@ -123,6 +123,14 @@ it("labels card payoffs and own-account transfers as not spend instead of Uncate
   expect(el.textContent).not.toContain("Uncategorized");
 });
 
+it("masks a currency amount in a counterparty while amounts are hidden", async () => {
+  const rows = [{ ...txn("1", -9_876), counterparty: "Transfer €987.65" }];
+  const el = await render(<TransactionTable rows={rows} />);
+  expect(el.textContent).toContain("Transfer €987.65");
+  await act(async () => setHideAmounts(true));
+  expect(el.textContent).not.toContain("987");
+});
+
 it("masks a dollar amount in a memo while amounts are hidden", async () => {
   const rows = [{ ...txn("1", -420_000), memo: "Invoice 4417 — $4,200 deposit" }];
   const el = await render(<TransactionTable rows={rows} />);
@@ -140,4 +148,27 @@ it("offers List / By vendor only when the rows have more than one vendor", async
     />,
   );
   expect(two.textContent).toContain("By vendor");
+});
+
+it("shows Pending under the amount of a pending row only, where the Status column is hidden", async () => {
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  const rows = [
+    { ...txn("1", -61_200), status: "pending" },
+    txn("2", -5_000),
+  ] as FinanceTransaction[];
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <TransactionTable rows={rows} />
+      </MemoryRouter>,
+    ),
+  );
+  const marks = [...el.querySelectorAll("tbody tr")].map(
+    (tr) => tr.querySelector(".\\@2xl\\:hidden")?.textContent ?? null,
+  );
+  expect(marks).toEqual(["Pending", null]);
+  act(() => root.unmount());
+  el.remove();
 });

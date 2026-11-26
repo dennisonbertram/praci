@@ -31,7 +31,11 @@ describePostgres("remember a message (PostgreSQL)", () => {
   let otherUsersMessage: string;
   const clientFor = (actor: Actor) =>
     createRouterClient(
-      createRouter({ prisma, memory: new MarkdownMemoryStore(prisma) } as unknown as RouterDeps),
+      createRouter({
+        prisma,
+        memory: new MarkdownMemoryStore(prisma),
+        env: { mailWritesDisabled: false },
+      } as unknown as RouterDeps),
       { context: { actor } },
     );
 
@@ -108,9 +112,38 @@ describePostgres("remember a message (PostgreSQL)", () => {
       path: `remembered/${botMessage}.md`,
       content: "Prefers morning meetings",
       revision: 1,
+      // Remember is the owner's own choice, so the memory never fades.
+      pinned: true,
     });
     expect(docs[0]!.revisions[0]!.sourceThreadId).toBeTruthy();
     expect(await client.threads.remembered({ botId: botA })).toEqual({ messageIds: [botMessage] });
+  });
+
+  it("lists and exports memories newest first whatever order they were saved in", async () => {
+    const client = clientFor(alice);
+    const seededAt = Date.now();
+    for (const [path, ageMs] of [
+      ["a.md", 60_000],
+      ["b.md", 30_000],
+    ] as const) {
+      await prisma.memoryDocument.create({
+        data: {
+          spaceId,
+          userId: alice.userId,
+          scope: "user",
+          path,
+          content: `content of ${path}`,
+          createdAt: new Date(seededAt - ageMs),
+          updatedAt: new Date(seededAt - ageMs),
+        },
+      });
+    }
+    const listedPaths = async () =>
+      (await client.memory.list({ scope: "user" })).map((doc) => doc.path);
+    expect(await listedPaths()).toEqual(["b.md", "a.md"]);
+    const a = (await client.memory.list({ scope: "user" })).find((doc) => doc.path === "a.md")!;
+    await client.memory.update({ documentId: a.id, content: "changed a" });
+    expect(await listedPaths()).toEqual(["a.md", "b.md"]);
   });
 
   it("refuses user messages, another user's bot and another thread's message", async () => {
@@ -124,5 +157,56 @@ describePostgres("remember a message (PostgreSQL)", () => {
       clientFor(alice).threads.remember({ botId: botA, messageId: otherUsersMessage }),
     ).rejects.toBeDefined();
     expect(await prisma.memoryDocument.count({ where: { botId: botB } })).toBe(0);
+  });
+
+  it("deletes one memory with its revisions, only for its owner and only at the revision seen", async () => {
+    const client = clientFor(alice);
+    const doc = await prisma.memoryDocument.findFirstOrThrow({
+      where: { spaceId, userId: alice.userId, botId: botA, path: `remembered/${botMessage}.md` },
+    });
+    await expect(
+      clientFor(bob).memory.remove({ documentId: doc.id, revision: doc.revision }),
+    ).rejects.toBeDefined();
+    expect(await prisma.memoryDocument.count({ where: { id: doc.id } })).toBe(1);
+    await expect(
+      client.memory.remove({ documentId: doc.id, revision: doc.revision + 1 }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await prisma.memoryDocument.count({ where: { id: doc.id } })).toBe(1);
+    expect(await client.memory.remove({ documentId: doc.id, revision: doc.revision })).toEqual({
+      ok: true,
+    });
+    expect(await prisma.memoryDocument.count({ where: { id: doc.id } })).toBe(0);
+    expect(await prisma.memoryRevision.count({ where: { documentId: doc.id } })).toBe(0);
+    expect(await client.threads.remembered({ botId: botA })).toEqual({ messageIds: [] });
+    await expect(
+      client.memory.remove({ documentId: doc.id, revision: doc.revision }),
+    ).rejects.toBeDefined();
+  });
+
+  it("refuses an update made from a stale copy when the revision is sent", async () => {
+    const client = clientFor(alice);
+    await client.threads.remember({ botId: botA, messageId: botMessage });
+    const doc = await prisma.memoryDocument.findFirstOrThrow({
+      where: { spaceId, userId: alice.userId, botId: botA },
+    });
+    const first = await client.memory.update({
+      documentId: doc.id,
+      content: "fresh",
+      expectedRevision: doc.revision,
+    });
+    await expect(
+      client.memory.update({
+        documentId: doc.id,
+        content: "stale",
+        expectedRevision: doc.revision,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect((await prisma.memoryDocument.findUniqueOrThrow({ where: { id: doc.id } })).content).toBe(
+      "fresh",
+    );
+    // Without a revision the update still goes through.
+    expect((await client.memory.update({ documentId: doc.id, content: "plain" })).revision).toBe(
+      first.revision + 1,
+    );
   });
 });

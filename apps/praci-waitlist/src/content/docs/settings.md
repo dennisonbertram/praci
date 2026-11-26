@@ -10,10 +10,30 @@ Open **Settings** from your name at the bottom of the sidebar. The same menu has
 ## General
 
 - **Account and password.**
-- **AI data sharing.** A switch for each AI service that lets it read your mail and documents so Praci can sort your Inbox and read the [Data room](/docs/data-room). Without the switch, bots still answer through the service you chose in Models, but that service does not read your mail and documents in the background.
 - **Appearance and language.** Sidebar density, language, time zone and bot avatar style.
 - **Advanced.** Stream replies, show tool activity, and load web images automatically.
-- **Action confirmations.** The rules that decide when bots ask first. See [Bots and agents](/docs/bots-and-agents#approvals).
+
+## Privacy and approvals
+
+**Approvals** is a table with one row for each kind of action a bot can take. Set each row to **Allow**, **Ask** or **Block**. Five rows show at first: **Send email**, **Spend money**, **Connected apps (write)**, **Calendar changes** and **Edit files and run commands**. Choose **More actions** for **Use the computer**, **Delete data**, **Message people outside Praci** and **Use saved credentials**.
+
+![The Approvals table in Settings, Privacy and approvals](/docs/approvals-table.webp)
+
+*Demo data.*
+
+![The Approvals table with More actions open](/docs/approvals-more-actions.webp)
+
+*Demo data.*
+
+- **Allow** runs the action without asking in a chat you are in.
+- **Ask** shows an approval card every time.
+- **Block** refuses the action and tells the bot not to try again.
+
+A background run, such as a routine, asks before it does any of these, even if the row says **Allow**. A row set to **Block** still blocks. Under the table, rules you saved from an approval card, such as **Always allow this tool**, are listed with **Allow**, **Ask**, **Block** and **Remove**.
+
+To change the rules for one bot, open its settings and use **Approvals**. Each row starts at **Same as all bots**. See [Bots and agents](/docs/bots-and-agents#approvals).
+
+**AI data sharing** is on the same page. It has a switch for each AI service that lets it read your mail and documents so Praci can sort your Inbox and read the [Data room](/docs/data-room). Without the switch, bots still answer through the service you chose in Models, but that service does not read your mail and documents in the background.
 
 ## Models
 

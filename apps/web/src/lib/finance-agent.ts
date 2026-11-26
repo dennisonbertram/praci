@@ -1,15 +1,11 @@
 import { t } from "@lingui/core/macro";
-import { financeAgentSpawnKey } from "@rakazo/contracts";
+import { findPageAgent } from "@rakazo/contracts";
 
 /** The signed-in user's own Finance agent; another member's agent in the same space does not match. */
-export function findFinanceAgent<T extends { spawnKey: string | null }>(
+export const findFinanceAgent = <T extends { spawnKey: string | null }>(
   bots: readonly T[],
   userId: string | null | undefined,
-): T | undefined {
-  if (!userId) return undefined;
-  const key = financeAgentSpawnKey(userId);
-  return bots.find((bot) => bot.spawnKey === key);
-}
+): T | undefined => findPageAgent(bots, "finance", userId);
 
 /** The starter questions the Finance agent offers on an empty thread, in its panel or its own chat. */
 export const financeAgentSuggestions = () => [

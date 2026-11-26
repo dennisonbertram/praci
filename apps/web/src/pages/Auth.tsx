@@ -7,6 +7,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
+import { passkeyCancelled, passkeysAvailable } from "../lib/passkey-support";
 import { clearSpaceSelection } from "../lib/rpc";
 import { signInNext } from "../lib/sign-in-next";
 import { runSsoFlow } from "../lib/sso-flow";
@@ -20,6 +21,98 @@ export const submitClass = "mt-3 h-12 w-full rounded-xl text-base";
 // The submit button is disabled while a request runs, which drops focus; an error puts it back on the email field.
 const focusEmail = () => document.getElementById("email")?.focus();
 
+const linkClass =
+  "inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+function AuthLink({
+  to,
+  children,
+  onClick,
+}: {
+  to: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <Link to={to} className={linkClass} onClick={onClick}>
+      {children}
+    </Link>
+  );
+}
+
+// The check-your-email screen names who was written to without putting the address in the URL.
+const verifyEmailKey = "rakazo.auth.verify-email";
+
+function readVerifyEmail() {
+  try {
+    return sessionStorage.getItem(verifyEmailKey);
+  } catch {
+    return null;
+  }
+}
+
+function clearVerifyEmail() {
+  try {
+    sessionStorage.removeItem(verifyEmailKey);
+  } catch {
+    // Private modes can refuse storage; the screen still works without it.
+  }
+}
+
+function SentNotice({
+  variant,
+  email,
+  error,
+  pending,
+  signInTo,
+  signUpTo,
+  onLeave,
+}: {
+  variant: "reset" | "verify";
+  email: string;
+  error?: string | null;
+  pending?: boolean;
+  signInTo: string;
+  signUpTo: string;
+  onLeave?: () => void;
+}) {
+  const { t } = useLingui();
+  return (
+    <div className="flex w-full flex-col items-center gap-4 text-center">
+      {variant === "reset" ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            <Trans>
+              If {email.trim()} has an account, a reset link is on its way. It can take a minute;
+              check your spam folder if it does not arrive.
+            </Trans>
+          </p>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <Button type="submit" variant="outline" disabled={pending}>
+            <Trans>Send again</Trans>
+          </Button>
+        </>
+      ) : email.trim() ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            {t`A verification link is on its way to ${email.trim()}.`}
+          </p>
+          <AuthLink to={signUpTo} onClick={onLeave}>
+            <Trans>Use a different email</Trans>
+          </AuthLink>
+        </>
+      ) : null}
+      <AuthLink to={signInTo} onClick={onLeave}>
+        <Trans>Back to sign in</Trans>
+      </AuthLink>
+    </div>
+  );
+}
+
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -27,7 +120,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     const code = searchParams.get("error");
     if (!code) return null;
@@ -40,11 +132,21 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState(() =>
+    searchParams.get("verify") === "email" ? readVerifyEmail() : null,
+  );
+  // The address is read once: a later visit in this tab, after a sign-in or sign-out, never shows it.
+  useEffect(clearVerifyEmail, []);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
   const [reset, setReset] = useState<AuthCapabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const [capabilityAttempt, setCapabilityAttempt] = useState(0);
+  const next = signInNext(searchParams.get("next"));
+  // Keep a validated `next` on the links between auth pages; never copy `error` or `verify`.
+  const withNext = (path: string) =>
+    next === "/app" ? path : `${path}?next=${encodeURIComponent(next)}`;
+  const forgotOff = mode === "forgot" && reset !== null && !reset.passwordReset;
   const passwordFieldId = mode === "in" ? "current-password" : "new-password";
   const title = sent ? (
     <Trans>Check your email</Trans>
@@ -117,7 +219,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           ? await authClient.signUp.email({
               email: trimmedEmail,
               password,
-              name: name || trimmedEmail.split("@")[0] || "User",
+              name: name.trim() || trimmedEmail.split("@")[0] || "User",
             })
           : await authClient.signIn.email({ email: trimmedEmail, password });
       if (result.error) {
@@ -126,9 +228,17 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         return;
       }
       if (mode === "up" && signupRequiresEmailVerification(result.data)) {
-        setSearchParams({ verify: "email" });
+        try {
+          sessionStorage.setItem(verifyEmailKey, trimmedEmail);
+        } catch {
+          // Without storage the screen falls back to the plain confirmation.
+        }
+        setVerifyEmail(trimmedEmail);
+        setSearchParams(next === "/app" ? { verify: "email" } : { verify: "email", next });
         return;
       }
+      // An outside app sent the member here: Better Auth already named the next page.
+      if ((result.data as { redirect?: boolean } | null)?.redirect) return;
       clearSpaceSelection();
       navigate(mode === "up" ? "/onboarding" : signInNext(searchParams.get("next")));
     } catch {
@@ -138,6 +248,39 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       setPending(false);
     }
   }
+
+  const showPasskey =
+    mode === "in" && Boolean(reset?.passwordAuth) && passkeysAvailable(reset?.passkey);
+
+  async function signInWithPasskey(autoFill: boolean) {
+    setError(null);
+    try {
+      const result = await authClient.signIn.passkey({ autoFill });
+      if (result.error) {
+        if (!passkeyCancelled(result.error)) {
+          setError(authErrorText(result.error, t`Could not continue`));
+        }
+        return;
+      }
+      clearSpaceSelection();
+      navigate(signInNext(searchParams.get("next")));
+    } catch {
+      setError(t`Could not reach the server`);
+    }
+  }
+
+  // Browser autofill offers the saved passkeys from the email field; it needs no click.
+  useEffect(() => {
+    if (!showPasskey) return;
+    let active = true;
+    void window.PublicKeyCredential?.isConditionalMediationAvailable?.().then((available) => {
+      if (available && active) void signInWithPasskey(true);
+    });
+    return () => {
+      active = false;
+    };
+    // biome-ignore lint/correctness/useExhaustiveDependencies: start the autofill call once per page
+  }, [showPasskey]);
 
   async function signInWithSso() {
     setError(null);
@@ -168,32 +311,15 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   return (
     <AuthFrame noValidate onSubmit={submit} title={title}>
       {sent ? (
-        <div className="flex w-full flex-col items-center gap-4 text-center">
-          {resetSent ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                <Trans>
-                  If {email.trim()} has an account, a reset link is on its way. It can take a
-                  minute; check your spam folder if it does not arrive.
-                </Trans>
-              </p>
-              {error ? (
-                <p role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ) : null}
-              <Button type="submit" variant="outline" disabled={pending}>
-                <Trans>Send again</Trans>
-              </Button>
-            </>
-          ) : null}
-          <Link
-            to="/sign-in"
-            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Trans>Back to sign in</Trans>
-          </Link>
-        </div>
+        <SentNotice
+          variant={resetSent ? "reset" : "verify"}
+          email={resetSent ? email : (verifyEmail ?? "")}
+          error={error}
+          pending={pending}
+          signInTo={withNext("/sign-in")}
+          signUpTo={withNext("/sign-up")}
+          onLeave={() => setVerifyEmail(null)}
+        />
       ) : (
         <>
           {capabilityError ? (
@@ -229,7 +355,17 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               {error}
             </p>
           ) : null}
-          {reset?.passwordAuth ? (
+          {forgotOff ? (
+            <div className="flex w-full flex-col items-center gap-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                <Trans>Password recovery is not configured for this server</Trans>
+              </p>
+              <AuthLink to={withNext("/sign-in")}>
+                <Trans>Back to sign in</Trans>
+              </AuthLink>
+            </div>
+          ) : null}
+          {reset?.passwordAuth && !forgotOff ? (
             <>
               {mode === "up" ? (
                 <div className="w-full">
@@ -240,6 +376,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     id="name"
                     name="name"
                     autoComplete="name"
+                    autoFocus
                     // Chief greets the founder by this name; without it the email handle stood in.
                     required
                     value={name}
@@ -268,7 +405,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 <Input
                   id="email"
                   name="email"
-                  autoComplete="username"
+                  autoComplete={showPasskey ? "username webauthn" : "username"}
+                  // Sign-up starts at the name; every other mode starts at the address.
+                  autoFocus={mode !== "up"}
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -294,41 +433,21 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   <Label htmlFor={passwordFieldId} className="text-muted-foreground">
                     <Trans>Password</Trans>
                   </Label>
-                  <div className="relative mt-2">
-                    <Input
-                      id={passwordFieldId}
-                      name="password"
-                      autoComplete={mode === "in" ? "current-password" : "new-password"}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setTooShort(false);
-                        setPasswordError(null);
-                      }}
-                      type={showPassword ? "text" : "password"}
-                      required
-                      aria-invalid={error || tooShort || passwordError ? true : undefined}
-                      aria-describedby={
-                        mode === "up"
-                          ? "password-hint"
-                          : passwordError
-                            ? "password-error"
-                            : undefined
-                      }
-                      className={`${fieldClass} mt-0 pr-12`}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowPassword((shown) => !shown)}
-                      aria-label={showPassword ? t`Hide password` : t`Show password`}
-                      aria-pressed={showPassword}
-                      className="absolute inset-y-0 right-0.5 my-auto size-11 text-muted-foreground"
-                    >
-                      {showPassword ? <EyeOff /> : <Eye />}
-                    </Button>
-                  </div>
+                  <PasswordInput
+                    id={passwordFieldId}
+                    name="password"
+                    autoComplete={mode === "in" ? "current-password" : "new-password"}
+                    value={password}
+                    onChange={(value) => {
+                      setPassword(value);
+                      setTooShort(false);
+                      setPasswordError(null);
+                    }}
+                    invalid={Boolean(error || tooShort || passwordError)}
+                    describedBy={
+                      mode === "up" ? "password-hint" : passwordError ? "password-error" : undefined
+                    }
+                  />
                   {mode === "up" ? (
                     <p
                       id="password-hint"
@@ -350,7 +469,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   {mode === "in" && reset?.passwordReset ? (
                     <div className="text-right text-sm">
                       <Link
-                        to="/forgot-password"
+                        to={withNext("/forgot-password")}
                         className="inline-block py-2 font-medium text-foreground pointer-coarse:py-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <Trans>Forgot password?</Trans>
@@ -377,6 +496,18 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   <Trans>Create account</Trans>
                 )}
               </Button>
+              {showPasskey ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={pending}
+                  className={submitClass}
+                  onClick={() => void signInWithPasskey(false)}
+                >
+                  <Trans>Sign in with passkey</Trans>
+                </Button>
+              ) : null}
               {reset.sso && mode !== "forgot" ? (
                 <Button
                   type="button"
@@ -393,30 +524,21 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 {mode === "in" ? (
                   <>
                     <Trans>Don’t have an account?</Trans>{" "}
-                    <Link
-                      to="/sign-up"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
+                    <AuthLink to={withNext("/sign-up")}>
                       <Trans>Sign up</Trans>
-                    </Link>
+                    </AuthLink>
                   </>
                 ) : mode === "up" ? (
                   <>
                     <Trans>Already have an account?</Trans>{" "}
-                    <Link
-                      to="/sign-in"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
+                    <AuthLink to={withNext("/sign-in")}>
                       <Trans>Sign in</Trans>
-                    </Link>
+                    </AuthLink>
                   </>
                 ) : (
-                  <Link
-                    to="/sign-in"
-                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
+                  <AuthLink to={withNext("/sign-in")}>
                     <Trans>Back to sign in</Trans>
-                  </Link>
+                  </AuthLink>
                 )}
               </p>
             </>
@@ -436,15 +558,19 @@ export function PasswordResetPage() {
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenRejected, setTokenRejected] = useState(false);
+  const [tooShort, setTooShort] = useState(false);
+  const [mismatch, setMismatch] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const token = params.get("token");
     if (!token) return;
-    if (password !== confirmation) {
-      setError(t`Passwords do not match`);
-      return;
-    }
+    // Each rule sits under its own field; the alert below is left for the server.
+    const short = password.length < 8;
+    const unequal = password !== confirmation;
+    setTooShort(short);
+    setMismatch(unequal);
+    if (short || unequal) return;
     setPending(true);
     setError(null);
     try {
@@ -466,18 +592,17 @@ export function PasswordResetPage() {
   const linkInvalid = tokenRejected || Boolean(params.get("error")) || !params.get("token");
   return (
     <AuthFrame
+      noValidate
       onSubmit={submit}
       title={linkInvalid ? <Trans>Reset link expired</Trans> : <Trans>Choose a new password</Trans>}
     >
       {linkInvalid ? (
-        <>
-          <Link
-            to="/forgot-password"
-            className="font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Trans>Request a new link</Trans>
-          </Link>
-        </>
+        <Link
+          to="/forgot-password"
+          className="font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <Trans>Request a new link</Trans>
+        </Link>
       ) : complete ? (
         <div role="status" className="w-full text-center">
           <p className="text-lg">
@@ -492,19 +617,56 @@ export function PasswordResetPage() {
         </div>
       ) : (
         <>
-          <PasswordField
-            id="new-password"
-            label={t`New password`}
-            value={password}
-            onChange={setPassword}
-          />
-          <PasswordField
-            id="confirm-password"
-            label={t`Confirm password`}
-            value={confirmation}
-            onChange={setConfirmation}
-            className="mt-4"
-          />
+          <div className="w-full">
+            <Label htmlFor="new-password" className="text-muted-foreground">
+              <Trans>New password</Trans>
+            </Label>
+            <PasswordInput
+              id="new-password"
+              name="new-password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(value) => {
+                setPassword(value);
+                setTooShort(false);
+              }}
+              autoFocus
+              invalid={tooShort}
+              describedBy="new-password-hint"
+            />
+            <p
+              id="new-password-hint"
+              role={tooShort ? "alert" : undefined}
+              className={`mt-1.5 text-sm ${tooShort ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              <Trans>At least 8 characters.</Trans>
+            </p>
+          </div>
+          <div className="mt-4 w-full">
+            <Label htmlFor="confirm-password" className="text-muted-foreground">
+              <Trans>Confirm password</Trans>
+            </Label>
+            <PasswordInput
+              id="confirm-password"
+              name="confirm-password"
+              autoComplete="new-password"
+              value={confirmation}
+              onChange={(value) => {
+                setConfirmation(value);
+                setMismatch(false);
+              }}
+              invalid={mismatch}
+              describedBy="confirm-password-error"
+            />
+            {/* Always present, so an error moves nothing below it. */}
+            <p
+              id="confirm-password-error"
+              role="alert"
+              className="mt-1 min-h-5 text-sm text-destructive"
+            >
+              {mismatch ? t`Passwords do not match` : ""}
+            </p>
+          </div>
           {error ? (
             <p role="alert" className="mt-3 w-full text-sm text-destructive">
               {error}
@@ -559,35 +721,53 @@ export function AuthFrame({
   );
 }
 
-function PasswordField({
+function PasswordInput({
   id,
-  label,
+  name,
+  autoComplete,
   value,
   onChange,
-  className = "",
+  invalid,
+  describedBy,
+  autoFocus,
 }: {
   id: string;
-  label: string;
+  name: string;
+  autoComplete: string;
   value: string;
   onChange: (value: string) => void;
-  className?: string;
+  invalid?: boolean;
+  describedBy?: string;
+  autoFocus?: boolean;
 }) {
+  const { t } = useLingui();
+  const [shown, setShown] = useState(false);
   return (
-    <div className={`w-full ${className}`}>
-      <Label htmlFor={id} className="text-muted-foreground">
-        {label}
-      </Label>
+    <div className="relative mt-2">
       <Input
         id={id}
-        name={id}
-        autoComplete="new-password"
-        type="password"
-        required
-        minLength={8}
+        name={name}
+        autoComplete={autoComplete}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={fieldClass}
+        type={shown ? "text" : "password"}
+        required
+        autoFocus={autoFocus}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
+        className={`${fieldClass} mt-0 pr-12`}
       />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => setShown((visible) => !visible)}
+        aria-label={shown ? t`Hide password` : t`Show password`}
+        aria-pressed={shown}
+        className="absolute inset-y-0 right-0.5 my-auto size-11 text-muted-foreground"
+      >
+        {shown ? <EyeOff /> : <Eye />}
+      </Button>
     </div>
   );
 }

@@ -1,5 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { getHideAmounts, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { HoldingsTable } from "./HoldingsTable";
+
+function HiddenAmounts({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const previous = getHideAmounts();
+    setHideAmounts(true);
+    return () => setHideAmounts(previous);
+  }, []);
+  return children;
+}
 
 const meta = {
   title: "Cap table/HoldingsTable",
@@ -60,3 +72,22 @@ type Story = StoryObj<typeof meta>;
 
 /** A holder with a contact offers Open contact; one without offers Add as contact; the pool has no menu. */
 export const Default: Story = {};
+
+/** Phone: shares and the labelled invested amount wrap under the name instead of truncating. */
+export const Phone: Story = { globals: { viewport: { value: "mobile1" } } };
+
+/** Filtered to one security with the holder sorted descending. */
+export const Sorted: Story = {
+  parameters: { initialEntries: ["/?sort=holder&dir=desc&security=Seed%20Preferred"] },
+};
+
+/** The global preference masks invested amounts while preserving their sortable values. */
+export const AmountsHidden: Story = {
+  decorators: [
+    (Story) => (
+      <HiddenAmounts>
+        <Story />
+      </HiddenAmounts>
+    ),
+  ],
+};

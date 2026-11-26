@@ -178,6 +178,27 @@ describe("Zernio REST adapter", () => {
     }
   });
 
+  it("treats over-long provider proof URLs and post IDs as uncertain", () => {
+    const longUrl = post({
+      platforms: [
+        {
+          platform: input.platform,
+          accountId: input.accountId,
+          status: "published",
+          platformPostUrl: `https://example.com/${"a".repeat(2000)}`,
+        },
+      ],
+    });
+    expect(parseZernioCreateResponse(201, { post: longUrl }, input).state).toBe("uncertain");
+
+    const longId = post({
+      _id: "p".repeat(201),
+      status: "scheduled",
+      platforms: [{ platform: input.platform, accountId: input.accountId, status: "pending" }],
+    });
+    expect(parseZernioCreateResponse(201, { post: longId }, input).state).toBe("uncertain");
+  });
+
   it("keeps accepted scheduled posts open when public URL proof is absent", () => {
     const scheduled = post({
       status: "scheduled",
@@ -663,6 +684,21 @@ describe("approved GTM post dispatch", () => {
 
     await state.run(dispatch);
 
+    expect(state.item).toMatchObject({ status: "open", proof: effectKey });
+    expect(state.getEffect()).toMatchObject({ status: "uncertain" });
+  });
+
+  it("treats an over-long post ID as uncertain without writing a zernio proof", async () => {
+    const state = postingState();
+    const dispatch = vi.fn(async () => ({ state: "queued" as const, postId: "p".repeat(201) }));
+
+    await state.run(dispatch);
+
+    expect(
+      state.prisma.scratchpadItem.updateMany.mock.calls.filter(
+        ([args]) => typeof args.data.proof === "string" && args.data.proof.startsWith("zernio:"),
+      ),
+    ).toHaveLength(0);
     expect(state.item).toMatchObject({ status: "open", proof: effectKey });
     expect(state.getEffect()).toMatchObject({ status: "uncertain" });
   });

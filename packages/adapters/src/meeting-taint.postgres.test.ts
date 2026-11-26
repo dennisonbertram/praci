@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb, createRepos } from "@rakazo/db";
+import { clearThread, createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { markMeetingTaintOnDelivery } from "./meeting-tools.js";
 
@@ -95,6 +95,38 @@ describePostgres("meeting taint mark (PostgreSQL)", () => {
     expect(await marked("b")).toBe(false);
     await mark("meeting", "b");
     expect(await marked("b")).toBe(true);
+  });
+
+  it("clearing the thread removes the mark, and a later meeting delivery sets it again", async () => {
+    const input = { spaceId: scope.spaceId, threadId: ids("t-b"), botId: ids("b") };
+    expect(await marked("b")).toBe(true);
+    await clearThread(prisma, input);
+    expect(await marked("b")).toBe(false);
+    await mark("meeting", "b");
+    expect(await marked("b")).toBe(true);
+  });
+
+  it("a routine's promptUpdatedAt starts empty and is backfilled to createdAt by the migration", async () => {
+    const created = new Date("2026-01-01T00:00:00Z");
+    const routine = await prisma.routine.create({
+      data: { ...scope, botId: ids("a"), name: "r", prompt: "p", crons: [], createdAt: created },
+    });
+    expect(routine.promptUpdatedAt).toBeNull();
+    const sql = readFileSync(
+      new URL(
+        "../../db/prisma/migrations/20261231000039_routine_prompt_updated_at/migration.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    await prisma.$executeRawUnsafe(
+      sql
+        .split("\n")
+        .filter((l) => l.startsWith("UPDATE"))
+        .join(" "),
+    );
+    const after = await prisma.routine.findUniqueOrThrow({ where: { id: routine.id } });
+    expect(after.promptUpdatedAt).toEqual(created);
   });
 
   it("carries the mark forward when the marked agent forwards, even after the source agent is gone", async () => {

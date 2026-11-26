@@ -21,8 +21,25 @@ const financeRpc = vi.hoisted(() => ({
 }));
 const messagingRpc = vi.hoisted(() => ({ get: vi.fn() }));
 const devinRpc = vi.hoisted(() => ({ sessions: vi.fn(), connect: vi.fn(), replaceKey: vi.fn() }));
+const brexRpc = vi.hoisted(() => ({ connect: vi.fn() }));
+const spacesRpc = vi.hoisted(() => ({ list: vi.fn() }));
+const omiRpc = vi.hoisted(() => ({ status: vi.fn() }));
+const connectionsRpc = vi.hoisted(() => ({
+  begin: vi.fn(),
+  complete: vi.fn(),
+  revoke: vi.fn(),
+  list: vi.fn(),
+}));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { finance: financeRpc, messagingSetup: messagingRpc, devin: devinRpc },
+  rpc: {
+    connections: connectionsRpc,
+    finance: financeRpc,
+    messagingSetup: messagingRpc,
+    devin: devinRpc,
+    brexCards: brexRpc,
+    spaces: spacesRpc,
+    omi: omiRpc,
+  },
 }));
 
 import { IntegrationsHome } from "./IntegrationsHome";
@@ -63,9 +80,17 @@ const data = (canConfigure: boolean, managed: boolean): IntegrationsData => ({
     ],
   },
   catalogFailed: false,
+  meetingsFailed: false,
   feedEnabled: false,
   refresh: async () => {},
 });
+
+function spaceRole(owner: boolean) {
+  spacesRpc.list.mockResolvedValue({
+    current: { id: "space_1", name: "Demo" },
+    spaces: [{ id: "space_1", name: "Demo", canRename: owner }],
+  });
+}
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -103,6 +128,13 @@ beforeEach(() => {
   });
   financeRpc.exchanges.mockResolvedValue([]);
   messagingRpc.get.mockRejectedValue(new Error("not owner"));
+  // The current space, with the caller as its owner unless a test says otherwise.
+  spaceRole(true);
+  omiRpc.status.mockResolvedValue(null);
+  connectionsRpc.begin.mockReset();
+  connectionsRpc.complete.mockReset();
+  connectionsRpc.revoke.mockReset();
+  connectionsRpc.list.mockReset();
   devinRpc.sessions.mockReset();
   devinRpc.sessions.mockRejectedValue(new Error("not mocked"));
   devinRpc.connect.mockReset();
@@ -209,6 +241,62 @@ it("offers Devin and opens its own connect dialog, not the custom connection for
   expect(document.querySelector('[aria-label="API key"]')).toBeNull();
   expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
   expect(document.body.textContent).not.toContain("starts with cog_");
+});
+
+it("offers Brex cards and opens its connect dialog, then lands on the server page", async () => {
+  brexRpc.connect.mockResolvedValue({ serverId: "srv_brex", agentBotId: "bot_brex" });
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Brex cards"]');
+  expect(connect).not.toBeNull();
+  await act(async () => connect?.click());
+  expect(document.body.textContent).toContain("Every change waits for your approval.");
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="API token"]');
+  expect(input?.type).toBe("password");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(input, "tok_demo");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click(),
+  );
+  expect(brexRpc.connect).toHaveBeenCalledWith({ token: "tok_demo" });
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/mcp/srv_brex",
+  );
+});
+
+it("shows the Brex cards tile only to the space owner, and not while the role is unknown", async () => {
+  spaceRole(false);
+  await show(data(true, false));
+  expect(container.querySelector('[aria-label="Connect Brex cards"]')).toBeNull();
+  act(() => root.unmount());
+  container.remove();
+
+  spacesRpc.list.mockRejectedValue(new Error("offline"));
+  await show(data(true, false));
+  expect(container.querySelector('[aria-label="Connect Brex cards"]')).toBeNull();
+  act(() => root.unmount());
+  container.remove();
+
+  spaceRole(true);
+  await show(data(true, false));
+  expect(container.querySelector('[aria-label="Connect Brex cards"]')).not.toBeNull();
+});
+
+it("hides the Brex cards tile once its server is connected, and its card has no host line", async () => {
+  const server = {
+    id: "s4",
+    name: "Brex cards",
+    endpoint: "rakazo+brex://cards",
+    agentBotId: "bot_brex",
+    oauthStatus: "none",
+    oauthAttempted: false,
+  } as unknown as IntegrationsData["servers"][number];
+  await show({ ...data(true, true), servers: [server] });
+  expect(container.querySelector('[aria-label="Connect Brex cards"]')).toBeNull();
+  expect(container.querySelector('a[href="/app/integrations/mcp/s4"]')).not.toBeNull();
+  expect(container.textContent).not.toContain("Every change waits for your approval.");
 });
 
 const devinServer = {
@@ -333,6 +421,25 @@ it("hides the Treg tile once the token preset source is installed", async () => 
   expect(container.querySelector('[aria-label="Connect Treg"]')).toBeNull();
 });
 
+it("links a source to its page and to its agent", async () => {
+  const source = {
+    id: "src1",
+    kind: "api",
+    name: "Contacts API",
+    source: "https://api.example.test/v1",
+    version: null,
+    digest: null,
+    secretConfigured: false,
+    config: {},
+    createdAt: "2026-01-01T00:00:00.000Z",
+    agentBotId: "bot_contacts",
+    usableBotIds: [],
+  } as IntegrationsData["sources"][number];
+  await show({ ...data(true, false), sources: [source] });
+  expect(container.querySelector("a[href='/app/integrations/source/src1']")).not.toBeNull();
+  expect(container.querySelector("a[href='/app/bot_contacts']")?.textContent).toBe("Open agent");
+});
+
 it("opens the X tile with the client ID fields and no server URL", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect X"]');
@@ -408,6 +515,29 @@ it("keeps Alchemy and exchanges that report an error under Finance", async () =>
   expect(container.textContent).toContain("The key was refused");
 });
 
+it("lists Alchemy and exchanges with an error under Needs attention, in the Connected list", async () => {
+  financeRpc.crypto.mockResolvedValue({
+    ...cryptoOn,
+    alchemy: { connected: true, lastError: "The key was refused" },
+  });
+  financeRpc.exchanges.mockResolvedValue([
+    { provider: "kraken", connected: true, lastError: "Read failed" },
+  ]);
+  await show(data(true, true), "/app/integrations?status=attention");
+  for (const id of ["alchemy", "kraken"]) {
+    expect(count(`finance-tile-${id}`)).toBe(1);
+    expect(inConnected(`finance-tile-${id}`)).toBe(true);
+  }
+  expect(count("finance-tile-crypto")).toBe(0);
+});
+
+it("keeps the filter and sort controls while one is set, even with a single card", async () => {
+  await show(data(true, true), "/app/integrations?status=attention");
+  expect(
+    container.querySelector('button[aria-label="Filter by Status"], [aria-label*="Status"]'),
+  ).not.toBeNull();
+});
+
 it("shows one Blockscout tile when its key and MCP server both exist", async () => {
   financeRpc.crypto.mockResolvedValue(cryptoOn);
   const blockscoutServer = {
@@ -473,6 +603,15 @@ const lapsedMercury = () => {
 it("keeps a lapsed bank's reconnect tile when the search matches it", async () => {
   await show(lapsedMercury(), "/app/integrations?q=mercury");
   expect(count("finance-tile-mercury")).toBe(1);
+});
+
+it("lists a lapsed bank under Needs attention and not under Connected", async () => {
+  await show(lapsedMercury(), "/app/integrations?status=attention");
+  expect(count("finance-tile-mercury")).toBe(1);
+  act(() => root.unmount());
+  container.remove();
+  await show(lapsedMercury(), "/app/integrations?status=connected");
+  expect(count("finance-tile-mercury")).toBe(0);
 });
 
 it("scrolls to the reconnect tile, not past it, from ?category=finance", async () => {
@@ -673,6 +812,143 @@ const composioGmail = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+async function connect(value: IntegrationsData, label: "Connect" | "Reconnect" = "Reconnect") {
+  value.refresh = vi.fn().mockResolvedValue(undefined);
+  connectionsRpc.begin.mockResolvedValue({ connectionId: "new", authorizationUrl: null });
+  connectionsRpc.complete.mockResolvedValue(composioGmail({ id: "new", needsReconnect: false }));
+  await show(value);
+  const button = [...container.querySelectorAll("button")].find(
+    (item) => item.textContent === label,
+  );
+  await act(async () => (button as HTMLElement).click());
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  const done = [...document.body.querySelectorAll("button")].find(
+    (item) => item.textContent === "Done",
+  );
+  await act(async () => (done as HTMLElement).click());
+}
+
+it("shows a disconnect error when a failed revoke still lists the old connection", async () => {
+  const old = composioGmail({ id: "old", needsReconnect: true });
+  const value = data(true, true);
+  value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
+  value.connections = [old];
+  connectionsRpc.revoke.mockRejectedValue(new Error("Could not disconnect"));
+  connectionsRpc.list.mockResolvedValue([old]);
+  await connect(value);
+  expect(container.querySelector('[role="alert"]')?.textContent ?? "").toContain(
+    "Could not disconnect",
+  );
+  expect(connectionsRpc.list).toHaveBeenCalled();
+  expect(value.refresh).toHaveBeenCalled();
+});
+
+it("shows a disconnect error when listing connections fails after a failed revoke", async () => {
+  const old = composioGmail({ id: "old", needsReconnect: true });
+  const value = data(true, true);
+  value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
+  value.connections = [old];
+  connectionsRpc.revoke.mockRejectedValue(new Error("Could not disconnect"));
+  connectionsRpc.list.mockRejectedValue(new Error("Could not list connections"));
+  await connect(value);
+  expect(container.querySelector('[role="alert"]')?.textContent ?? "").toContain(
+    "Could not disconnect",
+  );
+  expect(container.querySelector('[role="alert"] button')).toBeNull();
+});
+
+it("does not show a disconnect error when the old connection is already gone", async () => {
+  const old = composioGmail({ id: "old", needsReconnect: true });
+  const value = data(true, true);
+  value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
+  value.connections = [old];
+  connectionsRpc.revoke.mockRejectedValue(new Error("Could not disconnect"));
+  connectionsRpc.list.mockResolvedValue([]);
+  await connect(value);
+  expect(container.querySelector('[role="alert"]')?.textContent).toBeFalsy();
+  expect(connectionsRpc.list).toHaveBeenCalled();
+  expect(value.refresh).toHaveBeenCalled();
+});
+
+it("clears a disconnect error when refreshed connections no longer include the old account", async () => {
+  const old = composioGmail({ id: "old", needsReconnect: true });
+  const value = data(true, true);
+  value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
+  value.connections = [old];
+  connectionsRpc.revoke.mockRejectedValue(new Error("Could not disconnect"));
+  connectionsRpc.list.mockRejectedValue(new Error("Could not list connections"));
+  await connect(value);
+  expect(container.querySelector('[role="alert"]')?.textContent ?? "").toContain(
+    "Could not disconnect",
+  );
+  value.connections = [];
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations"]}>
+        <IntegrationsHome data={value} />
+        <Where />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[role="alert"]')?.textContent ?? "").not.toContain(
+    "Could not disconnect",
+  );
+});
+
+it("retries loading integrations from the page alert", async () => {
+  const refresh = vi.fn().mockResolvedValue(undefined);
+  const value = { ...data(true, true), error: "Could not load connections", refresh };
+  await show(value);
+  const button = [...container.querySelectorAll("button")].find(
+    (item) => item.textContent === "Try again",
+  );
+  expect(button).toBeDefined();
+  await act(async () => (button as HTMLElement).click());
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+it("shows no retry for a catalog failure alone", async () => {
+  await show({ ...data(true, true), catalogFailed: true });
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+    "Could not load the app list.",
+  );
+  expect(container.querySelector('[role="alert"] button')).toBeNull();
+});
+
+it("removes a data error after Try again refreshes successfully", async () => {
+  const value = { ...data(true, true), error: "Could not load connections" as string | null };
+  value.refresh = vi.fn(async () => {
+    value.error = null;
+  });
+  await show(value);
+  const button = [...container.querySelectorAll("button")].find(
+    (item) => item.textContent === "Try again",
+  );
+  await act(async () => (button as HTMLElement).click());
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations"]}>
+        <IntegrationsHome data={value} />
+        <Where />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("does not refresh from onConnected for a plain connect", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    { ...google("gmail"), connectorId: "composio", name: "Gmail", connected: false },
+  ];
+  await connect(value, "Connect");
+  // ConnectAppDialog owns the plain-connect refresh; onConnected must not add another.
+  expect(value.refresh).toHaveBeenCalledTimes(2);
+});
+
 it("offers Reconnect on a connected Composio tile that needs it, and hides the repeated name", async () => {
   const value = data(true, true);
   value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
@@ -732,6 +1008,23 @@ it("does not say 'No apps match' while iMessage tiles match the search", async (
   await show(data(true, true), "/app/integrations?q=imessage");
   expect(container.textContent).toContain("iMessage");
   expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
+});
+
+it("shows a connected Omi card when searched, but keeps it out of status and category filters", async () => {
+  omiRpc.status.mockResolvedValue({ connected: true });
+  await show(data(true, true), "/app/integrations?q=OMI");
+  expect(container.querySelector('a[href="/app/integrations/omi"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
+
+  act(() => root.unmount());
+  container.remove();
+  await show(data(true, true), "/app/integrations?status=attention");
+  expect(container.querySelector('a[href="/app/integrations/omi"]')).toBeNull();
+
+  act(() => root.unmount());
+  container.remove();
+  await show(data(true, true), "/app/integrations?category=finance");
+  expect(container.querySelector('a[href="/app/integrations/omi"]')).toBeNull();
 });
 
 it("keeps the search above Connected so typing never moves it, and drops the intro once connected", async () => {
@@ -810,6 +1103,29 @@ const keyRoute = (patch: Partial<NonNullable<IntegrationsData["meetings"]>> = {}
   ...patch,
 });
 
+it("searches Granola's key card and source cards by their displayed names", async () => {
+  await show({ ...data(true, true), meetings: keyRoute() }, "/app/integrations?q=GRANOLA");
+  expect(container.querySelector('a[href="/app/integrations/granola"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
+
+  act(() => root.unmount());
+  container.remove();
+  const source = {
+    id: "src_contacts",
+    kind: "api",
+    name: "Contacts API",
+    source: "https://api.example.test/v1",
+    version: null,
+    digest: null,
+    secretConfigured: false,
+    config: {},
+    createdAt: "2026-01-01T00:00:00.000Z",
+  } as IntegrationsData["sources"][number];
+  await show({ ...data(true, true), sources: [source] }, "/app/integrations?q=contacts");
+  expect(container.querySelector('a[href="/app/integrations/source/src_contacts"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
+});
+
 it("shows one Granola status line: reconnect first, then AI data sharing off, then the key status", async () => {
   await show({
     ...data(true, true),
@@ -860,4 +1176,126 @@ it("shows a Granola tile when only the key is connected, and opens the page from
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
     "/app/integrations/granola",
   );
+});
+
+it("tells two Gmail accounts apart by address, and filters and sorts the connected apps", async () => {
+  const account = (id: string, provider: string, extra: object = {}) => ({
+    id,
+    connectorId: "google",
+    provider,
+    displayName: provider,
+    status: "connected" as const,
+    error: null,
+    capabilities: [],
+    createdAt: "2026-10-01T00:00:00Z",
+    ...extra,
+  });
+  await show({
+    ...data(true, true),
+    connections: [
+      account("g1", "gmail", { account: "one@example.test" }),
+      account("g2", "gmail", { displayName: "Work", account: "two@example.test" }),
+      account("c1", "googlecalendar", { needsReconnect: true }),
+    ],
+  });
+  const lines = [...container.querySelectorAll('[data-testid="account-line"]')].map(
+    (line) => line.textContent,
+  );
+  expect(lines).toEqual(["one@example.test", "Work · two@example.test"]);
+  const names = () =>
+    [...container.querySelectorAll("a[href^='/app/integrations/app/']")].map((a) => a.textContent);
+  // Searching reaches the address.
+  const search = container.querySelector('input[name="integration-search"]') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, "two@");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(names().join()).toContain("gmail");
+  expect(names().join()).not.toContain("googlecalendar");
+});
+
+it("keeps a status filter in the URL and shows only the apps that need attention", async () => {
+  await show(
+    {
+      ...data(true, true),
+      connections: [
+        {
+          id: "g1",
+          connectorId: "google",
+          provider: "gmail",
+          displayName: "Gmail",
+          status: "connected",
+          error: null,
+          capabilities: [],
+          createdAt: "2026-10-01T00:00:00Z",
+        },
+        {
+          id: "c1",
+          connectorId: "google",
+          provider: "googlecalendar",
+          displayName: "googlecalendar",
+          status: "connected",
+          needsReconnect: true,
+          error: null,
+          capabilities: [],
+          createdAt: "2026-10-01T00:00:00Z",
+        },
+      ],
+    },
+    "/app/integrations?status=attention",
+  );
+  const links = [...container.querySelectorAll("a[href^='/app/integrations/app/']")].map((a) =>
+    a.getAttribute("href"),
+  );
+  expect(links).toEqual(["/app/integrations/app/google/googlecalendar"]);
+});
+
+it("lists one line per account on a card, three at most, then how many more", async () => {
+  const gmail = (id: string, address: string) => ({
+    id,
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "gmail",
+    account: address,
+    status: "connected" as const,
+    error: null,
+    capabilities: [],
+    createdAt: "2026-10-01T00:00:00Z",
+  });
+  await show({
+    ...data(true, true),
+    connections: ["a", "b", "c", "d"].map((id) => gmail(id, `${id}@example.test`)),
+  });
+  const lines = [...container.querySelectorAll('[data-testid="account-line"]')].map(
+    (line) => line.textContent,
+  );
+  expect(lines).toEqual(["a@example.test", "b@example.test", "c@example.test", "+1 more"]);
+});
+
+it("searches, filters and sorts MCP servers with the apps, by their own names and status", async () => {
+  const server = (id: string, name: string, oauthStatus: string) =>
+    ({
+      id,
+      name,
+      endpoint: "https://mcp.mercury.com/mcp",
+      oauthStatus,
+      oauthAttempted: false,
+      hasSecret: false,
+      createdAt: "2026-10-01T00:00:00Z",
+    }) as unknown as IntegrationsData["servers"][number];
+  const value = {
+    ...data(true, true),
+    servers: [
+      server("s1", "Mercury Ops", "connected"),
+      server("s2", "Mercury Payroll", "reconnect"),
+    ],
+  };
+  const cards = () =>
+    [...container.querySelectorAll("a[href^='/app/integrations/mcp/']")].map((a) => a.textContent);
+  await show(value, "/app/integrations?status=attention");
+  expect(cards()).toEqual(["Mercury Payroll"]);
+  act(() => root.unmount());
+  container.remove();
+  await show(value, "/app/integrations?sort=name&dir=desc");
+  expect(cards()).toEqual(["Mercury Payroll", "Mercury Ops"]);
 });

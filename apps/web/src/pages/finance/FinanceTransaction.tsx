@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { FinanceTransactionOutput } from "@rakazo/contracts";
+import type { FinanceReceiptUrlOutput, FinanceTransactionOutput } from "@rakazo/contracts";
 import { categorySlug } from "@rakazo/core";
 import { Button } from "@rakazo/ui-web";
 import { ExternalLink, FileText } from "lucide-react";
@@ -81,8 +81,11 @@ export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
   ];
 }
 
-function ReceiptThumb({ id }: { id: string }) {
-  const q = useFinanceQuery(() => rpc.finance.receiptUrl({ transactionId: id }), [id]);
+function ReceiptThumb({ id, receipt }: { id: string; receipt?: FinanceReceiptUrlOutput }) {
+  const q = useFinanceQuery(
+    () => (receipt ? Promise.resolve(receipt) : rpc.finance.receiptUrl({ transactionId: id })),
+    [id, receipt],
+  );
   const url = q.data ? httpsUrl(q.data.url) : null;
   const hidden = useHideAmounts();
   const image = Boolean(url && q.data?.mimeType?.startsWith("image/"));
@@ -103,32 +106,47 @@ function ReceiptThumb({ id }: { id: string }) {
 
 /** Mercury listings never say whether a row has an attachment, so the vendor is asked on demand. */
 function CheckReceipt({ id }: { id: string }) {
-  const [state, setState] = useState<"idle" | "checking" | "found" | "none">("idle");
-  if (state === "found") return <ReceiptThumb id={id} />;
-  if (state === "none") {
+  const [state, setState] = useState<
+    | { status: "idle" | "checking" | "retrying" | "failed" | "none" }
+    | { status: "found"; receipt: FinanceReceiptUrlOutput }
+  >({ status: "idle" });
+  if (state.status === "found") return <ReceiptThumb id={id} receipt={state.receipt} />;
+  if (state.status === "none") {
     return (
       <span className="text-muted-foreground">
         <Trans>No receipt</Trans>
       </span>
     );
   }
+  const check = () => {
+    setState((current) => ({ status: current.status === "failed" ? "retrying" : "checking" }));
+    rpc.finance
+      .receiptUrl({ transactionId: id })
+      .then((receipt) => setState({ status: "found", receipt }))
+      .catch((cause: { code?: string }) =>
+        setState({ status: cause?.code === "NOT_FOUND" ? "none" : "failed" }),
+      );
+  };
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={state === "checking"}
-      onClick={() => {
-        setState("checking");
-        rpc.finance
-          .receiptUrl({ transactionId: id })
-          .then(() => setState("found"))
-          .catch((cause: { code?: string }) =>
-            setState(cause?.code === "NOT_FOUND" ? "none" : "idle"),
-          );
-      }}
-    >
-      <Trans>Check for receipt</Trans>
-    </Button>
+    <div className="flex items-center gap-2">
+      {state.status === "failed" || state.status === "retrying" ? (
+        <span className="text-muted-foreground">
+          <Trans>Could not load</Trans>
+        </span>
+      ) : null}
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={state.status === "checking" || state.status === "retrying"}
+        onClick={check}
+      >
+        {state.status === "failed" || state.status === "retrying" ? (
+          <Trans>Try again</Trans>
+        ) : (
+          <Trans>Check for receipt</Trans>
+        )}
+      </Button>
+    </div>
   );
 }
 

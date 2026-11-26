@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { createContext, memo, useCallback, useContext, useRef, useState } from "react";
+import { Component, createContext, memo, useCallback, useContext, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -125,35 +125,70 @@ function maskAmounts() {
   };
 }
 
-function CodeBlock(props: React.ComponentPropsWithoutRef<"pre">) {
-  const preRef = useRef<HTMLPreElement>(null);
+/** Copies the text `getText` returns and shows "Copied" for a moment. */
+function CopyButton({ getText }: { getText: () => string }) {
   const resetTimerRef = useRef<number | undefined>(undefined);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
     if (!navigator.clipboard) return;
-    const text = preRef.current?.textContent ?? "";
     navigator.clipboard
-      .writeText(text)
+      .writeText(getText())
       .then(() => {
         setCopied(true);
         window.clearTimeout(resetTimerRef.current);
         resetTimerRef.current = window.setTimeout(() => setCopied(false), 1500);
       })
       .catch(() => {});
-  }, []);
+  }, [getText]);
 
+  return (
+    <button
+      type="button"
+      className="rk-chat-markdown-copy"
+      onClick={handleCopy}
+      aria-label={copied ? "Copied" : "Copy"}
+    >
+      {copied ? <CheckIcon /> : <CopyIcon />}
+    </button>
+  );
+}
+
+function CodeBlock(props: React.ComponentPropsWithoutRef<"pre">) {
+  const preRef = useRef<HTMLPreElement>(null);
+  const getText = useCallback(() => preRef.current?.textContent ?? "", []);
   return (
     <div className="rk-chat-markdown-pre-wrap">
       <pre {...props} ref={preRef} />
-      <button
-        type="button"
-        className="rk-chat-markdown-copy"
-        onClick={handleCopy}
-        aria-label={copied ? "Copied" : "Copy code"}
-      >
-        {copied ? <CheckIcon /> : <CopyIcon />}
-      </button>
+      <CopyButton getText={getText} />
+    </div>
+  );
+}
+
+const InsideQuoteContext = createContext(false);
+
+/** Copies the quote's own Markdown, so list markers and blank lines survive. Inner quotes keep their own marks. */
+function CopyableQuote({
+  node,
+  ...props
+}: React.ComponentPropsWithoutRef<"blockquote"> & { node?: MarkdownHast }) {
+  const source = useContext(MarkdownTableSourceContext);
+  const hideAmounts = useContext(HideAmountsContext);
+  const inside = useContext(InsideQuoteContext);
+  const start = node?.position?.start?.offset;
+  const end = node?.position?.end?.offset;
+  const getText = useCallback(() => {
+    const raw = typeof start === "number" && typeof end === "number" ? source.slice(start, end) : "";
+    const text = raw.replace(/^ {0,3}> ?/gm, "");
+    return hideAmounts ? maskCurrencyText(text) : text;
+  }, [source, start, end, hideAmounts]);
+  if (inside || typeof start !== "number") return <blockquote {...props} />;
+  return (
+    <div className="rk-chat-markdown-pre-wrap">
+      <InsideQuoteContext.Provider value>
+        <blockquote {...props} />
+      </InsideQuoteContext.Provider>
+      <CopyButton getText={getText} />
     </div>
   );
 }
@@ -268,6 +303,7 @@ type MarkdownHast = {
   tagName?: string;
   value?: string;
   properties?: Record<string, unknown>;
+  position?: { start?: { offset?: number }; end?: { offset?: number } };
   children?: MarkdownHast[];
 };
 
@@ -494,6 +530,7 @@ const components: Components = {
       <MarkdownImage src={typeof src === "string" ? src : undefined} alt={alt} title={title} />
     );
   },
+  blockquote: CopyableQuote,
   pre({ node: _node, ...props }) {
     return <CodeBlock {...props} />;
   },
@@ -505,6 +542,29 @@ const components: Components = {
     );
   },
 };
+
+type PlainTextState = { text: string; failed: boolean };
+
+/** The parser recurses, so a pathological message can exhaust the stack; show it as plain text. */
+class PlainTextOnFailure extends Component<{ text: string; children: ReactNode }, PlainTextState> {
+  override state = { text: this.props.text, failed: false };
+
+  static getDerivedStateFromProps(props: { text: string }, state: PlainTextState) {
+    return props.text === state.text ? null : { text: props.text, failed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override render() {
+    return this.state.failed ? (
+      <p className="whitespace-pre-wrap">{this.props.text}</p>
+    ) : (
+      this.props.children
+    );
+  }
+}
 
 export function LinkifiedText({ children: raw }: { children: string }) {
   const children = useContext(HideAmountsContext) ? maskCurrencyText(raw) : raw;
@@ -549,18 +609,20 @@ export const ChatMarkdown = memo(function ChatMarkdown({
         >
           <LinkFaviconsPausedContext.Provider value={streaming}>
             <MarkdownTableSourceContext.Provider value={source}>
-              <ReactMarkdown
-                components={components}
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={rehypePlugins}
-                skipHtml
-                // MarkdownImage decides what an image source may do, so it receives the source as written.
-                urlTransform={(url, key) =>
-                  key === "src" ? url : (sanitizeMarkdownUrl(url, true) ?? "")
-                }
-              >
-                {source}
-              </ReactMarkdown>
+              <PlainTextOnFailure text={hideAmounts ? maskCurrencyText(children) : children}>
+                <ReactMarkdown
+                  components={components}
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={rehypePlugins}
+                  skipHtml
+                  // MarkdownImage decides what an image source may do, so it receives the source as written.
+                  urlTransform={(url, key) =>
+                    key === "src" ? url : (sanitizeMarkdownUrl(url, true) ?? "")
+                  }
+                >
+                  {source}
+                </ReactMarkdown>
+              </PlainTextOnFailure>
             </MarkdownTableSourceContext.Provider>
           </LinkFaviconsPausedContext.Provider>
           {streaming ? <span aria-hidden="true" className="rk-chat-markdown-cursor" /> : null}

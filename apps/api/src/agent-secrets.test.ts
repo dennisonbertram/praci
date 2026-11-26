@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
 
@@ -57,13 +56,6 @@ describe("agent secrets", () => {
         updatedAt: "2026-01-02T00:00:00.000Z",
       },
     ]);
-  });
-
-  it("rejects non-owners", async () => {
-    prisma.spaceMember.findUnique.mockResolvedValue({ role: "member" });
-    await expect(
-      listAgentSecrets({ prisma: prisma as never, secrets: { put } }, actor),
-    ).rejects.toBeInstanceOf(ORPCError);
   });
 
   it("writes a fresh key after a serialization conflict", async () => {

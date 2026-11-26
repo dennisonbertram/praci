@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hex meetings and dictation mockup</title>
+<style>
+  :root { --bg:#fafaf9; --fg:#1a1a1a; --mut:#6b6b66; --bd:#dcdcd6; --card:#fff; --on:#1a1a1a; --onfg:#fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161616; --fg:#ececea; --mut:#9a9a94; --bd:#333; --card:#1f1f1f; --on:#ececea; --onfg:#161616; } }
+  :root[data-theme="dark"] { --bg:#161616; --fg:#ececea; --mut:#9a9a94; --bd:#333; --card:#1f1f1f; --on:#ececea; --onfg:#161616; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:2; background:var(--bg); border-bottom:1px solid var(--bd); padding:10px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  header h1 { font-size:15px; margin:0 12px 0 0; }
+  nav { display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+  button { font:inherit; font-size:13px; border:1px solid var(--bd); background:var(--card); color:var(--fg); border-radius:999px; padding:3px 12px; cursor:pointer; }
+  button[aria-pressed="true"] { background:var(--on); color:var(--onfg); border-color:var(--on); }
+  main { max-width:1320px; margin:0 auto; padding:16px; }
+  section { display:none; } section.show { display:block; }
+  .states { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+  figure { margin:0; }
+  img { display:block; max-width:100%; height:auto; border:1px solid var(--bd); border-radius:10px; }
+  img.phone { max-width:390px; }
+  figcaption { margin:8px 0 0; color:var(--mut); font-size:13px; }
+  .tag { display:inline-block; border:1px solid var(--bd); border-radius:999px; padding:0 8px; margin-right:6px; font-size:12px; color:var(--fg); }
+  .note { color:var(--mut); font-size:13px; max-width:900px; margin:14px 0 0; }
+  code { font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hex meetings and dictation</h1>
+  <nav id="screens" aria-label="Screens"></nav>
+  <button id="theme" type="button">Theme</button>
+</header>
+<main id="root"></main>
+<script>
+const R = "Real app", B = "Real app, extended in the page";
+const S = [
+ { id:"composer", name:"Composer dictation", note:"Real app running the dictation build, with a local fixture server connected as the OpenAI-compatible provider and a fake microphone. The mic is hidden until a speech-to-text engine is set up (D7). The inserted text is the fixture's reply. Phone is 390 px wide.",
+   states:[
+  ["No engine","composer-desk-0-hidden",R,"No speech-to-text set up: no mic in the composer."],
+  ["Idle","composer-desk-1-idle",R,"Engine set up: mic next to the call and send buttons."],
+  ["Listening","composer-desk-2-listening",R,"Recording; the mic button becomes Stop dictation."],
+  ["Transcribing","composer-desk-3-transcribing",R,"Audio sent; spinner while the provider answers."],
+  ["Inserted","composer-desk-4-inserted",R,"Text lands in the composer; nothing is sent."],
+  ["Error","composer-desk-5-error",R,"Provider failed; message above the composer."],
+  ["Phone: listening","composer-phone-2-listening",R,"390 px.",1],
+  ["Phone: inserted","composer-phone-4-inserted",R,"390 px.",1]]},
+ { id:"meetings", name:"Meetings page", note:"Built from the real Contacts page (header, search, filter button, table, badge). Source is Meeting.provider (Praci, Hex, Granola, Omi); duration is endedAt minus startedAt. Titles are invented. The Record popover is the app's own popover with its content replaced; Remind and Confirm follow the space policy. The Meetings sidebar row is a clone of the Contacts row.",
+   states:[
+  ["Today (Granola only)","stored-meetings-today",R,"Today: stored meetings are reachable only from the Granola page."],
+  ["List","meetings-list",B,"One page for every source, newest first."],
+  ["Record: Remind","meetings-record-remind",B,"Default policy: one line, then Start."],
+  ["Record: Confirm","meetings-record-confirm",B,"Start stays disabled until everyone agreed is ticked."],
+  ["Recording row","meetings-recording-row",B,"An in-progress capture shows Recording instead of a duration."],
+  ["Empty","meetings-empty",B,"No meetings yet."],
+  ["Can't record here","meetings-no-record",B,"Space policy is Off: no Record button."],
+  ["Phone: list","phone-meetings-list",B,"390 px; date and duration move under the title.",1],
+  ["Phone: Record","phone-meetings-record",B,"390 px.",1]]},
+ { id:"pill", name:"Recording pill", note:"A strip row at the top of the app shell, shown on every page, built from the app's card tokens and the working indicator's shimmer and mono timer. It cannot be dismissed. No call audio: the system track stayed silent for 10 s. Offline: chunks are kept in the browser and sent later.",
+   states:[
+  ["Recording","pill-recording",B,"Red dot, title, elapsed time, Stop."],
+  ["No call audio","pill-nocall",B,"Warning text when the call track is silent."],
+  ["Upload paused","pill-offline",B,"Offline; audio is saved here."],
+  ["Transcribing","pill-transcribing",B,"After Stop, until the meeting is stored."],
+  ["Phone","phone-pill-recording",B,"390 px.",1]]},
+ { id:"detail", name:"Meeting detail", note:"Laid out with the app's page header, list cards and checkbox. Only stored fields: title, times, source, Hex's own summary when imported, digest decisions and follow-ups, the user's to-dos from this meeting, transcript (collapsed). No attendee list. Transcript lines use the user's name for the microphone and Them for the call.",
+   states:[
+  ["Recorded","detail-recorded",B,"Praci recording with summary parts and to-dos."],
+  ["Transcript open","detail-transcript",B,"Transcript expanded."],
+  ["Hex import","detail-hex",B,"Hex's two-sentence summary appears first."],
+  ["Partial","detail-partial",B,"Some chunks failed; the rest is kept."],
+  ["Summary pending","detail-pending",B,"Digest not finished yet."],
+  ["Phone","phone-detail",B,"390 px.",1]]},
+ { id:"integrations", name:"Integrations: Hex", note:"The Hex tile is a clone of the Granola tile (connected) or the Slack tile (not connected); the logo is a letter placeholder like Founder calendar. Shown in the macOS desktop app, or on any surface once a Hex connection exists (On web: read-only status). Hex has no account, so there is no key field. Disconnect keeps the existing confirm dialog.",
+   states:[
+  ["Today","integrations-today",R,"Granola tile for reference."],
+  ["Connected","hex-tile-on",B,"Synced N meetings."],
+  ["Not connected","hex-tile-off",B,"Connect button in Popular."],
+  ["Install Hex","hex-tile-nf",B,"Executable not found."],
+  ["Update Hex","hex-tile-old",B,"Too old or contract changed."],
+  ["Couldn't read","hex-tile-fail",B,"Read failed; retried on the next pass; Retry."],
+  ["On web","hex-tile-web",B,"Last sync only."],
+  ["Hex page","hex-page",B,"Clone of the Granola page."]]},
+ { id:"voice", name:"Settings: Voice", note:"Settings, Models, Voice. OpenAI-compatible is the real new provider row and form (base URL, model, optional key); the saved URL shown is an example host while the demo points at a local fixture. On this device appears only in the macOS desktop app when an engine is available; model names are examples.",
+   states:[
+  ["OpenAI-compatible","voice-compat",R,"New provider form."],
+  ["Connected","voice-compat-connected",R,"Saved; the row shows Connected."],
+  ["On this device: ready","voice-device-ready",B,"Row cloned from a provider row; model select."],
+  ["On this device: preparing","voice-device-preparing",B,"The model download is explicit and shows progress."]]},
+ { id:"policy", name:"Meeting recording policy", note:"A second card in Settings, Privacy and approvals, cloned from the Approvals card. Owners and admins only; stored as spaces.meeting_recording and enforced by the API. Default Remind. Does not apply to Hex imports.",
+   states:[
+  ["Remind","policy-remind",B,"Default."],
+  ["Confirm","policy-confirm",B,"Needs the checkbox."],
+  ["Off","policy-off",B,"No recording in this space."]]}
+];
+const root = document.getElementById("root"), nav = document.getElementById("screens");
+let theme = (document.documentElement.dataset.theme) || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+const imgs = [];
+S.forEach((s, i) => {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = s.name; b.dataset.id = s.id; nav.append(b);
+  const sec = document.createElement("section"); sec.id = s.id;
+  const row = document.createElement("div"); row.className = "states";
+  const fig = document.createElement("figure"); const img = document.createElement("img"); img.alt = s.name; const cap = document.createElement("figcaption");
+  fig.append(img, cap);
+  s.states.forEach((st, j) => {
+    const sb = document.createElement("button"); sb.type = "button"; sb.textContent = st[0]; row.append(sb);
+    sb.onclick = () => { row.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === sb)); img.dataset.base = st[1]; img.className = st[4] ? "phone" : ""; img.alt = s.name + ": " + st[0]; cap.innerHTML = '<span class="tag">' + st[2] + "</span>" + st[3]; img.src = "mockup/" + st[1] + "-" + theme + ".png"; };
+    if (j === 0) setTimeout(() => sb.click());
+  });
+  const note = document.createElement("p"); note.className = "note"; note.textContent = s.note;
+  sec.append(row, fig, note); root.append(sec); imgs.push(img);
+});
+function show(id) { document.querySelectorAll("section").forEach(x => x.classList.toggle("show", x.id === id)); nav.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.id === id)); history.replaceState(null, "", "#" + id); }
+nav.onclick = e => { if (e.target.dataset.id) show(e.target.dataset.id); };
+document.getElementById("theme").onclick = () => { theme = theme === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = theme; imgs.forEach(i => { if (i.dataset.base) i.src = "mockup/" + i.dataset.base + "-" + theme + ".png"; }); };
+show(location.hash.slice(1) || S[0].id);
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "json": {
+    "id": "group-placeholder",
+    "spaceId": "space-placeholder",
+    "name": "W2b Group",
+    "pinned": false,
+    "sectionId": null,
+    "position": null,
+    "archivedAt": null,
+    "members": [
+      {
+        "botId": "bot-1",
+        "name": "Chief",
+        "color": "#3EC5A8",
+        "status": "idle"
+      },
+      {
+        "botId": "bot-2",
+        "name": "Placeholder Agent",
+        "color": "#3B82F6",
+        "status": "idle"
+      }
+    ],
+    "threadId": "thread-placeholder",
+    "preview": "",
+    "unread": false,
+    "updatedAt": "2026-10-29T04:22:11.684Z",
+    "createdAt": "2026-10-29T04:22:11.684Z"
+  }
+}

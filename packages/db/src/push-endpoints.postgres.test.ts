@@ -39,6 +39,21 @@ describePostgres("push endpoints (PostgreSQL)", () => {
     await close();
   });
 
+  it("stores a token as Expo unless the client says APNs", async () => {
+    await savePushToken(prisma, a, "ExponentPushToken[legacy]", "s-legacy");
+    await savePushToken(prisma, a, "apns-device-token-1", "s-ios", { platform: "apns" });
+    const rows = await prisma.notificationEndpoint.findMany({
+      where: { userId: a, address: { in: ["ExponentPushToken[legacy]", "apns-device-token-1"] } },
+      select: { address: true, platform: true },
+      orderBy: { address: "asc" },
+    });
+    expect(rows).toEqual([
+      { address: "apns-device-token-1", platform: "apns" },
+      { address: "ExponentPushToken[legacy]", platform: "expo" },
+    ]);
+    await deletePushTokens(prisma, a);
+  });
+
   it("registers per device, replaces a rotated token, and removes by session", async () => {
     await savePushToken(prisma, a, "ExponentPushToken[phone]", "s-phone");
     await savePushToken(prisma, a, "ExponentPushToken[tablet]", "s-tablet");

@@ -60,3 +60,11 @@ export const SomeConnected: Story = {
 export const ProviderNotConfigured: Story = {
   args: { data: mockIntegrations({ catalog: [] }), setup: setup(false) },
 };
+
+export const LoadFailed: Story = {
+  args: { data: mockIntegrations({ error: "Could not load integrations", catalog: [] }) },
+};
+
+export const CatalogLoadFailed: Story = {
+  args: { data: mockIntegrations({ catalogFailed: true }) },
+};

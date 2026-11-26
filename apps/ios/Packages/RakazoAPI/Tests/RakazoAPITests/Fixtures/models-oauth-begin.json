@@ -1,0 +1,1 @@
+{"json":{"loginId":"login-placeholder","provider":"example-ai","verificationUri":"https://auth.example.test/device","expiresInSeconds":900,"mode":"device-code","userCode":"ABCD-1234"}}

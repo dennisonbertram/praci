@@ -28,11 +28,14 @@ import {
 } from "./computer-workspace.js";
 import { LinuxDesktop, PREPARE_LINUX_DESKTOP } from "./linux-desktop.js";
 import { sandboxCommandArgv } from "./sandbox-command-environment.js";
+import { shellExportScript } from "./sandbox-shell-environment.js";
 import { withAbort } from "./web-ssrf.js";
 
 const BOX_API_BASE = "https://ascii.dev/api/box/v1";
 const BOX_WORKSPACE = "/home/user/rakazo-home";
 const BOX_BROWSER_PROFILES = `${BOX_WORKSPACE}/.browser-profiles`;
+/** Outside the workspace so checkpoints never carry it. Box runs every command as `user`. */
+const BOX_COMMAND_ENV = "/home/user/.rakazo-command-env";
 const BOX_READY_TIMEOUT_MS = 5 * 60_000;
 const BOX_API_COMMAND_TIMEOUT_SECONDS = 600;
 const BOX_TTL_SECONDS = 2 * 60 * 60;
@@ -71,6 +74,8 @@ export class BoxSandboxProvider implements SandboxProvider {
       browserProfilesDir: BOX_BROWSER_PROFILES,
       displayStart: 20,
       portStart: 6100,
+      // The provider port proxy reaches the isolated sandbox through its network interface.
+      bindHost: "0.0.0.0",
     }),
     run: async (computer, command, context) => {
       const result = await this.runCommand(
@@ -248,22 +253,27 @@ export class BoxSandboxProvider implements SandboxProvider {
       return;
     }
     const timeoutMs = boundedSandboxCommandTimeoutMs(request.timeoutMs);
+    const id = this.id(computer);
     const argv = sandboxCommandArgv({
       ...request,
       argv: request.argv.length ? request.argv : ["true"],
-    });
-    const environment = Object.entries(request.env ?? {}).map(([key, value]) => `${key}=${value}`);
-    const command = [...(environment.length ? ["env", ...environment] : []), ...argv]
+    })
       .map(shellQuote)
       .join(" ");
+    // Box's command API has no env field, and command text shows in `ps` and Box's logs.
+    const environment = shellExportScript(request.env ?? {});
+    const envFile = environment ? `${BOX_COMMAND_ENV}/${randomUUID()}` : undefined;
+    let envFileRemoved = !envFile;
     try {
+      if (envFile) await this.writeCommandEnvironment(id, envFile, environment, context.signal);
       const result = await this.runCommand(
-        this.id(computer),
-        command,
+        id,
+        envFile ? sourceEnvironmentCommand(envFile, argv) : argv,
         boxCwd(request.cwd),
         timeoutMs,
         context.signal,
       );
+      envFileRemoved = !result.timedOut;
       if (context.signal.aborted) {
         yield { type: "stderr", data: "command aborted\n" };
         yield { type: "exit", code: 130 };
@@ -284,6 +294,11 @@ export class BoxSandboxProvider implements SandboxProvider {
         return;
       }
       throw error;
+    } finally {
+      // The command removes the file as it starts; this covers a command that never did.
+      if (!envFileRemoved) {
+        await this.rawCommand(id, `rm -f -- ${shellQuote(envFile!)}`, 10).catch(() => undefined);
+      }
     }
   }
 
@@ -487,6 +502,40 @@ export class BoxSandboxProvider implements SandboxProvider {
         throw new Error(`Box ${id} did not reach ${[...states].join("/")}`);
       await delay(1_000, undefined, { signal: context.signal });
     }
+  }
+
+  private async writeCommandEnvironment(
+    id: string,
+    envFile: string,
+    environment: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    // Preparation makes the private directory; repeat it for commands that skipped preparation.
+    if (!this.prepared.has(id)) {
+      const result = await this.runCommand(
+        id,
+        commandEnvDirectoryCommand(),
+        undefined,
+        60_000,
+        signal,
+      );
+      if (result.exitCode !== 0) {
+        throw new Error(
+          result.stderr || result.stdout || "could not prepare Box command environment",
+        );
+      }
+    }
+    await this.client.writeFile(
+      {
+        boxId: id,
+        fileWriteRequest: {
+          path: envFile,
+          content: Buffer.from(environment).toString("base64"),
+          encoding: "base64",
+        },
+      },
+      { signal },
+    );
   }
 
   private async writeFiles(
@@ -812,7 +861,23 @@ function boxCwd(cwd: string | undefined): string {
 }
 
 function configureBoxWorkspaceCommand(): string {
-  return `mkdir -p ${shellQuote(BOX_BROWSER_PROFILES)}`;
+  return `mkdir -p ${shellQuote(BOX_BROWSER_PROFILES)} && ${commandEnvDirectoryCommand()}`;
+}
+
+/** Only `user` may list or read command environment files. */
+function commandEnvDirectoryCommand(): string {
+  const directory = shellQuote(BOX_COMMAND_ENV);
+  return `mkdir -p -m 700 ${directory} && chmod 700 ${directory}`;
+}
+
+/**
+ * Opens the env file, deletes it, then loads it from the open descriptor, so it is gone before
+ * the requested env (which may change PATH) applies and before `argv` runs. No shell variables:
+ * the requested env may set any name.
+ */
+function sourceEnvironmentCommand(envFile: string, argv: string): string {
+  const file = shellQuote(envFile);
+  return `exec 3< ${file} || exit 1; rm -f -- ${file}; . /dev/fd/3 || exit 1; exec 3<&-; ${argv}`;
 }
 
 function listBoxFilesCommand(directory: string): string {

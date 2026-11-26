@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { items, readyItem } from "../../stories/fixtures/data-room";
 import { Preview } from "./Preview";
 
@@ -73,6 +74,11 @@ export const Image: Story = {
   beforeEach: () => serveFile("png"),
   args: { item: { ...readyItem, name: "Sample photo.png", mimeType: "image/png" } },
 };
+/** A recording plays in the browser's own audio controls. The story's bytes are not audio, so it cannot play here. */
+export const Audio: Story = {
+  beforeEach: () => serveFile("png"),
+  args: { item: { ...readyItem, name: "Recording 29 Oct 09:14", mimeType: "audio/ogg" } },
+};
 /** A type the browser cannot show keeps the file icon. */
 export const OtherType: Story = {
   args: { item: { ...readyItem, name: "Sample budget.csv", mimeType: "text/csv" } },
@@ -132,6 +138,35 @@ export const FullScreen: Story = {
     await new Promise((resolve) => setTimeout(resolve, 300));
     canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Full screen"]')?.click();
   },
+};
+
+const investorContact = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  email: `${name.toLowerCase().replaceAll(" ", ".")}@example.test`,
+  organization: null,
+  kind: "investor",
+  notes: null,
+  addedBy: null,
+  portalBlockedAt: null,
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z",
+  ...extra,
+});
+
+/** The investors who can open the file are named; the names open the Share dialog. */
+export const SharedWithNames: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "investors.shares": ["c1", "c2", "c3", "c4", "c5"],
+      "contacts.list": [
+        investorContact("c1", "Ada Example"),
+        investorContact("c2", "Ren Placeholder"),
+        investorContact("c3", "Cy Fictional"),
+        investorContact("c4", "Dee Sample"),
+        investorContact("c5", "Eli Invented"),
+      ],
+    }),
 };
 
 /** Stored and downloadable, but too large to read for search. */

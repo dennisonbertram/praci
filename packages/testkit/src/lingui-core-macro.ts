@@ -10,3 +10,12 @@ export function t(strings: TemplateStringsArray, ...values: unknown[]): string {
 export function plural(count: number, forms: { one: string; other: string }): string {
   return (count === 1 ? forms.one : forms.other).replace("#", String(count));
 }
+
+/** A message descriptor, as `msg` produces in the app build; `i18n._` renders its message. */
+export function msg(
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+): { id: string; message: string } {
+  const message = String.raw(strings, ...values);
+  return { id: message, message };
+}

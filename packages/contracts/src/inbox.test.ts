@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountTabNames,
   CleanupArchiveInputSchema,
   InboxFeedbackInputSchema,
   InboxFilterSchema,
@@ -229,5 +230,23 @@ describe("mail thread agent spawn key", () => {
     expect(isMailThreadAgentSpawnKey(mailThreadAgentSpawnKey("c", "t"))).toBe(true);
     expect(isMailThreadAgentSpawnKey("inbox-agent:user-1")).toBe(false);
     expect(isMailThreadAgentSpawnKey(null)).toBe(false);
+  });
+});
+
+describe("accountTabNames", () => {
+  it("uses labels, or addresses when labels collide", () => {
+    const a = (connectionId: string, label: string, address: string) => ({
+      connectionId,
+      label,
+      address,
+    });
+    expect(accountTabNames([a("1", "Work", "w@x.com"), a("2", "Studio", "s@x.com")])).toEqual([
+      "Work",
+      "Studio",
+    ]);
+    expect(accountTabNames([a("1", "Gmail", "w@x.com"), a("2", "gmail", "s@x.com")])).toEqual([
+      "w@x.com",
+      "s@x.com",
+    ]);
   });
 });

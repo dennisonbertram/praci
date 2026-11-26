@@ -1,6 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { userEvent, within } from "storybook/test";
-import { mockRpc } from "../lib/__mocks__/rpc";
 import { withPageBehind } from "../stories/decorators";
 import { ContactDialog } from "./ContactDialog";
 
@@ -40,10 +38,12 @@ export const New: Story = {};
 export const Editing: Story = { args: { contact, onDeleted: () => {} } };
 /** A holder on the cap table: the one case that says editing does not change Carta. */
 export const OnCapTable: Story = { args: { contact, fromCapTable: true, onDeleted: () => {} } };
-/** Stage, check size and next step show for kind prospect only. */
+/** A prospect's dialog edits the person only; status, next step and amount are edited on the row. */
 export const Prospect: Story = { args: { contact: prospect, onDeleted: () => {} } };
 export const NewProspect: Story = {
-  args: { prefill: { name: "", email: null, organization: null, kind: "prospect" } },
+  args: {
+    prefill: { name: "", email: null, organization: null, kind: "prospect" },
+  },
 };
 export const PrefilledFromHolder: Story = {
   args: { prefill: { name: "Bo Sample", email: "bo@example.test", organization: null } },
@@ -54,20 +54,11 @@ export const AddedByAgent: Story = {
 };
 /** Opened from the Cap table, where a hint says contacts do not change Carta. */
 export const FromCapTable: Story = { args: { fromCapTable: true } };
-/** The duplicate-email error sits under the Email field, with a way to open the existing contact. */
+/** The duplicate-email error shows under the Email field while typing, with a way to open the existing contact. */
 export const DuplicateEmail: Story = {
   args: {
     prefill: { name: "Ada Again", email: "ada@example.test", organization: null },
     contacts: [contact],
     onOpenContact: () => {},
-  },
-  beforeEach: () =>
-    mockRpc({
-      "contacts.save": () => {
-        throw new Error("Another contact already has this email.");
-      },
-    }),
-  play: async () => {
-    await userEvent.click(await within(document.body).findByRole("button", { name: "Save" }));
   },
 };

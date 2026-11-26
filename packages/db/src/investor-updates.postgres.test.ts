@@ -102,7 +102,7 @@ describePostgres("investor updates (PostgreSQL)", () => {
       audience: "investors",
       status: "draft",
       period: "2026-10",
-      subject: "Acme Test Co · 2026-10 update",
+      subject: "Acme Test Co · October 2026 update",
       body: "",
       deliveries: [],
     });
@@ -211,6 +211,59 @@ describePostgres("investor updates (PostgreSQL)", () => {
     const marked = await markInvestorUpdateDelivered(prisma, mine, draft.id, [contact.Ann!]);
     expect(marked.deliveries.find((d) => d.contactId === contact.Ann)?.state).toBe("sent");
     expect(n).toBe(1);
+  });
+
+  it("saves only over the version it was read from, when a version is given", async () => {
+    const created = await saveInvestorUpdate(prisma, mine, {
+      audience: "investors",
+      body: "First",
+    });
+    // Back-date the row so the write's new updatedAt is strictly newer.
+    await prisma.investorUpdate.update({
+      where: { id: created.id },
+      data: { updatedAt: new Date("2026-10-01T00:00:00.000Z") },
+    });
+    const draft = await getInvestorUpdate(prisma, mine, created.id);
+    // The version it was read from: the write lands and returns a newer version.
+    const saved = await saveInvestorUpdate(prisma, mine, {
+      id: draft.id,
+      subject: "New subject",
+      body: "Second",
+      updatedAt: draft.updatedAt,
+    });
+    expect(saved.body).toBe("Second");
+    expect(saved.updatedAt > draft.updatedAt).toBe(true);
+    // An older version is refused and the row keeps the newer write.
+    const stale = saveInvestorUpdate(prisma, mine, {
+      id: draft.id,
+      subject: "Stale subject",
+      body: "Stale body",
+      updatedAt: draft.updatedAt,
+    });
+    await expect(stale).rejects.toBeInstanceOf(InvestorUpdateLockedError);
+    await expect(stale).rejects.toThrow("This update changed elsewhere.");
+    const kept = await getInvestorUpdate(prisma, mine, draft.id);
+    expect(kept.subject).toBe("New subject");
+    expect(kept.body).toBe("Second");
+    // Without a version the save still lands, as last-write-wins.
+    const last = await saveInvestorUpdate(prisma, mine, { id: draft.id, body: "Third" });
+    expect(last.body).toBe("Third");
+  });
+
+  it("a stale-version save on a sent update keeps the sent message", async () => {
+    const draft = await saveInvestorUpdate(prisma, mine, {
+      audience: "investors",
+      recipientContactIds: [contact.Ann!],
+    });
+    await claimInvestorUpdateSend(prisma, mine, draft.id);
+    await finishInvestorUpdateSend(prisma, mine, draft.id);
+    const stale = saveInvestorUpdate(prisma, mine, {
+      id: draft.id,
+      body: "Late edit",
+      updatedAt: draft.updatedAt,
+    });
+    await expect(stale).rejects.toBeInstanceOf(InvestorUpdateLockedError);
+    await expect(stale).rejects.toThrow("A sent update cannot be changed.");
   });
 
   it("duplicates into a new draft and deletes drafts but not a running send", async () => {

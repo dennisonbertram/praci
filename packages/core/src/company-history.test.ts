@@ -96,6 +96,25 @@ const data: Parameters<typeof companyHistoryItems>[0] = {
   ],
 };
 describe("company history", () => {
+  it("uses an optional relation label while keeping the default title", () => {
+    const withoutRole = {
+      ...data,
+      edges: data.edges.map((edge) => ({ ...edge, role: null })),
+    };
+    const translated = companyHistoryItems(withoutRole, () => "T:works at");
+    expect(translated.find((item) => item.id === "sam-first")?.title).toBe(
+      "Sam Reed · T:works at · Northwind Robotics",
+    );
+    expect(companyHistoryItems(data).find((item) => item.id === "sam-first")?.title).toBe(
+      "Sam Reed · Engineer · Northwind Robotics",
+    );
+    expect(
+      companyHistoryItems(data, () => "T:works at").find((item) => item.id === "sam-first")?.title,
+    ).toBe("Sam Reed · Engineer · Northwind Robotics");
+    expect(companyHistoryItems(withoutRole).find((item) => item.id === "sam-first")?.title).toBe(
+      "Sam Reed · works at · Northwind Robotics",
+    );
+  });
   it("lays out the independent fixture with separate employment periods and matter bars", () => {
     const items = companyHistoryItems(data);
     const layout = layoutCompanyHistory(items, "year", "2024-12-31");

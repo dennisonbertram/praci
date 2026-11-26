@@ -12,9 +12,12 @@ import {
   approvalInOpenChat,
   attentionFromDto,
   deliverNotification,
+  focusAppWindow,
+  OS_NOTIFICATION_MS,
   openNotificationLink,
   resultShownInOpenChat,
   shouldToast,
+  showMomentaryNotification,
   syncApprovalToasts,
 } from "./notification-delivery";
 
@@ -88,7 +91,57 @@ describe("deliverNotification", () => {
     const t = tab(false, { wasShown: async () => false });
     expect(await deliverNotification(n, t)).toBe("os");
     expect(t.delay).toHaveBeenCalledWith(1500);
-    expect(t.show).toHaveBeenCalledWith("Title", { body: "Body", tag: "n1" }, expect.any(Function));
+    expect(t.show).toHaveBeenCalledWith(
+      "Title",
+      { body: "Body", tag: "n1", icon: undefined },
+      expect.any(Function),
+    );
+  });
+
+  it("skips a background notification when permission is still default without prompting", async () => {
+    const requestPermission = vi.fn(async () => "granted");
+    vi.stubGlobal("Notification", { permission: "default", requestPermission });
+    const show = vi.fn();
+    const deps = {
+      state: () => ({ visible: false, focused: false }),
+      delay: vi.fn(async () => {}),
+      wasShown: async () => false,
+      show,
+    };
+
+    expect(await deliverNotification(n, deps)).toBe("skipped");
+    expect(requestPermission).not.toHaveBeenCalled();
+    expect(show).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("titles the OS notification with the agent name and clips a long body to 120 characters", async () => {
+    const t = tab(false, { wasShown: async () => false });
+    await deliverNotification(
+      { ...n, title: "Chief finished", osTitle: "Chief", body: "x".repeat(300) },
+      t,
+    );
+    const [title, options] = t.show.mock.calls[0] as unknown as [string, NotificationOptions];
+    expect(title).toBe("Chief");
+    expect(options.body).toHaveLength(120);
+    expect(options.body?.endsWith("…")).toBe(true);
+  });
+
+  it("shows one OS notification for one reply, however often the run is seen", async () => {
+    const t = tab(false, { wasShown: async () => false });
+    await deliverNotification(n, t);
+    expect(t.show).toHaveBeenCalledTimes(1);
+    expect(t.show).toHaveBeenCalledWith(
+      "Title",
+      expect.objectContaining({ tag: "n1" }),
+      expect.any(Function),
+    );
+  });
+
+  it("a visible, focused tab on another chat gets the toast and no OS notification", async () => {
+    const t = tab(true);
+    expect(await deliverNotification(n, t)).toBe("toast");
+    expect(t.show).not.toHaveBeenCalled();
   });
 
   it("skips the OS notification when the Browser switch is off, but still toasts", async () => {
@@ -291,5 +344,72 @@ describe("syncApprovalToasts", () => {
     syncApprovalToasts([approval], { ...options, complete: false });
     expect(toasts.enqueueApprovalToast).not.toHaveBeenCalled();
     expect(toasts.retainApprovalToasts).not.toHaveBeenCalled();
+  });
+});
+
+describe("showMomentaryNotification", () => {
+  const fake = () => {
+    const shown = { close: vi.fn(), onclick: null as null | (() => void) };
+    const create = vi.fn(
+      (_title: string, _options: NotificationOptions) => shown as unknown as Notification,
+    );
+    return { shown, create };
+  };
+
+  it("closes itself after the momentary delay and never asks for interaction", () => {
+    vi.useFakeTimers();
+    const { shown, create } = fake();
+    showMomentaryNotification("Chief", { body: "Hi", tag: "n1" }, vi.fn(), create);
+    expect(create.mock.calls[0]?.[1]).not.toHaveProperty("requireInteraction");
+    vi.advanceTimersByTime(OS_NOTIFICATION_MS - 1);
+    expect(shown.close).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(shown.close).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("a click runs the handler, closes at once and cancels the timer", () => {
+    vi.useFakeTimers();
+    const { shown, create } = fake();
+    const onClick = vi.fn();
+    showMomentaryNotification("Chief", {}, onClick, create);
+    shown.onclick?.();
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(shown.close).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(OS_NOTIFICATION_MS);
+    expect(shown.close).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("clicking through deliverNotification focuses and opens the thread in the app", async () => {
+    const focus = vi.fn();
+    const open = vi.fn();
+    const { shown, create } = fake();
+    const show = (title: string, options: NotificationOptions, onClick: () => void) =>
+      showMomentaryNotification(title, options, onClick, create);
+    await deliverNotification(
+      { ...n, href: "/app/b1" },
+      { ...tab(false, { wasShown: async () => false }), show, focus, open },
+    );
+    shown.onclick?.();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith("/app/b1");
+    expect(shown.close).toHaveBeenCalled();
+  });
+});
+
+describe("focusAppWindow", () => {
+  it("asks the desktop app to raise its window as well as focusing the page", () => {
+    const focus = vi.fn(async () => {});
+    const pageFocus = vi.fn();
+    vi.stubGlobal("window", { focus: pageFocus, rakazoDesktop: { window: { focus } } });
+    focusAppWindow();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(pageFocus).toHaveBeenCalledTimes(1);
+    vi.stubGlobal("window", { focus: pageFocus });
+    focusAppWindow();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(pageFocus).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
   });
 });

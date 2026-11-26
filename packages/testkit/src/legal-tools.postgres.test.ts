@@ -508,7 +508,13 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(stored.prompt).toBe(LEGAL_SCAN_PROMPT);
     await prisma.routine.update({
       where: { id: stored.id },
-      data: { prompt: LEGAL_SCAN_PROMPT.replace(/ Write every date like.*?Keep/, " Keep") },
+      // The previous default ended "Keep the reply short." (replaced in dac204829).
+      data: {
+        prompt: LEGAL_SCAN_PROMPT.replace(
+          / Keep the reply to the headline.*$/,
+          " Keep the reply short.",
+        ),
+      },
     });
     expect((await ensureLegalRoutine(api, c, bot.id)).prompt).toBe(LEGAL_SCAN_PROMPT);
     await prisma.routine.update({ where: { id: stored.id }, data: { prompt: "my own prompt" } });
@@ -557,6 +563,108 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(
       await legal(a, "legal_upsert_contract", { dataRoomItemId: item.id, title: "x" }),
     ).toHaveProperty("error");
+  });
+
+  it("rejects an analysis older than the one stored, leaving the contract and its deadlines alone", async () => {
+    const item = await addItem(a, "msa.txt", "Master services agreement with Halcyon.");
+    const current = {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Acme MSA",
+      contractType: "MSA",
+      status: "active",
+      expirationDate: "2028-06-30",
+      autoRenews: false,
+      renewalNoticeDays: 90,
+      renewalQuote: "Either party may give 90 days written notice of non-renewal.",
+    };
+    const first = await legal(a, "legal_upsert_contract", current);
+    expect(first.contract.title).toBe("Acme MSA");
+    const deadlinesBefore = await prisma.legalDeadline.findMany({
+      where: { spaceId: a.spaceId, contractId: first.contract.id },
+      orderBy: { id: "asc" },
+    });
+    expect(deadlinesBefore.length).toBeGreaterThan(0);
+
+    const stale = await legal(a, "legal_upsert_contract", {
+      ...current,
+      revision: item.revision - 1,
+      title: "Acme MSA (old draft)",
+      expirationDate: "2026-01-01",
+    });
+    expect(stale.error).toMatch(
+      `a newer analysis of this document is already stored (revision ${item.revision}); nothing was recorded`,
+    );
+
+    const stored = await prisma.legalContract.findUniqueOrThrow({
+      where: {
+        spaceId_userId_dataRoomItemId: {
+          spaceId: a.spaceId,
+          userId: a.userId,
+          dataRoomItemId: item.id,
+        },
+      },
+    });
+    expect(stored.title).toBe("Acme MSA");
+    expect(stored.expirationDate?.toISOString().slice(0, 10)).toBe("2028-06-30");
+    expect(stored.analyzedRevision).toBe(item.revision);
+    const deadlinesAfter = await prisma.legalDeadline.findMany({
+      where: { spaceId: a.spaceId, contractId: first.contract.id },
+      orderBy: { id: "asc" },
+    });
+    expect(deadlinesAfter).toEqual(deadlinesBefore);
+  });
+
+  it("rejects a stale not-legal result instead of hiding a newer contract", async () => {
+    const item = await addItem(a, "policy.txt", "Insurance policy excerpt.");
+    const first = await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Acme Insurance Policy",
+      contractType: "policy",
+      status: "active",
+    });
+    const stale = await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision - 1,
+      notLegal: true,
+    });
+    expect(stale.error).toMatch("a newer analysis of this document is already stored");
+    const contracts = await legal(a, "legal_query", { view: "contracts" });
+    expect(contracts.contracts.map((c: any) => c.id)).toContain(first.contract.id);
+  });
+
+  it("serialises concurrent analyses of one document, so the newest one wins", async () => {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const item = await addItem(a, `race-${attempt}.txt`, "Reseller agreement with Cascade.");
+      const base = {
+        dataRoomItemId: item.id,
+        title: "Cascade reseller (rev 2)",
+        contractType: "reseller",
+        status: "active",
+      };
+      const [older, newer] = await Promise.all([
+        legal(a, "legal_upsert_contract", { ...base, revision: item.revision - 1, title: "Old" }),
+        legal(a, "legal_upsert_contract", { ...base, revision: item.revision }),
+      ]);
+      for (const result of [older, newer]) expect(result.error).not.toBe("Legal tool failed");
+      // Whichever was written first, the stored row is the newer analysis; the older one either lost
+      // the race for the lock and was rejected, or wrote first and was replaced.
+      const stored = await prisma.legalContract.findUniqueOrThrow({
+        where: {
+          spaceId_userId_dataRoomItemId: {
+            spaceId: a.spaceId,
+            userId: a.userId,
+            dataRoomItemId: item.id,
+          },
+        },
+        select: { title: true, analyzedRevision: true },
+      });
+      expect(stored).toEqual({
+        title: "Cascade reseller (rev 2)",
+        analyzedRevision: item.revision,
+      });
+    }
   });
 
   it("re-derives deadlines: closes ones that no longer apply, never touches hand-made or user-closed ones", async () => {

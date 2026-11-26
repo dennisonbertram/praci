@@ -1,0 +1,127 @@
+{
+  "json": {
+    "period": "month",
+    "range": null,
+    "start": "2026-10-01",
+    "end": "2026-10-30",
+    "category": null,
+    "totalCents": 7888423,
+    "categories": [
+      {
+        "key": "payroll",
+        "label": "Payroll",
+        "cents": 5840000
+      },
+      {
+        "key": "rent",
+        "label": "Rent",
+        "cents": 750000
+      },
+      {
+        "key": "servers",
+        "label": "Servers",
+        "cents": 721200
+      },
+      {
+        "key": "marketing",
+        "label": "Marketing",
+        "cents": 180000
+      },
+      {
+        "key": "legal",
+        "label": "Legal",
+        "cents": 125000
+      },
+      {
+        "key": "software",
+        "label": "Software",
+        "cents": 111150
+      },
+      {
+        "key": "travel",
+        "label": "Travel",
+        "cents": 61240
+      },
+      {
+        "key": "meals",
+        "label": "Meals",
+        "cents": 42600
+      },
+      {
+        "key": "office-supplies",
+        "label": "Office Supplies",
+        "cents": 31400
+      },
+      {
+        "key": "insurance",
+        "label": "Insurance",
+        "cents": 25833
+      }
+    ],
+    "transactions": [
+      {
+        "id": "7a6525fa-43fd-47ab-abd2-3c15d507fa1e",
+        "provider": "mercury",
+        "externalId": "mock-merc-0-28-Payl",
+        "accountExternalId": "chk-1111",
+        "postedAt": "2026-10-28T15:00:00.000Z",
+        "purchasedAt": null,
+        "amountCents": -5840000,
+        "currency": "USD",
+        "counterparty": "Paylodex Payroll (Mock)",
+        "vendorKey": "paylodex-payroll-mock",
+        "category": "Payroll",
+        "status": "posted",
+        "kind": "ach",
+        "classification": "spend",
+        "cardLastFour": null,
+        "cardholder": null,
+        "memo": null,
+        "hasReceipt": false,
+        "dashboardUrl": "https://app.example.test/transactions/mock-merc-0-28-Payl"
+      },
+      {
+        "id": "dded9d83-631e-46aa-a442-6fa8358fa2b5",
+        "provider": "brex",
+        "externalId": "mock-brex-pending",
+        "accountExternalId": "brex-card",
+        "postedAt": "2026-10-28T03:26:39.628Z",
+        "purchasedAt": "2026-10-28T03:26:39.628Z",
+        "amountCents": -61240,
+        "currency": "USD",
+        "counterparty": "Skyline Air (Mock)",
+        "vendorKey": "skyline-air-mock",
+        "category": "Travel",
+        "status": "pending",
+        "kind": "CARD",
+        "classification": "spend",
+        "cardLastFour": "0001",
+        "cardholder": "Ada Example",
+        "memo": "Flight to the robotics expo (Mock)",
+        "hasReceipt": false,
+        "dashboardUrl": null
+      },
+      {
+        "id": "bd693214-5f1c-485d-b595-39d4a2281621",
+        "provider": "brex",
+        "externalId": "mock-brex-0-18",
+        "accountExternalId": "brex-card",
+        "postedAt": "2026-10-19T15:00:00.000Z",
+        "purchasedAt": "2026-10-18T15:00:00.000Z",
+        "amountCents": -15000,
+        "currency": "EUR",
+        "counterparty": "Mockbooks Accounting (Mock)",
+        "vendorKey": "mockbooks-accounting-mock",
+        "category": "Software",
+        "status": "posted",
+        "kind": "CARD",
+        "classification": "spend",
+        "cardLastFour": "0001",
+        "cardholder": "Ada Example",
+        "memo": "Bookkeeping plan, October (Mock)",
+        "hasReceipt": false,
+        "dashboardUrl": null
+      }
+    ]
+  }
+}

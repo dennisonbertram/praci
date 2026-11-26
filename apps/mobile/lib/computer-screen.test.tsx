@@ -2,7 +2,7 @@
 
 import type { ComputerStatus } from "@rakazo/contracts";
 import type { ReactNode } from "react";
-import { act, createElement, Fragment } from "react";
+import { act, createElement, Fragment, useLayoutEffect } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Computer from "../app/computer";
 
 const rpc = vi.hoisted(() => vi.fn());
+const route = vi.hoisted(() => ({ botId: "bot-1" }));
+const loadedForBot = vi.hoisted(() => [] as Array<{ botId: string; url: string }>);
 
 vi.mock("react-native", () => {
   function MockView(props: { children?: ReactNode }) {
@@ -56,16 +58,28 @@ vi.mock("../components/computer-keyboard-bar", () => ({
 }));
 
 vi.mock("react-native-webview", () => {
-  return {
-    WebView: (props: {
-      accessibilityElementsHidden?: boolean;
-      importantForAccessibility?: string;
-    }) =>
+  function MockWebView(props: {
+    accessibilityElementsHidden?: boolean;
+    importantForAccessibility?: string;
+    source?: { uri: string };
+    onError?: () => void;
+  }) {
+    useLayoutEffect(() => {
+      loadedForBot.push({ botId: route.botId, url: props.source?.uri ?? "" });
+    }, [props.source?.uri]);
+    return createElement(
+      Fragment,
+      null,
       createElement("iframe", {
         title: "screen",
         "data-elements-hidden": String(Boolean(props.accessibilityElementsHidden)),
         "data-important": props.importantForAccessibility ?? "auto",
       }),
+      createElement("button", { type: "button", onClick: props.onError }, "Fail screen"),
+    );
+  }
+  return {
+    WebView: MockWebView,
   };
 });
 
@@ -80,7 +94,7 @@ vi.mock("react-native-safe-area-context", () => {
 });
 
 vi.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ botId: "bot-1", name: "Basil" }),
+  useLocalSearchParams: () => ({ botId: route.botId, name: "Basil" }),
   useNavigation: () => ({ setOptions: () => undefined }),
 }));
 
@@ -175,6 +189,8 @@ describe("computer screen", () => {
 
   beforeEach(() => {
     rpc.mockReset();
+    route.botId = "bot-1";
+    loadedForBot.splice(0);
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   });
 
@@ -250,6 +266,17 @@ describe("computer screen", () => {
     expect(fullWindow?.querySelector("[data-keyboard-bar]")).not.toBeNull();
   });
 
+  it("does not start the computer when the first status check fails", async () => {
+    rpc.mockImplementation(async (method: string) => {
+      if (method === "computer/status") throw new Error("Status unavailable");
+      return {};
+    });
+    const view = await render();
+
+    expect(view.textContent).toContain("Status unavailable");
+    expect(calls("computer/boot")).toEqual([]);
+  });
+
   it("wakes a sleeping computer from the preview without taking control", async () => {
     respond({ ...botWorking, state: "suspended", busyBotName: null });
     const view = await render();
@@ -300,5 +327,70 @@ describe("computer screen", () => {
     expect(screens).toHaveLength(1);
     expect(screens[0]?.getAttribute("data-elements-hidden")).toBe("false");
     expect(screens[0]?.getAttribute("data-important")).toBe("auto");
+  });
+
+  it("never renders one bot's computer after switching to another bot", async () => {
+    rpc.mockImplementation(async (method: string, input: { botId?: string }) => {
+      if (method === "computer/status") return { ...botWorking, botId: input.botId };
+      if (method === "computer/screenUrl")
+        return { url: `https://screen.example.test/${input.botId}` };
+      return {};
+    });
+    const view = await render();
+    expect(view.querySelector("iframe")).not.toBeNull();
+
+    route.botId = "bot-2";
+    await act(async () => root?.render(<Computer />));
+
+    expect(loadedForBot.some(({ botId, url }) => botId === "bot-2" && url.endsWith("/bot-1"))).toBe(
+      false,
+    );
+  });
+
+  it("retries a failed live view through refresh and clears the failure when a new URL loads", async () => {
+    respond(botWorking);
+    const view = await render();
+    expect(view.querySelector('[aria-label="Open computer"]')).not.toBeNull();
+    const screenFailure = [...view.querySelectorAll("button")].find(
+      (button) => button.textContent === "Fail screen",
+    );
+    await act(async () => (screenFailure as HTMLButtonElement).click());
+    expect(view.querySelector('[aria-label="Open computer"]')).toBeNull();
+    expect(view.textContent).toContain(
+      "Could not load the desktop. This device cannot reach the screen URL.",
+    );
+    const retry = [...view.querySelectorAll("button")].find(
+      (button) => button.textContent === "Try again",
+    );
+    expect(retry).toBeTruthy();
+    rpc.mockImplementation(async (method: string) => {
+      if (method === "computer/status") return botWorking;
+      if (method === "computer/screenUrl")
+        return { url: "https://screen.example.test/embed?retry=1" };
+      return {};
+    });
+    await act(async () => retry?.click());
+    await settle();
+    expect(calls("computer/screenUrl").length).toBeGreaterThan(1);
+    expect(view.textContent).not.toContain("Could not load the desktop.");
+    expect(view.querySelector("iframe")).not.toBeNull();
+
+    rpc.mockImplementation(async (method: string) => {
+      if (method === "computer/status") return botWorking;
+      if (method === "computer/screenUrl") throw new Error("Fresh screen URL failed");
+      return {};
+    });
+    const nextFailure = [...view.querySelectorAll("button")].find(
+      (button) => button.textContent === "Fail screen",
+    );
+    await act(async () => nextFailure?.click());
+    const retryAfterFailure = [...view.querySelectorAll("button")].find(
+      (button) => button.textContent === "Try again",
+    );
+    await act(async () => retryAfterFailure?.click());
+    await settle();
+    expect(view.textContent).toContain("Fresh screen URL failed");
+    expect(view.textContent).not.toContain("Could not load the desktop.");
+    expect(view.textContent).not.toContain("Could not continue");
   });
 });

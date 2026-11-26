@@ -7,6 +7,7 @@ function credentialSecretPrisma(modelReferences: number, voiceReferences: number
     userModelCredential: { count: vi.fn().mockResolvedValue(modelReferences) },
     userVoiceCredential: { count: vi.fn().mockResolvedValue(voiceReferences) },
     secret: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
   } as unknown as PrismaClient;
 }
 

@@ -3,12 +3,32 @@ import type { Prisma, PrismaClient } from "./client.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
 /** Group turns use channel inputs and their own outputs, never private thread history. */
-export function loadRunHistoryMessages(
+export async function loadRunHistoryMessages(
   prisma: PrismaClient,
-  run: { id: string; threadId: string },
+  run: { id: string; threadId: string; botId: string },
   limit: number,
   channelId?: string,
 ) {
+  const legacyHeldMessages = channelId
+    ? await prisma.steeringMessage.findMany({
+        where: {
+          botId: run.botId,
+          runId: null,
+          prompt: null,
+          externalTaint: null,
+          message: {
+            threadId: run.threadId,
+            role: "user",
+            blocks: { array_contains: [{ kind: "channel_message", channelId }] },
+          },
+        },
+        select: { messageId: true, message: { select: { blocks: true } } },
+      })
+    : [];
+  const legacyHeldMessageIds = legacyHeldMessages
+    .filter((row) => JSON.stringify(row.message.blocks).includes("<untrusted_delivery_payload"))
+    .map((row) => row.messageId);
+
   return prisma.message.findMany({
     where: {
       threadId: run.threadId,
@@ -17,7 +37,15 @@ export function loadRunHistoryMessages(
             OR: [
               {
                 role: "user",
+                id: { notIn: legacyHeldMessageIds },
                 blocks: { array_contains: [{ kind: "channel_message", channelId }] },
+                steeringMessages: {
+                  none: {
+                    botId: run.botId,
+                    runId: null,
+                    OR: [{ prompt: { not: null } }, { externalTaint: true }],
+                  },
+                },
               },
               { role: "bot", runId: run.id },
             ],

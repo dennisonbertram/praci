@@ -16,6 +16,7 @@ import {
   failCompanyImportUnit,
   getCompanyImportProgress,
   grantCompanyImportConsent,
+  listCompanyRefreshSources,
   markCompanyRefreshUnavailable,
   persistCompanyImportBaseline,
   persistCompanyImportProposedCheckpoint,
@@ -1629,5 +1630,93 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         where: { spaceId, ownerUserId: userId, id: { in: candidates.map(({ id }) => id) } },
       }),
     ).toBe(0);
+  });
+
+  it("lists a refresh source only once a checkpoint or a started run needs it", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId: otherUserId,
+        connectorId: "synthetic",
+        provider: "slack",
+        displayName: "Synthetic Slack (other owner)",
+        status: "connected",
+        providerRef: `synthetic-slack-other-${suffix}`,
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const descriptor = (channelId: string) => ({
+      sourceKind: "slack" as const,
+      connectionId: connection.id,
+      scope: { channelIds: [channelId] },
+    });
+    const draft = async (channelId: string) => {
+      const run = await createCompanyImportRun(prisma, otherActor, {
+        tokenCap: 100,
+        sources: [descriptor(channelId)],
+      });
+      const source = await prisma.companyImportSource.findFirstOrThrow({
+        where: { runId: run.id, spaceId, ownerUserId: otherUserId },
+      });
+      const refresh = await upsertCompanyRefreshSource(prisma, otherActor, {
+        runId: run.id,
+        sourceId: source.id,
+        source: descriptor(channelId),
+        tokenCap: 100,
+        capability: "supported",
+      });
+      return { run, refresh };
+    };
+
+    const first = await draft("C1");
+    const second = await draft("C2");
+    // Neither draft has started and neither source has a checkpoint, so neither can refresh yet.
+    expect(await listCompanyRefreshSources(prisma, otherActor)).toEqual([]);
+
+    await startCompanyImportRun(prisma, otherActor, second.run.id);
+    const listed = await listCompanyRefreshSources(prisma, otherActor);
+    expect(listed.map((row) => row.id)).toEqual([second.refresh.id]);
+    expect(listed[0]!.scope).toEqual({ channelIds: ["C2"] });
+    expect(first.refresh.id).not.toBe(second.refresh.id);
+  });
+
+  it("keeps a refresh source that holds a committed checkpoint, even while only drafts reuse it", async () => {
+    const connection = await prisma.connection.findFirstOrThrow({
+      where: { spaceId, userId: otherUserId, provider: "slack" },
+      select: { id: true },
+    });
+    const descriptor = {
+      sourceKind: "slack" as const,
+      connectionId: connection.id,
+      scope: { channelIds: ["C3"] },
+    };
+    const draft = async () => {
+      const run = await createCompanyImportRun(prisma, otherActor, {
+        tokenCap: 100,
+        sources: [descriptor],
+      });
+      const source = await prisma.companyImportSource.findFirstOrThrow({
+        where: { runId: run.id, spaceId, ownerUserId: otherUserId },
+      });
+      return upsertCompanyRefreshSource(prisma, otherActor, {
+        runId: run.id,
+        sourceId: source.id,
+        source: descriptor,
+        tokenCap: 100,
+        capability: "supported",
+      });
+    };
+
+    const checkpointed = await draft();
+    await prisma.companyRefreshSource.update({
+      where: { id: checkpointed.id },
+      data: { committedCheckpoint: { kind: "gmail_history", cursor: "c3" }, status: "ready" },
+    });
+    // A later draft points at the same source without any run having started it.
+    await draft();
+
+    const listed = await listCompanyRefreshSources(prisma, otherActor);
+    expect(listed.map((row) => row.id)).toContain(checkpointed.id);
   });
 });

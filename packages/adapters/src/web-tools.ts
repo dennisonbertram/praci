@@ -1,4 +1,5 @@
 import type { AdapterContext, WebFetchProvider, WebSearchProvider } from "@rakazo/adapter-kit";
+import { botWallInstruction } from "./bot-wall.js";
 import { clampMaxChars, clampMaxResults } from "./web-limits.js";
 
 export async function webSearchFromTool(
@@ -39,6 +40,14 @@ export async function webFetchFromTool(
       },
       context,
     );
+    if (result.wall) {
+      const { kind, status, reason } = result.wall;
+      return {
+        url: result.url,
+        blocked: { kind, status, reason },
+        instruction: botWallInstruction(kind),
+      };
+    }
     return result;
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };

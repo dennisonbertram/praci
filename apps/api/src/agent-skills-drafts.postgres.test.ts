@@ -4,6 +4,8 @@ import {
   skillCreateFromTool,
   skillDeleteFromTool,
   skillUpdateFromTool,
+  toolRunFromTool,
+  toolSourceHash,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
@@ -168,5 +170,113 @@ describePostgres("agent-written skills need approval (PostgreSQL)", () => {
       error: "Skill not found.",
     });
     await service.discardDraft(owner, id);
+  });
+
+  describe("tools", () => {
+    const schema = {
+      type: "object",
+      required: ["items"],
+      properties: { items: { type: "array", items: { type: "number" } } },
+    };
+    const sum = "function run(i) { return { total: i.items.reduce((a, b) => a + b, 0) }; }";
+    const sumPlusOne = "function run(i) { return { total: i.items.reduce((a, b) => a + b, 1) }; }";
+    const attended = { allowDraft: true };
+    const unattended = { allowDraft: false };
+    const call = (name: string, options = unattended) =>
+      toolRunFromTool(prisma, owner, { name, input: { items: [1, 2, 3] } }, options);
+    const makeTool = async (name: string) => {
+      const created = await skillCreateFromTool(prisma, owner, {
+        name,
+        description: `${name} tool`,
+        body: "Use tool_run.",
+        toolSource: sum,
+        toolInputSchema: schema,
+        reads: "Numbers you pass in",
+        writes: "Nothing",
+      });
+      expect(created).toMatchObject({ ok: true, status: "draft" });
+      return String(created.id);
+    };
+
+    it("a draft tool test-runs only in an attended run, with no hash until approved", async () => {
+      const id = await makeTool("sum_tool");
+      expect(await call("sum_tool", attended)).toEqual({ result: { total: 6 } });
+      expect(await call("sum_tool", unattended)).toMatchObject({ error: expect.any(String) });
+      expect((await prisma.agentSkill.findUnique({ where: { id } }))?.toolSourceHash).toBeNull();
+      const [shown] = await service.drafts(owner);
+      expect(shown?.tool).toMatchObject({
+        source: sum,
+        hash: toolSourceHash(sum),
+        writes: "Nothing",
+      });
+      await service.discardDraft(owner, id);
+    });
+
+    it("approving pins the hash of the source shown, and the tool then runs unattended", async () => {
+      const id = await makeTool("pinned_tool");
+      await expect(service.approveDraft(owner, id)).rejects.toThrow();
+      await expect(service.approveDraft(owner, id, "wrong")).rejects.toThrow();
+      const approved = await service.approveDraft(owner, id, toolSourceHash(sum));
+      expect(approved.tool).toBe(true);
+      expect((await prisma.agentSkill.findUnique({ where: { id } }))?.toolSourceHash).toBe(
+        toolSourceHash(sum),
+      );
+      expect(await call("pinned_tool")).toEqual({ result: { total: 6 } });
+      // Input that does not match the schema is refused before it runs.
+      expect(
+        await toolRunFromTool(
+          prisma,
+          owner,
+          { name: "pinned_tool", input: { items: "x" } },
+          unattended,
+        ),
+      ).toMatchObject({ error: expect.stringContaining("list") });
+    });
+
+    it("a draft edited after the owner opened it cannot be approved with the old hash", async () => {
+      const id = await makeTool("raced_tool");
+      await skillUpdateFromTool(prisma, owner, { skillId: id, toolSource: sumPlusOne });
+      await expect(service.approveDraft(owner, id, toolSourceHash(sum))).rejects.toThrow();
+      await service.discardDraft(owner, id);
+    });
+
+    it("an update of an active tool changes nothing until the owner approves", async () => {
+      const id = await makeTool("revised_tool");
+      await service.approveDraft(owner, id, toolSourceHash(sum));
+      const updated = await skillUpdateFromTool(prisma, owner, {
+        skillId: id,
+        toolSource: sumPlusOne,
+      });
+      expect(updated).toMatchObject({ ok: true, status: "revision_pending" });
+      expect(await call("revised_tool")).toEqual({ result: { total: 6 } });
+      const row = await prisma.agentSkill.findUnique({ where: { id } });
+      expect(row).toMatchObject({ toolSource: sum, toolSourceHash: toolSourceHash(sum) });
+      const [revision] = await service.drafts(owner);
+      expect(revision).toMatchObject({ revision: true, tool: { source: sumPlusOne } });
+      await service.approveDraft(owner, id, toolSourceHash(sumPlusOne));
+      expect(await call("revised_tool")).toEqual({ result: { total: 7 } });
+    });
+
+    it("refuses an active tool whose stored source no longer matches the approved hash", async () => {
+      const id = await makeTool("tampered_tool");
+      await service.approveDraft(owner, id, toolSourceHash(sum));
+      await prisma.agentSkill.update({ where: { id }, data: { toolSource: sumPlusOne } });
+      expect(await call("tampered_tool")).toEqual({
+        error: "This tool changed since it was approved.",
+      });
+    });
+
+    it("another user cannot run the tool", async () => {
+      const id = await makeTool("mine_tool");
+      await service.approveDraft(owner, id, toolSourceHash(sum));
+      expect(
+        await toolRunFromTool(
+          prisma,
+          sameSpaceOther,
+          { name: "mine_tool", input: { items: [] } },
+          unattended,
+        ),
+      ).toEqual({ error: "Tool not found." });
+    });
   });
 });

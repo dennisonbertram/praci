@@ -5,6 +5,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { Zip, ZipDeflate } from "fflate";
 import { dataRoomBlobContext } from "./data-room-files.js";
+import { ArtifactNotFoundError } from "./s3-artifacts.js";
 import { streamChunks } from "./stream-chunks.js";
 
 /**
@@ -19,21 +20,36 @@ import { streamChunks } from "./stream-chunks.js";
  */
 export const ACCOUNT_EXPORT_SCHEMA_VERSION = 1;
 export const ACCOUNT_EXPORT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-/** A running export whose row has not changed for this long is taken as dead, so a new one may start. */
-const STALE_MS = 60 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+/** A running export whose row has not changed for this long is dead: past the build timeout, so a live build never looks stale. */
+const STALE_MS = BUILD_TIMEOUT_MS + 10 * 60 * 1000;
 const PAGE = 500;
+/** Reads per file before a failing read counts the file as missing. */
+const FILE_READ_ATTEMPTS = 3;
 
 export const accountExportDownloadPath = (id: string) => `/api/account/exports/${id}/download`;
 
 type Db = Pick<PrismaClient, "accountExport">;
-type Row = { updatedAt: Date; id: string; status: string; progress: number; expiresAt: Date };
+type Row = {
+  updatedAt: Date;
+  id: string;
+  status: string;
+  progress: number;
+  expiresAt: Date;
+  missingFiles: number;
+};
 
-export const accountExportDto = (row: Row): AccountExport => ({
+const isStale = (row: Pick<Row, "status" | "updatedAt">, now: Date) =>
+  (row.status === "pending" || row.status === "running") &&
+  row.updatedAt.getTime() < now.getTime() - STALE_MS;
+
+/** A pending or running row nobody has touched past the stale window shows as failed, so the user can start over. */
+export const accountExportDto = (row: Row, now = new Date()): AccountExport => ({
   id: row.id,
-  status: row.status as AccountExport["status"],
+  status: (isStale(row, now) ? "failed" : row.status) as AccountExport["status"],
   progress: row.progress,
   expiresAt: row.expiresAt.toISOString(),
+  missingFiles: row.missingFiles,
 });
 
 /** Starts an export, or returns the one already pending or running. At most one is active per user. */
@@ -49,7 +65,7 @@ export async function requestAccountExport(
     data: { status: "failed" },
   });
   const existing = await prisma.accountExport.findFirst({ where: active });
-  if (existing) return accountExportDto(existing);
+  if (existing) return accountExportDto(existing, now);
   let row: Row;
   try {
     row = await prisma.accountExport.create({
@@ -82,7 +98,7 @@ export async function latestAccountExport(
     where: { userId, OR: [{ status: { in: ["pending", "running"] } }, { expiresAt: { gt: now } }] },
     orderBy: { createdAt: "desc" },
   });
-  return row && accountExportDto(row);
+  return row && accountExportDto(row, now);
 }
 
 const blobContext = (row: { userId: string; spaceId: string }, operation: string) =>
@@ -112,19 +128,6 @@ export async function cleanupAccountExports(
     }
   }
   return removed;
-}
-
-/** Removes every zip a user has, before their account is deleted (the rows go with the user). */
-export async function removeAccountExportBlobs(
-  deps: { prisma: PrismaClient; artifacts: ArtifactStore },
-  userId: string,
-): Promise<void> {
-  const rows = await deps.prisma.accountExport.findMany({
-    where: { userId, storageKey: { not: null } },
-  });
-  for (const row of rows)
-    if (row.storageKey)
-      await deps.artifacts.remove(row.storageKey, blobContext(row, "account-export.delete"));
 }
 
 type Chunks = AsyncIterable<Uint8Array>;
@@ -205,11 +208,24 @@ threads.json           Your conversations.
 messages.json          Every message in your conversations.
 memories.json          Your agents' memory documents.
 skills.json            Your skills.
-routines.json          Your routines, with their cron schedules.
+routines.json          Your routines, with their schedules, quiet setting and page watches.
+routine-watch-state.json  What your page watches last saw: the page text (up to 16 KB) and check times.
+scratchpad-items.json  Your agents' open items, with what they wait on and when they are due.
+artifact-shares.json   Your artifact share links: which version, when made, when they end. Not the links.
 contacts.json          Your contacts.
 meetings.json          Your synced meetings, with notes and transcripts.
 cap-table.json         The latest cap table snapshot.
+cap-table/             Your cap table ledger: holders, share classes, securities, history and access.
+finance-accounts.json  Your synced bank and card accounts and balances.
+finance-transactions.json  Your synced transactions.
+finance-bills.json     Your synced bills.
+safes.json             Your SAFEs.
+fundraise-rounds.json  Your fundraising rounds.
+investor-updates.json  Your investor updates, drafts and sent.
+pipeline-records.json  Your pipeline records and their details.
+inbox-todos.json       Your inbox to-dos.
 legal-*.json           The legal graph: contracts, deadlines, nodes and edges.
+approval-decisions.json  Your approval decisions.
 data-room/             folders.json, items.json (metadata) and files/ (the original files).
 notification-preferences.json
 sidebar-pages.json     The optional sidebar pages you added.
@@ -220,8 +236,39 @@ Not included: secrets, passwords, tokens, run logs, mail bodies (they stay in yo
 and files that are not stored in Praci.
 `;
 
+/** The cap table ledger, one file per table, each row scoped to the requester like everything else. */
+const EQUITY_TABLES = [
+  ["ledger", "equityLedger"],
+  ["stakeholders", "equityStakeholder"],
+  ["stakeholder-properties", "equityStakeholderProperty"],
+  ["custom-properties", "equityCustomProperty"],
+  ["share-classes", "equityShareClass"],
+  ["share-class-versions", "equityShareClassVersion"],
+  ["plans", "equityPlan"],
+  ["vesting-templates", "equityVestingTemplate"],
+  ["vesting-schedules", "equityVestingSchedule"],
+  ["certificates", "equityCertificate"],
+  ["convertible-blocks", "equityConvertibleBlock"],
+  ["convertibles", "equityConvertible"],
+  ["option-grants", "equityOptionGrant"],
+  ["exercises", "equityExercise"],
+  ["warrants", "equityWarrant"],
+  ["transactions", "equityTransaction"],
+  ["draft-sets", "equityDraftSet"],
+  ["funding-rounds", "equityFundingRound"],
+  ["round-scenarios", "equityRoundScenario"],
+  ["saved-views", "equitySavedView"],
+  ["access-groups", "equityAccessGroup"],
+  ["access-grants", "equityAccessGrant"],
+  ["document-links", "equityDocumentLink"],
+  ["health-findings", "equityHealthFinding"],
+  ["stakeholder-changes", "equityStakeholderChange"],
+  ["hris-preferences", "equityHrisPreferences"],
+  ["report-runs", "equityReportRun"],
+] as const;
+
 /** The collectors, in the order they are written. Every one filters on the requester and their spaces. */
-function collectors(prisma: PrismaClient, userId: string, spaceIds: string[]) {
+export function collectors(prisma: PrismaClient, userId: string, spaceIds: string[]) {
   const own = { userId, spaceId: { in: spaceIds } };
   const page = (args: object) => ({ ...args, take: PAGE, orderBy: { id: "asc" as const } });
   const arrays: [string, Pager][] = [
@@ -251,11 +298,82 @@ function collectors(prisma: PrismaClient, userId: string, spaceIds: string[]) {
         ),
     ],
     ["memories.json", (a) => prisma.memoryDocument.findMany(page({ where: own, ...after(a) }))],
+    [
+      "equity-audit-events.json",
+      (a) => prisma.equityAuditEvent.findMany(page({ where: own, ...after(a) })),
+    ],
     ["skills.json", (a) => prisma.agentSkill.findMany(page({ where: own, ...after(a) }))],
     ["routines.json", (a) => prisma.routine.findMany(page({ where: own, ...after(a) }))],
+    [
+      "routine-watch-state.json",
+      async (a) =>
+        (
+          await prisma.routineWatchState.findMany({
+            where: { spaceId: own.spaceId, routine: { userId } },
+            take: PAGE,
+            orderBy: { routineId: "asc" },
+            ...(a ? { cursor: { routineId: a }, skip: 1 } : {}),
+          })
+        ).map((row) => ({ ...row, id: row.routineId })),
+    ],
+    [
+      "scratchpad-items.json",
+      (a) => prisma.scratchpadItem.findMany(page({ where: own, ...after(a) })),
+    ],
+    [
+      // Metadata only: the token is never stored, and the hash is left out too.
+      "artifact-shares.json",
+      (a) =>
+        prisma.artifactShare.findMany(
+          page({
+            where: { spaceId: { in: spaceIds }, createdByUserId: userId },
+            omit: { tokenHash: true },
+            ...after(a),
+          }),
+        ),
+    ],
     ["contacts.json", (a) => prisma.contact.findMany(page({ where: own, ...after(a) }))],
     ["meetings.json", (a) => prisma.meeting.findMany(page({ where: own, ...after(a) }))],
     ["cap-table.json", (a) => prisma.capTableSnapshot.findMany(page({ where: own, ...after(a) }))],
+    ...EQUITY_TABLES.map(([name, model]): [string, Pager] => [
+      `cap-table/${name}.json`,
+      (a) =>
+        (prisma[model] as unknown as { findMany: (args: object) => Promise<Rows[]> }).findMany(
+          page({ where: own, ...after(a) }),
+        ),
+    ]),
+    [
+      // Keyed by space and user, not by id: one row per ledger, so one page with no cursor.
+      "cap-table/views-settings.json",
+      async () =>
+        (await prisma.equityViewsSettings.findMany({ where: own })).map((r) => ({
+          ...r,
+          id: r.spaceId,
+        })),
+    ],
+    [
+      "finance-accounts.json",
+      (a) => prisma.financeAccount.findMany(page({ where: own, ...after(a) })),
+    ],
+    [
+      "finance-transactions.json",
+      (a) => prisma.financeTransaction.findMany(page({ where: own, ...after(a) })),
+    ],
+    ["finance-bills.json", (a) => prisma.financeBill.findMany(page({ where: own, ...after(a) }))],
+    ["safes.json", (a) => prisma.safe.findMany(page({ where: own, ...after(a) }))],
+    [
+      "fundraise-rounds.json",
+      (a) => prisma.fundraiseRound.findMany(page({ where: own, ...after(a) })),
+    ],
+    [
+      "investor-updates.json",
+      (a) => prisma.investorUpdate.findMany(page({ where: own, ...after(a) })),
+    ],
+    [
+      "pipeline-records.json",
+      (a) => prisma.pipelineRecord.findMany(page({ where: own, ...after(a) })),
+    ],
+    ["inbox-todos.json", (a) => prisma.inboxTodo.findMany(page({ where: own, ...after(a) }))],
     [
       "legal-contracts.json",
       (a) => prisma.legalContract.findMany(page({ where: own, ...after(a) })),
@@ -298,6 +416,10 @@ function collectors(prisma: PrismaClient, userId: string, spaceIds: string[]) {
       (a) => prisma.notificationPreference.findMany(page({ where: own, ...after(a) })),
     ],
     ["sidebar-pages.json", (a) => prisma.sidebarPage.findMany(page({ where: own, ...after(a) }))],
+    [
+      "approval-decisions.json",
+      (a) => prisma.approvalDecision.findMany(page({ where: own, ...after(a) })),
+    ],
     [
       "connections.json",
       (a) =>
@@ -414,17 +536,35 @@ export async function runAccountExport(
       }
       for (const item of fileItems) {
         const path = dataRoomFilePath(item);
-        let stream: ReadableStream<Uint8Array>;
-        try {
-          stream = await artifacts.getStream(
-            item.storageKey as string,
-            dataRoomBlobContext(
-              { userId, spaceId: item.spaceId, email: "", isDeploymentOwner: false },
-              "account-export.file",
-              context.signal,
-            ),
-          );
-        } catch {
+        // A file that is really gone counts as missing at once. Any other read error is retried, and
+        // a file that still cannot be read is counted as missing too, so one unreadable file never
+        // blocks every export; the row and manifest say how many were left out.
+        let stream: ReadableStream<Uint8Array> | undefined;
+        for (let attempt = 1; attempt <= FILE_READ_ATTEMPTS && !stream; attempt++) {
+          try {
+            stream = await artifacts.getStream(
+              item.storageKey as string,
+              dataRoomBlobContext(
+                { userId, spaceId: item.spaceId, email: "", isDeploymentOwner: false },
+                "account-export.file",
+                context.signal,
+              ),
+            );
+          } catch (error) {
+            const gone =
+              error instanceof ArtifactNotFoundError ||
+              (error instanceof Error && "code" in error && error.code === "ENOENT");
+            if (gone) break;
+            if (context.signal?.aborted) throw error;
+            if (attempt === FILE_READ_ATTEMPTS) {
+              getLogger().warn("account export left out an unreadable file", {
+                itemId: item.id,
+                error,
+              });
+            }
+          }
+        }
+        if (!stream) {
           missingFiles.push(item.id);
           await step();
           continue;
@@ -455,6 +595,7 @@ export async function runAccountExport(
         progress: 100,
         storageKey: stored.id,
         size: BigInt(stored.size),
+        missingFiles: missingFiles.length,
         expiresAt: new Date(Date.now() + ACCOUNT_EXPORT_TTL_MS),
       },
     });

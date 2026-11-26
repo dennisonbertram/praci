@@ -6,7 +6,12 @@ import type {
   DevinSessionsOutput,
   McpServer,
 } from "@rakazo/contracts";
-import { isCryptoEndpoint, isDevinEndpoint, isGranolaEndpoint } from "@rakazo/contracts";
+import {
+  isBrexCardsEndpoint,
+  isCryptoEndpoint,
+  isDevinEndpoint,
+  isGranolaEndpoint,
+} from "@rakazo/contracts";
 import { CONNECTION_CATALOG_PAGE_SIZE } from "@rakazo/core";
 import {
   AlertDialog,
@@ -22,36 +27,48 @@ import {
   Input,
   Skeleton,
 } from "@rakazo/ui-web";
-import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import type { ConnectedApp } from "../../lib/integrations";
+import { hexBridge } from "../../lib/hex/useHexSync";
+import type { ConnectedApp, EntryInfo } from "../../lib/integrations";
 import {
+  accountLabels,
+  accountLines,
+  appEntry,
   appPath,
+  EXCHANGES,
   FINANCE_PROVIDERS,
   FIRST_PARTY_MCP,
   filterCatalog,
+  filterEntries,
   groupConnections,
   isSameMcpEndpoint,
   mcpStatus,
   popularApps,
+  sortEntries,
 } from "../../lib/integrations";
+import { useListParams } from "../../lib/list-params";
 import { appReturnPath } from "../../lib/return-to";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { PickFilter, SearchField, SortControl } from "../ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../PageHeader";
 import { AppLogo } from "./AppLogo";
+import { BrexCardsConnectDialog } from "./BrexCardsConnectDialog";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { DevinConnectDialog } from "./DevinConnectDialog";
 import {
   connectedFinanceKeys,
+  erroredFinanceKeys,
   FINANCE_TILE_COUNT,
   FinanceSection,
+  lapsedFinanceKeys,
   useFinanceStatus,
 } from "./FinanceSection";
 import { GranolaStatusLine, granolaLine } from "./GranolaMeetingsCard";
+import { HexCard } from "./HexCard";
 import { IMessageSection } from "./IMessageSection";
 import {
   AgentStack,
@@ -71,7 +88,9 @@ const PHONE_POPULAR = 3;
 /** The filter chips: All, then the section headings that hold tiles of their own. */
 const CHIPS = ["all", "finance", "social", "equity", "tools"] as const;
 type Chip = (typeof CHIPS)[number];
+const SORT_FIELDS = ["default", "name", "status", "connected"] as const;
 const GRANOLA_PATH = "/app/integrations/granola";
+const OMI_PATH = "/app/integrations/omi";
 
 function hostOf(value: string | null) {
   if (!value) return "";
@@ -84,7 +103,7 @@ function hostOf(value: string | null) {
 
 function Card({ children }: { children: ReactNode }) {
   return (
-    <IntegrationTile className="relative transition-colors hover:bg-muted/40">
+    <IntegrationTile className="relative transition-colors hover:bg-muted/40 max-sm:flex-row max-sm:flex-wrap max-sm:items-center">
       {children}
     </IntegrationTile>
   );
@@ -104,7 +123,7 @@ function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
 function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   if (bots.length === 0) return null;
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+    <div className="flex items-center gap-2 text-[11px] text-muted-foreground max-sm:hidden">
       <Trans>Used by</Trans>
       <AgentStack bots={bots} />
     </div>
@@ -179,14 +198,14 @@ function McpCard({
         logo={known?.logo}
         sub={
           (known && descriptions[known.id]) ||
-          hostOf(server.endpoint) ||
+          (isBrexCardsEndpoint(server.endpoint) ? undefined : hostOf(server.endpoint)) ||
           server.command ||
           undefined
         }
         to={managePath}
       />
       <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
-      <div className="mt-auto flex min-h-7 items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2 max-sm:basis-full max-sm:empty:hidden">
         {keyLine && keyStatus ? (
           <GranolaStatusLine status={keyStatus} />
         ) : (
@@ -207,7 +226,7 @@ function McpCard({
         ) : null}
       </div>
       {reconnect.error ? (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-destructive max-sm:basis-full">
           {reconnect.error}
         </p>
       ) : null}
@@ -229,7 +248,7 @@ function GranolaKeyCard({
   return (
     <Card>
       <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
-      <div className="mt-auto flex min-h-7 items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2 max-sm:basis-full max-sm:empty:hidden">
         <GranolaStatusLine status={status} />
       </div>
     </Card>
@@ -248,10 +267,10 @@ function AppCard({
   onReconnect: (app: ConnectedApp, row: Connection) => void;
 }) {
   // An account labelled with the app's own name says nothing new, so show what the app does instead.
-  const accounts = app.rows
-    .filter((row) => row.status === "connected" && row.displayName !== app.name)
-    .map((row) => row.displayName)
-    .join(", ");
+  const { t } = useLingui();
+  const { lines, more } = accountLines(accountLabels(app), 3);
+  const count = more;
+  const accounts = more ? [...lines, t`+${count} more`] : lines;
   const working = app.rows.find((row) => row.status === "connected");
   const lapsed = app.rows.find((row) => row.status === "connected" && row.needsReconnect);
   const description = data.catalog.find(
@@ -263,13 +282,13 @@ function AppCard({
       <CardHead
         name={app.name}
         logo={app.logo}
-        sub={accounts || description || undefined}
+        sub={accounts.length ? accounts : (description ?? undefined)}
         to={to}
       />
       {app.status === "failed" || app.status === "connecting" ? null : (
         <UsedBy bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)} />
       )}
-      <div className="mt-auto flex min-h-7 items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2 max-sm:basis-full max-sm:empty:hidden">
         <StatusBadge status={app.status} quiet />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
           <OpenPageLink to="/app/inbox">
@@ -297,11 +316,11 @@ function AppCard({
         ) : null}
       </div>
       {app.status === "failed" ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground max-sm:basis-full">
           {app.error ?? <Trans>Sign-in did not finish.</Trans>}
         </p>
       ) : app.status === "connecting" ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground max-sm:basis-full">
           <Trans>Waiting for you to finish signing in.</Trans>
         </p>
       ) : null}
@@ -311,12 +330,15 @@ function AppCard({
 
 function SourceCard({
   source,
+  bots,
   onRemove,
 }: {
   source: CapabilityInstall;
+  bots: IntegrationsData["bots"];
   onRemove: (source: CapabilityInstall) => void;
 }) {
   const { t } = useLingui();
+  const usedBy = new Set(source.usableBotIds ?? []);
   return (
     <Card>
       <TileMenu label={t`More ${source.name} actions`}>
@@ -327,7 +349,16 @@ function SourceCard({
       <CardHead
         name={source.name}
         sub={`${source.kind.toUpperCase()} · ${hostOf(source.source)}`}
+        to={`/app/integrations/source/${source.id}`}
       />
+      <UsedBy bots={bots.filter((bot) => usedBy.has(bot.id))} />
+      {source.agentBotId ? (
+        <div className="mt-auto flex min-h-7 items-center gap-2 max-sm:basis-full">
+          <OpenPageLink to={`/app/${source.agentBotId}`}>
+            <Trans>Open agent</Trans>
+          </OpenPageLink>
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -377,6 +408,11 @@ export function IntegrationsHome({
   const { t } = useLingui();
   const [params] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
+  const list = useListParams(SORT_FIELDS, { field: "default", dir: "asc" });
+  const statusParam = list.param("status");
+  // A status filter shows only the connected apps, so it hides everything that is not connected.
+  const status =
+    statusParam === "connected" || statusParam === "attention" ? statusParam : undefined;
   const [category, setCategory] = useState<Chip>(
     params.get("category") === "finance" ? "finance" : "all",
   );
@@ -397,6 +433,21 @@ export function IntegrationsHome({
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
   const [replacing, setReplacing] = useState<Connection | null>(null);
+  const [connectionError, setConnectionError] = useState<{
+    connectionId: string;
+    message: string;
+  } | null>(null);
+  useEffect(() => {
+    if (
+      connectionError &&
+      !data.connections.some(
+        (connection) =>
+          connection.id === connectionError.connectionId && connection.status !== "revoked",
+      )
+    ) {
+      setConnectionError(null);
+    }
+  }, [connectionError, data.connections]);
   /** The page of an app that just finished connecting; its card takes focus once it appears. */
   const focusAfterConnect = useRef<string | null>(null);
   const [slow, setSlow] = useState(false);
@@ -416,6 +467,7 @@ export function IntegrationsHome({
   } | null>(null);
   /** The Devin key dialog: connecting the space, or replacing a refused key. */
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
+  const [brexDialog, setBrexDialog] = useState(false);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   // The chips are the page's own section headings (plus All), so each one jumps to a heading you can see.
@@ -427,6 +479,12 @@ export function IntegrationsHome({
     tools: t`Tools`,
   };
 
+  const sortNames = {
+    default: t`Default`,
+    name: t`Name`,
+    status: t`Status`,
+    connected: t`Connected`,
+  };
   const apps = useMemo(
     () => groupConnections(data.connections, data.catalog),
     [data.connections, data.catalog],
@@ -438,8 +496,10 @@ export function IntegrationsHome({
   // Only Finance also narrows the Popular catalog; Social, Equity and Tools hold just their own tiles.
   const results = useMemo(
     () =>
-      category === "all" || category === "finance" ? filterCatalog(open, { query, category }) : [],
-    [open, query, category],
+      !status && (category === "all" || category === "finance")
+        ? filterCatalog(open, { query, category })
+        : [],
+    [open, query, category, status],
   );
   const firstPartySections = { social: labels.social, equity: labels.equity, tools: labels.tools };
   const firstPartyDescription = {
@@ -451,15 +511,36 @@ export function IntegrationsHome({
     box: t`Search and read files and folders`,
     granola: t`Meeting notes and transcripts`,
     wisprflow: t`Notetaker meetings, notes and tasks`,
+    omi: t`Pendant recordings, meetings and notes`,
   };
   const financeStatus = useFinanceStatus();
   const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
   const financeMatches = financeNames.some((name) => name.includes(query.trim().toLowerCase()));
   const showFinance =
+    !status &&
     (category === "all" || category === "finance") &&
     financeMatches &&
     connectedKeys.size < FINANCE_TILE_COUNT;
+  // Connecting Brex cards is for the space owner. The role comes from the space list's own flag for
+  // the owner's rights; until it answers, or if it fails, the tile stays hidden.
+  const [spaceOwner, setSpaceOwner] = useState(false);
+  useEffect(() => {
+    void Promise.resolve()
+      .then(() => rpc.spaces.list())
+      .then((navigation) =>
+        setSpaceOwner(
+          navigation.spaces.find((space) => space.id === navigation.current.id)?.canRename === true,
+        ),
+      )
+      .catch(() => setSpaceOwner(false));
+  }, []);
+  const [omiConnected, setOmiConnected] = useState(false);
+  useEffect(() => {
+    void Promise.resolve(rpc.omi?.status?.())
+      .then((status) => setOmiConnected(Boolean(status)))
+      .catch(() => undefined);
+  }, []);
   const granolaKey =
     data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
   const hasGranolaServer = data.servers.some((server) => isGranolaEndpoint(server.endpoint));
@@ -471,13 +552,22 @@ export function IntegrationsHome({
       ) &&
       !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)) &&
       // A connected API key is already Granola's tile under Connected.
-      !(entry.id === "granola" && keyOnlyGranola),
+      !(entry.id === "granola" && keyOnlyGranola) &&
+      !(entry.id === "omi" && omiConnected),
   );
   const firstPartyMcp = unconnectedFirstParty.filter(
     (entry) =>
+      !status &&
       (category === "all" || category === entry.section || category === entry.category) &&
       entry.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
+  // Brex cards has no https endpoint to match a connected server by, so its tile is hidden by its own check.
+  const showBrexTile =
+    !status &&
+    spaceOwner &&
+    !data.servers.some((server) => isBrexCardsEndpoint(server.endpoint)) &&
+    (category === "all" || category === "tools" || category === "finance") &&
+    "brex cards".includes(query.trim().toLowerCase());
   // A chip whose heading would not show is not offered. Finance always has its own tiles. Until the
   // data arrives only All and Finance show, so the other chips join at the end instead of shifting.
   const chips = CHIPS.filter(
@@ -485,7 +575,9 @@ export function IntegrationsHome({
       id === "all" ||
       id === "finance" ||
       (data.loaded &&
-        (id === category || unconnectedFirstParty.some((entry) => entry.section === id))),
+        (id === category ||
+          unconnectedFirstParty.some((entry) => entry.section === id) ||
+          (id === "tools" && showBrexTile))),
   );
   const [chatMatches, setChatMatches] = useState(0);
   const financeServerIds = data.financeSources.flatMap((source) =>
@@ -503,32 +595,134 @@ export function IntegrationsHome({
   const servers = data.servers.filter(
     (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
-  const filtering = Boolean(query.trim()) || category !== "all";
+  const filtering = Boolean(query.trim()) || category !== "all" || Boolean(status);
   const phoneCollapsed = !phoneAll && !filtering;
   // Connected narrows to the chip's category and to apps whose name matches the search, so an app
   // that is already connected still turns up when searched for.
-  const searching = Boolean(query.trim());
+  const searching = Boolean(query.trim()) || Boolean(status);
   const chipOnly = category !== "all" && !searching;
-  const connectedApps = filtering
-    ? apps.filter(
+  const wholeList = category === "all";
+  const financeProps = {
+    sources: data.financeSources,
+    status: financeStatus,
+    onChanged: () => void data.refresh(),
+    extras: {
+      ...Object.fromEntries(
+        data.financeSources.flatMap((source) =>
+          source.serverId
+            ? [[source.provider, <UsedBy key="used" bots={botsOn(source.serverId)} />]]
+            : [],
+        ),
+      ),
+      ...(cryptoServer ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> } : {}),
+    },
+    cryptoManageTo: cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined,
+  };
+  const financeLabel: Record<string, string> = {
+    ...Object.fromEntries(FINANCE_PROVIDERS.map((entry) => [entry.provider, entry.name])),
+    ...Object.fromEntries(EXCHANGES.map((entry) => [entry.provider, entry.name])),
+    crypto: "Blockscout",
+    alchemy: "Alchemy",
+  };
+  const specialSearch = query.trim().toLowerCase();
+  const showSpecialSearch = wholeList && Boolean(specialSearch) && !status;
+  const matchingSpecials = {
+    granola:
+      showSpecialSearch &&
+      Boolean(granolaKey && keyOnlyGranola) &&
+      "granola".includes(specialSearch),
+    omi: showSpecialSearch && omiConnected && "omi".includes(specialSearch),
+    // Hex only renders where the desktop bridge exists (or once connected), so count it there.
+    hex: showSpecialSearch && hexBridge() !== undefined && "hex".includes(specialSearch),
+    sources: showSpecialSearch
+      ? data.sources.filter((source) => source.name.toLowerCase().includes(specialSearch))
+      : [],
+  };
+  const hasSpecialSearchMatch =
+    matchingSpecials.granola ||
+    matchingSpecials.omi ||
+    matchingSpecials.hex ||
+    matchingSpecials.sources.length > 0;
+  // Special cards keep their layout, but participate in search when it is the only filter.
+  type Entry = EntryInfo & { key: string; node: ReactNode };
+  const lapsedKeys = lapsedFinanceKeys(data.financeSources);
+  const erroredKeys = erroredFinanceKeys(financeStatus);
+  const entries: Entry[] = [
+    ...apps
+      .filter(
         (app) =>
-          (category === "all" ||
-            data.catalog.find((item) => `${item.connectorId}:${item.slug}` === app.key)
-              ?.category === category) &&
-          app.name.toLowerCase().includes(query.trim().toLowerCase()),
+          category === "all" ||
+          data.catalog.find((item) => `${item.connectorId}:${item.slug}` === app.key)?.category ===
+            category,
       )
-    : apps;
+      .map((app) => ({
+        ...appEntry(app),
+        key: app.key,
+        node: <AppCard key={app.key} app={app} data={data} onRetry={retry} onReconnect={retry} />,
+      })),
+    ...(wholeList ? servers : []).map((server) => ({
+      key: server.id,
+      name: server.name,
+      search: [server.name, hostOf(server.endpoint) ?? "", server.command ?? ""],
+      attention: mcpStatus(server) !== "connected",
+      created: server.createdAt ?? null,
+      node: (
+        <McpCard
+          key={server.id}
+          server={server}
+          data={data}
+          descriptions={firstPartyDescription}
+          onReconnectDevin={() => setDevinDialog("replace")}
+        />
+      ),
+    })),
+    ...(wholeList || category === "finance"
+      ? [
+          ...[...connectedKeys].map((key) => ({ key, attention: false })),
+          // Without a status filter a lapsed bank keeps its own section above Connected.
+          ...(status
+            ? [...lapsedKeys, ...erroredKeys].map((key) => ({ key, attention: true }))
+            : []),
+        ].map(({ key, attention }) => ({
+          key: `finance:${key}`,
+          name: financeLabel[key] ?? key,
+          search: [financeLabel[key] ?? key],
+          attention,
+          created: null,
+          node: (
+            <div key={key} className="contents [&_[data-testid=finance-section]]:contents">
+              <FinanceSection
+                {...financeProps}
+                mode={!attention ? "connected" : erroredKeys.has(key) ? "available" : "lapsed"}
+                only={key}
+              />
+            </div>
+          ),
+        }))
+      : []),
+  ];
+  // Every kind of card counts, and an active filter or sort keeps its controls so it can be cleared.
+  const entryCount =
+    entries.filter((entry) => !entry.key.startsWith("finance:")).length +
+    connectedKeys.size +
+    (status ? 0 : lapsedKeys.size + erroredKeys.size);
+  const connectedEntries = sortEntries(
+    filterEntries(entries, { query, status }),
+    list.sort.field,
+    list.sort.dir,
+  );
   const otherMatches =
     showFinance ||
     firstPartyMcp.length > 0 ||
+    showBrexTile ||
     chatMatches > 0 ||
-    (searching && connectedApps.length > 0);
-  const wholeList = category === "all";
+    (searching && connectedEntries.length > 0) ||
+    hasSpecialSearchMatch;
   const anyConnected =
-    apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
-  const hasConnected = chipOnly
-    ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
-    : anyConnected;
+    apps.length + servers.length + data.sources.length + connectedKeys.size > 0 ||
+    keyOnlyGranola ||
+    omiConnected;
+  const hasConnected = chipOnly ? connectedEntries.length > 0 : anyConnected;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -561,13 +755,17 @@ export function IntegrationsHome({
     // Wait a frame so the dialog's own focus restore has finished.
     const frame = requestAnimationFrame(() => link.focus());
     return () => cancelAnimationFrame(frame);
-  }, [connecting, connectedApps]);
+  }, [connecting, connectedEntries.length]);
 
   function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
     if (entry.id === "devin") return setDevinDialog("connect");
     // Granola has its own page: sign-in and the API key are both connected there.
     if (entry.id === "granola") {
       void navigate(GRANOLA_PATH);
+      return;
+    }
+    if (entry.id === "omi") {
+      void navigate(OMI_PATH);
       return;
     }
     setCustom({
@@ -598,6 +796,7 @@ export function IntegrationsHome({
   }, [data.loaded, data.catalog, firstPartyMcp, navigate]);
 
   function retry(app: ConnectedApp, lapsed: Connection | null = null) {
+    setConnectionError(null);
     const item = data.catalog.find((entry) => `${entry.connectorId}:${entry.slug}` === app.key);
     setReplacing(lapsed);
     setConnecting(
@@ -636,22 +835,41 @@ export function IntegrationsHome({
           {/* Rendered before the data loads, so only the grid below waits. */}
           {notSetUp ? null : (
             <>
-              <div className="relative mb-3 max-w-[420px]">
-                <Search
-                  aria-hidden="true"
-                  className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
-                />
-                <Input
-                  type="search"
-                  className="h-9 ps-8"
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <SearchField
+                  name="integration-search"
+                  className="w-full sm:w-[420px]"
                   value={query}
                   placeholder={t`Search integrations`}
-                  aria-label={t`Search integrations`}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
+                  label={t`Search integrations`}
+                  onChange={(value) => {
+                    setQuery(value);
                     setVisible(CONNECTION_CATALOG_PAGE_SIZE);
                   }}
                 />
+                {entryCount > 1 || status || list.sort.field !== "default" ? (
+                  <>
+                    <PickFilter
+                      label={t`Status`}
+                      value={status}
+                      options={[
+                        ["connected", t`Connected`],
+                        ["attention", t`Needs attention`],
+                      ]}
+                      onChange={(value) => list.setParam("status", value)}
+                    />
+                    <div className="ms-auto flex items-center gap-0.5">
+                      <SortControl
+                        fields={SORT_FIELDS.map((field) => [field, sortNames[field]])}
+                        field={list.sort.field}
+                        fieldLabel={sortNames[list.sort.field]}
+                        direction={list.sort.field === "default" ? undefined : list.sort.dir}
+                        onField={(field) => list.setSort({ field, dir: "asc" })}
+                        onDirection={(dir) => list.setSort({ field: list.sort.field, dir })}
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
               <fieldset
                 aria-label={t`Category`}
@@ -696,15 +914,34 @@ export function IntegrationsHome({
               <Trans>Loading integrations…</Trans>
             </p>
           ) : null}
-          {data.error || data.catalogFailed ? (
-            <p role="alert" className="mb-4 text-sm text-destructive">
-              {data.error ?? <Trans>Could not load the app list. Reload to try again.</Trans>}
-            </p>
+          {data.error || data.catalogFailed || connectionError ? (
+            <div
+              role="alert"
+              className="mb-4 flex flex-wrap items-center gap-2 text-sm text-destructive"
+            >
+              <span>
+                {connectionError?.message ?? data.error ?? (
+                  <Trans>Could not load the app list. Reload to try again.</Trans>
+                )}
+              </span>
+              {data.error ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setConnectionError(null);
+                    void data.refresh();
+                  }}
+                >
+                  <Trans>Try again</Trans>
+                </Button>
+              ) : null}
+            </div>
           ) : null}
           {data.loaded ? (
             <>
               {/* A lapsed connection is the one thing to fix, so it sits above Connected. */}
-              {(wholeList || category === "finance") && financeMatches ? (
+              {!status && (wholeList || category === "finance") && financeMatches ? (
                 <div ref={lapsedRef} className="mb-3 scroll-mt-4 empty:hidden">
                   <FinanceSection
                     mode="lapsed"
@@ -714,67 +951,38 @@ export function IntegrationsHome({
                   />
                 </div>
               ) : null}
-              {(searching ? connectedApps.length > 0 : hasConnected) ? (
+              {(searching ? connectedEntries.length > 0 || hasSpecialSearchMatch : hasConnected) ? (
                 <>
                   <SectionTitle>
                     <Trans>Connected</Trans>
                   </SectionTitle>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-                    {connectedApps.map((app) => (
-                      <AppCard
-                        key={app.key}
-                        app={app}
-                        data={data}
-                        onRetry={retry}
-                        onReconnect={retry}
-                      />
-                    ))}
-                    {(wholeList && !searching ? servers : []).map((server) => (
-                      <McpCard
-                        key={server.id}
-                        server={server}
-                        data={data}
-                        descriptions={firstPartyDescription}
-                        onReconnectDevin={() => setDevinDialog("replace")}
-                      />
-                    ))}
-                    {granolaKey && keyOnlyGranola && wholeList && !searching ? (
+                    {connectedEntries.map((entry) => entry.node)}
+                    {granolaKey &&
+                    keyOnlyGranola &&
+                    wholeList &&
+                    (!searching || matchingSpecials.granola) ? (
                       <GranolaKeyCard
                         status={granolaKey}
                         description={firstPartyDescription.granola}
                       />
                     ) : null}
-                    {(wholeList && !searching ? data.sources : []).map((source) => (
-                      <SourceCard key={source.id} source={source} onRemove={setRemoving} />
-                    ))}
-                    {!searching && (wholeList || category === "finance") ? (
-                      <FinanceSection
-                        mode="connected"
-                        sources={data.financeSources}
-                        status={financeStatus}
-                        onChanged={() => void data.refresh()}
-                        extras={{
-                          ...Object.fromEntries(
-                            data.financeSources.flatMap((source) =>
-                              source.serverId
-                                ? [
-                                    [
-                                      source.provider,
-                                      <UsedBy key="used" bots={botsOn(source.serverId)} />,
-                                    ],
-                                  ]
-                                : [],
-                            ),
-                          ),
-                          ...(cryptoServer
-                            ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
-                            : {}),
-                        }}
-                        cryptoManageTo={
-                          cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
-                        }
-                      />
+                    {omiConnected && wholeList && (!searching || matchingSpecials.omi) ? (
+                      <Card>
+                        <CardHead name="Omi" sub={firstPartyDescription.omi} to={OMI_PATH} />
+                      </Card>
                     ) : null}
+                    {wholeList && (!searching || matchingSpecials.hex) ? <HexCard /> : null}
+                    {(wholeList ? (searching ? matchingSpecials.sources : data.sources) : []).map(
+                      (source) => (
+                        <SourceCard
+                          key={source.id}
+                          source={source}
+                          bots={data.bots}
+                          onRemove={setRemoving}
+                        />
+                      ),
+                    )}
                   </div>
                 </>
               ) : null}
@@ -828,7 +1036,10 @@ export function IntegrationsHome({
                       name={item.name}
                       logo={item.logo}
                       description={item.description}
-                      onConnect={() => setConnecting(item)}
+                      onConnect={() => {
+                        setConnectionError(null);
+                        setConnecting(item);
+                      }}
                     />
                   ))}
                 </div>
@@ -874,7 +1085,10 @@ export function IntegrationsHome({
                                     name={item.name}
                                     logo={item.logo}
                                     description={item.description}
-                                    onConnect={() => setConnecting(item)}
+                                    onConnect={() => {
+                                      setConnectionError(null);
+                                      setConnecting(item);
+                                    }}
                                   />
                                 </div>
                               ))}
@@ -932,7 +1146,8 @@ export function IntegrationsHome({
 
                 {(["social", "equity", "tools"] as const).map((section) => {
                   const entries = firstPartyMcp.filter((entry) => entry.section === section);
-                  return entries.length > 0 ? (
+                  const brexTile = section === "tools" && showBrexTile;
+                  return entries.length > 0 || brexTile ? (
                     <div
                       key={section}
                       data-flat={filtering ? "" : undefined}
@@ -954,12 +1169,15 @@ export function IntegrationsHome({
                             onConnect={() => connectFirstParty(entry)}
                           />
                         ))}
+                        {brexTile ? (
+                          <AppTile name="Brex cards" onConnect={() => setBrexDialog(true)} />
+                        ) : null}
                       </div>
                     </div>
                   ) : null;
                 })}
 
-                {category === "all" ? (
+                {category === "all" && !status ? (
                   <IMessageSection
                     query={query}
                     flat={filtering}
@@ -1007,14 +1225,29 @@ export function IntegrationsHome({
             setReplacing(null);
           }}
           onConnected={async () => {
+            setConnectionError(null);
             focusAfterConnect.current = appPath({
               connectorId: connecting.connectorId,
               slug: connecting.slug,
             });
-            if (!replacing) return;
-            // The new sign-in takes the old account's place, so its mail is not listed twice.
-            await rpc.connections.revoke({ connectionId: replacing.id }).catch(() => undefined);
-            await data.refresh();
+            if (replacing) {
+              // A same-account sign-in can already have retired the old row on the server.
+              try {
+                await rpc.connections.revoke({ connectionId: replacing.id });
+              } catch (err) {
+                const rows = await rpc.connections.list().catch(() => null);
+                if (
+                  rows === null ||
+                  rows.some((row) => row.id === replacing.id && row.status !== "revoked")
+                ) {
+                  setConnectionError({
+                    connectionId: replacing.id,
+                    message: errorText(err, t`Could not disconnect`),
+                  });
+                }
+              }
+              await data.refresh();
+            }
           }}
         />
       ) : null}
@@ -1026,12 +1259,19 @@ export function IntegrationsHome({
           tokenSource={custom.token}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
+          onAgent={(botId) => navigate(`/app/${botId}`)}
           onClose={() => {
             setCustom(null);
             const back = returnTo.current;
             returnTo.current = null;
             if (back) navigate(back);
           }}
+        />
+      ) : null}
+      {brexDialog ? (
+        <BrexCardsConnectDialog
+          onConnected={() => data.refresh()}
+          onClose={() => setBrexDialog(false)}
         />
       ) : null}
       {devinDialog ? (

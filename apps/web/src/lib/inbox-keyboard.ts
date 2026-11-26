@@ -1,3 +1,4 @@
+import { OPEN_DIALOG_SELECTOR } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 
 interface InboxKeyboard {
@@ -15,6 +16,12 @@ interface InboxKeyboard {
   hasPicked: boolean;
   /** Archives the checked rows when there are any, else the selected one. */
   archive: ((id: string | undefined) => void) | undefined;
+  /** Toggles read state of the selected row, or of the checked rows when there are any (the id may be undefined). */
+  read: (id: string | undefined) => void;
+  /** Marks the selected row "No reply needed"; the page no-ops on rows that need no reply. */
+  noReply?: (id: string) => void;
+  /** Undoes what the visible toast offers to undo; undefined when no toast has an Undo. */
+  undo?: (() => void) | undefined;
   help: () => void;
 }
 
@@ -52,6 +59,9 @@ export function useInboxKeyboard(options: InboxKeyboard) {
         toggle,
         hasPicked,
         archive,
+        read,
+        noReply,
+        undo,
         help,
       } = latest.current;
       if (!enabled || event.defaultPrevented) return;
@@ -60,8 +70,16 @@ export function useInboxKeyboard(options: InboxKeyboard) {
       if (target?.closest("input,textarea,select,[contenteditable],[role=menu],[role=tablist]"))
         return;
       // Keys pressed elsewhere on the screen, such as by the Inbox agent's message box, are not for the list.
-      if (target && target !== document.body && !target.closest("[data-inbox-page]")) return;
-      if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return;
+      // Focus rests on the body, the main landmark or the current page's sidebar link after navigating.
+      if (
+        target &&
+        target !== document.body &&
+        target.id !== "main-content" &&
+        target.getAttribute("aria-current") !== "page" &&
+        !target.closest("[data-inbox-page]")
+      )
+        return;
+      if (document.querySelector(OPEN_DIALOG_SELECTOR)) return;
       const key = event.key;
       // A selection a filter or search has hidden is no selection.
       const selectedId = selection && ids.includes(selection) ? selection : undefined;
@@ -90,12 +108,21 @@ export function useInboxKeyboard(options: InboxKeyboard) {
       } else if (key === "c" && compose) {
         event.preventDefault();
         compose();
-      } else if (key === "x" && selectedId) {
+      } else if (key === "x" && !event.repeat && selectedId) {
         event.preventDefault();
         toggle(selectedId);
-      } else if (key === "e" && archive && (selectedId || hasPicked)) {
+      } else if (key === "e" && !event.repeat && archive && (selectedId || hasPicked)) {
         event.preventDefault();
         archive(selectedId);
+      } else if (key === "u" && !event.repeat && (selectedId || hasPicked)) {
+        event.preventDefault();
+        read(selectedId);
+      } else if (key === "n" && !event.repeat && selectedId && noReply) {
+        event.preventDefault();
+        noReply(selectedId);
+      } else if (key === "z" && !event.repeat && undo) {
+        event.preventDefault();
+        undo();
       } else if (key === "?") {
         event.preventDefault();
         help();

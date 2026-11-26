@@ -81,7 +81,7 @@ When you want a bot to sign in to a website by itself, ask it to save the login.
 }
 ```
 
-The card asks for a username and a password. Both are stored encrypted in the same way as other reusable credentials, and the model sees neither. To sign in, the bot fills fields found with `browser_snapshot`:
+The card asks for a username and a password. Both are stored encrypted in the same way as other reusable credentials. The fill tool never returns the password; the username can appear on the page and in screenshots. To sign in, the bot fills fields found with `browser_snapshot`:
 
 ```json
 {
@@ -93,15 +93,34 @@ The card asks for a username and a password. Both are stored encrypted in the sa
 }
 ```
 
-The backend decrypts the value and the page browser types it only if the page is still on the saved origin at that moment, so a login cannot be typed into another site or a page that redirected. The origin must be HTTPS: `RAKAZO_SECRETS_ALLOW_PRIVATE_HTTP` does not apply to website logins. The value goes only into an input of type text, email, password, or tel. Values travel to the computer over stdin, not command-line arguments. Snapshots never report the value of a field that holds a saved login. Page results are also scrubbed of the password, and of the username when it is 6 or more characters, which covers a site that echoes it in page text; shorter usernames are not scrubbed from page text because redaction replaces every occurrence. A login cannot be used with `secret_request`. Fills need no approval: saving the login is the approval, and it is bound to one site. Use `forget_secret` to remove it.
+The backend decrypts the value and the page browser types it only if the page is still on the saved origin at that moment, so a login cannot be typed into another site or a page that redirected. The origin must be HTTPS: `RAKAZO_SECRETS_ALLOW_PRIVATE_HTTP` does not apply to website logins. The password goes only into a password field, and the username only into a text, email or tel input. A site's "show password" control still works normally; revealing a password can make it visible in screenshots. Values travel to the computer over stdin, not command-line arguments. Snapshots never report the value of a field that holds a saved login. In every run, not only the one that filled it, tool results such as page results, command output and file reads are scrubbed of each saved login's password in plain, URL-encoded, form-encoded and base64 form; passwords shorter than 6 characters are only scrubbed in the run that fills them. In the run that fills a login, page results are also scrubbed of its username when it is 6 or more characters, which covers a site that echoes it in page text; shorter usernames are not scrubbed because redaction replaces every occurrence. Later runs leave the username visible, since it is often the user's own email address. Only this bot's own runs scrub its passwords: on a Team Computer, other bots' runs don't, so use a Private Computer for a bot that signs in to sites. A login cannot be used with `secret_request`. Fills need no approval: saving the login is the approval, and it is bound to one site. Use `forget_secret` to remove it.
 
 ## Managing saved credentials
 
-Owners can read back what is saved without asking the bot. In the web app, open a bot's settings,
-expand **Advanced**, and use the **Credentials** section. It lists each credential's name, origin
-and authentication type and never its value. From there you can add a credential, replace its value
-on the same destination, or remove one after confirming. Remove deletes the saved value immediately.
-The Electron desktop app hosts the same web UI, so it has the same section.
+Owners can read back what is saved without asking the bot. In the web app, open a bot's settings and
+use the **Credentials** section, which sits outside **Advanced**. It lists each credential's name,
+origin and authentication type and never its value. Each row also shows one muted line: **Used 2d ago**
+or **Not used yet**. From there you can add a credential, replace its value on the same destination,
+or remove one after confirming. Remove deletes the saved value immediately. The Electron desktop app
+hosts the same web UI, so it has the same section. A command variable's form says **The bot can read
+this value.**
+
+### Last used and Needs attention
+
+`BotSecret.lastUsedAt` is set after every successful `secret_request` and after a login fill succeeds.
+A 401 or 403 from the saved origin sets `needsAttentionAt`, the row shows **Needs attention**, and the
+owner gets one notification per credential per day (deduplicated on the credential id). A later
+successful use or a replaced value clears the mark.
+
+Both updates are guarded by the credential revision: they match on the row id and the ciphertext the
+request used. A request that was already running when the owner replaced the value cannot mark or clear
+the new value. Bookkeeping errors are dropped and never fail the request.
+
+### Unattended runs
+
+In a run nobody is watching, `secret_request` with `GET` or `HEAD` to the saved origin runs without a
+card. Any other method asks. `request_secret` and `request_takeover` do not pause on a card nobody sees:
+they end the run with a notification. See `docs/unattended-bots/PRD.md`, sections 4.1 and 4.3.
 
 Mobile does not host that web settings shell, so it has no credential management screen.
 The thread credential card still works on the phone, including website logins, and that is how a

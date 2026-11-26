@@ -23,6 +23,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { browserProfilePathForScreen } from "@rakazo/core/node/desktop-runtime";
 import type { createRepos, PrismaClient } from "@rakazo/db";
+import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
 import {
   archiveBot,
@@ -227,6 +228,7 @@ describe("spawned bot archival", () => {
           computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
           ...noConnectionRelease(),
           mcpServer: { updateMany: vi.fn() },
+          capabilityInstall: { updateMany: vi.fn() },
           bot: { update: vi.fn().mockResolvedValue({}) },
         }),
       ),
@@ -276,6 +278,7 @@ describe("destroyBot", () => {
         botDeletion: { create: createDeletion },
         ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
+        capabilityInstall: { updateMany: vi.fn() },
         bot: { delete: deleteBot },
       }),
     );
@@ -300,7 +303,13 @@ describe("destroyBot", () => {
         jobs: { cancel: vi.fn() } as unknown as JobPublisher,
         artifacts: { remove: removeArtifact } as unknown as ArtifactStore,
       },
-      { id: "bot-1", spaceId: "workspace-1", name: "Researcher", archivedAt: null },
+      {
+        id: "bot-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        name: "Researcher",
+        archivedAt: null,
+      },
       context,
       { deleteMemories: false },
     );
@@ -349,7 +358,7 @@ describe("destroyBot", () => {
     const deleteMemberships = vi.fn().mockResolvedValue({ count: 1 });
     const cancel = vi.fn().mockResolvedValue(undefined);
     const releaseScreen = vi.fn().mockResolvedValue(undefined);
-    const cancelRuns = vi.fn().mockResolvedValue({ count: 1 });
+    const cancelRuns = vi.fn().mockResolvedValue([{ id: "group-run" }]);
     const cancelAttempts = vi.fn().mockResolvedValue({ count: 1 });
     const cancelTasks = vi.fn().mockResolvedValue({ count: 1 });
     const deleteExecutionLeases = vi.fn().mockResolvedValue({ count: 1 });
@@ -368,6 +377,9 @@ describe("destroyBot", () => {
     ]);
     const transaction = vi.fn(async (callback: (tx: unknown) => Promise<void>) =>
       callback({
+        externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         $queryRaw: queryRaw,
         chatGroup: {
           findMany: vi.fn().mockResolvedValue([
@@ -402,8 +414,9 @@ describe("destroyBot", () => {
         },
         run: {
           findMany: findRuns,
-          updateMany: cancelRuns,
+          updateManyAndReturn: cancelRuns,
         },
+        secret: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         attempt: { updateMany: cancelAttempts },
         task: { updateMany: cancelTasks },
         chatGroupMember: { deleteMany: deleteMemberships },
@@ -420,6 +433,7 @@ describe("destroyBot", () => {
         botDeletion: { create: vi.fn() },
         ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
+        capabilityInstall: { updateMany: vi.fn() },
         bot: { delete: vi.fn() },
       }),
     );
@@ -441,7 +455,13 @@ describe("destroyBot", () => {
         home: {} as AgentHomeStore,
         jobs: { cancel } as unknown as JobPublisher,
       },
-      { id: "bot-1", spaceId: "workspace-1", name: "Researcher", archivedAt: null },
+      {
+        id: "bot-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        name: "Researcher",
+        archivedAt: null,
+      },
       context,
       { deleteMemories: true },
     );
@@ -462,13 +482,17 @@ describe("destroyBot", () => {
       }),
     );
     expect(cancelRuns).toHaveBeenCalledWith({
-      where: { id: { in: ["group-run"] } },
+      where: {
+        id: { in: ["group-run"] },
+        status: { in: expect.arrayContaining(["queued", "running"]) },
+      },
       data: {
         status: "cancelled",
         completedAt: expect.any(Date),
         leaseOwner: null,
         leaseExpiresAt: null,
       },
+      select: { id: true },
     });
     expect(cancelAttempts).toHaveBeenCalledWith({
       where: { runId: { in: ["group-run"] }, status: "running" },
@@ -566,7 +590,13 @@ describe("destroyBot", () => {
           home: {} as AgentHomeStore,
           jobs: { cancel: vi.fn() } as unknown as JobPublisher,
         },
-        { id: "bot-1", spaceId: "workspace-1", name: "Researcher", archivedAt: null },
+        {
+          id: "bot-1",
+          spaceId: "workspace-1",
+          userId: "user-1",
+          name: "Researcher",
+          archivedAt: null,
+        },
         context,
         { deleteMemories: true },
       ),
@@ -615,6 +645,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -690,6 +721,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -737,6 +769,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -789,6 +822,7 @@ describe("destroyBot", () => {
           {
             id: "bot-1",
             spaceId: "workspace-1",
+            userId: "user-1",
             name: "Researcher",
             archivedAt: null,
             computerId: team.id,
@@ -874,6 +908,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -923,6 +958,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -980,6 +1016,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1030,6 +1067,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1084,6 +1122,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1135,6 +1174,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: "dedicated-computer",
@@ -1186,6 +1226,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1204,13 +1245,90 @@ describe("destroyBot", () => {
     }
   });
 
+  describe("when Chromium still holds the profile open", () => {
+    const busy = "rm: cannot remove '.browser-profiles/x/Default/Cookies': Device or resource busy";
+    const team = {
+      id: "team-computer",
+      homeKey: "team-workspace-1",
+      kind: "docker",
+      providerRef: "container-1",
+      scope: "team",
+      state: "running",
+    };
+
+    async function deleteWithBusyProfile(busyAttempts: number) {
+      const sink = createTestSink();
+      installLogger(createLogger({ service: "rakazo-api", sinks: [sink] }));
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      let profileAttempts = 0;
+      const execute = vi.fn(async function* (_computer: unknown, request: CommandRequest) {
+        if (request.argv.includes(".browser-profiles")) {
+          profileAttempts += 1;
+          if (profileAttempts <= busyAttempts) {
+            yield { type: "stderr" as const, data: busy };
+            yield { type: "exit" as const, code: 1 };
+            return;
+          }
+        }
+        yield { type: "exit" as const, code: 0 };
+      });
+      try {
+        const deleting = destroyBot(
+          {
+            prisma: deletionPrisma(team),
+            sandbox: {
+              releaseScreen: vi.fn().mockResolvedValue(undefined),
+              execute,
+            } as unknown as SandboxProvider,
+            home: new LocalAgentHomeStore(path.join(tmpdir(), "rakazo-unused-home")),
+            jobs: { cancel: vi.fn() } as unknown as JobPublisher,
+          },
+          {
+            id: "bot-1",
+            spaceId: "workspace-1",
+            userId: "user-1",
+            name: "Researcher",
+            archivedAt: null,
+            computerId: team.id,
+          },
+          context,
+          { deleteMemories: true },
+        );
+        await vi.advanceTimersByTimeAsync(5_000);
+        await expect(deleting).resolves.toBeUndefined();
+        return { profileAttempts, events: sink.events };
+      } finally {
+        vi.useRealTimers();
+        installLogger(createLogger({ service: "rakazo-api", level: "off", sinks: [] }));
+      }
+    }
+
+    it("retries removal once the browser lets go", async () => {
+      const { profileAttempts, events } = await deleteWithBusyProfile(1);
+
+      expect(profileAttempts).toBe(2);
+      expect(events.filter((event) => event.level === "error")).toEqual([]);
+    });
+
+    it("leaves a profile that stays open for the next boot without reporting an error", async () => {
+      const { profileAttempts, events } = await deleteWithBusyProfile(Number.POSITIVE_INFINITY);
+
+      expect(profileAttempts).toBe(3);
+      expect(events.filter((event) => event.level === "error")).toEqual([]);
+      expect(events.map((event) => event.message)).toContain(
+        "team browser profile still open; removed on next boot",
+      );
+    });
+  });
+
   it("reports deletion success when the Team Computer lookup fails after the bot is deleted", async () => {
     const team = { id: "team-computer", homeKey: "team-workspace-1", scope: "team" };
     const prisma = deletionPrisma(team);
     vi.mocked(prisma.computer.findUnique).mockImplementation((async (query: {
       where: { scopeKey?: string };
     }) => {
-      if (query.where.scopeKey === "team:workspace-1") throw new Error("database unavailable");
+      if (query.where.scopeKey === "team:workspace-1:user-1")
+        throw new Error("database unavailable");
       return null;
     }) as never);
 
@@ -1225,6 +1343,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: null,
@@ -1273,6 +1392,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1334,6 +1454,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1386,6 +1507,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1434,6 +1556,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1478,6 +1601,7 @@ describe("destroyBot", () => {
           {
             id: "bot-1",
             spaceId: "workspace-1",
+            userId: "user-1",
             name: "Researcher",
             archivedAt: null,
             computerId: team.id,
@@ -1531,6 +1655,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1591,6 +1716,7 @@ describe("destroyBot", () => {
         {
           id: "bot-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Researcher",
           archivedAt: null,
           computerId: team.id,
@@ -1609,20 +1735,133 @@ describe("destroyBot", () => {
 });
 
 describe("archiveBot", () => {
+  it.each(["completed", "failed", "cancelled"])(
+    "preserves a run that becomes %s after the active-run snapshot",
+    async (terminalStatus) => {
+      const endedAt = new Date("2026-08-16T12:00:00.000Z");
+      const finished = {
+        id: "finished-run",
+        taskId: "finished-task",
+        userId: "user-1",
+        spaceId: "workspace-1",
+        status: terminalStatus,
+        completedAt: endedAt,
+      };
+      const active = {
+        id: "active-run",
+        taskId: "active-task",
+        userId: "user-1",
+        spaceId: "workspace-1",
+        status: "running",
+        completedAt: null as Date | null,
+      };
+      const runs = [finished, active];
+      const updateRuns = vi.fn(async ({ where, data }) => {
+        const matched = runs.filter(
+          (run) =>
+            where.id.in.includes(run.id) && (!where.status || where.status.in.includes(run.status)),
+        );
+        for (const run of matched) Object.assign(run, data);
+        return matched.map(({ id }) => ({ id }));
+      });
+      const updateTask = vi.fn().mockResolvedValue({ count: 1 });
+      const updateAttempt = vi.fn().mockResolvedValue({ count: 1 });
+      const clearCheckpoints = vi.fn().mockResolvedValue({ count: 1 });
+      const updateBot = vi.fn().mockResolvedValue({});
+      const disableRoutines = vi.fn().mockResolvedValue({ count: 1 });
+      const tx = {
+        ...noGroupMemberships(),
+        run: {
+          updateMany: updateRuns,
+          updateManyAndReturn: updateRuns,
+          findMany: vi.fn(async ({ where }) => runs.filter((run) => where.id.in.includes(run.id))),
+        },
+        task: { updateMany: updateTask },
+        attempt: { updateMany: updateAttempt },
+        externalEffect: { deleteMany: clearCheckpoints },
+        appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        message: { findMany: vi.fn().mockResolvedValue([]) },
+        secret: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        routine: { updateMany: disableRoutines },
+        computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        ...noConnectionRelease(),
+        mcpServer: { updateMany: vi.fn() },
+        capabilityInstall: { updateMany: vi.fn() },
+        bot: { update: updateBot },
+      };
+      const cancel = vi.fn().mockResolvedValue(undefined);
+      const prisma = {
+        computer: { findUnique: vi.fn().mockResolvedValue(null) },
+        // Both runs were active when selected, but the first has ended before the transaction.
+        run: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue(
+              runs.map(({ id, taskId, userId, spaceId }) => ({ id, taskId, userId, spaceId })),
+            ),
+        },
+        routine: { findMany: vi.fn().mockResolvedValue([{ id: "routine-1" }]) },
+        $transaction: vi.fn(async (callback: (client: unknown) => unknown) => callback(tx)),
+      } as unknown as PrismaClient;
+      await archiveBot(
+        {
+          prisma,
+          sandbox: {} as SandboxProvider,
+          home: {} as AgentHomeStore,
+          jobs: { cancel } as unknown as JobPublisher,
+        },
+        { id: "bot-1", spaceId: "workspace-1", userId: "user-1", name: "Scout", archivedAt: null },
+        context,
+      );
+      expect(finished.status).toBe(terminalStatus);
+      expect(finished.completedAt).toBe(endedAt);
+      expect(active.status).toBe("cancelled");
+      expect(updateTask).toHaveBeenCalledExactlyOnceWith({
+        where: { id: { in: ["active-task"] } },
+        data: { status: "cancelled" },
+      });
+      expect(updateAttempt).toHaveBeenCalledExactlyOnceWith({
+        where: { runId: { in: ["active-run"] }, status: "running" },
+        data: { status: "cancelled", finishedAt: expect.any(Date) },
+      });
+      expect(clearCheckpoints).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ runId: { in: ["active-run"] } }),
+        }),
+      );
+      expect(cancel.mock.calls).toEqual([["run:active-run"], ["routine:routine-1"]]);
+      expect(updateBot).toHaveBeenCalled();
+      expect(disableRoutines).toHaveBeenCalled();
+    },
+  );
+
   it("stops work and routines while preserving the bot", async () => {
     const updateBot = vi.fn().mockResolvedValue({});
     const disableRoutines = vi.fn().mockResolvedValue({ count: 2 });
     const groupCleanup = noGroupMemberships();
     const transaction = vi.fn(async (callback: (tx: unknown) => Promise<void>) =>
       callback({
+        externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        appControlSnapshot: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        runFragment: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         ...groupCleanup,
-        run: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        run: {
+          updateManyAndReturn: vi.fn().mockResolvedValue([{ id: "run-1" }]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([{ id: "run-1", userId: "user-1", spaceId: "workspace-1" }]),
+        },
+        attempt: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        secret: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
         task: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
         routine: { updateMany: disableRoutines },
         computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
+        capabilityInstall: { updateMany: vi.fn() },
         bot: { update: updateBot },
       }),
     );
@@ -1636,7 +1875,7 @@ describe("archiveBot", () => {
         }),
       },
       computer: { findUnique: vi.fn().mockResolvedValue(null) },
-      run: { findMany: vi.fn().mockResolvedValue([{ id: "run-1" }]) },
+      run: { findMany: vi.fn().mockResolvedValue([{ id: "run-1", taskId: "task-1" }]) },
       routine: { findMany: vi.fn().mockResolvedValue([]) },
       $transaction: transaction,
     } as unknown as PrismaClient;
@@ -1648,7 +1887,13 @@ describe("archiveBot", () => {
         home: {} as AgentHomeStore,
         jobs: { cancel } as unknown as JobPublisher,
       },
-      { id: "bot-1", spaceId: "workspace-1", name: "Researcher", archivedAt: null },
+      {
+        id: "bot-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        name: "Researcher",
+        archivedAt: null,
+      },
       context,
     );
 
@@ -1682,6 +1927,7 @@ describe("archiveBot", () => {
         computer: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
         ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
+        capabilityInstall: { updateMany: vi.fn() },
         bot: { update: vi.fn().mockResolvedValue({}) },
       }),
     );
@@ -1719,7 +1965,7 @@ describe("archiveBot", () => {
           home,
           jobs: { cancel: vi.fn() } as unknown as JobPublisher,
         },
-        { id: "bot-1", spaceId: "workspace-1", name: "Researcher", archivedAt },
+        { id: "bot-1", spaceId: "workspace-1", userId: "user-1", name: "Researcher", archivedAt },
         context,
       ),
     ).rejects.toThrow("stop failed");
@@ -1749,6 +1995,7 @@ describe("archiveBot", () => {
         computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
+        capabilityInstall: { updateMany: vi.fn() },
         bot: { update: vi.fn().mockResolvedValue({}) },
       }),
     );
@@ -1776,7 +2023,13 @@ describe("archiveBot", () => {
         home,
         jobs: { cancel: vi.fn() } as unknown as JobPublisher,
       },
-      { id: "bot-1", spaceId: "workspace-1", name: "Researcher", archivedAt: null },
+      {
+        id: "bot-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        name: "Researcher",
+        archivedAt: null,
+      },
       context,
     );
 
@@ -1813,6 +2066,7 @@ describe("archiveBot", () => {
           computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
           ...noConnectionRelease(),
           mcpServer: { updateMany: vi.fn() },
+          capabilityInstall: { updateMany: vi.fn() },
           bot: { update: vi.fn().mockResolvedValue({}) },
         }),
       );
@@ -1837,6 +2091,7 @@ describe("archiveBot", () => {
         {
           id: "child-1",
           spaceId: "workspace-1",
+          userId: "user-1",
           name: "Scout",
           archivedAt: null,
           computerId: team.id,
@@ -1914,6 +2169,7 @@ function deletionPrisma(team: { id: string }) {
       computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       ...noConnectionRelease(),
       mcpServer: { updateMany: vi.fn() },
+      capabilityInstall: { updateMany: vi.fn() },
       botDeletion: { create: vi.fn().mockResolvedValue({}) },
       bot: { delete: vi.fn().mockResolvedValue({}) },
     }),
@@ -1921,7 +2177,9 @@ function deletionPrisma(team: { id: string }) {
   return {
     computer: {
       findUnique: vi.fn(async (query: { where: { id?: string; scopeKey?: string } }) =>
-        query.where.id === team.id || query.where.scopeKey === "team:workspace-1" ? team : null,
+        query.where.id === team.id || query.where.scopeKey === "team:workspace-1:user-1"
+          ? team
+          : null,
       ),
     },
     run: {

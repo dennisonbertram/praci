@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { expect, it } from "vitest";
-import { MORE_BAR_HEIGHT, rowsBelow } from "./rows-below";
+import { MORE_BAR_HEIGHT, moreBarCover, rowsBelow } from "./rows-below";
 
 const BOTTOM = 400;
 
@@ -17,7 +17,7 @@ function list(scrollTop: number, rowBottoms: number[]) {
   for (const bottom of rowBottoms) {
     const row = document.createElement("div");
     row.dataset.rosterChat = "";
-    row.getBoundingClientRect = () => ({ bottom }) as DOMRect;
+    row.getBoundingClientRect = () => ({ top: bottom - 40, bottom }) as DOMRect;
     el.append(row);
   }
   return el;
@@ -49,4 +49,17 @@ it("counts rows under the taller 44px bar on a phone", () => {
   } finally {
     window.matchMedia = original;
   }
+});
+
+it("grows the bar over a row it would cut in half", () => {
+  const edge = BOTTOM - MORE_BAR_HEIGHT;
+  // The second row spans edge-20..edge+20, so the bar must start 20 px higher.
+  expect(moreBarCover([list(0, [edge - 20, edge + 20, 450])])).toBe(20);
+  expect(moreBarCover([list(0, [edge - 40, 450])])).toBe(0);
+});
+
+it("covers a row that is mostly in view above the bar, never leaving a partial row", () => {
+  const edge = BOTTOM - MORE_BAR_HEIGHT;
+  // The row spans edge-36..edge+4: 90% in view, still covered whole.
+  expect(moreBarCover([list(0, [edge + 4, 450])])).toBe(36);
 });

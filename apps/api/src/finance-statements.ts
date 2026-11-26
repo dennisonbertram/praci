@@ -459,13 +459,6 @@ export async function financeStatementConfirm(
   return toStatement(row);
 }
 
-/**
- * Removes a statement. One not yet imported is just deleted. An imported one is undone in one
- * transaction: transactions are not linked to their statement, so the ones to delete are this
- * statement's line ids (deterministic, see `statementTxnIds`) that no other imported statement of
- * the account also has. The balance becomes the newest remaining statement's closing balance,
- * and the account goes when no imported statement remains.
- */
 /** Renames the caller's own statement account; accounts synced from a bank keep the bank's name. */
 export async function financeStatementAccountRename(
   deps: FinanceDeps,
@@ -480,6 +473,13 @@ export async function financeStatementAccountRename(
   return { ok: true };
 }
 
+/**
+ * Removes a statement. One not yet imported is just deleted. An imported one is undone in one
+ * transaction: transactions are not linked to their statement, so the ones to delete are this
+ * statement's line ids (deterministic, see `statementTxnIds`) that no other imported statement of
+ * the account also has. The balance becomes the newest remaining statement's closing balance,
+ * and the account goes when no imported statement remains.
+ */
 export async function financeStatementDiscard(
   deps: FinanceDeps,
   actor: Actor,

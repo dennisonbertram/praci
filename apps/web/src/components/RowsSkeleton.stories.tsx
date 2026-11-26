@@ -17,3 +17,5 @@ export default meta;
 export const Default: StoryObj<typeof meta> = {};
 
 export const Few: StoryObj<typeof meta> = { args: { rows: 3 } };
+
+export const Bars: StoryObj<typeof meta> = { args: { variant: "bars", rows: 3 } };

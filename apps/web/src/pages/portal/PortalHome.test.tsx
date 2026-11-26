@@ -98,6 +98,28 @@ it("lists shared documents with a Download link and has a Sign out in the footer
   expect(onSignedOut).toHaveBeenCalled();
 });
 
+it("shows a retryable alert when sign out fails", async () => {
+  const onSignedOut = vi.fn();
+  portal.signOutPortal.mockRejectedValue(new Error("offline"));
+  await show({ me, updates: [], documents: [] }, onSignedOut);
+  const signOut = [...container.querySelectorAll<HTMLButtonElement>("footer button")].find(
+    (button) => button.textContent === "Sign out",
+  );
+
+  await act(async () => signOut?.click());
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+    "Could not sign out. Try again.",
+  );
+  expect(onSignedOut).not.toHaveBeenCalled();
+  expect(signOut?.disabled).toBe(false);
+
+  portal.signOutPortal.mockImplementation(() => new Promise(() => {}));
+  await act(async () => signOut?.click());
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(signOut?.disabled).toBe(false);
+});
+
 it("says Nothing shared yet. when there is no update and no document", async () => {
   await show({ me, updates: [], documents: [] });
   expect(container.textContent).toContain("Nothing shared yet.");

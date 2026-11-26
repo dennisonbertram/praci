@@ -15,7 +15,6 @@ vi.mock("@lingui/react/macro", () => {
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
-import { runErrorText } from "../../lib/user-error";
 import { ComposerError, isStalePendingAskError } from "./composer-error";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -40,7 +39,8 @@ it("offers Models settings when the provider did not accept the API key", async 
   await act(async () =>
     root.render(
       <ComposerError
-        message={runErrorText('401: {"message":"User not found.","code":401}')}
+        message="The model provider did not accept your API key. Check it in Settings > Models."
+        fix="models"
         onDismiss={() => {}}
         onOpenModelSettings={open}
       />,
@@ -50,6 +50,22 @@ it("offers Models settings when the provider did not accept the API key", async 
   await act(async () => settingsButton()?.click());
   // "" opens the default provider with its key field focused.
   expect(open).toHaveBeenCalledWith("");
+});
+
+it("offers Retry for a failure whose copy says to try again", async () => {
+  const retry = vi.fn();
+  await act(async () =>
+    root.render(
+      <ComposerError
+        message="The model provider is rate limiting requests."
+        fix="retry"
+        onDismiss={() => {}}
+        onRetry={retry}
+      />,
+    ),
+  );
+  await act(async () => pageButton("Retry")?.click());
+  expect(retry).toHaveBeenCalledTimes(1);
 });
 
 it("shows any other error with only Dismiss", async () => {
@@ -83,6 +99,25 @@ it("offers Allow, which opens the Legal page, when consent is missing", async ()
   expect(container.textContent).not.toContain("OpenRouter");
   await act(async () => pageButton("Allow")?.click());
   expect(navigate).toHaveBeenCalledWith("/app/legal");
+});
+
+it("shows missing consent in neutral colors, other errors stay destructive", async () => {
+  await act(async () =>
+    root.render(
+      <ComposerError
+        message={LEGAL_CONSENT_REQUIRED_MESSAGE}
+        onDismiss={() => {}}
+        onNavigate={() => {}}
+      />,
+    ),
+  );
+  expect(container.querySelector('[data-testid="composer-error"]')?.className).not.toContain(
+    "destructive",
+  );
+  await act(async () => root.render(<ComposerError message="Network down" onDismiss={() => {}} />));
+  expect(container.querySelector('[data-testid="composer-error"]')?.className).toContain(
+    "bg-destructive/10",
+  );
 });
 
 it("has no page button for other errors", async () => {

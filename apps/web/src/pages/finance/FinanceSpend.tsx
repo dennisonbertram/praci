@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
+import { SeeAll, useCappedRows } from "../../components/CappedList";
 import { MonthBars } from "../../components/finance/charts";
 import {
   Chevron,
@@ -131,7 +132,10 @@ export function FinanceSpendPage({
               ) : null}
             </div>
           </Section>
-          <div className="flex flex-wrap gap-1">
+          {/* On a phone the Filters sheet picks the category; the chips only show once one is set, in one scrolling row. */}
+          <div
+            className={`${category ? "flex" : "hidden sm:flex"} gap-1 overflow-x-auto sm:flex-wrap`}
+          >
             <Chip to={financePath.spend(period, null, range, source)} on={!category}>
               <Trans>All</Trans>
             </Chip>
@@ -145,7 +149,7 @@ export function FinanceSpendPage({
               </Chip>
             ))}
           </div>
-          <TransactionsSection rows={data.transactions} />
+          <TransactionsSection rows={data.transactions} fixedCategory={category !== null} />
         </>
       ) : null}
     </DetailPage>
@@ -160,6 +164,12 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
   );
   const rowProps = useRowNavigate();
   const data = q.data;
+  const vendorList = useCappedRows(data?.vendors ?? []);
+  // Every transaction of this window, with search, filters and sort, is the Spend page.
+  const allTransactions =
+    data?.start && data.end
+      ? financePath.spend("month", slug, { from: data.start, to: lastDayOf(data.end) })
+      : financePath.spend("quarter", slug);
   // The last six full months and the month still running, drawn as a lighter partial bar.
   const trend = data?.trend.slice(-7) ?? [];
   // The total, the vendors and the transactions all cover this one window, named on the page.
@@ -219,7 +229,7 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
             <Section title={t`Vendors`}>
               <Table compact>
                 <TableBody>
-                  {data.vendors.map((vendor) => (
+                  {vendorList.rows.map((vendor) => (
                     <TableRow
                       key={vendor.key}
                       className="group/row cursor-pointer"
@@ -239,10 +249,13 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
                   ))}
                 </TableBody>
               </Table>
+              <div className="mt-2 flex justify-end">
+                <SeeAll list={vendorList} />
+              </div>
             </Section>
           )}
           {/* The headline card above already names the window. */}
-          <TransactionsSection rows={data.recent} />
+          <TransactionsSection rows={data.recent} fixedCategory seeAll={allTransactions} />
         </>
       ) : null}
     </DetailPage>
@@ -302,6 +315,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
   const q = useFinanceQuery(() => rpc.finance.vendor({ key: keyName }), [keyName]);
   const rowProps = useRowNavigate();
   const data = q.data;
+  const chargeList = useCappedRows(data?.charges ?? []);
   const change = data ? changeText(data.changePct) : null;
   const paidWith = data ? paidWithLabel(data.paidWith) : "";
   // Months before the first charge are not months of zero spend.
@@ -403,7 +417,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                 </TableHeadRow>
               </TableHeader>
               <TableBody>
-                {data.charges.map((charge) => (
+                {chargeList.rows.map((charge) => (
                   <TableRow
                     key={charge.id}
                     className="group/row cursor-pointer"
@@ -433,6 +447,9 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                 ))}
               </TableBody>
             </Table>
+            <div className="mt-2 flex justify-end">
+              <SeeAll list={chargeList} />
+            </div>
           </Section>
         </>
       ) : null}

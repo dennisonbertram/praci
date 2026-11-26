@@ -1,9 +1,6 @@
-import { gtmAgentSpawnKey } from "@rakazo/contracts";
+import { findPageAgent } from "@rakazo/contracts";
 
-export function findGtmAgent<T extends { spawnKey: string | null }>(
+export const findGtmAgent = <T extends { spawnKey: string | null }>(
   bots: readonly T[],
   userId: string | null | undefined,
-): T | undefined {
-  if (!userId) return undefined;
-  return bots.find((bot) => bot.spawnKey === gtmAgentSpawnKey(userId));
-}
+): T | undefined => findPageAgent(bots, "gtm", userId);

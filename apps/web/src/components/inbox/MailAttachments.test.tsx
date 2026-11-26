@@ -23,10 +23,17 @@ vi.mock("../ArtifactPreview", () => ({
     <div data-testid="artifact">{artifact.mimeType}</div>
   ),
 }));
+vi.mock("@rakazo/chat-ui/web", () => ({
+  ChatMarkdown: ({ children }: { children: string }) => <div data-testid="md">{children}</div>,
+}));
+const allowRecipient = vi.fn();
+vi.mock("../../lib/ai-consent", () => ({ allowRecipient: (key: string) => allowRecipient(key) }));
 const emailImported = vi.fn();
 const importEmail = vi.fn();
+const reviewAttachment = vi.fn();
 vi.mock("../../lib/rpc", () => ({
   rpc: {
+    inbox: { reviewAttachment: (input: unknown) => reviewAttachment(input) },
     dataRoom: {
       emailImported: (input: unknown) => emailImported(input),
       importEmail: (input: unknown) => importEmail(input),
@@ -61,6 +68,8 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   emailImported.mockReset().mockResolvedValue({ files: [] });
   importEmail.mockReset().mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
+  reviewAttachment.mockReset().mockResolvedValue({ status: "ok", answer: "A short review." });
+  allowRecipient.mockReset().mockResolvedValue({});
   URL.createObjectURL = () => "blob:demo";
   URL.revokeObjectURL = () => {};
   root = createRoot(document.body.appendChild(document.createElement("div")));
@@ -193,4 +202,91 @@ it("shows Added for an attachment already in the Data room", async () => {
     (b) => b.textContent === "Added",
   );
   expect(button?.disabled).toBe(true);
+});
+
+const menu = async (name: string) => {
+  const trigger = document.querySelector<HTMLButtonElement>(
+    `[aria-label="More actions for ${name}"]`,
+  );
+  await act(async () => {
+    trigger?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    trigger?.click();
+  });
+  await flush();
+  return [...document.querySelectorAll<HTMLElement>("[role=menuitem]")];
+};
+const typeInto = (input: HTMLInputElement, value: string) => {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
+it("offers Review with AI and Add to Data room in the attachment menu, sharing the Added state", async () => {
+  emailImported.mockResolvedValue({ files: [{ messageId: "m1", attachmentId: "a1" }] });
+  await show();
+  const items = await menu("report.pdf");
+  expect(items.map((i) => i.textContent)).toEqual(["Review with AI", "Download", "Added"]);
+  expect((items[2] as HTMLElement).getAttribute("aria-disabled")).toBe("true");
+});
+
+it("files from the menu with the same import as the preview button", async () => {
+  await show();
+  const items = await menu("report.pdf");
+  await act(async () => items[2]?.click());
+  await flush();
+  expect(importEmail).toHaveBeenCalledWith({ picks: [{ messageId: "m1", attachmentId: "a1" }] });
+});
+
+it("reviews an attachment from the menu and sends a follow-up", async () => {
+  await show();
+  const items = await menu("report.pdf");
+  await act(async () => items[0]?.click());
+  await flush();
+  expect(reviewAttachment).toHaveBeenCalledWith({
+    messageId: "m1",
+    attachmentId: "a1",
+    history: [],
+  });
+  expect(document.querySelector("[data-testid=md]")?.textContent).toBe("A short review.");
+  reviewAttachment.mockResolvedValue({ status: "ok", answer: "Due Friday." });
+  const input = document.querySelector<HTMLInputElement>('[aria-label="Ask about this file"]')!;
+  await act(async () => typeInto(input, "When is it due?"));
+  await act(async () =>
+    document
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  await flush();
+  expect(reviewAttachment).toHaveBeenLastCalledWith({
+    messageId: "m1",
+    attachmentId: "a1",
+    question: "When is it due?",
+    history: [{ role: "assistant", content: "A short review." }],
+  });
+  expect([...document.querySelectorAll("[data-testid=md]")].map((n) => n.textContent)).toEqual([
+    "A short review.",
+    "Due Friday.",
+  ]);
+});
+
+it("reviews from the preview dialog and asks for consent before anything is sent", async () => {
+  reviewAttachment.mockResolvedValueOnce({
+    status: "needs_consent",
+    recipient: { key: "model:test", name: "Test model" },
+  });
+  await show();
+  await open("report.pdf");
+  const review = [...document.querySelectorAll<HTMLButtonElement>("[role=dialog] button")].find(
+    (b) => b.textContent === "Review with AI",
+  );
+  await act(async () => review?.click());
+  await flush();
+  expect(document.querySelector("[data-testid=md]")).toBeNull();
+  const allow = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+    (b) => b.textContent === "Allow",
+  );
+  await act(async () => allow?.click());
+  await flush();
+  expect(allowRecipient).toHaveBeenCalledWith("model:test");
+  expect(reviewAttachment).toHaveBeenCalledTimes(2);
+  expect(document.querySelector("[data-testid=md]")?.textContent).toBe("A short review.");
 });

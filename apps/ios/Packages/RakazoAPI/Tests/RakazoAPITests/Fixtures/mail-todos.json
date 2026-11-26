@@ -1,0 +1,4 @@
+{"json":{"enabled":true,"todos":[
+{"id":"todo-1","connectionId":"conn-1","meetingId":null,"messageId":"msg-1","text":"Send the revised budget","detail":"Re: Pilot timeline","from":"Ana Ruiz","priority":"important","dueOn":"2026-10-30","doneAt":null},
+{"id":"todo-2","connectionId":null,"meetingId":"meet-1","messageId":null,"text":"Book the venue","detail":null,"from":null,"priority":null,"dueOn":null,"doneAt":null}
+],"meetings":{"source":false,"syncing":false,"ready":false}}}

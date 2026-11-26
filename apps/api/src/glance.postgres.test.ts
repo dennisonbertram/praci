@@ -69,11 +69,66 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
       legalDueSoon: 0,
       devinNeedsYou: 0,
       devinConnected: false,
+      brexConnected: false,
       gtmNeedsYou: 0,
       dataRoomWaiting: 0,
       hasTickets: false,
       botKinds: {},
     });
+  });
+
+  it("shows Brex only to the space owner whose account connected it", async () => {
+    await prisma.member.createMany({
+      data: [alice, bob].map((who) => ({
+        id: `gl-m-${who.userId}`,
+        organizationId,
+        userId: who.userId,
+        role: "member",
+        createdAt: new Date(),
+      })),
+    });
+    await prisma.spaceMember.createMany({
+      data: [
+        {
+          id: `gl-sm-${alice.userId}`,
+          spaceId: spaceA,
+          organizationId,
+          userId: alice.userId,
+          role: "owner",
+          createdAt: new Date(),
+        },
+        {
+          id: `gl-sm-${bob.userId}`,
+          spaceId: spaceA,
+          organizationId,
+          userId: bob.userId,
+          role: "member",
+          createdAt: new Date(),
+        },
+      ],
+    });
+    const server = await prisma.mcpServer.create({
+      data: {
+        spaceId: spaceA,
+        userId: alice.userId,
+        slug: "brex-cards",
+        name: "Brex cards",
+        transport: "streamable_http",
+        endpoint: "rakazo+brex://cards",
+      },
+    });
+    await prisma.brexCardsConnection.create({
+      data: {
+        serverId: server.id,
+        spaceId: spaceA,
+        createdByUserId: alice.userId,
+        brexAccountId: "brex_glance_test",
+      },
+    });
+
+    expect((await glance(alice)).brexConnected).toBe(true);
+    expect((await glance(bob)).brexConnected).toBe(false);
+    expect((await glance(aliceElsewhere)).brexConnected).toBe(false);
   });
 
   it("counts only the caller's own legal deadlines due within a week", async () => {

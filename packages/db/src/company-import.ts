@@ -581,7 +581,16 @@ export async function listCompanyRefreshSources(prisma: PrismaClient, actor: Act
   const scope = scopeOf(actor);
   await requireMember(prisma, scope);
   return prisma.companyRefreshSource.findMany({
-    where: scope,
+    where: {
+      ...scope,
+      // A source is refreshable only once it has imported something or an import beyond a draft
+      // uses it; a source that only a draft or a discarded run points at has nothing to refresh.
+      OR: [
+        { committedCheckpoint: { not: Prisma.AnyNull } },
+        { activeRunId: { not: null } },
+        { importSources: { some: { run: { status: { notIn: ["draft", "discarded"] } } } } },
+      ],
+    },
     orderBy: [{ sourceKind: "asc" }, { sourceKey: "asc" }],
     select: {
       id: true,

@@ -18,7 +18,24 @@ export function isWisprFlowEndpoint(endpoint: string | null | undefined): boolea
 }
 
 /**
- * Wispr does not document its tool names. The server is read-only, so a tool counts as a read when
- * its name starts with a read verb. TODO: replace this with an exact list after the first live connection.
+ * The tools of Wispr Flow's MCP server, from its live tool list (2026-11). Every one is annotated
+ * read-only. A tool Wispr adds later stays hidden until it is added here.
  */
-export const WISPR_FLOW_READ_NAME = /^(get|list|search|read|find|fetch|query|lookup)/i;
+export const WISPR_FLOW_READ_TOOLS = [
+  "search_meetings",
+  "get_meeting",
+  "get_meeting_participants_enriched",
+  "get_participant_contacts",
+  "resolve_share_link",
+  "search_scratchpad_notes",
+  "get_scratchpad_note",
+  "search_calendar_events",
+  "resolve_calendar_link",
+  "get_calendar_event",
+  "get_meeting_by_calendar_id",
+  "list_meeting_series",
+  "list_upcoming_meetings",
+  "get_upcoming_meeting",
+  "list_folders",
+  "list_folder_meetings",
+] as const;

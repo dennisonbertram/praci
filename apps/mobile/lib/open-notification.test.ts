@@ -9,7 +9,7 @@ vi.mock("expo-notifications", () => ({
 }));
 vi.mock("react-native", () => ({ Linking: { openURL: vi.fn() } }));
 vi.mock("expo-router", () => ({
-  router: { push: vi.fn() },
+  router: { push: vi.fn(), dismissTo: vi.fn() },
 }));
 vi.mock("./api", () => ({
   loadSessionToken: vi.fn(),
@@ -232,6 +232,38 @@ describe("opening a notification by surface", () => {
     expect(markSurfaceSeen).toHaveBeenCalledWith("inbox");
   });
 
+  it("resets the stack before opening a page in another space", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-page-space-b", { surface: "inbox", spaceId: "space-b" }));
+    expect(router.dismissTo).toHaveBeenCalledWith("/");
+    expect(vi.mocked(router.dismissTo).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(router.push).mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/inbox" });
+  });
+
+  it("resets the stack before opening a thread in another space", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(
+      tap("n-thread-space-b", {
+        surface: "thread",
+        botId: "bot-1",
+        threadId: "t-1",
+        spaceId: "space-b",
+      }),
+    );
+    expect(router.dismissTo).toHaveBeenCalledWith("/");
+    expect(vi.mocked(router.dismissTo).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(router.push).mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it("keeps the stack when opening a notification in the selected space", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-same-space", { surface: "inbox", spaceId: "space-a" }));
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+
   it("does nothing when the space cannot be selected", async () => {
     vi.mocked(loadSessionToken).mockResolvedValue("token");
     vi.mocked(selectSpace).mockResolvedValueOnce(false);
@@ -239,6 +271,7 @@ describe("opening a notification by surface", () => {
       openNotificationResponse(tap("n-nospace", { surface: "inbox", spaceId: "space-c" })),
     ).resolves.toBe(false);
     expect(router.push).not.toHaveBeenCalled();
+    expect(router.dismissTo).not.toHaveBeenCalled();
     expect(markSurfaceSeen).not.toHaveBeenCalled();
   });
 

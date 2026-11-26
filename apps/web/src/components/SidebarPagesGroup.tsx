@@ -11,6 +11,7 @@ import {
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
+import { STICKY_GROUP_HEADER } from "./sticky-group-header";
 
 const PagesCollapsedContext = createContext(false);
 
@@ -45,7 +46,9 @@ export function SidebarPagesGroup({
   return (
     <PagesCollapsedContext.Provider value={collapsed && !rail}>
       {rail ? null : (
-        <div className="flex items-center pt-1 pb-0.5">
+        <div
+          className={`flex items-center pt-1 pb-0.5 ${collapsed ? "" : `${STICKY_GROUP_HEADER} top-0`}`}
+        >
           <button
             type="button"
             data-testid="sidebar-pages-toggle"

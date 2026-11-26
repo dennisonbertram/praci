@@ -1,10 +1,12 @@
 import type { BackgroundJob, JobPublisher } from "@rakazo/adapter-kit";
+import { goalCheckJob } from "@rakazo/adapter-kit";
 import { stuckWorkStatusMessages } from "@rakazo/core";
 import type { Pool, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { returnBotMessageOutcome } from "./bot-messages.js";
 import type { ReconciliationLeadership } from "./job-reconciler.js";
 import { createJobReconciler, createPostgresReconciliationLeadership } from "./job-reconciler.js";
+import { MESSAGING_SENDING_STALE_MS } from "./messaging-delivery.js";
 import { loopGuardStopText } from "./tool-loop.js";
 
 vi.mock("./bot-messages.js", () => ({ returnBotMessageOutcome: vi.fn() }));
@@ -20,7 +22,7 @@ function publisher() {
 }
 
 function fakePrisma(
-  runs: Array<{ id: string; updatedAt: Date }> = [],
+  runs: Array<{ id: string; status: string; updatedAt: Date }> = [],
   routines: Array<{ id: string; nextRunAt: Date | null }> = [],
   controls: Array<{
     id: string;
@@ -71,18 +73,56 @@ describe("createJobReconciler", () => {
     const reconcileComputerUpdates = vi.fn(() => {
       throw new Error("queue unavailable");
     });
+    const reconcileRoutineRetryNotices = vi.fn(async () => undefined);
     await createJobReconciler({
       prisma,
       jobs,
+      reconcileRoutineRetryNotices,
       reconcileCloudAgents,
       reconcileComputerUpdates,
     }).reconcileOnce();
+    expect(reconcileRoutineRetryNotices).toHaveBeenCalledOnce();
     expect(reconcileCloudAgents).toHaveBeenCalledOnce();
     expect(reconcileComputerUpdates).toHaveBeenCalledOnce();
     expect(prisma.run.findMany).toHaveBeenCalled();
     expect(prisma.routine.findMany).toHaveBeenCalled();
     expect(prisma.computer.findMany).toHaveBeenCalled();
     expect(prisma.messagingOutbound.findFirst).toHaveBeenCalled();
+  });
+
+  it("deletes approval decisions past retention", async () => {
+    const prisma = fakePrisma() as unknown as {
+      approvalDecision: { deleteMany: ReturnType<typeof vi.fn> };
+    };
+    prisma.approvalDecision = { deleteMany: vi.fn(async () => ({ count: 0 })) };
+    const now = new Date();
+    await createJobReconciler({
+      prisma: prisma as unknown as PrismaClient,
+      jobs: publisher().jobs,
+    }).reconcileOnce();
+    const cutoff = prisma.approvalDecision.deleteMany.mock.calls[0]?.[0].where.createdAt.lt;
+    expect(Math.abs(cutoff.getTime() - (now.getTime() - 180 * 86_400_000))).toBeLessThan(5_000);
+    expect(prisma.approvalDecision.deleteMany).toHaveBeenCalledOnce();
+  });
+
+  it("runs the watch probe tick on every reconcile", async () => {
+    const runWatchProbes = vi.fn(async () => undefined);
+    await createJobReconciler({
+      prisma: fakePrisma(),
+      jobs: publisher().jobs,
+      runWatchProbes,
+    }).reconcileOnce();
+    expect(runWatchProbes).toHaveBeenCalledOnce();
+  });
+
+  it("runs the page refresh tick on every reconcile", async () => {
+    const runPageRefreshes = vi.fn(async () => undefined);
+    await createJobReconciler({
+      prisma: fakePrisma(),
+      jobs: publisher().jobs,
+      runPageRefreshes,
+    }).reconcileOnce();
+    expect(runPageRefreshes).toHaveBeenCalledOnce();
   });
 
   it("restores a due pending messaging outbox drain", async () => {
@@ -94,8 +134,13 @@ describe("createJobReconciler", () => {
 
     expect(prisma.messagingOutbound.findFirst).toHaveBeenCalledWith({
       where: {
-        status: "pending",
-        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: expect.any(Date) } }],
+        OR: [
+          {
+            status: "pending",
+            OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: expect.any(Date) } }],
+          },
+          { status: "sending", updatedAt: { lt: expect.any(Date) } },
+        ],
       },
       select: { id: true },
     });
@@ -103,6 +148,37 @@ describe("createJobReconciler", () => {
       name: "messaging.deliver",
       payload: {},
       replaceKey: "messaging.deliver:drain",
+      priority: -1,
+    });
+  });
+
+  it("restores a messaging outbox drain when a sending row is stale", async () => {
+    const prisma = fakePrisma();
+    vi.mocked(prisma.messagingOutbound.findFirst).mockResolvedValue({
+      id: "outbound-stale",
+    } as never);
+    const { jobs, enqueue } = publisher();
+
+    await createJobReconciler({ prisma, jobs }).reconcileOnce();
+
+    const query = vi.mocked(prisma.messagingOutbound.findFirst).mock.calls[0]?.[0] as {
+      where: { OR: Array<Record<string, unknown>> };
+    };
+    expect(query.where.OR).toEqual([
+      {
+        status: "pending",
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: expect.any(Date) } }],
+      },
+      { status: "sending", updatedAt: { lt: expect.any(Date) } },
+    ]);
+    const staleBefore = (query.where.OR[1] as { updatedAt: { lt: Date } }).updatedAt.lt;
+    expect(Date.now() - staleBefore.getTime()).toBeGreaterThanOrEqual(MESSAGING_SENDING_STALE_MS);
+    expect(Date.now() - staleBefore.getTime()).toBeLessThan(MESSAGING_SENDING_STALE_MS + 1_000);
+    expect(enqueue).toHaveBeenCalledWith({
+      name: "messaging.deliver",
+      payload: {},
+      replaceKey: "messaging.deliver:drain",
+      priority: -1,
     });
   });
 
@@ -126,6 +202,7 @@ describe("createJobReconciler", () => {
       name: "messaging.deliver",
       payload: { runId: "run-unmirrored" },
       replaceKey: "messaging.deliver:run-unmirrored",
+      priority: -1,
     });
   });
 
@@ -133,7 +210,7 @@ describe("createJobReconciler", () => {
     const scheduledFor = new Date(Date.now() + 30_000);
     const controlExpiresAt = new Date(Date.now() + 15_000);
     const prisma = fakePrisma(
-      [{ id: "run-1", updatedAt: new Date() }],
+      [{ id: "run-1", status: "queued", updatedAt: new Date() }],
       [{ id: "routine-1", nextRunAt: scheduledFor }],
       [
         {
@@ -154,7 +231,9 @@ describe("createJobReconciler", () => {
       name: "run.continue",
       payload: { runId: "run-1" },
       replaceKey: "run:run-1",
+      priority: -1,
       keepExisting: true,
+      replaceLockedBefore: expect.any(Date),
     });
     expect(enqueue).toHaveBeenCalledWith({
       name: "routine.wakeup",
@@ -184,6 +263,27 @@ describe("createJobReconciler", () => {
         orderBy: [{ controlLeaseExpiresAt: "asc" }, { id: "asc" }],
       }),
     );
+  });
+
+  it("replaces any lock for an expired lease but only an old lock for a queued run", async () => {
+    const prisma = fakePrisma([
+      { id: "run-queued", status: "queued", updatedAt: new Date() },
+      { id: "run-expired", status: "running", updatedAt: new Date() },
+    ]);
+    const { jobs, enqueue } = publisher();
+    const before = Date.now();
+
+    await createJobReconciler({ prisma, jobs }).reconcileOnce();
+
+    const cutoff = (runId: string) => {
+      const job = enqueue.mock.calls
+        .map(([queued]) => queued)
+        .find((queued) => queued.name === "run.continue" && queued.payload.runId === runId);
+      return job?.name === "run.continue" ? job.replaceLockedBefore?.getTime() : undefined;
+    };
+    expect(cutoff("run-expired")).toBeGreaterThanOrEqual(before);
+    expect(cutoff("run-queued")).toBeLessThanOrEqual(Date.now() - 5 * 60_000);
+    expect(cutoff("run-queued")).toBeGreaterThanOrEqual(before - 5 * 60_000);
   });
 
   it("restores expiry for orphaned user-control leases without a control bot", async () => {
@@ -366,6 +466,47 @@ describe("createJobReconciler", () => {
             ],
           },
         ],
+      },
+    });
+  });
+
+  it("pages through already-checked goals so a later goal missing its check is found", async () => {
+    const at = new Date("2026-01-01T00:00:00.000Z");
+    const checked = (id: string) => ({
+      id,
+      updatedAt: at,
+      lastCheckedRunId: `${id}-run`,
+      runs: [{ id: `${id}-run` }],
+    });
+    const goalFindMany = vi
+      .fn()
+      .mockResolvedValueOnce([checked("goal-1"), checked("goal-2")])
+      .mockResolvedValueOnce([
+        { id: "goal-3", updatedAt: at, lastCheckedRunId: null, runs: [{ id: "goal-3-run" }] },
+      ]);
+    const prisma = {
+      ...fakePrisma(),
+      threadGoal: { findMany: goalFindMany },
+    } as unknown as PrismaClient;
+    const { jobs, enqueue } = publisher();
+    const reconciler = createJobReconciler({ prisma, jobs }, { batchSize: 2 });
+
+    await reconciler.reconcileOnce();
+    await reconciler.reconcileOnce();
+
+    const goalChecks = enqueue.mock.calls.filter(
+      ([job]) => job.name === goalCheckJob("goal-3", "goal-3-run").name,
+    );
+    expect(goalChecks).toHaveLength(1);
+    expect(goalChecks[0]?.[0]).toMatchObject({
+      ...goalCheckJob("goal-3", "goal-3-run"),
+      keepExisting: true,
+    });
+    expect(goalFindMany.mock.calls[1]?.[0]).toMatchObject({
+      orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+      where: {
+        status: "active",
+        OR: [{ updatedAt: { gt: at } }, { updatedAt: at, id: { gt: "goal-2" } }],
       },
     });
   });

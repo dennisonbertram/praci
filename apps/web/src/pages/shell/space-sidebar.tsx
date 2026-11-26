@@ -2,6 +2,7 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, Group, Me, ThreadSnapshot } from "@rakazo/contracts";
 import {
+  isCustomPageSpawnKey,
   isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
@@ -11,6 +12,9 @@ import { nestRosterByParent, sidebarSections } from "@rakazo/core";
 import {
   BotAvatar,
   Button,
+  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
+  enqueueNotificationToast,
   GroupAvatar,
   InputGroup,
   InputGroupAddon,
@@ -22,28 +26,17 @@ import {
   Skeleton,
 } from "@rakazo/ui-web";
 import {
-  BookUser,
-  Building2,
-  ChartColumn,
   ChevronDown,
   ChevronLeft,
   CircleAlert,
-  CodeXml,
   Compass,
-  Files,
-  FolderOpen,
-  HandCoins,
   History,
   LayoutGrid,
   Lock,
   LogOut,
-  Mail,
-  Megaphone,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
-  PieChart,
-  Scale,
   Search,
   Settings,
   SquareKanban,
@@ -52,6 +45,7 @@ import {
 import type {
   Dispatch,
   DragEvent,
+  KeyboardEvent,
   KeyboardEventHandler,
   ReactNode,
   RefObject,
@@ -77,13 +71,12 @@ import {
   SortableRow,
 } from "../../components/sidebar-folders/SidebarDnd";
 import { glanceBadge, rowStatusKind, StatusMark } from "../../components/sidebar-glance";
+import { STICKY_GROUP_HEADER } from "../../components/sticky-group-header";
 import { FirstRunTour } from "../../components/tour/FirstRunTour";
-import { clearTourStep } from "../../components/tour/TourPopover";
 import type { AgentApp } from "../../lib/agent-app";
-import { clearAgentAppCache } from "../../lib/agent-app";
-import { authClient } from "../../lib/auth";
 import { desktopBridge } from "../../lib/desktop";
 import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
+import { LEGAL_DUE_SOON_PATH } from "../../lib/legal-format";
 import { isUnclaimedFileDrag } from "../../lib/pending-attachments";
 import type { Panel } from "../../lib/right-panel-state";
 import {
@@ -94,16 +87,22 @@ import {
   rosterWorkStatusLabel,
 } from "../../lib/roster-status";
 import { formatRosterTime } from "../../lib/roster-time";
-import { clearSpaceSelection, rpc } from "../../lib/rpc";
+import { rpc } from "../../lib/rpc";
 import { sidebarInert } from "../../lib/shell-layout";
+import { signOutAndLeave } from "../../lib/sign-out";
+import { errorText } from "../../lib/user-error";
+import { isCoarsePointer } from "../../lib/visual-viewport";
 import { ActivityList } from "../ActivityList";
 import type { ContextMenuPosition } from "../BotContextMenu";
 import type { SettingsSection } from "../SettingsOverlay";
 import { BotCreatePicker, pickerInitialFocus } from "./bot-picker";
+import { pagesOnOffer } from "./pages";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./roster-tab-stops";
-import { moreBarHeight, rowsBelow, scrollingList } from "./rows-below";
+import { moreBarCover, moreBarHeight, rowsBelow } from "./rows-below";
 import { SidebarHeaderRow } from "./sidebar-header-row";
-import { endOnWholeRow } from "./whole-rows";
+
+/** The bar reaches this far below the list: iOS Safari otherwise paints a sliver of the next row over its foot. */
+const BAR_OVERHANG = 12;
 
 type SidebarChat = {
   id: string;
@@ -111,6 +110,8 @@ type SidebarChat = {
   title?: string | null;
   preview?: string | null;
   pinned: boolean;
+  /** Set when the person left the bot out of the sidebar. */
+  hiddenAt?: string | null;
   sectionId: string | null;
   position?: number | null;
   parentBotId?: string | null;
@@ -133,6 +134,28 @@ function spaceHeaderMenu(space: { canRename?: boolean; canDelete?: boolean }, ho
   };
 }
 
+export function openBotMenuFromKeyboard(
+  event: KeyboardEvent<HTMLButtonElement>,
+  inCurrentSpace: boolean,
+  item: { kind: "bot" | "group"; id: string },
+  anchor: RefObject<HTMLElement | null>,
+  setMenu: Dispatch<
+    SetStateAction<{
+      kind: "bot" | "group";
+      id: string;
+      position: ContextMenuPosition;
+    } | null>
+  >,
+): boolean {
+  if (!inCurrentSpace || !(event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)))
+    return false;
+  event.preventDefault();
+  const rect = event.currentTarget.getBoundingClientRect();
+  anchor.current = event.currentTarget;
+  setMenu({ kind: item.kind, id: item.id, position: { x: rect.left, y: rect.bottom } });
+  return true;
+}
+
 export async function commitSpaceRename(input: {
   rename: () => Promise<void>;
   apply: () => void;
@@ -141,6 +164,21 @@ export async function commitSpaceRename(input: {
   await input.rename();
   input.apply();
   await input.refresh().catch(() => undefined);
+}
+
+/**
+ * The rows listed under a fold header, nested one level. A closed fold still shows the open
+ * thread's row (when it belongs to the fold and `showActive` allows it), like the collapsed Pages
+ * group showing the current page.
+ */
+export function foldRows<
+  T extends { depth: number; item: { kind: string; chat?: { id: string } } },
+>(rows: T[], open: boolean, activeId: string | undefined, showActive = true): T[] {
+  return rows
+    .filter(
+      (row) => open || (showActive && row.item.kind === "bot" && row.item.chat?.id === activeId),
+    )
+    .map((row) => ({ ...row, depth: row.depth + 1 }));
 }
 
 /**
@@ -153,6 +191,20 @@ export function activeSpaceFirst<T extends { id: string }>(
 ): T[] {
   const active = spaces.filter((space) => space.id === activeId);
   return [...active, ...spaces.filter((space) => space.id !== activeId)];
+}
+
+/**
+ * The Spaces the member can switch to, in the order the sidebar lists them. A Space hidden from
+ * the sidebar, because it is empty or holds only untouched chats, is still offered here.
+ */
+export function spaceSwitchTargets(
+  spaces: readonly { id: string; name: string }[],
+  currentSpaceId: string | null | undefined,
+): Array<{ id: string; name: string }> {
+  if (spaces.length < 2) return [];
+  return spaces
+    .filter((space) => space.id !== currentSpaceId)
+    .map((space) => ({ id: space.id, name: space.name }));
 }
 
 /** The id of another space that holds this bot or group, so a link pasted from there can switch to it. */
@@ -199,6 +251,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const headless = spaceLabel === null;
     const otherSpace = showSpaceNames && space.id !== currentSpaceId;
     const visibleBots = space.bots
+      .filter((bot) => !bot.hiddenAt)
       .filter((bot) => !(otherSpace && untouched?.(bot)))
       .filter((bot) =>
         `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
@@ -333,6 +386,8 @@ type SidebarGroup = ReturnType<
   typeof sidebarGroupsForSpaces<SidebarBotChat, SidebarGroupChat>
 >[number];
 
+const SHOW_UNUSED_PAGE_AGENTS_KEY = "rakazo.showUnusedPageAgents";
+
 export type SpaceSidebarProps = {
   sidebarRef: RefObject<HTMLElement | null>;
   botsSidebarDensity: string;
@@ -350,6 +405,11 @@ export type SpaceSidebarProps = {
   bots: Bot[];
   initialBotsLoaded: boolean;
   createBot: () => Promise<void>;
+  /** A new agent that builds and keeps its own page. */
+  createPage: () => Promise<void>;
+  markBotsRead: (ids: string[]) => Promise<void>;
+  /** Asks to archive these chats; the shell confirms first. */
+  askArchiveBots: (botIds: string[]) => void;
   navigate: NavigateFunction;
   setPanel: (next: Panel | ((current: Panel) => Panel)) => void;
   setNewSpaceOpen: Dispatch<SetStateAction<boolean>>;
@@ -358,28 +418,20 @@ export type SpaceSidebarProps = {
   sidebarScrollRef: RefObject<HTMLDivElement | null>;
   collapsedSidebarSections: ReadonlySet<string>;
   toggleSidebarSection: (key: string) => void;
-  inboxMode: boolean;
   unseen: Record<string, number>;
   inboxUnread: number;
-  financeMode: boolean;
   glance: {
     hasTickets: boolean;
     legalDueSoon: number;
     devinConnected: boolean;
+    brexConnected: boolean;
     devinNeedsYou: number;
     gtmNeedsYou: number;
     dataRoomWaiting: number;
     botKinds: Record<string, (typeof NOTIFICATION_KINDS)[number]>;
   };
-  legalMode: boolean;
-  gtmMode: boolean;
-  devinMode: boolean;
-  investorsMode: boolean;
-  fundraisingMode: boolean;
-  contactsMode: boolean;
-  companyMode: boolean;
-  dataRoomMode: boolean;
-  artifactsMode: boolean;
+  /** The key of the app page the route shows, or null on a chat. */
+  currentPage: string | null;
   sidebarLayout: SidebarLayout;
   sidebarDragLabel: (dragId: string) => string;
   dropSidebarItem: (result: DropResult) => void;
@@ -422,6 +474,7 @@ export type SpaceSidebarProps = {
   onAttachmentPick: (files: ArrayLike<File> | null, targetThreadKey?: string) => boolean;
   setFocusComposerBotId: Dispatch<SetStateAction<string | null>>;
   openBot: (id: string) => void | Promise<void>;
+  openBotSettings: (id: string, itemId?: string) => void;
   moveSidebarItem: (
     item: { kind: "bot" | "group"; id: string },
     folderId: string | null,
@@ -470,6 +523,9 @@ export function SpaceSidebar({
   bots,
   initialBotsLoaded,
   createBot,
+  createPage,
+  markBotsRead,
+  askArchiveBots,
   navigate,
   setPanel,
   setNewSpaceOpen,
@@ -478,20 +534,10 @@ export function SpaceSidebar({
   sidebarScrollRef,
   collapsedSidebarSections,
   toggleSidebarSection,
-  inboxMode,
   unseen,
   inboxUnread,
-  financeMode,
   glance,
-  legalMode,
-  gtmMode,
-  devinMode,
-  investorsMode,
-  fundraisingMode,
-  contactsMode,
-  companyMode,
-  dataRoomMode,
-  artifactsMode,
+  currentPage,
   sidebarLayout,
   sidebarDragLabel,
   dropSidebarItem,
@@ -534,6 +580,7 @@ export function SpaceSidebar({
   onAttachmentPick,
   setFocusComposerBotId,
   openBot,
+  openBotSettings,
   moveSidebarItem,
   botMenuAnchor,
   setBotMenu,
@@ -554,12 +601,29 @@ export function SpaceSidebar({
   initials,
   openSettings,
 }: SpaceSidebarProps) {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const rosterKind = (chat: { id: string; runErrorId?: string | null }) =>
     rowStatusKind(glance.botKinds[chat.id], chat.runErrorId);
   const sidebarPaneRef = useRef<HTMLDivElement>(null);
   // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
   const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
+  const [pendingRestores, setPendingRestores] = useState<ReadonlySet<string>>(new Set());
+  const restoreArchived = async (key: string, restore: () => Promise<unknown>) => {
+    if (pendingRestores.has(key)) return;
+    setPendingRestores((pending) => new Set(pending).add(key));
+    try {
+      await restore();
+      await refreshBots(true).catch(() => undefined);
+    } catch (error) {
+      enqueueNotificationToast({ id: `restore-${key}`, title: errorText(error) });
+    } finally {
+      setPendingRestores((pending) => {
+        const next = new Set(pending);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
   useEffect(() => {
     if (!activityMode) return;
     sidebarScrollRef.current?.scrollTo?.({ top: 0 });
@@ -569,33 +633,75 @@ export function SpaceSidebar({
   useEffect(() => {
     if (mobileSidebarOpen) sidebarPaneRef.current?.scrollTo?.({ top: 0 });
   }, [mobileSidebarOpen]);
+  const sidebarPages = pagesOnOffer({
+    glance,
+    ticketBoardEnabled: bootstrapMe?.ticketBoardEnabled === true,
+  }).filter((page) => page.sidebar);
+  const openPage = (path: string) => {
+    setMobileSidebarOpen(false);
+    navigate(path);
+  };
+  /** What a page row shows beside its label: a new-item dot or a count. */
+  const pageBadge = (key: string) => {
+    switch (key) {
+      case "inbox":
+        return glanceBadge({
+          unseen: unseen.inbox ?? 0,
+          value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+          valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+          rail,
+        });
+      case "finance":
+      case "investors":
+      case "artifacts":
+        return glanceBadge({ unseen: unseen[key] ?? 0, rail });
+      case "legal":
+        return glanceBadge({
+          unseen: unseen.legal ?? 0,
+          rail,
+          value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+          valueLabel: plural(glance.legalDueSoon, {
+            one: "# overdue or due in the next 7 days",
+            other: "# overdue or due in the next 7 days",
+          }),
+          onValueClick: () => openPage(LEGAL_DUE_SOON_PATH),
+        });
+      case "gtm":
+        return glanceBadge({
+          unseen: 0,
+          rail,
+          value: glance.gtmNeedsYou > 0 ? String(glance.gtmNeedsYou) : undefined,
+          valueLabel: plural(glance.gtmNeedsYou, { one: "# needs you", other: "# need you" }),
+        });
+      case "devin":
+        // A count, never a dot: the page lists what needs you.
+        return glanceBadge({
+          unseen: 0,
+          rail,
+          value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
+          valueLabel: plural(glance.devinNeedsYou, { one: "# needs you", other: "# need you" }),
+        });
+      case "data-room":
+        return glanceBadge({
+          unseen: unseen["data-room"] ?? 0,
+          rail,
+          value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+          valueLabel: plural(glance.dataRoomWaiting, {
+            one: "# file failed",
+            other: "# files failed",
+          }),
+          failure: true,
+          onValueClick: () => openPage("/app/data-room?status=failed"),
+        });
+      default:
+        return {};
+    }
+  };
   const rosterStopId = useRef<string | null>(null);
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
-  useEffect(() => {
-    const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
-    let frame = 0;
-    const trim = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => endOnWholeRow(scrollers));
-    };
-    trim();
-    const resize = new ResizeObserver(trim);
-    const mutate = new MutationObserver(trim);
-    for (const el of scrollers) {
-      if (!el) continue;
-      resize.observe(el);
-      mutate.observe(el, { childList: true, subtree: true });
-    }
-    return () => {
-      cancelAnimationFrame(frame);
-      resize.disconnect();
-      mutate.disconnect();
-    };
-  }, [mobileSidebarOpen]);
   // "+N more" over the foot of the list while rows remain below the fold.
   const [hiddenRows, setHiddenRows] = useState(0);
-  // The bar fills the margin left below the last whole row.
-  const [moreBarFill, setMoreBarFill] = useState(0);
+  const [barCover, setBarCover] = useState(0);
   useEffect(() => {
     const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
     let frame = 0;
@@ -603,7 +709,7 @@ export function SpaceSidebar({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         setHiddenRows(rowsBelow(scrollers));
-        setMoreBarFill(Number.parseFloat(scrollingList(scrollers)?.style.marginBottom ?? "") || 0);
+        setBarCover(moreBarCover(scrollers));
       });
     };
     measure();
@@ -623,6 +729,14 @@ export function SpaceSidebar({
     };
   }, [mobileSidebarOpen]);
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
+  // Untouched page agents stay out of the list unless the person asks for them; kept per browser.
+  const [showUnusedPageAgents, setShowUnusedPageAgents] = useState(() => {
+    try {
+      return localStorage.getItem(SHOW_UNUSED_PAGE_AGENTS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [emailChatsOpen, setEmailChatsOpen] = useState(false);
   return (
     <aside
@@ -685,6 +799,7 @@ export function SpaceSidebar({
                 placeholder={t`Search`}
                 autoComplete="off"
                 name="sidebar-search"
+                aria-keyshortcuts="Meta+K Control+K"
                 className="cursor-pointer placeholder:text-foreground/70"
               />
             </InputGroup>
@@ -708,6 +823,19 @@ export function SpaceSidebar({
               >
                 {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
                 <History size={15} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label={t`Settings`}
+                title={t`Settings`}
+                data-testid="sidebar-settings"
+                onClick={() => {
+                  setMobileSidebarOpen(false);
+                  openSettings("general");
+                }}
+                className="app-no-drag flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <Settings size={15} strokeWidth={1.8} aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -794,7 +922,7 @@ export function SpaceSidebar({
       ) : null}
       <div
         ref={sidebarPaneRef}
-        className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
+        className="flex min-h-0 flex-1 flex-col pointer-coarse:md:max-lg:flex-initial max-lg:snap-y max-lg:snap-proximity max-lg:scroll-pb-11 max-lg:overflow-y-auto max-lg:[&_[data-roster-row]]:snap-end lg:contents short:lg:flex short:lg:overflow-y-auto short:lg:scroll-pb-11"
       >
         {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
@@ -808,229 +936,29 @@ export function SpaceSidebar({
               rail={rail}
               onToggle={() => toggleSidebarSection("pages")}
               pages={[
-                { key: "inbox", label: t`Inbox` },
-                { key: "finance", label: t`Finance` },
-                { key: "legal", label: t`Legal` },
-                { key: "gtm", label: t`GTM` },
-                ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
-                { key: "investors", label: t`Investors` },
-                { key: "fundraising", label: t`Fundraising` },
-                { key: "company", label: t`Company` },
-                { key: "contacts", label: t`Contacts` },
-                { key: "data-room", label: t`Data room` },
-                { key: "artifacts", label: t`Artifacts` },
+                ...sidebarPages.map((page) => ({ key: page.key, label: i18n._(page.label) })),
                 ...addedPages,
               ]}
               hidden={hiddenPages}
               onToggleHidden={toggleHiddenPage}
             >
-              {hiddenPages.includes("inbox") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-inbox"
-                  href="/app/inbox"
-                  current={inboxMode}
-                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Inbox`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/inbox");
-                  }}
-                  {...glanceBadge({
-                    unseen: unseen.inbox ?? 0,
-                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                    rail,
-                  })}
-                />
-              )}
-              {hiddenPages.includes("finance") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-finance"
-                  href="/app/finance"
-                  current={financeMode}
-                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Finance`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/finance");
-                  }}
-                  {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
-                />
-              )}
-              {hiddenPages.includes("legal") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-legal"
-                  href="/app/legal"
-                  current={legalMode}
-                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Legal`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/legal");
-                  }}
-                  {...glanceBadge({
-                    unseen: unseen.legal ?? 0,
-                    rail,
-                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                    valueLabel: plural(glance.legalDueSoon, {
-                      one: "# overdue or due in the next 7 days",
-                      other: "# overdue or due in the next 7 days",
-                    }),
-                  })}
-                />
-              )}
-              {hiddenPages.includes("gtm") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-gtm"
-                  href="/app/gtm"
-                  current={gtmMode}
-                  icon={<Megaphone size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`GTM`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/gtm");
-                  }}
-                  {...glanceBadge({
-                    unseen: 0,
-                    rail,
-                    value: glance.gtmNeedsYou > 0 ? String(glance.gtmNeedsYou) : undefined,
-                    valueLabel: plural(glance.gtmNeedsYou, {
-                      one: "# needs you",
-                      other: "# need you",
-                    }),
-                  })}
-                />
-              )}
-              {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
-                <SidebarPageLink
-                  testId="sidebar-devin"
-                  href="/app/devin"
-                  current={devinMode}
-                  icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Devin`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/devin");
-                  }}
-                  // A count, never a dot: the page lists what needs you.
-                  {...glanceBadge({
-                    unseen: 0,
-                    rail,
-                    value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
-                    valueLabel: plural(glance.devinNeedsYou, {
-                      one: "# needs you",
-                      other: "# need you",
-                    }),
-                  })}
-                />
-              )}
-              {hiddenPages.includes("investors") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-investors"
-                  href="/app/investors"
-                  current={investorsMode}
-                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Investors`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/investors");
-                  }}
-                  {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
-                />
-              )}
-              {hiddenPages.includes("fundraising") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-fundraising"
-                  href="/app/fundraising"
-                  current={fundraisingMode}
-                  icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Fundraising`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/fundraising");
-                  }}
-                />
-              )}
-              {hiddenPages.includes("company") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-company"
-                  href="/app/company"
-                  current={companyMode}
-                  icon={<Building2 size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Company`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/company");
-                  }}
-                />
-              )}
-              {hiddenPages.includes("contacts") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-contacts"
-                  href="/app/contacts"
-                  current={contactsMode}
-                  icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Contacts`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/contacts");
-                  }}
-                />
-              )}
-              {hiddenPages.includes("data-room") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-data-room"
-                  href="/app/data-room"
-                  current={dataRoomMode}
-                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Data room`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/data-room");
-                  }}
-                  {...glanceBadge({
-                    unseen: unseen["data-room"] ?? 0,
-                    rail,
-                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                    valueLabel: plural(glance.dataRoomWaiting, {
-                      one: "# file failed",
-                      other: "# files failed",
-                    }),
-                    failure: true,
-                    onValueClick: () => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/data-room?status=failed");
-                    },
-                  })}
-                />
-              )}
-              {hiddenPages.includes("artifacts") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-artifacts"
-                  href="/app/artifacts"
-                  current={artifactsMode}
-                  // Not the Data room's folder icon: these are files bots made.
-                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Artifacts`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/artifacts");
-                  }}
-                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-                />
+              {sidebarPages.map((page) =>
+                hiddenPages.includes(page.key) ? null : (
+                  <SidebarPageLink
+                    key={page.key}
+                    testId={`sidebar-${page.key}`}
+                    href={`/app/${page.key}`}
+                    current={currentPage === page.key}
+                    icon={<page.icon size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={i18n._(page.label)}
+                    rail={rail}
+                    onOpen={() => openPage(`/app/${page.key}`)}
+                    {...pageBadge(page.key)}
+                  />
+                ),
               )}
               <SidebarPages
+                bots={bots}
                 rail={rail}
                 hidden={hiddenPages}
                 onListed={setAddedPages}
@@ -1042,7 +970,7 @@ export function SpaceSidebar({
         <div
           ref={sidebarScrollRef}
           tabIndex={-1}
-          className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:scroll-pt-3 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+          className="rk-scroll rk-scroll-fade-top flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 pointer-coarse:lg:flex-initial lg:snap-y lg:snap-proximity lg:scroll-pt-10 lg:scroll-pb-11 lg:overflow-y-auto [overflow-anchor:none] short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
         >
           {activityMode && !rail ? (
             <button
@@ -1058,10 +986,11 @@ export function SpaceSidebar({
           {activityMode && !rail ? (
             <ActivityList
               onListedBots={setActivityBotIds}
+              onOpenWaitingItem={(item) => openBotSettings(item.botId, item.id)}
               onOpenRun={(run) => {
                 setMobileSidebarOpen(false);
-                if (run.groupId) navigate(`/app/g/${run.groupId}`);
-                else navigate(`/app/${run.botId}`);
+                const target = run.groupId ? `/app/g/${run.groupId}` : `/app/${run.botId}`;
+                navigate(run.messageId ? `${target}?m=${run.messageId}` : target);
               }}
             />
           ) : null}
@@ -1112,6 +1041,7 @@ export function SpaceSidebar({
                   row.item.kind === "bot" &&
                   (pageAgentKind(rowKey(row)) !== null ||
                     isGtmAgentSpawnKey(rowKey(row)) ||
+                    isCustomPageSpawnKey(rowKey(row)) ||
                     isIntegrationAgentSpawnKey(rowKey(row)))
                 );
               };
@@ -1130,31 +1060,27 @@ export function SpaceSidebar({
                 activityBotIds.has(row.item.chat.id) &&
                 row.item.chat.id !== active?.id;
               const listedRows = (
-                foldable ? nestedRows.filter((row) => !unusedPageAgent(row)) : nestedRows
+                foldable && !showUnusedPageAgents
+                  ? nestedRows.filter((row) => !unusedPageAgent(row))
+                  : nestedRows
               ).filter((row) => !inActivity(row));
               const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
               const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
-              const holdsActive = (rows: typeof nestedRows) =>
-                rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-              const showPageAgents = pageAgentsOpen || (!pageMode && holdsActive(pageAgentRows));
-              const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
+              // The header stays while any page agent exists, even all hidden as unused, so its menu stays reachable.
+              const hasPageAgents =
+                foldable && nestedRows.some((row) => isPageAgent(row) && !inActivity(row));
               const displayRows: (
                 | (typeof nestedRows)[number]
                 | { foldHeader: "page" | "email" }
               )[] =
-                pageAgentRows.length || emailChatRows.length
+                hasPageAgents || emailChatRows.length
                   ? [
-                      ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
-                      ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
-                      ...(showPageAgents
-                        ? pageAgentsOpen
-                          ? pageAgentRows
-                          : pageAgentRows.filter(
-                              (row) => row.item.kind === "bot" && row.item.chat.id === active?.id,
-                            )
-                        : []),
+                      // Page agents sit first, right under the folders above, with Email chats directly below them.
+                      ...(hasPageAgents ? [{ foldHeader: "page" as const }] : []),
+                      ...foldRows(pageAgentRows, pageAgentsOpen, active?.id, !pageMode),
                       ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
-                      ...(showEmailChats ? emailChatRows : []),
+                      ...foldRows(emailChatRows, emailChatsOpen, active?.id),
+                      ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
                     ]
                   : listedRows;
               const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
@@ -1210,8 +1136,8 @@ export function SpaceSidebar({
                       data-roster-item={group.key}
                       className={
                         group.title && hasSpaceActions
-                          ? `grid pt-3 pb-0.5${group.showLock ? " mt-3" : ""}`
-                          : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
+                          ? `grid pt-3 pb-0.5${group.showLock ? " mt-3" : ""}${collapsed ? "" : ` ${STICKY_GROUP_HEADER} top-0`}`
+                          : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}${group.title && !collapsed ? ` ${STICKY_GROUP_HEADER} top-0` : ""}`
                       }
                     >
                       {group.title ? (
@@ -1318,12 +1244,67 @@ export function SpaceSidebar({
                             : held.includes("takeover")
                               ? "takeover"
                               : null;
+                          const unreadIds = rows.flatMap((row) =>
+                            row.item.kind === "bot" && row.item.chat.unread
+                              ? [row.item.chat.id]
+                              : [],
+                          );
+                          const markAllRead = (
+                            <DropdownMenuItem
+                              disabled={unreadIds.length === 0}
+                              onClick={() => void markBotsRead(unreadIds)}
+                            >
+                              {t`Mark all read`}
+                            </DropdownMenuItem>
+                          );
                           return (
                             <PageAgentsRow
                               key={displayRow.foldHeader}
+                              rosterId={`${group.key}:${displayRow.foldHeader}`}
+                              actions={
+                                email ? (
+                                  <>
+                                    {markAllRead}
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        askArchiveBots(
+                                          rows.flatMap((row) =>
+                                            row.item.kind === "bot" ? [row.item.chat.id] : [],
+                                          ),
+                                        )
+                                      }
+                                    >
+                                      {t`Archive all email chats`}
+                                    </DropdownMenuItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <DropdownMenuItem onClick={() => void createPage()}>
+                                      {t`New page`}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuCheckboxItem
+                                      checked={showUnusedPageAgents}
+                                      onCheckedChange={(checked) => {
+                                        setShowUnusedPageAgents(checked);
+                                        try {
+                                          localStorage.setItem(
+                                            SHOW_UNUSED_PAGE_AGENTS_KEY,
+                                            checked ? "1" : "0",
+                                          );
+                                        } catch {
+                                          // Storage is blocked: the choice lasts until reload.
+                                        }
+                                      }}
+                                    >
+                                      {t`Show unused page agents`}
+                                    </DropdownMenuCheckboxItem>
+                                    {markAllRead}
+                                  </>
+                                )
+                              }
                               label={email ? t`Email chats` : t`Page agents`}
                               testId={email ? "sidebar-email-chats" : undefined}
-                              open={email ? showEmailChats : showPageAgents}
+                              open={email ? emailChatsOpen : pageAgentsOpen}
                               // The open page’s own agent is listed but not counted.
                               count={rows.filter((row) => !untouchedPageAgent(row)).length}
                               needsYou={
@@ -1333,6 +1314,7 @@ export function SpaceSidebar({
                                 )
                               }
                               heldFor={heldFor}
+                              belowHeading={!folder && Boolean(group.title)}
                               onToggle={() =>
                                 email
                                   ? setEmailChatsOpen((open) => !open)
@@ -1487,6 +1469,16 @@ export function SpaceSidebar({
                                     }}
                                     onKeyDown={(event) => {
                                       if (
+                                        openBotMenuFromKeyboard(
+                                          event,
+                                          item.chat.spaceId === bootstrapMe?.spaceId,
+                                          { kind: item.kind, id: item.chat.id },
+                                          botMenuAnchor,
+                                          setBotMenu,
+                                        )
+                                      )
+                                        return;
+                                      if (
                                         item.kind !== "bot" ||
                                         !event.altKey ||
                                         (event.key !== "ArrowUp" && event.key !== "ArrowDown")
@@ -1523,7 +1515,14 @@ export function SpaceSidebar({
                                             },
                                       );
                                     }}
-                                    onClick={() => {
+                                    onClick={(event) => {
+                                      // detail is 0 for keyboard activation, which keeps focus on the row.
+                                      if (
+                                        item.kind === "bot" &&
+                                        event.detail > 0 &&
+                                        !isCoarsePointer()
+                                      )
+                                        setFocusComposerBotId(item.chat.id);
                                       openSpaceChat(
                                         item.chat.spaceId,
                                         item.kind === "bot"
@@ -1542,6 +1541,12 @@ export function SpaceSidebar({
                                       });
                                     }}
                                     className={`relative flex w-full items-center ${
+                                      // Folded page agents are leaves: on a phone the fold's indent only truncates their names.
+                                      foldable &&
+                                      (isPageAgent(displayRow) || isEmailChat(displayRow))
+                                        ? "max-sm:ps-2.5!"
+                                        : ""
+                                    } ${
                                       rail
                                         ? "justify-center rounded-xl px-0 py-1"
                                         : compact
@@ -1555,7 +1560,7 @@ export function SpaceSidebar({
                                         : "group-hover/row:bg-sidebar-accent"
                                     } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
                                     style={
-                                      treeActive && !rail
+                                      (treeActive || depth > 0) && !rail
                                         ? { paddingInlineStart: `${24 + depth * 14}px` }
                                         : undefined
                                     }
@@ -1619,7 +1624,7 @@ export function SpaceSidebar({
                                               />
                                             ) : null}
                                             {!compact ? (
-                                              <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
+                                              <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums pointer-coarse:hidden">
                                                 {formatRosterTime(item.chat.updatedAt)}
                                               </span>
                                             ) : null}
@@ -1729,6 +1734,7 @@ export function SpaceSidebar({
             <div className="mt-2 border-t border-border pt-2">
               <button
                 type="button"
+                data-roster-row="archived"
                 aria-expanded={archivedOpen}
                 onClick={() => setArchivedOpen((open) => !open)}
                 className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
@@ -1757,8 +1763,12 @@ export function SpaceSidebar({
                       <Button
                         variant="ghost"
                         size="xs"
+                        aria-label={t`Restore ${bot.name}`}
+                        disabled={pendingRestores.has(`bot:${bot.id}`)}
                         onClick={() =>
-                          void rpc.bots.restore({ botId: bot.id }).then(() => refreshBots(true))
+                          void restoreArchived(`bot:${bot.id}`, () =>
+                            rpc.bots.restore({ botId: bot.id }),
+                          )
                         }
                       >
                         <Trans>Restore</Trans>
@@ -1786,10 +1796,12 @@ export function SpaceSidebar({
                       <Button
                         variant="ghost"
                         size="xs"
+                        aria-label={t`Restore ${group.name}`}
+                        disabled={pendingRestores.has(`group:${group.id}`)}
                         onClick={() =>
-                          void rpc.groups
-                            .restore({ groupId: group.id })
-                            .then(() => refreshBots(true))
+                          void restoreArchived(`group:${group.id}`, () =>
+                            rpc.groups.restore({ groupId: group.id }),
+                          )
                         }
                       >
                         <Trans>Restore</Trans>
@@ -1813,11 +1825,17 @@ export function SpaceSidebar({
       </div>
       {hiddenRows > 0 && !rail ? (
         <div className="relative h-0 shrink-0">
+          {/* A short fade, so a partly hidden row reads as continuing below. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 z-10 h-4 bg-linear-to-t from-sidebar to-transparent"
+            style={{ bottom: moreBarHeight() + barCover }}
+          />
           <button
             type="button"
             data-testid="sidebar-more-rows"
-            className="absolute inset-x-0 bottom-0 z-10 flex items-start justify-center bg-sidebar pt-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-            style={{ height: Math.max(moreBarHeight(), moreBarFill) }}
+            className="absolute inset-x-0 z-30 flex items-start justify-center border-b border-sidebar-border bg-sidebar pt-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            style={{ height: moreBarHeight() + barCover + BAR_OVERHANG, bottom: -BAR_OVERHANG }}
             onClick={() => {
               const pane = sidebarPaneRef.current;
               const list = sidebarScrollRef.current;
@@ -1935,14 +1953,12 @@ export function SpaceSidebar({
             role="menuitem"
             variant="ghost"
             className="w-full justify-start font-normal"
-            onClick={() =>
-              void authClient.signOut().then(() => {
-                clearTourStep(userId);
-                clearAgentAppCache();
-                clearSpaceSelection();
-                navigate("/");
-              })
-            }
+            onClick={() => {
+              // The toaster hides toasts while a menu or the drawer is open; close both so a failure shows.
+              setMenuOpen(false);
+              setMobileSidebarOpen(false);
+              void signOutAndLeave(navigate, userId);
+            }}
           >
             <LogOut className="text-muted-foreground" strokeWidth={1.75} />
             <Trans>Log out</Trans>

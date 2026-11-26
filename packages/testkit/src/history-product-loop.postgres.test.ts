@@ -49,8 +49,13 @@ describe.skipIf(!enabled)("product history diagnostic loop", () => {
         expect(JSON.parse(call!.function.arguments).cursor).toBe(
           index === 0 ? "start" : parsed[index - 1]!.nextCursor,
         );
-        if (index < tools.length - 1)
-          expect(Buffer.byteLength(String(row.content))).toBeLessThanOrEqual(1024);
+        if (index < tools.length - 1) {
+          expect(Buffer.byteLength(String(row.content))).toBeLessThanOrEqual(12_000);
+          expect(JSON.parse(String(row.content))).toMatchObject({
+            segment: index + 1,
+            contextTruncated: true,
+          });
+        }
       }
       const message = tools.at(-1);
       const content = String(message?.content);
@@ -83,11 +88,14 @@ describe.skipIf(!enabled)("product history diagnostic loop", () => {
           usage: syntheticUsage,
           expect(request) {
             expect(JSON.stringify(request.messages)).toContain("Read the Aurora diagnostic chain");
-            expect(JSON.stringify(request.messages)).toContain(
-              "Start with the project name alone, or one distinctive topic word if no project is named",
+            const searchHistoryDescription = request.tools?.find(
+              (tool) => tool.function.name === "search_history",
+            )?.function.description;
+            expect(searchHistoryDescription).toContain(
+              "For paraphrased recollection, start with one distinctive project or topic keyword.",
             );
-            expect(JSON.stringify(request.messages)).toContain(
-              "Empty narrower queries do not exhaust the broader topic query’s matches.",
+            expect(searchHistoryDescription).toContain(
+              "an empty narrower query does not exhaust an unfinished broader query",
             );
             expect(JSON.stringify(request.messages)).toContain(
               "first check the visible conversation",
@@ -96,7 +104,7 @@ describe.skipIf(!enabled)("product history diagnostic loop", () => {
               "do not repeat retrieval solely because the user asks again",
             );
             expect(JSON.stringify(request.messages)).toContain(
-              "Do not claim evidence is unavailable while that broader search still has an unexplored cursor.",
+              "Do not claim evidence is unavailable while a broader search still has an unexplored cursor.",
             );
             expect(JSON.stringify(request.messages)).toContain(
               "If the requested fact remains absent, say so briefly without volunteering adjacent facts.",

@@ -2,7 +2,13 @@ import type { SidebarPageTemplate } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { addSidebarPage, listSidebarPages, removeSidebarPage } from "./sidebar-pages.js";
+import {
+  addSidebarBotPage,
+  addSidebarPage,
+  listSidebarPages,
+  removeSidebarBotPage,
+  removeSidebarPage,
+} from "./sidebar-pages.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -131,7 +137,9 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
       code: "owner_only",
     });
     await addSidebarPage(prisma, owner, "owned", templates);
-    expect((await pages(owner)).map((p) => p.templateKey)).toContain("owned");
+    expect((await pages(owner)).map((p) => ("templateKey" in p ? p.templateKey : ""))).toContain(
+      "owned",
+    );
   });
 
   it("offers owner-only templates in addable only to the space owner", async () => {
@@ -150,11 +158,111 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
       where: { spaceId_userId: owner },
       data: { role: "member" },
     });
-    expect((await pages(owner)).map((p) => p.templateKey)).not.toContain("owned");
+    expect(
+      (await pages(owner)).map((p) => ("templateKey" in p ? p.templateKey : "")),
+    ).not.toContain("owned");
     await prisma.spaceMember.update({
       where: { spaceId_userId: owner },
       data: { role: "owner" },
     });
-    expect((await pages(owner)).map((p) => p.templateKey)).toContain("owned");
+    expect((await pages(owner)).map((p) => ("templateKey" in p ? p.templateKey : ""))).toContain(
+      "owned",
+    );
+  });
+
+  describe("bot pages", () => {
+    const bot = (id: string, spaceId: string, userId: string, over = {}) =>
+      prisma.bot.create({
+        data: { id: `${id}-${suffix}`, spaceId, userId, name: id, color: "#000000", ...over },
+      });
+    const botPage = (id: string, botId: string, spaceId: string, title: string) =>
+      prisma.botPage.create({
+        data: {
+          id: `${id}-${suffix}`,
+          botId: `${botId}-${suffix}`,
+          spaceId,
+          userId: botId === "bot-b" ? member.userId : owner.userId,
+          updatedBy: "bot",
+          title,
+          content: "",
+        },
+      });
+    const pid = (id: string) => `${id}-${suffix}`;
+
+    beforeAll(async () => {
+      await bot("bot-a", owner.spaceId, owner.userId);
+      await bot("bot-b", owner.spaceId, member.userId);
+      await bot("bot-c", otherSpace.spaceId, owner.userId);
+      await bot("bot-old", owner.spaceId, owner.userId, { archivedAt: new Date() });
+      await botPage("pg-a1", "bot-a", owner.spaceId, "Cash");
+      await botPage("pg-a2", "bot-a", owner.spaceId, "Burn");
+      await botPage("pg-b", "bot-b", owner.spaceId, "Private");
+      await botPage("pg-c", "bot-c", otherSpace.spaceId, "Elsewhere");
+      await botPage("pg-old", "bot-old", owner.spaceId, "Archived");
+    });
+
+    it("lists only the user's own bot pages, grouped by bot, and adds, lists and removes one", async () => {
+      const before = await listSidebarPages(prisma, owner, templates);
+      expect(before.botPages).toEqual([
+        {
+          botId: pid("bot-a"),
+          pages: [
+            { id: pid("pg-a1"), title: "Cash" },
+            { id: pid("pg-a2"), title: "Burn" },
+          ],
+        },
+      ]);
+      const after = await addSidebarBotPage(prisma, owner, pid("pg-a1"), templates);
+      await addSidebarBotPage(prisma, owner, pid("pg-a1"), templates);
+      expect(after.pages).toContainEqual({
+        pageId: pid("pg-a1"),
+        botId: pid("bot-a"),
+        title: "Cash",
+      });
+      expect(after.botPages[0]?.pages).toEqual([{ id: pid("pg-a2"), title: "Burn" }]);
+      const removed = await removeSidebarBotPage(prisma, owner, pid("pg-a1"), templates);
+      expect(removed.pages.some((p) => "pageId" in p)).toBe(false);
+      expect(removed.botPages[0]?.pages).toHaveLength(2);
+    });
+
+    it("refuses another user's bot, another space's page, an archived bot and an unknown page", async () => {
+      for (const [who, id] of [
+        [owner, "pg-b"],
+        [member, "pg-a1"],
+        [owner, "pg-c"],
+        [otherSpace, "pg-a1"],
+        [owner, "pg-old"],
+      ] as const) {
+        await expect(addSidebarBotPage(prisma, who, pid(id), templates)).rejects.toMatchObject({
+          code: "unknown",
+        });
+      }
+      await expect(addSidebarBotPage(prisma, owner, "missing", templates)).rejects.toMatchObject({
+        code: "unknown",
+      });
+    });
+
+    it("does not let one user remove another's row, and drops a row when its bot is archived", async () => {
+      await addSidebarBotPage(prisma, owner, pid("pg-a2"), templates);
+      await removeSidebarBotPage(prisma, member, pid("pg-a2"), templates);
+      expect((await pages(owner)).some((p) => "pageId" in p)).toBe(true);
+      await prisma.bot.update({ where: { id: pid("bot-a") }, data: { archivedAt: new Date() } });
+      expect((await pages(owner)).some((p) => "pageId" in p)).toBe(false);
+      await prisma.bot.update({ where: { id: pid("bot-a") }, data: { archivedAt: null } });
+    });
+
+    it("removes the sidebar row when the page is deleted", async () => {
+      expect((await pages(owner)).some((p) => "pageId" in p)).toBe(true);
+      await prisma.botPage.delete({ where: { id: pid("pg-a2") } });
+      expect(await prisma.sidebarPage.count({ where: { pageId: pid("pg-a2") } })).toBe(0);
+    });
+
+    it("requires exactly one of templateKey and pageId", async () => {
+      const base = { spaceId: owner.spaceId, userId: owner.userId, position: 99 };
+      await expect(prisma.sidebarPage.create({ data: base })).rejects.toThrow();
+      await expect(
+        prisma.sidebarPage.create({ data: { ...base, templateKey: "x", pageId: pid("pg-a1") } }),
+      ).rejects.toThrow();
+    });
   });
 });

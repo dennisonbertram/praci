@@ -11,9 +11,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@rakazo/ui-web";
+import { useState } from "react";
+import { rpc } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 
 /** True when deleting the contact would remove more than its own fields, which Undo cannot bring back. */
-export const hasLinks = (linked: ContactLinked) => linked.portal || linked.documents.length > 0;
+export const hasLinks = (linked: ContactLinked) =>
+  linked.portal || linked.documents.length > 0 || linked.safes > 0;
 
 /** What the delete removes, in words: "their portal access and access to 2 shared documents". */
 function removes(linked: ContactLinked): string {
@@ -24,6 +28,8 @@ function removes(linked: ContactLinked): string {
     parts.push(
       plural(count, { one: "access to # shared document", other: "access to # shared documents" }),
     );
+  if (linked.safes > 0)
+    parts.push(plural(linked.safes, { one: "the link to # SAFE", other: "the links to # SAFEs" }));
   return parts.join(` ${t`and`} `);
 }
 
@@ -63,4 +69,47 @@ export function ContactDeleteConfirm({
       </AlertDialogContent>
     </AlertDialog>
   );
+}
+
+/**
+ * The page-level delete flow Contacts and Investors share: a contact with linked data asks first
+ * and that delete has no Undo; any other is held for the Undo window. Render `confirm` on the page.
+ */
+export function useContactDelete(
+  deleted: (contact: Contact, undoable?: boolean) => void,
+  notify: (text: string) => void,
+) {
+  const [confirming, setConfirming] = useState<{
+    contact: Contact;
+    linked: ContactLinked;
+  } | null>(null);
+
+  /** The menu's Delete: check what the contact is linked to before holding or asking. */
+  const remove = async (contact: Contact) => {
+    try {
+      const linked = await rpc.contacts.linked({ id: contact.id });
+      if (hasLinks(linked)) return setConfirming({ contact, linked });
+      deleted(contact);
+    } catch (cause) {
+      notify(errorText(cause, t`Could not delete ${contact.name}`));
+    }
+  };
+
+  const confirm = confirming ? (
+    <ContactDeleteConfirm
+      contact={confirming.contact}
+      linked={confirming.linked}
+      onCancel={() => setConfirming(null)}
+      onConfirm={() => {
+        const { contact } = confirming;
+        setConfirming(null);
+        rpc.contacts
+          .delete({ id: contact.id })
+          .then(() => deleted(contact, false))
+          .catch((cause) => notify(errorText(cause, t`Could not delete ${contact.name}`)));
+      }}
+    />
+  ) : null;
+
+  return { remove, confirm };
 }

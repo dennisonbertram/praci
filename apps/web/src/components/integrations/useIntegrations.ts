@@ -20,7 +20,14 @@ import { rpc, selectedSpaceId } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
 /** The stored grant, which the access switches edit and save. */
-export type ConnectionAccess = { allAgents: boolean; botIds: string[] };
+/** What the toggles save. */
+export type AccessValue = { allAgents: boolean; botIds: string[] };
+/** The server's answer; agentShared is the "Let other agents use it" switch. */
+export type ConnectionAccess = AccessValue & {
+  agentShared: boolean;
+  /** Granted agents that may also make changes (each still asks), while the connection allows changes. */
+  writeBotIds?: string[];
+};
 /** The stored grant plus who can really use the connection, as computed by the server. */
 export type ConnectionAccessState = ConnectionAccess & {
   effectiveAccess: { shared: "all" | "some" | "none"; botIds: string[] };
@@ -41,10 +48,14 @@ export type IntegrationsData = {
   setup: IntegrationSetupState | null;
   /** The Granola API-key route; null before a key was pasted. */
   meetings?: MeetingsStatus;
+  /** The Granola status request failed, so `meetings` is unknown rather than "never connected". */
+  meetingsFailed: boolean;
   /** The app catalog request failed, which is different from a server with no catalog. */
   catalogFailed: boolean;
   /** The server offers the by-domain catalog search. */
   feedEnabled: boolean;
+  /** The deployment runs stdio MCP servers, so the local-command route is offered. */
+  mcpStdioEnabled?: boolean;
   refresh: () => Promise<void>;
 };
 
@@ -61,7 +72,9 @@ const EMPTY: Omit<IntegrationsData, "refresh"> = {
   financeSources: [],
   setup: null,
   feedEnabled: false,
+  mcpStdioEnabled: false,
   catalogFailed: false,
+  meetingsFailed: false,
 };
 
 /** Everything the Integrations pages show, loaded together and refreshed after any change. */
@@ -76,6 +89,7 @@ export function useIntegrations(): IntegrationsData {
   const owner = `${userId}:${selectedSpaceId()}`;
   const ownerRef = useRef(owner);
   ownerRef.current = owner;
+  const latest = useRef(0);
   const [dataOwner, setDataOwner] = useState(owner);
   if (dataOwner !== owner) {
     setDataOwner(owner);
@@ -91,6 +105,7 @@ export function useIntegrations(): IntegrationsData {
 
   const refresh = useCallback(async () => {
     const requestedFor = ownerRef.current;
+    const request = ++latest.current;
     try {
       // A server without a managed catalog fails or returns nothing: custom connections still work.
       const [
@@ -104,9 +119,10 @@ export function useIntegrations(): IntegrationsData {
         feed,
         finance,
         meetings,
+        me,
       ] = await Promise.all([
         rpc.connections.catalog({}).catch(() => null),
-        rpc.connections.list().catch(() => []),
+        rpc.connections.list(),
         rpc.mcp.servers.list(),
         rpc.bots.list(),
         rpc.mcp.assignments.all().catch(() => []),
@@ -118,31 +134,35 @@ export function useIntegrations(): IntegrationsData {
         rpc.finance.overview().catch(() => null),
         Promise.resolve()
           .then(() => rpc.meetings.status())
+          .then((value) => ({ value }))
+          .catch(() => null),
+        Promise.resolve()
+          .then(() => rpc.me())
           .catch(() => null),
       ]);
       const live = connections.filter((row) => row.status !== "revoked");
-      const effective = await rpc.connections
-        .effectiveAccess()
-        .catch((): Record<string, ConnectionAccessState["effectiveAccess"]> => ({}));
+      const [effective, accessById] = await Promise.all([
+        rpc.connections.effectiveAccess(),
+        rpc.connections.accessAll(),
+      ]);
       const access = Object.fromEntries(
-        await Promise.all(
-          live.map(
-            async (row) =>
-              [
-                row.id,
-                {
-                  ...(await rpc.connections
-                    .access({ connectionId: row.id })
-                    .catch((): ConnectionAccess => ({ allAgents: true, botIds: [] }))),
-                  effectiveAccess: effective[row.id] ?? { shared: "none", botIds: [] },
-                },
-              ] as const,
-          ),
-        ),
+        live.flatMap((row) => {
+          const own = accessById[row.id];
+          return own
+            ? [
+                [
+                  row.id,
+                  { ...own, effectiveAccess: effective[row.id] ?? { shared: "none", botIds: [] } },
+                ],
+              ]
+            : [];
+        }),
       );
+      if (!mounted.current || ownerRef.current !== requestedFor || request !== latest.current)
+        return;
       window.dispatchEvent(new Event(INTEGRATIONS_CHANGED_EVENT));
-      if (!mounted.current || ownerRef.current !== requestedFor) return;
-      setData({
+      const meetingsFailed = meetings === null;
+      setData((prev) => ({
         loaded: true,
         error: null,
         catalogFailed: catalog === null,
@@ -160,11 +180,14 @@ export function useIntegrations(): IntegrationsData {
         ),
         financeSources: finance?.sources ?? [],
         setup,
-        meetings,
+        // A failed call keeps the status already shown; it is not "never connected".
+        meetings: meetings ? meetings.value : prev.meetings,
+        meetingsFailed,
         feedEnabled: feed.enabled,
-      });
+        mcpStdioEnabled: me?.mcpStdioEnabled === true,
+      }));
     } catch (err) {
-      if (mounted.current && ownerRef.current === requestedFor)
+      if (mounted.current && ownerRef.current === requestedFor && request === latest.current)
         setData((prev) => ({
           ...prev,
           loaded: true,
@@ -173,7 +196,6 @@ export function useIntegrations(): IntegrationsData {
     }
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new person or Space loads again
   useEffect(() => {
     void refresh();
   }, [refresh, owner]);

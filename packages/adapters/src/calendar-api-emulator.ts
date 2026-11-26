@@ -1,8 +1,10 @@
 import type { ConnectorProxyRequest, ConnectorProxyResponse } from "@rakazo/adapter-kit";
 
 const PREFIX = "/calendar/v3/calendars/";
+const CALENDAR_LIST = "/calendar/v3/users/me/calendarList";
 
 type Event = Record<string, unknown> & { id: string };
+type CalendarEntry = { id: string; summary: string; selected?: boolean; accessRole?: string };
 
 function reply(status: number, data: unknown = {}): ConnectorProxyResponse {
   return { status, data };
@@ -16,18 +18,25 @@ function fail(status: number, reason: string, message: string): ConnectorProxyRe
 export class CalendarApiEmulator {
   readonly requests: Array<{ accountRef: string; method: string; url: string; body?: unknown }> =
     [];
-  private readonly events = new Map<string, Map<string, Event>>();
+  /** Events by `accountRef`, then calendar id. */
+  private readonly events = new Map<string, Map<string, Map<string, Event>>>();
+  private readonly calendars = new Map<string, CalendarEntry[]>();
   private readonly deleted = new Set<string>();
   private nextId = 1;
 
   constructor(private readonly accountRefs: string[]) {}
 
-  seed(accountRef: string, event: Event): void {
-    this.store(accountRef).set(event.id, event);
+  seed(accountRef: string, event: Event, calendarId = "primary"): void {
+    this.store(accountRef, calendarId).set(event.id, event);
   }
 
-  all(accountRef: string): Event[] {
-    return [...this.store(accountRef).values()];
+  /** Adds a calendar to the account's calendar list. Without any, the list is one selected "primary". */
+  seedCalendar(accountRef: string, calendar: CalendarEntry): void {
+    this.calendars.set(accountRef, [...(this.calendars.get(accountRef) ?? []), calendar]);
+  }
+
+  all(accountRef: string, calendarId = "primary"): Event[] {
+    return [...this.store(accountRef, calendarId).values()];
   }
 
   handle(request: Pick<ConnectorProxyRequest, "accountRef" | "method" | "url" | "body">) {
@@ -36,12 +45,21 @@ export class CalendarApiEmulator {
     if (!this.accountRefs.includes(accountRef))
       return fail(401, "authError", "Invalid credentials");
     const parsed = new URL(url);
+    if (parsed.origin === "https://www.googleapis.com" && parsed.pathname === CALENDAR_LIST) {
+      if (method !== "GET") return fail(405, "invalid", "Method not allowed");
+      const entries = this.calendars.get(accountRef) ?? [
+        { id: "primary", summary: accountRef, selected: true },
+      ];
+      return reply(200, {
+        items: entries.map((entry) => ({ accessRole: "owner", selected: false, ...entry })),
+      });
+    }
     if (parsed.origin !== "https://www.googleapis.com" || !parsed.pathname.startsWith(PREFIX))
       return fail(404, "notFound", "Not found");
     const match = /^([^/]+)\/events(?:\/([^/]+))?$/.exec(parsed.pathname.slice(PREFIX.length));
     if (!match) return fail(404, "notFound", "Not found");
     const id = match[2] ? decodeURIComponent(match[2]) : undefined;
-    const store = this.store(accountRef);
+    const store = this.store(accountRef, decodeURIComponent(match[1]!));
     const input = (body ?? {}) as Record<string, unknown>;
     if (!id) {
       if (method === "GET") return this.list(store, parsed.searchParams);
@@ -83,8 +101,11 @@ export class CalendarApiEmulator {
     const min = params.get("timeMin") ?? "";
     const max = params.get("timeMax") ?? "";
     const max_results = Number(params.get("maxResults") ?? 250);
-    const start = (event: Event) =>
-      String((event.start as Record<string, unknown> | undefined)?.dateTime ?? "");
+    // All-day events carry `start.date` (YYYY-MM-DD); compare it as midnight UTC.
+    const start = (event: Event) => {
+      const point = event.start as Record<string, unknown> | undefined;
+      return String(point?.dateTime ?? (point?.date ? `${point.date}T00:00:00Z` : ""));
+    };
     const items = [...store.values()]
       .filter((event) => start(event) >= min && start(event) < max)
       .filter(
@@ -99,11 +120,13 @@ export class CalendarApiEmulator {
     return reply(200, { items });
   }
 
-  private store(accountRef: string): Map<string, Event> {
-    const existing = this.events.get(accountRef);
+  private store(accountRef: string, calendarId: string): Map<string, Event> {
+    const calendars = this.events.get(accountRef) ?? new Map<string, Map<string, Event>>();
+    this.events.set(accountRef, calendars);
+    const existing = calendars.get(calendarId);
     if (existing) return existing;
     const created = new Map<string, Event>();
-    this.events.set(accountRef, created);
+    calendars.set(calendarId, created);
     return created;
   }
 }

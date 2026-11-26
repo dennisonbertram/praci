@@ -12,6 +12,7 @@ import { createDb } from "@rakazo/db";
 import { zipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MemoryArtifacts, RecordingJobs } from "./data-room-test-fakes.js";
+import { runDataRoomZipUnpack } from "./data-room-zip-import.js";
 import type { EmulatedMessage } from "./gmail-api-emulator.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
@@ -188,6 +189,12 @@ describePostgres(
         replaceKey: `mail.attachments:${account.id}:m1`,
       });
       await runJob(queued[0] as BackgroundJob);
+      for (const job of sink.all.filter((queuedJob) => queuedJob.name === "dataroom.zip.unpack")) {
+        await runDataRoomZipUnpack(
+          { prisma, artifacts, jobs: sink },
+          job.payload as Extract<BackgroundJob, { name: "dataroom.zip.unpack" }>["payload"],
+        );
+      }
       const filed = (await items(owner)).filter((i) => i.sourceConnectionId === account.id);
       expect(filed.map((i) => i.name)).toEqual(["contract.pdf", "q3.csv"]);
       expect(filed.every((i) => i.source === "gmail")).toBe(true);

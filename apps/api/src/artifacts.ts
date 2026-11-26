@@ -11,7 +11,13 @@ import {
   validateAttachmentMimeType,
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { IsolationError, isRecordNotFound, Prisma, withResolvedArtifactVersion } from "@rakazo/db";
+import {
+  IsolationError,
+  isRecordNotFound,
+  likeLiteral,
+  Prisma,
+  withResolvedArtifactVersion,
+} from "@rakazo/db";
 
 export function adapterContext(actor: Actor, botId: string, operationId: string) {
   return {
@@ -249,6 +255,8 @@ type ArtifactListCursor = {
   createdAt: string;
   id: string;
   botId: string | null;
+  // The search this page belongs to; another query over the same space starts over.
+  q: string | null;
   // Freezes the version set for this page sequence.
   asOf: string;
 };
@@ -257,7 +265,11 @@ const ARTIFACT_LIST_CURSOR_PREFIX = "v1.";
 
 function encodeArtifactListCursor(cursor: ArtifactListCursor): string {
   return (
-    ARTIFACT_LIST_CURSOR_PREFIX + Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url")
+    ARTIFACT_LIST_CURSOR_PREFIX +
+    // An unfiltered page keeps the cursor shape older pages were minted with.
+    Buffer.from(JSON.stringify({ ...cursor, q: cursor.q ?? undefined }), "utf8").toString(
+      "base64url",
+    )
   );
 }
 
@@ -282,12 +294,13 @@ function decodeArtifactListCursor(value: string): ArtifactListCursor {
     throw new ArtifactListCursorError();
   }
   const botId = cursorBotId(record.botId);
+  const q = cursorBotId(record.q ?? null);
   const createdAt = new Date(record.createdAt);
   const asOf = new Date(record.asOf);
   if (Number.isNaN(createdAt.getTime()) || Number.isNaN(asOf.getTime())) {
     throw new ArtifactListCursorError();
   }
-  return { createdAt: createdAt.toISOString(), id: record.id, botId, asOf: asOf.toISOString() };
+  return { createdAt: createdAt.toISOString(), id: record.id, botId, q, asOf: asOf.toISOString() };
 }
 
 function cursorBotId(value: unknown): string | null {
@@ -298,18 +311,26 @@ function cursorBotId(value: unknown): string | null {
 export async function listSpaceArtifacts(
   deps: { prisma: Pick<PrismaClient, "artifact" | "$queryRaw"> },
   actor: Actor,
-  input: { botId?: string; cursor?: string; limit?: number },
+  input: { botId?: string; cursor?: string; limit?: number; q?: string },
 ) {
   const take = Math.min(Math.max(input.limit ?? 30, 1), 60);
   const scopeBotId = input.botId ?? null;
   const botFilter = scopeBotId ? Prisma.sql`AND "botId" = ${scopeBotId}` : Prisma.empty;
+  const query = input.q?.trim() ?? "";
+  const pattern = `%${likeLiteral(query)}%`;
+  const searchFilter = query
+    ? Prisma.sql`AND (latest.name ILIKE ${pattern} ESCAPE '\\'
+        OR latest.description ILIKE ${pattern} ESCAPE '\\')`
+    : Prisma.empty;
 
   let asOf = new Date();
   let cursorFilter = Prisma.empty;
   if (input.cursor) {
     // Position is stored on the cursor so a deleted row cannot replay the first page.
     const cursor = decodeArtifactListCursor(input.cursor);
-    if (cursor.botId !== scopeBotId) throw new ArtifactListCursorError();
+    if (cursor.botId !== scopeBotId || cursor.q !== (query || null)) {
+      throw new ArtifactListCursorError();
+    }
     asOf = new Date(cursor.asOf);
     cursorFilter = Prisma.sql`AND (latest."createdAt", latest.id) < (${new Date(cursor.createdAt)}, ${cursor.id})`;
   }
@@ -337,7 +358,7 @@ export async function listSpaceArtifacts(
            counts."versionCount"
     FROM latest
     JOIN counts ON counts."familyId" = COALESCE(latest."rootArtifactId", latest.id)
-    WHERE true ${cursorFilter}
+    WHERE true ${cursorFilter} ${searchFilter}
     ORDER BY latest."createdAt" DESC, latest.id DESC
     LIMIT ${take + 1}
   `);
@@ -367,6 +388,7 @@ export async function listSpaceArtifacts(
             createdAt: last.createdAt.toISOString(),
             id: last.id,
             botId: scopeBotId,
+            q: query || null,
             asOf: asOf.toISOString(),
           })
         : null,
@@ -425,10 +447,12 @@ export async function deleteArtifactFamily(
       select: { id: true, storageKey: true, botId: true },
     });
     if (members.length === 0) return { ok: true as const };
-    const child = members.find((row) => row.id !== rootId);
-    if (child) {
-      await removeArtifactBlob(deps.artifacts, actor, child);
-      await deleteArtifactRowIfPresent(deps.prisma, child.id);
+    const children = members.filter((row) => row.id !== rootId);
+    if (children.length > 0) {
+      for (const child of children) {
+        await removeArtifactBlob(deps.artifacts, actor, child);
+        await deleteArtifactRowIfPresent(deps.prisma, child.id);
+      }
       continue;
     }
     const root = members.find((row) => row.id === rootId);

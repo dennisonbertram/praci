@@ -687,12 +687,23 @@ describeIntegration("run executor lifecycle", () => {
     });
     await handles.prisma.run.update({
       where: { id: seeded.run.id },
-      data: { trigger: "messaging", sourceMessageId: source.id },
+      data: {
+        trigger: "messaging",
+        sourceMessageId: source.id,
+        unattended: true,
+        externalTaint: true,
+      },
     });
     await createThreadMessage(handles.prisma, {
       threadId: seeded.thread.id,
       role: "user",
       blocks: [{ ...channel, channelId: "other-group", text: "Other group detail" }],
+    });
+    const publicSend = await events.sendUserMessage({
+      ...scope,
+      trigger: "messaging",
+      blocks: [{ ...channel, text: "Group follow-up" }],
+      prompt: "Group follow-up",
     });
     const privateDm = await events.sendUserMessage({
       ...scope,
@@ -714,23 +725,26 @@ describeIntegration("run executor lifecycle", () => {
         },
       },
     });
-    const publicSend = await events.sendUserMessage({
-      ...scope,
-      trigger: "messaging",
-      blocks: [{ ...channel, text: "Group follow-up" }],
-      prompt: "Group follow-up",
+    const ordinaryChannelMessage = await createThreadMessage(handles.prisma, {
+      threadId: seeded.thread.id,
+      role: "user",
+      blocks: [{ ...channel, text: "Ordinary channel message" }],
     });
     const fence = { ...scope, runId: seeded.run.id, leaseOwner: "channel-worker", leaseFence: 1 };
     const claimed = await events.claimSteering({ ...fence, seenIds: [] });
-    expect(claimed.map((item) => item.messageId)).toEqual([publicSend.messageId]);
+    // A delivery carries outside content, so the running group turn leaves it for its own
+    // continuation instead of folding it into the current model context.
+    expect(claimed).toEqual([]);
     const history = await loadRunHistoryMessages(
       handles.prisma,
       seeded.run,
       100,
       channel.channelId,
     );
+    // The held outside delivery stays out of this run's history, while later ordinary channel
+    // messages remain visible.
     expect(history.map((message) => message.id).sort()).toEqual(
-      [source.id, publicSend.messageId].sort(),
+      [source.id, ordinaryChannelMessage.id].sort(),
     );
     const attempt = await handles.prisma.attempt.create({
       data: { runId: seeded.run.id, fence: 1, status: "running" },
@@ -743,23 +757,86 @@ describeIntegration("run executor lifecycle", () => {
       blocks: [{ kind: "text", text: "Public reply" }],
     });
     if (result === false || !result.continuationRunId)
-      throw new Error("Missing private continuation");
+      throw new Error("Missing held channel continuation");
     const continuation = await handles.prisma.run.findUniqueOrThrow({
       where: { id: result.continuationRunId },
     });
     expect(continuation).toMatchObject({
-      trigger: "follow_up",
-      sourceMessageId: privateMessage.id,
+      trigger: "messaging",
+      sourceMessageId: publicSend.messageId,
+      unattended: true,
+      externalTaint: true,
     });
     const steering = await handles.prisma.steeringMessage.findUniqueOrThrow({
       where: { messageId_botId: { messageId: privateMessage.id, botId: seeded.bot.id } },
     });
-    expect(steering).toMatchObject({ runId: continuation.id, claimedAt: null });
+    expect(steering).toMatchObject({ runId: null, claimedAt: null });
+    expect(
+      await handles.prisma.steeringMessage.findUniqueOrThrow({
+        where: { messageId_botId: { messageId: publicSend.messageId, botId: seeded.bot.id } },
+      }),
+    ).toMatchObject({ runId: continuation.id, claimedAt: null });
     expect(
       await handles.prisma.steeringMessage.findUniqueOrThrow({
         where: { messageId_botId: { messageId: privateDm.messageId, botId: seeded.bot.id } },
       }),
-    ).toMatchObject({ runId: continuation.id, claimedAt: null });
+    ).toMatchObject({ runId: null, claimedAt: null });
+    const runningContinuation = await handles.prisma.run.update({
+      where: { id: continuation.id },
+      data: { status: "running", leaseOwner: "continuation-worker", leaseFence: 1 },
+    });
+    await expect(
+      events.claimSteering({
+        ...scope,
+        runId: runningContinuation.id,
+        leaseOwner: "continuation-worker",
+        leaseFence: 1,
+        seenIds: [],
+      }),
+    ).resolves.toEqual([expect.objectContaining({ messageId: publicSend.messageId })]);
+    expect(
+      (
+        await loadRunHistoryMessages(handles.prisma, runningContinuation, 100, channel.channelId)
+      ).map((message) => message.id),
+    ).toContain(publicSend.messageId);
+    const continuationAttempt = await handles.prisma.attempt.create({
+      data: { runId: runningContinuation.id, fence: 1, status: "running" },
+    });
+    const nextResult = await events.finalizeRun({
+      ...scope,
+      runId: runningContinuation.id,
+      taskId: runningContinuation.taskId,
+      attemptId: continuationAttempt.id,
+      leaseOwner: "continuation-worker",
+      leaseFence: 1,
+      outcome: "completed",
+      blocks: [{ kind: "text", text: "Private reply" }],
+    });
+    if (nextResult === false || !nextResult.continuationRunId) {
+      throw new Error("Missing private continuation");
+    }
+    const nextContinuation = await handles.prisma.run.update({
+      where: { id: nextResult.continuationRunId },
+      data: { status: "running", leaseOwner: "channel-continuation-worker", leaseFence: 1 },
+    });
+    expect(nextContinuation).toMatchObject({
+      sourceMessageId: privateDm.messageId,
+      externalTaint: true,
+    });
+    await expect(
+      events.claimSteering({
+        ...scope,
+        runId: nextContinuation.id,
+        leaseOwner: "channel-continuation-worker",
+        leaseFence: 1,
+        seenIds: [],
+      }),
+    ).resolves.toEqual([expect.objectContaining({ messageId: privateDm.messageId })]);
+    expect(
+      (await loadRunHistoryMessages(handles.prisma, nextContinuation, 100)).map(
+        (message) => message.id,
+      ),
+    ).toContain(privateDm.messageId);
     // A later group run gets channel inputs, without either run's private context or bot answers.
     expect(
       (
@@ -772,7 +849,7 @@ describeIntegration("run executor lifecycle", () => {
       )
         .map((message) => message.id)
         .sort(),
-    ).toEqual([source.id, publicSend.messageId].sort());
+    ).toEqual([source.id, publicSend.messageId, ordinaryChannelMessage.id].sort());
   });
 
   it("recovers a computer a crashed worker left booting", async () => {
@@ -902,6 +979,7 @@ describeIntegration("run executor lifecycle", () => {
         userId: me.userId,
         status: runState.status ?? "queued",
         trigger: "user",
+        unattended: false,
         leaseOwner: runState.leaseOwner,
         leaseFence: runState.leaseFence,
         leaseExpiresAt: runState.leaseExpiresAt,

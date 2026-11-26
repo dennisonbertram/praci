@@ -6,6 +6,8 @@ import {
   connectorIntentLine,
   mentionChipKey,
   partitionComposerMentions,
+  pickMentionOptions,
+  rankMentionOptions,
   resolveComposerSendPlan,
   routineScheduleSubtitle,
   stripMentionKinds,
@@ -268,5 +270,51 @@ describe("strip and connector intent", () => {
   it("formats routine subtitles", () => {
     expect(routineScheduleSubtitle(["0 9 * * 1-5"])).toMatch(/Weekdays/i);
     expect(routineScheduleSubtitle(["0 9 * * 1-5"], "Chief")).toContain("Chief");
+  });
+});
+
+describe("pickMentionOptions", () => {
+  const names = (options: Array<{ name: string }>) => options.map((option) => option.name);
+  const make = (kind: string, count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      kind,
+      id: `${kind}${i + 1}`,
+      name: `${kind}${i + 1}`,
+    }));
+
+  it("keeps every kind reachable with an empty query before filling in kind order", () => {
+    const options = [
+      ...make("everyone", 1),
+      ...make("bot", 15),
+      ...make("group", 3),
+      ...make("routine", 4),
+      ...make("connector", 2),
+    ];
+    expect(names(pickMentionOptions(options, "", 10))).toEqual([
+      "everyone1",
+      "bot1",
+      "bot2",
+      "bot3",
+      "bot4",
+      "bot5",
+      "bot6",
+      "group1",
+      "routine1",
+      "connector1",
+    ]);
+  });
+
+  it("takes one per kind in kind order when the limit is smaller than the kinds", () => {
+    const options = [...make("connector", 2), ...make("routine", 2), ...make("bot", 3)];
+    expect(names(pickMentionOptions(options, "  ", 2))).toEqual(["bot1", "routine1"]);
+  });
+
+  it("ranks and slices a non-empty query exactly as before", () => {
+    const options = [...make("bot", 3), ...make("routine", 3)];
+    expect(names(pickMentionOptions(options, "routine", 2))).toEqual(
+      rankMentionOptions(options, "routine")
+        .slice(0, 2)
+        .map((option) => option.name),
+    );
   });
 });

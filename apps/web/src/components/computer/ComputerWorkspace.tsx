@@ -24,6 +24,7 @@ export function ComputerWorkspace({
   hasControl,
   dock,
   onTakeControl,
+  recordingSkillId,
   children,
 }: {
   botId: string;
@@ -33,6 +34,8 @@ export function ComputerWorkspace({
   onTakeControl?: () => Promise<boolean>;
   /** Hidden while teaching so recording captures only the screen. */
   dock: boolean;
+  /** The teaching recording in progress, when there is one. */
+  recordingSkillId?: string;
   children: ReactNode;
 }) {
   const { t } = useLingui();
@@ -93,6 +96,7 @@ export function ComputerWorkspace({
                     botId={botId}
                     canUseShell={shellAvailable && hasControl}
                     onTakeControl={shellAvailable ? onTakeControl : undefined}
+                    recordingSkillId={recordingSkillId}
                   />
                 </Suspense>
               </ErrorBoundary>
@@ -114,8 +118,9 @@ export function ComputerWorkspace({
             size="icon-lg"
             aria-label={t`Browser`}
             aria-pressed={screenVisible}
+            disabled={open.length === 0}
             className={cn("rounded-xl", screenVisible && "bg-accent")}
-            onClick={() => setCollapsed((current) => (open.length ? !current : false))}
+            onClick={() => setCollapsed((current) => !current)}
           >
             <Globe />
           </Button>
@@ -172,13 +177,12 @@ function WorkspaceWindow({
   const { t } = useLingui();
   const drag = useRef<{ dx: number; dy: number } | null>(null);
 
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest("button")) return;
+  function startDrag(event: PointerEvent<HTMLButtonElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { dx: event.clientX - position.x, dy: event.clientY - position.y };
   }
 
-  function dragTo(event: PointerEvent<HTMLDivElement>) {
+  function dragTo(event: PointerEvent<HTMLButtonElement>) {
     if (!drag.current) return;
     const area = bounds.current?.getBoundingClientRect();
     const x = event.clientX - drag.current.dx;
@@ -201,15 +205,39 @@ function WorkspaceWindow({
       style={{ left: position.x, top: position.y, zIndex }}
       onPointerDownCapture={onFocus}
     >
-      <div
-        className="flex cursor-grab touch-none items-center gap-2 border-b border-border py-1 pr-1 pl-3 select-none active:cursor-grabbing"
-        onPointerDown={startDrag}
-        onPointerMove={dragTo}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
-      >
-        <span className="flex-1 truncate text-[13px] font-medium text-foreground">{title}</span>
+      <div className="flex items-center gap-2 border-b border-border pr-1">
+        <button
+          type="button"
+          aria-label={t`Move ${title} window with arrow keys`}
+          className="flex min-w-0 flex-1 cursor-grab touch-none items-center border-0 bg-transparent py-1 pl-3 text-start font-inherit select-none active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          onKeyDown={(event) => {
+            const directions: Partial<Record<string, Position>> = {
+              ArrowUp: { x: 0, y: -10 },
+              ArrowDown: { x: 0, y: 10 },
+              ArrowLeft: { x: -10, y: 0 },
+              ArrowRight: { x: 10, y: 0 },
+            };
+            const direction = directions[event.key];
+            if (!direction) return;
+            event.preventDefault();
+            const area = bounds.current?.getBoundingClientRect();
+            onMove({
+              x: area
+                ? Math.min(Math.max(position.x + direction.x, -200), area.width - 120)
+                : position.x + direction.x,
+              y: area
+                ? Math.min(Math.max(position.y + direction.y, 0), area.height - 40)
+                : position.y + direction.y,
+            });
+          }}
+          onPointerDown={startDrag}
+          onPointerMove={dragTo}
+          onPointerUp={() => {
+            drag.current = null;
+          }}
+        >
+          <span className="flex-1 truncate text-[13px] font-medium text-foreground">{title}</span>
+        </button>
         <Button
           variant="ghost"
           size="icon-xs"

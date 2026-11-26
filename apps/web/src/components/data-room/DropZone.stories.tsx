@@ -16,6 +16,22 @@ export default meta;
 
 export const Idle: StoryObj = {};
 
+function UploadingToast() {
+  useEffect(() => {
+    showToastForStory("Q3 contracts.zip", { kind: "uploading", fraction: 0.4, cancel: () => {} });
+  }, []);
+  return null;
+}
+/** An upload in progress, with Cancel available while progress continues. */
+export const Uploading: StoryObj = {
+  render: () => (
+    <div className="p-4 text-sm">
+      <DataRoomDropZone userId="usr_sample" />
+      <UploadingToast />
+    </div>
+  ),
+};
+
 function DeletedToast() {
   // After the drop zone has set its scope, which clears earlier toasts.
   useEffect(() => showDeletedToast("Sample lease.pdf"), []);
@@ -74,10 +90,11 @@ function ImportToasts() {
       progress: { ...row, stage: "done", added: 12, done: 7 },
     });
     showToastForStory("Q3 contracts.zip", { kind: "imported", count: 12 });
+    showToastForStory("Q3 contracts.zip", { kind: "imported", count: 10, failed: 2 });
   }, []);
   return null;
 }
-/** A zip after its upload: opened, found, added entry by entry, read, then added. */
+/** A zip after its upload: opened, found, added entry by entry, read, then added (one partly failed). */
 export const ZipStages: StoryObj = {
   render: () => (
     <div className="p-4 text-sm">
@@ -89,12 +106,12 @@ export const ZipStages: StoryObj = {
 
 function FailedToasts() {
   useEffect(() => {
-    showToastForStory("notes.txt", { kind: "error", reason: "network" });
-    showToastForStory("lease.pdf", { kind: "error", reason: "failed" });
+    showToastForStory("notes.txt", { kind: "error", reason: "network", retry: () => {} });
+    showToastForStory("lease.pdf", { kind: "error", reason: "failed", retry: () => {} });
   }, []);
   return null;
 }
-/** Failed uploads say why; they clear by themselves after 8 seconds. */
+/** Failed uploads say why and stay until closed; network and server failures offer Retry. */
 export const Failed: StoryObj = {
   render: () => (
     <div className="p-4 text-sm">

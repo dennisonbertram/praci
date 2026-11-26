@@ -1,8 +1,17 @@
-import type { AccountSecurity, AvatarStyle } from "@rakazo/contracts";
+import type {
+  AccountSecurity,
+  ActionApprovalRule,
+  AvatarStyle,
+  PermissionLevel,
+  PermissionSettings,
+} from "@rakazo/contracts";
+import { PermissionLevelSchema } from "@rakazo/contracts";
+import { toolStepLabel } from "@rakazo/core";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,6 +27,8 @@ import { AppMark } from "../../components/app-mark";
 import { useAvatarStyle } from "../../components/avatar-style";
 import { BotAvatar } from "../../components/bot-avatar";
 import { DataExportRow } from "../../components/data-export-row";
+import type { MenuPickerChoice } from "../../components/menu-picker";
+import { MenuPickerMenu } from "../../components/menu-picker";
 import { NativeActionButton } from "../../components/native-action-button";
 import { NativeSegmentedControl } from "../../components/native-segmented-control";
 import { NativeSymbol } from "../../components/native-symbol";
@@ -83,6 +94,11 @@ export default function Account() {
   const router = useRouter();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   const [me, setMe] = useState<MobileMe | null>(null);
+  const [meLoadFailed, setMeLoadFailed] = useState(false);
+  const [phonePushLoadFailed, setPhonePushLoadFailed] = useState(false);
+  const [securityLoadFailed, setSecurityLoadFailed] = useState(false);
+  // One retry at a time, so a late answer cannot undo a newer one or a toggle changed since.
+  const [retrying, setRetrying] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [security, setSecurity] = useState<AccountSecurity | null>(null);
   const canChangePassword = security?.hasPassword && security.passwordChangeEnabled !== false;
@@ -111,6 +127,18 @@ export default function Account() {
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [archivedBots, setArchivedBots] = useState<MobileBot[]>([]);
+  const [permissions, setPermissions] = useState<PermissionSettings | null>(null);
+  const [permissionsLoadFailed, setPermissionsLoadFailed] = useState(false);
+  const [permissionsSaving, setPermissionsSaving] = useState(false);
+  const [permissionsError, setPermissionsError] = useState<string | null>(null);
+  const [savedApprovalRules, setSavedApprovalRules] = useState<ActionApprovalRule[] | null>(null);
+  const [savedApprovalRulesLoadFailed, setSavedApprovalRulesLoadFailed] = useState(false);
+  const [savedApprovalRulesError, setSavedApprovalRulesError] = useState<string | null>(null);
+  const [savedApprovalRulesOpen, setSavedApprovalRulesOpen] = useState(false);
+  const [removingApprovalRuleId, setRemovingApprovalRuleId] = useState<string | null>(null);
+  // A newer read or a save's answer outranks a permissions read still in flight.
+  const permissionLoadId = useRef(0);
+  const approvalRulesLoadId = useRef(0);
   const [usage, setUsage] = useState<{
     runs: number;
     inputTokens: number | null;
@@ -138,10 +166,60 @@ export default function Account() {
   const updateLabel = formatUpdateLabel(versionInfo.update, t);
   const versionAccessibility = [versionInfo.nativeLabel, updateLabel].filter(Boolean).join(". ");
 
+  const loadMe = useCallback(async () => {
+    try {
+      setMe(await rpc<MobileMe>("me"));
+      setMeLoadFailed(false);
+    } catch {
+      setMeLoadFailed(true);
+    }
+  }, []);
+
+  const loadPhonePush = useCallback(async () => {
+    try {
+      const prefs = await rpc<{ channels: { push?: boolean }; hasPhone: boolean }>(
+        "notifications/preferences",
+      );
+      setPhonePush(prefs.hasPhone ? prefs.channels.push !== false : null);
+      setPhonePushLoadFailed(false);
+    } catch {
+      setPhonePushLoadFailed(true);
+    }
+  }, []);
+
+  const loadSecurity = useCallback(async () => {
+    try {
+      setSecurity(await fetchAccountSecurity());
+      setSecurityLoadFailed(false);
+    } catch {
+      setSecurityLoadFailed(true);
+    }
+  }, []);
+
+  const retryAccountLoads = useCallback(async () => {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await Promise.all([
+        meLoadFailed ? loadMe() : Promise.resolve(),
+        phonePushLoadFailed ? loadPhonePush() : Promise.resolve(),
+        securityLoadFailed ? loadSecurity() : Promise.resolve(),
+      ]);
+    } finally {
+      setRetrying(false);
+    }
+  }, [
+    retrying,
+    meLoadFailed,
+    phonePushLoadFailed,
+    securityLoadFailed,
+    loadMe,
+    loadPhonePush,
+    loadSecurity,
+  ]);
+
   useEffect(() => {
-    void rpc<MobileMe>("me")
-      .then(setMe)
-      .catch(() => undefined);
+    void loadMe();
     void rpc<{
       runs: number;
       inputTokens: number | null;
@@ -150,16 +228,15 @@ export default function Account() {
     }>("usage/summary")
       .then(setUsage)
       .catch(() => undefined);
-    void rpc<{ channels: { push?: boolean }; hasPhone: boolean }>("notifications/preferences")
-      .then((prefs) => setPhonePush(prefs.hasPhone ? prefs.channels.push !== false : null))
-      .catch(() => undefined);
+    void loadPhonePush();
+    void loadSecurity();
     if (Platform.OS === "android") {
       void getLiveNotificationSettings()
         .then(setNotifications)
         .catch(() => undefined)
         .finally(() => setNotificationsReady(true));
     }
-  }, []);
+  }, [loadMe, loadPhonePush, loadSecurity]);
 
   const usageBlock = (
     <SettingsRow
@@ -266,12 +343,6 @@ export default function Account() {
       setPending(false);
     }
   }
-  useEffect(() => {
-    void fetchAccountSecurity()
-      .then(setSecurity)
-      .catch(() => undefined);
-  }, []);
-
   function closeDeletePrompt() {
     if (pending) return;
     setDeleteOpen(false);
@@ -284,6 +355,7 @@ export default function Account() {
     try {
       const value = await fetchAccountSecurity();
       setSecurity(value);
+      setSecurityLoadFailed(false);
       if (!value.hasPassword) {
         setDeletePassword("");
         setDeletionCodeSent(false);
@@ -320,6 +392,160 @@ export default function Account() {
         setLocaleError(t("Could not change language"));
       })
       .finally(() => setLocaleSaving(false));
+  }
+
+  const loadPermissions = useCallback(() => {
+    const requestId = ++permissionLoadId.current;
+    setPermissionsLoadFailed(false);
+    void rpc<PermissionSettings>("permissions/get")
+      .then((next) => {
+        if (permissionLoadId.current !== requestId) return;
+        setPermissions(next);
+        setPermissionsLoadFailed(false);
+      })
+      .catch(() => {
+        if (permissionLoadId.current === requestId) setPermissionsLoadFailed(true);
+      });
+  }, []);
+
+  const loadSavedApprovalRules = useCallback(() => {
+    const requestId = ++approvalRulesLoadId.current;
+    setSavedApprovalRulesLoadFailed(false);
+    setSavedApprovalRulesError(null);
+    void rpc<ActionApprovalRule[]>("approvalRules/list")
+      .then((rules) => {
+        if (approvalRulesLoadId.current !== requestId) return;
+        setSavedApprovalRules(rules);
+        setSavedApprovalRulesLoadFailed(false);
+      })
+      .catch(() => {
+        if (approvalRulesLoadId.current === requestId) setSavedApprovalRulesLoadFailed(true);
+      });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPermissions();
+      return () => {
+        permissionLoadId.current += 1;
+      };
+    }, [loadPermissions]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!savedApprovalRulesOpen) return;
+      loadSavedApprovalRules();
+      return () => {
+        approvalRulesLoadId.current += 1;
+      };
+    }, [loadSavedApprovalRules, savedApprovalRulesOpen]),
+  );
+
+  // A change while a save is in flight is ignored, so the row keeps showing the stored level.
+  async function choosePermission(key: string) {
+    if (!permissions || permissionsSaving) return;
+    const level: PermissionLevel | null = key === "" ? null : (key as PermissionLevel);
+    if (level === permissions.level) return;
+    setPermissionsSaving(true);
+    setPermissionsError(null);
+    permissionLoadId.current += 1;
+    try {
+      const next = await rpc<PermissionSettings>("permissions/set", { level });
+      permissionLoadId.current += 1;
+      setPermissions(next);
+    } catch (cause) {
+      setPermissionsError(errorText(cause, t("Could not save permissions")));
+    } finally {
+      setPermissionsSaving(false);
+    }
+  }
+
+  async function removeSavedApprovalRule(rule: ActionApprovalRule) {
+    if (removingApprovalRuleId) return;
+    setRemovingApprovalRuleId(rule.id);
+    setSavedApprovalRulesError(null);
+    approvalRulesLoadId.current += 1;
+    try {
+      await rpc("approvalRules/remove", { id: rule.id });
+      approvalRulesLoadId.current += 1;
+      setSavedApprovalRules((current) => current?.filter((item) => item.id !== rule.id) ?? []);
+    } catch (cause) {
+      setSavedApprovalRulesError(errorText(cause, t("Could not remove saved rule.")));
+    } finally {
+      setRemovingApprovalRuleId(null);
+    }
+  }
+
+  function confirmRemoveSavedApprovalRule(rule: ActionApprovalRule) {
+    if (removingApprovalRuleId) return;
+    const name = savedRuleName(rule);
+    Alert.alert(t("Remove saved rule?"), `${name} · ${savedRuleDetail(rule)}`, [
+      { text: t("Cancel"), style: "cancel" },
+      {
+        text: t("Remove"),
+        style: "destructive",
+        onPress: () => void removeSavedApprovalRule(rule),
+      },
+    ]);
+  }
+
+  const permissionLevelLabels: Record<PermissionLevel, string> = {
+    open: t("Open"),
+    ask_changes: t("Ask for changes"),
+    ask_everything: t("Ask for everything"),
+  };
+  const permissionChoices: MenuPickerChoice[] = permissions
+    ? [
+        {
+          key: "",
+          label: t("Default ({level})", {
+            level: permissionLevelLabels[permissions.effectiveDefault],
+          }),
+        },
+        ...PermissionLevelSchema.options.map((level) => ({
+          key: level,
+          label: permissionLevelLabels[level],
+        })),
+      ]
+    : [];
+  const permissionLabel =
+    permissionChoices.find((choice) => choice.key === (permissions?.level ?? ""))?.label ??
+    permissions?.level ??
+    "";
+
+  const approvalEffectLabels = {
+    always_allow: t("Allow"),
+    require_approval: t("Ask"),
+    block: t("Block"),
+  };
+  const approvalMatchKindLabels = {
+    tool: t("Tool"),
+    connector: t("Connector"),
+    category: t("Category"),
+    site: t("Site"),
+  };
+  function savedRuleName(rule: ActionApprovalRule): string {
+    if (rule.botId && rule.matchKind === "tool" && rule.matchValue === "web_fetch") {
+      return rule.botName ?? t("For this agent");
+    }
+    return rule.matchKind === "site" ? rule.matchValue : toolStepLabel(rule.matchValue);
+  }
+  function savedRuleDetail(rule: ActionApprovalRule): string {
+    const kind =
+      rule.botId && rule.matchKind === "tool" && rule.matchValue === "web_fetch"
+        ? t("Fetches any site")
+        : approvalMatchKindLabels[rule.matchKind];
+    const scope = rule.routineName
+      ? t("Routine: {name}", { name: rule.routineName })
+      : rule.botName
+        ? t("Agent: {name}", { name: rule.botName })
+        : rule.routineId
+          ? t("For this routine")
+          : rule.botId
+            ? t("For this agent")
+            : t("In this space");
+    return `${approvalEffectLabels[rule.effect]} · ${kind} · ${scope}`;
   }
 
   function openLanguagePicker() {
@@ -365,6 +591,16 @@ export default function Account() {
         contentContainerStyle={[styles.content, stackOptions && styles.compactContent]}
         contentInsetAdjustmentBehavior="automatic"
       >
+        {meLoadFailed || phonePushLoadFailed || securityLoadFailed ? (
+          <SettingsGroup>
+            <SettingsRow accessible title={t("Could not load this page.")} />
+            <NativeActionButton
+              busy={retrying}
+              label={t("Try again")}
+              onPress={() => void retryAccountLoads()}
+            />
+          </SettingsGroup>
+        ) : null}
         {focus === "usage" ? <SettingsGroup>{usageBlock}</SettingsGroup> : null}
         <SettingsGroup>
           <SettingsRow
@@ -582,6 +818,140 @@ export default function Account() {
               onPress={() => router.push("/integration-setup")}
               title={t("Server integrations")}
             />
+          ) : null}
+        </SettingsGroup>
+
+        {permissions ? (
+          <SettingsGroup
+            footer={
+              permissionsError ??
+              ((permissions.level ?? permissions.effectiveDefault) === "open"
+                ? t(
+                    "Sending to new people, payments, permanent deletes and access requests always ask.",
+                  )
+                : undefined)
+            }
+          >
+            {permissionsSaving ? (
+              // No menu to open while the save is in flight, so a newer choice cannot race it.
+              <View
+                accessibilityLabel={t("Permissions")}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: true }}
+                accessibilityValue={{ text: permissionLabel }}
+                accessible
+                style={[styles.menuRow, stackOptions && styles.compactMenuRow, styles.disabled]}
+              >
+                <Text numberOfLines={1} style={styles.menuRowTitle}>
+                  {t("Permissions")}
+                </Text>
+                <Text numberOfLines={1} style={styles.menuRowValue}>
+                  {permissionLabel}
+                </Text>
+              </View>
+            ) : (
+              <MenuPickerMenu
+                choices={permissionChoices}
+                label={t("Permissions")}
+                onChange={(key) => void choosePermission(key)}
+                value={permissions.level ?? ""}
+              >
+                <View
+                  accessibilityLabel={t("Permissions")}
+                  accessibilityRole="button"
+                  accessibilityValue={{ text: permissionLabel }}
+                  accessible
+                  style={[styles.menuRow, stackOptions && styles.compactMenuRow]}
+                >
+                  <Text numberOfLines={1} style={styles.menuRowTitle}>
+                    {t("Permissions")}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.menuRowValue}>
+                    {permissionLabel}
+                  </Text>
+                  <NativeSymbol
+                    android="chevron-expand"
+                    color={native.tertiaryLabel}
+                    ios="chevron.up.chevron.down"
+                    size={13}
+                  />
+                </View>
+              </MenuPickerMenu>
+            )}
+          </SettingsGroup>
+        ) : null}
+        {permissionsLoadFailed ? (
+          <SettingsGroup>
+            <SettingsRow
+              accessible
+              detail={t("Could not load permissions.")}
+              title={t("Permissions")}
+            />
+            <SettingsRow
+              accessibilityRole="button"
+              onPress={loadPermissions}
+              title={t("Try again")}
+            />
+          </SettingsGroup>
+        ) : null}
+
+        <SettingsGroup>
+          <SettingsRow
+            accessibilityRole="button"
+            accessibilityState={{ expanded: savedApprovalRulesOpen }}
+            chevron={savedApprovalRulesOpen ? "down" : "right"}
+            onPress={() => setSavedApprovalRulesOpen((open) => !open)}
+            title={t("Saved rules")}
+          />
+          {savedApprovalRulesOpen &&
+          savedApprovalRules === null &&
+          !savedApprovalRulesLoadFailed ? (
+            <SettingsRow accessible title={t("Loading saved rules…")} />
+          ) : null}
+          {savedApprovalRulesOpen && savedApprovalRulesLoadFailed ? (
+            <>
+              <SettingsRow accessible title={t("Could not load saved rules.")} />
+              <SettingsRow
+                accessibilityRole="button"
+                onPress={loadSavedApprovalRules}
+                title={t("Try again")}
+              />
+            </>
+          ) : null}
+          {savedApprovalRulesOpen && savedApprovalRules ? (
+            savedApprovalRules.length === 0 ? (
+              <SettingsRow accessible title={t("No saved rules.")} />
+            ) : (
+              savedApprovalRules.map((rule) => {
+                const name = savedRuleName(rule);
+                return (
+                  <SettingsRow
+                    accessibilityLabel={t("Remove {name}", { name })}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: removingApprovalRuleId !== null }}
+                    detail={savedRuleDetail(rule)}
+                    disabled={removingApprovalRuleId !== null}
+                    destructive
+                    key={rule.id}
+                    onPress={() => confirmRemoveSavedApprovalRule(rule)}
+                    title={name}
+                    trailing={
+                      <NativeSymbol
+                        android="trash"
+                        color={mobileTokens().destructive}
+                        ios="trash"
+                        size={18}
+                      />
+                    }
+                  />
+                );
+              })
+            )
+          ) : null}
+          {savedApprovalRulesOpen && savedApprovalRulesError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {savedApprovalRulesError}
+            </Text>
           ) : null}
         </SettingsGroup>
 
@@ -863,6 +1233,17 @@ function createAccountStyles() {
       paddingHorizontal: 16,
       paddingVertical: 10,
     },
+    menuRow: {
+      minHeight: 52,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    compactMenuRow: { paddingHorizontal: 12, gap: 8 },
+    menuRowTitle: { flex: 1, flexShrink: 1, color: native.label, fontSize: 17 },
+    menuRowValue: { flexShrink: 1, color: native.secondaryLabel, fontSize: 17 },
     dialogOverlay: {
       flex: 1,
       justifyContent: "center",

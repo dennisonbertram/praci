@@ -1,0 +1,34 @@
+{
+  "json": {
+    "id": "cmvszj62j0075cr9k1t6fmi6k",
+    "botId": "bot-placeholder",
+    "name": "Morning briefing",
+    "prompt": "Summarize what needs the founder today: unread mail that needs a reply, deadlines due this week and payments leaving in the next 3 days.",
+    "crons": [
+      "0 8 * * 1-5"
+    ],
+    "timezone": "America/New_York",
+    "active": true,
+    "notify": true,
+    "webhookEnabled": false,
+    "githubEnabled": false,
+    "messageProvider": null,
+    "modelProvider": null,
+    "modelId": null,
+    "thinkingLevel": null,
+    "lastRunAt": "2026-10-29T12:00:00.011Z",
+    "nextRunAt": "2026-10-30T12:00:00.000Z",
+    "quiet": false,
+    "watch": null,
+    "managedKind": null,
+    "taughtSkill": null,
+    "status": {
+      "lastRunAt": "2026-10-29T12:00:00.011Z",
+      "nextRunAt": "2026-10-30T12:00:00.000Z",
+      "lastCheckedAt": null,
+      "lastChangedAt": null,
+      "pausedReason": null
+    },
+    "createdAt": "2026-10-29T03:29:56.347Z"
+  }
+}

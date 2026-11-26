@@ -27,8 +27,8 @@ describeMessagingPlatformConformance("sendblue", (): MessagingPlatformHarness =>
     },
     ownEcho: () => emulator.buildStatusRequest({ handle: "echo-1", status: "SENT" }),
     sentTexts: () => emulator.sent.map((s) => s.body),
-    // The official Sendblue SDK retries failed sends twice before throwing.
-    failNextSends: (count) => emulator.failNextSends(count * 3),
+    // The Sendblue SDK does not retry (the outbox owns retries), so each failure is one request.
+    failNextSends: (count) => emulator.failNextSends(count),
   };
 });
 

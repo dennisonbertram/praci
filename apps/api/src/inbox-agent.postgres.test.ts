@@ -136,9 +136,12 @@ describePostgres("ensureInboxAgent (PostgreSQL)", () => {
 
   describe("inbox.agent and bots.create", () => {
     const client = (who: Actor) =>
-      createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
-        context: { actor: who } as never,
-      });
+      createRouterClient(
+        createRouter({ prisma, env: { mailWritesDisabled: false } } as unknown as RouterDeps),
+        {
+          context: { actor: who } as never,
+        },
+      );
 
     it("returns the session user's bot without any input", async () => {
       const first = await client(b).inbox.agent();

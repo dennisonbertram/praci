@@ -1,3 +1,4 @@
+import { MESSAGING_DM_OUTBOUND_CAP } from "@rakazo/adapters";
 import { describe, expect, it, vi } from "vitest";
 import type { MessagingInboundDeps } from "./messaging-inbound.js";
 import {
@@ -18,6 +19,8 @@ function createDeps(
     approvedMember?: unknown;
     sendResult?: { messageId: string; runId: string | null; seq: number };
     routines?: Array<{ id: string; name: string; prompt: string }>;
+    /** Messages the line already sent the person: what a YES or NO can answer. */
+    prompts?: Array<Record<string, unknown>>;
   } = {},
 ) {
   const identity =
@@ -60,6 +63,7 @@ function createDeps(
     introPostedAt: null,
   };
   const outboundRows: Array<Record<string, unknown>> = [];
+  const prompts = overrides.prompts ?? [];
   const txMock = {
     thread: { update: vi.fn(async () => ({ nextMessageSeq: 2 })) },
     message: {
@@ -214,6 +218,13 @@ function createDeps(
       ),
     },
     messagingOutbound: {
+      findFirst: vi.fn(async ({ where }: { where: { identityId: string; kind: string } }) => {
+        const newest = prompts
+          .filter((row) => row.identityId === where.identityId && row.kind === where.kind)
+          .sort((a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())[0];
+        // A snapshot, as a query returns: later updates do not reach a row already read.
+        return newest ? { ...newest } : null;
+      }),
       createMany: vi.fn(async ({ data }: { data: Array<Record<string, unknown>> }) => {
         let count = 0;
         for (const item of data) {
@@ -248,6 +259,14 @@ function createDeps(
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         ...txMock,
+        $queryRaw: vi.fn(async () =>
+          ["bot-1", "bot-9"].map((id) => ({
+            id,
+            spaceId: id,
+            crossSpaceCommunication: true,
+            archivedAt: null,
+          })),
+        ),
         agentConnection: prisma.agentConnection,
         messagingChannelMember: prisma.messagingChannelMember,
         messagingOutbound: prisma.messagingOutbound,
@@ -268,6 +287,7 @@ function createDeps(
     notify,
     enqueue,
     outboundRows,
+    prompts,
     members,
     txMock,
     createdIdentities,
@@ -278,11 +298,26 @@ function createDeps(
     typing: ReturnType<typeof vi.fn>;
     provision: ReturnType<typeof vi.fn>;
     outboundRows: Array<Record<string, unknown>>;
+    prompts: Array<Record<string, unknown>>;
     members: Array<Record<string, unknown>>;
     createdIdentities: Array<Record<string, unknown>>;
     txMock: typeof txMock;
   };
 }
+
+/** A message the line delivered to the person, `ageMs` ago. */
+function sentPrompt(idempotencyKey: string, ageMs = 60_000, identityId = "mi-1") {
+  return {
+    identityId,
+    kind: "dm",
+    idempotencyKey,
+    status: "sent",
+    providerHandle: `out-${idempotencyKey}`,
+    createdAt: new Date(Date.now() - ageMs),
+  };
+}
+const invitePrompt = sentPrompt("invite:ch-1:mi-1");
+const connectPrompt = (requesterBotId = "bot-9") => sentPrompt(`connect:${requesterBotId}:bot-1`);
 
 const dmEvent = {
   type: "message" as const,
@@ -613,6 +648,7 @@ describe("typing indicators", () => {
   it("stays silent for owner commands, which get a text confirmation instead", async () => {
     const deps = createDeps({
       invitedMember: { id: "cm-1", status: "invited", identityId: "mi-1" },
+      prompts: [invitePrompt],
     });
     const handle = createMessagingInboundHandler(deps);
     await handle({ ...dmEvent, content: "YES" });
@@ -662,7 +698,7 @@ describe("createMessagingInboundHandler owner commands", () => {
       identityId: "mi-1",
       status: "invited",
     };
-    const deps = createDeps({ invitedMember: invited });
+    const deps = createDeps({ invitedMember: invited, prompts: [invitePrompt] });
     const handle = createMessagingInboundHandler(deps);
     await handle({ ...dmEvent, content: "YES" });
 
@@ -680,7 +716,7 @@ describe("createMessagingInboundHandler owner commands", () => {
 
   it("declines on NO", async () => {
     const invited = { id: "cm-1", channelId: "ch-1", status: "invited", identityId: "mi-1" };
-    const deps = createDeps({ invitedMember: invited });
+    const deps = createDeps({ invitedMember: invited, prompts: [invitePrompt] });
     const handle = createMessagingInboundHandler(deps);
     await handle({ ...dmEvent, content: "no" });
 
@@ -711,7 +747,7 @@ describe("createMessagingInboundHandler owner commands", () => {
   });
 
   it("approves a pending agent connection on YES and messages both owners", async () => {
-    const deps = createDeps();
+    const deps = createDeps({ prompts: [connectPrompt()] });
     deps.prisma.agentConnection = {
       findFirst: vi.fn(async () => ({
         id: "ac-1",
@@ -767,6 +803,113 @@ describe("createMessagingInboundHandler owner commands", () => {
       ]),
     );
     expect(deps.sendUserMessage).not.toHaveBeenCalled();
+  });
+
+  it("answers only the request whose prompt is the newest message the person was sent", async () => {
+    const deps = createDeps({
+      invitedMember: {
+        id: "cm-1",
+        channelId: "ch-1",
+        status: "invited",
+        identityId: "mi-1",
+        updatedAt: new Date(),
+      },
+      prompts: [sentPrompt("invite:ch-1:mi-1", 120_000), connectPrompt()],
+    });
+    const connection = {
+      id: "ac-1",
+      requesterBotId: "bot-9",
+      targetBotId: "bot-1",
+      status: "pending",
+      updatedAt: new Date(0),
+    };
+    deps.prisma.agentConnection = {
+      findFirst: vi.fn(async () => connection),
+      update: vi.fn(async () => ({})),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    };
+    const handle = createMessagingInboundHandler(deps);
+    await handle({ ...dmEvent, content: "YES" });
+
+    // The invite changed most recently, but the person was last asked about the connection.
+    expect(deps.prisma.agentConnection.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "ac-1", status: "pending" } }),
+    );
+    expect(deps.prisma.messagingChannelMember.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("treats YES as a message when the person was never shown the pending request", async () => {
+    const cases: Array<Array<Record<string, unknown>>> = [
+      // Nothing was ever sent.
+      [],
+      // The bot spoke after the invite, so the YES answers the bot.
+      [sentPrompt("invite:ch-1:mi-1", 120_000), sentPrompt("msg:m-1")],
+      // The invite is still on its way, failed, or was never confirmed delivered.
+      [{ ...invitePrompt, status: "pending" }],
+      [{ ...invitePrompt, status: "failed" }],
+      [{ ...invitePrompt, providerHandle: null }],
+      // An older invite is still waiting behind a newer message that has not gone out.
+      [invitePrompt, { ...sentPrompt("msg:m-2", 1_000), status: "pending" }],
+      // A prompt for another identity's invite.
+      [sentPrompt("invite:ch-1:mi-2")],
+      // Too old to answer by text.
+      [sentPrompt("invite:ch-1:mi-1", 25 * 60 * 60 * 1000)],
+    ];
+    for (const prompts of cases) {
+      const deps = createDeps({
+        invitedMember: { id: "cm-1", channelId: "ch-1", status: "invited", identityId: "mi-1" },
+        prompts,
+      });
+      const handle = createMessagingInboundHandler(deps);
+      await handle({ ...dmEvent, content: "YES" });
+
+      expect(deps.prisma.messagingChannelMember.updateMany).not.toHaveBeenCalled();
+      expect(deps.sendUserMessage).toHaveBeenCalled();
+    }
+  });
+
+  it("does not let a YES answer a request that was held and went out after the reply", async () => {
+    const identity = {
+      id: "mi-1",
+      provider: "sendblue",
+      address: "+15551111111",
+      userId: "user-1",
+      spaceId: "ws-1",
+      botId: "bot-1",
+      outboundSinceInbound: MESSAGING_DM_OUTBOUND_CAP,
+      capReleaseHandle: null as string | null,
+    };
+    const held = { ...invitePrompt, status: "pending", providerHandle: null as string | null };
+    const deps = createDeps({
+      identity,
+      invitedMember: { id: "cm-1", channelId: "ch-1", status: "invited", identityId: "mi-1" },
+      prompts: [sentPrompt("msg:m-1", 120_000), held],
+    });
+    // The reply ends the streak, and a drain sends the held invite at once.
+    deps.prisma.messagingIdentity.update = vi.fn(
+      async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(identity, data);
+        if (identity.outboundSinceInbound === 0) {
+          held.status = "sent";
+          held.providerHandle = "out-held";
+        }
+        return identity;
+      },
+    ) as unknown as typeof deps.prisma.messagingIdentity.update;
+    deps.sendUserMessage.mockRejectedValueOnce(new Error("db down"));
+    const handle = createMessagingInboundHandler(deps);
+    const yes = { ...dmEvent, content: "YES", handle: "yes-held" };
+    await expect(handle(yes)).rejects.toThrow("db down");
+    // The provider redelivers the same reply; the invite is now marked sent.
+    await handle(yes);
+
+    expect(deps.prisma.messagingChannelMember.updateMany).not.toHaveBeenCalled();
+    expect(deps.sendUserMessage).toHaveBeenCalledTimes(2);
+    // A new reply after the invite went out does answer it.
+    await handle({ ...yes, handle: "yes-after" });
+    expect(deps.prisma.messagingChannelMember.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "cm-1", status: "invited" } }),
+    );
   });
 
   it("treats YES without a pending invite as a normal message", async () => {
@@ -989,6 +1132,24 @@ describe("createMessagingInboundHandler channel routing", () => {
     expect(deps.outboundRows.some((row) => row.idempotencyKey === "invite:ch-1:mi-1")).toBe(true);
   });
 
+  it("asks again before an approved member rejoins under a re-linked identity", async () => {
+    const stale = {
+      id: "cm-7",
+      channelId: "ch-1",
+      address: "+15551111111",
+      identityId: "mi-unlinked",
+      status: "approved",
+    };
+    const deps = createDeps({ members: [stale] });
+    const handle = createMessagingInboundHandler(deps);
+    await handle(groupEvent);
+
+    expect(stale.identityId).toBe("mi-1");
+    expect(stale.status).toBe("invited");
+    expect(deps.outboundRows.some((row) => row.idempotencyKey === "invite:ch-1:mi-1")).toBe(true);
+    expect(deps.sendUserMessage).not.toHaveBeenCalled();
+  });
+
   it("re-invites a member who is back in the group, and skips the sweep on empty participants", async () => {
     const returning = {
       id: "cm-4",
@@ -1065,7 +1226,7 @@ describe("createMessagingInboundHandler owner-command status races", () => {
       identityId: "mi-1",
       status: "invited",
     };
-    const deps = createDeps({ invitedMember: swept, members: [swept] });
+    const deps = createDeps({ invitedMember: swept, members: [swept], prompts: [invitePrompt] });
     deps.prisma.messagingChannelMember.findFirst = vi.fn(
       async ({ where }: { where?: { status?: string } }) => {
         if (where?.status === "invited" && swept.status === "invited") {
@@ -1088,7 +1249,7 @@ describe("createMessagingInboundHandler owner-command status races", () => {
   });
 
   it("does not let YES overwrite a concurrently revoked agent connection", async () => {
-    const deps = createDeps();
+    const deps = createDeps({ prompts: [connectPrompt()] });
     const state = {
       id: "ac-7",
       requesterBotId: "bot-9",
@@ -1218,7 +1379,7 @@ describe("createMessagingInboundHandler approval-cycle notifications", () => {
 
 describe("createMessagingInboundHandler confirmation atomicity", () => {
   it("writes the connection confirmations under the claim's transaction", async () => {
-    const deps = createDeps();
+    const deps = createDeps({ prompts: [connectPrompt()] });
     deps.prisma.agentConnection = {
       findFirst: vi.fn(async () => ({
         id: "ac-1",
@@ -1236,6 +1397,14 @@ describe("createMessagingInboundHandler confirmation atomicity", () => {
     });
     deps.prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
+        $queryRaw: vi.fn(async () =>
+          ["bot-1", "bot-9"].map((id) => ({
+            id,
+            spaceId: id,
+            crossSpaceCommunication: true,
+            archivedAt: null,
+          })),
+        ),
         agentConnection: deps.prisma.agentConnection,
         messagingOutbound: {
           createMany: txCreateMany,
@@ -1265,7 +1434,7 @@ describe("createMessagingInboundHandler confirmation atomicity", () => {
       identityId: "mi-1",
       status: "invited",
     };
-    const deps = createDeps({ invitedMember: invited });
+    const deps = createDeps({ invitedMember: invited, prompts: [invitePrompt] });
     const txCreateMany = vi.fn(async ({ data }: { data: Array<Record<string, unknown>> }) => {
       deps.outboundRows.push(...data);
       return { count: data.length };
@@ -1525,7 +1694,7 @@ describe("createMessagingInboundHandler durable replay claim", () => {
   });
 
   it("does not let a replayed YES approve a newer pending connection", async () => {
-    const deps = createDeps();
+    const deps = createDeps({ prompts: [connectPrompt("bot-ac-1")] });
     const pending = (id: string, updatedAt: string) => ({
       id,
       requesterBotId: `bot-${id}`,
@@ -1548,6 +1717,7 @@ describe("createMessagingInboundHandler durable replay claim", () => {
       expect.objectContaining({ where: { id: "ac-1", status: "pending" } }),
     );
     newest = pending("ac-2", "2026-08-29T00:00:00.000Z");
+    deps.prompts.push(sentPrompt("connect:bot-ac-2:bot-1", 1_000));
     await handle(yes);
     expect(updateMany).toHaveBeenCalledTimes(1);
     // A fresh YES (new message id) still answers the newer request.

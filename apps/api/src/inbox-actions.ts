@@ -11,6 +11,7 @@ import type {
 } from "@rakazo/contracts";
 import { MailActionKindSchema } from "@rakazo/contracts";
 import type { Prisma } from "@rakazo/db";
+import { recordUndoneApproval } from "@rakazo/db";
 import { mailContext, notFound } from "./inbox.js";
 import { flagReconnect } from "./inbox-compose.js";
 import type { ModifyDeps } from "./inbox-modify.js";
@@ -21,7 +22,7 @@ const UNDO_CONCURRENCY = 4;
 /** What undoing each kind changes in the provider and in the cache. */
 const INVERSE: Record<
   MailActionKind,
-  { label: MailLabelChange; cache: { inInbox: boolean; isSpam?: boolean } }
+  { label: MailLabelChange; cache: { inInbox: boolean; isSpam?: boolean; notSpamAt?: null } }
 > = {
   archive: { label: { addLabelIds: ["INBOX"] }, cache: { inInbox: true } },
   skip_inbox: { label: { addLabelIds: ["INBOX"] }, cache: { inInbox: true } },
@@ -36,7 +37,7 @@ const INVERSE: Record<
   },
   not_spam: {
     label: { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] },
-    cache: { inInbox: false, isSpam: true },
+    cache: { inInbox: false, isSpam: true, notSpamAt: null },
   },
 };
 
@@ -167,7 +168,18 @@ export async function inboxActionsUndo(
         continue;
       }
     }
-    await prisma.mailActionLog.update({ where: { id: row.id }, data: { undoneAt: new Date() } });
+    // Two Undos of one batch can overlap; only the one that marks the row records the side effects.
+    const { count } = await prisma.mailActionLog.updateMany({
+      where: { id: row.id, undoneAt: null },
+      data: { undoneAt: new Date() },
+    });
+    if (count === 0) continue;
+    // An agent's change that was undone resets its precedent and pauses the tool's.
+    if (row.effectId) {
+      await recordUndoneApproval(prisma, { ...scope, effectId: row.effectId }).catch(
+        () => undefined,
+      );
+    }
     if (forgets) await prisma.mailSenderDecision.deleteMany({ where: decisions });
     else if (kind.data === "unsubscribe")
       await prisma.mailSenderDecision.updateMany({

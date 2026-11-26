@@ -1,0 +1,12 @@
+{
+  "json": {
+    "id": "comment-placeholder",
+    "ticketId": "ticket-placeholder",
+    "body": "I checked the mock flow.",
+    "authorBotId": "bot-placeholder",
+    "authorUserId": null,
+    "authorName": "Mock bot",
+    "createdAt": "2026-11-14T13:00:00Z",
+    "updatedAt": "2026-11-14T13:00:00Z"
+  }
+}

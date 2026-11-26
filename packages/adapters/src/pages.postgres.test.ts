@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { saveBotPage } from "./pages.js";
+import { createBotPage, removeBotPage, saveBotPage } from "./pages.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -57,8 +57,29 @@ describePostgres("bot page saves (PostgreSQL)", () => {
         results.filter((result) => !result.ok).every((r) => r.page?.revision === baseRevision + 1),
       ).toBe(true);
     }
-    const page = await prisma.botPage.findUniqueOrThrow({ where: { botId } });
+    const page = await prisma.botPage.findFirstOrThrow({ where: { botId } });
     expect(page.revision).toBe(2);
     expect(await prisma.botPageRevision.count({ where: { pageId: page.id } })).toBe(2);
+  });
+
+  it("keeps two pages per bot, rejects a duplicate title, and removes revisions with the page", async () => {
+    const deps = { prisma, events };
+    const second = await createBotPage(deps, { spaceId, botId, userId, title: "Second" });
+    await expect(createBotPage(deps, { spaceId, botId, userId, title: "Second" })).rejects.toThrow(
+      "already exists",
+    );
+    const saved = await saveBotPage(deps, {
+      spaceId,
+      botId,
+      userId,
+      pageId: second.id,
+      content: "hi",
+      baseRevision: 1,
+      updatedBy: "user",
+    });
+    expect(saved).toMatchObject({ ok: true, page: { revision: 2, title: "Second" } });
+    expect(await removeBotPage(prisma, { spaceId, botId, pageId: second.id })).toBe(true);
+    expect(await prisma.botPageRevision.count({ where: { pageId: second.id } })).toBe(0);
+    expect(await prisma.botPage.count({ where: { botId } })).toBe(1);
   });
 });

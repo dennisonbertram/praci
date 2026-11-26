@@ -24,6 +24,7 @@ import {
   classifyRpcError,
   createRpcClient,
   fetchChainSnapshot,
+  fetchPriceHistory,
   fetchPrices,
   fetchSafeDetails,
   mostActionable,
@@ -254,8 +255,55 @@ export async function syncCryptoHoldings(
     return fail(rpcFailureMessage(classifyRpcError(error), ["Prices"], "the price service"));
   }
 
-  const failedChains = [...new Set(reads.flatMap((r) => r.failed))].sort((a, b) => a - b);
+  // A token with fewer than a week of stored daily prices gets its last 30 days from DefiLlama once;
+  // a failed lookup only leaves the sparkline short. ponytail: at most 100 tokens per sync.
   const syncedAt = (deps.now ?? (() => new Date()))();
+  const today = syncedAt.toISOString().slice(0, 10);
+  const priced = new Map<
+    string,
+    { chainId: number; tokenAddress: string; usdPrice: string; llamaKey: string }
+  >();
+  for (const read of reads)
+    for (const [chainId, snapshot] of read.snapshots)
+      for (const h of snapshot.holdings)
+        if (h.usdPrice !== null)
+          priced.set(`${chainId}:${h.tokenAddress}`, {
+            chainId,
+            tokenAddress: h.tokenAddress,
+            usdPrice: h.usdPrice,
+            llamaKey: h.llamaKey,
+          });
+  const backfill: Array<{ chainId: number; tokenAddress: string; day: string; usdPrice: string }> =
+    [];
+  try {
+    const stored = await prisma.cryptoPriceDay.groupBy({
+      by: ["chainId", "tokenAddress"],
+      where: {
+        day: { gte: new Date(syncedAt.getTime() - 29 * 86_400_000).toISOString().slice(0, 10) },
+        chainId: { in: [...new Set([...priced.values()].map((p) => p.chainId))] },
+      },
+      _count: { day: true },
+    });
+    const counts = new Map(stored.map((r) => [`${r.chainId}:${r.tokenAddress}`, r._count.day]));
+    const short = [...priced.entries()].filter(([k]) => (counts.get(k) ?? 0) < 7).slice(0, 100);
+    const history = await fetchPriceHistory(
+      rpc,
+      short.map(([, p]) => p.llamaKey),
+    );
+    for (const [, p] of short)
+      for (const d of history.get(p.llamaKey.toLowerCase()) ?? [])
+        if (d.day !== today)
+          backfill.push({
+            chainId: p.chainId,
+            tokenAddress: p.tokenAddress,
+            day: d.day,
+            usdPrice: d.price,
+          });
+  } catch (error) {
+    if (signal.aborted) return fail(rpcFailureMessage(classifyRpcError(error), []));
+  }
+
+  const failedChains = [...new Set(reads.flatMap((r) => r.failed))].sort((a, b) => a - b);
   try {
     const outcome = await prisma.$transaction(
       async (tx) => {
@@ -314,6 +362,25 @@ export async function syncCryptoHoldings(
               data: { safeOwners: read.safe.owners, safeThreshold: read.safe.threshold },
             });
         }
+        // Prices are public and shared by every user, so this table has no space or user.
+        await tx.cryptoPriceDay.createMany({ data: backfill, skipDuplicates: true });
+        for (const p of priced.values())
+          await tx.cryptoPriceDay.upsert({
+            where: {
+              chainId_tokenAddress_day: {
+                chainId: p.chainId,
+                tokenAddress: p.tokenAddress,
+                day: today,
+              },
+            },
+            create: {
+              chainId: p.chainId,
+              tokenAddress: p.tokenAddress,
+              day: today,
+              usdPrice: p.usdPrice,
+            },
+            update: { usdPrice: p.usdPrice },
+          });
         await tx.$executeRaw`
           UPDATE finance_sync_states
           SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = ${problem ? DB_NOW : null},

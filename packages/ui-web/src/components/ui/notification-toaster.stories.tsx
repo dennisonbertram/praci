@@ -325,3 +325,55 @@ export const PageNoticeUnderApproval: Story = {
     </>
   ),
 };
+
+/** On a phone a side panel fills the screen over the composer: its last row scrolls clear of the approval toast (`--toast-panel-reserve`), and the Sent notice (`data-toast-avoid`) stays above it. */
+export const PhonePanelUnderApproval: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <div data-toast-avoid="" className="fixed inset-x-0 bottom-0 h-24 border-t bg-card" />
+      <aside data-toast-panel="" className="fixed inset-0 z-20 flex flex-col bg-background">
+        <div
+          data-testid="panel-scroll"
+          className="h-full overflow-y-auto px-5 pt-4 pb-[calc(1rem+var(--toast-panel-reserve,0px))]"
+        >
+          {Array.from({ length: 24 }, (_, i) => (
+            <div key={i} className="border-b py-3 text-sm">
+              Setting {i + 1}
+            </div>
+          ))}
+          <button type="button" data-testid="last-row" className="min-h-11 w-full text-start">
+            Add skill
+          </button>
+        </div>
+      </aside>
+      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex justify-center px-4">
+        <div
+          data-toast-avoid=""
+          className="pointer-events-auto flex items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg"
+        >
+          <span>Sent</span>
+          <button
+            type="button"
+            data-testid="undo"
+            className="min-h-11 rounded-md bg-secondary px-3 text-secondary-foreground"
+          >
+            Undo
+          </button>
+        </div>
+      </div>
+      <Demo
+        items={[
+          {
+            id: "approval",
+            title: "Legal agent needs an answer",
+            body: "Priya Example asked to move the signing date to Friday.",
+            withBot: true,
+          },
+        ]}
+      />
+    </>
+  ),
+};

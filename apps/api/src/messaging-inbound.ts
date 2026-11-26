@@ -1,5 +1,6 @@
 import type { JobPublisher, MessagingInboundMessage } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, runContinueJob } from "@rakazo/adapter-kit";
+import { messagingDmHeld } from "@rakazo/adapters";
 import type { MessageBlock } from "@rakazo/contracts";
 import {
   MESSAGING_PHOTON_BLOCKED_MESSAGE,
@@ -19,10 +20,12 @@ import type {
 import {
   claimInboundMessage,
   createThreadMessage,
+  crossSpaceCommunicationAllowed,
   messagingInboundKey,
   normalizeMessagingLinkCode,
   redeemMessagingLinkCode,
   releaseInboundMessage,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
@@ -79,7 +82,7 @@ export function createMessagingInboundHandler(deps: MessagingInboundDeps) {
     // Claim the provider message durably before any side effect. Replays (a
     // poll, a restart, another replica, a vendor retry after we answered) would
     // otherwise re-run the counter reset, owner commands (YES answers the
-    // NEWEST pending item, which may be a different one by now) and link-code
+    // newest prompt, which may be a different one by now) and link-code
     // redemption. A failed attempt gives the claim back so the retry runs.
     const key = messagingInboundKey(event.provider, event.handle);
     if (!(await claimInboundMessage(deps.prisma, key))) return;
@@ -107,17 +110,30 @@ async function handleDirectEvent(
   const where = { provider_address: { provider: event.provider, address: event.from } } as const;
   const existing = await deps.prisma.messagingIdentity.findUnique({ where });
   if (existing) {
+    // Owner commands are only parsed in the verified 1:1 conversation.
+    const command = parseMessagingCommand(event.content);
+    const releasesHeld = messagingDmHeld(existing);
+    // Read what a YES or NO answers before the reset below lets held messages
+    // go out: one of them may be a request the person had not seen when they
+    // replied. A redelivery of the reply that released them answers nothing.
+    const prompt =
+      (command === "approve" || command === "decline") && existing.capReleaseHandle !== event.handle
+        ? await latestPrompt(deps, existing)
+        : null;
     // Any reply — even a content-free reaction — ends the consecutive-
     // outbound streak, but only real text wakes the bot. The conversation
     // id is refreshed from the webhook so outbound always has a thread.
     await deps.prisma.messagingIdentity.update({
       where: { id: existing.id },
-      data: { outboundSinceInbound: 0, lastInboundAt: new Date(), dmThreadId: event.threadId },
+      data: {
+        outboundSinceInbound: 0,
+        lastInboundAt: new Date(),
+        dmThreadId: event.threadId,
+        ...(releasesHeld ? { capReleaseHandle: event.handle } : {}),
+      },
     });
     if (!text) return;
-    // Owner commands are only parsed in the verified 1:1 conversation.
-    const command = parseMessagingCommand(event.content);
-    if (command && (await applyOwnerCommand(deps, existing, command))) return;
+    if (command && (await applyOwnerCommand(deps, existing, command, prompt))) return;
     // A linked sender pasting a fresh code re-points this address at another
     // of their bots (only their own codes apply).
     if (await tryRedeemLinkCode(deps, event)) return;
@@ -218,7 +234,9 @@ export async function wakeMessageRoutines(
       prompt: true,
       modelProvider: true,
       modelId: true,
+      modelCredentialId: true,
       thinkingLevel: true,
+      taughtSkillId: true,
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -261,7 +279,7 @@ export async function wakeMessageRoutines(
     mediaUrl: event.mediaUrl,
   });
   await deliverWebhookEvent(
-    { events: deps.events, jobs: deps.jobs },
+    { events: deps.events, jobs: deps.jobs, prisma: deps.prisma },
     {
       bot: { id: target.botId, spaceId: target.spaceId, userId: target.userId },
       threadId: target.threadId,
@@ -380,11 +398,61 @@ async function tryRedeemLinkCode(
   return true;
 }
 
+/** The newest message this line sent the person, as it stood when their reply arrived. */
+function latestPrompt(deps: MessagingInboundDeps, identity: IdentityRow) {
+  return deps.prisma.messagingOutbound.findFirst({
+    where: { identityId: identity.id, kind: "dm" },
+    orderBy: { createdAt: "desc" },
+    select: { idempotencyKey: true, createdAt: true, status: true, providerHandle: true },
+  });
+}
+
+type LatestPrompt = Awaited<ReturnType<typeof latestPrompt>>;
+
+/** How long a channel invite or connection request can be answered by text. */
+export const TEXT_ANSWER_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The one request a bare YES or NO answers: the request whose prompt was the newest message this
+ * line had sent the person when the reply arrived, confirmed delivered within the answer window
+ * and still pending. Anything said since, by the bot or the product, makes the reply an ordinary
+ * message. So does a newest message that is still on its way or failed: the person may have seen
+ * it, so no older prompt may take the reply in its place.
+ */
+async function answeredRequest(
+  deps: MessagingInboundDeps,
+  identity: IdentityRow,
+  latest: LatestPrompt,
+) {
+  if (
+    latest?.status !== "sent" ||
+    latest.providerHandle === null ||
+    Date.now() - latest.createdAt.getTime() > TEXT_ANSWER_WINDOW_MS
+  ) {
+    return null;
+  }
+  const [kind, first, second] = latest.idempotencyKey.split(":");
+  if (kind === "invite" && first && second === identity.id) {
+    const membership = await deps.prisma.messagingChannelMember.findFirst({
+      where: { channelId: first, identityId: identity.id, status: "invited" },
+    });
+    return membership ? ({ kind: "channel", membership } as const) : null;
+  }
+  if (kind === "connect" && first && second === identity.botId) {
+    const connection = await deps.prisma.agentConnection.findFirst({
+      where: { requesterBotId: first, targetBotId: identity.botId, status: "pending" },
+    });
+    return connection ? ({ kind: "connection", connection } as const) : null;
+  }
+  return null;
+}
+
 /** Returns true when the command matched a pending item and was handled. */
 async function applyOwnerCommand(
   deps: MessagingInboundDeps,
   identity: IdentityRow,
   command: "approve" | "decline" | "leave",
+  prompt: LatestPrompt,
 ): Promise<boolean> {
   if (command === "leave") {
     const membership = await deps.prisma.messagingChannelMember.findFirst({
@@ -408,22 +476,7 @@ async function applyOwnerCommand(
     return true;
   }
 
-  const membership = await deps.prisma.messagingChannelMember.findFirst({
-    where: { identityId: identity.id, status: "invited" },
-    orderBy: { updatedAt: "desc" },
-  });
-  const connection = await deps.prisma.agentConnection.findFirst({
-    where: { targetBotId: identity.botId, status: "pending" },
-    orderBy: { updatedAt: "desc" },
-  });
-  // YES/NO answers whichever pending item is newest, channel invite or
-  // agent connection.
-  const target =
-    membership && (!connection || membership.updatedAt >= connection.updatedAt)
-      ? ({ kind: "channel", membership } as const)
-      : connection
-        ? ({ kind: "connection", connection } as const)
-        : null;
+  const target = await answeredRequest(deps, identity, prompt);
   if (!target) return false;
   const approved = command === "approve";
 
@@ -447,7 +500,7 @@ async function applyOwnerCommand(
           : "No problem, your agent will stay out of that group.",
       );
       return true;
-    });
+    }, THREAD_LOCK_TRANSACTION_OPTIONS);
     if (!claimed) return false;
     await enqueueDeliverJob(deps);
     return true;
@@ -463,6 +516,11 @@ async function applyOwnerCommand(
   const claimed = await deps.prisma.$transaction(async (tx) => {
     // The claim holds the connection row lock through commit, so a revoke
     // can never interleave with the confirmation writes.
+    if (
+      approved &&
+      !(await crossSpaceCommunicationAllowed(tx, target.connection.requesterBotId, identity.botId))
+    )
+      return false;
     const { count } = await tx.agentConnection.updateMany({
       where: { id: target.connection.id, status: "pending" },
       data: { status: approved ? "approved" : "declined" },
@@ -486,7 +544,7 @@ async function applyOwnerCommand(
       );
     }
     return true;
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (!claimed) return false;
   await enqueueDeliverJob(deps);
   return true;
@@ -559,11 +617,22 @@ async function handleChannelEvent(
       // the dead id, so a re-link would otherwise never reattach and the
       // member would sit in the channel unreachable by every lookup.
       if (identity && member.identityId !== identity.id) {
-        await deps.prisma.messagingChannelMember.update({
-          where: { id: member.id },
-          data: { identityId: identity.id },
-        });
-        if (member.status === "invited") await inviteMember(deps, channel, identity);
+        if (member.status === "approved") {
+          // A YES belonged to the old identity, which may sit in another
+          // account or space. Ask again before the new one joins the group.
+          // Conditional, so a concurrent LEAVE or sweep is not overwritten.
+          const { count } = await deps.prisma.messagingChannelMember.updateMany({
+            where: { id: member.id, identityId: member.identityId, status: "approved" },
+            data: { identityId: identity.id, status: "invited" },
+          });
+          if (count === 1) await inviteMember(deps, channel, identity);
+        } else {
+          await deps.prisma.messagingChannelMember.update({
+            where: { id: member.id },
+            data: { identityId: identity.id },
+          });
+          if (member.status === "invited") await inviteMember(deps, channel, identity);
+        }
       }
       if (member.status === "left") {
         // Back in the group: restart the approval cycle.

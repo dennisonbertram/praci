@@ -59,6 +59,7 @@ async function mount(
     service?: string;
     initialUrl?: string;
     existingServer?: McpServer;
+    onAgent?: (botId: string) => void;
   } = {},
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -405,4 +406,24 @@ it("says nothing extra before a one-click sign-in and after it succeeds", async 
   await click("Skip");
   expect(document.body.textContent).toContain("Example connected");
   expect(document.body.textContent).not.toContain("now appears under Connected");
+});
+
+it("says a new agent is made for the server, on the custom form only", async () => {
+  await mount();
+  expect(document.body.textContent).toContain(
+    "A new agent is created for this server, and only it can use the server until you share it.",
+  );
+  document.body.innerHTML = "";
+  await mount({ service: "Zernio" });
+  expect(document.body.textContent).not.toContain("A new agent is created");
+});
+
+it("opens the new agent when Done is pressed after adding a server", async () => {
+  api.create.mockResolvedValue({ ...server, agentBotId: "bot-9" });
+  const onAgent = vi.fn();
+  await mount({ onAgent });
+  await type("Token", "tok");
+  await click("Connect");
+  await click("Done");
+  expect(onAgent).toHaveBeenCalledWith("bot-9");
 });

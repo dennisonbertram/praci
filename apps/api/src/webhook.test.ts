@@ -49,12 +49,17 @@ function createDeps(
       modelProvider?: string | null;
       modelId?: string | null;
       thinkingLevel?: string | null;
+      taughtSkillId?: string | null;
     }>;
+    taughtSkill?: { name: string; goal: string; playbook: unknown } | null;
+    /** Webhook-enabled routines that exist whatever their active state (all paused when no active one matched). */
+    pausedWebhookRoutines?: number;
   } = {},
 ): WebhookDeps & {
   sendUserMessage: ReturnType<typeof vi.fn>;
   enqueue: ReturnType<typeof vi.fn>;
   findRoutines: ReturnType<typeof vi.fn>;
+  countWebhookRoutines: ReturnType<typeof vi.fn>;
 } {
   const bot =
     overrides.bot === undefined
@@ -84,6 +89,7 @@ function createDeps(
   }));
   const enqueue = vi.fn(async () => undefined);
   const findRoutines = vi.fn(async () => overrides.routines ?? []);
+  const countWebhookRoutines = vi.fn(async () => overrides.pausedWebhookRoutines ?? 0);
 
   return {
     prisma: {
@@ -95,6 +101,11 @@ function createDeps(
       },
       routine: {
         findMany: findRoutines,
+        count: countWebhookRoutines,
+      },
+      taughtSkill: {
+        findFirst: vi.fn(async () => overrides.taughtSkill ?? null),
+        update: vi.fn(async () => ({})),
       },
     } as unknown as WebhookDeps["prisma"],
     secrets: {
@@ -105,6 +116,7 @@ function createDeps(
     sendUserMessage,
     enqueue,
     findRoutines,
+    countWebhookRoutines,
   };
 }
 
@@ -310,6 +322,63 @@ describe("inbound webhook HTTP route", () => {
     expect(deps.enqueue).toHaveBeenCalled();
   });
 
+  it("ignores a delivery when every webhook routine is paused", async () => {
+    const deps = createDeps({ routines: [], pausedWebhookRoutines: 1 });
+    const app = mount(deps);
+    const res = await app.request("/api/v1/bots/bot-1/webhook", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${SECRET}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ event: "ci.failed" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, ignored: true });
+    expect(deps.countWebhookRoutines).toHaveBeenCalledWith({
+      where: { botId: "bot-1", spaceId: "ws-1", webhookEnabled: true },
+    });
+    expect(deps.sendUserMessage).not.toHaveBeenCalled();
+    expect(deps.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("labels a bot-level delivery without routines in the chat but fences the model prompt", async () => {
+    const deps = createDeps({ routines: [], pausedWebhookRoutines: 0 });
+    const app = mount(deps);
+    const res = await app.request("/api/v1/bots/bot-1/webhook", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${SECRET}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ event: "ci.failed" }),
+    });
+    expect(res.status).toBe(200);
+    expect(deps.sendUserMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        blocks: [{ kind: "text", text: "Webhook: ci.failed" }],
+        prompt: expect.stringContaining("<untrusted_delivery_payload>"),
+      }),
+    );
+  });
+
+  it("never counts routines for a delivery with a bad bearer", async () => {
+    const deps = createDeps({ routines: [], pausedWebhookRoutines: 1 });
+    const app = mount(deps);
+    const res = await app.request("/api/v1/bots/bot-1/webhook", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer wrong-secret",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ event: "ci.failed" }),
+    });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Unauthorized" });
+    expect(deps.countWebhookRoutines).not.toHaveBeenCalled();
+    expect(deps.sendUserMessage).not.toHaveBeenCalled();
+  });
+
   it("pins a routine model when every matching routine chose it", async () => {
     const deps = createDeps({
       routines: [
@@ -342,6 +411,57 @@ describe("inbound webhook HTTP route", () => {
         },
       }),
     );
+  });
+
+  it("shows only the routine name in the chat, not the model-only prompt", async () => {
+    const deps = createDeps({
+      routines: [
+        {
+          id: "routine-1",
+          name: "Billing events",
+          prompt: "Summarize",
+          modelProvider: null,
+          modelId: null,
+          thinkingLevel: null,
+        },
+      ],
+    });
+    const res = await mount(deps).request("/api/v1/bots/bot-1/webhook", {
+      method: "POST",
+      headers: { authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      body: JSON.stringify({ event: "ping" }),
+    });
+    expect(res.status).toBe(200);
+    const sent = deps.sendUserMessage.mock.calls[0]?.[0];
+    expect(sent.blocks).toEqual([{ kind: "text", text: "Routine: Billing events" }]);
+    expect(sent.prompt).toContain("<untrusted_delivery_payload>");
+  });
+
+  it("sends a taught skill's playbook for a routine that has no prompt of its own", async () => {
+    const deps = createDeps({
+      routines: [{ id: "routine-1", name: "Export", prompt: "", taughtSkillId: "skill-1" }],
+      taughtSkill: {
+        name: "Export the report",
+        goal: "Export the report",
+        playbook: {
+          whenToUse: "",
+          inputs: [],
+          steps: ["Open the dashboard", "Click Export"],
+          howToCheck: "",
+          whatToReturn: "",
+          approvalBoundaries: "",
+          failureHandling: "",
+        },
+      },
+    });
+    const res = await mount(deps).request("/api/v1/bots/bot-1/webhook", {
+      method: "POST",
+      headers: { authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      body: JSON.stringify({ event: "ping" }),
+    });
+    expect(res.status).toBe(200);
+    const sent = deps.sendUserMessage.mock.calls[0]?.[0];
+    expect(sent.prompt).toContain("Click Export");
   });
 
   it("keeps the bot model when matching routines chose different models", async () => {
@@ -706,6 +826,78 @@ describe("GitHub event HTTP route", () => {
     expect(res.status).toBe(413);
     expect(deps.prisma.bot.findUnique).not.toHaveBeenCalled();
     expect(deps.sendUserMessage).not.toHaveBeenCalled();
+  });
+
+  function signedForm(body: string, event: string, secret = SECRET) {
+    return {
+      method: "POST" as const,
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "x-github-event": event,
+        "x-github-delivery": "delivery-form-1",
+        "x-hub-signature-256": `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`,
+      },
+      body,
+    };
+  }
+
+  const activeRoutine = [{ id: "routine-1", name: "Review PRs", prompt: "Inspect the change" }];
+
+  it("reads the payload field of a form-encoded delivery", async () => {
+    const deps = createDeps({ routines: activeRoutine });
+    const app = mount(deps);
+    const body = `payload=${encodeURIComponent(
+      JSON.stringify({
+        action: "opened",
+        number: 42,
+        pull_request: { id: 9001 },
+        repository: { id: 55 },
+      }),
+    )}`;
+    const res = await app.request("/api/v1/bots/bot-1/github", signedForm(body, "pull_request"));
+    expect(res.status).toBe(200);
+    const prompt = String(deps.sendUserMessage.mock.calls[0][0].prompt);
+    expect(prompt).toContain('"pullRequestId": 9001');
+    expect(prompt).toContain('"repositoryId": 55');
+  });
+
+  it("keeps only the event when a form delivery has no payload field", async () => {
+    const deps = createDeps({ routines: activeRoutine });
+    const app = mount(deps);
+    const res = await app.request(
+      "/api/v1/bots/bot-1/github",
+      signedForm("other=%7B%22repository%22%3A%7B%22id%22%3A55%7D%7D", "push"),
+    );
+    expect(res.status).toBe(200);
+    const prompt = String(deps.sendUserMessage.mock.calls[0][0].prompt);
+    expect(prompt).toContain(JSON.stringify({ event: "push" }, null, 2));
+    expect(prompt).not.toContain("repositoryId");
+    expect(prompt).not.toContain("other=");
+  });
+
+  it("acknowledges a signed ping without loading routines", async () => {
+    const deps = createDeps({ routines: activeRoutine });
+    const app = mount(deps);
+    const raw = JSON.stringify({ zen: "Keep it logically awesome." });
+    const res = await app.request(
+      "/api/v1/bots/bot-1/github",
+      await githubRequest(raw, SECRET, "delivery-ping", "ping"),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, ignored: true });
+    expect(deps.sendUserMessage).not.toHaveBeenCalled();
+    expect(deps.findRoutines).not.toHaveBeenCalled();
+  });
+
+  it("rejects a ping signed with the wrong secret", async () => {
+    const deps = createDeps({ routines: activeRoutine });
+    const app = mount(deps);
+    const res = await app.request(
+      "/api/v1/bots/bot-1/github",
+      await githubRequest("{}", "wrong-secret", "delivery-ping", "ping"),
+    );
+    expect(res.status).toBe(401);
+    expect(deps.findRoutines).not.toHaveBeenCalled();
   });
 });
 

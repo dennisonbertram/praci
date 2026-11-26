@@ -4,10 +4,9 @@ import { Button } from "@rakazo/ui-web";
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearAgentAppCache } from "../lib/agent-app";
-import { authClient } from "../lib/auth";
-import { formatBillingPrice } from "../lib/billing";
-import { clearSpaceSelection, rpc } from "../lib/rpc";
+import { billingTotal, formatBillingPrice } from "../lib/billing";
+import { rpc } from "../lib/rpc";
+import { signOutAndLeave } from "../lib/sign-out";
 import { AuthFrame, submitClass } from "./Auth";
 
 export function PaywallPage({ status }: { status: BillingStatus }) {
@@ -18,7 +17,7 @@ export function PaywallPage({ status }: { status: BillingStatus }) {
   const showPortal =
     status.canManage &&
     status.hasCustomer &&
-    (status.state === "past_due" || status.state === "incomplete" || status.state === "canceled");
+    (status.state === "incomplete" || status.state === "canceled");
 
   async function open(target: "checkout" | "portal") {
     if (pending) return;
@@ -44,7 +43,7 @@ export function PaywallPage({ status }: { status: BillingStatus }) {
   ];
   const title =
     status.canManage && status.price
-      ? formatBillingPrice(status.price, i18n.locale || "en")
+      ? formatBillingPrice(billingTotal(status.price, status.seats), i18n.locale || "en")
       : t`Subscription required`;
 
   return (
@@ -96,13 +95,7 @@ export function PaywallPage({ status }: { status: BillingStatus }) {
           type="button"
           variant="ghost"
           className="mt-6 text-muted-foreground"
-          onClick={() =>
-            void authClient.signOut().then(() => {
-              clearAgentAppCache();
-              clearSpaceSelection();
-              navigate("/");
-            })
-          }
+          onClick={() => void signOutAndLeave(navigate)}
         >
           <Trans>Log out</Trans>
         </Button>

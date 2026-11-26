@@ -13,6 +13,7 @@ import {
   selectBuiltinToolsForRun,
   userTurnInstructions,
 } from "./executor.js";
+import { MEETING_AGENT_GUIDANCE } from "./meeting-tools.js";
 
 const run = {
   graphicalToolsAllowed: false,
@@ -59,12 +60,18 @@ describe("Data room tool lists", () => {
       .filter((name) => DATA_ROOM_TOOL_NAMES.has(name))
       .sort();
 
-  it("offers the three tools only when the Data room is enabled, and honours the per-bot switch", () => {
+  it("offers Data room tools only when enabled, and honours the per-bot switch", () => {
     expect(offered(false)).toEqual([]);
-    expect(offered(true)).toEqual(["add_to_data_room", "read_data_room_item", "search_data_room"]);
+    expect(offered(true)).toEqual([
+      "add_to_data_room",
+      "read_data_room_item",
+      "search_data_room",
+      "update_scan",
+    ]);
     expect(offered(true, ["add_to_data_room"])).toEqual([
       "read_data_room_item",
       "search_data_room",
+      "update_scan",
     ]);
   });
 
@@ -72,14 +79,17 @@ describe("Data room tool lists", () => {
     for (const name of DATA_ROOM_TOOL_NAMES) expect(BUILTIN_TOOL_NAMES).toContain(name);
   });
 
-  it("runs the tools unattended without approval, and records only the writing one", () => {
+  it("runs the reads unattended without approval, and records only the writing one", () => {
     for (const name of DATA_ROOM_TOOL_NAMES) {
-      expect(toolRequiresApproval(name, false)).toBe(false);
-      expect(unattendedTriggerToolRequiresApproval("webhook", name, false)).toBe(false);
+      const writes = name === "add_to_data_room" || name === "update_scan";
+      expect(toolRequiresApproval(name, false), name).toBe(false);
+      // Writes ask in a background run; reads stay free.
+      expect(unattendedTriggerToolRequiresApproval("webhook", name, false)).toBe(writes);
     }
     expect(READ_ONLY_AGENT_TOOLS.has("search_data_room")).toBe(true);
     expect(READ_ONLY_AGENT_TOOLS.has("read_data_room_item")).toBe(true);
     expect(READ_ONLY_AGENT_TOOLS.has("add_to_data_room")).toBe(false);
+    expect(READ_ONLY_AGENT_TOOLS.has("update_scan")).toBe(false);
   });
 });
 
@@ -107,7 +117,7 @@ describe("Data room guidance", () => {
 
   it("tells every agent to describe its abilities in plain words", () => {
     expect(instructions({})).toContain(PLAIN_CAPABILITY_GUIDANCE);
-    expect(PLAIN_CAPABILITY_GUIDANCE).toContain("never as raw tool names");
+    expect(PLAIN_CAPABILITY_GUIDANCE).toContain("Never name your internal tools");
   });
 
   it("appears only when add_to_data_room is offered", () => {
@@ -116,6 +126,30 @@ describe("Data room guidance", () => {
     expect(instructions({ dataRoomEnabled: true, disabled: ["add_to_data_room"] })).not.toContain(
       DATA_ROOM_GUIDANCE,
     );
+  });
+});
+
+describe("Meeting agent guidance", () => {
+  it("is added to meeting-source agent runs only", () => {
+    const base = {
+      botInstructions: "Bot",
+      computerInstruction: "Computer",
+      pageBrowserAllowed: false,
+      workspaceInstruction: "Home",
+      replyGuidance: "Reply",
+      groupContext: undefined,
+      messagingContext: undefined,
+      redactedMemoryContext: undefined,
+      redactedScratchpadContext: undefined,
+      hasHistoricalContext: false,
+      agentEnvironmentInstruction: undefined,
+      botDirectory: undefined,
+      pluginLine: undefined,
+      agentSkillsLine: undefined,
+      taughtSkillsLine: undefined,
+    };
+    expect(userTurnInstructions({ ...base, meetingAgent: true })).toContain(MEETING_AGENT_GUIDANCE);
+    expect(userTurnInstructions(base)).not.toContain(MEETING_AGENT_GUIDANCE);
   });
 });
 

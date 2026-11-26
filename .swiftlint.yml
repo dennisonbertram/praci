@@ -10,3 +10,6 @@ excluded:
 identifier_name:
   excluded:
     - id
+disabled_rules:
+  - trailing_comma
+  - opening_brace

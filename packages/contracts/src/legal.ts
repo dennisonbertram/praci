@@ -1,13 +1,13 @@
 import * as z from "zod";
 import { Id } from "./ids.js";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-/** The one place the Legal agent's spawn key is built. */
-export const legalAgentSpawnKey = (userId: string) => `legal-agent:${userId}`;
+export const legalAgentSpawnKey = (userId: string) => pageAgentSpawnKey("legal", userId);
 
 export const isLegalAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(legalAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "legal";
 
 /**
  * The model the Legal agent prefers: Meta Muse Wonder via OpenRouter (never a -contributor SKU).
@@ -29,6 +29,7 @@ export const LEGAL_SCAN_ROUTINE_NAME = "Daily legal scan";
 
 /** The only built-in tools the Legal agent is offered (mail, drive and calendar are read-only). */
 export const LEGAL_AGENT_BUILTIN_TOOLS = [
+  "company_context_lookup",
   "search_data_room",
   "read_data_room_item",
   "read_spreadsheet",

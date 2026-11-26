@@ -2,7 +2,7 @@ import { BillingEmulator } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { billingAccountForOrganization, createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { BILLING_RETURN_PATH, createBillingService, TRIAL_DAYS } from "./billing.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -109,6 +109,11 @@ describePostgres("billing service (PostgreSQL)", () => {
     await expect(billing.portal(owner)).resolves.toMatchObject({
       url: expect.stringContaining("portal"),
     });
+    const portal = vi.spyOn(emulator, "createPortal");
+    await billing.portal(owner);
+    expect(portal).toHaveBeenCalledWith(
+      expect.objectContaining({ returnUrl: `${webOrigin}${BILLING_RETURN_PATH}` }),
+    );
   });
 
   it("only lets owners manage billing", async () => {

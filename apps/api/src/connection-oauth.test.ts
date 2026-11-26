@@ -73,6 +73,7 @@ function setup(replacesConnectionId?: string) {
     mailActionLog: { updateMany: move(actionLogs) },
     inboxTodo: { updateMany: move(todos) },
     composeSend: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    mailReplyItem: { updateMany: vi.fn(async () => ({ count: 0 })) },
     botConnectionAccess: {
       findMany: vi.fn(async () => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),

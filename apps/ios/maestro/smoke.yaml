@@ -1,0 +1,20 @@
+# Usage: maestro --udid <UDID> test maestro/smoke.yaml -e EMAIL=... -e PASSWORD=... -e SERVER=http://127.0.0.1:3301
+# The app must already be installed. Signs in, creates an agent, sends a message and sees it in the thread.
+appId: ai.praci.mobile.dev
+---
+- runFlow: sign-in.yaml
+- tapOn:
+    id: new
+- tapOn:
+    id: newAgent
+- tapOn:
+    id: botName
+- inputText: Smoke agent
+- tapOn:
+    id: create
+- tapOn:
+    id: messageField
+- inputText: smoke hello
+- tapOn:
+    id: send
+- assertVisible: smoke hello

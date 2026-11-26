@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { screen, userEvent } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { withPageBehind } from "../stories/decorators";
 import type { ComposeRestore } from "./ComposeEmail";
@@ -63,6 +64,33 @@ export const NewMessageSingleAccount: Story = {
 export const Reply: Story = {
   args: { seed: { kind: "reply", messageId: "msg_reply" } },
   beforeEach: () => mockRpc({ "inbox.compose.prefill": prefill }),
+};
+
+/** On a phone the Context sheet takes under half the screen, so the body and Send stay in view. */
+export const ReplyContextSheet: Story = {
+  args: { seed: { kind: "reply", messageId: "msg_reply" } },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.compose.prefill": prefill,
+      "inbox.personContext": {
+        email: "sender@example.test",
+        name: "Sample Sender",
+        organization: "Northwind Capital",
+        kind: "customer",
+        contactId: "contact_1",
+        lastEmailedAt: "2026-01-05T10:00:00.000Z",
+        threadCount: 0,
+        threads: [],
+        lastMeeting: null,
+        nextMeeting: null,
+        documents: [],
+        todos: [],
+      },
+      "inbox.personSummary": { status: "unavailable" },
+    }),
+  play: async () => {
+    await userEvent.click(await screen.findByRole("button", { name: "Context" }));
+  },
 };
 
 /** A reply to mail that came to a second account names that account's address on the From line. */

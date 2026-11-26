@@ -83,7 +83,7 @@ async function createRoutine(page: Page, name: string) {
 }
 
 async function mentionRoutine(page: Page, composer: Locator, name: string) {
-  await composer.fill(`@${name.slice(0, 4)}`);
+  await composer.fill(`${await composer.inputValue()}@${name.slice(0, 4)}`);
   await expect(page.getByRole("option", { name: `@${name}` })).toBeVisible();
   await composer.press("Enter");
 }
@@ -128,7 +128,7 @@ test("a message is not put back when one of its routines already ran", async ({ 
   const accepted = page.waitForResponse(
     (response) => response.url().includes("/rpc/routines/testRun") && response.ok(),
   );
-  await composer.fill("and the notes");
+  await composer.fill(`${await composer.inputValue()}and the notes`);
   await composer.press("Enter");
   await accepted;
 

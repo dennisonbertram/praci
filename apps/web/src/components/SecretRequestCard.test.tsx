@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { ReactNode } from "react";
 import { act } from "react";
+import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
@@ -17,6 +20,8 @@ vi.mock("@rakazo/chat-ui/web", () => ({
 import type { AskBlock } from "./AskCard";
 import { AskCard } from "./AskCard";
 
+i18n.loadAndActivate({ locale: "en", messages: {} });
+
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const block = (auth: { type: "bearer" } | { type: "login" }): AskBlock => ({
@@ -27,15 +32,30 @@ const block = (auth: { type: "bearer" } | { type: "login" }): AskBlock => ({
   credential: { name: "EXAMPLE_API_KEY", origin: "https://api.example.com", auth },
 });
 
-afterEach(() => {
+vi.useFakeTimers({ toFake: ["Date"] });
+const roots: Root[] = [];
+// Unmount each card so its dialog portal and focus trap do not leak into the next test.
+afterEach(async () => {
+  await act(async () => {
+    for (const root of roots.splice(0)) root.unmount();
+  });
   document.body.innerHTML = "";
+  // A card mounted right after an answer keeps its buttons off for a moment; move the clock on.
+  vi.setSystemTime(Date.now() + 60_000);
 });
 
 async function setup(b: AskBlock, onAnswer = vi.fn(async () => undefined)) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(<AskCard block={b} canAnswer onAnswer={onAnswer} />));
+  roots.push(root);
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <AskCard block={b} canAnswer onAnswer={onAnswer} />
+      </I18nProvider>,
+    ),
+  );
   return { container, onAnswer };
 }
 
@@ -97,6 +117,9 @@ it("opens with focus in the field to type into, not on the line toggle", async (
   await act(async () => byText("Provide secret")?.click());
   await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
   expect(document.activeElement).toBe(document.querySelector('input[type="password"]'));
+  await act(async () => {
+    for (const root of roots.splice(0)) root.unmount();
+  });
   document.body.innerHTML = "";
   await setup(block({ type: "login" }));
   await act(async () => byText("Provide secret")?.click());

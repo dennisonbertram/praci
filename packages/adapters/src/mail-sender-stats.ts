@@ -81,18 +81,33 @@ export async function refreshSenderStats(
           AND m."fromSelf" = false AND m."isSpam" = false AND m."receivedAt" >= ${windowStart})`;
 }
 
-/** A message the user sent proves contact. Existing rows only: a sender row appears when they write to us. */
+/**
+ * A message the user sent proves contact. Existing rows only: a sender row appears when they write
+ * to us. A send newer than the sender's last "no reply needed" correction also ends those
+ * corrections; syncing an older sent message again changes nothing.
+ */
 export async function markPriorContactFromSent(
   tx: Prisma.TransactionClient,
   scope: SenderScope,
-  addresses: string[],
+  sends: Array<{ address: string; at: Date }>,
   now: Date,
 ): Promise<void> {
-  if (addresses.length === 0) return;
+  if (sends.length === 0) return;
+  const newest = new Map<string, Date>();
+  for (const { address, at } of sends) {
+    const known = newest.get(address);
+    if (!known || known < at) newest.set(address, at);
+  }
   await tx.mailSenderStat.updateMany({
-    where: { ...scope, senderAddress: { in: addresses } },
+    where: { ...scope, senderAddress: { in: [...newest.keys()] } },
     data: { priorContact: true, priorContactCheckedAt: now },
   });
+  for (const [address, at] of newest) {
+    await tx.mailSenderStat.updateMany({
+      where: { ...scope, senderAddress: address, noReplyAt: { lt: at } },
+      data: { noReplyCount: 0, noReplyAt: null },
+    });
+  }
 }
 
 /**

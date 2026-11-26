@@ -4,10 +4,10 @@ import type { Actor } from "@rakazo/contracts";
 import {
   CARTA_MCP_ENDPOINT,
   FINANCE_MCP_ENDPOINTS,
-  LEGAL_AGENT_MODEL,
   LEGAL_SCAN_ROUTINE_NAME,
   legalAgentSpawnKey,
 } from "@rakazo/contracts";
+import { demoLedger } from "@rakazo/core/equity";
 import type { PrismaClient } from "@rakazo/db";
 import {
   createDb,
@@ -24,6 +24,9 @@ import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
   DEMO_BOTS,
+  DEMO_BREX_TOKEN,
+  DEMO_CALENDAR_OLD_REF,
+  DEMO_CALENDAR_REF,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
   DEMO_CHIEF_DRAFT_V1,
@@ -54,6 +57,7 @@ import {
   linkDemoArtifacts,
   MOCK_NOTE,
 } from "./data.js";
+import { seedDemoEquityLedger, spreadDemoEquityActivity } from "./equity.js";
 
 export interface DemoSeedOptions {
   apiUrl: string;
@@ -227,6 +231,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
         throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
     };
     await connectFinance(scope);
+    await session.rpc("brexCards/connect", { token: DEMO_BREX_TOKEN }, spaceId);
+    done.push("Brex cards (emulator)");
     const agent = await session.rpc<{ id: string }>("finance/agent");
     done.push("Mercury and Brex (canned tools), Finance agent");
 
@@ -246,6 +252,26 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     const readCapTable = !options.noModel || process.env.DEMO_SEED_CAP_TABLE === "1";
     if (readCapTable) await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
     await session.rpc("carta/agent");
+    await seedDemoEquityLedger(prisma, scope, demoLedger());
+    // securities area: two Fundraising SAFEs not yet in the ledger, so "Add to ledger" can be tried.
+    for (const safe of [
+      {
+        investorName: "Harbor Lane Angels (Mock)",
+        amountCents: 7_500_000,
+        capCents: 1_200_000_000,
+      },
+      {
+        investorName: "Juniper Seed Fund (Mock)",
+        amountCents: 15_000_000,
+        capCents: 1_500_000_000,
+      },
+    ])
+      await session.rpc("fundraising/safes/save", {
+        ...safe,
+        proRata: false,
+        investmentDate: "2026-09-15T00:00:00.000Z",
+      });
+    await spreadDemoEquityActivity(prisma, scope);
     done.push(
       `Carta (mock login; its tools reach only the emulator), ${readCapTable ? "mock cap table" : "no cap table read yet"}, Carta agent`,
     );
@@ -390,6 +416,19 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       data: { secretId: await fakeLogin(reconnectScope, true) },
     });
     done.push(`space "${DEMO_FINANCE_RECONNECT_SPACE}" (Mercury needs reconnecting)`);
+
+    // Google Calendar: the offline connector serves the invented events of demoCalendar().
+    await prisma.connection.create({
+      data: {
+        ...scope,
+        connectorId: "google",
+        provider: "googlecalendar",
+        displayName: "Founder calendar",
+        status: "connected",
+        providerRef: DEMO_CALENDAR_REF,
+      },
+    });
+    done.push("Google Calendar with invented events");
   } finally {
     await prisma.$disconnect();
     await pool.end();
@@ -398,6 +437,33 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   // Cap table page: investor contacts.
   for (const contact of DEMO_CONTACTS) await session.rpc("contacts/save", contact);
   done.push(`${DEMO_CONTACTS.length} contacts`);
+
+  // Cap table access: a few investor holders reach the investor portal through a contact.
+  const holders = await session.rpc<{
+    items: {
+      stakeholderId: string;
+      name: string;
+      email: string | null;
+      group: string;
+      classCodes: string[];
+      contactId: string | null;
+    }[];
+  }>("equity/accessHolders/list", { page: 1, pageSize: 500 });
+  const portalHolders = holders.items
+    .filter((row) => row.group === "investors" && row.classCodes.length > 0 && !row.contactId)
+    .slice(0, 4);
+  for (const row of portalHolders) {
+    const contact = await session.rpc<{ id: string }>("contacts/save", {
+      name: row.name,
+      email: row.email ?? `${row.stakeholderId}@example.test`,
+      kind: "investor",
+    });
+    await session.rpc("equity/accessHolders/linkContact", {
+      stakeholderId: row.stakeholderId,
+      contactId: contact.id,
+    });
+  }
+  done.push(`${portalHolders.length} holders linked to investor contacts`);
 
   // Data room: folders and documents (uploaded through the real route, then ingested).
   const folders = new Map<string, string>();
@@ -785,6 +851,27 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     await session.rpc("connections/complete", { connectionId: begun.connectionId }, space.id);
     await session.rpc("inbox/refresh", {}, space.id).catch(() => undefined);
     done.push(`space "${name}" with a Gmail account that ${what}`);
+    if (name === DEMO_RECONNECT_SPACE) {
+      // Google Calendar whose account the offline connector rejects, so the agenda reports it.
+      const db = createDb(options.databaseUrl);
+      try {
+        const owner = await db.prisma.user.findUniqueOrThrow({ where: { email: options.email } });
+        await db.prisma.connection.create({
+          data: {
+            spaceId: space.id,
+            userId: owner.id,
+            connectorId: "google",
+            provider: "googlecalendar",
+            displayName: "Old calendar",
+            status: "connected",
+            providerRef: DEMO_CALENDAR_OLD_REF,
+          },
+        });
+      } finally {
+        await db.prisma.$disconnect();
+        await db.pool.end();
+      }
+    }
   }
   // The Data room documents already carry a type, date and parties, as if Praci had read them, so the
   // founder allowed that earlier; otherwise the Data room asks for consent it seems to have used.

@@ -8,9 +8,10 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { Shimmer } from "../ai/primitives";
+import { ErrorNotice } from "../finance/ui";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
 
-export const GRANOLA_MEETINGS_PATH = "/app/integrations/granola/meetings";
+export const GRANOLA_MEETINGS_PATH = "/app/meetings?source=granola";
 const KEY_HELP_URL = "https://docs.granola.ai/help-center/sharing/integrations/granola-api";
 
 type Line = "reconnect" | "consent" | "syncing" | "synced";
@@ -97,6 +98,8 @@ export function GranolaMeetingsCard({
   agentName,
   onChanged,
   onOpenAiDataSharing,
+  loadFailed,
+  onRetry,
 }: {
   status: MeetingsStatus;
   /** The sign-in route is connected too, so each card names its route. */
@@ -104,6 +107,9 @@ export function GranolaMeetingsCard({
   agentName: string;
   onChanged: () => void;
   onOpenAiDataSharing?: () => void;
+  /** The status request failed and nothing was shown yet: offer a retry, not the connect form. */
+  loadFailed?: boolean;
+  onRetry?: () => void;
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -113,7 +119,8 @@ export function GranolaMeetingsCard({
   const [busy, setBusy] = useState(false);
   const state = status?.status ?? "disconnected";
   const connected = state === "connected";
-  const showForm = !connected;
+  const unknown = loadFailed === true && !status;
+  const showForm = !connected && !unknown;
 
   async function run(action: () => Promise<unknown>, fallback: string) {
     setBusy(true);
@@ -149,6 +156,7 @@ export function GranolaMeetingsCard({
             <Trans>API key</Trans>
           </span>
         ) : null}
+        {unknown ? <ErrorNotice message={t`Could not load`} onRetry={onRetry} /> : null}
         {status && state !== "disconnected" ? (
           <div className="flex flex-wrap items-center gap-3">
             <GranolaStatusLine

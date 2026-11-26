@@ -5,23 +5,26 @@ import type {
   AgentHomeStore,
   JobPublisher,
   SandboxProvider,
+  SecretStore,
 } from "@rakazo/adapter-kit";
 import {
   runContinueJob,
   skillTeachingExpireJob,
   skillTeachingExpireJobKey,
 } from "@rakazo/adapter-kit";
-import type { ComputerExecutionLease, TeachComputerInput } from "@rakazo/adapters";
+import type { ComputerExecutionLease, TaughtSkillRow, TeachComputerInput } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
   appendRecordingEvent,
   ComputerBusyError,
   captureTeachingSnapshot,
   completeTeachingSession,
+  deleteHeldValues,
   emptyRecording,
   expireTaughtSkillTeaching,
   extendActiveComputerControl,
   getActiveTeachingSession,
+  listLoginPrompts,
   mapTaughtSkill,
   observeStopSnapshot,
   parsePlaybook,
@@ -32,35 +35,37 @@ import {
   releaseTeachingComputerControlForBot,
   scheduleComputerControlExpiry,
   screenLeaseIdForRun,
+  scrubTaughtSkillRow,
   teachingControlLeaseExpiresAt,
 } from "@rakazo/adapters";
-import type { Actor, MessageBlock, TaughtSkill } from "@rakazo/contracts";
+import type {
+  Actor,
+  MessageBlock,
+  TaughtSkill,
+  TaughtSkillSummary,
+  TeachTestOutcome,
+} from "@rakazo/contracts";
 import type { SkillPlaybook, TeachRecordingEvent } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
+  ASK_SIGN_IN_STEP,
   buildPlaybookFromRecording,
+  FILL_LOGIN_STEP_PREFIX,
+  fillLoginStep,
   formatSkillRunPrompt,
+  newRunUnattended,
+  PROTECTED_STEP,
+  parseSkillResult,
+  sanitizeTeachRecordingEvent,
   teachRecordingTtlMs,
 } from "@rakazo/core";
 import type { createRepos, PrismaClient, ThreadEvents } from "@rakazo/db";
-import { expireComputerExecutionLeases, IsolationError, isUniqueViolation } from "@rakazo/db";
-
-type TaughtSkillRow = {
-  id: string;
-  spaceId: string;
-  botId: string;
-  userId: string;
-  name: string;
-  goal: string;
-  status: string;
-  playbook: unknown;
-  recording: unknown;
-  startedAt: Date | null;
-  expiresAt: Date | null;
-  stoppedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import {
+  clearEndedRunState,
+  expireComputerExecutionLeases,
+  IsolationError,
+  isUniqueViolation,
+} from "@rakazo/db";
 
 export interface TaughtSkillsDeps {
   prisma: PrismaClient;
@@ -69,6 +74,38 @@ export interface TaughtSkillsDeps {
   sandbox: SandboxProvider;
   home: AgentHomeStore;
   dataDir: string;
+  /** Encrypts the passwords held until the user saves or skips them. */
+  secrets: SecretStore;
+  /** The bot's model rewriting coordinate steps as plain steps; absent keeps coordinates. */
+  describeSteps?: Parameters<typeof completeTeachingSession>[0]["describeSteps"];
+  /** Creates the bot-scoped website login (origin = site) through the credential path. */
+  putLogin: (
+    actor: Actor,
+    botId: string,
+    login: { name: string; site: string; username: string; password: string },
+  ) => Promise<void>;
+}
+
+/** The nearest `Type "..."` step before a password, looking back over a few clicks and keys. */
+function findTypedUsername(
+  steps: string[],
+  passwordIndex: number,
+): { index: number; value: string } | undefined {
+  for (let index = passwordIndex - 1; index >= Math.max(0, passwordIndex - 4); index -= 1) {
+    const step = steps[index] ?? "";
+    const typed = step.match(/^Type ("(?:[^"\\]|\\.)*")\.$/);
+    if (typed && step !== PROTECTED_STEP) return { index, value: JSON.parse(typed[1]!) as string };
+    if (step === PROTECTED_STEP || step.startsWith(FILL_LOGIN_STEP_PREFIX)) return undefined;
+  }
+  return undefined;
+}
+
+const HELD_VALUE_GONE = "The typed value is no longer held. Teach the sign-in again.";
+
+/** The first line of a run's error, trimmed to a short note. */
+function testNote(text: string | null | undefined): string | null {
+  const line = text?.split("\n").find((entry) => entry.trim());
+  return line ? line.trim().slice(0, 200) : null;
 }
 
 function computerContext(actor: Actor, botId: string, operationId: string): AdapterContext {
@@ -112,14 +149,15 @@ async function cancelActiveRuns(
   _actor: Actor,
   botId: string,
 ): Promise<void> {
-  const activeRuns = await deps.prisma.run.findMany({
-    where: { botId, status: { in: [...ACTIVE_RUN_STATUSES] } },
-    select: { id: true },
-  });
-  await deps.prisma.run.updateMany({
+  const activeRuns = await deps.prisma.run.updateManyAndReturn({
     where: { botId, status: { in: [...ACTIVE_RUN_STATUSES] } },
     data: { status: "cancelled", completedAt: new Date() },
+    select: { id: true },
   });
+  await clearEndedRunState(
+    deps.prisma,
+    activeRuns.map((run) => run.id),
+  );
   await expireComputerExecutionLeases(deps.prisma, { botId });
   await deps.prisma.computer.updateMany({
     where: { executionBotId: botId },
@@ -286,6 +324,101 @@ async function updateSkillDraftMessage(
   }
 }
 
+/** Records how the card's Test run ended, once that run is over. */
+async function settleTestOutcome(
+  deps: TaughtSkillsDeps,
+  row: TaughtSkillRow,
+): Promise<TaughtSkillRow> {
+  if (!row.lastTestRunId || row.lastTestOutcome) return row;
+  const run = await deps.prisma.run.findUnique({
+    where: { id: row.lastTestRunId },
+    select: { status: true, error: true },
+  });
+  if (!run) return row;
+  let outcome: TeachTestOutcome;
+  let note: string | null = null;
+  if (run.status === "completed") {
+    const reply = await deps.prisma.message.findFirst({
+      where: { runId: row.lastTestRunId, role: "bot" },
+      orderBy: { seq: "desc" },
+      select: { blocks: true },
+    });
+    const text = ((reply?.blocks ?? []) as { kind?: string; text?: string }[])
+      .filter((block) => block.kind === "text")
+      .map((block) => block.text ?? "")
+      .join("\n");
+    ({ outcome, note } = parseSkillResult(text));
+  } else if (run.status === "failed" || run.status === "cancelled") {
+    outcome = "stopped";
+    note =
+      testNote(run.error) ?? (run.status === "cancelled" ? "Stopped before it finished" : null);
+  } else return row;
+  const settled = await deps.prisma.taughtSkill.updateMany({
+    where: { id: row.id, lastTestRunId: row.lastTestRunId, lastTestOutcome: null },
+    data: { lastTestOutcome: outcome, lastTestNote: note },
+  });
+  return settled.count === 1 ? { ...row, lastTestOutcome: outcome, lastTestNote: note } : row;
+}
+
+async function present(deps: TaughtSkillsDeps, row: TaughtSkillRow): Promise<TaughtSkill> {
+  if (row.status === "recording") return mapTaughtSkill(await scrubTaughtSkillRow(deps, row));
+  const settled = await settleTestOutcome(deps, row);
+  const steps = parsePlaybook(settled.playbook).steps;
+  const prompts = (await listLoginPrompts(deps.prisma, settled.id)).map((prompt) => {
+    const username = findTypedUsername(steps, prompt.stepIndex)?.value;
+    return username ? { ...prompt, username } : prompt;
+  });
+  return mapTaughtSkill(settled, prompts);
+}
+
+/** Rewrites playbook steps and the draft card in the thread. */
+async function rewriteSteps(
+  deps: TaughtSkillsDeps,
+  actor: Actor,
+  skill: TaughtSkillRow,
+  edits: Map<number, string>,
+): Promise<TaughtSkillRow> {
+  const playbook = parsePlaybook(skill.playbook);
+  const steps = playbook.steps.map((step, index) => edits.get(index) ?? step);
+  const row = await deps.prisma.taughtSkill.update({
+    where: { id: skill.id },
+    data: { playbook: { ...playbook, steps } as never, playbookUpdatedAt: new Date() },
+  });
+  await updateSkillDraftMessage(deps, actor, row, {
+    name: row.name,
+    playbook: parsePlaybook(row.playbook),
+    status: row.status === "saved" ? "saved" : "draft",
+  });
+  return row;
+}
+
+/** Skipped logins ask the user to sign in; the held value goes with them. */
+async function skipHeldLogins(
+  deps: TaughtSkillsDeps,
+  actor: Actor,
+  skill: TaughtSkillRow,
+  stepIndex?: number,
+): Promise<TaughtSkillRow> {
+  const pending = (await listLoginPrompts(deps.prisma, skill.id))
+    .filter((prompt) => stepIndex === undefined || prompt.stepIndex === stepIndex)
+    .map((prompt) => prompt.stepIndex);
+  await deleteHeldValues(deps.prisma, {
+    skillId: skill.id,
+    ...(stepIndex === undefined ? {} : { stepIndex }),
+  });
+  // Skipping everything (Save) also covers a step whose value expired: no held row, but the
+  // placeholder must not reach a saved skill.
+  const orphaned =
+    stepIndex === undefined
+      ? parsePlaybook(skill.playbook).steps.flatMap((step, index) =>
+          step === PROTECTED_STEP ? [index] : [],
+        )
+      : [];
+  const edits = new Map([...pending, ...orphaned].map((index) => [index, ASK_SIGN_IN_STEP]));
+  if (edits.size === 0) return skill;
+  return rewriteSteps(deps, actor, skill, edits);
+}
+
 async function expireTeachingSessionIfNeeded(deps: TaughtSkillsDeps, skillId: string) {
   return expireTaughtSkillTeaching(deps, skillId);
 }
@@ -305,7 +438,7 @@ async function stopTeachingSession(
       current.botId,
       parseRecording(current.recording).controlLeaseId,
     );
-    return mapTaughtSkill(current);
+    return present(deps, current);
   }
   if (current.status !== "recording" && current.status !== "drafting") {
     throw new ORPCError("BAD_REQUEST", { message: "Teaching session is not active" });
@@ -321,7 +454,7 @@ async function stopTeachingSession(
       : undefined;
   const finalized = await completeTeachingSession(deps, actor, skillId, "stopped", stopSnapshot);
   await deps.jobs.cancel(skillTeachingExpireJobKey(current.id));
-  return mapTaughtSkill(finalized);
+  return present(deps, finalized);
 }
 
 export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
@@ -331,14 +464,14 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
         where: { spaceId: actor.spaceId, botId, userId: actor.userId },
         orderBy: { updatedAt: "desc" },
       });
-      return rows.map(mapTaughtSkill);
+      return Promise.all(rows.map((row) => present(deps, row)));
     },
 
     async get(actor: Actor, skillId: string): Promise<TaughtSkill> {
       const row = await getOwnedSkill(deps, actor, skillId);
       await expireTeachingSessionIfNeeded(deps, row.id);
       const current = await deps.prisma.taughtSkill.findUniqueOrThrow({ where: { id: skillId } });
-      return mapTaughtSkill(current);
+      return present(deps, current);
     },
 
     async start(actor: Actor, botId: string, goal: string): Promise<TaughtSkill> {
@@ -401,7 +534,7 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
           payload: { skillId: row.id, goal },
         });
       }
-      return mapTaughtSkill(withSnapshot);
+      return present(deps, withSnapshot);
     },
 
     async appendEvent(
@@ -419,7 +552,7 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
       if (updated.status !== "recording") {
         throw new ORPCError("BAD_REQUEST", { message: "Teaching session is not recording" });
       }
-      return mapTaughtSkill(updated);
+      return present(deps, updated);
     },
 
     async snapshot(actor: Actor, skillId: string): Promise<TaughtSkill> {
@@ -435,7 +568,7 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
       });
       if (!bot) throw new IsolationError();
       const updated = await captureTeachingSnapshot(deps, actor, bot, current);
-      return mapTaughtSkill(updated);
+      return present(deps, updated);
     },
 
     stop: (actor: Actor, skillId: string) => stopTeachingSession(deps, actor, skillId),
@@ -454,6 +587,7 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
         data: {
           name: input.name ?? skill.name,
           playbook: input.playbook as never,
+          playbookUpdatedAt: new Date(),
           status: skill.status === "saved" ? "saved" : "draft",
         },
       });
@@ -462,7 +596,14 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
         playbook: parsePlaybook(row.playbook),
         status: row.status === "saved" ? "saved" : "draft",
       });
-      return mapTaughtSkill(row);
+      // An edit that removed the protected step leaves its held value with nothing to fill.
+      const edited = parsePlaybook(row.playbook);
+      for (const prompt of await listLoginPrompts(deps.prisma, row.id)) {
+        if (edited.steps[prompt.stepIndex] !== PROTECTED_STEP) {
+          await deleteHeldValues(deps.prisma, { skillId: row.id, stepIndex: prompt.stepIndex });
+        }
+      }
+      return present(deps, row);
     },
 
     async save(actor: Actor, skillId: string, name?: string): Promise<TaughtSkill> {
@@ -470,11 +611,21 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
       if (skill.status !== "draft" && skill.status !== "saved") {
         throw new ORPCError("BAD_REQUEST", { message: "Finish recording before saving" });
       }
+      // A password nobody saved as a login is dropped now: its step asks the user to sign in.
+      const settled = await skipHeldLogins(deps, actor, skill);
       const row = await deps.prisma.taughtSkill.update({
-        where: { id: skill.id },
+        where: { id: settled.id },
         data: {
           status: "saved",
-          name: name ?? (skill.name || skill.goal.slice(0, 80)),
+          name: name ?? (settled.name || settled.goal.slice(0, 80)),
+          // Nothing reads the raw events after Stop, so the saved skill keeps only its playbook.
+          recording: {
+            events: [],
+            snapshots: [],
+            ...(parseRecording(settled.recording).controlLeaseId
+              ? { controlLeaseId: parseRecording(settled.recording).controlLeaseId }
+              : {}),
+          } as never,
         },
       });
       const bot = await deps.prisma.bot.findUnique({
@@ -495,7 +646,7 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
           payload: { skillId: row.id, name: row.name },
         });
       }
-      return mapTaughtSkill(row);
+      return present(deps, row);
     },
 
     async testRun(actor: Actor, skillId: string, prompt?: string): Promise<{ runId: string }> {
@@ -530,6 +681,16 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
           userId: actor.userId,
           status: "queued",
           trigger: "skill",
+          unattended: newRunUnattended({ trigger: "skill" }),
+        },
+      });
+      await deps.prisma.taughtSkill.update({
+        where: { id: skill.id },
+        data: {
+          lastRunAt: new Date(),
+          lastTestRunId: run.id,
+          lastTestOutcome: null,
+          lastTestNote: null,
         },
       });
       await deps.jobs.enqueue(runContinueJob(run.id));
@@ -547,8 +708,126 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
           parseRecording(skill.recording).controlLeaseId,
         );
       }
+      await deleteHeldValues(deps.prisma, { skillId: skill.id });
+      // Routines that only ran this skill have nothing left to run; the FK clears their reference.
+      await deps.prisma.routine.updateMany({
+        where: { taughtSkillId: skill.id, prompt: "", active: true },
+        data: { active: false, nextRunAt: null },
+      });
       await deps.prisma.taughtSkill.delete({ where: { id: skill.id } });
       return { ok: true as const };
+    },
+
+    /** Ends a recording and keeps nothing: no events, held values or skill row. */
+    async cancel(actor: Actor, skillId: string): Promise<{ ok: true }> {
+      const skill = await getOwnedSkill(deps, actor, skillId);
+      if (skill.status === "saved") {
+        throw new ORPCError("BAD_REQUEST", { message: "A saved skill is deleted, not cancelled" });
+      }
+      return this.remove(actor, skillId);
+    },
+
+    async listSaved(actor: Actor, botId: string): Promise<TaughtSkillSummary[]> {
+      const rows = await deps.prisma.taughtSkill.findMany({
+        where: { spaceId: actor.spaceId, botId, userId: actor.userId, status: "saved" },
+        orderBy: { updatedAt: "desc" },
+      });
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name || row.goal.slice(0, 80),
+        goal: row.goal,
+        lastRunAt: row.lastRunAt?.toISOString() ?? null,
+        updatedAt: row.updatedAt.toISOString(),
+      }));
+    },
+
+    /** Saves the password typed at `stepIndex` as a login on `site`; the step then fills it. */
+    async saveLogin(
+      actor: Actor,
+      input: {
+        skillId: string;
+        stepIndex: number;
+        name: string;
+        site: string;
+        username: string;
+      },
+    ): Promise<TaughtSkill> {
+      const skill = await getOwnedSkill(deps, actor, input.skillId);
+      if (skill.status !== "draft" && skill.status !== "saved") {
+        throw new ORPCError("BAD_REQUEST", { message: "Finish recording first" });
+      }
+      const playbook = parsePlaybook(skill.playbook);
+      if (playbook.steps[input.stepIndex] !== PROTECTED_STEP) {
+        throw new ORPCError("BAD_REQUEST", { message: "That step is not a typed password" });
+      }
+      const held = await deps.prisma.teachHeldValue.findFirst({
+        where: {
+          skillId: skill.id,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          stepIndex: input.stepIndex,
+          expiresAt: { gt: new Date() },
+        },
+      });
+      if (!held) throw new ORPCError("NOT_FOUND", { message: HELD_VALUE_GONE });
+      // The username is what the user confirmed. The typed step before the password is only
+      // offered as a suggestion, and is rewritten only when it is exactly that value.
+      const typed = findTypedUsername(playbook.steps, input.stepIndex);
+      const username = input.username.trim();
+      if (!username) {
+        throw new ORPCError("BAD_REQUEST", { message: "Add the username for this login" });
+      }
+      let site: string;
+      try {
+        // "crm.example.com/login" and "https://crm.example.com/login" both mean the site's origin.
+        site = new URL(
+          /^[a-z][a-z0-9+.-]*:\/\//i.test(input.site) ? input.site : `https://${input.site}`,
+        ).origin;
+      } catch {
+        throw new ORPCError("BAD_REQUEST", { message: "Enter the address of the site" });
+      }
+      await deps.putLogin(actor, skill.botId, {
+        name: input.name,
+        site,
+        username,
+        password: await deps.secrets.load(held.ciphertext, held.id),
+      });
+      await deleteHeldValues(deps.prisma, { skillId: skill.id, stepIndex: input.stepIndex });
+      const edits = new Map([[input.stepIndex, fillLoginStep(input.name, held.field)]]);
+      if (typed?.value === username) edits.set(typed.index, fillLoginStep(input.name, "Username"));
+      return present(deps, await rewriteSteps(deps, actor, skill, edits));
+    },
+
+    /** Drops the password typed at `stepIndex`; the step asks the user to sign in. */
+    async skipLogin(
+      actor: Actor,
+      input: { skillId: string; stepIndex: number },
+    ): Promise<TaughtSkill> {
+      const skill = await getOwnedSkill(deps, actor, input.skillId);
+      if (skill.status !== "draft" && skill.status !== "saved") {
+        throw new ORPCError("BAD_REQUEST", { message: "Finish recording first" });
+      }
+      if (parsePlaybook(skill.playbook).steps[input.stepIndex] !== PROTECTED_STEP) {
+        throw new ORPCError("BAD_REQUEST", { message: "That step is not a typed password" });
+      }
+      return present(deps, await skipHeldLogins(deps, actor, skill, input.stepIndex));
+    },
+
+    /** A file the user uploaded through the Files window while recording: the path, not the content. */
+    async recordFile(actor: Actor, botId: string, path: string): Promise<void> {
+      const active = await getActiveTeachingSession(
+        deps.prisma,
+        actor.spaceId,
+        botId,
+        actor.userId,
+      );
+      if (!active) return;
+      await appendRecordingEvent(
+        deps,
+        active.id,
+        sanitizeTeachRecordingEvent({ at: new Date().toISOString(), kind: "file", path }),
+        { requireRecording: true },
+      );
     },
 
     expireTeachingSessionIfNeeded: (skillId: string) =>

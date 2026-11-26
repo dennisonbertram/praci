@@ -1,4 +1,4 @@
-import { Cron } from "croner";
+import { Cron, CronDate } from "croner";
 
 const WEEKDAYS = "1-5";
 const WEEKDAY_NAMES = [
@@ -230,12 +230,88 @@ export function nextCronDate(cron: string, from: Date, timezone = "UTC"): Date {
   return next;
 }
 
-// Nearest next run across every recurring schedule on a routine. Ignores
-// @once slots (they don't recur) and any schedule that fails to parse. Only
-// the wakeup path (packages/adapters/src/executor.ts) should use this —
-// legacy or hand-edited records may carry a stale cron, and skipping it
-// there is safer than crashing the wakeup job. Anything that persists a
-// routine's crons must reject malformed input instead — see
+/** The preset of an interval step that recurs from the scheduled fire, or undefined. */
+export function unevenInterval(cron: string): CronPreset | undefined {
+  const preset = presetFromCron(cron);
+  if (
+    cron.trim().split(/\s+/).length !== 5 ||
+    preset.freq !== "Interval" ||
+    preset.n > CRON_INTERVAL_MAX[preset.unit] ||
+    (preset.unit === "minutes" && 60 % preset.n === 0) ||
+    (preset.unit === "hours" && 24 % preset.n === 0) ||
+    (preset.unit === "days" && preset.n === 1)
+  ) {
+    return undefined;
+  }
+  return preset;
+}
+
+// Uneven interval steps recur from the scheduled fire instead of resetting at
+// cron field boundaries. Even steps keep cron's local wall-clock positions.
+// Creation/editing still uses nextCronDate for the initial anchor.
+export function nextRoutineRunDate(cron: string, anchor: Date, now: Date, timezone = "UTC"): Date {
+  const from = new Date(Math.max(anchor.getTime(), now.getTime()));
+  const preset = unevenInterval(cron);
+  if (!preset) return nextCronDate(cron, from, timezone);
+  if (preset.unit !== "days") {
+    const gap = preset.n * (preset.unit === "hours" ? 3_600_000 : 60_000);
+    const steps = Math.floor((from.getTime() - anchor.getTime()) / gap) + 1;
+    return new Date(anchor.getTime() + steps * gap);
+  }
+
+  const zone = validTimezoneOrUtc(timezone);
+  const localAnchor = new CronDate(anchor, zone);
+  const localNow = new CronDate(from, zone);
+  // CronDate stores months zero-based, like Date.
+  const anchorDay = Date.UTC(localAnchor.year, localAnchor.month, localAnchor.day);
+  const nowDay = Date.UTC(localNow.year, localNow.month, localNow.day);
+  let steps = Math.max(1, Math.floor((nowDay - anchorDay) / (preset.n * 86_400_000)));
+  let next: Date;
+  do {
+    const day = new Date(anchorDay + steps * preset.n * 86_400_000);
+    // Normalize the calendar date before letting Croner resolve its wall-clock
+    // time in the routine zone (including daylight saving transitions).
+    const candidate = new CronDate(localAnchor, zone);
+    candidate.year = day.getUTCFullYear();
+    candidate.month = day.getUTCMonth();
+    candidate.day = day.getUTCDate();
+    next = new Date(candidate.getDate().getTime() + localAnchor.ms);
+    steps++;
+  } while (next <= from);
+  return next;
+}
+
+// The shared anchor belongs to an interval only with one recurring schedule.
+// Multiple schedules keep cron matches because their individual anchors are
+// unknown. Skip one-shot and malformed schedules as nextCronDateAcross does.
+export function nextRoutineRunDateAcross(
+  crons: string[],
+  anchor: Date,
+  now: Date,
+  timezone = "UTC",
+): Date | null {
+  const from = new Date(Math.max(anchor.getTime(), now.getTime()));
+  const recurring: string[] = [];
+  let earliest: Date | null = null;
+  for (const cron of crons) {
+    if (isOneShotRoutineCron(cron)) continue;
+    let next: Date;
+    try {
+      next = nextCronDate(cron, from, timezone);
+    } catch {
+      continue;
+    }
+    recurring.push(cron);
+    if (!earliest || next < earliest) earliest = next;
+  }
+  const onlyCron = recurring.length === 1 ? recurring[0] : undefined;
+  if (onlyCron) return nextRoutineRunDate(onlyCron, anchor, now, timezone);
+  return earliest;
+}
+
+// Nearest next calendar match, ignoring one-shot and malformed schedules.
+// Routine wakeups use nextRoutineRunDateAcross to preserve single-interval phase.
+// Anything persisting crons must reject malformed input instead — see
 // nextCronDateAcrossStrict.
 export function nextCronDateAcross(crons: string[], from: Date, timezone = "UTC"): Date | null {
   let earliest: Date | null = null;
@@ -278,6 +354,61 @@ export function isValidTimezone(timezone: string): boolean {
   } catch {
     return false;
   }
+}
+
+const OFFSET_SUFFIX = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i;
+const WALL_CLOCK = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?)?$/;
+
+/**
+ * An ISO date or datetime as an instant. One with an offset (or Z) is taken as written; a date
+ * or wall-clock time without one is read in `timezone`, so "2026-11-02T10:00" is 10:00 there.
+ * A time skipped by a daylight-saving change moves forward by the gap. Null when invalid.
+ */
+export function zonedDateTime(value: string, timezone = "UTC"): Date | null {
+  const text = value.trim();
+  let wall = WALL_CLOCK.exec(text);
+  const offset = wall ? undefined : OFFSET_SUFFIX.exec(text)?.[0];
+  if (offset) wall = WALL_CLOCK.exec(text.slice(0, -offset.length));
+  // Date.parse rolls an impossible date over (February 30 becomes March 2), so check the parts.
+  if (!wall || (offset && !wall[4])) return null;
+  const [year, month, day, hour, minute, second] = wall
+    .slice(1, 7)
+    .map((part) => (part === undefined ? 0 : Number(part)));
+  const ms = wall[7] ? Math.floor(Number(`0.${wall[7]}`) * 1000) : 0;
+  const check = new Date(
+    Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1, hour ?? 0, minute ?? 0, second ?? 0),
+  );
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== (month ?? 1) - 1 ||
+    check.getUTCDate() !== day ||
+    check.getUTCHours() !== hour ||
+    check.getUTCMinutes() !== minute ||
+    check.getUTCSeconds() !== second
+  ) {
+    return null;
+  }
+  if (offset) {
+    const instant = new Date(text);
+    return Number.isFinite(instant.getTime()) ? instant : null;
+  }
+  const local = new CronDate(new Date(), validTimezoneOrUtc(timezone));
+  local.year = check.getUTCFullYear();
+  local.month = check.getUTCMonth();
+  local.day = check.getUTCDate();
+  local.hour = check.getUTCHours();
+  local.minute = check.getUTCMinutes();
+  local.second = check.getUTCSeconds();
+  local.ms = 0;
+  // Keep any fraction so a time just after an occurrence does not include it.
+  return new Date(local.getDate().getTime() + ms);
+}
+
+/** The local date and time of `instant` in `timezone`, as zonedDateTime reads it back. */
+export function wallClock(instant: Date, timezone = "UTC"): string {
+  const local = new CronDate(instant, validTimezoneOrUtc(timezone));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${local.year}-${pad(local.month + 1)}-${pad(local.day)}T${pad(local.hour)}:${pad(local.minute)}:${pad(local.second)}`;
 }
 
 function validTimezoneOrUtc(timezone: string): string {

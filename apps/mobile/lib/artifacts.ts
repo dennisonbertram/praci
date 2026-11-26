@@ -11,12 +11,16 @@ import type { MobileArtifactTarget } from "./artifact-open";
 export type MobileArtifactSummary = Artifact & { versionCount: number };
 export type MobileArtifactWithContent = Artifact & { contentBase64: string };
 
-export type ArtifactListPage = { items: MobileArtifactSummary[]; nextCursor: string | null };
+export type ArtifactListPage = {
+  items: MobileArtifactSummary[];
+  nextCursor: string | null;
+};
 
 export function listSpaceArtifacts(input: {
   botId?: string;
   cursor?: string;
   limit?: number;
+  q?: string;
 }): Promise<ArtifactListPage> {
   return rpc<ArtifactListPage>("artifacts/listSpace", input);
 }
@@ -49,7 +53,10 @@ export function getSpreadsheetPreview(
   source: SheetSource,
   page: { sheet?: string; offset?: number } = {},
 ): Promise<SpreadsheetPreview> {
-  return rpc<SpreadsheetPreview>("files/spreadsheetPreview", { source, ...page });
+  return rpc<SpreadsheetPreview>("files/spreadsheetPreview", {
+    source,
+    ...page,
+  });
 }
 
 /** .xlsx, .xlsm, .csv and .tsv; legacy .xls is not previewed. */

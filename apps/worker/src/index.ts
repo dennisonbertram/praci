@@ -7,6 +7,7 @@ import {
 } from "@rakazo/adapters";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
 import { createWorkerSecretStore } from "./secret-store.js";
+import { stopJobsAndRuns } from "./stop-jobs.js";
 
 loadRootEnv();
 
@@ -15,6 +16,7 @@ import {
   ChatSdkMessagingSurface,
   CodexCatalogCache,
   createAgentHomeStore,
+  createAppControlProvider,
   createArtifactStore,
   createBackgroundJobHandlers,
   createCloudAgentConnection,
@@ -30,13 +32,15 @@ import {
   createJobReconciler,
   createMessagingContextLoader,
   createPostgresReconciliationLeadership,
+  createPushChannel,
+  createRoutineRetryNoticeReconciler,
   createRunExecutor,
   createRunSandbox,
   createRunSecretWriter,
   createTicketChangeNotifier,
   createWebProvider,
   databaseCapacityBackoffMs,
-  ExpoPushProvider,
+  deleteExpiredTeachData,
   GraphileJobPublisher,
   GraphileJobWorkerHost,
   ImessageNotificationChannel,
@@ -74,9 +78,13 @@ import {
   createDb,
   createNotificationEvents,
   createThreadEvents,
+  describeRowSecurity,
   isTooManyDatabaseConnections,
+  PostgresAppControlStore,
   parsePositiveInteger,
   pushSessionExpiresAt,
+  rowSecurityWarning,
+  runAsSystem,
 } from "@rakazo/db";
 import { SERVICE_NAMES } from "@rakazo/logging";
 import { createRootLogger } from "@rakazo/logging/axiom";
@@ -98,6 +106,8 @@ async function main() {
   });
   const { pool } = created;
   let { prisma } = created;
+  const rowSecurity = rowSecurityWarning(await describeRowSecurity(prisma));
+  if (rowSecurity) logger.warn(rowSecurity);
   const realtime = new PostgresRealtimeFanout({
     connectionString: process.env.REALTIME_DATABASE_URL ?? databaseUrl,
     publisher: pool,
@@ -132,15 +142,18 @@ async function main() {
   const webOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
   const encryptionKey = resolveEncryptionKey(process.env);
   const mcpOAuth = new McpOAuthBroker(prisma, secrets, {}, allowPrivateEndpoint);
+  const mcpStdio = {
+    stdioEnabled: process.env.MCP_STDIO_ENABLED === "true",
+    allowedCommands: (process.env.MCP_STDIO_ALLOWED_COMMANDS ?? "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean),
+  };
   const mcp = new McpConnector(
     prisma,
     secrets,
     {
-      stdioEnabled: process.env.MCP_STDIO_ENABLED === "true",
-      allowedCommands: (process.env.MCP_STDIO_ALLOWED_COMMANDS ?? "")
-        .split(",")
-        .map((v) => v.trim())
-        .filter(Boolean),
+      ...mcpStdio,
       events,
       allowPrivateEndpoint,
     },
@@ -205,14 +218,21 @@ async function main() {
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection();
   // The outbox worker sends phone pushes through this channel.
-  const notifications = new ExpoPushProvider(prisma, (sessionId) =>
-    pushSessionExpiresAt(prisma, sessionId),
+  const notifications = createPushChannel(
+    prisma,
+    (sessionId) => pushSessionExpiresAt(prisma, sessionId),
+    process.env,
   );
   const shutdown = new AbortController();
   const mail = createMailProvider({ prisma, connectors: stack.connector });
   const gmailPush = gmailPushConfigFromEnv(process.env, webOrigin);
   let companyImport: ReturnType<typeof createCompanyImportEngine> | undefined;
+  // Local desktop control: absent unless APP_CONTROL_PROVIDER is set (docs/local-desktop-control).
+  const appControlStore = new PostgresAppControlStore(prisma);
+  const appControl = createAppControlProvider(process.env, { dataDir, store: appControlStore });
   const executor = createRunExecutor({
+    appControl,
+    appControlStore,
     shutdownSignal: shutdown.signal,
     companyImport: () => {
       if (!companyImport) throw new Error("Company import engine is not initialized.");
@@ -250,8 +270,10 @@ async function main() {
     ].filter(Boolean),
     secretStore: secrets,
     mcpAllowPrivateEndpoint: allowPrivateEndpoint,
+    mcpStdio,
     deploymentModelKey,
     deploymentModelConfigured,
+    fragmentKey: encryptionKey,
     dataDir,
     notificationEvents,
     jobs,
@@ -285,6 +307,8 @@ async function main() {
     }),
   });
   const jobHandlers = createBackgroundJobHandlers({
+    ticketBoardEnabled,
+    mcp,
     executor,
     prisma,
     sandbox,
@@ -303,6 +327,7 @@ async function main() {
     devinCallTool: createDevinCallTool(prisma, mcp),
     notificationEvents,
     artifacts,
+    connector: stack.connector,
     connectors: stack.connector,
     boxAccessToken: boxAccessToken(mcpOAuth),
     notificationChannels: [
@@ -352,6 +377,12 @@ async function main() {
     reconcileDataRoom: () => reconcileDataRoom({ prisma, jobs }),
     reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
     reconcileCompanyImports: () => companyImport.recoveryJob(),
+    reconcileTeachHeldValues: () => deleteExpiredTeachData(prisma),
+    reconcileRoutineRetryNotices: inMemoryJobs
+      ? undefined
+      : createRoutineRetryNoticeReconciler(pool, (runId) =>
+          executor.notifyRoutineRetryAttemptsExhausted(runId),
+        ),
   });
   reconciler.start();
 
@@ -360,16 +391,9 @@ async function main() {
     if (stopping) return;
     stopping = true;
     try {
-      await reconciler.stop();
-      // Stop claiming jobs and let in-flight runs finish. After the grace period, abort them
-      // so they requeue as interrupted; Prisma disconnects only once they have returned.
-      const drained = jobHost.stop();
-      const grace = setTimeout(() => shutdown.abort(new Error("Worker shutting down")), 10_000);
-      try {
-        await drained;
-      } finally {
-        clearTimeout(grace);
-      }
+      // Stop claiming jobs and requeue in-flight runs now, without first waiting for a reconciler
+      // tick; Prisma disconnects only once both have settled.
+      await stopJobsAndRuns(jobHost, shutdown, reconciler, logger);
       await jobs.close();
       await secrets.close();
       await realtime.close();
@@ -402,7 +426,10 @@ async function main() {
   logger.info("worker ready", { degraded: secrets.describe().capabilities.degraded ?? false });
 }
 
-main().catch(async (error) => {
+// The worker only does cross-tenant work: job dispatch, reconcilers, leadership and
+// realtime, all keyed by ids rather than a signed-in user. This is its one
+// row-level security bypass; jobs re-enter it explicitly (see wakeup.ts).
+runAsSystem("worker process", main).catch(async (error) => {
   logger.error("worker startup failed", error);
   await logger.flush({ timeoutMs: 2_000 });
   // jobHost.start retries 53300 without bound above, so a saturated Postgres at

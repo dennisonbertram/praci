@@ -35,5 +35,5 @@ const installBridge = (platform: string) => () => {
 export const Browser: Story = {};
 /** The native traffic lights sit in this reserved drag area. */
 export const DesktopMac: Story = { beforeEach: installBridge("darwin") };
-/** Other platforms draw their own close, minimize and fullscreen buttons. */
+/** Other platforms draw their own close, minimize and maximize buttons. */
 export const DesktopWithControls: Story = { beforeEach: installBridge("win32") };

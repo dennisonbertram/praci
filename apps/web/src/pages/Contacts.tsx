@@ -3,8 +3,13 @@ import { Trans } from "@lingui/react/macro";
 import type { Contact, ContactKind } from "@rakazo/contracts";
 import { ContactKindSchema } from "@rakazo/contracts";
 import {
+  Badge,
   Button,
-  Skeleton,
+  ContactAvatar,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Table,
   TableBody,
   TableCell,
@@ -13,18 +18,30 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import { Plus, Users } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { MoreHorizontal, Plus, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import { useContactDelete } from "../components/ContactDeleteConfirm";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
-import { PickFilter, SearchField } from "../components/ListControls";
+import { ErrorNotice } from "../components/ErrorNotice";
+import { PickFilter, SearchField, SortControl } from "../components/ListControls";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
+import { emailBreaks } from "../lib/email-breaks";
+import { sortBy, useListParams } from "../lib/list-params";
+import { usePageQuery } from "../lib/page-data";
 import { rpc } from "../lib/rpc";
-import { SAVED_ROW_CLASS, useContactNotices } from "../lib/use-contact-notices";
-import { errorText } from "../lib/user-error";
+import {
+  CONTACT_RESTORED_EVENT,
+  SAVED_ROW_CLASS,
+  useContactNotices,
+  useWithoutDeleted,
+} from "../lib/use-contact-notices";
+import { useRefetchWhileOpen } from "../lib/use-refetch-while-open";
+
+const CONTACT_SORTS = ["default", "name", "email", "organization", "kind"] as const;
 
 const matches = (contact: Contact, needle: string, kindName: string) =>
   [contact.name, contact.email, contact.organization, contact.notes, kindName].some((field) =>
@@ -39,49 +56,68 @@ export function ContactsPage({
   spaceName?: string;
   onAskAgent?: () => void;
 }) {
-  const [contacts, setContacts] = useState<Contact[] | null>(null);
-  const [error, setError] = useState("");
-  const [params, setParams] = useSearchParams();
-  const setParam = (key: string, value: string | undefined) =>
-    setParams(
-      (current) => {
-        const updated = new URLSearchParams(current);
-        if (value) updated.set(key, value);
-        else updated.delete(key);
-        return updated;
-      },
-      { replace: true },
-    );
-  const query = params.get("q") ?? "";
-  const parsedKind = ContactKindSchema.safeParse(params.get("kind"));
+  const loadQuery = usePageQuery(() => rpc.contacts.list({}), [], {
+    fallback: t`Could not load contacts`,
+  });
+  const fetched = loadQuery.data;
+  const contacts = useWithoutDeleted(fetched);
+  // A failed refresh keeps the list on screen; the next focus or tick tries again.
+  const error = fetched ? "" : loadQuery.error;
+  const load = loadQuery.reload;
+  // Search, kind and sort live in the URL: ?q=, kind, sort, dir. "default" is the server's order.
+  const list = useListParams(CONTACT_SORTS, { field: "default", dir: "asc" });
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const query = list.param("q") ?? "";
+  const parsedKind = ContactKindSchema.safeParse(list.param("kind"));
   const kind = parsedKind.success ? parsedKind.data : undefined;
   const [editing, setEditing] = useState<Contact | "new" | null>(null);
   const names = contactKindNames();
 
-  const latestLoad = useRef(0);
-  const load = useCallback(() => {
-    const request = ++latestLoad.current;
-    rpc.contacts
-      .list({})
-      .then((list) => {
-        if (request !== latestLoad.current) return;
-        setContacts(list);
-        setError("");
-      })
-      .catch((cause) => {
-        if (request === latestLoad.current) setError(errorText(cause, t`Could not load contacts`));
-      });
-  }, []);
-  useEffect(load, [load]);
+  // A contact an agent adds while the page is open appears without a reload.
+  useRefetchWhileOpen(fetched !== null, load);
   const container = useRef<HTMLDivElement>(null);
-  const { savedId, setSavedId, deleted } = useContactNotices(load, container, contacts);
+  const { notify, savedId, setSavedId, setFocusId, deleted } = useContactNotices(
+    load,
+    container,
+    contacts,
+  );
+  const { remove, confirm } = useContactDelete(deleted, notify);
+  // An Undo clicked here for a contact deleted on its page restores it from that page's hook.
+  useEffect(() => {
+    const onRestored = (event: Event) => {
+      load();
+      const id = (event as CustomEvent<string | undefined>).detail;
+      if (id) {
+        setSavedId(id);
+        setFocusId(id);
+      }
+    };
+    window.addEventListener(CONTACT_RESTORED_EVENT, onRestored);
+    return () => window.removeEventListener(CONTACT_RESTORED_EVENT, onRestored);
+  }, [load, setSavedId, setFocusId]);
 
   const needle = query.trim().toLowerCase();
-  const shown = (contacts ?? []).filter(
+  const found = (contacts ?? []).filter(
     (contact) =>
       (!kind || contact.kind === kind) &&
       (!needle || matches(contact, needle, names[contact.kind])),
   );
+  const { field, dir } = list.sort;
+  const shown =
+    field === "default"
+      ? found
+      : sortBy(found, (c) => (field === "kind" ? names[c.kind] : c[field]) || null, dir);
+  const sortFields: [Exclude<typeof field, "default">, string][] = [
+    ["name", t`Name`],
+    ["email", t`Email`],
+    ["organization", t`Organization`],
+    ["kind", t`Kind`],
+  ];
+  const sortHead = (target: (typeof CONTACT_SORTS)[number]) => ({
+    sortDirection: field === target ? dir : null,
+    onSort: () => list.toggleSort(target),
+  });
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
@@ -106,12 +142,7 @@ export function ContactsPage({
       </div>
       <div ref={container} className={`rk-scroll flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
         {error ? (
-          <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center text-sm">
-            <span className="text-destructive">{error}</span>
-            <Button variant="outline" size="sm" onClick={load}>
-              <Trans>Try again</Trans>
-            </Button>
-          </div>
+          <ErrorNotice message={error} onRetry={loadQuery.retry} className="justify-center py-8" />
         ) : contacts === null ? (
           <RowsSkeleton className="pt-2" />
         ) : contacts.length === 0 ? (
@@ -135,7 +166,7 @@ export function ContactsPage({
               <SearchField
                 className="w-full @md:w-72"
                 value={query}
-                onChange={(next) => setParam("q", next)}
+                onChange={(next) => list.setParam("q", next)}
                 placeholder={t`Search`}
                 label={t`Search`}
                 name="contacts-search"
@@ -147,8 +178,19 @@ export function ContactsPage({
                   value,
                   names[value],
                 ])}
-                onChange={(next) => setParam("kind", next)}
+                onChange={(next) => list.setParam("kind", next)}
               />
+              {/* Wide, the column headers sort; on a phone the Filters sheet does. */}
+              <span className="sm:hidden">
+                <SortControl
+                  fields={sortFields}
+                  field={field as Exclude<typeof field, "default">}
+                  fieldLabel={sortFields.find(([name]) => name === field)?.[1] ?? t`Default`}
+                  direction={field === "default" ? undefined : dir}
+                  onField={(next) => list.setSort({ field: next, dir: "asc" })}
+                  onDirection={(next) => list.setSort({ field, dir: next })}
+                />
+              </span>
             </div>
             {shown.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
@@ -159,15 +201,7 @@ export function ContactsPage({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setParams(
-                      (current) => {
-                        const updated = new URLSearchParams(current);
-                        updated.delete("q");
-                        updated.delete("kind");
-                        return updated;
-                      },
-                      { replace: true },
-                    );
+                    list.clear("q", "kind");
                     container.current
                       ?.querySelector<HTMLInputElement>("input[name=contacts-search]")
                       ?.focus();
@@ -178,20 +212,28 @@ export function ContactsPage({
               </div>
             ) : (
               <div>
-                <Table compact className="table-fixed">
-                  <TableHeader>
+                <Table compact className="@md:table-fixed">
+                  <TableHeader className="max-sm:hidden">
                     <TableHeadRow>
-                      <TableHead className="ps-2">
+                      <TableHead className="ps-2" {...sortHead("name")}>
                         <Trans>Name</Trans>
                       </TableHead>
-                      <TableHead className="hidden w-[34%] @md:table-cell">
+                      <TableHead className="hidden w-[30%] @md:table-cell" {...sortHead("email")}>
                         <Trans>Email</Trans>
                       </TableHead>
-                      <TableHead className="hidden w-[26%] @lg:table-cell">
+                      <TableHead
+                        className="hidden w-[22%] @lg:table-cell"
+                        {...sortHead("organization")}
+                      >
                         <Trans>Organization</Trans>
                       </TableHead>
-                      <TableHead className="w-28">
+                      <TableHead className="w-px whitespace-nowrap @md:w-28" {...sortHead("kind")}>
                         <Trans>Kind</Trans>
+                      </TableHead>
+                      <TableHead className="w-11 @md:w-10">
+                        <span className="sr-only">
+                          <Trans>Actions</Trans>
+                        </span>
                       </TableHead>
                     </TableHeadRow>
                   </TableHeader>
@@ -201,23 +243,43 @@ export function ContactsPage({
                         key={contact.id}
                         data-contact-id={contact.id}
                         className={contact.id === savedId ? SAVED_ROW_CLASS : ""}
-                        onOpen={() => setEditing(contact)}
+                        onOpen={() =>
+                          // The search and filter ride along, so Back restores them.
+                          navigate(`/app/contacts/${contact.id}${params.size ? `?${params}` : ""}`)
+                        }
                       >
                         <TableCell>
-                          <button
-                            type="button"
-                            title={contact.name}
-                            data-row-open
-                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline"
-                          >
-                            {contact.name}
-                          </button>
-                          {/* Without room for the Email column, the organization (else the email) shows here. */}
-                          <div
-                            className="truncate text-xs text-muted-foreground @md:hidden"
-                            title={contact.organization ?? contact.email ?? undefined}
-                          >
-                            {contact.organization ?? contact.email}
+                          <div className="flex items-center gap-2">
+                            <ContactAvatar name={contact.name} src={contact.photoUrl} size="sm" />
+                            <div className="min-w-0 flex-1">
+                              <button
+                                type="button"
+                                title={contact.name}
+                                data-row-open
+                                className="line-clamp-2 max-w-full rounded-sm text-start font-medium break-words outline-none hover:underline @md:block @md:truncate"
+                              >
+                                {contact.name}
+                              </button>
+                              {/* Without room for the Email column, organization and email show here; the email is the identifier, so the organization gives way first. */}
+                              <div className="flex flex-wrap gap-x-1 text-xs text-muted-foreground @md:hidden">
+                                {contact.organization ? (
+                                  <span
+                                    className="max-w-full truncate"
+                                    title={contact.organization}
+                                  >
+                                    {contact.organization}
+                                  </span>
+                                ) : null}
+                                {contact.organization && contact.email ? (
+                                  <span aria-hidden="true">·</span>
+                                ) : null}
+                                {contact.email ? (
+                                  <span className="min-w-0 break-words" title={contact.email}>
+                                    {emailBreaks(contact.email)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell
@@ -232,7 +294,40 @@ export function ContactsPage({
                         >
                           {contact.organization}
                         </TableCell>
-                        <TableCell>{names[contact.kind]}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{names[contact.kind]}</Badge>
+                        </TableCell>
+                        {/* The menu's items render in a portal: preventDefault keeps their clicks from reaching the row's onOpen. */}
+                        <TableCell
+                          className="w-11 pe-0 text-end @md:w-10"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="pointer-coarse:size-11"
+                                  aria-label={t`Actions for ${contact.name}`}
+                                />
+                              }
+                            >
+                              <MoreHorizontal aria-hidden="true" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditing(contact)}>
+                                <Trans>Edit</Trans>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => void remove(contact)}
+                              >
+                                <Trans>Delete</Trans>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -241,6 +336,7 @@ export function ContactsPage({
             )}
           </>
         )}
+        {confirm}
         {editing ? (
           <ContactDialog
             key={editing === "new" ? "new" : editing.id}
@@ -261,6 +357,11 @@ export function ContactsPage({
             onClose={() => setEditing(null)}
             onSaved={(saved) => {
               load();
+              if (editing === "new") {
+                // A search or kind filter would hide the new contact.
+                list.clear("q", "kind");
+                notify(t`Added ${saved.name}`);
+              }
               setSavedId(saved.id);
             }}
             onDeleted={deleted}

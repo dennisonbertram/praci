@@ -38,11 +38,13 @@ Optional: set `OPENROUTER_API_KEY` or connect a model in the UI after signup.
 A provider that authenticates from the host needs no key: for Amazon Bedrock with an ECS task,
 IRSA or EC2 instance role, opt in with `PI_DEFAULT_CREDENTIALS=host` and set
 `PI_DEFAULT_PROVIDER=amazon-bedrock`, `PI_DEFAULT_MODEL` and `AWS_REGION`. With an instance
-role, also complete both steps in [Restricted computer egress](#restricted-computer-egress):
-`SANDBOX_COMPUTER_EGRESS=restricted` alone does not stop bot computers reading the role's
-credentials from the metadata endpoint.
+role, keep [restricted computer egress](#restricted-computer-egress) on so bot computers
+cannot read the role's credentials from the metadata endpoint.
 Auto Review uses that LLM checker by default. To use TypeSafe Jev instead, set
 `RAKAZO_AUTO_REVIEW_PROVIDER=jev` and `TYPESAFE_API_KEY`. Core still runs with neither.
+`RAKAZO_PERMISSIONS_DEFAULT` (`open`, `ask_changes` or `ask_everything`; default `open`) sets the
+permission level for spaces whose owner has not chosen one: how much of each run's actions a person
+must approve. A value that is not one of the three fails closed and is treated as `ask_changes`.
 
 The example defaults to `edge` (main builds). Every publish is multi-arch (`amd64` + `arm64`), so
 arm64 hosts need no special tag. Do not assume `latest` is present until a stable release exists.
@@ -89,54 +91,59 @@ supervisor at startup naming the variable, rather than surfacing later as a fail
 
 ### Restricted computer egress
 
-Docker computers have full outbound access by default — the public internet plus the Docker
-host's own addresses, the LAN, and link-local cloud metadata endpoints such as
-`169.254.169.254`. On a cloud VM that last path is instance-credential theft for anything a
-bot runs. Restricted mode keeps public internet egress (browsing, DNS, apt, git over SSH)
-while dropping computer traffic to every non-public destination and to the host itself.
+Docker computers default to restricted egress: the public internet (browsing, DNS, apt, git
+over SSH) but not the Docker host, the LAN, or link-local cloud metadata such as
+`169.254.169.254`, which on a cloud VM would hand instance credentials to anything a bot runs.
 
-It takes two parts, both opt-in:
+It takes two parts:
 
-1. Set `SANDBOX_COMPUTER_EGRESS=restricted` in `.env` and recreate the supervisor. Each
-   computer network then gets a deterministic host bridge name (`rakazo-c…`) instead of a
-   generic `br-*`.
-2. Apply the host ruleset once per Docker host:
+1. `SANDBOX_COMPUTER_EGRESS=restricted`, the Compose default, gives each computer network a
+   deterministic host bridge name (`rakazo-c…`) instead of a generic `br-*`.
+2. The host ruleset, applied once per Docker host:
 
    ```bash
    sudo bash infra/compose/restrict-computer-egress.sh
    ```
 
-   On a no-checkout install, download it first:
-   `curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/restrict-computer-egress.sh`.
-   The script drops forwarded traffic from `rakazo-c*` bridges to all non-public IPv4/IPv6
+   `install-images.sh` downloads and runs it (asking for sudo) and records the result in
+   `.env`. Where the rules cannot be installed (macOS, Windows, Docker Desktop, rootless
+   Docker, no iptables, or a failed run) it writes `SANDBOX_COMPUTER_EGRESS=open` and says
+   why. The script drops forwarded traffic from `rakazo-c*` bridges to all non-public IPv4/IPv6
    destinations via the `DOCKER-USER` chain, adds an `INPUT` drop so computers cannot open
    connections to the host (established replies to host-initiated control and screen
    connections still flow), and installs a systemd oneshot so the rules return after a
    reboot. `--print` shows the exact rules without changing anything; `--remove` uninstalls.
+
+Before the first restricted computer starts, the supervisor checks that the host drops
+connections from a `rakazo-c*` bridge. Without the ruleset, computers fail to start with an
+error naming the script instead of running unrestricted; run the script (no restart needed)
+or set `SANDBOX_COMPUTER_EGRESS=open` and recreate the supervisor. A host-run supervisor
+(`pnpm dev`) and the desktop app's **This computer** stack default to open: Docker Desktop
+keeps its bridges in a VM the host rules cannot reach.
 
 Screen streaming is unaffected: the supervisor and web proxy join each computer's bridge,
 and the ruleset exempts traffic whose in- and out-interface are both `rakazo-c*` before
 any drop (that exemption is load-bearing on hosts where `br_netfilter` feeds bridged
 frames through `FORWARD`). Rules match interface names rather than subnets, so computer
 create/delete cycles need no firewall maintenance; deleting a computer removes its
-traffic from the match and nothing else. A computer provisioned before the flag flips
+traffic from the match and nothing else. A computer provisioned while egress was open
 is replaced on its next provision — resuming it on an unnamed bridge would bypass the
 restriction.
 
-To disable restricted egress, set `SANDBOX_COMPUTER_EGRESS=open`, recreate the
-supervisor, and run `sudo bash infra/compose/restrict-computer-egress.sh --remove`.
-The flag alone does not uninstall the host rules, which keep matching the still-named
-`rakazo-c*` bridges until removed.
+If computers must reach LAN services, an internal proxy, or endpoints bound to the host,
+set `SANDBOX_COMPUTER_EGRESS=open`, recreate the supervisor, and run
+`sudo bash infra/compose/restrict-computer-egress.sh --remove`. The flag alone does not
+uninstall the host rules, which keep matching the still-named `rakazo-c*` bridges until
+removed.
 
-Do not enable restricted egress if computers must reach LAN services, an internal proxy,
-or endpoints bound to the host. Requires Linux Docker Engine with the iptables backend —
-Docker Desktop, rootless Docker, and `firewall-backend: nftables` are unsupported. The
+The ruleset requires Linux Docker Engine with the iptables backend; Docker Desktop, rootless
+Docker, and `firewall-backend: nftables` are unsupported. The
 `SANDBOX_SCREEN_NETWORK=internal` topology shares one network instead of per-bot bridges,
 so the mode does not apply there.
 
 ## Docker Compose (single machine)
 
-1. Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD` (`openssl rand -hex 16`), plus `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to independent long random strings (32+ characters; 64 hex for `ENCRYPTION_KEY`). Docker sandboxes also need a dedicated `SANDBOX_SUPERVISOR_TOKEN`. Keep existing `ENCRYPTION_KEY` values so stored credentials stay decryptable.
+1. Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD` and `POSTGRES_APP_PASSWORD` (`openssl rand -hex 16` each), plus `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to independent long random strings (32+ characters; 64 hex for `ENCRYPTION_KEY`). Docker sandboxes also need a dedicated `SANDBOX_SUPERVISOR_TOKEN`. Keep existing `ENCRYPTION_KEY` values so stored credentials stay decryptable.
 2. Set `OPENROUTER_API_KEY` (and `COMPOSIO_API_KEY` if you want Plugins).
 3. Build the computer image: `pnpm sandbox:build` (Compose also builds it via the `computer` service).
 4. `docker compose --env-file .env -f infra/compose/docker-compose.yml up --build`
@@ -159,6 +166,47 @@ add `infra/compose/docker-compose.postgres-host.yml` so Postgres is published on
 `docker compose --env-file .env -f infra/compose/docker-compose.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
 Do not publish Postgres on a public interface. The Postgres image now includes the pgvector extension: it is Postgres 16.15 on the same Debian trixie base as the previous image, so existing data volumes keep their collation. Moving an existing deployment to it needs one extra step; see [Upgrade](#upgrade).
 
+### Database roles
+
+Rakazo uses two Postgres logins:
+
+- The owner (`POSTGRES_USER`, or `DATABASE_MIGRATION_URL` outside Compose) runs migrations and
+  owns the tables.
+- The app login (`rakazo_app` with `POSTGRES_APP_PASSWORD`, or `DATABASE_URL`) is not a
+  superuser, cannot bypass row-level security, cannot create objects, and can only read and write
+  the app tables.
+
+`pnpm db:migrate` (in Compose, the one-shot `migrate` service runs it before the API starts) applies
+the migrations and the job queue schema as the owner. Only that service gets the owner login, so code
+running in the API or worker cannot find one that bypasses row-level security. It then creates the app login named in `DATABASE_URL`, or updates its
+password, and grants it the `rakazo_app` role. When migrations run as a role without
+`CREATEROLE`, as on some managed Postgres, create the login yourself and
+`GRANT rakazo_app TO <login>`.
+
+Row-level security covers the tables that hold a Space's or a user's content: threads, messages,
+events, memory, artifacts and share links, secrets and credentials, skills, bots, runs, tasks,
+routines, connections, MCP servers, computers, boards and tickets, messaging identities and
+conversations, usage, open items and approvals, notifications, mail, finance, contacts, investors
+and fundraising, the cap table, the Data room, legal, meetings, Devin and the company graph. Each
+signed-in request sees only its Space's rows, plus the user's own account-level credentials. A
+query that leaves out its Space filter returns nothing from other Spaces. A background job that
+acts for one run, routine, computer, thread or user runs as that row's Space. Reconcilers,
+retention sweeps, webhooks and public links (artifact shares, the investor portal) run in a named
+system scope (`runAsSystem` in `packages/db`; `grep -rn "runAsSystem("` lists each one). The
+account, session and membership tables stay outside the policies.
+
+With only `DATABASE_URL` set, migrations and the app share one login. Everything keeps working,
+but `pnpm db:migrate`, the API and the worker warn that row-level security is not enforced. To fix
+this, set `DATABASE_MIGRATION_URL` to the owner and `DATABASE_URL` to a new login.
+
+Host-run stack (`pnpm dev`, or a service that runs the API and worker from a checkout) on a
+database that already exists: nothing is needed to keep it working. To turn row-level security on,
+copy the current `DATABASE_URL` value into `DATABASE_MIGRATION_URL`, change `DATABASE_URL` to the
+same host, port and database with user `rakazo_app` and a new URI-safe password
+(`openssl rand -hex 16`), run `pnpm db:migrate`, then restart the API and worker.
+
+Run `pg_dump` as the owner. The app login would only dump rows it is allowed to see.
+
 The Docker supervisor is not published as its own image and is not exposed on the host. It runs from
 the app image, stays on the internal Compose network, and holds the Docker socket because access to
 it is equivalent to control of the Docker host. Docker sandboxes require `SANDBOX_SUPERVISOR_TOKEN`
@@ -175,7 +223,7 @@ WEB_ORIGIN=https://app.example.com
 API_URL=https://app.example.com
 ```
 
-Cookies and CORS follow those origins. `SIGNUPS_ENABLED` seeds whether registration is open
+Cookies and CORS follow those origins. To also serve the app from another browser origin (for example a Tailscale name), list it in `RAKAZO_TRUSTED_ORIGINS` (comma-separated http(s) origins; invalid entries stop the API at startup). Passkeys stay bound to `WEB_ORIGIN`. `SIGNUPS_ENABLED` seeds whether registration is open
 when the API starts for the first time and is not reapplied on restart. A non-empty
 `SIGNUP_ALLOWLIST` is applied on every API start, replacing the allowlist stored for the deployment.
 Leave it empty to keep that stored list.
@@ -225,10 +273,13 @@ never register a client secret in the mobile app. Mobile stores the resulting se
 SecureStore, like password sign-in. Native builds need the Expo WebBrowser module.
 
 Provider emails are verified only when `email_verified` is the boolean `true`. False or missing
-claims stay unverified, including on subsequent sign-ins. Sign-in never links accounts by email.
+claims stay unverified, including on subsequent sign-ins, and an unverified claim never changes
+the account's email. Sign-in never links accounts by email.
 If an email belongs to another account, sign in to that existing account and choose **Link SSO**
 in account settings. Linking requires an authenticated session, a verified provider email and
-matching email addresses. The issuer and provider subject identify the linked account thereafter. Changing issuers does
+matching email addresses. With email delivery, an account links SSO only after its email is
+verified. Without it, an unverified account links only from a browser signed in to it, so not
+from the mobile app. The issuer and provider subject identify the linked account thereafter. Changing issuers does
 not reuse an old identity. Old-issuer links remain stored but do not count as linked to the
 current provider, so **Link SSO** becomes available again. Link the new identity from the
 existing signed-in account; authenticated-session, verified-email and matching-email checks
@@ -370,7 +421,17 @@ Each user can also connect their own OpenAI-compatible endpoint from **Connect a
 **Settings → Models** on web and mobile. Choose **OpenAI-compatible**, enter the server base URL
 (for example `http://127.0.0.1:8000/v1`), the exact model id, and an optional API key.
 Public hosts and ordinary hostnames need `RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC=1` and HTTPS.
-Literal private IP, loopback, and `host.docker.internal` targets do not. If that endpoint's model
+Literal private IP, loopback, and `host.docker.internal` targets do not.
+For a self-hosted endpoint whose hostname resolves to private IPs, set
+`RAKAZO_OPENAI_COMPAT_PRIVATE_HOSTS=models.example.test,other.example.test` in the deployment
+environment for both API and worker, then recreate those containers. Entries are exact hostnames
+(case-insensitive, optional trailing dot), not URLs, suffixes, or wildcards. These hosts do not
+need `RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC`; every DNS answer must be private, and metadata and
+link-local destinations remain blocked. This applies to discovery and model requests.
+HTTPS still validates the hostname's certificate. Like private IP endpoints, trusted hostnames
+also permit HTTP with API keys; use HTTPS unless the network is trusted. Only allow hosts you
+control.
+If that endpoint's model
 accepts images, enable **Supports images** under **Advanced** when connecting so attachments and
 screenshot computer tools stay available. Existing connections default to disabled. For centrally
 managed endpoints, the deployment-wide fallback remains
@@ -395,6 +456,8 @@ support. Existing token limits still apply; effort is not a separate reasoning-t
 Do not commit `.env`. Never put `COMPOSIO_API_KEY`, OpenRouter keys, or provider tokens in git, logs, or chat.
 
 Optional messaging platforms (iMessage, Slack, WhatsApp, Telegram, Feishu/Lark) mount when their env credentials are set — see `.env.example`. Point a Feishu/Lark bot event subscription at `/api/v1/messaging/webhook/lark` (webhook/HTTP inbound only; do not enable long connection). Groups stay iMessage-only.
+
+The Compose files pass the API and worker only the settings each one reads, listed by name, rather than the whole `.env`. A setting whose name you choose, such as `TELEGRAM_BOT_TOKEN_<NAME>`, therefore needs its own line: add it under `api` and `worker` `environment` in an override file layered after the base file (and in `RAKAZO_COMPOSE_FILE` when the updater is enabled), with no value so Compose fills it from `.env`.
 
 ### iMessage through Photon
 
@@ -443,7 +506,9 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
 - **Desktop provider** / **This Mac** runs commands on the API/worker host. Docker stays the default.
   The Electron app asks once; if you choose This Mac, bots can use working directories under your home
   folder. Do not enable it on a public or shared service. macOS does not show its own permission
-  dialog for this.
+  dialog for this. Commands get only a minimal shell environment (no server secrets), and
+  `SANDBOX_PROVIDER=desktop` is refused unless `NODE_ENV` is `development` or `test` or the process
+  runs inside the Electron app, so a production server never runs bot commands on itself.
 - **Fake** is only an emulator for verification.
 - **None** boots the product without a computer host (fallback when Docker/supervisor is not
   configured, or when a remote provider is selected without its API key).
@@ -590,7 +655,8 @@ container logs, default no-new-privileges, and the kernel NAT path instead of Do
    from Cloudflare's [published IP ranges](https://www.cloudflare.com/ips/); reconcile those ranges
    whenever Cloudflare publishes a change. A Cloudflare Tunnel can replace the public web listeners.
 2. Clone the repository on the VM and create a root `.env` with production-only values. At minimum set
-   `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `SCREEN_PROXY_SECRET`,
+   `POSTGRES_PASSWORD`, `POSTGRES_APP_PASSWORD` (the password of the `rakazo_app` runtime login; the
+   stack refuses to start without it), `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `SCREEN_PROXY_SECRET`,
    `OPENROUTER_API_KEY`, the API key for your selected sandbox provider,
    `RAKAZO_HOST`, and the three public origins. Set `RAKAZO_DEPLOY_DIR` when the checkout is not at
    the supported Linux default, `/srv/rakazo`. Use URL-safe random values for database credentials.
@@ -645,9 +711,9 @@ docker compose --env-file .env -f infra/compose/docker-compose.prod.yml exec api
 ```
 
 Passing `GIT_SHA` is what makes `/internal/health` report a `"revision"`; a locally built image has no
-other way to know its commit. Prebuilt images from the registry bake it in at publish time, so when
-you switch to a release tag you should leave `GIT_SHA` unset — a value in `.env` would override what
-the image already knows.
+other way to know its commit. Prebuilt images from the registry bake it in at publish time, so
+switching to a release tag needs nothing more: the containers report the revision the image was built
+from, not a `GIT_SHA` in `.env`.
 
 Once a release has been published you can switch this host to prebuilt images by setting
 `RAKAZO_IMAGE_TAG` to that release tag and running `pull` followed by `up -d --wait --pull never`.
@@ -738,6 +804,8 @@ docker compose --env-file .env \
 
 ## Restore
 
+### Development stack
+
 For backups created by `scripts/backup.sh`, use an empty `rakazo` database in the development
 Compose stack, with application services stopped. The SQL import runs in one transaction and
 stops on the first error, including conflicts with existing tables. Files are restored and
@@ -747,6 +815,68 @@ production snapshot's custom-format `rakazo.dump` or `appdata.tgz`.
 ```bash
 ./scripts/restore.sh backups/<stamp>
 ```
+
+### Production stack
+
+For a snapshot written by `infra/compose/backup-prod.sh` (`rakazo.dump`, `appdata.tgz`, and
+`objects/` with `objects.manifest.json` when object storage is on). Keep the same `.env` as the
+backup: without its `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET` the data cannot be read. Run these
+commands from the deployment checkout on the host that owns the Compose project. Set
+`dc='docker compose --env-file .env -f infra/compose/docker-compose.prod.yml'`.
+
+1. Stop the services that write, and start Postgres alone:
+
+   ```bash
+   $dc stop caddy web worker api
+   $dc up -d --wait postgres
+   ```
+
+2. Replace the database with the dump. This deletes the current contents:
+
+   ```bash
+   $dc exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+   $dc exec -T postgres sh -c 'pg_restore --exit-on-error --no-owner --no-privileges -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+     < <snapshot>/rakazo.dump
+   ```
+
+3. Start everything. `migrate` applies migrations the dump lacks and recreates the `rakazo_app` login:
+
+   ```bash
+   $dc up -d --wait --pull never
+   ```
+
+4. If the snapshot has `objects.manifest.json`, restore the objects with the API container's
+   settings (`restore` never deletes). Run it from the API container's network, as `backup-prod.sh` does:
+
+   ```bash
+   api=$($dc ps -q api)
+   docker run --rm --network "container:$api" --user "$(id -u):$(id -g)" \
+     --cap-drop ALL --security-opt no-new-privileges --entrypoint node \
+     -v "$PWD/scripts/s3-objects.mjs:/s3-objects.mjs:ro" -v <snapshot>:/in:ro \
+     --env-file <(docker inspect "$api" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^RAKAZO_S3_') \
+     "$(docker inspect "$api" --format '{{.Image}}')" /s3-objects.mjs restore /in
+   ```
+
+5. Restore `appdata.tgz` if the snapshot contains it. This archive holds the API's `/data` volume
+   (bot state under `DATA_DIR`). Keep `api` and `worker` stopped while restoring it. Use a temporary
+   Compose `api` container so extraction targets the named volume on both Linux and macOS, where
+   Docker Desktop keeps volumes inside its VM:
+
+   ```bash
+   snapshot=/absolute/path/to/snapshot
+   $dc stop api worker
+   $dc run --rm --no-deps --user 0:0 \
+     -v "$snapshot:/restore:ro" --entrypoint sh api \
+     -c 'tar -xzf /restore/appdata.tgz --numeric-owner -C /data && chown -R 1000:1000 /data'
+   $dc up -d --wait --pull never
+   ```
+
+   With object storage on, most state is in the bucket instead. Check the health endpoint, sign in,
+   and open a file or an agent home:
+
+   ```bash
+   curl --fail "https://$RAKAZO_HOST/health"
+   ```
 
 ## Upgrade
 
@@ -783,18 +913,27 @@ docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
 ```
 
 A deployment on the default `local` tag has no registry to pull from, so it upgrades by rebuilding
-the checkout instead:
+the checkout instead. Tag each build with its commit so the previous image survives for rollback:
+a build on plain `local` overwrites the `local` image. `api`, `worker`, `web`, and `migrate` share
+one image, and `RAKAZO_IMAGE_TAG` names it (from the shell or `.env`):
 
 ```bash
 git pull
-GIT_SHA=$(git rev-parse HEAD) docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
+OLD_TAG=$(sed -n 's/^RAKAZO_IMAGE_TAG=//p' .env)   # note it for rollback
+export RAKAZO_IMAGE_TAG=local-$(git rev-parse HEAD) GIT_SHA=$(git rev-parse HEAD)
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
   up -d --wait --pull never --build api worker web
 ```
 
+Also set `RAKAZO_IMAGE_TAG=local-<commit>` in `.env` afterwards, so a later `up` or restart does not
+look for a different tag. The shell value overrides `.env` only for that session.
+
 `up --wait` does not report success until the new API is healthy and the worker and web containers
-are running. The API's start command runs `prisma migrate deploy` before it serves, so migration
+are running. The API starts only after the `migrate` service finishes, so a migration
 failure keeps health red. A failed CLI recreate does not auto-roll back; recover with the previous
-`RAKAZO_IMAGE_TAG` (or rebuild `local`) and `up -d --wait --pull never`.
+`RAKAZO_IMAGE_TAG` (`$OLD_TAG`; check `docker images | grep rakazo/app`) and
+`up -d --wait --pull never api worker web`, with no `--build`. Migrations are not reversed. Keep the
+old image until the new version has run for a while, and do not run `docker image prune -a` meanwhile.
 
 The updater sidecar has its own image and tag so an update never recreates the process performing
 it. Move it deliberately by setting `RAKAZO_UPDATER_IMAGE_TAG` to the full `sha-<commit>` tag, then
@@ -803,8 +942,25 @@ Sidecar `/apply` and `/rollback` recover a failed recreate by redeploying the pr
 image when possible; if that also fails, they report a possible mixed-version runtime.
 
 Source checkouts (not Compose) still upgrade the old way: pull, rebuild with
-`GIT_SHA=$(git rev-parse HEAD)`, run `pnpm --filter @rakazo/db migrate`, then restart API and worker.
+`GIT_SHA=$(git rev-parse HEAD)`, run `pnpm db:migrate`, then restart API and worker.
 Product contracts stay compatible across cloud and self-hosted.
+
+### Upgrading to the separate app database login
+
+Releases with [database roles](#database-roles) need `POSTGRES_APP_PASSWORD` in `.env`. The
+desktop app, `install-images.sh` and `infra/compose/deploy-main.sh` add it when it is missing.
+Elsewhere, add it yourself (`openssl rand -hex 16`) before you pull, or Compose stops at config
+validation with `Set POSTGRES_APP_PASSWORD in .env`. On first start, the API creates the
+`rakazo_app` login, and the API and worker then connect as it. Nothing else changes, and the
+upgrade does not rewrite any data.
+
+If a feature misbehaves under row-level security, run `ALTER ROLE <login> BYPASSRLS;` on the login
+in `DATABASE_URL` (`rakazo_app` in Compose) as a superuser (the Compose owner is one), then
+restart the API and worker. Role attributes are not inherited, so granting it to `rakazo_app` does
+nothing for a separate login. The app then runs as before, with a startup warning, and later
+migrations leave that login alone. Undo it with
+`NOBYPASSRLS` and another restart. Rolling back to an older release works without changes: it
+ignores the extra variable and connects as the owner.
 
 ### Space privacy-boundary migration
 
@@ -976,7 +1132,7 @@ sees:
   when the checkout is elsewhere.
 - **Docker Desktop (Windows/macOS).** The daemon runs in a VM that mounts your drive somewhere else.
   On Windows, `C:` appears at `/run/desktop/mnt/host/c`, so a checkout at `C:\Users\you\rakazo` is
-  `RAKAZO_DEPLOY_DIR=/run/desktop/mnt/host/c/Users/you/rakazo`. Host Git may use `core.autocrlf=true`; the updater ignores CR-only diffs so that does not block `/apply`. Verify the mount before deploying:
+  `RAKAZO_DEPLOY_DIR=/run/desktop/mnt/host/c/Users/<user>/rakazo`. Host Git may use `core.autocrlf=true`; the updater ignores CR-only diffs so that does not block `/apply`. Verify the mount before deploying:
 
 ```bash
 docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
@@ -1022,6 +1178,201 @@ service's trust boundary. `SIGNUPS_ENABLED` applies on the API's first start. A 
 `SIGNUP_ALLOWLIST` applies on every API start.
 The optional marketing site in `apps/www` can be hosted separately.
 
+The production Compose stack also runs on macOS with Docker Desktop. For recovery, use the
+[production restore procedure](#production-stack); its temporary Compose container accesses named
+volumes inside Docker Desktop's VM, so do not extract `appdata.tgz` into a host directory.
+
 ## Connect mobile clients
 
-The iOS and Android app can also point at a self-hosted origin at runtime. On the sign-in screen, tap **Use a custom server** and enter the same HTTPS origin as `WEB_ORIGIN` (for example `https://app.example.com`). Store builds still default to `EXPO_PUBLIC_API_URL`; the in-app setting is an override for people running their own API. Changing the server signs the device out of any previous session.
+The iOS and Android app can point at a self-hosted origin at runtime. For the native iOS app, with a development stack running (`pnpm dev`), run this on the server machine:
+
+```bash
+pnpm connect
+```
+
+It prints a QR code and the server URL. On the phone, tap **Use a custom server**, then **Scan QR code** (shown on a real device only), or open the link `rakazo://connect?server=<origin>` on the phone. The app shows the server name and asks you to confirm before it switches. Changing the server signs the device out of any previous session. The QR holds only the server URL, no secret.
+
+What the command does, in order:
+
+1. Picks an access method. Without `--method` it uses Tailscale when the `tailscale` CLI is installed, and otherwise lists the other methods and stops.
+2. Checks that something listens on the web port, then works out the URL. For Tailscale it reads the machine's status, reuses an existing Tailscale Serve entry for the web port, or runs `tailscale serve --bg --https=443 http://127.0.0.1:<web port>`. This serves the app to devices on your tailnet only. The command never uses Funnel, and Funnel is not needed for a phone.
+3. Compares the URL with `RAKAZO_TRUSTED_ORIGINS` and `RAKAZO_ALLOWED_HOSTS`. If a line is missing it shows the lines to add to `.env` and asks `[y/N]` before writing. It writes nothing with `--no-env-write`, or in a terminal that is not interactive unless you pass `--yes`. When lines are needed and not written, the command stops without a QR code. Restart `pnpm dev` after `.env` changes, because the server reads them only at start.
+4. Calls `POST /rpc/health` on the URL and requires `json.ok: true`, then prints the QR code and the URL.
+
+Flags:
+
+| Flag | Meaning |
+| --- | --- |
+| `--method tailscale\|lan\|url` | Access method. `url` needs `--url`. |
+| `--url <origin>` | With `--method url`: use this server URL (for example a reverse proxy). `https`, or `http` only for a private, loopback or `.local` host. |
+| `--web-port <port>` | Port the web app listens on. Defaults to `WEB_PORT` from the shell or `.env`, then `5173`. |
+| `--timeout <seconds>` | Limit for each Tailscale command and the health check. Default `10`, maximum `300`. |
+| `--yes` | Write the `.env` lines without asking. |
+| `--no-env-write` | Print the `.env` lines but never write them. |
+
+`--method lan` uses the machine's single private IPv4 address as `http://<ip>:<web port>`, so traffic is not encrypted. If the health check fails, set `RAKAZO_DEV_HOST=0.0.0.0` and restart `pnpm dev`.
+
+If Tailscale Serve is not enabled for your tailnet, the command stops with "Tailscale Serve is not enabled; enable Serve in the Tailscale admin console." and includes the admin-console approval link when Tailscale printed one. Approve it there, then run `pnpm connect` again. The command also stops with a one-line message when Tailscale needs sign-in, is stopped, has MagicDNS or HTTPS certificates off, or when another Serve entry already uses HTTPS port 443 or has public access on.
+
+SSO: sign-in with an identity provider returns to `BETTER_AUTH_URL`, which the phone must be able to open. When SSO is configured, the command prints a warning. Either sign in with a password on the phone, or register `<origin>/api/auth/callback/oidc` with the provider and set `BETTER_AUTH_URL` to the same origin.
+
+Manual fallback (also the route for Android): on the sign-in screen tap **Use a custom server** and enter the HTTPS origin (for example `https://app.example.com`, or your Tailscale name after `tailscale serve --bg --https=443 http://127.0.0.1:<web port>`), then add that origin to `RAKAZO_TRUSTED_ORIGINS`. Plain `http://` is accepted only for a private IP, `localhost`, or a `.local` name. A hostname reached over a VPN such as WireGuard or Tailscale needs HTTPS with a certificate the phone trusts. Store builds of the Expo app still default to `EXPO_PUBLIC_API_URL`; the in-app setting is an override for people running their own API.
+
+## Connect outside AI clients (MCP)
+
+The API serves a Model Context Protocol endpoint at `/mcp`. AI clients such as Claude Code,
+claude.ai, ChatGPT and MCP Inspector can connect to it, read the data of one Space, make changes
+that follow your approval rules, and send messages to your agents. Each connection is bound to
+one Space and one member. It is checked again on every call, so a member who leaves the Space, or
+a connection that is revoked, stops working on the next call.
+
+There are two ways to connect:
+
+- **A personal access token**, for clients that can send a header (Claude Code). It works on
+  localhost and needs no public address.
+- **OAuth**, for clients that sign in through a browser (claude.ai, ChatGPT). It needs a public
+  address, so see the Funnel section below. On localhost, MCP Inspector and Claude Code can also
+  use OAuth.
+
+### Claude Code with a token
+
+1. Open **Settings > Connections** and choose **Create token**. Name it, pick one Space, and leave
+   **Read-only** on unless the client needs to make changes. The token is shown once.
+2. Run this in a terminal. Use the API address, `http://127.0.0.1:<API port>/mcp` on a local
+   stack (`3200` on a dev stack), or your public address followed by `/mcp`:
+
+   ```bash
+   claude mcp add --transport http praci http://127.0.0.1:<API port>/mcp --header "Authorization: Bearer <token>"
+   ```
+
+3. In Claude Code, run `/mcp` to check that `praci` is connected, then ask a question such as
+   "list my agents".
+
+The token is stored hashed, so a lost token cannot be shown again. Create a new one and revoke
+the old one.
+
+### On localhost
+
+Nothing to set. Point a client at the API address, for example
+`claude mcp add --transport http praci http://127.0.0.1:<API port>/mcp`, then sign in from the
+client (`/mcp` in Claude Code). The approval page opens on `WEB_ORIGIN`.
+
+### From the internet with Tailscale Funnel
+
+Unverified: these commands have not been run. Check the flags against your Tailscale version
+(`tailscale funnel --help`), and whether Funnel keeps the path prefix when it proxies.
+
+Only the endpoints a client calls are public. The web app, `/rpc` and the rest of `/api` stay
+private. The approval page is not public either: the member opens it from a browser that can
+reach `WEB_ORIGIN`, and the client's own browser redirect brings them there.
+
+1. Pick the public address, `https://<machine>.<tailnet>.ts.net`, and set it in `.env`:
+
+   ```
+   PUBLIC_MCP_URL=https://<machine>.<tailnet>.ts.net
+   ```
+
+   It becomes the OAuth issuer and the base of the token and registration endpoints. Leave
+   `BETTER_AUTH_URL` and `WEB_ORIGIN` unchanged: the session cookie belongs to the web origin.
+2. Restart the API so it reads the setting.
+3. Expose three path prefixes. `<port>` is where the endpoint listens: the API port on a dev stack
+   (`3200`, or the port of `API_URL`). On the production Compose stack the API is not published, so use
+   the Caddy listener (for example `127.0.0.1:8080` when Caddy is published on loopback behind
+   `tailscale serve`). `Caddyfile.prod` already sends `/mcp`, `/.well-known/oauth-*`, and `/api/*` to the API:
+
+   ```bash
+   tailscale funnel --bg --set-path /mcp http://127.0.0.1:<port>/mcp
+   tailscale funnel --bg --set-path /.well-known http://127.0.0.1:<port>/.well-known
+   tailscale funnel --bg --set-path /api/auth/oauth2 http://127.0.0.1:<port>/api/auth/oauth2
+   ```
+
+4. Check the public address from another network. Both must return JSON:
+
+   ```bash
+   curl https://<machine>.<tailnet>.ts.net/.well-known/oauth-protected-resource/mcp
+   curl https://<machine>.<tailnet>.ts.net/.well-known/oauth-authorization-server
+   ```
+
+   In the second, `authorization_endpoint` should point at `WEB_ORIGIN`, and `token_endpoint` and
+   `registration_endpoint` at the public address.
+5. Add the connector in the client with `https://<machine>.<tailnet>.ts.net/mcp`.
+6. To stop exposing it: `tailscale funnel reset`, and unset `PUBLIC_MCP_URL`.
+
+### What the client can do
+
+Read tools never change anything:
+
+| Tool | What it returns |
+| --- | --- |
+| `agents_list` | The agents in the Space: id, name and description. |
+| `contacts_list` | Contacts. |
+| `finance_overview`, `finance_breakdown`, `finance_transactions`, `finance_recurring`, `finance_crypto` | Finance summaries, spending by category, transactions, recurring payments and crypto balances. |
+| `cap_table_read` | The cap table. |
+| `fundraising_read` | Investors and the fundraising round. |
+| `meetings_list` | Meeting notes. |
+| `search_data_room` | Titles and snippets from the data room, not whole files. |
+| `scratchpad_list` | An agent's scratchpad items. |
+| `thread_read` | The latest messages of one agent's thread. |
+| `agent_run_status` | The state of an agent's run, and its reply once it has finished. |
+| `action_status` | The state of a change that is waiting for your approval. |
+
+Write tools change data in the Space:
+
+| Tool | What it does |
+| --- | --- |
+| `contacts_add`, `contacts_save` | Add a contact, or change one. |
+| `scratchpad_add`, `scratchpad_update`, `scratchpad_complete` | Add, change or finish a scratchpad item of one agent. |
+| `agent_send` | Send a message to one of your agents. The agent runs without you watching, so its risky actions ask for your approval in Praci, even if your rules would allow them in a live chat. The message appears in the agent's thread with "via <connection name>". |
+
+Mail, calendar, Drive and anything that moves money are not available. Text written by people or
+third parties, such as notes and contact names, comes back in fields named `untrusted_text`, and
+the client is told to treat it as data.
+
+### Read-only and write
+
+A **Read-only** connection sees only the read tools and is refused if it calls a write tool. You can
+switch a connection between read-only and read-write in **Settings > Connections** at any time.
+Use read-only unless the client has to make changes.
+
+### Approvals and Always allow
+
+A write from an outside client follows your approval rules for the Space (**Allow**, **Ask**,
+**Block**). Unlike your own agents, an outside client has no default Allow:
+
+- **Block**: the call is refused.
+- **Allow**: the change is made at once.
+- **Ask**, or no rule: the change waits. The client gets `pending_approval` and an action id, and
+  can check it with `action_status`. Praci sends you a notification and shows a card in
+  **Settings > Connections** with what the client sent. **Approve** makes the change once.
+  **Deny** drops it. A card nobody answers expires after 24 hours.
+- **Always allow this** on a card approves it and saves an Allow rule for that tool in the Space,
+  so the next call from any connection runs without asking. Remove the rule in the approval
+  rules if you change your mind. A few tools can never be allowed permanently.
+
+A connection can have at most 20 changes waiting at once.
+
+### Notifications
+
+When a connection is created, by you from **Create token** or by approving a client through
+OAuth, you get a notification, "New connection: <name> in <Space>". It opens **Settings >
+Connections**, so a connection you did not make is easy to notice. You also get one when a change
+needs your approval.
+
+### Rate limits
+
+- Each connection can make 120 calls per minute. Calls over the limit return "Rate limit reached"
+  and a number of seconds to wait.
+- Each internet address can register up to 10 new OAuth clients per hour (the `register`
+  endpoint is open so that clients can set themselves up). The 11th request gets HTTP 429. The
+  count is kept in Postgres, so it is shared by all API processes. The address is the socket
+  address; behind a proxy on the same machine, such as Tailscale Funnel, it is the last
+  `X-Forwarded-For` entry, which the proxy adds. A proxy on another machine is not trusted: its
+  address is used instead.
+- Call history (tool name, outcome and time, never arguments or results) is shown per
+  connection and deleted after 30 days.
+
+### Revoking a connection
+
+In **Settings > Connections**, choose **Revoke** on the connection. It stops on its next call. For
+an OAuth client the refresh tokens and your approval are deleted too, so the client has to ask
+you again. Revoke a token you no longer use, and any connection you do not recognise.

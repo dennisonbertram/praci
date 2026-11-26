@@ -1,8 +1,6 @@
 import type { RunActivityRow } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
-  activityFiltersActive,
-  clearActivityFilterField,
   emptyActivityFilters,
   filterActivityRuns,
   runMatchesActivityFilters,
@@ -71,19 +69,5 @@ describe("filterActivityRuns", () => {
         dateRange: { from: "2026-09-01", to: "" },
       }),
     ).toBe(false);
-  });
-
-  it("clears individual filter fields", () => {
-    const filters = {
-      ...emptyActivityFilters(),
-      query: "chief",
-      status: "running" as const,
-      dateRange: { from: "2026-09-01", to: "2026-09-02" },
-    };
-    expect(activityFiltersActive(filters)).toBe(true);
-    const cleared = clearActivityFilterField(clearActivityFilterField(filters, "query"), "from");
-    expect(cleared.query).toBe("");
-    expect(cleared.dateRange.from).toBe("");
-    expect(cleared.status).toBe("running");
   });
 });

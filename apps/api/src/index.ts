@@ -1,4 +1,4 @@
-import type { Socket } from "node:net";
+import type { Server } from "node:http";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
 
 loadRootEnv();
@@ -7,6 +7,7 @@ import { serve } from "@hono/node-server";
 import { SERVICE_NAMES } from "@rakazo/logging";
 import { createRootLogger } from "@rakazo/logging/axiom";
 import { createApp } from "./app.js";
+import { trackConnections } from "./drain.js";
 import { loadEnv } from "./env.js";
 
 const logger = createRootLogger(SERVICE_NAMES.api);
@@ -21,26 +22,16 @@ try {
   // would also remove the server's guard against a client that stalls mid-body, so allow 12 h.
   if ("requestTimeout" in server) server.requestTimeout = 12 * 60 * 60 * 1000;
 
-  // Long-lived connections (threads.subscribe SSE streams) never end on their
-  // own, so server.close() alone waits forever for them. Track sockets and
-  // force-close any still open after a short grace period for in-flight
-  // requests, or every restart/shutdown hangs until something force-kills it.
-  const sockets = new Set<Socket>();
-  server.on("connection", (socket) => {
-    sockets.add(socket);
-    socket.once("close", () => sockets.delete(socket));
-  });
+  // The deploy allows 30 seconds after the stop signal; leave time for stop() and the log flush.
+  const drain = trackConnections(server as Server);
+  // Outlive the proxy's 2-minute idle reuse, or a request can hit a socket Node just closed.
+  (server as Server).keepAliveTimeout = 125_000;
 
   let stopping = false;
   const shutdown = async () => {
     if (stopping) return;
     stopping = true;
-    const closed = new Promise<void>((resolve) => server.close(() => resolve()));
-    const grace = setTimeout(() => {
-      for (const socket of sockets) socket.destroy();
-    }, 2_000);
-    await closed;
-    clearTimeout(grace);
+    await drain(20_000);
     await stop();
     await logger.flush({ timeoutMs: 2_000 });
   };

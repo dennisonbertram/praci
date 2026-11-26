@@ -48,7 +48,13 @@ export async function runCompanyEval(prisma: PrismaClient) {
       });
     }
     for (const spaceId of [actor.spaceId, other.spaceId]) {
-      await prisma.space.create({ data: { id: spaceId, organizationId, name: "Synthetic space" } });
+      await prisma.space.create({
+        data: {
+          id: spaceId,
+          organizationId,
+          name: spaceId === actor.spaceId ? "Northwind Robotics" : "Synthetic space",
+        },
+      });
       for (const userId of [actor.userId, peer.userId])
         await prisma.spaceMember.create({
           data: {

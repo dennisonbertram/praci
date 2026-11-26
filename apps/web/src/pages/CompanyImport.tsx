@@ -29,7 +29,6 @@ import { CompanyImportScope } from "./CompanyImportScope";
 const liveStatuses = new Set(["running", "paused", "awaiting_consent", "budget_reached"]);
 function statusName(status: string) {
   const names: Record<string, string> = {
-    draft: t`Review`,
     running: t`Importing`,
     paused: t`Paused`,
     awaiting_consent: t`Consent required`,
@@ -106,6 +105,7 @@ export function CompanyImportPage({
   const [cap, setCap] = useState("1000000");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pollError, setPollError] = useState("");
   const [discard, setDiscard] = useState(false);
   const [consentRevision, setConsentRevision] = useState(0);
   useEffect(() => {
@@ -132,6 +132,7 @@ export function CompanyImportPage({
   const refresh = useCallback(async (id: string) => {
     const next = await rpc.companyImport.session({ runId: id });
     setRun((current) => (!current || current.progress.runId === id ? next : current));
+    setPollError("");
     return next;
   }, []);
   useEffect(() => {
@@ -143,6 +144,7 @@ export function CompanyImportPage({
         const stream = await rpc.companyImport.subscribe({ runId }, { signal: controller.signal });
         for await (const progress of stream) {
           if (controller.signal.aborted) return;
+          setPollError("");
           setRun((current) =>
             current?.progress.runId === runId ? { ...current, progress } : current,
           );
@@ -153,12 +155,15 @@ export function CompanyImportPage({
       }
       if (!controller.signal.aborted)
         timer = setInterval(() => {
-          void refresh(runId).catch(() => {});
+          void refresh(runId).catch((cause) => {
+            if (!controller.signal.aborted) setPollError(errorText(cause));
+          });
         }, 4000);
     })();
     return () => {
       controller.abort();
       if (timer) clearInterval(timer);
+      setPollError("");
     };
   }, [runId, status, newImport, refresh]);
   const consent = useFinanceQuery(
@@ -222,6 +227,25 @@ export function CompanyImportPage({
     setNewImport(false);
     setParams({ runId: progress.runId });
   }
+  // Back only reopens the form: Review creates a new draft from the same sources, so a source
+  // whose scope changed needs consent again and a removed source is simply not in the new run.
+  function backToSources() {
+    if (!run) return;
+    const next: Record<string, Record<string, unknown>> = {};
+    for (const source of run.sources) {
+      const match = catalog.data!.sources.find(
+        (candidate) =>
+          candidate.available &&
+          candidate.sourceKind === source.sourceKind &&
+          (candidate.connectionId ?? null) === (source.connectionId ?? null) &&
+          (candidate.mcpServerId ?? null) === (source.mcpServerId ?? null),
+      );
+      if (match) next[match.key] = source.scope;
+    }
+    setSelected(next);
+    setCap(String(run.progress.tokenCap));
+    setNewImport(true);
+  }
   async function action(
     action: "pause" | "resume" | "continue" | "retry_failed" | "cancel" | "discard",
   ) {
@@ -259,6 +283,71 @@ export function CompanyImportPage({
         <Skeleton className="h-48 w-full" />
       </div>
     );
+  // Importable sources first, then the ones that only need a connection; everything else is
+  // folded away so the real choice is not buried under rows that cannot be picked.
+  const openSources = catalog.data.sources.filter(
+    (source) => source.available || (source.reason === "not_connected" && source.connectPath),
+  );
+  const otherSources = catalog.data.sources.filter((source) => !openSources.includes(source));
+  const sourceRow = (source: CompanyImportCatalogSource) => (
+    <div key={source.key} className="flex flex-wrap items-center gap-4 p-4">
+      <div className="flex min-w-40 flex-1 items-center gap-3">
+        <Checkbox
+          aria-label={source.label}
+          disabled={!source.available || busy}
+          checked={Boolean(selected[source.key])}
+          onCheckedChange={(checked) =>
+            setSelected((current) => {
+              const next = { ...current };
+              if (checked) next[source.key] = source.defaultScope;
+              else delete next[source.key];
+              return next;
+            })
+          }
+        />
+        <span className="font-medium">{source.label}</span>
+      </div>
+      {source.available ? (
+        <div className="flex items-center gap-3 text-sm">
+          {source.itemCount !== null && Object.keys(selected[source.key] ?? {}).length === 0 && (
+            <span className="text-muted-foreground">
+              <Trans>{source.itemCount} items</Trans>
+            </span>
+          )}
+          {trackerSource({
+            sourceKind: source.sourceKind,
+            scope: source.defaultScope,
+          }) ? (
+            <span>{scopeName({ sourceKind: source.sourceKind, scope: source.defaultScope })}</span>
+          ) : (
+            <Button
+              type="button"
+              variant="link"
+              disabled={busy || !selected[source.key]}
+              onClick={() => setScopeSource(source)}
+            >
+              {scopeName({
+                sourceKind: source.sourceKind,
+                scope: selected[source.key] ?? source.defaultScope,
+              })}
+              <span className="sr-only">
+                {" "}
+                · <Trans>Choose scope</Trans>
+              </span>
+            </Button>
+          )}
+        </div>
+      ) : source.reason === "not_connected" && source.connectPath ? (
+        <Link className="text-sm underline underline-offset-4" to={source.connectPath}>
+          <Trans>Connect</Trans>
+        </Link>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {source.reason === "access_denied" ? t`Access denied` : t`No read-only importer`}
+        </span>
+      )}
+    </div>
+  );
   return (
     <main className="rk-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 space-y-8 overflow-y-auto p-6 pb-12">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -271,13 +360,20 @@ export function CompanyImportPage({
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          {!showSources && status && <Badge variant="secondary">{statusName(status)}</Badge>}
+          {!showSources && status && status !== "draft" && (
+            <Badge variant="secondary">{statusName(status)}</Badge>
+          )}
           {onAskAgent && <AskBotButton botName={t`Company importer`} onClick={onAskAgent} />}
         </div>
       </header>
       {error && (
         <p role="alert" className="text-destructive">
           {error}
+        </p>
+      )}
+      {pollError && !showSources && (
+        <p role="alert" className="text-destructive">
+          {pollError}
         </p>
       )}
       {showSources ? (
@@ -292,72 +388,26 @@ export function CompanyImportPage({
             <h2 className="font-semibold">
               <Trans>Sources</Trans>
             </h2>
-            <div className="divide-y divide-border rounded-xl border border-border">
-              {catalog.data.sources.map((source) => (
-                <div key={source.key} className="flex flex-wrap items-center gap-4 p-4">
-                  <div className="flex min-w-40 flex-1 items-center gap-3">
-                    <Checkbox
-                      aria-label={source.label}
-                      disabled={!source.available || busy}
-                      checked={Boolean(selected[source.key])}
-                      onCheckedChange={(checked) =>
-                        setSelected((current) => {
-                          const next = { ...current };
-                          if (checked) next[source.key] = source.defaultScope;
-                          else delete next[source.key];
-                          return next;
-                        })
-                      }
-                    />
-                    <span className="font-medium">{source.label}</span>
+            {openSources.length > 0 && (
+              <div className="divide-y divide-border rounded-xl border border-border">
+                {openSources.map(sourceRow)}
+              </div>
+            )}
+            {otherSources.length > 0 &&
+              (openSources.length > 0 ? (
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-muted-foreground">
+                    {t`Not available (${otherSources.length})`}
+                  </summary>
+                  <div className="mt-3 divide-y divide-border rounded-xl border border-border">
+                    {otherSources.map(sourceRow)}
                   </div>
-                  {source.available ? (
-                    <div className="flex items-center gap-3 text-sm">
-                      {source.itemCount !== null &&
-                        Object.keys(selected[source.key] ?? {}).length === 0 && (
-                          <span className="text-muted-foreground">
-                            <Trans>{source.itemCount} items</Trans>
-                          </span>
-                        )}
-                      {trackerSource({
-                        sourceKind: source.sourceKind,
-                        scope: source.defaultScope,
-                      }) ? (
-                        <span>
-                          {scopeName({ sourceKind: source.sourceKind, scope: source.defaultScope })}
-                        </span>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="link"
-                          disabled={busy || !selected[source.key]}
-                          onClick={() => setScopeSource(source)}
-                        >
-                          {scopeName({
-                            sourceKind: source.sourceKind,
-                            scope: selected[source.key] ?? source.defaultScope,
-                          })}
-                          <span className="sr-only">
-                            {" "}
-                            · <Trans>Choose scope</Trans>
-                          </span>
-                        </Button>
-                      )}
-                    </div>
-                  ) : source.reason === "not_connected" && source.connectPath ? (
-                    <Link className="text-sm underline underline-offset-4" to={source.connectPath}>
-                      <Trans>Connect</Trans>
-                    </Link>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      {source.reason === "access_denied"
-                        ? t`Access denied`
-                        : t`No read-only importer`}
-                    </span>
-                  )}
+                </details>
+              ) : (
+                <div className="divide-y divide-border rounded-xl border border-border">
+                  {otherSources.map(sourceRow)}
                 </div>
               ))}
-            </div>
           </section>
           <label htmlFor="company-import-token-cap" className="grid max-w-xs gap-2 text-sm">
             <Trans>Token cap</Trans>
@@ -469,13 +519,12 @@ export function CompanyImportPage({
                       <p className="text-sm text-muted-foreground">
                         <Trans>Items</Trans>: {source.plan.itemCount ?? t`Unknown`}
                       </p>
-                      <p className="text-sm tabular-nums text-muted-foreground">
-                        <Trans>Token estimate</Trans>: {source.plan.tokensLower.toLocaleString()}–
-                        {source.plan.tokensUpper.toLocaleString()} ·{" "}
-                        {source.plan.estimateBasis === "sample"
-                          ? t`From sample`
-                          : t`Cap-limited; sample pending`}
-                      </p>
+                      {source.plan.estimateBasis === "sample" && (
+                        <p className="text-sm tabular-nums text-muted-foreground">
+                          <Trans>Token estimate</Trans>: {source.plan.tokensLower.toLocaleString()}–
+                          {source.plan.tokensUpper.toLocaleString()}
+                        </p>
+                      )}
                       {source.plan.perCallCosts?.length ? (
                         <div className="space-y-1 text-sm text-muted-foreground">
                           <p>
@@ -517,52 +566,62 @@ export function CompanyImportPage({
                 <h2 className="font-semibold">
                   {run.mode === "sample" ? t`Sample · up to 25 items per source` : t`Progress`}
                 </h2>
-                {run.progress.sources.map((source) => (
-                  <div key={source.id} className="space-y-3 rounded-xl border border-border p-4">
-                    <div className="flex justify-between gap-4">
-                      <strong>
-                        {run.sources.find((item) => item.id === source.id)?.label ??
-                          source.sourceKind}
-                      </strong>
-                      <span className="text-sm text-muted-foreground">
-                        {statusName(source.status)}
-                      </span>
-                    </div>
-                    <div
-                      role="progressbar"
-                      aria-label={t`${run.sources.find((item) => item.id === source.id)?.label ?? source.sourceKind} progress`}
-                      aria-valuemin={0}
-                      aria-valuemax={Math.max(1, source.itemsDiscovered)}
-                      aria-valuenow={source.itemsRead}
-                      className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-                    >
+                {run.progress.sources.map((source) => {
+                  const finished = [
+                    "completed",
+                    "partial",
+                    "failed",
+                    "cancelled",
+                    "discarded",
+                  ].includes(source.status);
+                  const progress = Math.min(
+                    finished ? 100 : 95,
+                    (source.itemsRead / Math.max(1, source.itemsDiscovered)) * 100,
+                  );
+                  return (
+                    <div key={source.id} className="space-y-3 rounded-xl border border-border p-4">
+                      <div className="flex justify-between gap-4">
+                        <strong>
+                          {run.sources.find((item) => item.id === source.id)?.label ??
+                            source.sourceKind}
+                        </strong>
+                        <span className="text-sm text-muted-foreground">
+                          {statusName(source.status)}
+                        </span>
+                      </div>
                       <div
-                        className="h-full bg-primary"
-                        style={{
-                          width: `${Math.min(100, (source.itemsRead / Math.max(1, source.itemsDiscovered)) * 100)}%`,
-                        }}
-                      />
+                        role="progressbar"
+                        aria-label={t`${run.sources.find((item) => item.id === source.id)?.label ?? source.sourceKind} progress`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round(progress)}
+                        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                      >
+                        <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
+                      </div>
+                      <div className="flex flex-wrap gap-5 text-sm tabular-nums text-muted-foreground">
+                        <span>
+                          <Trans>Read</Trans> {source.itemsRead}/{source.itemsDiscovered}
+                        </span>
+                        <span>
+                          <Trans>Facts</Trans> {source.factsFound}
+                        </span>
+                        <span>
+                          <Trans>Tokens</Trans>{" "}
+                          {(source.inputTokensUsed + source.outputTokensUsed).toLocaleString()}
+                        </span>
+                      </div>
+                      {source.lastError && (
+                        <p className="text-sm text-destructive">{errorName(source.lastError)}</p>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-5 text-sm tabular-nums text-muted-foreground">
-                      <span>
-                        <Trans>Read</Trans> {source.itemsRead}/{source.itemsDiscovered}
-                      </span>
-                      <span>
-                        <Trans>Facts</Trans> {source.factsFound}
-                      </span>
-                      <span>
-                        <Trans>Tokens</Trans> {source.inputTokensUsed + source.outputTokensUsed}
-                      </span>
-                    </div>
-                    {source.lastError && (
-                      <p className="text-sm text-destructive">{errorName(source.lastError)}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
                 <p className="text-sm tabular-nums text-muted-foreground">
                   <Trans>Tokens</Trans>{" "}
-                  {run.progress.inputTokensUsed + run.progress.outputTokensUsed}/
-                  {run.progress.tokenCap} · <Trans>Reserved</Trans> {run.progress.reservedTokens}
+                  {(run.progress.inputTokensUsed + run.progress.outputTokensUsed).toLocaleString()}/
+                  {run.progress.tokenCap.toLocaleString()} · <Trans>Reserved</Trans>{" "}
+                  {run.progress.reservedTokens.toLocaleString()}
                 </p>
                 {run.progress.budgetWarning && (
                   <p className="text-sm text-warning">
@@ -634,6 +693,11 @@ export function CompanyImportPage({
                 </p>
               )}
             <footer className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
+              {status === "draft" && (
+                <Button variant="outline" disabled={busy} onClick={backToSources}>
+                  <Trans>Back to sources</Trans>
+                </Button>
+              )}
               {status === "running" && (
                 <Button
                   variant="outline"

@@ -18,7 +18,7 @@ import {
 import { combineSignals } from "./connector-safety.js";
 import { secureFetch } from "./mcp-transport.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
-import { clearPostStamp, consumeApprovedPost } from "./scratchpad-tools.js";
+import { clearPostStamp, consumeApprovedPost, PROOF_MAX } from "./scratchpad-tools.js";
 
 const ZernioPlatformSchema = z.enum(["twitter", "linkedin", "threads", "bluesky"]);
 const ZernioCreateInputSchema = z.strictObject({
@@ -49,8 +49,10 @@ function accountId(value: unknown, expectedPlatform: string): string | undefined
   return typeof object?._id === "string" ? object._id : undefined;
 }
 
+const POST_ID_MAX = 200;
+
 function validProofUrl(value: unknown): value is string {
-  if (typeof value !== "string") return false;
+  if (typeof value !== "string" || value.length > PROOF_MAX) return false;
   try {
     const url = new URL(value);
     return (
@@ -91,6 +93,7 @@ export function parseZernioCreateResponse(
     !post ||
     typeof post._id !== "string" ||
     post._id.trim().length === 0 ||
+    post._id.length > POST_ID_MAX ||
     post.content !== expected.content ||
     typeof post.scheduledFor !== "string" ||
     new Date(post.scheduledFor).getTime() !== new Date(expected.scheduledFor).getTime() ||
@@ -373,7 +376,8 @@ export async function executeApprovedGtmPost(input: {
   if (
     (outcome?.state !== "completed" && outcome?.state !== "queued") ||
     typeof outcome.postId !== "string" ||
-    outcome.postId.trim().length === 0
+    outcome.postId.trim().length === 0 ||
+    outcome.postId.length > POST_ID_MAX
   ) {
     return settleUncertainEffect(input.prisma, effectId, "gtm_post");
   }

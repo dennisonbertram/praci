@@ -6,6 +6,7 @@ import type {
   ConnectorTool,
   SecretStore,
 } from "@rakazo/adapter-kit";
+import { sourceAccessFor } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { z } from "zod";
 import {
@@ -144,25 +145,65 @@ export class InstalledConnectorProvider implements ConnectorProvider {
     return resolveCatalogCall(call, catalogEntries(await this.authorizedTools(context)));
   }
 
-  private async authorizedTools(context: AdapterContext): Promise<ConnectorTool[]> {
-    const installs = await this.prisma.capabilityInstall.findMany({
-      where: {
-        spaceId: context.spaceId,
-        userId: context.userId,
-        kind: { in: ["mcp", "api", "graphql"] },
-      },
-      orderBy: { createdAt: "asc" },
+  /**
+   * The bot a call is made for, only if it belongs to this space and user. A call with no bot, or
+   * with another user's bot, reaches no source.
+   */
+  private async callingBot(context: AdapterContext) {
+    if (!context.botId) return null;
+    return this.prisma.bot.findFirst({
+      where: { id: context.botId, spaceId: context.spaceId, userId: context.userId },
+      select: { id: true, audience: true, firewall: true },
     });
+  }
+
+  /** The caller's sources, each with what this bot may do on it (see sourceAccessFor). */
+  private async accessibleInstalls(
+    context: AdapterContext,
+    installId?: string,
+  ): Promise<{ install: InstalledRow; write: boolean }[]> {
+    const bot = await this.callingBot(context);
+    if (!bot) return [];
+    const where = {
+      spaceId: context.spaceId,
+      userId: context.userId,
+      kind: { in: ["mcp", "api", "graphql"] },
+      // A run scoped to some servers (a peer asking an integration agent) sees only those.
+      ...(context.mcpServerIds ? { id: { in: context.mcpServerIds } } : {}),
+    };
+    const include = {
+      botAccess: { where: { botId: bot.id }, select: { botId: true, canWrite: true } },
+    };
+    const installs = installId
+      ? await this.prisma.capabilityInstall
+          .findFirst({ where: { ...where, id: installId }, include })
+          .then((row) => (row ? [row] : []))
+      : await this.prisma.capabilityInstall.findMany({
+          where,
+          include,
+          orderBy: { createdAt: "asc" },
+        });
+    return installs.flatMap((install) => {
+      const { read, write } = sourceAccessFor(install, bot);
+      return read ? [{ install, write }] : [];
+    });
+  }
+
+  private async authorizedTools(context: AdapterContext): Promise<ConnectorTool[]> {
+    const installs = await this.accessibleInstalls(context);
     // Only MCP installs reach the network during discovery.
-    const remote = installs.some((install) => install.kind === "mcp")
+    const remote = installs.some(({ install }) => install.kind === "mcp")
       ? await this.remoteFor(context)
       : this.remote;
     const tools: ConnectorTool[] = [];
     for (let offset = 0; offset < installs.length; offset += 4) {
       const groups = await Promise.all(
-        installs
-          .slice(offset, offset + 4)
-          .map((install) => this.discoverInstall(install, context, remote)),
+        installs.slice(offset, offset + 4).map(async ({ install, write }) =>
+          // A source the bot may only read shows no change tools at all.
+          (await this.discoverInstall(install, context, remote)).filter(
+            (tool) => write || tool.readOnly === true,
+          ),
+        ),
       );
       tools.push(...groups.flat());
     }
@@ -256,17 +297,21 @@ export class InstalledConnectorProvider implements ConnectorProvider {
       yield { type: "error", message: "Installed connector route is missing" };
       return;
     }
-    const install = await this.prisma.capabilityInstall.findFirst({
-      where: {
-        id: installId,
-        spaceId: context.spaceId,
-        userId: context.userId,
-        kind: { in: ["mcp", "api", "graphql"] },
-      },
-    });
-    if (!install) {
+    const found = (await this.accessibleInstalls(context, installId))[0];
+    const install = found?.install;
+    if (!found || !install) {
       yield { type: "error", message: "Installed connector is unavailable" };
       return;
+    }
+    // Without a write grant only a read runs, whatever was offered when the tools were listed.
+    if (!found.write) {
+      const toolName = call.route?.toolName ?? call.tool;
+      const tools = await this.discoverInstall(install, context, await this.remoteFor(context));
+      const tool = tools.find((candidate) => candidate.route?.toolName === toolName);
+      if (tool?.readOnly !== true) {
+        yield { type: "error", message: "Installed connector is unavailable" };
+        return;
+      }
     }
     let credential: string | undefined;
     try {

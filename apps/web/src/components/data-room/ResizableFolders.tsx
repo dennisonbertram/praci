@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 
 const WIDTH_KEY = "rakazo:data-room-folders-width";
 export const MIN_FOLDERS_WIDTH = 180;
-export const DEFAULT_FOLDERS_WIDTH = 244;
+// A fresh browser gets 35% of the page body, so long folder names read in full.
+const DEFAULT_SHARE = 0.35;
 const KEY_STEP = 32;
 
 function savedWidth() {
@@ -14,13 +15,13 @@ function savedWidth() {
   } catch {
     // Storage blocked: the default applies.
   }
-  return DEFAULT_FOLDERS_WIDTH;
+  return null;
 }
 
 /**
  * The folder column. Its end edge is a handle: drag it or use the arrow keys to resize (at least
- * 180px, at most half of `bounds`, the page body); double-click resets it. The width is
- * remembered in this browser.
+ * 180px, at most half of `bounds`, the page body); double-click resets it to the default,
+ * 35% of `bounds`. A dragged width is remembered in this browser.
  */
 export function ResizableFolders({
   bounds,
@@ -44,7 +45,8 @@ export function ResizableFolders({
   // Half the body, never the column itself: the column's own width comes from this box.
   const maxWidth = () => Math.max(MIN_FOLDERS_WIDTH, Math.round(bodyWidth / 2));
   // A narrower window shrinks the shown width without forgetting the saved one.
-  const width = Math.min(saved, maxWidth());
+  const defaultWidth = Math.max(MIN_FOLDERS_WIDTH, Math.round(bodyWidth * DEFAULT_SHARE));
+  const width = Math.min(saved ?? defaultWidth, maxWidth());
   const change = (next: number) => {
     const value = Math.max(MIN_FOLDERS_WIDTH, Math.min(maxWidth(), Math.round(next)));
     setWidth(value);
@@ -92,7 +94,7 @@ export function ResizableFolders({
         }}
         onPointerUp={() => setStart(null)}
         onPointerCancel={() => setStart(null)}
-        onDoubleClick={() => change(DEFAULT_FOLDERS_WIDTH)}
+        onDoubleClick={() => change(defaultWidth)}
         onKeyDown={onKeyDown}
       />
     </div>

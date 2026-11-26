@@ -23,11 +23,14 @@ const setup = () => {
     "models.credentials": [],
     "models.list": [],
     "scratchpad.list": [],
+    "checkIn.get": { cadence: "off" },
+    "checkIn.set": (input: { cadence: string }) => ({ cadence: input.cadence }),
     "botSecrets.list": [],
     "memory.list": [],
     "agentSkills.list": [],
     "agentSkills.forBot": manySkills,
     "agentSkills.drafts": [],
+    "taughtSkills.list": [],
     "connections.list": [
       { id: "conn_slack", displayName: "Slack", status: "connected" },
       { id: "conn_notion", displayName: "Notion", status: "connected" },
@@ -76,6 +79,47 @@ export const ConnectedModelPicker: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByText("Advanced"));
     await userEvent.click(await screen.findByRole("combobox", { name: "Model" }));
+  },
+};
+
+/** With several connections, a bot can be pinned to one; subscription sign-ins say so. */
+export const PinnedConnection: Story = {
+  beforeEach: () => {
+    setup();
+    mockRpc({
+      "models.credentials": mockModelCredentials,
+      "models.list": mockModelCatalog,
+      me: mockMe,
+    });
+  },
+  args: {
+    bot: {
+      ...scoutBot,
+      modelProvider: "example-sub",
+      modelId: "example-pro",
+      modelCredentialId: "cred_2",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByText("Advanced"));
+    await screen.findByRole("combobox", { name: "Model" });
+  },
+};
+
+/** The pinned connection was signed out and removed: the pin stays and says so. */
+export const PinnedConnectionRemoved: Story = {
+  beforeEach: PinnedConnection.beforeEach,
+  args: {
+    bot: {
+      ...scoutBot,
+      modelProvider: "example-sub",
+      modelId: "example-pro",
+      modelCredentialId: "cred_gone",
+    },
+  },
+  // A lost pin opens Advanced by itself, so the play must not click it shut.
+  play: async () => {
+    await screen.findByRole("combobox", { name: "Model" });
   },
 };
 
@@ -180,4 +224,30 @@ export const ExternalWithAllowedBot: Story = {
 export const PageAgentHasNoAudienceSwitch: Story = {
   beforeEach: setup,
   args: { bot: { ...scoutBot, spawnKey: "finance-agent:user_demo" } },
+};
+
+/** The Check in select sits under Notifications and saves on change. */
+export const CheckInDaily: Story = {
+  beforeEach: () => {
+    setup();
+    mockRpc({ "checkIn.get": { cadence: "daily" } });
+  },
+};
+
+/** The Proactive select sits under Check in and saves on change; High is the most the agent does on its own. */
+export const ProactiveHigh: Story = {
+  beforeEach: setup,
+  args: { bot: { ...scoutBot, proactivity: "high" } },
+};
+
+/** A firewalled agent ignores the level, so the select is disabled with a short reason. */
+export const ProactiveLockedByFirewall: Story = {
+  beforeEach: setup,
+  args: { bot: { ...scoutBot, firewall: true } },
+};
+
+/** Firewall on: the first row of More settings, and the shield beside the name in the chat header. */
+export const FirewallOn: Story = {
+  beforeEach: setup,
+  args: { bot: { ...scoutBot, firewall: true } },
 };

@@ -13,6 +13,10 @@ import {
   verifyMcpInstall,
 } from "./installed-connectors.js";
 
+const BOT = {
+  findFirst: vi.fn().mockResolvedValue({ id: "bot-1", audience: "internal", firewall: false }),
+};
+
 describe("OpenAPI connector import", () => {
   it("uses the bounded catalog for a real large installed OpenAPI source", async () => {
     const install = {
@@ -22,6 +26,10 @@ describe("OpenAPI connector import", () => {
       source: "https://api.example.test/v1",
       secretId: null,
       createdAt: new Date(0),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config: {
         auth: { type: "none" },
         operations: Array.from({ length: 21 }, (_, index) => ({
@@ -35,6 +43,7 @@ describe("OpenAPI connector import", () => {
       },
     };
     const prisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue([install]),
         findFirst: vi.fn().mockResolvedValue(install),
@@ -44,6 +53,7 @@ describe("OpenAPI connector import", () => {
     const context = {
       workspaceId: "workspace-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never;
 
@@ -142,6 +152,10 @@ describe("OpenAPI connector import", () => {
       source: "https://93.184.216.34",
       secretId: null,
       createdAt: new Date(0),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config: {
         auth: { type: "none" },
         operations: Array.from({ length: 21 }, (_, index) => ({
@@ -160,6 +174,7 @@ describe("OpenAPI connector import", () => {
       },
     };
     const prisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue([install]),
         findFirst: vi.fn().mockResolvedValue(install),
@@ -175,6 +190,7 @@ describe("OpenAPI connector import", () => {
     const context = {
       workspaceId: "workspace-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never;
     const execute = (await provider.discoverTools(context))[2]!;
@@ -221,6 +237,10 @@ describe("OpenAPI connector import", () => {
       source: "https://93.184.216.34",
       secretId: null,
       createdAt: new Date(0),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config: {
         auth: { type: "none" },
         operations: [
@@ -235,6 +255,7 @@ describe("OpenAPI connector import", () => {
       },
     };
     const prisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue([install]),
         findFirst: vi.fn().mockResolvedValue(install),
@@ -246,6 +267,7 @@ describe("OpenAPI connector import", () => {
     const context = {
       spaceId: "space-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never;
     const [tool] = await provider.discoverTools(context);
@@ -278,6 +300,10 @@ describe("OpenAPI connector import", () => {
       source: `https://api.example.test/${id}`,
       secretId: null,
       createdAt: new Date(index),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config: {
         auth: { type: "none" },
         operations: Array.from({ length: 11 }, (_, op) => ({
@@ -290,6 +316,7 @@ describe("OpenAPI connector import", () => {
       },
     }));
     const prisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue(installs),
         findFirst: vi
@@ -303,6 +330,7 @@ describe("OpenAPI connector import", () => {
     const context = {
       workspaceId: "workspace-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never;
 
@@ -358,6 +386,10 @@ describe("OpenAPI connector import", () => {
       source: "https://api.example.test/v1",
       secretId: null,
       createdAt: new Date(0),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config: {
         auth: { type: "none" },
         operations: Array.from({ length: count }, (_, index) => ({
@@ -372,10 +404,12 @@ describe("OpenAPI connector import", () => {
     const context = {
       workspaceId: "workspace-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never;
 
     const directPrisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue([makeInstall(20)]),
       },
@@ -389,6 +423,7 @@ describe("OpenAPI connector import", () => {
     expect(direct.every((tool) => !tool.name.startsWith("installed__"))).toBe(true);
 
     const lazyPrisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue([makeInstall(21)]),
       },
@@ -420,6 +455,10 @@ describe("OpenAPI connector import", () => {
         source: "https://api.example.test/v1",
         secretId: null,
         createdAt: new Date(0),
+        agentBotId: "bot-1",
+        allAgents: false,
+        writesEnabled: true,
+        botAccess: [],
         config: {
           auth: { type: "none" },
           operations: [
@@ -436,6 +475,10 @@ describe("OpenAPI connector import", () => {
         source: "https://api.example.test/graphql",
         secretId: null,
         createdAt: new Date(1),
+        agentBotId: "bot-1",
+        allAgents: false,
+        writesEnabled: true,
+        botAccess: [],
         config: {
           auth: { type: "none" },
           operations: [
@@ -451,13 +494,14 @@ describe("OpenAPI connector import", () => {
       },
     ];
     const provider = new InstalledConnectorProvider(
-      { capabilityInstall: { findMany: vi.fn().mockResolvedValue(installs) } } as never,
+      { bot: BOT, capabilityInstall: { findMany: vi.fn().mockResolvedValue(installs) } } as never,
       {} as never,
     );
 
     const tools = await provider.discoverTools({
       spaceId: "space-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never);
 
@@ -480,13 +524,14 @@ describe("OpenAPI connector import", () => {
 
   it("returns no tools for an empty installed catalog", async () => {
     const provider = new InstalledConnectorProvider(
-      { capabilityInstall: { findMany: vi.fn().mockResolvedValue([]) } } as never,
+      { bot: BOT, capabilityInstall: { findMany: vi.fn().mockResolvedValue([]) } } as never,
       {} as never,
     );
     await expect(
       provider.discoverTools({
         workspaceId: "workspace-1",
         userId: "user-1",
+        botId: "bot-1",
         signal: new AbortController().signal,
       } as never),
     ).resolves.toEqual([]);
@@ -499,6 +544,10 @@ describe("OpenAPI connector import", () => {
       source: "https://93.184.216.34",
       secretId: null,
       createdAt: new Date(0),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config: {
         auth: { type: "none" },
         operations: [
@@ -512,6 +561,7 @@ describe("OpenAPI connector import", () => {
       },
     };
     const prisma = {
+      bot: BOT,
       capabilityInstall: {
         findMany: vi.fn().mockResolvedValue([install]),
         findFirst: vi.fn().mockResolvedValue(install),
@@ -522,6 +572,7 @@ describe("OpenAPI connector import", () => {
     const context = {
       workspaceId: "workspace-1",
       userId: "user-1",
+      botId: "bot-1",
       signal: new AbortController().signal,
     } as never;
     const [tool] = await provider.discoverTools(context);
@@ -668,10 +719,15 @@ describe("private installed connectors", () => {
       source: LOCAL_API,
       secretId: null,
       createdAt: new Date(0),
+      agentBotId: "bot-1",
+      allAgents: false,
+      writesEnabled: true,
+      botAccess: [],
       config,
     };
     const deployment = { ownerUserId: "owner-1" };
     const prisma = {
+      bot: BOT,
       capabilityInstall: { findFirst: vi.fn().mockResolvedValue(install) },
       deploymentSettings: { findUnique: vi.fn(async () => deployment) },
     };
@@ -691,7 +747,12 @@ describe("private installed connectors", () => {
           executionId: "call-1",
           route: { connectorId: "installed", resourceId: install.id, toolName: "list_items" },
         },
-        { spaceId: "space-1", userId, signal: new AbortController().signal } as never,
+        {
+          spaceId: "space-1",
+          userId,
+          botId: "bot-1",
+          signal: new AbortController().signal,
+        } as never,
       )) {
         events.push(event);
       }
@@ -709,5 +770,172 @@ describe("private installed connectors", () => {
     deployment.ownerUserId = "member-1";
     await expect(execute("owner-1")).resolves.toMatchObject([{ type: "error" }]);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("installed sources are filtered by agent", () => {
+  const apiInstall = (extra: Record<string, unknown> = {}) => ({
+    id: "api-1",
+    kind: "api",
+    name: "Contacts API",
+    source: "https://api.example.test/v1",
+    secretId: null,
+    createdAt: new Date(0),
+    agentBotId: "owner",
+    allAgents: false,
+    writesEnabled: false,
+    botAccess: [] as { botId: string; canWrite: boolean }[],
+    config: {
+      auth: { type: "none" },
+      operations: [
+        { id: "list_contacts", method: "GET", path: "/contacts", readOnly: true },
+        { id: "add_contact", method: "POST", path: "/contacts", readOnly: false },
+      ],
+    },
+    ...extra,
+  });
+  const setup = (
+    install: ReturnType<typeof apiInstall>,
+    bot: { id: string; audience?: string; firewall?: boolean } | null,
+  ) => {
+    const prisma = {
+      bot: { findFirst: vi.fn().mockResolvedValue(bot) },
+      capabilityInstall: {
+        findMany: vi.fn().mockResolvedValue([install]),
+        findFirst: vi.fn().mockResolvedValue(install),
+      },
+    };
+    const fetch = vi.fn(async () => Response.json({ items: [] }));
+    const provider = new InstalledConnectorProvider(prisma as never, {} as never, {
+      fetch: fetch as unknown as typeof globalThis.fetch,
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 as const }],
+    });
+    const context = (botId?: string) =>
+      ({
+        spaceId: "space-1",
+        userId: "user-1",
+        botId,
+        signal: new AbortController().signal,
+      }) as never;
+    return { prisma, provider, context, fetch };
+  };
+  const names = async (provider: InstalledConnectorProvider, context: never): Promise<string[]> =>
+    (await provider.discoverTools(context)).map((tool) => tool.name);
+
+  it("offers a new source to its own agent only, read tools until changes are on", async () => {
+    const { provider, context } = setup(apiInstall(), { id: "owner" });
+    expect(await names(provider, context("owner"))).toEqual(["list_contacts"]);
+    const other = setup(apiInstall(), { id: "other" });
+    expect(await names(other.provider, other.context("other"))).toEqual([]);
+    const writes = setup(apiInstall({ writesEnabled: true }), { id: "owner" });
+    expect(await names(writes.provider, writes.context("owner"))).toEqual([
+      "list_contacts",
+      "add_contact",
+    ]);
+  });
+
+  it("scopes the query to the space and user and offers nothing without a bot", async () => {
+    const { provider, context, prisma } = setup(apiInstall(), { id: "owner" });
+    expect(await names(provider, context(undefined))).toEqual([]);
+    await names(provider, context("owner"));
+    expect(prisma.capabilityInstall.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ spaceId: "space-1", userId: "user-1" }),
+      }),
+    );
+    expect(prisma.bot.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "owner", spaceId: "space-1", userId: "user-1" }),
+      }),
+    );
+  });
+
+  it("refuses a bot that is not this user's", async () => {
+    const { provider, context } = setup(apiInstall({ allAgents: true }), null);
+    expect(await names(provider, context("stranger"))).toEqual([]);
+  });
+
+  it("gives a granted agent read, and changes only with its own grant", async () => {
+    const granted = apiInstall({
+      writesEnabled: true,
+      botAccess: [{ botId: "friend", canWrite: false }],
+    });
+    const friend = setup(granted, { id: "friend" });
+    expect(await names(friend.provider, friend.context("friend"))).toEqual(["list_contacts"]);
+    const writer = setup(
+      apiInstall({ writesEnabled: true, botAccess: [{ botId: "friend", canWrite: true }] }),
+      { id: "friend" },
+    );
+    expect(await names(writer.provider, writer.context("friend"))).toEqual([
+      "list_contacts",
+      "add_contact",
+    ]);
+  });
+
+  it("opens an all-agents source to internal agents but never to a firewalled or external one", async () => {
+    const open = apiInstall({ allAgents: true });
+    const internal = setup(open, { id: "any" });
+    expect(await names(internal.provider, internal.context("any"))).toEqual(["list_contacts"]);
+    for (const bot of [
+      { id: "any", firewall: true },
+      { id: "any", audience: "external" },
+    ]) {
+      const blocked = setup(open, bot);
+      expect(await names(blocked.provider, blocked.context("any"))).toEqual([]);
+    }
+  });
+
+  it("refuses a direct call and a catalog call from an agent without access", async () => {
+    const { provider, context, fetch } = setup(apiInstall(), { id: "other" });
+    const events: unknown[] = [];
+    for await (const event of provider.execute(
+      {
+        tool: "list_contacts",
+        args: {},
+        executionId: "call-1",
+        route: { connectorId: "installed", resourceId: "api-1", toolName: "list_contacts" },
+      },
+      context("other"),
+    )) {
+      events.push(event);
+    }
+    expect(events).toEqual([{ type: "error", message: "Installed connector is unavailable" }]);
+    expect(fetch).not.toHaveBeenCalled();
+    await expect(
+      provider.resolveCall(
+        {
+          tool: "installed_execute_tool",
+          args: { id: "api-1:list_contacts", arguments: {} },
+          executionId: "call-2",
+          route: { connectorId: "installed", toolName: "installed_execute_tool" },
+        },
+        context("other"),
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("refuses a change at dispatch when the agent may only read, and lets a read through", async () => {
+    const { provider, context, fetch } = setup(apiInstall({ writesEnabled: false }), {
+      id: "owner",
+    });
+    const run = async (tool: string) => {
+      const events: unknown[] = [];
+      for await (const event of provider.execute(
+        {
+          tool,
+          args: {},
+          executionId: "call-w",
+          route: { connectorId: "installed", resourceId: "api-1", toolName: tool },
+        },
+        context("owner"),
+      ))
+        events.push(event);
+      return events;
+    };
+    expect(await run("add_contact")).toEqual([
+      { type: "error", message: "Installed connector is unavailable" },
+    ]);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await run("list_contacts")).toMatchObject([{ type: "result" }]);
   });
 });

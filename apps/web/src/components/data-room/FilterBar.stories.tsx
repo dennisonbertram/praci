@@ -10,9 +10,11 @@ function Bar({
   text = "",
   facets = true,
   stats = false,
+  previewBeside = false,
 }: {
   /** The Stats view: no search or Sort, yet the Filters button and pills keep their places. */
   stats?: boolean;
+  previewBeside?: boolean;
   initial?: Filters;
   text?: string;
   /** False: the items have no type, party, date or second source yet, so those filters hide. */
@@ -40,6 +42,7 @@ function Bar({
       onNewFolder={() => undefined}
       onAutoSort={() => undefined}
       statsView={stats}
+      previewBeside={previewBeside}
       trailing={
         <fieldset className="m-0 flex gap-0.5 border-0 p-0">
           {[0, 1, 2].map((n) => (
@@ -52,9 +55,9 @@ function Bar({
 }
 
 /** The page body is a `@container/bd`; these are its widths at a 1024 and a 375 window. */
-const inBody = (width: number, stats = false) => (
+const inBody = (width: number, stats = false, previewBeside = false) => (
   <div className="@container/bd" style={{ width }}>
-    <Bar stats={stats} />
+    <Bar stats={stats} previewBeside={previewBeside} />
   </div>
 );
 
@@ -72,4 +75,17 @@ export const Body343: Story = { render: () => inBody(375) };
 /** The same places as Body343 and Default, with search and Sort left out. */
 export const Stats343: Story = { render: () => inBody(375, true) };
 export const Stats1440: Story = { render: () => inBody(1100, true) };
+/** A preview beside the list hides the tree below 1100px, so the picker stays. */
+export const PreviewBeside960: Story = {
+  name: "Preview beside, 960px body",
+  render: () => inBody(960, false, true),
+};
 export const List1440: Story = { render: () => inBody(1100) };
+/** The failed filter is applied: on a phone it is named in the main row and one tap clears it. */
+export const FailedFilter375: Story = {
+  render: () => (
+    <div className="@container/bd" style={{ width: 375 }}>
+      <Bar initial={{ status: "failed" }} />
+    </div>
+  ),
+};

@@ -92,7 +92,7 @@ export function IntegrationAgentSection({
             idPrefix={idPrefix}
             hint={
               settingUp ? (
-                <Trans>Setting up the agent...</Trans>
+                <Trans>Setting up the agent…</Trans>
               ) : !agentHref ? (
                 <Trans>Creates a {service} agent that asks you before each change.</Trans>
               ) : (
@@ -105,7 +105,6 @@ export function IntegrationAgentSection({
           <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
             <Switch
               id={`${idPrefix}-shared`}
-              aria-describedby={`${idPrefix}-shared-hint`}
               checked={shared}
               disabled={disabled}
               onCheckedChange={onShared}
@@ -113,16 +112,13 @@ export function IntegrationAgentSection({
             <Label htmlFor={`${idPrefix}-shared`}>
               <Trans>Let other agents use {service} directly</Trans>
             </Label>
-            <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
-              <Trans>Other agents can read {service}; changes still go through this agent.</Trans>
-            </p>
           </div>
         ) : null}
       </div>
       {shared && onShared && usedBy ? (
         <>
           <Heading>
-            <Trans>Used by</Trans>
+            <Trans>Access</Trans>
           </Heading>
           {usedBy}
         </>

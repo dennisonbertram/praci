@@ -7,16 +7,30 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../lib/rpc", () => ({
-  rpc: {
-    voice: { voices: vi.fn(async () => []) },
-    models: {
-      credentials: vi.fn(async () => []),
-      list: vi.fn(async () => []),
+vi.mock("../../lib/rpc", () => {
+  let permissionLevel: string | null = null;
+  return {
+    rpc: {
+      voice: { voices: vi.fn(async () => []) },
+      models: {
+        credentials: vi.fn(async () => []),
+        list: vi.fn(async () => []),
+      },
+      checkIn: {
+        get: vi.fn(async () => ({ cadence: "off" })),
+        set: vi.fn(async (input: { cadence: string }) => ({ cadence: input.cadence })),
+      },
+      permissions: {
+        get: vi.fn(async () => ({ level: permissionLevel, effectiveDefault: "open" })),
+        set: vi.fn(async (input: { level: string | null }) => {
+          permissionLevel = input.level;
+          return { level: input.level, effectiveDefault: "open" };
+        }),
+      },
+      me: vi.fn(async () => ({})),
     },
-    me: vi.fn(async () => ({})),
-  },
-}));
+  };
+});
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
@@ -28,7 +42,18 @@ vi.mock("@rakazo/ui-web", () => ({
     size: _size,
     ...props
   }: ComponentProps<"button"> & { variant?: string; size?: string }) => <button {...props} />,
+  // The Firewall switch asks before turning off; these tests never open that dialog.
+  AlertDialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
+    open ? <div role="alertdialog">{children}</div> : null,
+  AlertDialogAction: (props: ComponentProps<"button">) => <button type="button" {...props} />,
+  AlertDialogCancel: (props: ComponentProps<"button">) => <button type="button" {...props} />,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
   Input: (props: ComponentProps<"input">) => <input {...props} />,
+  Skeleton: (props: ComponentProps<"div">) => <div {...props} />,
   Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
   NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
   NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
@@ -64,6 +89,7 @@ vi.mock("./avatar-studio-popover", () => ({ AvatarStudioPopover: () => null }));
 vi.mock("./bot-credentials", () => ({ BotCredentialsSection: () => null }));
 vi.mock("./BotSkillsSection", () => ({ BotSkillsSection: () => null }));
 
+import { rpc } from "../../lib/rpc";
 import { BotSettings } from "./bot-panel";
 
 const bot = {
@@ -121,7 +147,7 @@ afterEach(() => {
   container.remove();
 });
 
-type SavePatch = { disabledBuiltinTools?: string[] };
+type SavePatch = { disabledBuiltinTools?: string[]; crossSpaceCommunication?: boolean };
 
 function setField(input: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -186,6 +212,20 @@ describe("BotSettings identity fields", () => {
     const labels = [...container.querySelectorAll("label")].map((label) => label.textContent);
     expect(labels.some((text) => text?.startsWith("Description"))).toBe(true);
     expect(labels.some((text) => text?.startsWith("Title"))).toBe(false);
+  });
+});
+
+describe("BotSettings check in", () => {
+  it("saves the chosen cadence as soon as it changes", async () => {
+    await renderSettings(async () => undefined);
+    const select = container.querySelector<HTMLSelectElement>('[id$="-check-in"]');
+    expect(select?.value).toBe("off");
+    await act(async () => {
+      if (select) select.value = "every_4h";
+      select?.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flush();
+    expect(rpc.checkIn.set).toHaveBeenCalledWith({ botId: "bot-1", cadence: "every_4h" });
   });
 });
 
@@ -419,4 +459,14 @@ describe("BotSettings disabled tools", () => {
     expect(container.querySelector('[id$="-disabled-web_search"]')).toBeNull();
     expect(container.querySelector('[id$="-disabled-web_fetch"]')).toBeNull();
   });
+});
+
+it("keeps cross-space communication off until explicitly enabled", async () => {
+  const onSave = vi.fn<(patch: SavePatch) => Promise<void>>(async () => undefined);
+  await renderSettings(onSave);
+  const toggle = container.querySelector<HTMLButtonElement>('[id$="-cross-space"]');
+  expect(toggle?.getAttribute("aria-checked")).toBe("false");
+  await act(async () => toggle?.click());
+  await flush();
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ crossSpaceCommunication: true }));
 });

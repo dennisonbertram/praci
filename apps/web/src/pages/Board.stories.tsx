@@ -40,7 +40,7 @@ const ticket = (n: number, over: Partial<Ticket> = {}): Ticket => ({
 });
 
 const tickets = [
-  ticket(1),
+  ticket(1, { priority: "urgent" }),
   ticket(2, {
     status: "doing",
     assigneeBotId: "bot_b",
@@ -81,6 +81,39 @@ export const Empty: Story = { render: () => <BoardPage />, beforeEach: () => moc
 export const NoBots: Story = { render: () => <BoardPage />, beforeEach: () => mockBoard([], []) };
 
 export const WithTickets: Story = {
+  render: () => <BoardPage />,
+  beforeEach: () => mockBoard(tickets),
+};
+
+export const MoveTicket: Story = {
+  render: () => <BoardPage />,
+  beforeEach: () => {
+    let rows = [...tickets];
+    mockRpc({
+      "tickets.list": () => ({ tickets: rows }),
+      "tickets.move": (input: unknown) => {
+        const { id, status } = input as { id: string; status: Ticket["status"] };
+        rows = rows.map((row) => (row.id === id ? { ...row, status } : row));
+      },
+      "bots.list": bots,
+      "boards.subscribe": () => openStream(),
+      "tickets.comments": comments,
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByTestId("board-card-t_1");
+    await userEvent.click(
+      await within(card.parentElement!).findByRole("button", { name: "Move to" }),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole("menuitem", { name: "Done" }),
+    );
+  },
+};
+
+export const FilteredTickets: Story = {
+  parameters: { initialEntries: ["/app/board?q=long"] },
   render: () => <BoardPage />,
   beforeEach: () => mockBoard(tickets),
 };

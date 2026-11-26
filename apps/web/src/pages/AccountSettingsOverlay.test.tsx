@@ -4,7 +4,11 @@ import type { AccountSecurity } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+const localeMock = vi.hoisted(() => ({
+  setUiLocale: vi.fn((locale: string) => Promise.resolve(locale)),
+}));
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: (strings: TemplateStringsArray) => strings.join("") }),
@@ -100,7 +104,7 @@ vi.mock("../components/SoftwareUpdateSection", () => ({ SoftwareUpdateSection: (
 vi.mock("../lib/auth", () => ({ authClient: { changePassword: vi.fn() } }));
 vi.mock("../lib/i18n", () => ({
   getActiveUiLocale: () => "en",
-  setUiLocale: (locale: string) => Promise.resolve(locale),
+  setUiLocale: localeMock.setUiLocale,
 }));
 vi.mock("../lib/ui-appearance", () => ({
   getUiAppearancePreference: () => "system",
@@ -113,9 +117,89 @@ import { getRemoteImagesEnabled } from "../lib/remote-images-preference";
 import { TOOL_ACTIVITY_STORAGE_KEY } from "../lib/tool-activity-preference";
 import { GeneralSettingsPanels, UsageSettingsPanel } from "./AccountSettingsOverlay";
 
+async function renderLocalePicker() {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <GeneralSettingsPanels
+        name="Jamie"
+        avatarStyle="robot"
+        onAvatarStyleChange={async () => undefined}
+      />,
+    );
+  });
+  const trigger = container.querySelector<HTMLButtonElement>('[data-testid="ui-locale-select"]');
+  if (!trigger) throw new Error("Missing language control");
+  return { container, root, trigger };
+}
+
+async function selectAnotherLocale(trigger: HTMLButtonElement, avoidText?: string) {
+  await act(async () => trigger.click());
+  const selected = document.querySelector('[role="option"][aria-selected="true"]');
+  const target = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find(
+    (option) => option !== selected && option.textContent !== avoidText,
+  );
+  if (!target) throw new Error("Missing alternate language");
+  const label = target.textContent;
+  await act(async () => target.click());
+  return label;
+}
+
+it("restores the active language and shows an error when changing language fails", async () => {
+  // setUiLocale does not throw when a catalog fails: it falls back and returns the active language.
+  localeMock.setUiLocale.mockImplementationOnce(() => Promise.resolve("en"));
+  const { container, root, trigger } = await renderLocalePicker();
+  try {
+    const initial = trigger.textContent;
+    await selectAnotherLocale(trigger, initial);
+    await act(async () => {});
+    expect(trigger.textContent).toBe(initial);
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not save");
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("does not let an older failed language choice undo a newer success", async () => {
+  let rejectFirst!: (error: Error) => void;
+  localeMock.setUiLocale
+    .mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    )
+    .mockImplementationOnce((locale) => Promise.resolve(locale));
+  const { container, root, trigger } = await renderLocalePicker();
+  try {
+    const initial = trigger.textContent;
+    await selectAnotherLocale(trigger, initial);
+    await selectAnotherLocale(trigger, initial);
+    const newer = trigger.textContent;
+    await act(async () => {});
+    rejectFirst(new Error("offline"));
+    await act(async () => {});
+    expect(trigger.textContent).toBe(newer);
+    expect(newer).not.toBe(initial);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+beforeEach(() => {
+  localeMock.setUiLocale.mockReset().mockImplementation((locale) => Promise.resolve(locale));
+});
+
 afterEach(() => {
   localStorage.clear();
   document.body.innerHTML = "";
+  localeMock.setUiLocale.mockReset();
 });
 
 // cmdk measures and scrolls its list, which jsdom does not implement.

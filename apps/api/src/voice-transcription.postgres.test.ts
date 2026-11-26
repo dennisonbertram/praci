@@ -45,9 +45,16 @@ describePostgres("transcription selection (PostgreSQL)", () => {
   let close: () => Promise<void>;
   const deps = () => ({ prisma, secrets }) as never;
   const client = (who: Actor) =>
-    createRouterClient(createRouter({ prisma, secrets } as unknown as RouterDeps), {
-      context: { actor: who } as never,
-    });
+    createRouterClient(
+      createRouter({
+        prisma,
+        secrets,
+        env: { mailWritesDisabled: false },
+      } as unknown as RouterDeps),
+      {
+        context: { actor: who } as never,
+      },
+    );
   const audio = { audio: new Uint8Array([1, 2]), mimeType: "audio/webm" };
   const secretCount = (userId: string) => prisma.secret.count({ where: { userId } });
 
@@ -92,6 +99,40 @@ describePostgres("transcription selection (PostgreSQL)", () => {
     await close();
   });
 
+  it("stores an OpenAI-compatible server and transcribes through it without echoing the key", async () => {
+    const { createServer } = await import("node:http");
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ text: "from the fixture" }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    try {
+      const who = actor(userA);
+      await expect(
+        setTranscription(deps(), who, { provider: "openai-compatible" }),
+      ).rejects.toThrow("base URL");
+      const set = await setTranscription(deps(), who, {
+        provider: "openai-compatible",
+        baseUrl,
+        model: "whisper-large-v3",
+        apiKey: "test-transcription-key",
+      });
+      expect(set).toEqual({ provider: "openai-compatible" });
+      const row = await prisma.transcriptionSelection.findUniqueOrThrow({
+        where: { userId: userA },
+      });
+      expect(row.provider).toBe("openai-compatible");
+      expect(JSON.stringify(set)).not.toContain("test-transcription-key");
+      await expect(transcribeVoice(deps(), who, audio)).resolves.toEqual({
+        text: "from the fixture",
+      });
+      await clearTranscription(deps(), who);
+    } finally {
+      server.close();
+    }
+  });
+
   it("selecting a transcription-only provider does not change the speech provider", async () => {
     const a = client(actor(userA));
     const connected = await a.voice.connect({
@@ -114,7 +155,7 @@ describePostgres("transcription selection (PostgreSQL)", () => {
       voiceId: "voice-1",
       ready: true,
       transcriptionProvider: "scripted-transcribe",
-      transcriptionReady: false,
+      transcriptionReady: true,
     });
     expect(JSON.stringify(status)).not.toContain("dictation-key-1");
     expect((await a.voice.credentials()).map((c) => [c.provider, c.isDefault, c.voiceId])).toEqual([

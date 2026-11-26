@@ -8,7 +8,7 @@ import UIKit
 
 @Test
 func keychainStoresAndClearsAnOriginBoundSession() throws {
-  let storage = KeychainSessionStorage(service: "com.rakazo.app.tests.\(UUID().uuidString)")
+  let storage = KeychainSessionStorage(service: "ai.praci.mobile.tests.\(UUID().uuidString)")
   defer { try? storage.clear() }
   let endpoint = try ServerEndpoint.normalize("https://praci.example.com")
 

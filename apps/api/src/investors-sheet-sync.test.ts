@@ -16,6 +16,7 @@ function fakes(
     sourceRef?: { driveFileId: string; name: string } | null;
     active?: boolean;
     hasModel?: boolean;
+    ledger?: boolean;
   } = {},
 ) {
   const bot = { id: "bot-1", threadId: "thread-1" } as Bot;
@@ -26,6 +27,7 @@ function fakes(
   const messageCreate = vi.fn(async () => ({ id: "msg-1" }));
   const tx = {
     $executeRaw: vi.fn(async () => 0),
+    bot: { updateMany: vi.fn(async () => ({ count: 1 })) },
     run: { findFirst: runFindFirst, create: runCreate },
     task: { create: taskCreate },
     thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
@@ -50,6 +52,8 @@ function fakes(
             : { source: options.source ?? "sheet", data: { sourceRef } },
         ),
       },
+      equityStakeholder: { findFirst: vi.fn(async () => (options.ledger ? { id: "s1" } : null)) },
+      equityShareClass: { findFirst: vi.fn(async () => null) },
       user: { findUnique: vi.fn(async () => ({ timezone: "UTC" })) },
       bot: { updateMany: vi.fn(async () => ({ count: 0 })) },
       $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx),
@@ -106,6 +110,8 @@ describe("startSheetRead", () => {
       { source: "native" },
       { source: "none" },
       { sourceRef: null },
+      // The ledger is the record once it has data, even for a table whose source is a sheet.
+      { ledger: true },
     ]) {
       const f = fakes(options);
       expect(await startSheetRead(f.deps, actor)).toBe("other_source");

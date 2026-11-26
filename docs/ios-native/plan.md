@@ -11,7 +11,7 @@ How to build the native app described in [README.md](README.md) in small, shippa
 
 ## Phase 0: Scaffold
 
-- `apps/ios/` with an XcodeGen `project.yml` (the generated `.xcodeproj` is not committed), Swift 6 language mode, iOS 26 minimum, bundle id `com.rakazo.app` with a separate development bundle id for local builds.
+- `apps/ios/` with an XcodeGen `project.yml` (the generated `.xcodeproj` is not committed), Swift 6 language mode, iOS 26 minimum, bundle id `ai.praci.mobile` with a separate development bundle id for local builds.
 - SwiftPM packages: `RakazoAPI`, `RakazoCore`, `RakazoUI`. Unit test targets with Swift Testing.
 - SwiftLint and SwiftFormat config; a `pnpm ios:test` script that runs `xcodebuild test` on a simulator.
 - Design tokens: generate `RakazoUI/Tokens.swift` from `@rakazo/ui-tokens` so colors keep one source of truth.
@@ -107,7 +107,7 @@ Done when: the full Maestro smoke flow passes, including opening the computer, t
 | Xcode | Xcode 27.1 with the iOS 27.1 SDK and the iPhone Duo simulator | Before phase 7 |
 | Simulator runtimes | iOS 27.1 including iPhone Duo | With Xcode 27.1 |
 | Tools | XcodeGen, SwiftLint, SwiftFormat, Maestro, gh; optionally xcbeautify, and fastlane if not using Xcode Cloud | Phase 0 |
-| Code signing | An Apple Developer team that can sign `com.rakazo.app`, development provisioning for local device builds | Phase 0 for device builds; simulator builds need none |
+| Code signing | An Apple Developer team that can sign `ai.praci.mobile`, development provisioning for local device builds | Phase 0 for device builds; simulator builds need none |
 | App Store Connect API key | For TestFlight uploads; kept outside the repo | Phase 14 |
 | APNs auth key | For the server push provider; server environment only | Phase 10 |
 | Physical iPhone (ideally iPhone Duo) | For push, Live Activities, widgets, extensions and fold testing | Phases 10 and 13 |

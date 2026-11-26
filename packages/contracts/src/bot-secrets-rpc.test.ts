@@ -40,6 +40,8 @@ describe("botSecrets rpc contract", () => {
       auth: null,
       createdAt: "2026-09-01T00:00:00.000Z",
       updatedAt: "2026-09-01T00:00:00.000Z",
+      lastUsedAt: null,
+      needsAttentionAt: null,
     });
     expect(parsed.auth).toBeNull();
     expect(parsed.name).toBe("Legacy Name With Spaces");
@@ -63,7 +65,9 @@ describe("botSecrets rpc contract", () => {
     expect(Object.keys(BotSecretMetadata.shape).sort()).toEqual([
       "auth",
       "createdAt",
+      "lastUsedAt",
       "name",
+      "needsAttentionAt",
       "origin",
       "updatedAt",
     ]);
@@ -73,6 +77,8 @@ describe("botSecrets rpc contract", () => {
       auth: { type: "bearer" },
       createdAt: "2026-09-01T00:00:00.000Z",
       updatedAt: "2026-09-01T00:00:00.000Z",
+      lastUsedAt: null,
+      needsAttentionAt: null,
       value: "fake-value-1",
       ciphertext: "enc:1",
     });

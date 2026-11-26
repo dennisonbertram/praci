@@ -22,6 +22,8 @@ import {
   runPromotesMidTurnNarration,
   runReplyGuidance,
   runSendsFinishNotification,
+  secretAskNotification,
+  STALE_HISTORY_GUIDANCE,
   stripNoResponseReply,
   subagentMarksUnread,
   TICKET_SILENT_REPLY_GUIDANCE,
@@ -32,10 +34,17 @@ describe("completionMessageSegments", () => {
   it("adds the Gmail ownership line to an existing Inbox agent once", () => {
     const bot = { name: "Inbox", title: "", description: "", instructions: "Triage mail." };
     const prompt = runIdentityInstruction(bot, "user", "inbox-agent:u1");
-    expect(prompt).toBe(`Triage mail. ${INBOX_OWNER_GUIDANCE}`);
+    expect(prompt).toBe(`Triage mail. ${INBOX_OWNER_GUIDANCE} ${STALE_HISTORY_GUIDANCE}`);
     expect(runIdentityInstruction({ ...bot, instructions: prompt }, "user", "inbox-agent:u1")).toBe(
       prompt,
     );
+  });
+
+  it("tells every agent to recheck an earlier refusal against its current tools", () => {
+    const bot = { name: "Bot", title: "", description: "", instructions: "Help." };
+    const prompt = runIdentityInstruction(bot, "user", "inbox-agent:u1");
+    expect(prompt).toContain(STALE_HISTORY_GUIDANCE);
+    expect(runIdentityInstruction(bot, "user", null)).toBe(`Help. ${STALE_HISTORY_GUIDANCE}`);
   });
 
   it("keeps visible tool activity without appending a generic completion claim", () => {
@@ -472,17 +481,20 @@ describe("runReplyGuidance", () => {
     expect(runIdentityInstruction({ ...bot, instructions: "" }, "created")).toContain(
       "Instructions: (none)",
     );
-    expect(runIdentityInstruction(bot, "user")).toBe(bot.instructions);
+    expect(runIdentityInstruction(bot, "user")).toBe(
+      `${bot.instructions} ${STALE_HISTORY_GUIDANCE}`,
+    );
+    expect(intro).not.toContain(STALE_HISTORY_GUIDANCE);
   });
 
   it("adds the one-approval sentence at run time to older integration and Carta agents once", () => {
     const bot = { name: "Mercury agent", title: "", description: "", instructions: "Old text." };
     for (const key of [integrationAgentSpawnKey("srv-1"), cartaAgentSpawnKey("user-1")]) {
       const prompt = runIdentityInstruction(bot, "user", key);
-      expect(prompt).toBe(`Old text. ${ONE_APPROVAL_GUIDANCE}`);
+      expect(prompt).toBe(`Old text. ${ONE_APPROVAL_GUIDANCE} ${STALE_HISTORY_GUIDANCE}`);
       expect(runIdentityInstruction({ ...bot, instructions: prompt }, "user", key)).toBe(prompt);
     }
-    expect(runIdentityInstruction(bot, "user", null)).toBe("Old text.");
+    expect(runIdentityInstruction(bot, "user", null)).toBe(`Old text. ${STALE_HISTORY_GUIDANCE}`);
   });
 
   it("keeps the name, title and description identity when an integration agent has no instructions", () => {
@@ -493,7 +505,9 @@ describe("runReplyGuidance", () => {
       instructions: "",
     };
     const prompt = runIdentityInstruction(bot, "user", integrationAgentSpawnKey("srv-1"));
-    expect(prompt).toBe(`Mercury agent: Banker\nReads accounts. ${ONE_APPROVAL_GUIDANCE}`);
+    expect(prompt).toBe(
+      `Mercury agent: Banker\nReads accounts. ${ONE_APPROVAL_GUIDANCE} ${STALE_HISTORY_GUIDANCE}`,
+    );
   });
 
   it("does not send a finish notification for the creation intro", () => {
@@ -591,5 +605,32 @@ describe("classifyRunFailure", () => {
       message: GENERIC_RUN_ERROR,
       rawMessage: prismaText,
     });
+  });
+});
+
+describe("secretAskNotification", () => {
+  it("uses the generic answer title and a short, redacted label", () => {
+    const notification = secretAskNotification(
+      "Bot",
+      `Sign in for fake-token-123 ${"word ".repeat(100)}`,
+      ["fake-token-123"],
+    );
+    expect(notification.title).toBe("Bot needs an answer");
+    expect(notification.body).toHaveLength(180);
+    expect(notification.body.startsWith("Sign in for [redacted] word")).toBe(true);
+  });
+
+  it("redacts a Markdown-split protected value before the notification cut", () => {
+    const body = secretAskNotification("Bot", `${"x".repeat(167)} fake-**token**-123`, [
+      "fake-token-123",
+    ]).body;
+    expect(body).toBe(`${"x".repeat(167)} [redacted]`);
+    expect(body).not.toContain("fake-");
+  });
+
+  it("keeps the body within 180 characters when redaction expands a value", () => {
+    const body = secretAskNotification("Bot", `${"x".repeat(170)} ab**c1**23`, ["abc123"]).body;
+    expect(body).toHaveLength(180);
+    expect(body).not.toContain("abc");
   });
 });

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Connection, ConnectionCatalogItem } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, mailThreadAgentSpawnKey } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -15,19 +16,23 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 const revoke = vi.fn().mockResolvedValue({});
+const check = vi.fn().mockResolvedValue({});
 const createAgent = vi.fn().mockResolvedValue({ botId: "bot_app" });
 const setWrites = vi.fn().mockResolvedValue({});
 const setExclusive = vi.fn().mockResolvedValue({});
 const setAccess = vi.fn().mockResolvedValue({});
+const setAgentAccess = vi.fn().mockResolvedValue({});
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     connections: {
       tools: vi.fn().mockResolvedValue([]),
       revoke: (...a: unknown[]) => revoke(...a),
+      check: (...a: unknown[]) => check(...a),
       createAgent: (...a: unknown[]) => createAgent(...a),
       setWrites: (...a: unknown[]) => setWrites(...a),
       setExclusive: (...a: unknown[]) => setExclusive(...a),
       setAccess: (...a: unknown[]) => setAccess(...a),
+      setAgentAccess: (...a: unknown[]) => setAgentAccess(...a),
     },
   },
 }));
@@ -92,6 +97,7 @@ const data = (over: Partial<IntegrationsData> = {}): IntegrationsData => ({
   financeSources: [],
   setup: null,
   catalogFailed: false,
+  meetingsFailed: false,
   feedEnabled: false,
   refresh: async () => {},
   ...over,
@@ -138,6 +144,7 @@ afterEach(() => {
   setWrites.mockClear();
   setExclusive.mockClear();
   setAccess.mockClear();
+  setAgentAccess.mockClear();
 });
 
 const PAGE = "/app/integrations/app/google/gmail";
@@ -176,19 +183,19 @@ it("creates an agent for the selected connected account and opens its chat", asy
   expect(where()).toBe("/app/bot_app");
 });
 
-it("offers Create agent for a native Google account", async () => {
+it("never offers Create agent for Gmail: every account belongs to the Inbox agent", async () => {
   await show(
     PAGE,
     data({
       connections: [appConnection({ id: "conn_google", connectorId: "google", provider: "gmail" })],
     }),
   );
-  expect(container.textContent).toContain("Create agent");
+  expect(container.textContent).not.toContain("Create agent");
 });
 
-it("hides the ordinary access list and Used by while a private agent connection is not shared", async () => {
+it("hides the ordinary access list and the Access list while a private agent connection is not shared", async () => {
   await show(APP_PAGE, data({ connections: [appConnection({ agentBotId: "bot_app" })] }));
-  expect(container.textContent).not.toContain("Used by");
+  expect(container.textContent).not.toContain("Which agents can use");
   expect(container.textContent).not.toContain("Only this agent");
   expect(container.textContent).not.toContain("Other agents ask");
 });
@@ -228,6 +235,7 @@ it("turns changes off immediately and saves sharing for the account", async () =
       access: {
         conn_app: {
           allAgents: false,
+          agentShared: false,
           botIds: ["bot_app"],
           effectiveAccess: { shared: "some", botIds: ["bot_app"] },
         },
@@ -256,13 +264,14 @@ it("lists who can use a shared connection from the server, owner first, and save
       access: {
         conn_app: {
           allAgents: true,
+          agentShared: true,
           botIds: [],
           effectiveAccess: { shared: "all", botIds: ["bot_app", "bot_other"] },
         },
       },
     }),
   );
-  expect(container.textContent).toContain("Used by");
+  expect(container.textContent).toContain("Which agents can use");
   const toggles = [
     ...container.querySelectorAll<HTMLElement>('[aria-label$="can use Sample workspace"]'),
   ];
@@ -271,24 +280,54 @@ it("lists who can use a shared connection from the server, owner first, and save
     "Other can use Sample workspace",
   ]);
   await act(async () => toggles[1]!.click());
-  expect(setAccess).toHaveBeenCalledWith({
+  expect(setAgentAccess).toHaveBeenCalledWith({
     connectionId: "conn_app",
-    allAgents: false,
-    botIds: ["bot_app"],
+    botId: "bot_other",
+    on: false,
   });
 });
 
-it("builds each quick toggle on the previous one and saves them in order", async () => {
+it("Allow changes under a shared agent sets only that agent's write grant", async () => {
+  const bots = ["bot_app", "b"].map((id) => ({ id, name: id, color: "#000000" }));
+  await show(
+    APP_PAGE,
+    data({
+      bots: bots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app", writesEnabled: true })],
+      access: {
+        conn_app: {
+          allAgents: true,
+          agentShared: true,
+          botIds: [],
+          effectiveAccess: { shared: "all", botIds: ["bot_app", "b"] },
+        },
+      },
+    }),
+  );
+  const nested = container.querySelector<HTMLElement>(
+    '[aria-label="b can make changes in Sample workspace"]',
+  )!;
+  expect(nested.getAttribute("aria-checked")).toBe("false");
+  await act(async () => nested.click());
+  expect(setAgentAccess).toHaveBeenCalledWith({
+    connectionId: "conn_app",
+    botId: "b",
+    on: true,
+    canWrite: true,
+  });
+});
+
+it("saves each quick toggle as its own single-agent change, in order", async () => {
   const bots = ["bot_app", "b", "c"].map((id) => ({ id, name: id, color: "#000000" }));
   const saved: unknown[] = [];
   let release: () => void = () => undefined;
-  setAccess.mockImplementationOnce(async (input: unknown) => {
+  setAgentAccess.mockImplementationOnce(async (input: unknown) => {
     saved.push(input);
     await new Promise<void>((resolve) => {
       release = resolve;
     });
   });
-  setAccess.mockImplementation(async (input: unknown) => void saved.push(input));
+  setAgentAccess.mockImplementation(async (input: unknown) => void saved.push(input));
   await show(
     APP_PAGE,
     data({
@@ -297,6 +336,7 @@ it("builds each quick toggle on the previous one and saves them in order", async
       access: {
         conn_app: {
           allAgents: true,
+          agentShared: true,
           botIds: [],
           effectiveAccess: { shared: "all", botIds: ["bot_app", "b", "c"] },
         },
@@ -310,8 +350,8 @@ it("builds each quick toggle on the previous one and saves them in order", async
   expect(saved).toHaveLength(1);
   await act(async () => release());
   expect(saved).toEqual([
-    { connectionId: "conn_app", allAgents: false, botIds: ["bot_app", "c"] },
-    { connectionId: "conn_app", allAgents: false, botIds: ["bot_app"] },
+    { connectionId: "conn_app", botId: "b", on: false },
+    { connectionId: "conn_app", botId: "c", on: false },
   ]);
 });
 
@@ -477,6 +517,45 @@ it("offers Reconnect on a signed-out mail account and replaces it once signed in
   expect(where()).toBe("/app/inbox");
 });
 
+it("re-checks a Gmail account from its Refresh button and reloads the list", async () => {
+  const account = {
+    id: "old",
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "Old mail",
+    status: "connected",
+    needsReconnect: true,
+    error: null,
+    capabilities: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  } as IntegrationsData["connections"][number];
+  const refresh = vi.fn(async () => {});
+  await show(PAGE, data({ connections: [account], refresh }));
+  const button = container.querySelector<HTMLButtonElement>('button[aria-label="Refresh"]');
+  await act(async () => button?.click());
+  expect(check).toHaveBeenCalledWith({ connectionId: "old" });
+  expect(refresh).toHaveBeenCalled();
+});
+
+it("offers Reconnect on a Gmail account that reads as connected", async () => {
+  const account = {
+    id: "ok",
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "Fine mail",
+    status: "connected",
+    error: null,
+    capabilities: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  } as IntegrationsData["connections"][number];
+  await show(PAGE, data({ connections: [account] }));
+  const reconnect = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Reconnect",
+  );
+  await act(async () => reconnect?.click());
+  expect(dialog()?.getAttribute("data-account-name")).toBe("Fine mail");
+});
+
 it("opens the sign-in that replaces an account and asks for the filter permission, after a click", async () => {
   const account = (id: string) =>
     ({
@@ -579,4 +658,166 @@ it("gives the back link a phone tap size and writes the connected date in words"
   await show(APP_PAGE, data({ connections: [appConnection()] }));
   expect(container.querySelector('a[href="/app/integrations"]')?.className).toContain("rk-tap");
   expect(container.textContent).toMatch(/Connected (Dec 31, 2025|Jan 1, 2026)/);
+});
+
+const sharedBots = ["bot_app", "b", "c"].map((id) => ({ id, name: id, color: "#000000" }));
+const switchOf = (name: string) =>
+  container.querySelector<HTMLElement>(`[aria-label="${name} can use Sample workspace"]`)!;
+const buttonOf = (name: string) =>
+  [...container.querySelectorAll("button")].find((b) => b.textContent === name)!;
+
+it("All saves allAgents once and None saves the owner alone, once", async () => {
+  await show(
+    APP_PAGE,
+    data({
+      bots: sharedBots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app" })],
+      access: {
+        conn_app: {
+          allAgents: false,
+          agentShared: true,
+          botIds: ["bot_app", "b"],
+          effectiveAccess: { shared: "some", botIds: ["bot_app", "b"] },
+        },
+      },
+    }),
+  );
+  await act(async () => buttonOf("All").click());
+  expect(setAccess.mock.calls).toEqual([
+    [{ connectionId: "conn_app", allAgents: true, botIds: [] }],
+  ]);
+  setAccess.mockClear();
+  await act(async () => buttonOf("None").click());
+  expect(setAccess.mock.calls).toEqual([
+    [{ connectionId: "conn_app", allAgents: false, botIds: ["bot_app"] }],
+  ]);
+});
+
+it("None leaves Let other agents use on with Access listed and every other agent off", async () => {
+  await show(
+    APP_PAGE,
+    data({
+      bots: sharedBots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app" })],
+      access: {
+        conn_app: {
+          allAgents: false,
+          botIds: ["bot_app"],
+          agentShared: true,
+          effectiveAccess: { shared: "some", botIds: ["bot_app"] },
+        },
+      },
+    }),
+  );
+  expect(container.textContent).toContain("Which agents can use");
+  expect(container.querySelector<HTMLInputElement>("#connection-conn_app-shared")?.checked).toBe(
+    true,
+  );
+  expect(switchOf("b").getAttribute("aria-checked")).toBe("false");
+  expect(switchOf("c").getAttribute("aria-checked")).toBe("false");
+});
+
+it("None on a mail connection leaves the Inbox agent and its email chats as they are", async () => {
+  const bots = [
+    { id: "inbox", name: "Inbox agent", color: "#000", spawnKey: inboxAgentSpawnKey("u1") },
+    { id: "e1", name: "Chat", color: "#000", spawnKey: mailThreadAgentSpawnKey("conn_app", "t") },
+    { id: "a", name: "Ada", color: "#000", spawnKey: null },
+  ];
+  await show(
+    APP_PAGE,
+    data({
+      bots: bots as unknown as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "inbox" })],
+      access: {
+        conn_app: {
+          allAgents: false,
+          botIds: ["inbox", "e1", "a"],
+          agentShared: true,
+          effectiveAccess: { shared: "some", botIds: ["inbox", "e1", "a"] },
+        },
+      },
+    }),
+  );
+  await act(async () => buttonOf("None").click());
+  expect(setAccess.mock.calls).toEqual([
+    [{ connectionId: "conn_app", allAgents: false, botIds: ["inbox", "e1"] }],
+  ]);
+});
+
+it("keeps All available when every agent is on but access is a chosen list", async () => {
+  const access = (ids: string[]) => ({
+    conn_app: {
+      allAgents: false,
+      agentShared: true,
+      botIds: ids,
+      effectiveAccess: { shared: "some" as const, botIds: ids },
+    },
+  });
+  await show(
+    APP_PAGE,
+    data({
+      bots: sharedBots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app" })],
+      access: access(["bot_app", "b", "c"]),
+    }),
+  );
+  expect(buttonOf("All").disabled).toBe(false);
+  expect(buttonOf("None").disabled).toBe(false);
+});
+
+it("while a save is in flight, switching one agent does not flip an agent the server says cannot use it", async () => {
+  // "c" is stored as allowed (all agents) but cannot reach this app, so the server lists it as off.
+  let release: () => void = () => undefined;
+  setAgentAccess.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+  );
+  await show(
+    APP_PAGE,
+    data({
+      bots: sharedBots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app" })],
+      access: {
+        conn_app: {
+          allAgents: true,
+          agentShared: true,
+          botIds: [],
+          effectiveAccess: { shared: "all", botIds: ["bot_app", "b"] },
+        },
+      },
+    }),
+  );
+  expect(switchOf("c").getAttribute("aria-checked")).toBe("false");
+  await act(async () => switchOf("b").click());
+  expect(switchOf("b").getAttribute("aria-checked")).toBe("false");
+  expect(switchOf("c").getAttribute("aria-checked")).toBe("false");
+  expect(switchOf("bot_app").getAttribute("aria-checked")).toBe("true");
+  await act(async () => release());
+});
+
+it("None still saves when everything shown is the owner but access is stored as all agents", async () => {
+  // Only the owner can reach this app, yet it is shared with all agents (including future ones).
+  await show(
+    APP_PAGE,
+    data({
+      bots: sharedBots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app" })],
+      access: {
+        conn_app: {
+          allAgents: true,
+          agentShared: true,
+          botIds: [],
+          effectiveAccess: { shared: "all", botIds: ["bot_app"] },
+        },
+      },
+    }),
+  );
+  expect(buttonOf("All").disabled).toBe(true);
+  expect(buttonOf("None").disabled).toBe(false);
+  await act(async () => buttonOf("None").click());
+  expect(setAccess.mock.calls).toEqual([
+    [{ connectionId: "conn_app", allAgents: false, botIds: ["bot_app"] }],
+  ]);
 });

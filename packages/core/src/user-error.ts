@@ -1,5 +1,8 @@
 import type { ThreadSnapshot } from "@rakazo/contracts";
-import { MISSING_TOOL_FINAL_RESPONSE_ERROR } from "@rakazo/contracts";
+import {
+  MISSING_TOOL_FINAL_RESPONSE_ERROR,
+  PINNED_CONNECTION_LOST_MESSAGE,
+} from "@rakazo/contracts";
 
 /** Copy each client supplies in its own language. */
 export type UserErrorCopy = { fallback: string; offline: string };
@@ -134,7 +137,9 @@ export function credentialIssue(input: {
   return null;
 }
 
-export type AuthErrorCopy = Record<CredentialField, string> & { fallback: string };
+export type AuthErrorCopy = Record<CredentialField, string> & {
+  fallback: string;
+};
 
 /**
  * Copy for a failed auth response body (`{ code, message }`). Request validation failures name
@@ -155,16 +160,105 @@ export function authErrorMessage(body: unknown, copy: AuthErrorCopy): string {
 /** A provider's raw "401" for a run. */
 export const KEY_REJECTED_PATTERN = /^401\b|"code":\s*401\b/;
 
+export type RunErrorCopy = {
+  keyRejected: string;
+  generic: string;
+  /** `resetsOn` is the limit's reset date as the reader's locale writes it, or null when unknown. */
+  spendLimit: (resetsOn: string | null) => string;
+  outOfCredits: string;
+  rateLimited: string;
+};
+
+const RATE_WORDING = /rate.?limit|too many requests/i;
+const CREDIT_WORDING =
+  /insufficient (?:credits?|funds|balance)|out of credits|payment required|billing|add (?:credits|funds)|credit balance/i;
+const LIMIT_WORDING = /limit exceeded|spending limit|monthly limit|usage limit|quota|budget/i;
+/** Anthropic sends an exhausted balance as a 400 with this wording, not a 402. */
+const EXHAUSTED_400_WORDING = /credit balance is too low/i;
+/** Anthropic also sends a reached API usage limit as a 400. */
+const USAGE_LIMIT_400_WORDING = /reached your (?:[a-z0-9()-]+ ){0,4}usage limits?/i;
+
+/** The HTTP status a provider error starts with (`403: {...}`) or carries as `"code":403`. */
+function runErrorStatus(error: string): number | null {
+  const match = /^(\d{3})\b/.exec(error.trim()) ?? /"code":\s*(\d{3})\b/.exec(error);
+  return match ? Number(match[1]) : null;
+}
+
+/** When a spending limit resets, from the error's `resets_at` field or "resets <date>" text. */
+function runErrorResetDate(error: string): string | null {
+  const raw =
+    /"resets_at":\s*"([^"]+)"/.exec(error)?.[1] ??
+    /\bresets?\s+(\d{4}-\d{2}-\d{2}\S*)/.exec(error)?.[1];
+  const date = raw ? new Date(raw.replace(/[.,;)]+$/, "")) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString(undefined, {
+        dateStyle: "medium",
+        timeZone: "UTC",
+      })
+    : null;
+}
+
+type RunErrorKind = "keyRejected" | "spendLimit" | "outOfCredits" | "rateLimited" | "other";
+
+function classifyRunError(error: string): RunErrorKind {
+  if (KEY_REJECTED_PATTERN.test(error)) return "keyRejected";
+  const status = runErrorStatus(error);
+  // A 400 is bad input, except when it says the account itself is exhausted or over its own limit.
+  // Only these two narrow wordings count; a 400 about a parameter stays as the provider wrote it.
+  if (status === 400) {
+    if (EXHAUSTED_400_WORDING.test(error)) return "outOfCredits";
+    if (USAGE_LIMIT_400_WORDING.test(error)) return "spendLimit";
+  }
+  const quotaStatus = status === 402 || status === 403 || status === 429;
+  if (
+    /"(?:scope|limit_source)":\s*"[^"]*limit/.test(error) ||
+    (quotaStatus && LIMIT_WORDING.test(error) && !RATE_WORDING.test(error))
+  )
+    return "spendLimit";
+  if (status === 429 && RATE_WORDING.test(error)) return "rateLimited";
+  if (status === 402 || (quotaStatus && CREDIT_WORDING.test(error))) return "outOfCredits";
+  if (status === 429) return "rateLimited";
+  return "other";
+}
+
 /** A stored run error as a person reads it; one mapping for the panel, the toast and the push. */
-export function plainRunError(
-  error: string,
-  copy: { keyRejected: string; generic: string },
-): string {
-  return KEY_REJECTED_PATTERN.test(error)
-    ? copy.keyRejected
-    : isInternalRunError(error)
-      ? copy.generic
-      : error;
+export function plainRunError(error: string, copy: RunErrorCopy): string {
+  switch (classifyRunError(error)) {
+    case "keyRejected":
+      return copy.keyRejected;
+    case "spendLimit":
+      return copy.spendLimit(runErrorResetDate(error));
+    case "outOfCredits":
+      return copy.outOfCredits;
+    case "rateLimited":
+      return copy.rateLimited;
+    default:
+      return isInternalRunError(error) ? copy.generic : error;
+  }
+}
+
+/**
+ * The one action that fixes a failed run: "models" opens Settings > Models (a rejected key, a
+ * spending limit, no credits), "retry" sends the message again (a rate limit or an unexplained
+ * failure, whose copy says to try again), "connection" offers both Models and the bot's settings
+ * for a pinned connection that is signed out or removed. Any other error names its own cause and has none.
+ */
+export function runErrorAction(
+  error: string | null | undefined,
+): "models" | "retry" | "connection" | undefined {
+  if (!error) return undefined;
+  // "connection": the bot's pinned connection is gone; sign in again or choose another.
+  if (error === PINNED_CONNECTION_LOST_MESSAGE) return "connection";
+  switch (classifyRunError(error)) {
+    case "keyRejected":
+    case "spendLimit":
+    case "outOfCredits":
+      return "models";
+    case "rateLimited":
+      return "retry";
+    default:
+      return isInternalRunError(error) ? "retry" : undefined;
+  }
 }
 
 /** True when a delegate agent's reply reached this thread after the run began: the answer is on screen. */

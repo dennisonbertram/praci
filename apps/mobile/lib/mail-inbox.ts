@@ -9,6 +9,7 @@ import type {
   InboxMoveOutput,
   InboxPile,
   InboxTodo,
+  InboxTodoDone,
   InboxTodosOutput,
   MailActionsListOutput,
   MailActionUndoOutput,
@@ -77,7 +78,11 @@ export const listMailTodos = (connectionId?: string) =>
   rpc<InboxTodosOutput>("inbox/todos/list", connectionId ? { connectionId } : {});
 
 export const completeMailTodo = (id: string) =>
-  rpc<InboxTodo>("inbox/todos/setDone", { id, done: true });
+  rpc<InboxTodoDone>("inbox/todos/setDone", { id, done: true });
+
+/** The message needs no reply. `stopped` names the sender when this was the third; `undo` takes the sender back to 2. */
+export const markNoReply = (messageId: string, undo = false) =>
+  rpc<{ stopped: string | null }>("inbox/noReply", { messageId, ...(undo ? { undo } : {}) });
 
 /** The only way to create the Inbox agent; it returns the same bot every time. */
 export const ensureMailAgent = () => rpc<{ id: string; name: string }>("inbox/agent");

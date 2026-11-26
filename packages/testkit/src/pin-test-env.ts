@@ -7,6 +7,8 @@ if (!process.env.VERIFY_PROVIDERS) {
   process.env.SANDBOX_PROVIDER = "fake";
   process.env.CLOUD_AGENT_PROVIDER = "emulator";
   delete process.env.CURSOR_API_KEY;
+  delete process.env.OPENROUTER_API_KEY;
+  delete process.env.MODEL_API_KEY;
   process.env.WAKEUP_DRIVER = "memory";
   delete process.env.COMPOSIO_API_KEY;
   for (const name of Object.keys(process.env)) {
@@ -18,6 +20,9 @@ if (!process.env.VERIFY_PROVIDERS) {
     delete process.env.REALTIME_DATABASE_URL;
   }
 }
+// The deployment default is Open. Tests written before it ask for approval as the closed levels
+// do, so they run at "Ask for changes"; a test of Open sets the level on the stored row.
+if (!process.env.VERIFY_PROVIDERS) process.env.RAKAZO_PERMISSIONS_DEFAULT = "ask_changes";
 delete process.env.AXIOM_TOKEN;
 delete process.env.AXIOM_DATASET;
 if (!process.env.VERIFY_LOGGING) {

@@ -220,9 +220,9 @@ export interface ConnectionAuthProvider {
   complete(
     /** `provider` is the pending Connection's provider, for connectors whose providers need different grants. */
     request: { state: string; code?: string; redirectUrl?: string; provider?: string },
-    /** `scope`: the space-separated scopes the provider granted, when it reports them. */
+    /** `scope`: the space-separated scopes the provider granted, when it reports them. `account`: the signed-in account's address, when it reports one. */
     context: AdapterContext,
-  ): Promise<{ connectionRef: string; secretId?: string; scope?: string }>;
+  ): Promise<{ connectionRef: string; secretId?: string; scope?: string; account?: string }>;
   /** `provider` is the Connection's provider, for connectors that hold several apps per account. */
   revoke(
     connectionRef: string,
@@ -366,13 +366,32 @@ export interface MemoryStore {
   read(request: MemoryReadRequest, context: AdapterContext): Promise<MemorySnapshot>;
   search(request: MemorySearchRequest, context: AdapterContext): Promise<MemorySearchResult[]>;
   commit(request: MemoryCommitRequest, context: AdapterContext): Promise<MemoryRevision>;
+  /** Notes that these documents were loaded into a run. Stores that do not fade memories may omit it. */
+  recordUse?(documentIds: string[], context: AdapterContext): Promise<void>;
+  /**
+   * Exports durable memory as portable Markdown. Bot documents are emitted as
+   * `bot/<botId>/<path>` and user documents as `user/<path>`, and every file carries
+   * `memory` metadata declaring the scope it restores to. `"all"` means bot and user
+   * memory; a `botId` narrows the bot side only, since user memory is shared by every
+   * bot the caller owns.
+   */
   exportMarkdown(
     request: MemoryExportRequest,
     context: AdapterContext,
   ): AsyncIterable<PortableFile>;
+  /**
+   * Imports portable Markdown. A file carrying `memory` metadata restores the scope and
+   * bot it declares; its path must match that declaration (`bot/<botId>/<path>` or
+   * `user/<path>`). Every other file is a user document at its own path, verbatim, which
+   * keeps exports made before the metadata existed — including paths that happen to
+   * start with `user/` or `bot/` — unchanged. A bot id the caller does not own fails the
+   * import before anything is written; `options.botId` restores bot documents onto a
+   * different bot, such as a copy.
+   */
   importMarkdown(
     files: AsyncIterable<PortableFile>,
     context: AdapterContext,
+    options?: { botId?: string },
   ): Promise<MemoryRevision>;
 }
 
@@ -516,6 +535,30 @@ export interface ArtifactStore {
     context: AdapterContext,
     range?: { start: number; end: number },
   ): Promise<ReadableStream<Uint8Array>>;
+}
+
+/** A contact's photo: the addresses it belongs to and where to download it. */
+export interface ContactPhotoRef {
+  /** Lower-cased. */
+  emails: string[];
+  url: string;
+}
+
+/**
+ * Profile photos of the people in a connected account's address book. Placeholder photos the
+ * provider generates are never listed. The URLs are for `download` only; they never reach a client.
+ */
+export interface ContactPhotoSource {
+  list(
+    account: { connectorId: string; app: string; accountRef: string },
+    context: AdapterContext,
+  ): AsyncIterable<ContactPhotoRef>;
+  /** The image bytes, or null when the URL is not one the provider serves photos from or the image is over `maxBytes`. */
+  download(
+    url: string,
+    maxBytes: number,
+    context: AdapterContext,
+  ): Promise<{ bytes: Uint8Array; contentType: string } | null>;
 }
 
 export interface SecretStore {
@@ -803,8 +846,13 @@ export interface MeetingSource {
    * trusting a checkpoint. Throws MeetingSourceError.
    */
   list(filter: { updatedAfter?: Date; createdAfter?: Date; cursor?: string }): Promise<{
-    items: { externalId: string; updatedAt: string; deleted?: boolean }[];
+    items: { externalId: string; updatedAt: string; version?: string; deleted?: boolean }[];
     nextCursor?: string;
   }>;
   get(externalId: string, options: { includeTranscript: boolean }): Promise<SourceMeeting>;
+  /**
+   * False when reading this meeting now would exceed the source's read budget for this run; the
+   * run then stops and the next one continues. Absent: no budget.
+   */
+  canGet?(externalId: string): boolean;
 }

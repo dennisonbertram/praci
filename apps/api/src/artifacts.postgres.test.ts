@@ -3,7 +3,7 @@ import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, IsolationError } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createOwnedArtifact } from "./artifacts.js";
+import { ArtifactListCursorError, createOwnedArtifact, listSpaceArtifacts } from "./artifacts.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -108,5 +108,94 @@ describePostgres("artifact upload nonce (PostgreSQL)", () => {
   it("refuses a nonce reused for another chat", async () => {
     await upload("send-3:0", { botId });
     await expect(upload("send-3:0", { botId: otherBotId })).rejects.toBeInstanceOf(IsolationError);
+  });
+});
+
+describePostgres("artifact search (PostgreSQL)", () => {
+  const suffix = `${process.pid}-${Date.now()}`;
+  const userId = `artifact-search-user-${suffix}`;
+  const organizationId = `artifact-search-org-${suffix}`;
+  const spaceId = `artifact-search-space-${suffix}`;
+  const actor: Actor = {
+    userId,
+    spaceId,
+    email: `${userId}@rakazo.test`,
+    isDeploymentOwner: false,
+  };
+  let prisma: PrismaClient;
+  let close: () => Promise<void>;
+  let made = 0;
+  const add = (name: string, createdAt: Date, description: string | null = null) => {
+    made += 1;
+    return prisma.artifact.create({
+      data: {
+        spaceId,
+        userId,
+        name,
+        description,
+        mimeType: "text/markdown",
+        size: 1,
+        hash: `hash-${suffix}-${made}`,
+        storageKey: `key-${suffix}-${made}`,
+        createdAt,
+      },
+    });
+  };
+
+  beforeAll(async () => {
+    const db = createDb(databaseUrl!);
+    prisma = db.prisma;
+    close = async () => {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    };
+    await prisma.user.create({
+      data: { id: userId, name: userId, email: `${userId}@rakazo.test`, emailVerified: false },
+    });
+    await prisma.organization.create({
+      data: { id: organizationId, name: "Search Org", slug: organizationId, createdAt: new Date() },
+    });
+    await prisma.space.create({
+      data: { id: spaceId, organizationId, name: "General", isDefault: true },
+    });
+  });
+
+  afterAll(async () => {
+    if (!prisma) return;
+    await prisma.organization.deleteMany({ where: { id: organizationId } });
+    await prisma.user.deleteMany({ where: { id: userId } });
+    await close();
+  });
+
+  it("listSpace q finds an artifact older than the newest 60 and treats % and _ literally", async () => {
+    const now = Date.now();
+    const minute = 60_000;
+    // Older than the newest sixty, so a page of the newest sixty never shows it.
+    await add("Pricing 100% final", new Date(now - 400 * minute), "Older deck");
+    await add("Plan A_B", new Date(now - 401 * minute));
+    await add("Plan AXB", new Date(now - 402 * minute));
+    for (let index = 0; index < 61; index += 1)
+      await add(`note-${index}`, new Date(now - index * minute));
+    const deps = {
+      prisma: prisma as unknown as Pick<PrismaClient, "artifact" | "$queryRaw">,
+    };
+
+    const newest = await listSpaceArtifacts(deps, actor, { limit: 60 });
+    expect(newest.items).toHaveLength(60);
+    expect(newest.items.map((item) => item.name)).not.toContain("Pricing 100% final");
+
+    const percent = await listSpaceArtifacts(deps, actor, { q: "100%", limit: 6 });
+    expect(percent.items.map((item) => item.name)).toEqual(["Pricing 100% final"]);
+    const underscore = await listSpaceArtifacts(deps, actor, { q: "A_B", limit: 6 });
+    expect(underscore.items.map((item) => item.name)).toEqual(["Plan A_B"]);
+    // A description hit counts too.
+    const described = await listSpaceArtifacts(deps, actor, { q: "older deck", limit: 6 });
+    expect(described.items.map((item) => item.name)).toEqual(["Pricing 100% final"]);
+    // Another space cannot reach it, and a cursor minted for one query is refused for another.
+    const page = await listSpaceArtifacts(deps, actor, { q: "note", limit: 2 });
+    expect(page.nextCursor).not.toBeNull();
+    await expect(
+      listSpaceArtifacts(deps, actor, { q: "plan", cursor: page.nextCursor ?? undefined }),
+    ).rejects.toBeInstanceOf(ArtifactListCursorError);
   });
 });

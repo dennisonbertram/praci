@@ -100,7 +100,7 @@ describe("call session", () => {
     const error = "The browser keeps dropping the microphone. Start dictation again to retry.";
     watcher?.({ status: "idle", transcript: "", error });
 
-    expect(getSnapshot()?.caption).toBe(error);
+    expect(getSnapshot()?.caption).toContain(error);
     await vi.advanceTimersByTimeAsync(5_000);
     expect(listen).toHaveBeenCalledOnce();
     expect(send).not.toHaveBeenCalled();
@@ -110,6 +110,43 @@ describe("call session", () => {
     speech?.({ status: "speaking", caption: "Are you there?" });
     await Promise.resolve();
     expect(listen).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks microphone errors and clears the flag when a normal caption arrives", async () => {
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const watcher = vi.mocked(dictation.subscribe).mock.calls.at(-1)?.[0];
+    watcher?.({ status: "idle", transcript: "", error: "Microphone failed" });
+    expect(getSnapshot()).toMatchObject({
+      captionIsError: true,
+      caption: expect.stringContaining("Microphone failed"),
+    });
+    const speech = vi.mocked(speaker.subscribe).mock.calls.at(-1)?.[0];
+    speech?.({ status: "speaking", caption: "I am listening." });
+    expect(getSnapshot()).toMatchObject({ caption: "I am listening.", captionIsError: false });
+  });
+
+  it("adds the permission hint when dictation reports a refused microphone", async () => {
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const watcher = vi.mocked(dictation.subscribe).mock.calls.at(-1)?.[0];
+    watcher?.({
+      status: "idle",
+      transcript: "",
+      error: "Permission denied",
+      errorKind: "permission",
+    });
+    expect(getSnapshot()?.caption).toContain("Allow microphone access in this site's settings.");
+    watcher?.({ status: "idle", transcript: "", error: "Could not transcribe that recording." });
+    expect(getSnapshot()?.caption).not.toContain("Allow microphone access");
+  });
+
+  it("tells the caller where to allow microphone access after a permission failure", async () => {
+    listen.mockRejectedValueOnce(new DOMException("Permission denied", "NotAllowedError"));
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    await Promise.resolve();
+    expect(getSnapshot()).toMatchObject({
+      captionIsError: true,
+      caption: expect.stringContaining("Allow microphone access in this site's settings."),
+    });
   });
 
   it("sends what it heard to the bot on the call, not the bot on screen", async () => {
@@ -760,6 +797,115 @@ describe("call session", () => {
       "Hey, I'm here.",
       expect.objectContaining({ messageId: "message-1" }),
     );
+  });
+});
+
+describe("call session after a run that ends without a reply", () => {
+  beforeEach(() => {
+    endCall();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    isSpeaking.mockReturnValue(false);
+    listen.mockResolvedValue(undefined);
+    getThread.mockResolvedValue(snapshot([]) as never);
+    send.mockResolvedValue({ runId: "run-1", taskId: "task-1" } as never);
+  });
+
+  afterEach(() => {
+    endCall();
+    vi.useRealTimers();
+  });
+
+  it("returns to listening with an error caption when the run fails", async () => {
+    getThread.mockResolvedValue(snapshot([], runningRun) as never);
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const feed = vi.mocked(runThreadSubscription).mock.calls.at(-1)?.[0];
+    await heard("book the flight");
+    expect(getSnapshot()?.phase).toBe("thinking");
+    const listens = listen.mock.calls.length;
+
+    getThread.mockResolvedValue(
+      snapshot([], {
+        ...runningRun,
+        status: "failed",
+        error: "TypeError: x is undefined at run (executor.ts:12)",
+      } as ThreadSnapshot["run"]) as never,
+    );
+    await feed?.refresh();
+
+    expect(getSnapshot()).toMatchObject({
+      phase: "listening",
+      captionIsError: true,
+      caption: "Something went wrong. Try again.",
+    });
+    expect(listen.mock.calls.length).toBe(listens + 1);
+  });
+
+  it("returns to listening quietly when the run is cancelled", async () => {
+    getThread.mockResolvedValue(snapshot([], runningRun) as never);
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const feed = vi.mocked(runThreadSubscription).mock.calls.at(-1)?.[0];
+    await heard("book the flight");
+    expect(getSnapshot()?.phase).toBe("thinking");
+
+    getThread.mockResolvedValue(snapshot([]) as never);
+    await feed?.refresh();
+
+    expect(getSnapshot()).toMatchObject({ phase: "listening", caption: "", captionIsError: false });
+  });
+
+  it("does not speak the reply that was already in the thread when the call began", async () => {
+    const earlier = { ...botMessage("message-0", "Earlier reply"), runId: "run-0" };
+    getThread.mockResolvedValue(snapshot([earlier]) as never);
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const feed = vi.mocked(runThreadSubscription).mock.calls.at(-1)?.[0];
+    await feed?.loadInitial();
+
+    getThread.mockResolvedValue(
+      snapshot([earlier], { ...runningRun, status: "queued" } as ThreadSnapshot["run"]) as never,
+    );
+    await heard("book the flight");
+
+    expect(speak).not.toHaveBeenCalledWith("Earlier reply", expect.anything());
+    expect(getSnapshot()?.phase).toBe("thinking");
+  });
+
+  it("returns to listening when the run is cancelled before the send response arrives", async () => {
+    const pendingSend = deferred<{ runId: string; taskId: string }>();
+    send.mockReturnValueOnce(pendingSend.promise as never);
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const feed = vi.mocked(runThreadSubscription).mock.calls.at(-1)?.[0];
+    void heard("book the flight");
+    await flushMicrotasks();
+
+    getThread.mockResolvedValue(snapshot([], runningRun) as never);
+    await feed?.refresh();
+    getThread.mockResolvedValue(snapshot([]) as never);
+    pendingSend.resolve({ runId: "run-1", taskId: "task-1" });
+    await flushMicrotasks();
+
+    expect(getSnapshot()).toMatchObject({ phase: "listening", caption: "" });
+  });
+
+  it("stays thinking when an old failed run arrives while the send is pending", async () => {
+    const pendingSend = deferred<{ runId: string; taskId: string }>();
+    send.mockReturnValueOnce(pendingSend.promise as never);
+    startCall({ botId: "call-bot", botName: "Ada", transcribe: false });
+    const feed = vi.mocked(runThreadSubscription).mock.calls.at(-1)?.[0];
+    void heard("book the flight");
+    await flushMicrotasks();
+
+    getThread.mockResolvedValue(
+      snapshot([], {
+        ...runningRun,
+        id: "run-0",
+        status: "failed",
+        error: "old",
+      } as ThreadSnapshot["run"]) as never,
+    );
+    await feed?.refresh();
+
+    expect(getSnapshot()).toMatchObject({ phase: "thinking", caption: "" });
   });
 });
 

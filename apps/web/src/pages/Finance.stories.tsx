@@ -178,6 +178,7 @@ const overview: FinanceOverview = {
   treasuryYieldLastMonth: { month: "2026-09", netCents: 31_000 },
   lastSyncedAt: "2026-10-15T08:00:00.000Z",
   excludedNonUsdCount: 2,
+  excludedNonUsd: [],
   crypto: null,
   statementReminders: [],
 };
@@ -249,6 +250,16 @@ export const LoadError: Story = {
     mockRpc({
       "finance.overview": () => {
         throw new Error("Could not load Finance");
+      },
+    }),
+};
+
+export const ChartNotesLoadError: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.overview": overview,
+      "finance.chartNotes": () => {
+        throw new Error("Could not load chart notes");
       },
     }),
 };
@@ -367,6 +378,7 @@ export const CardOnlyNoBurn: Story = {
     runway: { months: null, runOutDate: null },
     treasuryYieldLastMonth: null,
     excludedNonUsdCount: 0,
+    excludedNonUsd: [],
   }),
 };
 

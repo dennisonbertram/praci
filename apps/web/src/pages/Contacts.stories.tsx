@@ -1,7 +1,9 @@
 import type { Contact } from "@rakazo/contracts";
+import { NotificationToaster } from "@rakazo/ui-web";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
+import { resetDeletedContacts } from "../lib/use-contact-notices";
 import { ContactsPage } from "./Contacts";
 
 const contact = (
@@ -26,6 +28,7 @@ const contacts = [
   contact("c2", "Bo Sample", "vendor", "Sample & Co"),
   contact("c3", "Cy Placeholder", "legal", "Placeholder LLP"),
   contact("c4", "Di Demo", "investor", null),
+  contact("c5", "Casey Advisor (Mock)", "advisor", "Placeholder Advisory Group"),
 ];
 
 const meta = {
@@ -39,6 +42,12 @@ type Story = StoryObj<typeof meta>;
 export const Populated: Story = { beforeEach: () => mockRpc({ "contacts.list": contacts }) };
 
 /** In a workspace among several, the header names it. */
+/** Phone: name, organization and email under it, Kind as a badge. */
+export const Phone: Story = {
+  beforeEach: () => mockRpc({ "contacts.list": contacts }),
+  globals: { viewport: { value: "mobile1" } },
+};
+
 export const NamedWorkspace: Story = {
   args: { spaceName: "Example Co" },
   beforeEach: () => mockRpc({ "contacts.list": contacts }),
@@ -51,6 +60,11 @@ export const Searched: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.type(await within(canvasElement).findByRole("searchbox"), "acme");
   },
+};
+
+export const SortedByKind: Story = {
+  parameters: { initialEntries: ["/app/contacts?sort=kind&dir=desc"] },
+  beforeEach: () => mockRpc({ "contacts.list": contacts }),
 };
 
 export const NoMatches: Story = {
@@ -69,26 +83,29 @@ export const LoadError: Story = {
     }),
 };
 
-/** Deleting a contact keeps a notice with Undo and Dismiss on screen. */
+/** Deleting a contact from its row menu keeps a notice with Undo on screen. */
 export const DeletedWithUndo: Story = {
-  beforeEach: () => mockRpc({ "contacts.list": contacts, "contacts.delete": { ok: true } }),
-  play: async ({ canvasElement }) => {
-    await userEvent.click(
-      await within(canvasElement).findByRole("button", { name: "Ada Example" }),
-    );
-    await userEvent.click(await within(document.body).findByRole("button", { name: "Delete" }));
-  },
-};
-
-/** The agent that added a contact is named in its dialog. */
-export const AddedByAgent: Story = {
-  beforeEach: () =>
+  decorators: [
+    (Story) => (
+      <>
+        <Story />
+        <NotificationToaster onOpen={() => {}} />
+      </>
+    ),
+  ],
+  beforeEach: () => {
+    resetDeletedContacts();
     mockRpc({
-      "contacts.list": [{ ...contacts[2], addedBy: { id: "b1", name: "Chief" } }, ...contacts],
-    }),
+      "contacts.list": contacts,
+      "contacts.linked": { portal: false, documents: [], safes: 0 },
+      "contacts.delete": { ok: true },
+    });
+  },
   play: async ({ canvasElement }) => {
     await userEvent.click(
-      (await within(canvasElement).findAllByRole("button", { name: "Cy Placeholder" }))[0]!,
+      await within(canvasElement).findByRole("button", { name: "Actions for Ada Example" }),
     );
+    await userEvent.click(await within(document.body).findByRole("menuitem", { name: "Delete" }));
+    await within(document.body).findByText("Deleted Ada Example");
   },
 };

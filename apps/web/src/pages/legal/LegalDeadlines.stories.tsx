@@ -20,8 +20,14 @@ export const Default: Story = {};
 
 export const Empty: Story = { args: { deadlines: [] } };
 
-/** Opened from the Overdue tile: only the overdue ones, with a way back to all. */
-export const OnlyOverdue: Story = { args: { onlyOverdue: true, onShowAll: () => {} } };
+/** Opened from the Overdue tile (?due=overdue): the Due filter pill shows, and removing it lists all. */
+export const OnlyOverdue: Story = { parameters: { initialEntries: ["/?due=overdue"] } };
+
+/** The sidebar badge's set: overdue plus due within a week (?due=soon). */
+export const DueSoon: Story = { parameters: { initialEntries: ["/?due=soon"] } };
+
+/** Nothing matches: a way to clear the filters. */
+export const NoMatches: Story = { parameters: { initialEntries: ["/?q=zzz"] } };
 
 /** The page offers the Legal agent: each row gets Ask agent with the row as the question. */
 export const WithAskAgent: Story = { args: { onAsk: () => {} } };

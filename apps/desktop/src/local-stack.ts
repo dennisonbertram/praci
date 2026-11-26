@@ -19,6 +19,7 @@ export const STACK_ENV_TEMPLATE = ".env.images.example";
 export const STACK_ENV_FILE = ".env";
 export const STACK_WEB_URL_FILE = ".desktop-web-url";
 export const STACK_TOKEN_FILE = ".desktop-stack-token";
+export const APP_CONTROL_FILE = ".desktop-app-control";
 export const STACK_OUTPUT_LINES = 20;
 export const STACK_HEALTH_TIMEOUT_MS = 120_000;
 export const COMPOSE_WAIT_TIMEOUT_S = 300;
@@ -119,6 +120,7 @@ const HELPER_SERVICES = ["postgres", "data-init", "seaweedfs", "seaweedfs-init"]
 
 const GENERATED_SECRETS: Record<string, number> = {
   POSTGRES_PASSWORD: 16,
+  POSTGRES_APP_PASSWORD: 16,
   BETTER_AUTH_SECRET: 32,
   ENCRYPTION_KEY: 32,
   SCREEN_PROXY_SECRET: 32,
@@ -150,6 +152,17 @@ export function renderStackEnv(template: string, randomHex: (bytes: number) => s
   return rendered.join("\n");
 }
 
+// Secrets a later version added. A stack created before then gets them appended,
+// so an update keeps starting (Compose requires them) without touching other lines.
+const ADDED_SECRETS = ["POSTGRES_APP_PASSWORD"];
+
+/** Lines to append so an existing `.env` has every added secret, or "" when it already does. */
+export function missingStackSecrets(env: string, randomHex: (bytes: number) => string): string {
+  return ADDED_SECRETS.filter((name) => !new RegExp(`^${name}=\\S`, "m").test(env))
+    .map((name) => `${name}=${randomHex(GENERATED_SECRETS[name]!)}\n`)
+    .join("");
+}
+
 /** Keeps an existing regular `.env`, but replaces a final symlink instead of trusting its target. */
 export async function ensureStackEnv(
   dir: string,
@@ -162,7 +175,10 @@ export async function ensureStackEnv(
     if (!info.isSymbolicLink()) {
       // Fill generated credentials an earlier version left empty (the object store needs them).
       const existing = await readFile(destination, "utf8");
-      const repaired = renderStackEnv(existing, randomHex);
+      const filled = renderStackEnv(existing, randomHex);
+      const missing = missingStackSecrets(filled, randomHex);
+      const separator = missing && filled !== "" && !filled.endsWith("\n") ? "\n" : "";
+      const repaired = `${filled}${separator}${missing}`;
       if (repaired !== existing) await writePrivateFile(destination, repaired);
       return "kept";
     }
@@ -338,6 +354,11 @@ export interface LocalStackDeps {
   onState?: (state: DesktopLocalStackState) => void;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   healthTimeoutMs?: number;
+  /** Starts the loopback app-control bridge. Used on macOS only, for this managed stack only. */
+  startAppControl?: (saved: {
+    port?: number;
+    token: string;
+  }) => Promise<{ port: number; token: string; close: () => Promise<void> }>;
 }
 
 /** Resolves early on abort so a stop never waits out a health poll. */
@@ -361,6 +382,10 @@ export class LocalStackController {
   private current: DesktopLocalStackState;
   private currentWebUrl: string;
   private currentStackToken: string | null = null;
+  /** True when containers hold an old bridge address; the stack must be recreated. */
+  private bridgeStale = false;
+  private appControl: Awaited<ReturnType<NonNullable<LocalStackDeps["startAppControl"]>>> | null =
+    null;
   private running: Promise<DesktopLocalStackState> | null = null;
   private stopping: Promise<DesktopLocalStackState> | null = null;
   private inFlight: AbortController | null = null;
@@ -387,10 +412,12 @@ export class LocalStackController {
     if (token === null) return false;
     this.currentStackToken = token;
     try {
-      return (
+      const matches =
         (await this.deps.probe(url, AbortSignal.timeout(HEALTH_POLL_INTERVAL_MS), token)) ===
-        this.deps.imageTag
-      );
+        this.deps.imageTag;
+      // Running containers keep the bridge address they started with; serve it again.
+      if (matches) await this.ensureAppControl();
+      return matches && !this.bridgeStale;
     } catch {
       return false;
     }
@@ -437,7 +464,55 @@ export class LocalStackController {
     return stopping;
   }
 
+  /**
+   * Starts the bridge once, reusing the saved port and token so containers that kept
+   * running across an app restart still reach it. Darwin and the managed stack only.
+   */
+  private async ensureAppControl() {
+    const start = this.deps.startAppControl;
+    if (this.deps.platform !== "darwin" || !start || this.appControl !== null) return;
+    const file = path.join(this.deps.stackDir, APP_CONTROL_FILE);
+    let saved: { port?: number; token?: string } = {};
+    try {
+      saved = JSON.parse((await readPrivateFile(file, 1024)) ?? "{}");
+    } catch {
+      // unreadable: start fresh
+    }
+    const token =
+      typeof saved.token === "string" && /^[a-f0-9]{64}$/.test(saved.token)
+        ? saved.token
+        : this.deps.randomHex(32);
+    const port = Number.isInteger(saved.port) ? saved.port : undefined;
+    // A bridge that cannot start only disables app control; the stack still runs.
+    let bridge = await start({ port, token }).catch(() => null);
+    if (bridge === null) return;
+    if (port !== undefined && bridge.port !== port) {
+      // The saved port was taken, so running containers still hold the old address and
+      // token. Rotate the token so whoever holds the old port cannot replay it here, and
+      // have the next `compose up` recreate the containers with the new values.
+      await bridge.close().catch(() => undefined);
+      bridge = await start({ token: this.deps.randomHex(32) }).catch(() => null);
+      if (bridge === null) return;
+      this.bridgeStale = true;
+    }
+    this.appControl = bridge;
+    if (bridge.port !== port || bridge.token !== saved.token) {
+      await writePrivateFile(
+        file,
+        JSON.stringify({ port: bridge.port, token: bridge.token }),
+      ).catch(() => undefined);
+    }
+  }
+
+  /** Closes the app-control bridge and stops its agent-desktop command hosts. */
+  async closeAppControl() {
+    const bridge = this.appControl;
+    this.appControl = null;
+    await bridge?.close().catch(() => undefined);
+  }
+
   private async runStop(): Promise<DesktopLocalStackState> {
+    await this.closeAppControl();
     const binary = resolveDockerBinary(this.deps.platform, this.deps.env, this.deps.exists);
     const stopped = binary === null ? null : await this.compose(binary, ["stop"], STOP_TIMEOUT_MS);
     this.setState(
@@ -530,6 +605,7 @@ export class LocalStackController {
     await ensureStackEnv(this.deps.stackDir, template, this.deps.randomHex);
     const stackToken = await ensureStackToken(this.deps.stackDir, this.deps.randomHex);
     this.currentStackToken = stackToken;
+    await this.ensureAppControl();
 
     const localImages = this.deps.images?.local === true;
     this.push({ type: "pull-start" });
@@ -598,6 +674,7 @@ export class LocalStackController {
     const deadline = Date.now() + (this.deps.healthTimeoutMs ?? STACK_HEALTH_TIMEOUT_MS);
     while (!signal.aborted) {
       if ((await this.deps.probe(this.currentWebUrl, signal, stackToken)) === this.deps.imageTag) {
+        this.bridgeStale = false;
         this.push({ type: "ready" });
         return;
       }
@@ -624,9 +701,21 @@ export class LocalStackController {
               RAKAZO_COMPUTER_IMAGE: this.deps.images.computerImage,
             }
           : {}),
+        // Restricted egress needs host iptables rules. Docker Desktop keeps its
+        // bridges inside its VM where the host cannot add them, and the app cannot
+        // install root firewall rules on Linux either, so the stack would refuse
+        // every computer. This computer is the person's own machine.
+        SANDBOX_COMPUTER_EGRESS: "open",
         ...(this.currentStackToken === null
           ? {}
           : { RAKAZO_DESKTOP_STACK_TOKEN: this.currentStackToken }),
+        ...(this.appControl === null
+          ? {}
+          : {
+              APP_CONTROL_PROVIDER: "agent-desktop",
+              APP_CONTROL_BRIDGE_URL: `http://host.docker.internal:${this.appControl.port}`,
+              APP_CONTROL_BRIDGE_TOKEN: this.appControl.token,
+            }),
         RAKAZO_WEB_PORT: new URL(this.currentWebUrl).port || "80",
         // Only web needs a stable host address. Docker allocates the API host port.
         RAKAZO_API_PORT: "0",

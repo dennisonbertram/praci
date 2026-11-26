@@ -1,5 +1,6 @@
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { FinanceCryptoOutput, FinanceWallet } from "@rakazo/contracts";
+import type { CryptoHolding, FinanceCryptoOutput, FinanceWallet } from "@rakazo/contracts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,13 +23,16 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import { MoreHorizontal } from "lucide-react";
+import { ChevronRight, MoreHorizontal } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
+import { SeeAll, useCappedRows } from "../../components/CappedList";
 import { LineChart } from "../../components/finance/charts";
 import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
+import { Sparkline } from "../../components/finance/Sparkline";
 import { DetailPage, Kpi, Section, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
-import { chainName, shortAddress, tokenAmount } from "../../lib/crypto-format";
+import { chainName, shortAddress, tokenAmount, tokenPrice } from "../../lib/crypto-format";
 import { dayMonth, money } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -143,6 +148,31 @@ function WalletRows({
   );
 }
 
+/** One quiet line that opens the unpriced tokens in place. */
+function UnpricedRows({ count, children }: { count: number; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <TableRow className="cursor-pointer" onClick={() => setOpen((v) => !v)}>
+        <TableCell colSpan={7} className="text-muted-foreground">
+          <button
+            type="button"
+            aria-expanded={open}
+            className="text-start outline-none hover:underline focus-visible:underline"
+          >
+            <ChevronRight
+              aria-hidden="true"
+              className={cn("me-1 inline size-3.5", open && "rotate-90")}
+            />
+            {plural(count, { one: "# unpriced token", other: "# unpriced tokens" })}
+          </button>
+        </TableCell>
+      </TableRow>
+      {open ? children : null}
+    </>
+  );
+}
+
 export function FinanceCryptoPage() {
   useHideAmounts();
   const { t } = useLingui();
@@ -163,6 +193,11 @@ export function FinanceCryptoPage() {
   const holdings = [...(data?.holdings ?? [])].sort(
     (a, b) => (b.usdValueCents ?? -1) - (a.usdValueCents ?? -1),
   );
+  const priced = holdings.filter((h) => h.usdValueCents !== null);
+  // Every unpriced row goes behind one line, scam airdrops included.
+  const unpricedRows = holdings.filter((h) => h.usdValueCents === null);
+  // A phone sees the 3 largest holdings; the rest open in place.
+  const holdingList = useCappedRows(priced);
   const walletById = new Map((data?.wallets ?? []).map((w) => [w.id, walletName(w)]));
   // The Wallets section is wallet-only: the summary's totals also include exchanges.
   const walletCents = (data?.summary.byWallet ?? []).reduce((sum, w) => sum + w.cents, 0);
@@ -171,6 +206,29 @@ export function FinanceCryptoPage() {
     0,
   );
   const unpriced = Math.max(0, (data?.summary.unpricedTokenCount ?? 0) - exchangeUnpriced);
+  const renderRow = (h: CryptoHolding) => (
+    <TableRow key={`${h.walletId}:${h.chainId}:${h.tokenAddress ?? ""}`}>
+      <TableCell className="max-w-32 truncate font-semibold" title={h.symbol}>
+        {h.symbol}
+      </TableCell>
+      {(data?.wallets.length ?? 0) > 1 ? (
+        <TableCell className="text-muted-foreground">{walletById.get(h.walletId) ?? ""}</TableCell>
+      ) : null}
+      <TableCell className="text-muted-foreground">{chainName(h.chainId)}</TableCell>
+      <TableCell className="text-end tabular-nums">
+        {tokenAmount(h.rawBalance, h.decimals)}
+      </TableCell>
+      <TableCell className="text-end tabular-nums">
+        {h.usdPrice === null ? "—" : tokenPrice(h.usdPrice)}
+      </TableCell>
+      <TableCell className="max-sm:hidden">
+        <Sparkline values={h.priceHistory ?? []} />
+      </TableCell>
+      <TableCell className="text-end tabular-nums">
+        {h.usdValueCents === null ? "—" : money(h.usdValueCents)}
+      </TableCell>
+    </TableRow>
+  );
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Crypto` }]}
@@ -268,32 +326,30 @@ export function FinanceCryptoPage() {
                       <Trans>Balance</Trans>
                     </TableHead>
                     <TableHead className="text-end">
+                      <Trans>Price</Trans>
+                    </TableHead>
+                    <TableHead className="max-sm:hidden">
+                      <span className="sr-only">
+                        <Trans>Trend</Trans>
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-end">
                       <Trans>Value</Trans>
                     </TableHead>
                   </TableHeadRow>
                 </TableHeader>
                 <TableBody>
-                  {holdings.map((h) => (
-                    <TableRow key={`${h.walletId}:${h.chainId}:${h.tokenAddress ?? ""}`}>
-                      <TableCell className="font-semibold">{h.symbol}</TableCell>
-                      {data.wallets.length > 1 ? (
-                        <TableCell className="text-muted-foreground">
-                          {walletById.get(h.walletId) ?? ""}
-                        </TableCell>
-                      ) : null}
-                      <TableCell className="text-muted-foreground">
-                        {chainName(h.chainId)}
-                      </TableCell>
-                      <TableCell className="text-end tabular-nums">
-                        {tokenAmount(h.rawBalance, h.decimals)}
-                      </TableCell>
-                      <TableCell className="text-end tabular-nums">
-                        {h.usdValueCents === null ? "—" : money(h.usdValueCents)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {holdingList.rows.map(renderRow)}
+                  {unpricedRows.length > 0 ? (
+                    <UnpricedRows count={unpricedRows.length}>
+                      {unpricedRows.map(renderRow)}
+                    </UnpricedRows>
+                  ) : null}
                 </TableBody>
               </Table>
+              <div className="mt-1 flex justify-end">
+                <SeeAll list={holdingList} />
+              </div>
             </Section>
           ) : null}
           <WalletDialog

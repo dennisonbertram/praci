@@ -1,0 +1,7 @@
+{"json":[
+{"id":"bot-inbox","name":"Inbox agent","color":"#2563EB","spawnKey":"inbox-agent:user-placeholder","archivedAt":null},
+{"id":"bot-chat","name":"Re: Lunch","color":"#16A34A","spawnKey":"mail-thread:conn-placeholder:thread-1","archivedAt":null},
+{"id":"bot-b","name":"Beta","color":null,"spawnKey":null,"archivedAt":null},
+{"id":"bot-c","name":"alpha","color":null,"spawnKey":null,"firewall":true},
+{"id":"bot-d","name":"Ext","audience":"external"}
+]}

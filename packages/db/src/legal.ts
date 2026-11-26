@@ -18,6 +18,13 @@ export class LegalRevisionError extends Error {
   }
 }
 
+/** A delayed analysis of an older revision arrived after a newer one was stored. */
+export class LegalStaleRevisionError extends Error {
+  constructor(readonly stored: number) {
+    super("a newer analysis of this document is already stored");
+  }
+}
+
 /** No value: null, an empty list or text, or the placeholder status. */
 const isBlank = (value: unknown, field: string) =>
   value === null ||
@@ -122,6 +129,7 @@ export function createLegalRepos(prisma: PrismaClient) {
     LEFT JOIN legal_contracts c
       ON c."dataRoomItemId" = i.id AND c."spaceId" = i."spaceId" AND c."userId" = i."userId"
     WHERE i."spaceId" = ${actor.spaceId} AND i."userId" = ${actor.userId} AND i.status = 'ready'
+      AND i.source <> 'meeting'
       AND (c.id IS NULL OR i.revision > c."analyzedRevision")
       ${
         excludeConnectionIds.length
@@ -162,12 +170,17 @@ export function createLegalRepos(prisma: PrismaClient) {
     /** Creates or replaces the analysis of one item and records the revision it was made at. */
     async upsertContract(actor: Actor, input: LegalContractInput): Promise<LegalContractRecord> {
       const item = await prisma.dataRoomItem.findFirst({
-        where: { id: input.dataRoomItemId, ...scope(actor) },
+        where: { id: input.dataRoomItemId, ...scope(actor), source: { not: "meeting" } },
         select: { id: true, revision: true },
       });
       if (!item) throw new IsolationError();
       // A revision ahead of the item would hide every later change from review.
       if (input.revision > item.revision) throw new LegalRevisionError(item.revision);
+      // Two analyses of one document must not read the stored row together and write last-wins. The
+      // item is locked rather than the contract, which may not exist yet: that also serialises the
+      // first insert on the unique (spaceId, userId, dataRoomItemId) key. Inside the tool's
+      // transaction the lock is held until commit; a call outside one (the demo seed) still runs.
+      await prisma.$queryRaw`SELECT id FROM data_room_items WHERE id = ${input.dataRoomItemId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId} FOR UPDATE`;
       const data = {
         title: input.title,
         contractType: input.contractType,
@@ -188,6 +201,11 @@ export function createLegalRepos(prisma: PrismaClient) {
         spaceId_userId_dataRoomItemId: { ...scope(actor), dataRoomItemId: input.dataRoomItemId },
       };
       const stored = await prisma.legalContract.findUnique({ where: key });
+      // An analysis of an older revision is not an amendment; it must not replace newer values, lower
+      // the revision or reclassify the contract. Only a newer or equal revision may write.
+      if (stored && input.revision < stored.analyzedRevision) {
+        throw new LegalStaleRevisionError(stored.analyzedRevision);
+      }
       // An extraction that comes back empty for a field never erases what is stored (a re-scan of a
       // thin or unreadable document would otherwise blank dates and values, and with them the
       // deadlines derived from them). A different value still replaces it, since a document can be
@@ -217,13 +235,14 @@ export function createLegalRepos(prisma: PrismaClient) {
     /** `excludeConnectionIds`: contracts whose document came through those connections are left out. */
     async listContracts(
       actor: Actor,
-      options: { limit?: number; excludeConnectionIds?: readonly string[] } = {},
+      options: { limit?: number; status?: string; excludeConnectionIds?: readonly string[] } = {},
     ) {
       const denied = await deniedItemIds(actor, options.excludeConnectionIds);
       return prisma.legalContract.findMany({
         where: {
           ...scope(actor),
           contractType: { not: LEGAL_NOT_LEGAL_TYPE },
+          ...(options.status ? { status: options.status } : {}),
           ...(denied.length ? { dataRoomItemId: { notIn: denied } } : {}),
         },
         orderBy: [{ expirationDate: { sort: "asc", nulls: "last" } }, { id: "asc" }],
@@ -308,7 +327,9 @@ export function createLegalRepos(prisma: PrismaClient) {
       },
     ): Promise<LegalDeadlineRecord> {
       const { count } = await prisma.legalDeadline.updateMany({
-        where: { id, ...scope(actor) },
+        // A removal proposal only applies to an open deadline, decided in the database so a founder
+        // close in between wins.
+        where: { id, ...scope(actor), ...(patch.proposeRemoval ? { status: "open" } : {}) },
         data: {
           ...(patch.keep ? { removalProposedAt: null } : {}),
           ...(patch.proposeRemoval ? { removalProposedAt: new Date() } : {}),
@@ -316,7 +337,13 @@ export function createLegalRepos(prisma: PrismaClient) {
           ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
         },
       });
-      if (!count) throw new IsolationError();
+      if (!count) {
+        const existing = patch.proposeRemoval
+          ? await prisma.legalDeadline.findFirst({ where: { id, ...scope(actor) } })
+          : null;
+        if (!existing) throw new IsolationError();
+        return existing;
+      }
       return prisma.legalDeadline.findFirstOrThrow({ where: { id, ...scope(actor) } });
     },
 

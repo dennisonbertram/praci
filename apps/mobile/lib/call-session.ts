@@ -27,7 +27,7 @@ import {
 } from "./call-sounds";
 import * as dictation from "./dictation";
 import { getActiveUiLocale, t } from "./i18n";
-import { errorText } from "./user-error";
+import { errorText, runErrorText } from "./user-error";
 import { speakText, stopSpeaking } from "./voice";
 
 export type CallPhase = "listening" | "thinking" | "speaking";
@@ -75,6 +75,7 @@ export type CallDeps = {
     botId: string,
     onReply: (messageId: string, text: string, runId?: string) => void,
     onCallEnded: (ended: CallEnded) => void,
+    onRunEnded: (runId: string, status: "failed" | "cancelled", error?: string) => void,
   ) => () => void;
 };
 
@@ -107,6 +108,8 @@ let callId = "";
 const pendingCallSends = new Map<string, Set<Promise<unknown>>>();
 /** The run this call's last turn started: replies to anything else are not spoken. */
 let callRunId: string | null = null;
+/** A run that ended while its send was still in flight, so its id was not known yet. */
+let earlyRunEnd: { runId: string; status: "failed" | "cancelled"; error?: string } | null = null;
 let deps: CallDeps = productionDeps();
 let turn: AbortController | null = null;
 let unwatch: (() => void) | null = null;
@@ -188,6 +191,7 @@ export function startCall(
   switchBot = call.switchBot;
   callId = newClientId();
   callRunId = null;
+  earlyRunEnd = null;
   canTranscribe = call.transcribe ?? true;
   onDevice = null;
   micOpen = false;
@@ -204,7 +208,7 @@ export function startCall(
     heard: "",
     exchanges: [],
   };
-  unwatch = deps.watch(call.botId, onReply, onCallEnded);
+  unwatch = deps.watch(call.botId, onReply, onCallEnded, onRunEnded);
   emit();
   void openCall(callId, call.greeting);
   return callId;
@@ -257,6 +261,7 @@ export function endCall(): void {
   consentBlocked = false;
   botEndedCall = false;
   callRunId = null;
+  earlyRunEnd = null;
   spokenMessageId = null;
   failures = 0;
   micOpen = false;
@@ -427,6 +432,9 @@ async function handleTranscript(raw: string): Promise<void> {
     if (state?.botId === botId && callId === turnCallId) {
       callRunId = runId ?? null;
       if (hangUpAfterReply) farewellSent = true;
+      const ended = earlyRunEnd;
+      earlyRunEnd = null;
+      if (ended && ended.runId === callRunId) onRunEnded(ended.runId, ended.status, ended.error);
     }
   } catch (error) {
     if (state?.botId !== botId || callId !== turnCallId) return;
@@ -514,6 +522,26 @@ function onReply(messageId: string, text: string, runId?: string): void {
   if (callRunId && runId && runId !== callRunId) return;
   spokenMessageId = messageId;
   speakAndListen(text);
+}
+
+/** The turn's run ended without a reply: stop waiting and hand the line back to the caller. */
+function onRunEnded(runId: string, status: "failed" | "cancelled", error?: string): void {
+  if (!state || switching || botEndedCall) return;
+  if (!callRunId) {
+    earlyRunEnd = { runId, status, error };
+    return;
+  }
+  if (runId !== callRunId) return;
+  if (state.phase !== "thinking") return;
+  callRunId = null;
+  if (hangUpAfterReply) {
+    endCall();
+    return;
+  }
+  // set() stops the wait sound; listen() clears the caption, so the error is set after it.
+  void listen();
+  if (status === "failed")
+    set({ caption: runErrorText(error || t("Something went wrong. Try again.")) });
 }
 
 /** The bot on the line says it is handing over, then this call hangs up and the other bot rings. */
@@ -733,6 +761,7 @@ function watchReplies(
   botId: string,
   onNewReply: (messageId: string, text: string, runId?: string) => void,
   onEnded: (ended: CallEnded) => void,
+  onRunEnded: (runId: string, status: "failed" | "cancelled", error?: string) => void,
 ): () => void {
   const controller = new AbortController();
   const watchedCallId = callId;
@@ -770,6 +799,16 @@ function watchReplies(
             }
             snapshot = reduceThreadSnapshot(snapshot, event) ?? snapshot;
             if (!snapshot) return;
+            if (event.type === "run.failed" || event.type === "run.cancelled") {
+              const runId = asText(event.runId);
+              if (runId) {
+                onRunEnded(
+                  runId,
+                  event.type === "run.failed" ? "failed" : "cancelled",
+                  snapshot.run?.error ?? undefined,
+                );
+              }
+            }
             const message = latestSpokenCallReply(snapshot.messages, watchedCallId);
             if (!message || message.id === lastSeen) return;
             // Wait for the message's own run to settle so half-written blocks are never

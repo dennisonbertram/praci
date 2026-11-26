@@ -1,0 +1,123 @@
+{
+  "json": {
+    "totalCashCents": 153322065,
+    "cardOwedCents": null,
+    "history": [
+      {
+        "month": "2026-02",
+        "balanceCents": 172958729
+      },
+      {
+        "month": "2026-03",
+        "balanceCents": 167972896
+      },
+      {
+        "month": "2026-04",
+        "balanceCents": 162987063
+      },
+      {
+        "month": "2026-05",
+        "balanceCents": 158001230
+      },
+      {
+        "month": "2026-06",
+        "balanceCents": 153015397
+      },
+      {
+        "month": "2026-07",
+        "balanceCents": 148029564
+      },
+      {
+        "month": "2026-08",
+        "balanceCents": 138243731
+      },
+      {
+        "month": "2026-09",
+        "balanceCents": 133307898
+      },
+      {
+        "month": "2026-10",
+        "balanceCents": 153322065
+      }
+    ],
+    "cash": [
+      {
+        "id": "8d409415-4e4a-4683-9269-8d2c9fa8c684",
+        "provider": "brex",
+        "externalId": "dpacc_1",
+        "name": "MOCK Brex Cash",
+        "lastFour": "3003",
+        "kind": "checking",
+        "balanceCents": 30010,
+        "currency": "USD",
+        "annualYieldPct": null
+      },
+      {
+        "id": "301ae391-ee73-4cdf-890e-fc15b09b1322",
+        "provider": "mercury",
+        "externalId": "chk-1111",
+        "name": "MOCK Checking ••1111",
+        "lastFour": "1111",
+        "kind": "checking",
+        "balanceCents": 41242055,
+        "currency": "USD",
+        "annualYieldPct": null
+      },
+      {
+        "id": "cmvszf1og000xcr9krhthpjwf",
+        "provider": "statement",
+        "externalId": "stmt:mock-community-bank:5502",
+        "name": "MOCK Community Bank",
+        "lastFour": "5502",
+        "kind": "checking",
+        "balanceCents": 1050000,
+        "currency": "USD",
+        "annualYieldPct": null
+      },
+      {
+        "id": "8875fae8-533d-4f79-b6f1-d3bda631d149",
+        "provider": "mercury",
+        "externalId": "sav-2222",
+        "name": "MOCK Savings ••2222",
+        "lastFour": "2222",
+        "kind": "savings",
+        "balanceCents": 6000000,
+        "currency": "USD",
+        "annualYieldPct": null
+      },
+      {
+        "id": "74b45b93-0dd2-4442-9cb2-8ae7af3fdeb7",
+        "provider": "mercury",
+        "externalId": "mock-trs-3333",
+        "name": "Mercury Treasury",
+        "lastFour": null,
+        "kind": "treasury",
+        "balanceCents": 105000000,
+        "currency": "USD",
+        "annualYieldPct": 4.62
+      }
+    ],
+    "cards": [
+      {
+        "id": "card-1",
+        "provider": "brex",
+        "externalId": "c1",
+        "name": "MOCK Brex Card",
+        "lastFour": "0001",
+        "kind": "card",
+        "balanceCents": -120000,
+        "currency": "USD"
+      },
+      {
+        "id": "eur-1",
+        "provider": "mercury",
+        "externalId": "e1",
+        "name": "MOCK Euro Account",
+        "lastFour": "2222",
+        "kind": "checking",
+        "balanceCents": 500000,
+        "currency": "EUR"
+      }
+    ]
+  }
+}

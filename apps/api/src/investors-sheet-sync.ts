@@ -1,9 +1,13 @@
 import type { JobPublisher } from "@rakazo/adapter-kit";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
 import { actorScope, CapTableSourceRefSchema, investorsAgentSpawnKey } from "@rakazo/contracts";
-import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
+import { ACTIVE_RUN_STATUSES, newRunUnattended } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
-import { appendEventInTransaction, createThreadMessageInTransaction } from "@rakazo/db";
+import {
+  appendEventInTransaction,
+  createThreadMessageInTransaction,
+  equityLedgerHasData,
+} from "@rakazo/db";
 import { ensureInvestorsAgent } from "./investors-agent.js";
 
 /** Every sheet-read task starts with this, which is how its runs are told from the agent's other routine runs. */
@@ -24,7 +28,14 @@ const sheetRunWhere = (actor: Actor) => ({
 export type SheetReadDeps = {
   prisma: Pick<
     PrismaClient,
-    "run" | "capTableSnapshot" | "$transaction" | "routine" | "user" | "bot"
+    | "run"
+    | "capTableSnapshot"
+    | "equityStakeholder"
+    | "equityShareClass"
+    | "$transaction"
+    | "routine"
+    | "user"
+    | "bot"
   >;
   jobs: Pick<JobPublisher, "enqueue" | "cancel">;
   repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
@@ -50,7 +61,9 @@ export async function startSheetRead(
   const ref = CapTableSourceRefSchema.safeParse(
     (table?.data as { sourceRef?: unknown } | undefined)?.sourceRef,
   );
+  // Once the ledger has data it is the record; a sheet read would only write the stale table.
   if (table?.source !== "sheet" || !ref.success) return "other_source";
+  if (await equityLedgerHasData(deps.prisma, actorScope(actor))) return "other_source";
   const prompt = sheetPrompt(ref.data.driveFileId);
   const bot = await ensureInvestorsAgent(deps, actor);
   if (!(await deps.hasModel(actor))) return "no_model";
@@ -100,6 +113,7 @@ export async function startSheetRead(
         taskId: task.id,
         status: "queued",
         trigger: "routine",
+        unattended: newRunUnattended({ trigger: "routine" }),
       },
       select: { id: true },
     });

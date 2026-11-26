@@ -25,7 +25,3 @@ export async function registerPushToken() {
     // Expo Go cannot mint an ExponentPushToken without an EAS project id.
   }
 }
-
-export async function unregisterPushToken() {
-  await rpc("notifications/unregisterPush").catch(() => undefined);
-}

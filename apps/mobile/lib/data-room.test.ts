@@ -10,12 +10,29 @@ import {
 } from "./data-room";
 
 vi.mock("./api", () => ({ rpc: vi.fn() }));
+vi.mock("./session", () => ({ registerSessionDiskCache: vi.fn() }));
 vi.mock("expo-file-system", () => ({ Directory: class {}, File: class {}, Paths: {} }));
 vi.mock("./i18n", () => ({ t: (text: string) => text }));
+vi.mock("@rakazo/core", () => ({
+  canPreviewSpreadsheet: (filename: string) => filename.endsWith(".csv"),
+}));
 
 beforeEach(() => vi.mocked(rpc).mockReset());
 
 describe("mobile Data room RPCs", () => {
+  it("keeps scanner listings and searches source-filtered across pagination", async () => {
+    vi.mocked(rpc).mockResolvedValue({ results: [], nextCursor: null });
+    await listDataRoomItems({ source: "scan", cursor: "next" });
+    expect(rpc).toHaveBeenLastCalledWith(
+      "dataRoom/items/list",
+      expect.objectContaining({ source: "scan", cursor: "next" }),
+    );
+    await listDataRoomItems({ source: "scan", query: "contract" });
+    expect(rpc).toHaveBeenLastCalledWith(
+      "dataRoom/search",
+      expect.objectContaining({ filters: { source: "scan" } }),
+    );
+  });
   it("lists the same folder IDs and sends a folder and cursor to the scoped item RPC", async () => {
     vi.mocked(rpc).mockResolvedValue({ items: [], nextCursor: null });
     await listDataRoomFolders();
@@ -70,6 +87,9 @@ describe("native previews", () => {
     ).toBe("other");
     expect(dataRoomStatus({ status: "indexing", notIndexed: false })).toBe("Processing…");
     expect(dataRoomStatus({ status: "failed", notIndexed: false })).toBe("Failed");
+    expect(
+      dataRoomStatus({ status: "failed", notIndexed: false, error: "Scan could not read file" }),
+    ).toBe("Failed");
     expect(dataRoomStatus({ status: "ready", notIndexed: true })).toBe("Not searchable");
   });
 });

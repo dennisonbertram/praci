@@ -4,7 +4,7 @@ import { BoxSandboxProvider } from "./box-sandbox.js";
 import { CreateOSSandboxProvider } from "./createos-sandbox.js";
 import { DaytonaSandboxEmulator } from "./daytona-emulator.js";
 import { DaytonaSandboxProvider } from "./daytona-sandbox.js";
-import { DesktopSandboxProvider } from "./desktop-sandbox.js";
+import { assertHostCommandsAllowed, DesktopSandboxProvider } from "./desktop-sandbox.js";
 import { DockerSandboxProvider } from "./docker-sandbox.js";
 import { ManagedSandboxEmulator } from "./e2b-emulator.js";
 import { E2BSandboxProvider } from "./e2b-sandbox.js";
@@ -75,6 +75,7 @@ export function createSandboxProvider(kind: string, opts: SandboxProviderOptions
     case "box-emulator":
       return new BoxSandboxEmulator();
     case "desktop":
+      assertHostCommandsAllowed();
       return new DesktopSandboxProvider({
         root: opts.dataDir,
       });

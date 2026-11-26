@@ -35,6 +35,13 @@ http://{$RAKAZO_HOST:app.example.com} {
 		X-Frame-Options SAMEORIGIN
 	}
 
+	# The share page keeps its link token in the URL fragment: no referrer, and no framing at all.
+	@share path /s
+	header @share {
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+	}
+
 	handle /health {
 		reverse_proxy api:3100 {
 			import deploy_retry

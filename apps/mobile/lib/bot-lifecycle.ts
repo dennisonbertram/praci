@@ -3,13 +3,20 @@ import { rpc } from "./api";
 import { t } from "./i18n";
 import { errorText } from "./user-error";
 
-export function confirmDeleteBot(bot: { id: string; name: string }, onDeleted: () => void) {
+export function confirmDeleteBot(
+  bot: { id: string; name: string },
+  onDeleted: () => void,
+  onBusy?: (busy: boolean) => void,
+) {
   const remove = async (deleteMemories: boolean) => {
     try {
+      onBusy?.(true);
       await rpc("bots/remove", { botId: bot.id, deleteMemories });
       onDeleted();
     } catch (error) {
       Alert.alert(t("Could not delete bot"), errorText(error, t("Try again.")));
+    } finally {
+      onBusy?.(false);
     }
   };
 

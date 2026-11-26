@@ -24,6 +24,9 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState(false);
+  const currentPasswordInput = useRef<TextInput>(null);
+  const newPasswordInput = useRef<TextInput>(null);
+  const confirmationInput = useRef<TextInput>(null);
   const submitting = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
@@ -81,31 +84,44 @@ export default function ChangePassword() {
               value: currentPassword,
               onChange: setCurrentPassword,
               current: true,
+              input: currentPasswordInput,
+              onSubmitEditing: () => newPasswordInput.current?.focus(),
+              returnKeyType: "next" as const,
             },
             {
               label: t("New password"),
               value: newPassword,
               onChange: setNewPassword,
               current: false,
+              input: newPasswordInput,
+              onSubmitEditing: () => confirmationInput.current?.focus(),
+              returnKeyType: "next" as const,
             },
             {
               label: t("Confirm password"),
               value: confirmation,
               onChange: setConfirmation,
               current: false,
+              input: confirmationInput,
+              onSubmitEditing: () => void save(),
+              returnKeyType: "go" as const,
             },
           ].map((field) => (
             <TextInput
               key={field.label}
+              ref={field.input}
               accessibilityLabel={field.label}
               autoCapitalize="none"
               autoComplete={field.current ? "current-password" : "new-password"}
               autoCorrect={false}
               editable={!pending}
+              onSubmitEditing={field.onSubmitEditing}
               onChangeText={field.onChange}
               placeholder={field.label}
               placeholderTextColor={native.tertiaryLabel}
               secureTextEntry
+              returnKeyType={field.returnKeyType}
+              submitBehavior={field.returnKeyType === "next" ? "submit" : undefined}
               style={styles.input}
               value={field.value}
             />

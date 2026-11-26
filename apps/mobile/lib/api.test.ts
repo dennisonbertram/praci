@@ -500,6 +500,30 @@ describe("mobile API authentication", () => {
     await expect(signUp("ada", "", "Ada")).rejects.toThrow(new Error("Enter a valid email"));
   });
 
+  it("keeps the server's /goal answer verbatim and flags it as a reply", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            json: {
+              code: "BAD_REQUEST",
+              message: "Goal: Find suppliers",
+              data: { goalReply: true },
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const error = await rpc("bots/list").catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      message: "Goal: Find suppliers",
+      status: 400,
+      data: { goalReply: true },
+    });
+  });
+
   it("says the server is unreachable instead of the native fetch failure", async () => {
     vi.stubGlobal(
       "fetch",
@@ -2797,6 +2821,24 @@ describe("mobile thread event reduction", () => {
     expect(text("Couldn't send")).toBe("Couldn't send");
   });
 
+  it("shows a page card as its title and ignores a block kind it does not know", () => {
+    expect(
+      blockText(
+        mobileMessage("page-card", [
+          { kind: "page", botId: "bot-1", pageId: "page-1", title: "Customer support" },
+        ]),
+      ),
+    ).toBe("Customer support");
+    expect(
+      blockText(
+        mobileMessage("future", [
+          { kind: "future_card", x: 1 } as unknown as MobileMessage["blocks"][number],
+          { kind: "text", text: "Done" },
+        ]),
+      ),
+    ).toBe("Done");
+  });
+
   it("degrades an emails block to a plain list in urgency order", () => {
     const email = (id: string, urgency: "today" | "later") => ({
       id,
@@ -2813,6 +2855,16 @@ describe("mobile thread event reduction", () => {
         ]),
       ),
     ).toBe("Sender now: Subject now\nSender late: Subject late");
+  });
+
+  it("degrades a ui block to its Markdown", () => {
+    expect(
+      blockText(
+        mobileMessage("ui-1", [
+          { kind: "ui", block: { type: "summary", items: [{ label: "Plan", value: "Team" }] } },
+        ]),
+      ),
+    ).toBe("- Plan: Team");
   });
 
   it("gives finance and skill draft blocks readable text", () => {

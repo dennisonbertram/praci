@@ -13,7 +13,12 @@ describe("RECURRING_JOBS", () => {
       "account.export.cleanup",
       "company.import.recover",
       "company.refresh.tick",
+      "watch.probe",
+      "pages.refresh.tick",
+      "pages.snapshots.retention",
       "mail.watch.renew",
+      "mail.sync.sweep",
+      "meetings.capture_sweep",
       "devin.refresh",
     ]);
   });

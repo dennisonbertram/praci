@@ -27,10 +27,12 @@ export function CleanupSenderRow({
 }) {
   const { t } = useLingui();
   const pileNames = { important: t`Important`, updates: t`Updates`, newsletters: t`Newsletters` };
+  // Three "no reply needed" corrections stop Needs reply for the sender.
+  const stopped = (sender.noReplyCount ?? 0) >= 3;
   const readPercent = Math.round((sender.readCount / Math.max(sender.messageCount, 1)) * 100);
   // Why a sender is listed: the two cases the numbers settle. A decided sender shows its decision instead.
   const reason =
-    sender.skipInbox || sender.learnedPile || sender.spamLike
+    sender.skipInbox || sender.learnedPile || stopped || sender.spamLike
       ? null
       : sender.preselected
         ? t`Rarely read, and you never wrote to them`
@@ -58,7 +60,12 @@ export function CleanupSenderRow({
             {sender.address}
           </span>
         </div>
-        {accountLabel || reason || sender.spamLike || sender.skipInbox || sender.learnedPile ? (
+        {accountLabel ||
+        reason ||
+        sender.spamLike ||
+        sender.skipInbox ||
+        sender.learnedPile ||
+        stopped ? (
           <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
             {accountLabel ? <span dir="auto">{accountLabel}</span> : null}
             {reason ? <span>{reason}</span> : null}
@@ -95,6 +102,22 @@ export function CleanupSenderRow({
             {sender.learnedPile ? (
               <span className="flex items-center gap-1">
                 <Trans>Learned</Trans> {pileNames[sender.learnedPile as keyof typeof pileNames]}
+                {onForgetLearned ? (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0 text-xs"
+                    onClick={onForgetLearned}
+                    disabled={disabled}
+                  >
+                    <Trans>Forget</Trans>
+                  </Button>
+                ) : null}
+              </span>
+            ) : null}
+            {stopped ? (
+              <span className="flex items-center gap-1">
+                <Trans>Needs reply stopped</Trans>
                 {onForgetLearned ? (
                   <Button
                     variant="link"

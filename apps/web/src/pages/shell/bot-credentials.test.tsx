@@ -47,7 +47,13 @@ const rows = [
     auth: { type: "basic", username: "admin" },
   },
   { name: "portal", origin: "https://portal.example.com", auth: { type: "login" } },
-].map((row) => ({ ...row, createdAt: stamp, updatedAt: stamp }));
+].map((row) => ({
+  ...row,
+  createdAt: stamp,
+  updatedAt: stamp,
+  lastUsedAt: null,
+  needsAttentionAt: null,
+}));
 
 let container: HTMLDivElement;
 let root: Root;
@@ -107,6 +113,36 @@ afterEach(async () => {
 });
 
 describe("BotCredentialsSection", () => {
+  it("shows when each credential was last used, or that it needs attention", async () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    botSecrets.list.mockResolvedValue([
+      { ...rows[0], lastUsedAt: twoDaysAgo },
+      { ...rows[1] },
+      { ...rows[2], needsAttentionAt: stamp },
+    ]);
+    await render();
+    const lines = [...container.querySelectorAll("[data-testid=bot-credential-row]")].map(
+      (row) =>
+        row.querySelector(
+          "[data-testid=credential-last-used],[data-testid=credential-needs-attention]",
+        )?.textContent,
+    );
+    expect(lines).toEqual(["Used 2d ago", "Not used yet", "Needs attention"]);
+    expect(container.querySelector("[data-testid=credential-replace-router]")).not.toBeNull();
+  });
+
+  it("says why Save is off and shows the https:// placeholder", async () => {
+    await render();
+    await click("credential-add");
+    expect(byTestId<HTMLInputElement>("credential-origin").placeholder).toBe("https://");
+    await type("credential-name", "demo");
+    expect(byTestId("credential-save-reason").textContent).toBe("Add the site and the value.");
+    await type("credential-origin", "https://api.example.test");
+    expect(byTestId("credential-save-reason").textContent).toBe("Add the value.");
+    await type("credential-value", FAKE_VALUE);
+    expect(container.querySelector("[data-testid=credential-save-reason]")).toBeNull();
+  });
+
   it("lists credential metadata and no values", async () => {
     await render();
     expect(botSecrets.list).toHaveBeenCalledWith({ botId: "bot-1" });
@@ -239,6 +275,8 @@ describe("BotCredentialsSection", () => {
         auth: null,
         createdAt: stamp,
         updatedAt: stamp,
+        lastUsedAt: null,
+        needsAttentionAt: null,
       },
     ]);
     await render();
@@ -260,6 +298,8 @@ describe("BotCredentialsSection", () => {
         auth: { type: "bearer" },
         createdAt: stamp,
         updatedAt: stamp,
+        lastUsedAt: null,
+        needsAttentionAt: null,
       },
     ]);
     await render();
@@ -324,6 +364,8 @@ describe("BotCredentialsSection command variables", () => {
     auth: { type: "command" },
     createdAt: stamp,
     updatedAt: stamp,
+    lastUsedAt: null,
+    needsAttentionAt: null,
   };
 
   it("adds a command variable with no origin and shows its derived name", async () => {

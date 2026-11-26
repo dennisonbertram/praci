@@ -33,6 +33,19 @@ export const UnreadableOpen: StoryObj = {
   },
 };
 
+/** A meeting note cannot be shared with investors, so its menu has no Share. */
+export const MeetingNoteOpen: StoryObj = {
+  render: () => (
+    <ItemMenu
+      item={{ ...readyItem, name: "2026-02-10 Planning call.md", source: "meeting" }}
+      onAction={() => undefined}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button"));
+  },
+};
+
 /** A file's "⋯" menu with the agents it can be sent to. */
 export const SendToAgentOpen: StoryObj = {
   render: () => (

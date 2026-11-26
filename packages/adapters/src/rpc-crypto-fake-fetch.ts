@@ -28,6 +28,8 @@ export interface FakeWorld {
   prices?: Record<string, { price: number; confidence: number }>;
   priceStatus?: number;
   safe?: { owners: string[]; threshold: number };
+  /** DefiLlama chart key -> daily prices. */
+  history?: Record<string, Array<{ timestamp: number; price: number }>>;
   /** ENS name -> address, resolved on chain 1. */
   ens?: Record<string, string>;
 }
@@ -48,6 +50,17 @@ export function fakeRpc(world: FakeWorld = {}) {
 
   const fetchFn = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
+    if (url.host === "coins.llama.fi" && url.pathname.startsWith("/chart/")) {
+      calls.push("history");
+      const wanted = decodeURIComponent(url.pathname.split("/").pop() ?? "").split(",");
+      return reply({
+        coins: Object.fromEntries(
+          wanted
+            .filter((k) => world.history?.[k])
+            .map((k) => [k, { confidence: 0.99, prices: world.history?.[k] }]),
+        ),
+      });
+    }
     if (url.host === "coins.llama.fi") {
       calls.push("prices");
       if (world.priceStatus) return reply({}, world.priceStatus);

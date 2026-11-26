@@ -1,7 +1,7 @@
 import type { BillingProvider } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBillingService } from "./billing.js";
 
 const actor: Actor = {
@@ -47,5 +47,46 @@ describe("billing status", () => {
     const { billing } = service(async () => price, "member");
     await expect(billing.checkout(actor)).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(billing.portal(actor)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("billing price lookup", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("does not retry a failed lookup for a minute", async () => {
+    vi.useFakeTimers();
+    const { billing, provider } = service(async () => {
+      throw new Error("provider unavailable");
+    });
+    await billing.status(actor);
+    await billing.status(actor);
+    expect(provider.getPrice).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(61_000);
+    await billing.status(actor);
+    expect(provider.getPrice).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the last good price when a refresh fails", async () => {
+    vi.useFakeTimers();
+    const getPrice = vi.fn<BillingProvider["getPrice"]>().mockResolvedValueOnce(price);
+    getPrice.mockRejectedValue(new Error("provider unavailable"));
+    const { billing } = service(getPrice);
+    await billing.status(actor);
+    await vi.advanceTimersByTimeAsync(61 * 60 * 1000);
+    await expect(billing.status(actor)).resolves.toMatchObject({ price });
+  });
+
+  it("answers without a price when the provider hangs", async () => {
+    vi.useFakeTimers();
+    const { billing } = service(() => new Promise(() => {}));
+    const answer = billing.status(actor);
+    await vi.advanceTimersByTimeAsync(5_001);
+    await expect(answer).resolves.toMatchObject({ price: null });
+  });
+
+  it("shares one lookup between concurrent calls", async () => {
+    const { billing, provider } = service(async () => price);
+    await Promise.all([billing.status(actor), billing.status(actor)]);
+    expect(provider.getPrice).toHaveBeenCalledTimes(1);
   });
 });

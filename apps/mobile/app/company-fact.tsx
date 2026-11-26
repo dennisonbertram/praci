@@ -1,9 +1,4 @@
-import type {
-  CompanyFact,
-  CompanyPageData,
-  CompanyReview,
-  CompanyReviewCandidate,
-} from "@rakazo/contracts";
+import type { CompanyFact, CompanyReview, CompanyReviewCandidate } from "@rakazo/contracts";
 import {
   CompanyEdgeEditInputSchema,
   CompanyEntityEditInputSchema,
@@ -20,8 +15,9 @@ import { NativeActionButton } from "../components/native-action-button";
 import { SettingsGroup, SettingsRow } from "../components/settings-group";
 import { rpc } from "../lib/api";
 import { companyReviewDecision } from "../lib/company";
+import { companyRelationLabel } from "../lib/company-relation-label";
 import { maskAmountsWhenHidden, useHideAmounts } from "../lib/hide-amounts";
-import { useI18n } from "../lib/i18n";
+import { dateLocaleForUi, useI18n } from "../lib/i18n";
 import { native } from "../lib/native";
 import { companyScope, useCompanyQuery } from "../lib/use-company-query";
 import { errorText } from "../lib/user-error";
@@ -70,7 +66,7 @@ export default function CompanyFactScreen() {
           <NativeActionButton label={t("Try again.")} onPress={query.reload} />
         </>
       ) : fact ? (
-        <FactDetail key={`${kind}:${id}`} fact={fact} />
+        <FactDetail key={`${kind}:${id}`} fact={fact} fromReview={origin === "review"} />
       ) : item?.kind === "candidate" ? (
         <CandidateDetail key={`${item.id}:${item.candidate.version}`} candidate={item.candidate} />
       ) : (
@@ -102,7 +98,7 @@ function useDecision() {
   return { busy, run };
 }
 
-function FactDetail({ fact }: { fact: CompanyFact }) {
+function FactDetail({ fact, fromReview }: { fact: CompanyFact; fromReview: boolean }) {
   const { t } = useI18n();
   const hidden = useHideAmounts();
   const { busy, run } = useDecision();
@@ -134,10 +130,13 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
             role: normalizedTitle || null,
           });
   const validEdit = editInput.success && !unchanged;
-  const map = useCompanyQuery<CompanyPageData>("company/page");
-  const relationships = (map.data?.edges ?? []).filter(
-    (edge) => companyFactIsVisible(edge) && (edge.fromId === record.id || edge.toId === record.id),
-  );
+  const relationships =
+    fact.kind === "entity"
+      ? fact.record.edges.filter(
+          (edge) =>
+            companyFactIsVisible(edge) && (edge.fromId === record.id || edge.toId === record.id),
+        )
+      : [];
   const ref = { kind: fact.kind, id: record.id };
   function save() {
     if (!validEdit || !editInput.success) return;
@@ -149,7 +148,7 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
     <>
       <SettingsGroup>
         <SettingsRow
-          title={maskAmountsWhenHidden(companyFactTitle(fact))}
+          title={maskAmountsWhenHidden(companyFactTitle(fact, undefined, companyRelationLabel))}
           detail={record.status === "confirmed" ? t("Confirmed") : t("Not confirmed")}
         />
         <SettingsRow title={t("Confidence")} value={`${Math.round(record.confidence * 100)}%`} />
@@ -173,13 +172,27 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
             }
           />
         )}
+        {fact.kind === "event" && fact.record.amountCents != null ? (
+          <SettingsRow
+            title={t("Amount")}
+            value={
+              hidden
+                ? "•••"
+                : formatEventAmount(
+                    fact.record.amountCents,
+                    fact.record.currency ?? "",
+                    dateLocaleForUi(),
+                  )
+            }
+          />
+        ) : null}
       </SettingsGroup>
       {fact.kind === "entity" && relationships.length ? (
         <SettingsGroup label={t("Relationships")}>
           {relationships.map((edge) => (
             <SettingsRow
               key={edge.id}
-              title={maskAmountsWhenHidden(edge.role ?? edge.relation.replaceAll("_", " "))}
+              title={maskAmountsWhenHidden(edge.role ?? companyRelationLabel(edge.relation))}
               detail={`${companyDate(edge.startsOn)} – ${edge.endsOn ? companyDate(edge.endsOn) : t("Present")}`}
               onPress={() =>
                 router.push({ pathname: "/company-fact", params: { kind: "edge", id: edge.id } })
@@ -219,6 +232,7 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
               label={t("Confirm")}
               fill={false}
               busy={busy}
+              disabled={record.status === "confirmed" && !fromReview}
               onPress={() => void run("company/confirm", ref)}
             />
             <NativeActionButton
@@ -234,14 +248,18 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
               prominence="destructive"
               busy={busy}
               onPress={() =>
-                Alert.alert(t("Reject fact?"), maskAmountsWhenHidden(companyFactTitle(fact)), [
-                  { text: t("Cancel"), style: "cancel" },
-                  {
-                    text: t("Reject"),
-                    style: "destructive",
-                    onPress: () => void run("company/reject", ref),
-                  },
-                ])
+                Alert.alert(
+                  t("Reject fact?"),
+                  maskAmountsWhenHidden(companyFactTitle(fact, undefined, companyRelationLabel)),
+                  [
+                    { text: t("Cancel"), style: "cancel" },
+                    {
+                      text: t("Reject"),
+                      style: "destructive",
+                      onPress: () => void run("company/reject", ref),
+                    },
+                  ],
+                )
               }
             />
           </View>
@@ -285,6 +303,15 @@ function FactDetail({ fact }: { fact: CompanyFact }) {
       ))}
     </>
   );
+}
+
+function formatEventAmount(amountCents: number, currency: string, locale: string): string {
+  const amount = amountCents / 100;
+  try {
+    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+  } catch {
+    return `${currency} ${new Intl.NumberFormat(locale).format(amount)}`;
+  }
 }
 
 function CandidateDetail({ candidate }: { candidate: CompanyReviewCandidate }) {

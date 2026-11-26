@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { ReactNode } from "react";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -53,7 +55,13 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
 const render = async (node: ReactNode) => {
-  await act(async () => root.render(<MemoryRouter>{node}</MemoryRouter>));
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter>{node}</MemoryRouter>
+      </I18nProvider>,
+    ),
+  );
   await flush();
 };
 const click = (el: Element | null | undefined) =>
@@ -66,6 +74,7 @@ const tab = (name: string) =>
   [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent?.startsWith(name));
 
 beforeEach(() => {
+  i18n.loadAndActivate({ locale: "en", messages: {} });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -143,7 +152,14 @@ it("shows the empty state, loading skeleton and load error", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   await render(<LegalPage />);
-  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  const busy = container.querySelector('[aria-busy="true"]');
+  expect(busy).not.toBeNull();
+  // The placeholder is the page itself — title, one tab strip, the list — not a grid of tiles.
+  const skeletons = [...(busy?.children ?? [])].filter(
+    (child) => child.getAttribute("data-slot") === "skeleton",
+  );
+  expect(skeletons).toHaveLength(3);
+  expect(busy?.querySelector(".grid")).toBeNull();
 
   rpcMock.overview.mockRejectedValue(new Error("boom"));
   await act(async () => root.unmount());
@@ -186,6 +202,43 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   expect(container.textContent).not.toContain("Let Praci read your documents");
   // Allow is the one click: the first scan starts without a second.
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+});
+
+it("starts only one scan when Allow is followed by a fast Scan now", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  rpcMock.consentGrant.mockResolvedValue(consentFixture);
+  let resolveScan!: (value: { runId: string; botId: string }) => void;
+  rpcMock.scanNow.mockReturnValue(
+    new Promise((resolve) => {
+      resolveScan = resolve;
+    }),
+  );
+  await render(<LegalPage />);
+  await click(button("Allow"));
+  await click(button("Scan now"));
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+  expect(button("Retry")).toBeUndefined();
+  await act(async () => resolveScan({ runId: id(1), botId: id(2) }));
+});
+
+it("guards a scan while scanNow is pending and recovers after failure", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  let rejectScan!: (cause: Error) => void;
+  rpcMock.scanNow.mockReturnValue(
+    new Promise((_resolve, reject) => {
+      rejectScan = reject;
+    }),
+  );
+  await render(<LegalPage />);
+  await click(button("Scan now"));
+  await click(button("Scan now"));
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+  expect(button("Scanning…")?.disabled).toBe(true);
+
+  await act(async () => rejectScan(new Error("scan failed")));
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("scan failed");
+  expect(button("Scan now")?.disabled).toBe(false);
 });
 
 it("offers Not now like the Data room, which leaves one line with a way back", async () => {
@@ -338,6 +391,31 @@ it("keeps the deadline and shows the error when the update fails", async () => {
   });
   expect(container.textContent).toContain("Send non-renewal notice");
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
+});
+
+it("keeps the other URL params when the tab changes", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.graph.mockResolvedValue(graph);
+  const Search = () => <output data-testid="search">{useLocation().search}</output>;
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/app/legal?group=off&view=graph"]}>
+          <LegalPage />
+          <Search />
+        </MemoryRouter>
+      </I18nProvider>,
+    ),
+  );
+  await flush();
+  await click(tab("Contracts"));
+  const search = new URLSearchParams(container.querySelector("output")?.textContent ?? "");
+  expect(search.get("group")).toBe("off");
+  expect(search.has("view")).toBe(false);
+  await click(tab("Graph"));
+  const next = new URLSearchParams(container.querySelector("output")?.textContent ?? "");
+  expect(next.get("group")).toBe("off");
+  expect(next.get("view")).toBe("graph");
 });
 
 it("opens the graph tab and draws nodes and edges", async () => {
@@ -660,6 +738,26 @@ it("shows why the last scan failed and scans again from the one Scan now button"
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
 });
 
+it("names a spending limit instead of the generic failure, with no raw error text", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: {
+        id: id(8),
+        status: "failed",
+        error:
+          '403: {"message":"Key limit exceeded (monthly limit). Manage it using https://example.test/keys/abc123","code":403,"metadata":{"scope":"key_limit","resets_at":"2026-11-01T00:00:00.000Z"}}',
+      },
+    },
+  });
+  await render(<LegalPage />);
+  const text = container.querySelector('[data-testid="scan-failed"]')?.textContent ?? "";
+  expect(text).toContain("Last scan failed: The AI key hit its spending limit. It resets");
+  expect(text).toContain("Settings > Models.");
+  expect(text).not.toMatch(/abc123|https?:|Something went wrong/);
+});
+
 it("offers the OpenRouter key field when the last scan's key was rejected", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -681,6 +779,43 @@ it("offers the OpenRouter key field when the last scan's key was rejected", asyn
   expect(openSettings).toHaveBeenCalledTimes(1);
   await click(container.querySelector('[data-testid="scan-failed"] button[aria-label="Dismiss"]'));
   expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
+});
+
+it("offers Models settings for a spending limit and Retry for a rate limit", async () => {
+  const failed = (error: string) =>
+    rpcMock.overview.mockResolvedValue({
+      ...overview,
+      agent: { ...overview.agent, lastScanRun: { id: id(8), status: "failed", error } },
+    });
+  failed('402: {"message":"Insufficient credits","code":402}');
+  const openSettings = vi.fn();
+  await render(<LegalPage onOpenSettings={openSettings} />);
+  await click(button("Open Models settings"));
+  expect(openSettings).toHaveBeenCalledTimes(1);
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Retry")).toBe(
+    false,
+  );
+});
+
+it("keeps Retry visible and disables it while a retry is starting", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: { id: id(8), status: "failed", error: "429: rate limit" },
+    },
+  });
+  let resolveScan!: (value: { runId: string; botId: string }) => void;
+  rpcMock.scanNow.mockReturnValue(
+    new Promise((resolve) => {
+      resolveScan = resolve;
+    }),
+  );
+  await render(<LegalPage />);
+  await click(button("Retry"));
+  expect(button("Retry")?.disabled).toBe(true);
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+  await act(async () => resolveScan({ runId: id(9), botId: id(2) }));
 });
 
 it("has one Scan now button on an empty page", async () => {
@@ -810,9 +945,11 @@ it("starts a scan from the unchecked documents line and opens Deadlines on the o
   root = createRoot(container);
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/app/legal?view=deadlines&due=overdue"]}>
-        <LegalPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/app/legal?view=deadlines&due=overdue"]}>
+          <LegalPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   await flush();
@@ -820,8 +957,7 @@ it("starts a scan from the unchecked documents line and opens Deadlines on the o
   // The tile said 1, so the list it opens shows that one, not every open deadline.
   expect(container.textContent).toContain("Return the security deposit paperwork");
   expect(container.textContent).not.toContain("Send non-renewal notice");
-  expect(container.textContent).toContain("Showing 1 overdue deadline.");
-  await click(button("Show all 2 open deadlines"));
+  await click(button("Remove filter Due"));
   expect(container.textContent).toContain("Send non-renewal notice");
 });
 
@@ -929,12 +1065,26 @@ it("tells the shell while consent is missing, so the agent composer waits for th
   const onConsentChange = vi.fn();
   const onAskAbout = vi.fn();
   await render(<LegalPage onConsentChange={onConsentChange} onAskAbout={onAskAbout} />);
-  expect(onConsentChange).toHaveBeenLastCalledWith(true);
+  expect(onConsentChange).toHaveBeenLastCalledWith("consent");
   // No row offers the agent before the page's Allow.
   await click(tab("Deadlines"));
   expect(button("Ask agent about Send non-renewal notice")).toBeUndefined();
   await click(button("Allow"));
-  expect(onConsentChange).toHaveBeenLastCalledWith(false);
+  expect(onConsentChange).toHaveBeenLastCalledWith(null);
+});
+
+it("offers Add a model when none is set up, and tells the shell to wait for one", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
+  const onOpenSettings = vi.fn();
+  const onConsentChange = vi.fn();
+  await render(<LegalPage onOpenSettings={onOpenSettings} onConsentChange={onConsentChange} />);
+  expect(onConsentChange).toHaveBeenLastCalledWith("model");
+  expect(button("Scan now")).toBeUndefined();
+  expect(button("Allow")).toBeUndefined();
+  expect(container.textContent).not.toContain("Connect a model in Settings first.");
+  await click(button("Add a model"));
+  expect(onOpenSettings).toHaveBeenCalledTimes(1);
 });
 
 it("offers Ask agent on each deadline row, with the row as the question", async () => {
@@ -981,7 +1131,7 @@ it("opens no two deadline rows with the same words and leaves out an all-active 
     contracts: overview.contracts.map((c) => ({ ...c, status: "active" as const })),
   });
   await render(<LegalPage />);
-  expect(container.textContent).not.toContain("Status");
+  expect([...container.querySelectorAll("th")].map((th) => th.textContent)).not.toContain("Status");
 });
 
 it("keeps the same columns whatever the statuses: no Status column, a chip by the title", async () => {
@@ -1060,7 +1210,10 @@ it("opens the contract from a click anywhere on its row, and shows the Renewal n
       <Where />
     </>,
   );
-  const row = container.querySelector("tbody tr");
+  // The table lists contracts by end date, so the lease comes first.
+  const row = [...container.querySelectorAll("tbody tr")].find((tr) =>
+    tr.textContent?.includes("Master Services"),
+  );
   const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
     td.textContent?.startsWith("Auto-renews"),
   );
@@ -1125,6 +1278,7 @@ it("ends a scan that outlasts the wait with a one-line result", async () => {
 
 it("shows Reading n of N while a scan runs, from the falling unchecked count", async () => {
   vi.useFakeTimers();
+  const visibility = Object.getOwnPropertyDescriptor(document, "visibilityState");
   try {
     const running = (left: number) => ({
       ...overview,
@@ -1139,8 +1293,14 @@ it("shows Reading n of N while a scan runs, from the falling unchecked count", a
     await render(<LegalPage />);
     await click(button("Scan now"));
     expect(container.textContent).toContain("Reading 0 of 3");
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    const callsWhileScanning = rpcMock.overview.mock.calls.length;
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(rpcMock.overview).toHaveBeenCalledTimes(callsWhileScanning);
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     rpcMock.overview.mockResolvedValue(running(1));
     await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(rpcMock.overview.mock.calls.length).toBeGreaterThan(callsWhileScanning);
     expect(container.textContent).toContain("Reading 2 of 3");
     // Every document is read, but the run goes on writing: the line says so instead of freezing.
     rpcMock.overview.mockResolvedValue(running(0));
@@ -1148,6 +1308,8 @@ it("shows Reading n of N while a scan runs, from the falling unchecked count", a
     expect(container.textContent).toContain("Saving results");
     expect(container.textContent).not.toContain("Reading 3 of 3");
   } finally {
+    if (visibility) Object.defineProperty(document, "visibilityState", visibility);
+    else Reflect.deleteProperty(document, "visibilityState");
     vi.useRealTimers();
   }
 });
@@ -1164,6 +1326,44 @@ it("reopens a done deadline from Show done", async () => {
   await click(button("Reopen"));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "open" });
   expect(container.textContent).toContain("No closed deadlines.");
+});
+
+it("keeps a reopened deadline disabled until reload removes the row", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  let resolveUpdate!: () => void;
+  rpcMock.updateDeadline.mockReturnValue(
+    new Promise((resolve) => {
+      resolveUpdate = () => resolve({});
+    }),
+  );
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show closed"));
+  await click(button("Reopen"));
+  expect(button("Reopen")?.disabled).toBe(true);
+  await click(button("Reopen"));
+  expect(rpcMock.updateDeadline).toHaveBeenCalledTimes(1);
+  rpcMock.doneDeadlines.mockResolvedValueOnce([{ ...deadlines[0]!, status: "done" as const }]);
+  await act(async () => resolveUpdate());
+  expect(button("Reopen")?.disabled).toBe(true);
+  rpcMock.doneDeadlines.mockResolvedValue([]);
+  await click(tab("Contracts"));
+  await click(tab("Deadlines"));
+  await click(button("Show closed"));
+  expect(container.textContent).toContain("No closed deadlines.");
+});
+
+it("reenables a deadline after reopen fails and shows the error", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  rpcMock.updateDeadline.mockRejectedValue(new Error("reopen failed"));
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show closed"));
+  await click(button("Reopen"));
+  expect(button("Reopen")?.disabled).toBe(false);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("reopen failed");
 });
 
 it("lists a dismissed deadline under Show closed with Restore", async () => {
@@ -1244,7 +1444,13 @@ it("keeps the graph placeholder text from covering the Try again button", async 
   vi.useFakeTimers();
   const container = document.createElement("div");
   document.body.append(container);
-  await act(async () => createRoot(container).render(<BuildingGraph />));
+  await act(async () =>
+    createRoot(container).render(
+      <I18nProvider i18n={i18n}>
+        <BuildingGraph />
+      </I18nProvider>,
+    ),
+  );
   await act(async () => void vi.advanceTimersByTime(2_000));
   const overlay = container.querySelector('[role="status"]');
   expect(overlay?.textContent).toBe("Building graph…");
@@ -1269,6 +1475,101 @@ it("labels the amount on a narrow contract card", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   await render(<LegalPage />);
   expect(container.querySelector('ul[aria-label="Contracts"]')?.textContent).toContain(
-    "Value$50,000",
+    "Value $50,000",
   );
+});
+
+describe("grouped contracts", () => {
+  const warrants = Array.from({ length: 4 }, (_, n) => ({
+    ...contracts[0]!,
+    id: `w${n}`,
+    title: `Seed Warrant (Holder ${n})`,
+    contractType: "Warrant",
+    counterparties: ["Example Corp", `Holder ${n}`],
+  }));
+  const rows = () => container.querySelectorAll("tbody tr").length;
+
+  it("collapses similar contracts to one row, opens them, and restores the flat list when off", async () => {
+    await render(<LegalContracts contracts={warrants} grouped />);
+    expect(rows()).toBe(1);
+    expect(container.querySelector("tbody")?.textContent).toContain("Seed Warrant");
+    const more = container.querySelector<HTMLButtonElement>("tbody button[aria-expanded]");
+    expect(more?.textContent).toContain("+4 more");
+    await act(async () => more?.click());
+    expect(rows()).toBe(5);
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render(<LegalContracts contracts={warrants} />);
+    expect(rows()).toBe(4);
+  });
+
+  it("keeps the toggle in the URL and off by default only when asked", async () => {
+    rpcMock.overview.mockResolvedValue({ ...overview, contracts: warrants });
+    await render(<LegalPage />);
+    const toggle = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("Group similar"),
+    );
+    expect(toggle?.getAttribute("aria-pressed")).toBe("true");
+    expect(rows()).toBe(1);
+    await act(async () => toggle?.click());
+    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+    expect(rows()).toBe(4);
+  });
+});
+
+const renderAt = async (url: string) => {
+  // A fresh router each time, so the URL is the one asked for.
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={[url]}>
+          <LegalPage />
+        </MemoryRouter>
+      </I18nProvider>,
+    ),
+  );
+  await flush();
+};
+const bodyTitles = () =>
+  [...container.querySelectorAll("tbody tr")].map((tr) => tr.querySelector("td")?.textContent);
+
+it("filters and sorts contracts from the URL, keeps the tab count, and offers Clear filters", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await renderAt("/app/legal?status=expired");
+  expect(bodyTitles()).toEqual(["Office leaseExpired"]);
+  expect(tab("Contracts")?.textContent).toContain("2");
+  await click(button("Remove filter Status"));
+  expect(bodyTitles()).toHaveLength(2);
+  // A header click sorts by that column and marks it.
+  await click(container.querySelector("th button"));
+  const name = container.querySelector("th");
+  expect(name?.getAttribute("aria-sort")).toBe("ascending");
+  expect(bodyTitles()[0]).toContain("Master Services Agreement");
+  await click(container.querySelector("th button"));
+  expect(name?.getAttribute("aria-sort")).toBe("descending");
+  expect(bodyTitles()[0]).toContain("Office lease");
+  await renderAt("/app/legal?q=zzz");
+  expect(container.textContent).toContain("No matches");
+  await click(button("Clear filters"));
+  expect(bodyTitles()).toHaveLength(2);
+});
+
+it("shows a due-soon chip that opens the filtered Deadlines, and hides it there", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    deadlines: [
+      { ...deadlines[0]!, dueDate: "2000-01-01" },
+      { ...deadlines[1]!, dueDate: "2999-01-01" },
+    ],
+  });
+  await renderAt("/app/legal");
+  expect(container.querySelector('a[href="/app/legal?view=deadlines&due=soon"]')?.textContent).toBe(
+    "1 due soon",
+  );
+  await renderAt("/app/legal?view=deadlines&due=soon");
+  expect(container.querySelector('a[href="/app/legal?view=deadlines&due=soon"]')).toBeNull();
+  expect(container.textContent).toContain("Return the security deposit paperwork");
+  expect(container.textContent).not.toContain("Send non-renewal notice");
 });

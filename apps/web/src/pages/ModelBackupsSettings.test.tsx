@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { ComponentProps, ReactNode } from "react";
-import { act } from "react";
+import type { ComponentProps, ReactNode, Ref } from "react";
+import { act, forwardRef } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -27,13 +27,17 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children?: ReactNode }) => children,
 }));
 vi.mock("@rakazo/ui-web", () => {
-  const Button = ({
-    variant: _variant,
-    size: _size,
-    ...props
-  }: ComponentProps<"button"> & { variant?: string; size?: string }) => <button {...props} />;
+  const Button = (
+    {
+      variant: _variant,
+      size: _size,
+      ...props
+    }: ComponentProps<"button"> & { variant?: string; size?: string },
+    ref: Ref<HTMLButtonElement>,
+  ) => <button ref={ref} {...props} />;
+  const ForwardedButton = forwardRef(Button);
   return {
-    Button,
+    Button: ForwardedButton,
     NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
     NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
   };
@@ -177,7 +181,6 @@ describe("ModelBackupsSettings", () => {
     await flush();
     expect(container.querySelector('[role="alert"]')?.textContent).toBe("Backups are unavailable");
     expect(pickerTrigger().disabled).toBe(true);
-    expect(button("Add").disabled).toBe(true);
     expect(button("Save backups").disabled).toBe(true);
     expect(backupApi.setBackups).not.toHaveBeenCalled();
     await clickButton("Retry");
@@ -186,7 +189,8 @@ describe("ModelBackupsSettings", () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(pickerTrigger().disabled).toBe(false);
     await pickConnectedModel("Anthropic · Claude Sonnet");
-    expect(button("Add").disabled).toBe(false);
+    expect(backupRows()).toEqual(["Anthropic · Claude Sonnet"]);
+    expect(pickerTrigger().textContent).toContain("Select a connected model");
   });
 
   it("starts empty and disabled when no backup models are configured", async () => {
@@ -212,16 +216,17 @@ describe("ModelBackupsSettings", () => {
     expect(container.textContent).not.toContain("Save backups");
   });
 
-  it("adds, removes, and explicitly reorders choices before saving in that order", async () => {
+  it("adds a picked model immediately, removes and reorders choices before saving in that order", async () => {
     await act(async () => {
       root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={credentials} />);
     });
     await flush();
 
     await pickConnectedModel("Anthropic · Claude Sonnet");
-    await clickButton("Add");
+    expect(backupRows()).toEqual(["Anthropic · Claude Sonnet"]);
+    expect(button("Save backups").disabled).toBe(false);
+    expect(document.activeElement).toBe(pickerTrigger());
     await pickConnectedModel("OpenAI · GPT test");
-    await clickButton("Add");
     expect(backupRows()).toEqual(["Anthropic · Claude Sonnet", "OpenAI · GPT test"]);
 
     await clickButton("Move OpenAI · GPT test up");
@@ -237,6 +242,110 @@ describe("ModelBackupsSettings", () => {
     );
     expect(container.textContent).toContain("Backup models saved.");
     expect(button("Save backups").disabled).toBe(true);
+  });
+
+  it("focuses Save backups when adding the tenth model disables the picker", async () => {
+    const tenOptions = Array.from({ length: 11 }, (_, index) => ({
+      provider: `provider-${index}`,
+      providerName: `Provider ${index}`,
+      id: `model-${index}`,
+      label: `Model ${index}`,
+      billing: "",
+    }));
+    const tenCredentials = tenOptions.map((option) => ({
+      id: `credential-${option.provider}`,
+      provider: option.provider,
+      label: option.providerName,
+      hasKey: true,
+      isDefault: false,
+    }));
+    backupApi.backups.mockResolvedValue(
+      tenOptions.slice(0, 9).map((option) => ({ provider: option.provider, modelId: option.id })),
+    );
+    await act(async () => {
+      root.render(
+        <ModelBackupsSettings {...scope} catalog={tenOptions} credentials={tenCredentials} />,
+      );
+    });
+    await flush();
+
+    await pickConnectedModel("Provider 9 · Model 9");
+
+    expect(backupRows()).toHaveLength(10);
+    expect(pickerTrigger().disabled).toBe(true);
+    expect(document.activeElement).toBe(button("Save backups"));
+  });
+
+  it("does not add a model when ten backups are already listed", async () => {
+    const tenOptions = Array.from({ length: 11 }, (_, index) => ({
+      provider: `provider-${index}`,
+      providerName: `Provider ${index}`,
+      id: `model-${index}`,
+      label: `Model ${index}`,
+      billing: "",
+    }));
+    const tenCredentials = tenOptions.map((option) => ({
+      id: `credential-${option.provider}`,
+      provider: option.provider,
+      label: option.providerName,
+      hasKey: true,
+      isDefault: false,
+    }));
+    backupApi.backups.mockResolvedValue(
+      tenOptions.slice(0, 10).map((option) => ({ provider: option.provider, modelId: option.id })),
+    );
+    await act(async () => {
+      root.render(
+        <ModelBackupsSettings {...scope} catalog={tenOptions} credentials={tenCredentials} />,
+      );
+    });
+    await flush();
+
+    expect(pickerTrigger().disabled).toBe(true);
+    expect(backupRows()).toHaveLength(10);
+  });
+
+  it("does not add a model by arrowing through picker options without Enter", async () => {
+    await act(async () => {
+      root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={credentials} />);
+    });
+    await flush();
+    await act(async () => pickerTrigger().click());
+    const search = document.querySelector<HTMLInputElement>('input[aria-label="Search models"]');
+    expect(search).toBeDefined();
+    await act(async () => {
+      search?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+      );
+    });
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((item) =>
+      item.textContent?.includes("Anthropic · Claude Sonnet"),
+    );
+    expect(option).toBeDefined();
+    await act(async () => {
+      option?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(backupRows()).toEqual([]);
+    expect(backupApi.setBackups).not.toHaveBeenCalled();
+  });
+
+  it("saves the expected set immediately after an add", async () => {
+    await act(async () => {
+      root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={credentials} />);
+    });
+    await flush();
+
+    await pickConnectedModel("Anthropic · Claude Sonnet");
+    await clickButton("Save backups");
+    await flush();
+
+    expect(backupApi.setBackups).toHaveBeenCalledWith(
+      [{ provider: "anthropic", modelId: "claude-sonnet" }],
+      { context: { spaceId: scope.spaceId } },
+    );
   });
 
   it("reloads the saved order and leaves disconnected entries removable without substitution", async () => {
@@ -270,7 +379,6 @@ describe("ModelBackupsSettings", () => {
     });
     await flush();
     await pickConnectedModel("OpenAI · GPT test");
-    await clickButton("Add");
     await clickButton("Move OpenAI · GPT test up");
     const expected = ["OpenAI · GPT test", "Anthropic · Claude Sonnet"];
 
@@ -311,7 +419,6 @@ describe("ModelBackupsSettings", () => {
     });
     await flush();
     await pickConnectedModel("Anthropic · Claude Sonnet");
-    await clickButton("Add");
     await clickButton("Save backups");
 
     backupApi.selectedSpaceId.mockReturnValue("space-b");
@@ -333,7 +440,7 @@ describe("ModelBackupsSettings", () => {
     expect(backupApi.setBackups).not.toHaveBeenCalled();
   });
 
-  it("keeps add, reorder, and save disabled when the backup list fails to load", async () => {
+  it("keeps the picker, reorder, and save disabled when the backup list fails to load", async () => {
     backupApi.backups.mockRejectedValue(new Error("Could not load backup models"));
     await act(async () => {
       root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={credentials} />);
@@ -345,12 +452,10 @@ describe("ModelBackupsSettings", () => {
     );
     expect(container.querySelector('[data-testid="model-backup-1"]')).toBeNull();
     expect(pickerTrigger().disabled).toBe(true);
-    expect(button("Add").disabled).toBe(true);
     expect(button("Save backups").disabled).toBe(true);
 
     await act(async () => pickerTrigger().click());
     expect(document.querySelector('[role="option"]')).toBeNull();
-    await clickButton("Add");
     await clickButton("Save backups");
     await flush();
 

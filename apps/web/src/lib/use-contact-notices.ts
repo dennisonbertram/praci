@@ -1,9 +1,14 @@
 import { t } from "@lingui/core/macro";
 import type { Contact } from "@rakazo/contracts";
-import { enqueueNotificationToast } from "@rakazo/ui-web";
+import { enqueueNotificationToast, notificationToastManager } from "@rakazo/ui-web";
 import type { RefObject } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { UNDO_SEND_MS } from "./outbox";
 import { rpc } from "./rpc";
+import { errorText } from "./user-error";
+
+/** Fired on window when an Undo restores a contact; the list page, if open, reloads and focuses it. */
+export const CONTACT_RESTORED_EVENT = "contact-restored";
 
 /** How long the just-saved row stands out. */
 export const HIGHLIGHT_MS = 2000;
@@ -16,20 +21,98 @@ const toast = (title: string, action?: { label: string; onClick: () => void }) =
   enqueueNotificationToast({
     id: `contact-${++counter}`,
     title,
-    // A toast with an action stays until it is used: there is no delete confirmation, so a founder
-    // who looks away must not lose the only way to get the contact back.
-    ...(action ? { action, timeout: 0 } : {}),
+    ...(action ? { action, timeout: UNDO_SEND_MS } : {}),
   });
+
+/**
+ * Deletes wait out the Undo window here, outside any page, so one still goes through if the user
+ * leaves the page. Closing the tab inside the window deletes nothing, as with an unsent email.
+ * `hidden` holds the ids of held and finished deletes; lists drop them while they are stale.
+ */
+const held = new Map<string, { timer: ReturnType<typeof setTimeout>; toastId: string }>();
+let hidden: ReadonlySet<string> = new Set();
+const subscribers = new Set<() => void>();
+const mounted = new Set<{ current: () => void }>();
+const setHidden = (next: Set<string>) => {
+  hidden = next;
+  for (const notify of subscribers) notify();
+};
+
+/** Puts a held delete back; false when it is no longer held (it already went through). */
+function cancelHeldDelete(id: string): boolean {
+  const entry = held.get(id);
+  if (!entry) return false;
+  clearTimeout(entry.timer);
+  held.delete(id);
+  const next = new Set(hidden);
+  next.delete(id);
+  setHidden(next);
+  return true;
+}
+
+function holdDelete(gone: Contact, toastId: string) {
+  setHidden(new Set(hidden).add(gone.id));
+  const timer = setTimeout(() => {
+    held.delete(gone.id);
+    notificationToastManager.close(toastId);
+    rpc.contacts
+      .delete({ id: gone.id })
+      .then(() => {
+        for (const reload of mounted) reload.current();
+      })
+      .catch((cause: unknown) => {
+        // Already deleted elsewhere: the goal is met, so keep it hidden and just refresh.
+        if ((cause as { code?: string } | null)?.code === "NOT_FOUND") {
+          for (const reload of mounted) reload.current();
+          return;
+        }
+        const next = new Set(hidden);
+        next.delete(gone.id);
+        setHidden(next);
+        toast(errorText(cause, t`Could not delete ${gone.name}`));
+        for (const reload of mounted) reload.current();
+      });
+  }, UNDO_SEND_MS);
+  held.set(gone.id, { timer, toastId });
+}
+
+/** For tests: forgets held and finished deletes between cases. */
+export function resetDeletedContacts() {
+  for (const { timer } of held.values()) clearTimeout(timer);
+  held.clear();
+  setHidden(new Set());
+}
+
+/** The list without contacts that were deleted here, until the server's list says so too. */
+export function useWithoutDeleted(contacts: Contact[] | null): Contact[] | null {
+  const ids = useSyncExternalStore(
+    (listener) => {
+      subscribers.add(listener);
+      return () => void subscribers.delete(listener);
+    },
+    () => hidden,
+  );
+  return contacts && ids.size > 0 ? contacts.filter((c) => !ids.has(c.id)) : contacts;
+}
 
 /**
  * The toasts, the Undo for a deleted contact and the just-saved row that Contacts and Cap table
  * share. `container` holds the rows (each with `data-contact-id`); `contacts` is the loaded list.
  */
 export function useContactNotices(
-  reload: () => void,
+  /** `restoredId` is set when an Undo brought a contact back. */
+  reload: (restoredId?: string) => void,
   container: RefObject<HTMLElement | null>,
   contacts: Contact[] | null,
 ) {
+  // A finished delete refreshes whichever list is on screen.
+  const latestReload = useRef(reload);
+  latestReload.current = reload;
+  useEffect(() => {
+    mounted.add(latestReload);
+    return () => void mounted.delete(latestReload);
+  }, []);
+
   const rowOf = (id: string) =>
     container.current?.querySelector(`[data-contact-id="${CSS.escape(id)}"]`);
 
@@ -56,46 +139,29 @@ export function useContactNotices(
     return () => clearTimeout(timer);
   }, [focusId, contacts]);
 
-  /** `undoable` is false for a contact with linked data: it was confirmed first and cannot come back. */
+  /**
+   * A contact was deleted. With `undoable` (the default) the server has not been told yet: the contact is
+   * hidden and the delete is held for the Undo window. Otherwise it was confirmed and is already gone.
+   */
   const deleted = (gone: Contact, undoable = true) => {
-    reload();
     if (!undoable) {
+      reload();
       toast(t`Deleted ${gone.name}`);
       return;
     }
-    const { name, email, organization, kind, notes, stage, checkSizeCents, nextStep, roundId } =
-      gone;
-    let restoring = false;
-    const restore = () => {
-      if (restoring) return;
-      restoring = true;
-      rpc.contacts
-        .save({
-          name,
-          email,
-          organization,
-          kind,
-          notes,
-          stage,
-          checkSizeCents,
-          nextStep,
-          roundId: roundId ?? undefined,
-        })
-        .then((saved) => {
-          toast(t`Restored ${name}`);
-          reload();
-          setSavedId(saved.id);
-          setFocusId(saved.id);
-        })
-        .catch(() => {
-          toast(t`Could not restore ${name}`, { label: t`Try again`, onClick: restore });
-        })
-        .finally(() => {
-          restoring = false;
-        });
-    };
-    toast(t`Deleted ${name}`, { label: t`Undo`, onClick: restore });
+    const { name, id } = gone;
+    const toastId = toast(t`Deleted ${name}`, {
+      label: t`Undo`,
+      onClick: () => {
+        if (!cancelHeldDelete(id)) return;
+        toast(t`Restored ${name}`);
+        reload(id);
+        setSavedId(id);
+        setFocusId(id);
+      },
+    });
+    holdDelete(gone, toastId);
   };
 
-  return { notify: toast, savedId, setSavedId, deleted };
+  return { notify: toast, savedId, setSavedId, setFocusId, deleted };
 }

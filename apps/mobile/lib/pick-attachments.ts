@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import type { PickedAttachment, PickSkip } from "./pick-attachments-filter.js";
-import { filterPickedAttachments } from "./pick-attachments-filter.js";
+import { filterPickedAttachments, readPickedAttachments } from "./pick-attachments-filter.js";
 
 export type { PickedAttachment, PickSkip } from "./pick-attachments-filter.js";
 
@@ -29,15 +29,15 @@ export async function pickFromLibrary(existingCount = 0): Promise<{
     quality: 1,
   });
   if (result.canceled) return { attachments: [], skipped: [] };
-  const candidates = await Promise.all(
-    result.assets.map(async (asset) => {
-      const name = asset.fileName ?? `photo-${asset.assetId ?? Date.now()}.jpg`;
-      const mimeType = inferAttachmentMimeType(name, asset.mimeType ?? undefined);
-      const { contentBase64, size } = await readUriAsBase64(asset.uri);
-      return { name, mimeType, size, contentBase64, previewUri: asset.uri };
-    }),
-  );
-  return filterPickedAttachments(existingCount, candidates);
+  const candidates = result.assets.map((asset) => {
+    const name = asset.fileName ?? `photo-${asset.assetId ?? Date.now()}.jpg`;
+    const mimeType = inferAttachmentMimeType(name, asset.mimeType ?? undefined);
+    return { name, mimeType, uri: asset.uri, previewUri: asset.uri };
+  });
+  return readPickedAttachments(existingCount, candidates, async (candidate) => {
+    const { contentBase64, size } = await readUriAsBase64(candidate.uri);
+    return { contentBase64, size };
+  });
 }
 
 export async function takePhoto(existingCount = 0): Promise<{
@@ -70,13 +70,13 @@ export async function pickDocuments(existingCount = 0): Promise<{
   });
   if (result.canceled) return { attachments: [], skipped: [] };
   const assets = result.assets ?? [];
-  const candidates = await Promise.all(
-    assets.map(async (asset) => {
-      const name = asset.name ?? "file";
-      const mimeType = inferAttachmentMimeType(name, asset.mimeType ?? undefined);
-      const { contentBase64, size } = await readUriAsBase64(asset.uri);
-      return { name, mimeType, size, contentBase64 };
-    }),
-  );
-  return filterPickedAttachments(existingCount, candidates);
+  const candidates = assets.map((asset) => {
+    const name = asset.name ?? "file";
+    const mimeType = inferAttachmentMimeType(name, asset.mimeType ?? undefined);
+    return { name, mimeType, uri: asset.uri };
+  });
+  return readPickedAttachments(existingCount, candidates, async (candidate) => {
+    const { contentBase64, size } = await readUriAsBase64(candidate.uri);
+    return { contentBase64, size };
+  });
 }

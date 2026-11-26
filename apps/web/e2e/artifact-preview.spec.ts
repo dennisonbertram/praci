@@ -63,3 +63,31 @@ test("agent-attached Markdown opens a rendered preview and can be downloaded", a
   await expect(dialog).toHaveCount(0);
   await expect(previewButton).toBeFocused();
 });
+
+test("agent-attached HTML renders in the sandboxed preview", async ({ page }, testInfo) => {
+  const stamp = Date.now();
+  await signup(page, `html-preview-${stamp}@rakazo.test`, "password12", "HTML Preview");
+  await completeOnboarding(page);
+
+  const composer = page.getByPlaceholder(/Message/);
+  await composer.fill(
+    "write path notes/page.html and attach it to the thread says <h1>Rendered page</h1><p id=ran></p><script>document.getElementById('ran').textContent = 'script ran'</script>",
+  );
+  await page.keyboard.press("Enter");
+
+  const previewButton = page.getByRole("button", { name: "Preview page.html" });
+  await expect(previewButton).toBeVisible({ timeout: 30_000 });
+  await previewButton.click();
+
+  const dialog = page.getByRole("dialog", { name: "page.html" });
+  await expect(dialog).toBeVisible();
+  // The viewer loads the network shell, which renders the document in a nested sandboxed frame.
+  const shell = dialog.locator('iframe[title="page.html"]');
+  await expect(shell).toHaveAttribute("src", "/html-viewer.html");
+  const preview = shell.contentFrame().locator("iframe#preview").contentFrame();
+  await expect(preview.getByRole("heading", { name: "Rendered page" })).toBeVisible();
+  await expect(preview.getByText("script ran")).toBeVisible();
+  // The preview's opaque origin keeps it away from the app's storage and DOM.
+  expect(await preview.locator("body").evaluate(() => window.origin)).toBe("null");
+  await captureScreenshot(page, testInfo, "html-preview-open");
+});

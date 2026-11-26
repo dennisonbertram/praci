@@ -1,15 +1,31 @@
-import type { Actor, Bot, BotSection, MessageBlock, SpaceBot } from "@rakazo/contracts";
-import { BOT_COLORS, isVoiceAgentSpawnKey, retiredVoiceAgentSpawnKey } from "@rakazo/contracts";
+import type {
+  Actor,
+  AppControlApp,
+  Bot,
+  BotSection,
+  MessageBlock,
+  SpaceBot,
+} from "@rakazo/contracts";
+import {
+  AppControlAppSchema,
+  BOT_COLORS,
+  isVoiceAgentSpawnKey,
+  PermissionLevelSchema,
+  retiredVoiceAgentSpawnKey,
+  SandboxKind,
+} from "@rakazo/contracts";
 import {
   BACKGROUND_RUN_TRIGGERS,
   isBackgroundRunTrigger,
   messageReaction,
   userVisibleMessages,
 } from "@rakazo/core";
+import * as z from "zod";
 import type { PrismaClient } from "./client.js";
 import type { ComputerMode } from "./computers.js";
 import { ensureComputerRecord, parseComputerMode } from "./computers.js";
 import { createThreadMessageInTransaction } from "./messages.js";
+import { withNewestThreadMessages } from "./preview-messages.js";
 import { isUniqueViolation } from "./prisma-errors.js";
 import { delegatePendingIds } from "./run-pauses.js";
 import { BotSectionNameConflictError, IsolationError } from "./scope.js";
@@ -18,14 +34,20 @@ import { lockSpaceForContentCreation } from "./spaces.js";
 import {
   activeRunSelection,
   isHandOffOnly,
-  latestBotRunSelection,
   previewFromBlocks,
   storedRunPhase,
+  withLatestBotRuns,
 } from "./thread-listing.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
 /** Newest messages loaded for sidebar preview; enough to skip a short peer-run tail. */
 const SIDEBAR_PREVIEW_MESSAGE_WINDOW = 16;
+
+/** The stored allowlist; a malformed row reads as no apps. */
+function storedAppControlApps(value: unknown): AppControlApp[] {
+  const parsed = z.array(AppControlAppSchema).safeParse(value);
+  return parsed.success ? parsed.data : [];
+}
 
 function isSpawnKeyConflict(error: unknown): boolean {
   if (!isUniqueViolation(error)) return false;
@@ -63,6 +85,7 @@ function mapBot(
     sectionId: string | null;
     position?: number;
     archivedAt: Date | null;
+    hiddenAt: Date | null;
     parentBotId: string | null;
     memoryScope: string | null;
     createdAt: Date;
@@ -73,11 +96,20 @@ function mapBot(
     autoSpeak?: boolean;
     modelProvider?: string | null;
     modelId?: string | null;
+    modelCredentialId?: string | null;
     thinkingLevel?: string | null;
     teamChatAmbientEnabled?: boolean;
     teamChatRules?: string;
+    crossSpaceCommunication?: boolean;
+    appControlEnabled?: boolean;
+    appControlApps?: unknown;
+    appControlHeaded?: boolean;
     disabledBuiltinTools?: string[];
     audience?: string;
+    firewall?: boolean;
+    firewallAskCapabilities?: string[];
+    permissionLevel?: string | null;
+    proactivity?: string;
     externalMessageTargets?: string[];
     externalComputerTools?: boolean;
     webhookSecretId?: string | null;
@@ -90,7 +122,7 @@ function mapBot(
   runPhase: unknown = null,
 ): Bot {
   if (!bot.thread) {
-    throw new IsolationError("Bot is missing its thread");
+    throw new Error("Bot is missing its thread");
   }
   return {
     id: bot.id,
@@ -105,6 +137,7 @@ function mapBot(
     sectionId: bot.sectionId,
     position: bot.position,
     archivedAt: bot.archivedAt?.toISOString() ?? null,
+    hiddenAt: bot.hiddenAt?.toISOString() ?? null,
     unread: bot.thread.unread,
     parentBotId: bot.parentBotId,
     memoryScope: bot.memoryScope as "isolated" | "shared" | null,
@@ -121,11 +154,22 @@ function mapBot(
     autoSpeak: bot.autoSpeak ?? false,
     modelProvider: bot.modelProvider ?? null,
     modelId: bot.modelId ?? null,
+    modelCredentialId: bot.modelCredentialId ?? null,
     thinkingLevel: (bot.thinkingLevel as Bot["thinkingLevel"]) ?? null,
     teamChatAmbientEnabled: bot.teamChatAmbientEnabled ?? false,
     teamChatRules: bot.teamChatRules ?? "",
+    crossSpaceCommunication: bot.crossSpaceCommunication ?? false,
+    appControl: {
+      enabled: bot.appControlEnabled ?? false,
+      apps: storedAppControlApps(bot.appControlApps),
+      headed: bot.appControlHeaded ?? false,
+    },
     disabledBuiltinTools: bot.disabledBuiltinTools ?? [],
     audience: bot.audience === "external" ? "external" : "internal",
+    firewall: bot.firewall ?? false,
+    permissionLevel: PermissionLevelSchema.safeParse(bot.permissionLevel).data ?? null,
+    firewallAskCapabilities: bot.firewallAskCapabilities ?? [],
+    proactivity: bot.proactivity === "low" ? "low" : bot.proactivity === "high" ? "high" : "medium",
     externalMessageTargets: bot.externalMessageTargets ?? [],
     externalComputerTools: bot.externalComputerTools ?? false,
     webhookConfigured: Boolean(bot.webhookSecretId),
@@ -148,7 +192,7 @@ export function createRepos(prisma: PrismaClient) {
 
   async function listSpaceBotsForSpaces(actor: Actor, spaceIds: string[]): Promise<SpaceBot[]> {
     if (spaceIds.length === 0) return [];
-    const bots = await prisma.bot.findMany({
+    const rows = await prisma.bot.findMany({
       where: {
         spaceId: { in: spaceIds },
         userId: actor.userId,
@@ -162,6 +206,7 @@ export function createRepos(prisma: PrismaClient) {
         color: true,
         notifyOnFinish: true,
         pinned: true,
+        hiddenAt: true,
         sectionId: true,
         position: true,
         updatedAt: true,
@@ -169,21 +214,17 @@ export function createRepos(prisma: PrismaClient) {
         spawnKey: true,
         thread: {
           select: {
+            id: true,
             unread: true,
-            messages: {
-              orderBy: { seq: "desc" },
-              take: 1,
-              select: { blocks: true },
-            },
-            runs: latestBotRunSelection,
           },
         },
         runs: activeRunSelection,
       },
       orderBy: [{ pinned: "desc" }, { position: "asc" }, { createdAt: "asc" }],
     });
+    const bots = await withNewestThreadMessages(prisma, await withLatestBotRuns(prisma, rows), 1);
     return bots.map((bot) => {
-      if (!bot.thread) throw new IsolationError("Bot is missing its thread");
+      if (!bot.thread) throw new Error("Bot is missing its thread");
       return {
         id: bot.id,
         spaceId: bot.spaceId,
@@ -192,6 +233,7 @@ export function createRepos(prisma: PrismaClient) {
         color: bot.color,
         notifyOnFinish: bot.notifyOnFinish,
         pinned: bot.pinned,
+        hiddenAt: bot.hiddenAt?.toISOString() ?? null,
         sectionId: bot.sectionId,
         position: bot.position,
         unread: bot.thread.unread,
@@ -299,24 +341,26 @@ export function createRepos(prisma: PrismaClient) {
     },
 
     async listBots(actor: Actor, options: { archived?: boolean } = {}): Promise<Bot[]> {
-      const bots = await prisma.bot.findMany({
-        where: {
-          spaceId: actor.spaceId,
-          userId: actor.userId,
-          archivedAt: options.archived ? { not: null } : null,
-        },
-        include: {
-          thread: {
-            include: {
-              messages: { orderBy: { seq: "desc" }, take: SIDEBAR_PREVIEW_MESSAGE_WINDOW },
-              runs: latestBotRunSelection,
+      const bots = await withNewestThreadMessages(
+        prisma,
+        await withLatestBotRuns(
+          prisma,
+          await prisma.bot.findMany({
+            where: {
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              archivedAt: options.archived ? { not: null } : null,
             },
-          },
-          runs: activeRunSelection,
-          computer: { select: { scope: true } },
-        },
-        orderBy: [{ pinned: "desc" }, { position: "asc" }, { createdAt: "asc" }],
-      });
+            include: {
+              thread: true,
+              runs: activeRunSelection,
+              computer: { select: { scope: true } },
+            },
+            orderBy: [{ pinned: "desc" }, { position: "asc" }, { createdAt: "asc" }],
+          }),
+        ),
+        SIDEBAR_PREVIEW_MESSAGE_WINDOW,
+      );
       const candidateRunIds = [
         ...new Set(
           bots.flatMap((bot) =>
@@ -466,6 +510,10 @@ export function createRepos(prisma: PrismaClient) {
         disabledBuiltinTools?: string[];
         /** A copy keeps the original's audience; every other new bot is internal. */
         audience?: "internal" | "external";
+        /** A copy keeps the original's firewall flag. */
+        firewall?: boolean;
+        /** A copy keeps the original's level. */
+        proactivity?: "low" | "medium" | "high";
         externalMessageTargets?: string[];
         externalComputerTools?: boolean;
         initialMessage?: {
@@ -505,7 +553,8 @@ export function createRepos(prisma: PrismaClient) {
         }
       }
       const settings = await prisma.deploymentSettings.findUnique({ where: { id: "default" } });
-      const envKind = process.env.SANDBOX_PROVIDER ?? "docker";
+      const parsedEnvKind = SandboxKind.safeParse(process.env.SANDBOX_PROVIDER ?? "docker");
+      const envKind = parsedEnvKind.success ? parsedEnvKind.data : "docker";
       const kind =
         envKind === "docker" && settings?.computerHost === "this-mac" ? "desktop" : envKind;
       const insertBot = () =>
@@ -543,6 +592,8 @@ export function createRepos(prisma: PrismaClient) {
               thinkingLevel,
               disabledBuiltinTools,
               audience: input.audience ?? "internal",
+              firewall: input.firewall ?? false,
+              proactivity: input.proactivity ?? "medium",
               externalMessageTargets: input.externalMessageTargets ?? [],
               externalComputerTools: input.externalComputerTools ?? false,
             },

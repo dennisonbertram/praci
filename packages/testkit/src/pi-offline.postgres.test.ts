@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
 import { startModelEmulator } from "./model-emulator.js";
+import { grantTestModelConsent } from "./test-consent.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
@@ -108,6 +109,12 @@ describe.skipIf(!databaseAvailable)("offline Pi product journey", () => {
         botId: bot.id,
         modelProvider: model.model.provider,
         modelId: model.model.id,
+      });
+      const storedBot = await handles.prisma.bot.findUniqueOrThrow({ where: { id: bot.id } });
+      await grantTestModelConsent(handles.prisma, storedBot, {
+        provider: model.model.provider,
+        modelId: model.model.id,
+        baseUrl: model.baseUrl,
       });
       const sent = await rpc<{ runId: string }>(handles.app, cookie, "threads/send", {
         botId: bot.id,

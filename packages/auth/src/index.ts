@@ -1,4 +1,5 @@
 import { expo } from "@better-auth/expo";
+import { passkey } from "@better-auth/passkey";
 import type { TransactionalEmail, TransactionalEmailProvider } from "@rakazo/adapter-kit";
 import {
   allowlistedSignupAdmission,
@@ -18,16 +19,24 @@ import {
   createAuthMiddleware,
   getOAuthState,
 } from "better-auth/api";
-import { bearer, organization } from "better-auth/plugins";
+import { parseSetCookieHeader } from "better-auth/cookies";
+import { organization } from "better-auth/plugins";
 import {
   accountSecurity,
   OIDC_FRESH_AGE,
   oidcProofKey,
   sessionForAuthHook,
+  signedBearer,
 } from "./account-security.js";
+import type { McpAuthEnv } from "./mcp.js";
+import { mcpPlugins } from "./mcp.js";
 import type { OidcConfig } from "./oidc.js";
 import { oidcDiscovery } from "./oidc.js";
+import type { TokenKey } from "./token-storage.js";
+import { encryptStoredOAuthTokens, openIdToken, sealIdToken } from "./token-storage.js";
 
+export type { McpAuthEnv } from "./mcp.js";
+export { grantReference, MCP_SCOPES, requireMcpAuth } from "./mcp.js";
 export type { OidcConfig } from "./oidc.js";
 
 export interface AuthEnv {
@@ -40,6 +49,8 @@ export interface AuthEnv {
   signupAllowlist: string | undefined;
   extraOrigins?: string[];
   email?: TransactionalEmailProvider;
+  /** Turns this server into the OAuth server for MCP clients. */
+  mcp?: McpAuthEnv;
   onEmailError?: (error: unknown) => void;
   beforeDeleteUser?: (userId: string) => Promise<void>;
   /**
@@ -61,6 +72,14 @@ export interface AuthEnv {
   /** Runs when a password change replaces the caller's own session instead of ending it. */
   afterReplaceSession?: (previous: AuthSession, session: AuthSession) => Promise<void>;
 }
+
+/**
+ * A session lasts 90 days from its last renewal, and renews once a day of use
+ * (any session read). Web, desktop and mobile share it: cookies and bearer
+ * tokens both name the same session row. `freshAge` stays at Better Auth's one day.
+ */
+export const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 90;
+export const SESSION_RENEW_AFTER_SECONDS = 60 * 60 * 24;
 
 type AuthSession = { id: string; userId: string };
 
@@ -243,7 +262,12 @@ async function claimUnverifiedFirstAccount(prisma: PrismaClient, userId: string)
   });
 }
 
-const CREDENTIAL_PATHS = ["/sign-in/email", "/sign-up/email", "/request-password-reset"] as const;
+const CREDENTIAL_PATHS = [
+  "/sign-in/email",
+  "/sign-up/email",
+  "/request-password-reset",
+  "/send-verification-email",
+] as const;
 
 /** Shared across API processes. Off outside production so tests can sign in freely. */
 export function authRateLimitOptions(nodeEnv = process.env.NODE_ENV) {
@@ -262,6 +286,9 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
   if (env.passwordAuth === false && !env.oidc)
     throw new Error("Password auth requires OIDC when disabled");
   const discovery = env.oidc ? oidcDiscovery(env.oidc) : undefined;
+  // Better Auth's own token key, so every stored token shares one cipher and key.
+  let authContext: Promise<{ secretConfig: TokenKey }> | undefined;
+  const tokenKey = async () => (await authContext!).secretConfig;
   const auth = betterAuth({
     appName: "Praci",
     secret: env.secret,
@@ -269,8 +296,18 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
     trustedOrigins: [...buildTrustedOrigins(env), "rakazo://"],
     account: {
       accountLinking: { enabled: true, disableImplicitLinking: true, trustedProviders: [] },
+      encryptOAuthTokens: true,
+    },
+    // Store only a hash of identifiers that carry an emailed token. Other
+    // identifiers hold no secret and stay readable.
+    verification: {
+      storeIdentifier: {
+        default: "plain",
+        overrides: { "reset-password:": "hashed", "delete-account-": "hashed" },
+      },
     },
     rateLimit: authRateLimitOptions(),
+    session: { expiresIn: SESSION_LIFETIME_SECONDS, updateAge: SESSION_RENEW_AFTER_SECONDS },
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     emailAndPassword: {
       enabled: env.passwordAuth !== false,
@@ -314,6 +351,16 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         if (isMessagingEmail(email)) return { error: "EMAIL_NOT_AVAILABLE" };
         if (source.action === "link-account") {
           if (!verified) return { error: "unable_to_link_account" };
+          // Anyone can register an address, so linking waits for verification. Without email
+          // nothing can verify; then only the account's own browser may link, since the
+          // native authorization proxy can plant a link state in any other.
+          const target = await ctx.context.internalAdapter.findUserById(String(user.id));
+          if (
+            !target ||
+            (!target.emailVerified &&
+              (env.email || (await sessionForAuthHook(ctx))?.user.id !== target.id))
+          )
+            return { error: "unable_to_link_account" };
           return;
         }
         if (source.action === "create-user") {
@@ -332,8 +379,14 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
           const credential = await ctx.context.internalAdapter.findCredentialAccount(user.id);
           if (credential?.password && stored?.email.toLowerCase() !== email)
             return { error: "email_does_not_match" };
-          // A previous verified claim must not mask a later false/missing claim.
-          await ctx.context.internalAdapter.updateUser(user.id, { email, emailVerified: verified });
+          // A previous verified claim must not mask a later false/missing claim, and an
+          // unverified claim must not move the account onto an address nobody proved.
+          await ctx.context.internalAdapter.updateUser(
+            user.id,
+            verified || stored?.email.toLowerCase() === email
+              ? { email, emailVerified: verified }
+              : { emailVerified: false },
+          );
         }
       },
       deleteUser: {
@@ -365,6 +418,43 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
               },
               select: { spaceId: true, storageKey: true },
             });
+            // Contact photos cascade with the user and the personal spaces; their blobs do not.
+            const photos = await tx.contactPhoto.findMany({
+              where: {
+                OR: [
+                  { userId: user.id },
+                  { space: { organizationId: { in: personalOrganizationIds } } },
+                ],
+              },
+              select: { spaceId: true, storageKey: true },
+            });
+            // Finished export zips cascade with the user too; the retried blob job removes them.
+            const exports = await tx.accountExport.findMany({
+              where: { userId: user.id, storageKey: { not: null } },
+              select: { spaceId: true, storageKey: true },
+            });
+            // Audio of recordings still waiting to be transcribed cascades away too, not its blob.
+            const captureAudio = await tx.meetingCaptureChunk.findMany({
+              where: {
+                blobKey: { not: null },
+                OR: [
+                  { userId: user.id },
+                  { space: { organizationId: { in: personalOrganizationIds } } },
+                ],
+              },
+              select: { spaceId: true, blobKey: true },
+            });
+            // Pendant audio not yet assembled cascades away too, not its blob.
+            const omiAudio = await tx.omiUpload.findMany({
+              where: {
+                assembledAt: null,
+                OR: [
+                  { userId: user.id },
+                  { space: { organizationId: { in: personalOrganizationIds } } },
+                ],
+              },
+              select: { spaceId: true, storageKey: true },
+            });
             // Deleting the personal organizations cascades to their Computers, not to the
             // home snapshots in object storage.
             const homes = await tx.computer.findMany({
@@ -389,9 +479,19 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
               where: { id: { in: personalOrganizationIds } },
             });
             return {
-              blobs: items.flatMap(({ spaceId, storageKey }) =>
-                storageKey ? [{ spaceId, storageKey }] : [],
-              ),
+              blobs: [
+                ...items.flatMap(({ spaceId, storageKey }) =>
+                  storageKey ? [{ spaceId, storageKey }] : [],
+                ),
+                ...photos,
+                ...exports.flatMap(({ spaceId, storageKey }) =>
+                  storageKey ? [{ spaceId, storageKey }] : [],
+                ),
+                ...captureAudio.flatMap(({ spaceId, blobKey }) =>
+                  blobKey ? [{ spaceId, storageKey: blobKey }] : [],
+                ),
+                ...omiAudio,
+              ],
               homes,
             };
           });
@@ -400,15 +500,27 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
       },
     },
     plugins: [
-      bearer(),
+      signedBearer,
       expo(),
       accountSecurity(env.email, env.oidc?.name, env.oidc?.issuer, env.passwordAuth !== false),
       ...(discovery ? [discovery.plugin] : []),
+      // A passkey signs in without OIDC, so it follows password sign-in: off when SSO is mandatory.
+      // rpID is the web origin's host: the browser runs on the web origin, not the API's.
+      ...(env.passwordAuth !== false
+        ? [
+            passkey({
+              rpID: passkeyRpId(env.webOrigin),
+              rpName: "Praci",
+              origin: [env.webOrigin, ...loopbackTwinOrigins(env.webOrigin)],
+            }),
+          ]
+        : []),
       organization({
         allowUserToCreateOrganization: false,
         disableOrganizationDeletion: true,
         creatorRole: "owner",
       }),
+      ...(env.mcp ? mcpPlugins(prisma, env.mcp) : []),
     ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
@@ -444,11 +556,17 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         let requireEmailVerification = false;
         if (ctx.path === "/sign-up/email") {
           if (!policy?.enabled) {
-            throw new APIError("BAD_REQUEST", { message: "Registration is closed" });
+            throw new APIError("BAD_REQUEST", {
+              code: "REGISTRATION_CLOSED",
+              message: "Registration is closed",
+            });
           }
           const email = String(ctx.body?.email ?? "");
           if (!emailAllowed(email, policy.allowlist)) {
-            throw new APIError("BAD_REQUEST", { message: "Email is not allowed to register" });
+            throw new APIError("BAD_REQUEST", {
+              code: "EMAIL_NOT_ALLOWED",
+              message: "Email is not allowed to register",
+            });
           }
           if (policy.allowlist.length > 0 && !env.email) {
             const held = await holdFirstAccountGate(prisma);
@@ -510,11 +628,41 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         if (ctx.path === "/sign-up/email") {
           await releaseSignupGate(String(ctx.body?.email ?? ""));
         }
-        const redacted = withoutSessionTokens(ctx.path, ctx.context.returned);
+        const returned = ctx.context.returned;
+        // These routes fall back to the stored ID token, which is sealed at rest.
+        if (
+          (ctx.path === "/get-access-token" || ctx.path === "/refresh-token") &&
+          isRecord(returned) &&
+          typeof returned.idToken === "string"
+        ) {
+          const idToken = await openIdToken(ctx.context.secretConfig, returned.idToken);
+          return ctx.json({ ...returned, idToken: idToken ?? undefined });
+        }
+        const redacted = withoutSessionTokens(ctx.path, returned);
         if (redacted) return ctx.json(redacted);
+        const signed = withSignedSessionToken(ctx.context, returned);
+        if (signed) return ctx.json(signed);
       }),
     },
     databaseHooks: {
+      account: {
+        create: {
+          before: async (account) => ({
+            data: { ...account, idToken: await sealIdToken(await tokenKey(), account.idToken) },
+          }),
+        },
+        update: {
+          before: async (account) =>
+            account.idToken === undefined
+              ? undefined
+              : {
+                  data: {
+                    ...account,
+                    idToken: await sealIdToken(await tokenKey(), account.idToken),
+                  },
+                },
+        },
+      },
       session: {
         create: {
           before: async (session, ctx) => {
@@ -592,7 +740,10 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
       },
     },
   });
+  authContext = auth.$context;
   return Object.assign(auth, {
+    /** Encrypts OAuth tokens stored before encryption was enabled. Safe to rerun. */
+    encryptStoredOAuthTokens: async () => encryptStoredOAuthTokens(prisma, await tokenKey()),
     ssoAvailability: () => discovery?.availability(),
     disposeOidcDiscovery: () => discovery?.dispose(),
   });
@@ -671,6 +822,34 @@ function withoutSessionTokens(
   return undefined;
 }
 
+/**
+ * A sign-in body carries the new session's raw token, which the bearer plugin
+ * refuses. Swap in the signed value from the session cookie, so a native client
+ * that keeps the body token stores a bearer that works.
+ */
+function withSignedSessionToken(
+  context: {
+    newSession: { session: { token: string } } | null;
+    responseHeaders?: Headers;
+    authCookies: { sessionToken: { name: string } };
+  },
+  returned: unknown,
+): Record<string, unknown> | undefined {
+  const token = context.newSession?.session.token;
+  if (!token || !isRecord(returned)) return undefined;
+  const cookie = parseSetCookieHeader(context.responseHeaders?.get("set-cookie") ?? "").get(
+    context.authCookies.sessionToken.name,
+  );
+  if (!cookie?.value || cookie["max-age"] === 0) return undefined;
+  const signed = decodeURIComponent(cookie.value);
+  if (!signed.startsWith(`${token}.`)) return undefined;
+  if (returned.token === token) return { ...returned, token: signed };
+  if (isRecord(returned.session) && returned.session.token === token) {
+    return { ...returned, session: { ...returned.session, token: signed } };
+  }
+  return undefined;
+}
+
 function withoutToken(session: unknown): unknown {
   if (!isRecord(session)) return session;
   const { token: _token, ...rest } = session;
@@ -686,6 +865,12 @@ export function buildTrustedOrigins(env: Pick<AuthEnv, "webOrigin" | "baseURL" |
   const configured = [env.webOrigin, env.baseURL, ...(env.extraOrigins ?? [])];
   const twins = [env.webOrigin, env.baseURL].flatMap(loopbackTwinOrigins);
   return [...new Set([...configured, ...twins])];
+}
+
+/** The web origin's host. WebAuthn rejects IP hosts, so a loopback origin uses its name, "localhost". */
+export function passkeyRpId(webOrigin: string): string {
+  const { hostname } = new URL(webOrigin);
+  return isLoopbackHost(hostname) ? "localhost" : hostname;
 }
 
 function isLoopbackHost(host: string): boolean {
@@ -716,7 +901,16 @@ export function loopbackTwinOrigins(origin: string): string[] {
  * route under it stays closed, including ones a future plugin version adds.
  */
 export function isBlockedAuthPath(path: string): boolean {
-  return path.startsWith("/organization");
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return true;
+  }
+  return decoded
+    .toLowerCase()
+    .split("/")
+    .some((segment) => segment === "organization");
 }
 
 function isOidcCallback(

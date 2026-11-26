@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { EmailItemCard } from "../../components/gtm/EmailItemCard";
 import { LinkedInPostPreview } from "../../components/gtm/LinkedInPostPreview";
 import { XPostPreview } from "../../components/gtm/XPostPreview";
+import { toDatetimeLocalValue } from "../../lib/datetime-local";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -76,17 +77,32 @@ export function GtmItem({
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes);
   const [target, setTarget] = useState(item.target ?? "");
-  const [scheduledFor, setScheduledFor] = useState(item.scheduledFor ?? "");
+  const initialTime = item.scheduledFor ? toDatetimeLocalValue(new Date(item.scheduledFor)) : "";
+  const [scheduledFor, setScheduledFor] = useState(initialTime);
   const [proof, setProof] = useState("");
   const [marking, setMarking] = useState(false);
   const [queue, setQueue] = useState<{ version: string; result: GtmQueueOutput } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const uncertain = isUncertain(item);
   const queued = item.proof?.startsWith("zernio:");
+  // Zernio publishes an open queued post even if the local record goes away, so Discard
+  // would hide the one place the founder can still see it.
+  const discardable = !(
+    queued &&
+    item.status === "open" &&
+    item.scheduledFor &&
+    new Date(item.scheduledFor).getTime() > Date.now()
+  );
   const gated = ["public_post", "create_account", "outbound_email"].includes(item.category ?? "");
   const post = item.category === "public_post";
   const email = item.category === "outbound_email";
   const canApprove = !email && (!post || overview.postingCapability === "ready");
+  const postingFloor =
+    Math.max(Date.now(), Date.parse(overview.nextRunAt ?? "") || 0) + 10 * 60_000;
+  const hasValidPostingTime = (value: string) => {
+    const date = Date.parse(value);
+    return Number.isFinite(date) && date >= postingFloor;
+  };
   const queueChecked =
     queue?.version === item.updatedAt && queue.result.status === "ready" && queue.result.complete;
   const href = item.proof && publicProof(item.proof);
@@ -100,8 +116,14 @@ export function GtmItem({
       await action();
       if (refresh) onChange();
     } catch (cause) {
-      if ((cause as { code?: string })?.code === "CONFLICT") {
+      const code = (cause as { code?: string })?.code;
+      if (code === "CONFLICT") {
         setError(t`Changed, review again`);
+        setQueue(null);
+        setConfirmed(false);
+        onChange();
+      } else if (code === "NOT_FOUND") {
+        setError("");
         setQueue(null);
         setConfirmed(false);
         onChange();
@@ -111,8 +133,12 @@ export function GtmItem({
       setBusy(false);
     }
   };
-  const approve = (reapprove = false) =>
-    run(() =>
+  const approve = (reapprove = false) => {
+    if (post && !hasValidPostingTime(item.scheduledFor ?? "")) {
+      setError(t`Schedule this post at least ten minutes after the next run.`);
+      return;
+    }
+    return run(() =>
       rpc.scratchpad.update({
         itemId: item.id,
         status: "open",
@@ -120,6 +146,7 @@ export function GtmItem({
         ...(reapprove ? { reapprove: true } : {}),
       }),
     );
+  };
   const checkQueue = () =>
     run(async () => {
       setQueue(null);
@@ -157,13 +184,23 @@ export function GtmItem({
           className="mt-3 space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
+            // datetime-local drops seconds, so an untouched time is not sent back.
+            const timeChanged = scheduledFor !== initialTime;
+            if (timeChanged && Number.isNaN(Date.parse(scheduledFor))) {
+              setError(t`Enter a valid date and time.`);
+              return;
+            }
+            if (post && timeChanged && !hasValidPostingTime(scheduledFor)) {
+              setError(t`Schedule this post at least ten minutes after the next run.`);
+              return;
+            }
             void run(async () => {
               await rpc.scratchpad.update({
                 itemId: item.id,
                 title,
                 notes,
                 target,
-                ...(scheduledFor ? { scheduledFor: new Date(scheduledFor).toISOString() } : {}),
+                ...(timeChanged ? { scheduledFor: new Date(scheduledFor).toISOString() } : {}),
               });
               setEditing(false);
             });
@@ -199,9 +236,10 @@ export function GtmItem({
           </label>
           {post ? (
             <label className="block text-xs" htmlFor={`gtm-scheduled-for-${item.id}`}>
-              <Trans>Scheduled time (ISO)</Trans>
+              <Trans>Scheduled time</Trans>
               <Input
                 id={`gtm-scheduled-for-${item.id}`}
+                type="datetime-local"
                 value={scheduledFor}
                 required
                 onChange={(event) => setScheduledFor(event.target.value)}
@@ -250,7 +288,12 @@ export function GtmItem({
             <p className="mt-3 break-words text-xs text-muted-foreground">
               {item.target}
               {item.target && item.scheduledFor ? " · " : ""}
-              {item.scheduledFor ? new Date(item.scheduledFor).toLocaleString() : null}
+              {item.scheduledFor
+                ? new Date(item.scheduledFor).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : null}
             </p>
           ) : null}
           {item.proof && !uncertain ? (
@@ -260,9 +303,9 @@ export function GtmItem({
                   {item.proof}
                 </a>
               ) : queued ? (
-                <>
-                  <Trans>Queued in Zernio</Trans> · {item.proof}
-                </>
+                <span title={item.proof}>
+                  <Trans>Queued in Zernio</Trans>
+                </span>
               ) : (
                 item.proof
               )}
@@ -298,21 +341,23 @@ export function GtmItem({
                     setTitle(item.title);
                     setNotes(item.notes);
                     setTarget(item.target ?? "");
-                    setScheduledFor(item.scheduledFor ?? "");
+                    setScheduledFor(initialTime);
                     setEditing(true);
                   }}
                 >
                   <Trans>Edit</Trans>
                 </Button>
               ) : null}
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                onClick={() => void run(() => rpc.scratchpad.remove({ itemId: item.id }))}
-              >
-                <Trans>Discard</Trans>
-              </Button>
+              {discardable ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void run(() => rpc.scratchpad.remove({ itemId: item.id }))}
+                >
+                  <Trans>Discard</Trans>
+                </Button>
+              ) : null}
               {item.category === "draft" ? (
                 <>
                   <Button

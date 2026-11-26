@@ -1,5 +1,17 @@
-import type { InboxMoveInput, InboxMoveOutput } from "@rakazo/contracts";
+import type { InboxMoveInput, InboxMoveOutput, MailRow } from "@rakazo/contracts";
 import { bulkInChunks } from "@rakazo/core";
+
+/** Spam and trash are for inbox mail; Not spam for mail the Spam pile shows. */
+export type MailMoveOp = "spam" | "notSpam" | "trash";
+
+/** Which moves one mail offers, in menu order. The row and the open message share this rule. */
+export function availableMoves(row: Pick<MailRow, "inInbox" | "pile">): MailMoveOp[] {
+  return [
+    ...(row.inInbox && row.pile !== "spam" ? (["spam"] as const) : []),
+    ...(row.inInbox ? (["trash"] as const) : []),
+    ...(row.pile === "spam" ? (["notSpam"] as const) : []),
+  ];
+}
 
 /**
  * Reports spam, clears the spam flag or trashes many messages in slices the API accepts. Every

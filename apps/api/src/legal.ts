@@ -2,20 +2,20 @@ import { ORPCError } from "@orpc/server";
 import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
-import { toLegalContract, toLegalDeadline } from "@rakazo/adapters";
+import { lockAgentBot, toLegalContract, toLegalDeadline } from "@rakazo/adapters";
 import type { Actor, Bot, LegalGraph, LegalOverview } from "@rakazo/contracts";
 import { LEGAL_AGENT_MODEL, LEGAL_SCAN_ROUTINE_NAME } from "@rakazo/contracts";
-import { connectionRowsForAudience, deniedConnectionIds } from "@rakazo/core";
+import { connectionRowsForAudience, deniedConnectionIds, newRunUnattended } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError, LEGAL_NOT_LEGAL_TYPE } from "@rakazo/db";
 import { createDataRoomService } from "./data-room.js";
-import { ensureLegalAgent, ensureLegalRoutine, lockLegalBot } from "./legal-agent.js";
+import { ensureLegalAgent, ensureLegalRoutine } from "./legal-agent.js";
 
 export interface LegalDeps {
   prisma: PrismaClient;
   jobs: JobPublisher;
   artifacts: ArtifactStore;
-  repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+  repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
   /** The Data Room AI resolver for the Legal agent's own model (not the space default). */
   resolveAi: (actor: Actor, botId: string) => Promise<DataRoomAi>;
 }
@@ -197,11 +197,20 @@ export async function legalGraph(deps: LegalDeps, actor: Actor): Promise<LegalGr
 /** Deadlines the user closed, done or dismissed, latest due date first. */
 export async function legalDoneDeadlines(deps: LegalDeps, actor: Actor) {
   const repo = createLegalRepos(deps.prisma);
-  const [done, dismissed, contracts] = await Promise.all([
+  const [done, dismissed] = await Promise.all([
     repo.listDeadlines(actor, { status: "done", limit: 200, newestFirst: true }),
     repo.listDeadlines(actor, { status: "dismissed", limit: 200, newestFirst: true }),
-    repo.listContracts(actor, { limit: 500 }),
   ]);
+  // Look titles up by id so a contract reclassified as not legal still names its closed deadlines.
+  const ids = [
+    ...new Set([...done, ...dismissed].flatMap((d) => (d.contractId ? [d.contractId] : []))),
+  ];
+  const contracts = ids.length
+    ? await deps.prisma.legalContract.findMany({
+        where: { id: { in: ids }, ...scope(actor) },
+        select: { id: true, title: true },
+      })
+    : [];
   const titles = new Map(contracts.map((c) => [c.id, c.title]));
   return [...done, ...dismissed]
     .map((d) => toLegalDeadline(d, d.contractId ? (titles.get(d.contractId) ?? null) : null))
@@ -237,7 +246,7 @@ export async function legalScanNow(deps: LegalDeps, actor: Actor) {
   const threadId = bot.threadId;
   // The active-run check and the create share one per-bot lock, so two clicks make one run.
   const { run, existing } = await deps.prisma.$transaction(async (tx) => {
-    await lockLegalBot(tx, bot.id);
+    await lockAgentBot(tx, "legal", bot.id);
     const active = await tx.run.findFirst({
       where: {
         botId: bot.id,
@@ -264,6 +273,7 @@ export async function legalScanNow(deps: LegalDeps, actor: Actor) {
         taskId: task.id,
         status: "queued",
         trigger: "routine",
+        unattended: newRunUnattended({ trigger: "routine" }),
         routineId: routine.id,
       },
       select: { id: true },

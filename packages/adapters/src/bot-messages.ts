@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
 import {
+  approvalTitle,
   BOT_SHARE_DECLINED_MESSAGE,
   BOT_SHARE_EFFECT_KIND,
   BOT_SHARE_HELD_MESSAGE,
@@ -13,9 +14,11 @@ import {
   botMessageContext,
   botMessageHopExhausted,
   buildBotMessageWakePrompt,
+  chainedRunMode,
   checkOutbound,
   clampBotMessage,
   nextBotMessageHop,
+  openBotDelegations,
   resolveBotAddress,
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
@@ -23,6 +26,7 @@ import {
   appendEventInTransaction,
   createThreadMessageInTransaction,
   isUniqueViolation,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
   withTransactionRetry,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -74,9 +78,35 @@ export async function loadBotMessageContext(
   return { ...context, repliesToRequest };
 }
 
+/**
+ * The thread's messages since the last one a person typed, oldest first. A delivered bot message
+ * is stored as a user-role message, so it does not end the window. Bounded to the newest 200.
+ */
+async function recentSinceUserMessage(
+  db: Pick<PrismaClient, "message">,
+  threadId: string,
+): Promise<{ blocks: MessageBlock[] }[]> {
+  const rows = await db.message.findMany({
+    where: { threadId },
+    orderBy: { seq: "desc" },
+    take: 200,
+    select: { role: true, blocks: true },
+  });
+  const window: { blocks: MessageBlock[] }[] = [];
+  for (const row of rows) {
+    const blocks = Array.isArray(row.blocks) ? (row.blocks as MessageBlock[]) : [];
+    if (row.role === "user" && !blocks.some((b) => b.kind === "bot_message_received")) break;
+    window.unshift({ blocks });
+  }
+  return window;
+}
+
 /** The fixed refusal an external bot gets for any target its owner has not chosen. */
 export const EXTERNAL_MESSAGE_REFUSED =
   "You can only message the bots your owner has chosen for you.";
+
+/** A request with no result after this long is treated as lost, so the delegate can be asked again. */
+const PENDING_REQUEST_WINDOW_MS = 10 * 60 * 1000;
 
 export type MessageBotOptions = {
   allowTerminalSource?: boolean;
@@ -182,11 +212,81 @@ export async function messageBot(
     name: input.confirm_name,
   });
   if (!target) {
+    const wanted = input.confirm_name?.trim().toLowerCase();
+    const ambiguous =
+      !externalSender &&
+      !input.bot_id?.trim() &&
+      !!wanted &&
+      candidates.filter((candidate) => candidate.name.toLowerCase() === wanted).length > 1;
     return {
       ok: false as const,
-      error: externalSender ? EXTERNAL_MESSAGE_REFUSED : "no bot found with that id or name",
+      error: externalSender
+        ? EXTERNAL_MESSAGE_REFUSED
+        : ambiguous
+          ? "several bots have that name; use bot_id"
+          : "no bot found with that id or name",
     };
   }
+  const replayed = () =>
+    ({
+      ok: true as const,
+      botId: target.id,
+      name: target.name,
+      delivered: message,
+      replayed: true as const,
+      note: `Already sent to ${target.name} in this turn; it was not sent again.`,
+    }) as const;
+  if (input.deliveryKey && target.thread) {
+    const already = await deps.prisma.message.findUnique({
+      where: {
+        threadId_clientNonce: {
+          threadId: target.thread.id,
+          clientNonce: `bot-message:${input.deliveryKey}`,
+        },
+      },
+      select: { id: true },
+    });
+    if (already) return replayed();
+  }
+  const guardPending =
+    intent === "request" && !options?.allowTerminalSource && !options?.approvedShare;
+  // A request to this bot is still unanswered: sending it again only starts a second run.
+  const pendingError = async (db: Pick<PrismaClient, "message">) => {
+    if (!guardPending) return undefined;
+    const recent = await db.message.findMany({
+      where: {
+        threadId: run.threadId,
+        createdAt: { gte: new Date(Date.now() - PENDING_REQUEST_WINDOW_MS) },
+      },
+      orderBy: { seq: "desc" },
+      select: { role: true, blocks: true },
+    });
+    for (const message of recent) {
+      const blocks = Array.isArray(message.blocks) ? (message.blocks as MessageBlock[]) : [];
+      if (
+        blocks.some(
+          (b) =>
+            b.kind === "bot_message_received" && b.fromBotId === target.id && b.intent === "result",
+        )
+      )
+        break;
+      if (
+        blocks.some(
+          (b) =>
+            b.kind === "bot_message_sent" &&
+            b.toBotId === target.id &&
+            (b.intent === undefined || b.intent === "request"),
+        )
+      ) {
+        return `${target.name} is still working on your earlier request; its answer will wake you. Do not send it again or post a waiting message.`;
+      }
+      // The owner wrote something after the pending request: a new question may need the delegate.
+      if (message.role === "user" && !blocks.some((b) => b.kind === "bot_message_received")) break;
+    }
+    return undefined;
+  };
+  const pending = await pendingError(deps.prisma);
+  if (pending) return { ok: false as const, error: pending };
   if (target.id === sender.id) return { ok: false as const, error: "a bot cannot message itself" };
   if (!target.thread)
     return { ok: false as const, error: `${target.name} has no chat to deliver to` };
@@ -233,28 +333,6 @@ export async function messageBot(
   // sources. A flagged message is not sent: the owner sees it on a card and the external bot is
   // told, in fixed words, that it needs approval.
   if (target.audience === "external" && !options?.approvedShare && !options?.serverText) {
-    // An earlier delivery under this key (a retried status or result) is replayed, never held again.
-    if (input.deliveryKey) {
-      const already = await deps.prisma.message.findUnique({
-        where: {
-          threadId_clientNonce: {
-            threadId: target.thread.id,
-            clientNonce: `bot-message:${input.deliveryKey}`,
-          },
-        },
-        select: { id: true },
-      });
-      if (already) {
-        return {
-          ok: true as const,
-          botId: target.id,
-          name: target.name,
-          delivered: message,
-          replayed: true as const,
-          note: `Already sent to ${target.name} in this turn; it was not sent again.`,
-        };
-      }
-    }
     const fragments = options?.outbound ? await options.outbound() : undefined;
     // No snapshot means the run's reads are unknown, so the message is held.
     if (!fragments || !checkOutbound({ text: message, fragments }).allow) {
@@ -267,15 +345,6 @@ export async function messageBot(
   // A tool call can be re-executed after a lease expiry, so a delivery has to be
   // replayable: without this the recipient is messaged twice and woken twice.
   const deliveryKey = input.deliveryKey ? `bot-message:${input.deliveryKey}` : undefined;
-  const replayed = () =>
-    ({
-      ok: true as const,
-      botId: target.id,
-      name: target.name,
-      delivered: message,
-      replayed: true as const,
-      note: `Already sent to ${target.name} in this turn; it was not sent again.`,
-    }) as const;
 
   // The mark is only ever added along a chain: it comes from the sender's stored audience or the
   // incoming chain, never from the call or the message text.
@@ -288,13 +357,6 @@ export async function messageBot(
       ? sender.name
       : (sourceContext?.externalOriginName ?? options?.externalChain?.name)
     : undefined;
-  const wakePrompt = buildBotMessageWakePrompt({
-    from: sender,
-    text: message,
-    intent,
-    externalOrigin,
-    externalName: externalOriginName,
-  });
   const outboundBlock: MessageBlock = {
     kind: "bot_message_sent",
     toBotId: target.id,
@@ -333,6 +395,8 @@ export async function messageBot(
           });
           if (already) return { ok: true as const, replayed: true as const };
         }
+        const stillPending = await pendingError(tx);
+        if (stillPending) return { ok: false as const, error: stillPending };
 
         const senderStillRunning = await tx.run.findFirst({
           where: {
@@ -348,7 +412,7 @@ export async function messageBot(
                 ? { in: ["completed", "failed", "cancelled"] }
                 : "running",
           },
-          select: { id: true },
+          select: { id: true, unattended: true, externalTaint: true, readOutsideContent: true },
         });
         if (!senderStillRunning)
           return { ok: false as const, error: "source run is no longer active" };
@@ -378,6 +442,21 @@ export async function messageBot(
           markUnread: options?.forceUnread === true,
           allowCancelledRun: options?.allowTerminalSource === true || options?.anyRunState === true,
         });
+        const delegation =
+          intent === "result"
+            ? openBotDelegations(await recentSinceUserMessage(tx, targetThreadId), {
+                id: sender.id,
+                name: sender.name,
+              })
+            : undefined;
+        const wakePrompt = buildBotMessageWakePrompt({
+          from: sender,
+          text: message,
+          intent,
+          externalOrigin,
+          externalName: externalOriginName,
+          delegation,
+        });
         const inboundBlock: MessageBlock = {
           kind: "bot_message_received",
           fromBotId: sender.id,
@@ -386,6 +465,9 @@ export async function messageBot(
           hop,
           intent,
           returnToMessageId: outbound.id,
+          ...(delegation && delegation.waitingFor.length > 0
+            ? { stillWaitingFor: delegation.waitingFor }
+            : {}),
           ...(ownerAgentsOnly ? { backgroundOrigin: true } : {}),
           ...(externalOrigin
             ? {
@@ -426,6 +508,8 @@ export async function messageBot(
             status: "queued",
           },
         });
+        // A message from a run puts the receiving bot in that run's mode.
+        const mode = chainedRunMode("bot_message", senderStillRunning);
         const nextRun = await tx.run.create({
           data: {
             spaceId: run.spaceId,
@@ -435,6 +519,10 @@ export async function messageBot(
             userId: run.userId,
             status: "queued",
             trigger: "bot_message",
+            unattended: mode.unattended,
+            // The message itself may come from outside even when the sender run is clean.
+            externalTaint: mode.externalTaint || externalOrigin,
+            readOutsideContent: mode.readOutsideContent,
             sourceMessageId: inbound.id,
           },
           select: { id: true },
@@ -471,7 +559,7 @@ export async function messageBot(
           targetEventSeq: inboundEvent.seq,
           senderEventSeq: outboundEvent.seq,
         };
-      }),
+      }, THREAD_LOCK_TRANSACTION_OPTIONS),
     );
   } catch (error) {
     // Two concurrent retries can both miss the in-transaction lookup; the
@@ -610,7 +698,7 @@ async function holdShare(
           payload: { messageId: card.id, role: "bot", blocks },
         });
         return { effectId: effect.id, seq: event.seq };
-      }),
+      }, THREAD_LOCK_TRANSACTION_OPTIONS),
     );
   } catch (error) {
     // A concurrent retry created it first: the card already exists.
@@ -650,7 +738,7 @@ async function holdShare(
         { ...run, botId: run.botId },
         {
           kind: "help",
-          title: `${sender.name} needs approval`,
+          title: approvalTitle(sender.name),
           body: `Share with ${target.name}?`,
           botId: run.botId,
           threadId: run.threadId,
@@ -670,7 +758,7 @@ async function holdShare(
     {
       bot_id: target.id,
       message: BOT_SHARE_HELD_MESSAGE,
-      intent,
+      intent: "fyi",
       deliveryKey: `share-held:${effectId}`,
     },
     { ...options, serverText: true, outbound: undefined },

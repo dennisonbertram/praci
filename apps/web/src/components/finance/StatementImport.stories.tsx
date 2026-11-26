@@ -8,6 +8,8 @@ const meta = {
   title: "Finance/StatementImport",
   component: StatementImport,
   args: { onImported: () => undefined },
+  // Stories that do not list earlier statements start from none.
+  beforeEach: () => mockRpc({ "finance.statements": { statements: [], reminders: [] } }),
   decorators: [
     (Story) => (
       <div className="w-[520px] max-w-full">
@@ -102,6 +104,15 @@ export const WithEarlierStatements: Story = {
           }),
         ],
         reminders: [],
+      },
+    }),
+};
+
+export const EarlierStatementsFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.statements": () => {
+        throw new Error("Unavailable");
       },
     }),
 };

@@ -13,6 +13,9 @@ type Story = StoryObj<typeof meta>;
 function mocks(status?: string) {
   const session = structuredClone(importSession);
   session.progress.status = status ?? "draft";
+  if (status === "running") {
+    session.progress.createdAt = new Date(Date.now() - 12 * 60_000).toISOString();
+  }
   if (status && status !== "draft") {
     session.progress.sources[0] = {
       ...session.progress.sources[0]!,
@@ -127,6 +130,34 @@ export const Trackers: Story = {
             defaultScope: {},
             connectPath: "/app/integrations",
           },
+        ],
+      },
+    });
+  },
+};
+export const ManyUnavailable: Story = {
+  beforeEach: () => {
+    mocks();
+    const unavailable = (key: string, label: string, reason: "unsupported" | "access_denied") => ({
+      key,
+      sourceKind: "composio",
+      connectionId: key,
+      label,
+      available: false,
+      reason,
+      itemCount: null,
+      defaultScope: {},
+      connectPath: null,
+    });
+    mockRpc({
+      "companyImport.catalog": {
+        ...importCatalog,
+        sources: [
+          importCatalog.sources[0]!,
+          importCatalog.sources[1]!,
+          unavailable("blockscout", "Blockscout", "unsupported"),
+          unavailable("brex", "Brex", "unsupported"),
+          unavailable("sales-mail", "Sales mail", "access_denied"),
         ],
       },
     });

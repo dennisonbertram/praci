@@ -26,7 +26,7 @@ export function McpOAuthCallbackPage({ provider }: { provider?: "openrouter" } =
       setError(message);
     };
     if (!code || !state) {
-      fail(params.get("error_description") ?? t`OAuth authorization was cancelled.`);
+      fail(t`OAuth authorization was cancelled.`);
       return;
     }
     if (handledState.current === state) return;

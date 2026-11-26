@@ -139,9 +139,13 @@ export function IntegrationSetup({
               },
       );
       setApiKey("");
-      setState(await rpc.integrationSetup.get());
       onSaved?.();
       onDone?.();
+      try {
+        setState(await rpc.integrationSetup.get());
+      } catch {
+        // The credentials were saved; keep the current state without reporting a connect failure.
+      }
     });
   }
 
@@ -160,8 +164,12 @@ export function IntegrationSetup({
       if (existing && apiKey.trim()) {
         await rpc.mcp.servers.update({ id: existing.id, secret: apiKey.trim() });
       }
+      setApiKey("");
       const result = await connectMcpOauth(server.id);
-      if (result === "cancelled") return;
+      if (result === "cancelled") {
+        setError(t`Sign-in was cancelled or did not finish. Try again.`);
+        return;
+      }
       if (botId) await rpc.mcp.assignments.approve({ botId, serverId: server.id });
       setConnected((current) => [...current, url]);
       onServerConnected?.(server.id);

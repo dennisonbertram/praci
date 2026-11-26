@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   sheet: vi.fn(),
   backups: [] as unknown[],
   backupsReply: undefined as undefined | (() => Promise<unknown>),
+  catalog: undefined as undefined | unknown[],
 }));
 
 vi.mock("expo-clipboard", () => ({ setStringAsync: vi.fn() }));
@@ -160,12 +161,13 @@ beforeEach(() => {
   failures = {};
   state.backups = [];
   state.backupsReply = undefined;
+  state.catalog = undefined;
   state.announce.mockReset();
   state.sheet.mockReset();
   state.rpc.mockReset().mockImplementation(async (proc: string) => {
     if (failures[proc]) throw new Error(failures[proc]);
     if (proc === "me") return me;
-    if (proc === "models/list") return catalog;
+    if (proc === "models/list") return state.catalog ?? catalog;
     if (proc === "models/credentials") return credentials;
     if (proc === "models/backups") return state.backupsReply ? state.backupsReply() : state.backups;
     if (proc === "models/probeOpenAiCompatible") return { models: ["m1", "m2"] };
@@ -212,6 +214,21 @@ async function openCustomServer() {
 }
 
 describe("Models settings feedback", () => {
+  it("shows retry after initial models load failure and reloads on retry", async () => {
+    failures["models/list"] = "models failed";
+    await render();
+    expect(container.textContent).toContain("models failed");
+    expect(container.textContent).not.toContain("Acme One");
+    const retry = button("Try again");
+    expect(retry).toBeTruthy();
+    delete failures["models/list"];
+    await act(async () => retry.click());
+    expect(container.textContent).toContain("Acme One");
+    expect(state.rpc.mock.calls.filter(([procedure]) => procedure === "models/list")).toHaveLength(
+      2,
+    );
+  });
+
   it("shows a failed probe under Find models and announces it", async () => {
     await openCustomServer();
     await press("Find models");
@@ -257,6 +274,64 @@ describe("Models settings feedback", () => {
       }),
     );
     expect(errors()).toEqual([]);
+  });
+
+  it("reports a refresh failure after the provider connection succeeds", async () => {
+    await openCustomServer();
+    let connected = false;
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "models/list" && connected) throw "refresh refused";
+      if (proc === "me") return me;
+      if (proc === "models/list") return catalog;
+      if (proc === "models/credentials") return credentials;
+      if (proc === "models/connect") {
+        connected = true;
+        return { isDefault: false };
+      }
+      if (proc === "models/probeOpenAiCompatible") return { models: ["m1", "m2"] };
+      return undefined;
+    });
+    await press("Save");
+    expect(state.rpc).toHaveBeenCalledWith("models/connect", expect.anything());
+    expect(container.textContent).toContain("Could not load model settings");
+    expect(container.textContent).not.toContain("Could not connect this provider");
+  });
+
+  it("does not cancel device sign-in when its post-finish refresh fails", async () => {
+    state.catalog = catalog.map((entry) =>
+      entry.provider === "acme" ? { ...entry, auth: "oauth", signIn: "device-code" } : entry,
+    );
+    let finished = false;
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "models/list" && finished) throw "refresh refused";
+      if (proc === "me") return { ...me, defaultProvider: "acme", defaultModel: "acme-1" };
+      if (proc === "models/list") return state.catalog;
+      if (proc === "models/credentials") return [];
+      if (proc === "models/backups") return [];
+      if (proc === "models/beginOAuth")
+        return {
+          loginId: "login-1",
+          mode: "device-code",
+          verificationUri: "https://example.invalid",
+          userCode: "ABCD",
+        };
+      if (proc === "models/finishOAuth") {
+        finished = true;
+        return { isDefault: false };
+      }
+      return undefined;
+    });
+    await render();
+    await act(async () => {});
+    await press("Sign in");
+    expect(state.rpc).toHaveBeenCalledWith(
+      "models/finishOAuth",
+      { loginId: "login-1" },
+      expect.anything(),
+    );
+    expect(state.rpc).not.toHaveBeenCalledWith("models/cancelOAuth", expect.anything());
+    expect(container.textContent).toContain("Could not load model settings");
+    expect(container.textContent).not.toContain("Could not start sign-in");
   });
 
   it("shows the thinking value on the reasoning-effort row after enabling thinking", async () => {

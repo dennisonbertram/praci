@@ -5,6 +5,7 @@ import { BotAvatar, Button, Dialog, DialogClose, DialogContent, DialogTitle } fr
 import { useEffect, useMemo, useState } from "react";
 import { loadPeerHistory } from "../lib/peer-history";
 import { peerConversations } from "../lib/peer-messages";
+import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 
 /**
@@ -32,6 +33,10 @@ export function PeerMessagesOverlay({
   const [messages, setMessages] = useState<readonly ThreadMessage[]>([]);
   const [historyReady, setHistoryReady] = useState(false);
   const [historyFailed, setHistoryFailed] = useState(false);
+  const [olderFailed, setOlderFailed] = useState(false);
+  const [resumeBefore, setResumeBefore] = useState<number | undefined>();
+  // Where an older-page retry resumes, for the agent it was taken from only.
+  const [retryBefore, setRetryBefore] = useState<{ botId: string; before: number } | undefined>();
   const [reloadKey, setReloadKey] = useState(0);
   const conversation = useMemo(() => {
     if (!historyReady) return null;
@@ -41,29 +46,53 @@ export function PeerMessagesOverlay({
 
   useEffect(() => {
     const abort = new AbortController();
-    setHistoryReady(false);
-    setHistoryFailed(false);
-    setMessages([]);
+    const startingBefore = retryBefore?.botId === botId ? retryBefore.before : undefined;
+    let loadedPage = false;
+    let nextBefore = startingBefore;
+    if (startingBefore === undefined) {
+      setHistoryReady(false);
+      setHistoryFailed(false);
+      setOlderFailed(false);
+      setResumeBefore(undefined);
+      setMessages([]);
+    } else {
+      setOlderFailed(false);
+    }
     void loadPeerHistory({
       signal: abort.signal,
+      before: startingBefore,
       loadPage: (before, signal) =>
         rpc.threads.messages({ botId, before, includePeerRuns: true }, { signal }),
-    })
-      .then((loaded) => {
+      onPage: (page) => {
         if (abort.signal.aborted) return;
-        setMessages(loaded);
+        loadedPage = true;
+        nextBefore = page.olderCursor ?? undefined;
+        setResumeBefore(nextBefore);
+        setMessages((current) => {
+          const existing = new Set(current.map(({ id }) => id));
+          return [...page.messages.filter(({ id }) => !existing.has(id)), ...current];
+        });
         setHistoryReady(true);
-      })
-      .catch(() => {
-        if (abort.signal.aborted) return;
+      },
+    }).catch(() => {
+      if (abort.signal.aborted) return;
+      if (!loadedPage && startingBefore === undefined) {
         setHistoryFailed(true);
         setHistoryReady(true);
-      });
+      } else if (nextBefore !== undefined) {
+        setResumeBefore(nextBefore);
+        setOlderFailed(true);
+      }
+    });
     return () => {
       abort.abort();
     };
   }, [botId, reloadKey]);
 
+  const retryOlderMessages = () => {
+    if (resumeBefore !== undefined) setRetryBefore({ botId, before: resumeBefore });
+    setReloadKey((value) => value + 1);
+  };
   const title = `${botName} · ${peerBotName}`;
 
   return (
@@ -104,21 +133,48 @@ export function PeerMessagesOverlay({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setReloadKey((value) => value + 1)}
+                onClick={() => {
+                  setRetryBefore(undefined);
+                  setReloadKey((value) => value + 1);
+                }}
               >
                 <Trans>Retry now</Trans>
               </Button>
             </div>
           </div>
         ) : !conversation || conversation.messages.length === 0 ? (
-          <div className="grid flex-1 place-items-center px-8 text-center text-[13.5px] text-muted-foreground/80">
-            <Trans>No messages with {peerBotName} yet.</Trans>
-          </div>
+          olderFailed ? (
+            <div className="grid flex-1 place-items-center px-8 text-center text-[13.5px] text-muted-foreground/80">
+              <div className="flex flex-col items-center gap-3">
+                <Trans>Could not load this chat.</Trans>
+                <Button variant="outline" size="sm" onClick={retryOlderMessages}>
+                  <Trans>Retry now</Trans>
+                </Button>
+              </div>
+            </div>
+          ) : resumeBefore !== undefined ? (
+            <div className="grid flex-1 place-items-center px-8 text-center text-[13.5px] text-muted-foreground/80">
+              <Trans>Loading…</Trans>
+            </div>
+          ) : (
+            <div className="grid flex-1 place-items-center px-8 text-center text-[13.5px] text-muted-foreground/80">
+              <Trans>No messages with {peerBotName} yet.</Trans>
+            </div>
+          )
         ) : (
           <div
             data-testid="peer-conversation-transcript"
             className="rk-scroll flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
           >
+            {/* Older messages load at the top, so their failure shows there too. */}
+            {olderFailed && (
+              <div className="flex items-center justify-center gap-2 py-2 text-[12px] text-muted-foreground/80">
+                <Trans>Could not load older messages</Trans>
+                <Button variant="ghost" size="sm" onClick={retryOlderMessages}>
+                  <Trans>Retry now</Trans>
+                </Button>
+              </div>
+            )}
             {conversation.messages.map((peerMessage, index) => {
               const sent = peerMessage.direction === "sent";
               return (
@@ -136,6 +192,9 @@ export function PeerMessagesOverlay({
                     </div>
                     <div className="text-[14.5px] leading-[1.5] text-foreground/90" dir="auto">
                       <ChatMarkdown>{peerMessage.text}</ChatMarkdown>
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground/70" dir="auto">
+                      {formatRelativeTime(peerMessage.createdAt)}
                     </div>
                   </div>
                 </div>

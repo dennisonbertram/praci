@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import type { ResolveHostname } from "@rakazo/adapters";
-import { BUILTIN_AGENT_SKILLS, fetchSafeWebText } from "@rakazo/adapters";
+import { BUILTIN_AGENT_SKILLS, fetchSafeWebText, toolSourceHash } from "@rakazo/adapters";
 import type {
   Actor,
   AgentSkill,
@@ -17,7 +17,7 @@ import {
   parseSkillMd,
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { IsolationError, isUniqueViolation } from "@rakazo/db";
+import { IsolationError, isUniqueViolation, Prisma } from "@rakazo/db";
 
 type AgentSkillRow = {
   id: string;
@@ -26,6 +26,7 @@ type AgentSkillRow = {
   content: string;
   source: string;
   origin: string;
+  toolSource?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -45,6 +46,7 @@ function mapAgentSkill(row: AgentSkillRow): AgentSkill {
     source,
     origin: row.origin === "agent" ? "agent" : "user",
     readOnly: isSkillReadOnly(source as SkillSource),
+    ...(row.toolSource ? { tool: true } : {}),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -130,6 +132,50 @@ function resolveSkillContent(input: {
 }
 
 const MAX_SKILL_BYTES = 100_000;
+
+type ProposedTool = { source: string; inputSchema: unknown; notes: Record<string, unknown> };
+
+/** The tool script waiting for approval: the draft's own, or the pending revision of an active one. */
+function pendingToolOf(
+  row: {
+    toolSource: string | null;
+    toolInputSchema: unknown;
+    toolNotes: unknown;
+    pendingTool: unknown;
+  },
+  revision: boolean,
+): ProposedTool | null {
+  if (revision) {
+    const pending = row.pendingTool as Partial<ProposedTool> | null;
+    return pending && typeof pending.source === "string"
+      ? { source: pending.source, inputSchema: pending.inputSchema, notes: pending.notes ?? {} }
+      : null;
+  }
+  return row.toolSource
+    ? {
+        source: row.toolSource,
+        inputSchema: row.toolInputSchema,
+        notes: (row.toolNotes as Record<string, unknown> | null) ?? {},
+      }
+    : null;
+}
+
+function draftTool(
+  row: Parameters<typeof pendingToolOf>[0],
+  revision: boolean,
+): AgentSkillDraft["tool"] {
+  const tool = pendingToolOf(row, revision);
+  if (!tool) return undefined;
+  const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+  return {
+    source: tool.source,
+    hash: toolSourceHash(tool.source),
+    reads: text(tool.notes.reads),
+    writes: text(tool.notes.writes),
+    sampleInput: tool.notes.sampleInput,
+    sampleOutput: tool.notes.sampleOutput,
+  };
+}
 
 /** A github.com blob link becomes its raw file; any other URL is fetched as given. */
 export function rawSkillUrl(value: string): string {
@@ -355,6 +401,7 @@ export function createAgentSkillsService(
             content: resolved.content,
             // The owner's own edit settles any revision an agent proposed.
             pendingContent: null,
+            pendingTool: Prisma.DbNull,
           },
         });
         if (updated.count !== 1) throw new IsolationError();
@@ -390,13 +437,21 @@ export function createAgentSkillsService(
         const content = revision ? (row.pendingContent ?? "") : row.content;
         const parsed = parseSkillMd(content);
         if ("error" in parsed) return [];
+        const tool = draftTool(row, revision);
         return [
-          { id: row.id, name: parsed.name, description: parsed.description, content, revision },
+          {
+            id: row.id,
+            name: parsed.name,
+            description: parsed.description,
+            content,
+            revision,
+            ...(tool ? { tool } : {}),
+          },
         ];
       });
     },
 
-    async approveDraft(actor: Actor, skillId: string): Promise<AgentSkill> {
+    async approveDraft(actor: Actor, skillId: string, toolHash?: string): Promise<AgentSkill> {
       const row = await prisma.agentSkill.findFirst({
         where: {
           id: skillId,
@@ -407,11 +462,29 @@ export function createAgentSkillsService(
       });
       if (!row) throw new IsolationError();
       const where = { id: row.id, spaceId: actor.spaceId, userId: actor.userId, source: "user" };
+      // Approving a tool pins the hash of the exact source shown to the owner, in the same write
+      // that activates it. tool_run refuses any source that does not hash to this value.
+      const tool = pendingToolOf(row, row.status === "active");
+      if (tool) {
+        const hash = toolSourceHash(tool.source);
+        if (toolHash !== hash) {
+          throw new ORPCError("CONFLICT", {
+            message: "The tool changed after you opened it. Review it again.",
+          });
+        }
+      }
       if (row.status === "draft") {
-        await prisma.agentSkill.updateMany({
-          where: { ...where, status: "draft" },
-          data: { status: "active" },
+        const activated = await prisma.agentSkill.updateMany({
+          // toolSource in the filter: a draft the bot edited since we read it is not activated.
+          where: { ...where, status: "draft", toolSource: row.toolSource },
+          data: {
+            status: "active",
+            ...(tool ? { toolSourceHash: toolSourceHash(tool.source) } : {}),
+          },
         });
+        if (activated.count !== 1) {
+          throw new ORPCError("CONFLICT", { message: "The skill changed. Review it again." });
+        }
       } else {
         const parsed = parseSkillMd(row.pendingContent ?? "");
         if ("error" in parsed) throw new ORPCError("BAD_REQUEST", { message: parsed.error });
@@ -423,18 +496,40 @@ export function createAgentSkillsService(
             NOT: { id: row.id },
           },
         });
-        if (clash) {
-          throw new ORPCError("CONFLICT", { message: "A skill with that name already exists." });
+        const nameTaken = "A skill with that name already exists.";
+        if (
+          clash ||
+          builtinCatalog().some((s) => s.name.toLowerCase() === parsed.name.toLowerCase())
+        ) {
+          throw new ORPCError("CONFLICT", { message: nameTaken });
         }
-        await prisma.agentSkill.updateMany({
-          where: { ...where, pendingContent: row.pendingContent },
-          data: {
-            name: parsed.name,
-            description: parsed.description,
-            content: buildSkillMd(parsed),
-            pendingContent: null,
-          },
-        });
+        let applied: { count: number };
+        try {
+          applied = await prisma.agentSkill.updateMany({
+            where: { ...where, pendingContent: row.pendingContent },
+            data: {
+              name: parsed.name,
+              description: parsed.description,
+              content: buildSkillMd(parsed),
+              pendingContent: null,
+              pendingTool: Prisma.DbNull,
+              ...(tool
+                ? {
+                    toolSource: tool.source,
+                    toolInputSchema: tool.inputSchema as object,
+                    toolNotes: tool.notes as object,
+                    toolSourceHash: toolSourceHash(tool.source),
+                  }
+                : {}),
+            },
+          });
+        } catch (error) {
+          if (isUniqueViolation(error)) throw new ORPCError("CONFLICT", { message: nameTaken });
+          throw error;
+        }
+        if (applied.count !== 1) {
+          throw new ORPCError("CONFLICT", { message: "The skill changed. Review it again." });
+        }
       }
       const approved = await prisma.agentSkill.findFirst({
         where: { id: row.id, spaceId: actor.spaceId, userId: actor.userId },
@@ -450,7 +545,7 @@ export function createAgentSkillsService(
       if (deleted.count === 0) {
         const cleared = await prisma.agentSkill.updateMany({
           where: { ...scope, status: "active", pendingContent: { not: null } },
-          data: { pendingContent: null },
+          data: { pendingContent: null, pendingTool: Prisma.DbNull },
         });
         if (cleared.count !== 1) throw new IsolationError();
       }

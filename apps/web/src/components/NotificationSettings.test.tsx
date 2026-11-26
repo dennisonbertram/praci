@@ -168,3 +168,12 @@ it("does not show Browser as on before the saved preference has loaded", async (
   expect(el.getAttribute("aria-checked")).toBe("false");
   expect(el.disabled).toBe(true);
 });
+
+it("shows a fixed error when preferences fail to load", async () => {
+  setPermission("granted");
+  api.preferences.mockRejectedValue(new Error("boom"));
+  await render();
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+    "Couldn't load notifications",
+  );
+});

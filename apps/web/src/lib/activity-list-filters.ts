@@ -1,4 +1,19 @@
 import type { RunActivityRow, RunStatus } from "@rakazo/contracts";
+import type { Sort } from "./list-params";
+import { sortBy } from "./list-params";
+
+export const ACTIVITY_SORTS = ["updated", "bot"] as const;
+export type ActivitySort = (typeof ACTIVITY_SORTS)[number];
+/** Newest first, as the server lists runs. */
+export const DEFAULT_ACTIVITY_SORT: Sort<ActivitySort> = { field: "updated", dir: "desc" };
+
+/** Orders runs by when they last changed (newest or oldest first) or by bot name. */
+export function sortActivityRuns(
+  runs: RunActivityRow[],
+  sort: Sort<ActivitySort>,
+): RunActivityRow[] {
+  return sortBy(runs, (run) => (sort.field === "bot" ? run.botName : run.updatedAt), sort.dir);
+}
 
 export type ActivityStatusFilter = RunStatus | "all";
 
@@ -78,14 +93,4 @@ export function filterActivityRuns(
 ): RunActivityRow[] {
   if (!activityFiltersActive(filters)) return runs;
   return runs.filter((run) => runMatchesActivityFilters(run, filters));
-}
-
-export function clearActivityFilterField(
-  filters: ActivityListFilters,
-  field: "query" | "status" | "from" | "to",
-): ActivityListFilters {
-  if (field === "query") return { ...filters, query: "" };
-  if (field === "status") return { ...filters, status: "all" };
-  if (field === "from") return { ...filters, dateRange: { ...filters.dateRange, from: "" } };
-  return { ...filters, dateRange: { ...filters.dateRange, to: "" } };
 }

@@ -170,7 +170,7 @@ describe("ChatMarkdown", () => {
     );
 
     expect(html).toContain("rk-chat-markdown-pre-wrap");
-    expect(html).toContain('aria-label="Copy code"');
+    expect(html).toContain('aria-label="Copy"');
     expect(html).toContain("rk-chat-markdown-copy");
   });
 

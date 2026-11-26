@@ -3,8 +3,15 @@ import type { StuckWorkStatus } from "@rakazo/core";
 import { ACTIVE_RUN_STATUSES, stuckWorkExpiredNonce, stuckWorkStatusMessage } from "@rakazo/core";
 import type { Prisma } from "./client.js";
 import { expireComputerExecutionLeases } from "./computers.js";
-import { appendEventInTransaction, createPendingSteeringRun } from "./events.js";
+import {
+  appendEventInTransaction,
+  createPendingSteeringRun,
+  discardAnsweredSteering,
+} from "./events.js";
 import { createThreadMessageInTransaction } from "./messages.js";
+import { clearRunFragments } from "./run-fragments.js";
+import { deleteRunSecretsInTransaction } from "./run-secrets.js";
+import { clearRunTurnCheckpoints } from "./run-turn-checkpoint.js";
 
 export interface ExpireStuckRunInput {
   runId: string;
@@ -64,7 +71,14 @@ export async function expireStuckRun(
 
   const run = await tx.run.findUniqueOrThrow({
     where: { id: input.runId },
-    select: { spaceId: true, threadId: true, botId: true, taskId: true },
+    select: { spaceId: true, userId: true, threadId: true, botId: true, taskId: true },
+  });
+  await tx.appControlSnapshot.deleteMany({
+    where: {
+      runId: input.runId,
+      spaceId: run.spaceId,
+      userId: run.userId,
+    },
   });
   const sibling = await tx.run.findFirst({
     where: {
@@ -107,6 +121,11 @@ export async function expireStuckRun(
     payload: {},
   });
   await tx.event.deleteMany({ where: { runId: input.runId, type: "thread.progress" } });
+  await clearRunTurnCheckpoints(tx, [input.runId]);
+  await clearRunFragments(tx, [input.runId]);
+  await deleteRunSecretsInTransaction(tx, [
+    { id: input.runId, userId: run.userId, spaceId: run.spaceId },
+  ]);
   await expireComputerExecutionLeases(tx, { runId: input.runId });
   // A user lease still on this row is on the screen until release or revocation.
   // Dropping controlRunId first makes maintenance treat the takeover as idle.
@@ -125,6 +144,7 @@ export async function expireStuckRun(
       executionLeaseExpiresAt: null,
     },
   });
+  await discardAnsweredSteering(tx, { threadId: run.threadId, runId: input.runId });
   await tx.steeringMessage.updateMany({
     where: { runId: input.runId },
     data: { runId: null, claimedAt: null },

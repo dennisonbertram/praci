@@ -18,6 +18,7 @@ readonly DOWNLOAD_BASE
 readonly COMPOSE_FILE="docker-compose.images.yml"
 readonly ENV_EXAMPLE=".env.images.example"
 readonly ENV_FILE=".env"
+readonly EGRESS_SCRIPT="restrict-computer-egress.sh"
 
 prepare_only=false
 skip_existing=false
@@ -224,6 +225,9 @@ create_env() {
       "POSTGRES_PASSWORD=")
         printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 16)"
         ;;
+      "POSTGRES_APP_PASSWORD=")
+        printf 'POSTGRES_APP_PASSWORD=%s\n' "$(openssl rand -hex 16)"
+        ;;
       "BETTER_AUTH_SECRET=")
         printf 'BETTER_AUTH_SECRET=%s\n' "$(openssl rand -hex 32)"
         ;;
@@ -308,10 +312,21 @@ validate_bundled_storage() {
   fi
 }
 
+# Secrets added after a .env was created. Append them so an upgrade still starts,
+# leaving every existing line untouched.
+add_missing_secrets() {
+  if ! grep -Eq '^POSTGRES_APP_PASSWORD=[^[:space:]]' "$ENV_FILE"; then
+    [[ ! -s "$ENV_FILE" || -z "$(tail -c 1 "$ENV_FILE")" ]] || printf '\n' >> "$ENV_FILE"
+    printf 'POSTGRES_APP_PASSWORD=%s\n' "$(openssl rand -hex 16)" >> "$ENV_FILE"
+    echo "Added POSTGRES_APP_PASSWORD to .env."
+  fi
+}
+
 validate_required_secrets() {
   if ! docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -f - config --environment <<'YAML' | awk '
     BEGIN {
       required["POSTGRES_PASSWORD"] = 1
+      required["POSTGRES_APP_PASSWORD"] = 1
       required["BETTER_AUTH_SECRET"] = 1
       required["ENCRYPTION_KEY"] = 1
       required["SCREEN_PROXY_SECRET"] = 1
@@ -338,6 +353,7 @@ services:
   api:
     environment:
       _RAKAZO_VALIDATE_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      _RAKAZO_VALIDATE_POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD in .env}
       _RAKAZO_VALIDATE_BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
       _RAKAZO_VALIDATE_ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       _RAKAZO_VALIDATE_SCREEN_PROXY_SECRET: ${SCREEN_PROXY_SECRET:?Set SCREEN_PROXY_SECRET in .env}
@@ -348,11 +364,50 @@ YAML
   fi
 }
 
+# Why this host cannot take the restricted-egress firewall rules; empty when it can.
+egress_rules_unsupported() {
+  local os security
+  [[ "$(uname -s)" == Linux ]] || { echo "Docker runs in a VM on this OS"; return; }
+  os=$(docker info --format '{{.OperatingSystem}}' 2>/dev/null) || { echo "docker info failed"; return; }
+  [[ "$os" != *"Docker Desktop"* ]] || { echo "Docker Desktop keeps its networks in a VM"; return; }
+  security=$(docker info --format '{{json .SecurityOptions}}' 2>/dev/null) || security=""
+  [[ "$security" != *rootless* ]] || { echo "rootless Docker"; return; }
+  command -v iptables >/dev/null 2>&1 || echo "iptables is not installed"
+}
+
+# Compose defaults computers to restricted egress, which only works once the host
+# rules are in place. Install them where possible; otherwise record open explicitly
+# so computers keep working, and say what that leaves reachable.
+configure_computer_egress() {
+  local reason
+  # Compose takes the shell value over .env, so either one is the operator's choice.
+  if [[ -n "${SANDBOX_COMPUTER_EGRESS:-}" ]] ||
+    grep -Eq '^[[:space:]]*SANDBOX_COMPUTER_EGRESS=' "$ENV_FILE"; then
+    return 0
+  fi
+  reason=$(egress_rules_unsupported)
+  if [[ -z "$reason" ]] && ! (trap cleanup EXIT; download "$EGRESS_SCRIPT"); then
+    reason="$EGRESS_SCRIPT could not be downloaded"
+  fi
+  if [[ -z "$reason" ]]; then
+    echo "Restricting bot computer egress; installing host firewall rules needs root."
+    if bash "./$EGRESS_SCRIPT"; then
+      printf '\nSANDBOX_COMPUTER_EGRESS=restricted\n' >>"$ENV_FILE"
+      return 0
+    fi
+    reason="the host firewall rules could not be installed"
+  fi
+  printf '\nSANDBOX_COMPUTER_EGRESS=open\n' >>"$ENV_FILE"
+  echo "Warning: bot computers can reach this host, its LAN and cloud metadata ($reason)." >&2
+  echo "See Restricted computer egress in docs/self-host.md." >&2
+}
+
 download "$COMPOSE_FILE"
 download "$ENV_EXAMPLE"
 
 if [[ -e "$ENV_FILE" ]]; then
   echo "Keeping existing .env."
+  add_missing_secrets
 else
   create_env
 fi
@@ -367,6 +422,8 @@ if [[ "$prepare_only" == true ]]; then
   echo "Praci files are ready. Edit .env, then run: bash install-images.sh"
   exit 0
 fi
+
+configure_computer_egress
 
 prepare_proxy_env
 if [[ "$pull_never" == true ]]; then

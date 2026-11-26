@@ -6,12 +6,13 @@ import {
   ScratchpadItemSchema,
 } from "./domain.js";
 import { MailAccountSchema } from "./inbox.js";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 import { ZernioPostingCapabilitySchema } from "./zernio.js";
 
-export const gtmAgentSpawnKey = (userId: string) => `gtm-agent:${userId}`;
+export const gtmAgentSpawnKey = (userId: string) => pageAgentSpawnKey("gtm", userId);
 
 export const isGtmAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(gtmAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "gtm";
 
 export const GTM_WORK_ROUTINE_NAME = "Work the plan";
 
@@ -25,11 +26,14 @@ export const GTM_AGENT_BUILTIN_TOOLS = [
   "request_takeover",
   "request_secret",
   "list_secrets",
+  "company_context_lookup",
   "scratchpad_list",
   "scratchpad_add",
   "scratchpad_update",
   "scratchpad_complete",
   "scratchpad_remove",
+  "page_list",
+  "page_create",
   "page_read",
   "page_write",
   "page_edit",

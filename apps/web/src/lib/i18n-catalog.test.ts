@@ -271,7 +271,7 @@ describe("lingui catalogs", () => {
   it("translates command credential controls in every locale", () => {
     const messages = [
       "Command variable",
-      "Available to this bot's shell commands as {commandVariable}",
+      "The bot can read this value. Shell commands get it as {commandVariable}.",
       "{commandVariable} is reserved and cannot be used as a command variable. Choose another name.",
       "Values are encrypted and never shown again.",
     ];

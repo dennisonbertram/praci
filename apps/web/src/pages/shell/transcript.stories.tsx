@@ -44,6 +44,7 @@ const baseProps = {
   onOpenBot: noop,
   onAnswer: asyncNoop,
   onReply: noop,
+  onMarkUnread: noop,
   onQuote: noop,
   onReact: asyncNoop,
   onJumpToMessage: noop,
@@ -69,6 +70,65 @@ export const Conversation: Story = {
   render: () => (
     <div className="h-[560px]">
       <Transcript {...baseProps} messages={conversation} />
+    </div>
+  ),
+};
+
+/** A routine's message names the routine on one line above the bubble. */
+export const FromRoutine: Story = {
+  render: () => (
+    <div className="h-[560px]">
+      <Transcript
+        {...baseProps}
+        messages={[
+          {
+            ...message(1, "bot", "Nothing needs your attention today."),
+            routineName: "Daily check-in",
+          },
+        ]}
+      />
+    </div>
+  ),
+};
+
+/** A message sent by an outside MCP client names its connection above the bubble. */
+export const ViaClient: Story = {
+  render: () => (
+    <div className="h-[560px]">
+      <Transcript
+        {...baseProps}
+        messages={[{ ...message(1, "user", "What is on my plate today?"), via: "Claude Code" }]}
+      />
+    </div>
+  ),
+};
+
+/** A message with a file: its More menu offers Send to agent, which opens the chosen agent with the file attached. */
+export const FileSendToAgent: Story = {
+  render: () => (
+    <div className="h-[560px]">
+      <Transcript
+        {...baseProps}
+        sendTargets={[
+          { id: "bot_legal", name: "Legal agent", color: "#336699" },
+          { id: "bot_finance", name: "Finance agent", color: "#996633" },
+        ]}
+        onSendFiles={noop}
+        messages={[
+          {
+            ...message(1, "bot", ""),
+            blocks: [
+              {
+                kind: "file",
+                artifactId: "artifact_demo",
+                name: "Sample call - transcript.md",
+                mimeType: "text/markdown",
+                size: 7300,
+              },
+            ],
+          },
+        ]}
+      />
     </div>
   ),
 };
@@ -263,4 +323,78 @@ export const MailApproval: Story = {
       />
     </div>
   ),
+};
+
+/** Hovering a wide mail approval keeps the actions under it, clear of the next message. */
+export const MailApprovalThenMessage: Story = {
+  render: () => (
+    <div className="h-[420px] w-[760px]">
+      <Transcript
+        {...baseProps}
+        messages={[
+          {
+            ...message(1, "bot", ""),
+            blocks: [
+              {
+                kind: "ask",
+                text: "Send this email?",
+                mail: {
+                  tool: "mail_send",
+                  to: ["sam@example.test"],
+                  cc: [],
+                  bcc: [],
+                  subject: "Sample update",
+                  body: "Hi Sam, here is the sample update.",
+                },
+              },
+            ],
+          },
+          message(2, "user", "Thanks, that looks right."),
+        ]}
+        lastReadSeq={2}
+      />
+    </div>
+  ),
+};
+
+const sentMailMessage = (): ThreadMessage => ({
+  ...message(1, "bot", ""),
+  blocks: [
+    {
+      kind: "ask",
+      text: "Send this email?",
+      status: "answered",
+      answer: "allow",
+      mail: {
+        tool: "mail_send",
+        account: "me@example.test",
+        to: ["sam@example.test"],
+        cc: [],
+        bcc: [],
+        subject: "Re: Sample update",
+        body: "Hi Sam, here is the sample update.",
+        outcome: "sent",
+      },
+    },
+  ],
+});
+
+const SentMailThenWorking = ({ width }: { width: number }) => (
+  <div className="h-[420px]" style={{ width }}>
+    <Transcript
+      {...baseProps}
+      running
+      workingBots={[{ botId: "bot_demo", name: "Ada", color: "#888888" }]}
+      messages={[sentMailMessage()]}
+      lastReadSeq={1}
+    />
+  </div>
+);
+
+/** Hovering a sent mail card: its rail ends above the bot's working row. */
+export const SentMailThenWorkingWide: Story = { render: () => <SentMailThenWorking width={760} /> };
+
+/** The same in a narrow transcript, such as the Inbox agent panel. */
+export const SentMailThenWorkingNarrow: Story = {
+  render: () => <SentMailThenWorking width={360} />,
 };

@@ -1723,6 +1723,13 @@ describe("computer event reduction", () => {
     expect(computerPanelAutoBoot("suspended")).toBe("wait");
   });
 
+  it("does not auto-boot or offer maintenance when computers are off", () => {
+    expect(computerPanelAutoBoot("stopped", null, true)).toBe("wait");
+    expect(computerPanelAutoBoot(undefined, null, true)).toBe("wait");
+    expect(computerPanelNeedsMaintenance("error", false, true)).toBe(false);
+    expect(computerPanelNeedsMaintenance("stopped", false, true)).toBe(false);
+  });
+
   it("maps recover-screen to computer.boot, not computer.recover", () => {
     expect(computerPanelAutoUsesBoot("recover-screen")).toBe(true);
     expect(computerPanelAutoUsesBoot("boot")).toBe(true);

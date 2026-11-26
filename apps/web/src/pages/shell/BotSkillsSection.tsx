@@ -4,11 +4,37 @@ import type {
   AgentSkillCatalogEntry,
   AgentSkillDraft,
   BotAgentSkill,
+  TaughtSkill,
+  TaughtSkillSummary,
 } from "@rakazo/contracts";
 import { buildSkillMd } from "@rakazo/core";
-import { Badge, Button, Input, Skeleton, Switch, Textarea } from "@rakazo/ui-web";
-import { ChevronRight } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Skeleton,
+  Switch,
+  Textarea,
+} from "@rakazo/ui-web";
+import { ChevronRight, MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { SkillDraftCard } from "../../components/teach/SkillDraftCard";
+import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 import { isHiddenBuiltinSkill, slashSkillLabel } from "../../lib/slash-skills";
 import { errorText } from "../../lib/user-error";
@@ -41,6 +67,57 @@ export function SkillSourceBadge({
   );
 }
 
+function ToolBadge() {
+  return (
+    <Badge
+      variant="secondary"
+      className="rounded-full px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+    >
+      <Trans>Tool</Trans>
+    </Badge>
+  );
+}
+
+const sampleText = (value: unknown) => JSON.stringify(value) ?? "";
+
+/** What the owner approves for a tool: the bot's two plain lines, its test run, and the script. */
+function DraftTool({ tool }: { tool: NonNullable<AgentSkillDraft["tool"]> }) {
+  const hasSample = tool.sampleInput !== undefined || tool.sampleOutput !== undefined;
+  return (
+    <div className="mt-2 text-[12.5px]" data-testid="bot-skill-draft-tool">
+      {tool.reads ? (
+        <div dir="auto">
+          <span className="text-muted-foreground">
+            <Trans>Reads:</Trans>
+          </span>{" "}
+          {tool.reads}
+        </div>
+      ) : null}
+      <div dir="auto">
+        <span className="text-muted-foreground">
+          <Trans>Writes:</Trans>
+        </span>{" "}
+        {tool.writes ?? <Trans>nothing</Trans>}
+      </div>
+      {hasSample ? (
+        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-2 font-mono">
+          {sampleText(tool.sampleInput)}
+          {"\n→ "}
+          {sampleText(tool.sampleOutput)}
+        </pre>
+      ) : null}
+      <details className="mt-1">
+        <summary className="cursor-pointer text-muted-foreground">
+          <Trans>Code</Trans>
+        </summary>
+        <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-2 font-mono">
+          {tool.source}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
 /** Display only: the instructions without the leading `---` front matter block. */
 function skillBody(content: string) {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, "").trim();
@@ -66,6 +143,8 @@ export function BotSkillsSection({
   const fieldId = useId();
   const [loading, setLoading] = useState(true);
   const [skills, setSkills] = useState<BotAgentSkill[]>([]);
+  const skillsRef = useRef<BotAgentSkill[]>([]);
+  const [skillPending, setSkillPending] = useState<Set<string>>(() => new Set());
   const [drafts, setDrafts] = useState<AgentSkillDraft[]>([]);
   const [open, setOpen] = useState<AgentSkill | null>(null);
   const [creating, setCreating] = useState(false);
@@ -79,6 +158,14 @@ export function BotSkillsSection({
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [newId, setNewId] = useState<string | null>(null);
+  const [taught, setTaught] = useState<TaughtSkillSummary[]>([]);
+  const [taughtLoadFailed, setTaughtLoadFailed] = useState(false);
+  const [taughtOpen, setTaughtOpen] = useState<TaughtSkill | null>(null);
+  // The taught skill awaiting delete confirmation, and the names of routines that run it.
+  const [taughtDelete, setTaughtDelete] = useState<{
+    skill: TaughtSkillSummary;
+    routines: number;
+  } | null>(null);
   const knownIds = useRef<Set<string> | null>(null);
   const generation = useRef(0);
   const selection = useRef(0);
@@ -91,6 +178,7 @@ export function BotSkillsSection({
     const known = knownIds.current;
     if (known) setNewId(list.find((skill) => !known.has(skill.id))?.id ?? null);
     knownIds.current = new Set(list.map((skill) => skill.id));
+    skillsRef.current = list;
     setSkills(list);
   }
 
@@ -98,6 +186,16 @@ export function BotSkillsSection({
     if (newId)
       document.querySelector(`[data-skill-id="${newId}"]`)?.scrollIntoView?.({ block: "nearest" });
   }, [newId]);
+
+  const loadTaught = async () => {
+    try {
+      setTaught(await rpc.taughtSkills.list({ botId }));
+      setTaughtLoadFailed(false);
+    } catch {
+      // Keep the list already shown; a failed refresh must not look like "no taught skills".
+      setTaughtLoadFailed(true);
+    }
+  };
 
   async function refresh() {
     const current = ++generation.current;
@@ -111,7 +209,10 @@ export function BotSkillsSection({
     onChange.current(list.filter((skill) => skill.enabled));
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey reloads the list on demand
+  useEffect(() => {
+    void loadTaught();
+  }, [botId, refreshKey]);
+
   useEffect(() => {
     const current = ++generation.current;
     void Promise.all([rpc.agentSkills.forBot({ botId }), rpc.agentSkills.drafts()])
@@ -152,18 +253,28 @@ export function BotSkillsSection({
   }
 
   async function toggle(skill: BotAgentSkill, enabled: boolean) {
+    if (skillPending.has(skill.id)) return;
     setError(null);
-    const set = (value: boolean) =>
-      setSkills((list) => list.map((s) => (s.id === skill.id ? { ...s, enabled: value } : s)));
-    set(enabled);
+    setSkillPending((pending) => new Set(pending).add(skill.id));
+    const update = (value: boolean) => {
+      const next = skillsRef.current.map((s) => (s.id === skill.id ? { ...s, enabled: value } : s));
+      skillsRef.current = next;
+      setSkills(next);
+      return next;
+    };
+    update(enabled);
     try {
       await rpc.agentSkills.setEnabled({ botId, skillKey: skill.id, enabled });
-      onChange.current(
-        skills.map((s) => (s.id === skill.id ? { ...s, enabled } : s)).filter((s) => s.enabled),
-      );
+      onChange.current(skillsRef.current.filter((s) => s.enabled));
     } catch {
-      set(!enabled);
+      update(!enabled);
       setError(t`Could not save skill`);
+    } finally {
+      setSkillPending((pending) => {
+        const next = new Set(pending);
+        next.delete(skill.id);
+        return next;
+      });
     }
   }
 
@@ -183,6 +294,42 @@ export function BotSkillsSection({
     } catch {
       if (current !== selection.current) return;
       setError(t`Could not load skill`);
+    }
+  }
+
+  async function openTaught(entry: TaughtSkillSummary) {
+    setError(null);
+    try {
+      setTaughtOpen(await rpc.skills.get({ skillId: entry.id }));
+    } catch {
+      setError(t`Could not load skill`);
+    }
+  }
+
+  async function askDeleteTaught(entry: TaughtSkillSummary) {
+    let routines = 0;
+    try {
+      routines = (await rpc.routines.list({ botId })).filter(
+        (routine) => routine.taughtSkill?.id === entry.id,
+      ).length;
+    } catch {
+      // Delete still works; the note about routines is just left out.
+    }
+    setTaughtDelete({ skill: entry, routines });
+  }
+
+  async function deleteTaught() {
+    if (!taughtDelete) return;
+    setBusy(true);
+    try {
+      await rpc.taughtSkills.delete({ skillId: taughtDelete.skill.id });
+      setTaughtDelete(null);
+      await loadTaught();
+    } catch {
+      setTaughtDelete(null);
+      setError(t`Could not delete skill`);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -209,7 +356,7 @@ export function BotSkillsSection({
     write(
       () =>
         approve
-          ? rpc.agentSkills.approveDraft({ skillId: draft.id })
+          ? rpc.agentSkills.approveDraft({ skillId: draft.id, toolHash: draft.tool?.hash })
           : rpc.agentSkills.discardDraft({ skillId: draft.id }),
       approve ? t`Could not approve skill` : t`Could not discard skill`,
     );
@@ -281,6 +428,7 @@ export function BotSkillsSection({
             {entry.source === "builtin" ? null : (
               <SkillSourceBadge source={entry.source} origin={entry.origin} />
             )}
+            {entry.tool ? <ToolBadge /> : null}
           </span>
           <span className="mt-0.5 block truncate text-[12.5px] text-muted-foreground" dir="auto">
             {label.description}
@@ -288,6 +436,7 @@ export function BotSkillsSection({
         </Button>
         <Switch
           checked={entry.enabled}
+          disabled={skillPending.has(entry.id)}
           aria-label={t`Use ${label.title}`}
           onCheckedChange={(checked) => void toggle(entry, checked)}
         />
@@ -331,7 +480,11 @@ export function BotSkillsSection({
           void upload(file);
         }}
       />
-      {error ? <div className="px-2.5 py-1 text-[13px] text-destructive">{error}</div> : null}
+      {taughtLoadFailed || error ? (
+        <div className="px-2.5 py-1 text-[13px] text-destructive">
+          {taughtLoadFailed ? t`Could not load` : error}
+        </div>
+      ) : null}
       {urlOpen ? (
         <div className="mt-2 flex items-center gap-2">
           <Input
@@ -396,6 +549,7 @@ export function BotSkillsSection({
               >
                 {skillBody(draft.content)}
               </pre>
+              {draft.tool ? <DraftTool tool={draft.tool} /> : null}
               <div className="sticky bottom-0 mt-2 flex items-center gap-2 bg-background py-1.5">
                 <Button
                   type="button"
@@ -422,6 +576,56 @@ export function BotSkillsSection({
       {!editorOpen && !urlOpen ? (
         <div data-testid="bot-skills-list">
           {skills.filter((entry) => entry.source !== "builtin").map(renderSkill)}
+          {taught.length > 0 ? (
+            <div className="mt-2" data-testid="bot-skills-taught">
+              <h4 className="px-2.5 text-[12.5px] text-muted-foreground">
+                <Trans>Taught</Trans>
+              </h4>
+              {taught.map((entry) => (
+                <div key={entry.id} data-taught-skill-id={entry.id} className="flex items-center">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => void openTaught(entry)}
+                    className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-2.5 py-2.5 text-start block"
+                  >
+                    <span className="block truncate text-[14px] text-foreground" dir="auto">
+                      {entry.name}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[12.5px] text-muted-foreground">
+                      {entry.lastRunAt ? (
+                        <Trans>Last run {formatRelativeTime(entry.lastRunAt)}</Trans>
+                      ) : (
+                        <Trans>Not run yet</Trans>
+                      )}
+                    </span>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground"
+                          aria-label={t`Actions for ${entry.name}`}
+                        />
+                      }
+                    >
+                      <MoreHorizontal size={16} strokeWidth={1.8} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => void askDeleteTaught(entry)}
+                      >
+                        <Trans>Delete</Trans>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {builtins.length > 0 ? (
             <details className="group">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 text-[13px] text-muted-foreground">
@@ -575,6 +779,53 @@ export function BotSkillsSection({
           </div>
         </div>
       ) : null}
+      <Dialog open={taughtOpen !== null} onOpenChange={(next) => !next && setTaughtOpen(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-170">
+          <DialogTitle className="sr-only">{taughtOpen?.name}</DialogTitle>
+          {taughtOpen ? (
+            <SkillDraftCard
+              block={{
+                kind: "skill_draft",
+                skillId: taughtOpen.id,
+                name: taughtOpen.name,
+                goal: taughtOpen.goal,
+                playbook: taughtOpen.playbook,
+                status: "saved",
+              }}
+              onRefresh={loadTaught}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={taughtDelete !== null}
+        onOpenChange={(next) => !next && setTaughtDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="break-words">
+              <Trans>Delete {taughtDelete?.skill.name}?</Trans>
+            </AlertDialogTitle>
+            {taughtDelete?.routines ? (
+              <AlertDialogDescription>
+                <Trans>Routines that use it will stop using it.</Trans>
+              </AlertDialogDescription>
+            ) : null}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>
+              <Trans>Cancel</Trans>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={busy}
+              onClick={() => void deleteTaught()}
+            >
+              <Trans>Delete</Trans>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

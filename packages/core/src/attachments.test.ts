@@ -1,3 +1,4 @@
+import type { MessageBlock } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   AttachmentValidationError,
@@ -163,6 +164,42 @@ describe("peer message history", () => {
 });
 
 describe("ask history", () => {
+  const card = (answer: string, outcome?: "sent" | "saved" | "failed" | "unknown") =>
+    ({
+      kind: "ask",
+      text: "Send this email?",
+      status: "answered",
+      answer,
+      actions: [
+        { id: "allow", label: "Allow once" },
+        { id: "deny", label: "Deny" },
+      ],
+      mail: {
+        tool: "mail_send",
+        to: ["pat@example.test"],
+        cc: [],
+        bcc: [],
+        subject: "Hello",
+        body: "Hi",
+        ...(outcome ? { outcome } : {}),
+      },
+    }) as MessageBlock;
+
+  it("never shows a card the person sent as denied, including cards stored as deny", () => {
+    for (const answer of ["deny", "allow"]) {
+      const text = blocksToAgentHistoryText([card(answer, "sent")]);
+      expect(text).toContain("The email was sent. Do not send it again.");
+      expect(text).not.toMatch(/deny|denied/i);
+    }
+  });
+
+  it("says how a failed, unknown or saved card ended, and keeps a real denial", () => {
+    expect(blocksToAgentHistoryText([card("deny", "failed")])).toContain("Nothing was sent.");
+    expect(blocksToAgentHistoryText([card("deny", "unknown")])).toContain("may have been sent");
+    expect(blocksToAgentHistoryText([card("deny", "saved")])).toContain("The draft was saved.");
+    expect(blocksToAgentHistoryText([card("deny")])).toContain("Answer: Deny");
+  });
+
   it("shows an answered ask with the chosen label so a later turn does not ask again", () => {
     const actions = [
       { id: "choice-1", label: "Berlin" },

@@ -14,6 +14,7 @@ import {
   resolvePortalSession,
   revokePortal,
   shareDocument,
+  shareDocuments,
   unblockPortal,
   unshareDocument,
 } from "./investor-portal.js";
@@ -152,6 +153,27 @@ describePostgres("investor portal (PostgreSQL)", () => {
     expect(await exchangePortalToken(prisma, second, now)).not.toBeNull();
   });
 
+  it("deletes only this contact's expired sessions when a link is opened", async () => {
+    const a = await contact(mine, "SessionSweep");
+    const other = await contact(otherSpace, "SessionSweepOther");
+    const row = (who: typeof mine, contactId: string, name: string, expiresAt: Date) =>
+      prisma.portalSession.create({
+        data: { ...who, contactId, tokenHash: `${name}-${suffix}`, expiresAt },
+      });
+    const expired = await row(mine, a.id, "expired-a", new Date(now.getTime() - 1000));
+    const live = await row(mine, a.id, "live-a", new Date(now.getTime() + 60_000));
+    const foreign = await row(otherSpace, other.id, "expired-b", new Date(now.getTime() - 1000));
+    const { session } = await open(a.id);
+    const ids = (await prisma.portalSession.findMany({ where: { contactId: a.id } })).map(
+      (r) => r.id,
+    );
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain(live.id);
+    expect(ids).not.toContain(expired.id);
+    expect(await resolvePortalSession(prisma, session, now)).not.toBeNull();
+    expect(await prisma.portalSession.findUnique({ where: { id: foreign.id } })).not.toBeNull();
+  });
+
   it("deletes expired tokens on the next mint", async () => {
     const a = await contact(mine, "Sweep");
     const old = await mintPortalToken(prisma, mine, a.id, now);
@@ -268,6 +290,64 @@ describePostgres("investor portal (PostgreSQL)", () => {
     expect(await listPortalDocuments(prisma, pa)).toEqual([]);
   });
 
+  it("a batch shares each shareable file at once and reports the ones it refuses", async () => {
+    const a = await contact(mine, "BatchA");
+    const b = await contact(mine, "BatchB");
+    const kept = await item(mine, "kept.pdf");
+    const deck = await item(mine, "deck.pdf");
+    const note = await prisma.dataRoomItem.create({
+      data: {
+        ...mine,
+        source: "meeting",
+        sha256: `note-${suffix}`,
+        name: "notes.md",
+        mimeType: "text/markdown",
+        size: 5,
+        status: "ready",
+        storageKey: `key-note-${suffix}`,
+      },
+    });
+    const theirs = await item(sameSpace, "foreign.pdf");
+    const first = await shareDocuments(
+      prisma,
+      mine,
+      [kept.id, deck.id, note.id, theirs.id],
+      [a.id, b.id],
+    );
+    // Every asked-for file is reported in request order; the meeting note and the other owner's
+    // file are refused without stopping the rest.
+    expect(first.items).toEqual([
+      { itemId: kept.id, shared: true },
+      { itemId: deck.id, shared: true },
+      { itemId: note.id, shared: false },
+      { itemId: theirs.id, shared: false },
+    ]);
+    expect(first.added.get(a.id)).toEqual(["kept.pdf", "deck.pdf"]);
+    expect(first.added.get(b.id)).toEqual(["kept.pdf", "deck.pdf"]);
+    const pa = { ...mine, contactId: a.id };
+    expect((await listPortalDocuments(prisma, pa)).map((d) => d.name).sort()).toEqual([
+      "deck.pdf",
+      "kept.pdf",
+    ]);
+    expect(await getSharedDocument(prisma, pa, note.id)).toBeNull();
+    expect(await prisma.investorShare.count({ where: { dataRoomItemId: theirs.id } })).toBe(0);
+
+    // An investor who already has every listed file gains nothing, so no email goes out.
+    const again = await shareDocuments(prisma, mine, [kept.id, deck.id], [a.id]);
+    expect(again.items.every((i) => i.shared)).toBe(true);
+    expect(again.added.size).toBe(0);
+    // A contact of another owner gains nothing from a batch either.
+    const outside = await contact(sameSpace, "Outside");
+    const none = await shareDocuments(prisma, mine, [kept.id], [outside.id]);
+    expect(none.added.size).toBe(0);
+    expect(none.items).toEqual([{ itemId: kept.id, shared: true }]);
+
+    // The single-file form keeps refusing what a batch only reports: meeting notes and
+    // another owner's items.
+    await expect(shareDocument(prisma, mine, note.id, [a.id])).rejects.toThrow(IsolationError);
+    await expect(shareDocument(prisma, mine, theirs.id, [a.id])).rejects.toThrow(IsolationError);
+  });
+
   it("an email change through contacts.save ends sessions and tokens", async () => {
     const a = await contact(mine, "EmailChange");
     const live = await open(a.id);
@@ -340,7 +420,11 @@ describePostgres("investor portal (PostgreSQL)", () => {
 
   it("contacts.linked names tokens and shares", async () => {
     const plain = await contact(mine, "Plain");
-    expect(await linkedContact(prisma, mine, plain.id)).toEqual({ portal: false, documents: [] });
+    expect(await linkedContact(prisma, mine, plain.id)).toEqual({
+      portal: false,
+      documents: [],
+      safes: 0,
+    });
     const a = await contact(mine, "Linked");
     await mintPortalToken(prisma, mine, a.id, now);
     const doc = await item(mine, "linked.pdf");
@@ -348,7 +432,18 @@ describePostgres("investor portal (PostgreSQL)", () => {
     expect(await linkedContact(prisma, mine, a.id)).toEqual({
       portal: true,
       documents: ["linked.pdf"],
+      safes: 0,
     });
+    // A revoked investor has no live link, but deleting the contact drops the block record.
+    const barred = await contact(mine, "Barred");
+    await prisma.contact.update({ where: { id: barred.id }, data: { portalBlockedAt: now } });
+    expect((await linkedContact(prisma, mine, barred.id)).portal).toBe(true);
+    // A SAFE linked to the contact counts too.
+    const funded = await contact(mine, "Funded");
+    await prisma.safe.create({
+      data: { ...mine, contactId: funded.id, investorName: "Funded", amountCents: 1n },
+    });
+    expect((await linkedContact(prisma, mine, funded.id)).safes).toBe(1);
     await expect(linkedContact(prisma, sameSpace, a.id)).rejects.toThrow(IsolationError);
   });
 });

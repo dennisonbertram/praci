@@ -110,6 +110,7 @@ describe("computer control leases", () => {
       name: "run.continue",
       payload: { runId: "run-1" },
       replaceKey: "run:run-1",
+      priority: -1,
     });
   });
 

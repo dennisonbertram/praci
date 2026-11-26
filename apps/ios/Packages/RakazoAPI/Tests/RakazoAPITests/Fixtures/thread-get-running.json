@@ -1,0 +1,40 @@
+{
+  "json": {
+    "threadId": "thread-placeholder",
+    "cursor": 12,
+    "olderCursor": 3,
+    "lastReadSeq": 9,
+    "botId": "bot-placeholder",
+    "run": {
+      "id": "run-placeholder",
+      "botId": "bot-placeholder",
+      "threadId": "thread-placeholder",
+      "taskId": "task-placeholder",
+      "status": "running",
+      "trigger": "a-future-trigger",
+      "routineId": null,
+      "modelProvider": null,
+      "modelId": null,
+      "error": null,
+      "phase": { "kind": "thinking", "at": "2026-01-01T00:00:00.000Z" },
+      "startedAt": "2026-01-01T00:00:00.000Z",
+      "completedAt": null,
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    "activeRuns": [],
+    "delegatePending": ["message-placeholder"],
+    "delegatePendingAgents": [{ "messageId": "message-placeholder", "id": "bot-two", "name": "Helper" }],
+    "messages": [
+      {
+        "id": "message-placeholder",
+        "threadId": "thread-placeholder",
+        "seq": 11,
+        "role": "bot",
+        "blocks": [{ "kind": "a_future_block", "anything": 1 }],
+        "replyPreview": { "role": "user", "text": "Hi", "attachment": { "kind": "image", "artifactId": "artifact-placeholder", "mimeType": "image/png", "name": "photo.png" } },
+        "replyToMessageId": "message-two",
+        "createdAt": "2026-01-01T00:00:00.000Z"
+      }
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { Prisma, PrismaClient } from "./client.js";
+import { requestHash } from "./equity/request-key.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
@@ -12,6 +13,7 @@ type Db = Pick<
   | "dataRoomItem"
   | "investorPortalToken"
   | "investorShare"
+  | "investorShareRequest"
   | "investorUpdate"
   | "portalSession"
   | "space"
@@ -112,6 +114,9 @@ export async function exchangePortalToken(
     // Revoke and an email change delete the token under the same lock, so this sees it gone.
     const still = await tx.investorPortalToken.findUnique({ where: { tokenHash } });
     if (!still || still.expiresAt <= now) return null;
+    await tx.portalSession.deleteMany({
+      where: { ...ownerOf(principal), contactId: principal.contactId, expiresAt: { lte: now } },
+    });
     const session = randomToken();
     await tx.portalSession.create({
       data: {
@@ -257,22 +262,35 @@ export async function getSharedDocument(prisma: Db, principal: PortalPrincipal, 
   };
 }
 
-/** Shares a Data room document with investor contacts and returns the ones newly given it. */
-export async function shareDocument(
+export interface ShareDocumentsResult {
+  /** Every asked-for item, in request order, and whether access could be given for it. */
+  items: { itemId: string; shared: boolean }[];
+  /** Per contact, the names of the items they newly gained; contacts that gained nothing are absent. */
+  added: Map<string, string[]>;
+}
+
+/**
+ * Shares Data room documents with the owner's investor contacts in one transaction under the same
+ * contact lock as a single share. A file the caller cannot share (not theirs, no stored bytes, a
+ * meeting note) is reported in `items` and skipped, never shared and never aborting the rest.
+ */
+export async function shareDocuments(
   prisma: Db,
   actor: Scope,
-  itemId: string,
+  itemIds: readonly string[],
   contactIds: readonly string[],
-): Promise<string[]> {
+): Promise<ShareDocumentsResult> {
   const scope = ownerOf(actor);
-  const item = await prisma.dataRoomItem.findFirst({
-    where: { id: itemId, ...scope, storageKey: { not: null } },
-    select: { id: true },
+  const asked = [...new Set(itemIds)];
+  // Meeting notes are never shared with an investor from here.
+  const found = await prisma.dataRoomItem.findMany({
+    where: { id: { in: asked }, ...scope, storageKey: { not: null }, source: { not: "meeting" } },
+    select: { id: true, name: true },
   });
-  if (!item) throw new IsolationError("Document not found");
-  // The contacts are locked while the shares are written, so a kind change that removes shares
-  // cannot be undone by a share that was checked just before it.
+  const shareable = new Map(found.map((item) => [item.id, item.name]));
   return prisma.$transaction(async (tx) => {
+    // The contacts are locked while the shares are written, so a kind change that removes shares
+    // cannot be undone by a share that was checked just before it.
     const locked = await tx.$queryRaw<{ id: string }[]>`
       SELECT "id" FROM "contacts"
       WHERE "id" = ANY(${[...contactIds]}) AND "spaceId" = ${scope.spaceId}
@@ -280,17 +298,109 @@ export async function shareDocument(
       ORDER BY "id" FOR UPDATE`;
     const wanted = locked.map((c) => c.id);
     const existing = await tx.investorShare.findMany({
-      where: { dataRoomItemId: itemId, ...scope, contactId: { in: wanted } },
-      select: { contactId: true },
+      where: { dataRoomItemId: { in: [...shareable.keys()] }, ...scope, contactId: { in: wanted } },
+      select: { contactId: true, dataRoomItemId: true },
     });
-    const had = new Set(existing.map((s) => s.contactId));
-    const added = wanted.filter((id) => !had.has(id));
-    await tx.investorShare.createMany({
-      data: added.map((contactId) => ({ ...scope, contactId, dataRoomItemId: itemId })),
-      skipDuplicates: true,
-    });
-    return added;
+    const had = new Set(existing.map((s) => `${s.contactId}:${s.dataRoomItemId}`));
+    const added = new Map<string, string[]>();
+    const rows: { spaceId: string; userId: string; contactId: string; dataRoomItemId: string }[] =
+      [];
+    for (const itemId of asked) {
+      const name = shareable.get(itemId);
+      if (!name) continue;
+      for (const contactId of wanted) {
+        if (had.has(`${contactId}:${itemId}`)) continue;
+        rows.push({ ...scope, contactId, dataRoomItemId: itemId });
+        const names = added.get(contactId);
+        if (names) names.push(name);
+        else added.set(contactId, [name]);
+      }
+    }
+    await tx.investorShare.createMany({ data: rows, skipDuplicates: true });
+    return {
+      items: asked.map((itemId) => ({ itemId, shared: shareable.has(itemId) })),
+      added,
+    };
   });
+}
+
+/** Shares a Data room document with investor contacts and returns the ones newly given it. */
+export async function shareDocument(
+  prisma: Db,
+  actor: Scope,
+  itemId: string,
+  contactIds: readonly string[],
+): Promise<string[]> {
+  const { items, added } = await shareDocuments(prisma, actor, [itemId], contactIds);
+  if (!items[0]?.shared) throw new IsolationError("Document not found");
+  return [...added.keys()];
+}
+
+/** A delivery key was reused with other terms, or its first delivery is still in flight. */
+export class ShareRequestConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ShareRequestConflictError";
+  }
+}
+
+/** A claim that never completed (the process died mid-delivery) can be retaken after this long. */
+export const SHARE_CLAIM_STALE_MS = 10 * 60_000;
+
+/**
+ * Claims the key of a document delivery. "claimed" means the caller delivers; "delivered" means
+ * an earlier call already did, so nothing is sent again. The same key with other terms, or one
+ * whose first delivery is still in flight, is a conflict.
+ */
+export async function claimShareRequest(
+  prisma: Db,
+  actor: Scope,
+  input: {
+    itemIds: readonly string[];
+    contactIds: readonly string[];
+    emailLink: boolean;
+    requestKey: string;
+  },
+  now = new Date(),
+): Promise<"claimed" | "delivered"> {
+  const scope = ownerOf(actor);
+  const hash = requestHash({
+    itemIds: [...new Set(input.itemIds)].sort(),
+    contactIds: [...new Set(input.contactIds)].sort(),
+    emailLink: input.emailLink,
+  });
+  const created = await prisma.investorShareRequest.createMany({
+    data: { ...scope, requestKey: input.requestKey, requestHash: hash, createdAt: now },
+    skipDuplicates: true,
+  });
+  if (created.count === 1) return "claimed";
+  const first = await prisma.investorShareRequest.findFirstOrThrow({
+    where: { ...scope, requestKey: input.requestKey },
+  });
+  if (first.requestHash !== hash)
+    throw new ShareRequestConflictError("The request key was reused with different terms");
+  if (first.completedAt) return "delivered";
+  if (now.getTime() - first.createdAt.getTime() >= SHARE_CLAIM_STALE_MS) {
+    const retaken = await prisma.investorShareRequest.updateMany({
+      where: { id: first.id, completedAt: null, createdAt: first.createdAt },
+      data: { createdAt: now },
+    });
+    if (retaken.count === 1) return "claimed";
+  }
+  throw new ShareRequestConflictError("This delivery is already in progress");
+}
+
+/** Marks a claimed delivery as made, so a replay of its key sends nothing. */
+export async function completeShareRequest(prisma: Db, actor: Scope, requestKey: string) {
+  await prisma.investorShareRequest.updateMany({
+    where: { ...ownerOf(actor), requestKey },
+    data: { completedAt: new Date() },
+  });
+}
+
+/** Frees a delivery key after the delivery failed, so a retry can deliver. */
+export async function releaseShareRequest(prisma: Db, actor: Scope, requestKey: string) {
+  await prisma.investorShareRequest.deleteMany({ where: { ...ownerOf(actor), requestKey } });
 }
 
 export async function unshareDocument(

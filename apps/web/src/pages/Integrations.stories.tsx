@@ -74,7 +74,9 @@ const loaded = (extra: Record<string, unknown> = {}) =>
   mockRpc({
     "connections.catalog": catalog,
     "connections.list": [connection],
-    "connections.access": { allAgents: true, botIds: [] },
+    "connections.accessAll": {
+      [connection.id]: { allAgents: true, botIds: [], agentShared: true },
+    },
     "mcp.servers.list": [server],
     "bots.list": detailedBots,
     "mcp.assignments.all": [],

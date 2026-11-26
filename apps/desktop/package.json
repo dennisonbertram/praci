@@ -7,7 +7,7 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "pnpm build && electron .",
-    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/bundle-main.mjs && node scripts/copy-static.mjs",
     "pack": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --mac --win --linux",
     "pack:dir": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --dir",
     "check": "tsc --noEmit -p tsconfig.json",
@@ -17,6 +17,7 @@
     "pack:local": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --mac --dir -c.mac.notarize=false -c.mac.identity=null -c.extraMetadata.rakazoStackImages.image=praci/app -c.extraMetadata.rakazoStackImages.computerImage=praci/computer -c.extraMetadata.rakazoStackImages.tag=local -c.extraMetadata.rakazoStackImages.local=true"
   },
   "dependencies": {
+    "@kitlangton/hex": "0.3.1",
     "@rakazo/contracts": "workspace:*",
     "electron-updater": "6.8.9"
   },
@@ -25,6 +26,7 @@
     "@rakazo/ui-tokens": "workspace:*",
     "electron": "44.3.0",
     "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
     "typescript": "7.0.2",
     "vitest": "4.1.11"
   },
@@ -62,7 +64,11 @@
         "dmg",
         "zip"
       ],
-      "notarize": true
+      "notarize": true,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Praci records your microphone when you dictate or record a meeting.",
+        "NSAudioCaptureUsageDescription": "Praci records call audio when you record a meeting."
+      }
     },
     "win": {
       "icon": "assets/icon.ico",

@@ -4,14 +4,26 @@ import type {
   ControlLeaseRef,
   JobPublisher,
   SandboxProvider,
+  SecretStore,
 } from "@rakazo/adapter-kit";
 import { computerControlExpireJobKey, skillTeachingExpireJobKey } from "@rakazo/adapter-kit";
-import type { Actor, MessageBlock, TaughtSkill } from "@rakazo/contracts";
+import type {
+  Actor,
+  MessageBlock,
+  TaughtSkill,
+  TeachLoginPrompt,
+  TeachTestOutcome,
+} from "@rakazo/contracts";
 import type { SkillPlaybook, TeachRecordingEvent, TeachSnapshot } from "@rakazo/core";
 import {
+  applyPlainSteps,
   buildPlaybookFromRecording,
+  buildPlaybookWithProtected,
   computerInputForDomKey,
+  isProtectedFieldLabel,
+  redactSecretText,
   sanitizeTeachRecordingEvent,
+  splitWindowTitle,
 } from "@rakazo/core";
 import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
@@ -19,9 +31,11 @@ import {
   createThreadMessageInTransaction,
   IsolationError,
 } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import { revokeScreenControl } from "./computer-control.js";
 import { scheduleComputerSleep } from "./computer-idle.js";
 import { toComputerRef } from "./computer-support.js";
+import { appendHeldValue, readHeldValues, scrubHeld } from "./teach-held-values.js";
 
 export type TaughtSkillRow = {
   id: string;
@@ -36,14 +50,26 @@ export type TaughtSkillRow = {
   startedAt: Date | null;
   expiresAt: Date | null;
   stoppedAt: Date | null;
+  lastRunAt?: Date | null;
+  lastTestRunId?: string | null;
+  lastTestOutcome?: string | null;
+  lastTestNote?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
+
+/** Window titles are sampled at most this often while recording. */
+const WINDOW_SAMPLE_MS = 3_000;
+
+/** What the last focus check found; cleared by every click and navigation key. */
+type FocusState = { protected: boolean; field?: string };
 
 type TeachRecording = {
   events: TeachRecordingEvent[];
   snapshots: TeachSnapshot[];
   controlLeaseId?: string;
+  /** Kept with the recording, not in process memory, so any API process sees the same answer. */
+  focus?: FocusState;
 };
 
 export type TeachComputerInput = (
@@ -52,6 +78,8 @@ export type TeachComputerInput = (
 ) & {
   sensitive?: boolean;
   skillId?: string;
+  /** Label of the focused field, when the client knows it ("Password"). */
+  field?: string;
 };
 
 export interface TeachingSessionDeps {
@@ -59,6 +87,14 @@ export interface TeachingSessionDeps {
   events: ThreadEvents;
   jobs: JobPublisher;
   sandbox: SandboxProvider;
+  /** Encrypts held passwords. Without it a protected value is dropped and cannot be saved as a login. */
+  secrets?: SecretStore;
+  /** One model call that rewrites sanitized coordinate steps as plain steps; null falls back to them. */
+  describeSteps?: (input: {
+    scope: { userId: string; spaceId: string; botId: string };
+    goal: string;
+    steps: string[];
+  }) => Promise<string[] | null>;
 }
 
 export function emptyRecording(): TeachRecording {
@@ -72,6 +108,10 @@ export function parseRecording(value: unknown): TeachRecording {
     events: Array.isArray(record.events) ? (record.events as TeachRecordingEvent[]) : [],
     snapshots: Array.isArray(record.snapshots) ? (record.snapshots as TeachSnapshot[]) : [],
     controlLeaseId: typeof record.controlLeaseId === "string" ? record.controlLeaseId : undefined,
+    focus:
+      record.focus && typeof record.focus.protected === "boolean"
+        ? { protected: record.focus.protected, field: record.focus.field }
+        : undefined,
   };
 }
 
@@ -91,7 +131,11 @@ export function parsePlaybook(value: unknown): SkillPlaybook {
   };
 }
 
-export function mapTaughtSkill(row: TaughtSkillRow): TaughtSkill {
+export function mapTaughtSkill(
+  row: TaughtSkillRow,
+  loginPrompts: TeachLoginPrompt[] = [],
+): TaughtSkill {
+  const { focus: _focus, ...recording } = parseRecording(row.recording);
   return {
     id: row.id,
     botId: row.botId,
@@ -99,10 +143,14 @@ export function mapTaughtSkill(row: TaughtSkillRow): TaughtSkill {
     goal: row.goal,
     status: row.status as TaughtSkill["status"],
     playbook: parsePlaybook(row.playbook),
-    recording: parseRecording(row.recording),
+    recording,
     startedAt: row.startedAt?.toISOString() ?? null,
     expiresAt: row.expiresAt?.toISOString() ?? null,
     stoppedAt: row.stoppedAt?.toISOString() ?? null,
+    lastRunAt: row.lastRunAt?.toISOString() ?? null,
+    lastTestOutcome: (row.lastTestOutcome as TeachTestOutcome | null | undefined) ?? null,
+    lastTestNote: row.lastTestNote ?? null,
+    loginPrompts,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -142,7 +190,10 @@ function recordingEventKey(event: TeachRecordingEvent): string {
 async function mutateRecording(
   deps: TeachingSessionDeps,
   skillId: string,
-  mutate: (recording: TeachRecording) => { recording: TeachRecording; changed: boolean },
+  mutate: (
+    recording: TeachRecording,
+    held: readonly { value: string }[],
+  ) => { recording: TeachRecording; changed: boolean },
   options?: { requireRecording?: boolean },
 ): Promise<TaughtSkillRow> {
   return deps.prisma.$transaction(async (tx) => {
@@ -155,7 +206,9 @@ async function mutateRecording(
       return skill;
     }
     const current = parseRecording(skill.recording);
-    const next = mutate(current);
+    // Anything written while a password is held is scrubbed against it before it reaches Postgres.
+    const held = deps.secrets ? await readHeldValues(tx, deps.secrets, skillId) : [];
+    const next = mutate(current, held);
     if (!next.changed) return skill;
     return tx.taughtSkill.update({
       where: { id: skillId },
@@ -190,12 +243,63 @@ export async function observeStopSnapshot(
   }
 }
 
+/** `text` without any held value, and without anything that looks like a secret. */
+function scrubText(text: string, held: readonly { value: string }[]): string {
+  return redactSecretText(scrubHeld(text, held));
+}
+
+function scrubEvent(
+  event: TeachRecordingEvent,
+  held: readonly { value: string }[],
+): TeachRecordingEvent {
+  const scrub = (text: string | undefined) => (text ? scrubText(text, held) : text);
+  return {
+    ...event,
+    ...(event.summary ? { summary: scrub(event.summary) } : {}),
+    ...(event.title ? { title: scrub(event.title) } : {}),
+    ...(event.app ? { app: scrub(event.app) } : {}),
+    ...(event.path ? { path: scrub(event.path) } : {}),
+    ...(event.command ? { command: scrub(event.command) } : {}),
+    ...(event.text && !event.sensitive ? { text: scrubHeld(event.text, held) } : {}),
+  };
+}
+
+/** The recording with every held password removed from the text that may echo it. */
+export function scrubRecording(
+  recording: TeachRecording,
+  held: readonly { value: string }[],
+): TeachRecording {
+  const { focus: _focus, ...rest } = recording;
+  return {
+    ...rest,
+    events: recording.events.map((event) => scrubEvent(event, held)),
+    snapshots: recording.snapshots.map((snapshot) => ({
+      ...snapshot,
+      summary: scrubText(snapshot.summary, held),
+    })),
+  };
+}
+
+/** A recording row as the user may see it: the stored text is scrubbed against what is held now. */
+export async function scrubTaughtSkillRow<Row extends TaughtSkillRow>(
+  deps: Pick<TeachingSessionDeps, "prisma" | "secrets">,
+  row: Row,
+): Promise<Row> {
+  if (!deps.secrets || (row.status !== "recording" && row.status !== "drafting")) return row;
+  const held = await readHeldValues(deps.prisma, deps.secrets, row.id);
+  if (held.length === 0) return row;
+  return { ...row, recording: scrubRecording(parseRecording(row.recording), held) };
+}
+
+type PlainSteps = { steps: string[]; eventCount: number };
+
 async function finalizeTeachingRecording(
   deps: TeachingSessionDeps,
   actor: Actor,
   skillId: string,
   reason: "stopped" | "expired",
   stopSnapshot?: TeachSnapshot,
+  plain?: PlainSteps | null,
 ): Promise<{ skill: TaughtSkillRow; stopped: { threadId: string; seq: number } | null }> {
   return deps.prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT id FROM taught_skills WHERE id = ${skillId} FOR UPDATE`;
@@ -206,22 +310,42 @@ async function finalizeTeachingRecording(
     if (skill.status !== "recording" && skill.status !== "drafting") {
       throw new Error("Teaching session is not active");
     }
-    const recording = parseRecording(skill.recording);
+    const held = deps.secrets ? await readHeldValues(tx, deps.secrets, skillId) : [];
+    const recording = scrubRecording(parseRecording(skill.recording), held);
     if (stopSnapshot) {
-      recording.snapshots.push(stopSnapshot);
-      recording.events.push({
-        at: stopSnapshot.at,
-        kind: "snapshot",
-        summary: stopSnapshot.summary,
-      });
+      const summary = scrubText(stopSnapshot.summary, held);
+      recording.snapshots.push({ ...stopSnapshot, summary });
+      recording.events.push({ at: stopSnapshot.at, kind: "snapshot", summary });
     }
-    const playbook = buildPlaybookFromRecording(skill.goal, recording.events, recording.snapshots);
+    const built = buildPlaybookWithProtected(skill.goal, recording.events, recording.snapshots);
+    let { playbook, protectedSteps } = built;
+    const applied =
+      plain && plain.eventCount === parseRecording(skill.recording).events.length
+        ? applyPlainSteps(protectedSteps, plain.steps)
+        : null;
+    if (applied) {
+      playbook = { ...playbook, steps: applied.steps };
+      protectedSteps = applied.protectedSteps;
+    }
+    // Each held value belongs to one step; a value with no step has nothing to fill.
+    if (deps.secrets) {
+      await tx.teachHeldValue.deleteMany({
+        where: { skillId, segment: { notIn: protectedSteps.map((step) => step.segment) } },
+      });
+      for (const step of protectedSteps) {
+        await tx.teachHeldValue.updateMany({
+          where: { skillId, segment: step.segment },
+          data: { stepIndex: step.stepIndex },
+        });
+      }
+    }
     const updated = await tx.taughtSkill.update({
       where: { id: skillId },
       data: {
         status: "draft",
         recording: recording as never,
         playbook: playbook as never,
+        playbookUpdatedAt: new Date(),
         stoppedAt: new Date(),
       },
     });
@@ -255,8 +379,8 @@ export async function appendRecordingEvent(
   return mutateRecording(
     deps,
     skillId,
-    (recording) => {
-      const stored = sanitizeTeachRecordingEvent(event);
+    (recording, held) => {
+      const stored = scrubEvent(sanitizeTeachRecordingEvent(event), held);
       const key = recordingEventKey(stored);
       if (recording.events.some((existing) => recordingEventKey(existing) === key)) {
         return { recording, changed: false };
@@ -426,6 +550,42 @@ async function emitSkillDraftMessages(
   if (published != null) await deps.events.notify(threadId, published);
 }
 
+/**
+ * Asks the bot's model to rewrite the sanitized steps in plain words. It sees the same text the
+ * draft card would show, so it never receives a typed password. Any failure keeps the
+ * coordinate steps.
+ */
+async function describePlainSteps(
+  deps: TeachingSessionDeps,
+  skillId: string,
+): Promise<PlainSteps | null> {
+  if (!deps.describeSteps) return null;
+  try {
+    const skill = await deps.prisma.taughtSkill.findUnique({ where: { id: skillId } });
+    if (!skill || (skill.status !== "recording" && skill.status !== "drafting")) return null;
+    const held = deps.secrets ? await readHeldValues(deps.prisma, deps.secrets, skillId) : [];
+    const stored = parseRecording(skill.recording);
+    const recording = scrubRecording(stored, held);
+    const { playbook, protectedSteps } = buildPlaybookWithProtected(
+      skill.goal,
+      recording.events,
+      recording.snapshots,
+    );
+    if (playbook.steps.length < 2 && protectedSteps.length === 0) return null;
+    const steps = await deps.describeSteps({
+      scope: { userId: skill.userId, spaceId: skill.spaceId, botId: skill.botId },
+      goal: skill.goal,
+      steps: playbook.steps,
+    });
+    return steps ? { steps, eventCount: stored.events.length } : null;
+  } catch (error) {
+    getLogger().warn("teach steps failed; keeping coordinate steps", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    return null;
+  }
+}
+
 export async function completeTeachingSession(
   deps: TeachingSessionDeps,
   actor: Actor,
@@ -433,12 +593,15 @@ export async function completeTeachingSession(
   reason: "stopped" | "expired",
   stopSnapshot?: TeachSnapshot,
 ): Promise<TaughtSkillRow> {
+  lastWindowSample.delete(skillId);
+  const plain = await describePlainSteps(deps, skillId);
   const { skill: finalized, stopped } = await finalizeTeachingRecording(
     deps,
     actor,
     skillId,
     reason,
     stopSnapshot,
+    plain,
   );
   const bot = await deps.prisma.bot.findUnique({
     where: { id: finalized.botId },
@@ -550,23 +713,6 @@ export async function recordTeachingInputEvent(
     await expireTaughtSkillTeaching(deps, skill.id);
     return "stale";
   }
-  const event = sanitizeTeachRecordingEvent({
-    at: new Date().toISOString(),
-    kind: mapped.kind === "scroll" ? "scroll" : mapped.kind,
-    ...(mapped.sensitive ? { sensitive: true as const } : {}),
-    ...(mapped.kind === "key"
-      ? { key: mapped.key }
-      : mapped.kind === "clipboard"
-        ? { text: mapped.text }
-        : mapped.kind === "scroll"
-          ? { type: mapped.direction, text: String(mapped.amount ?? 3) }
-          : {
-              x: mapped.x,
-              y: mapped.y,
-              button: mapped.button,
-              type: mapped.type,
-            }),
-  });
   const prepared = await deps.prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT id FROM taught_skills WHERE id = ${skill.id} FOR UPDATE`;
     const current = await tx.taughtSkill.findUniqueOrThrow({ where: { id: skill.id } });
@@ -578,13 +724,51 @@ export async function recordTeachingInputEvent(
       where: { id: botId },
       include: { computer: true },
     });
-    return { kind: "ready" as const, computer: bot?.computer ?? null };
+    return {
+      kind: "ready" as const,
+      computer: bot?.computer ?? null,
+      focus: parseRecording(current.recording).focus,
+    };
   });
   if (prepared.kind === "expired") {
     await expireTaughtSkillTeaching(deps, skill.id);
     return "stale";
   }
   if (prepared.kind === "stale") return "stale";
+  // The browser tells us which field has focus; the web client cannot, because the screen is
+  // a VNC picture. The answer lasts until the next click or navigation key.
+  const typing = isTypingInput(mapped);
+  let focus = prepared.focus;
+  let input: TeachComputerInput = mapped;
+  if (typing && !mapped.sensitive) {
+    if (!focus && prepared.computer?.providerRef) {
+      focus = await detectProtectedFocus(deps, actor, botId, prepared.computer);
+    }
+    if (focus?.protected) {
+      input = { ...mapped, sensitive: true, field: mapped.field ?? focus.field };
+    }
+  }
+
+  const event = sanitizeTeachRecordingEvent({
+    at: new Date().toISOString(),
+    kind: input.kind === "scroll" ? "scroll" : input.kind,
+    ...(input.sensitive ? { sensitive: true as const } : {}),
+    ...(input.field && (input.kind === "key" || input.kind === "clipboard")
+      ? { field: input.field.slice(0, 120) }
+      : {}),
+    ...(input.kind === "key"
+      ? { key: input.key }
+      : input.kind === "clipboard"
+        ? { text: input.text }
+        : input.kind === "scroll"
+          ? { type: input.direction, text: String(input.amount ?? 3) }
+          : {
+              x: input.x,
+              y: input.y,
+              button: input.button,
+              type: input.type,
+            }),
+  });
   if (prepared.computer?.providerRef) {
     // The row lock above does not cover sandbox IO. Only protected input is
     // bound to a recording, so ordinary events skip this extra read.
@@ -610,7 +794,29 @@ export async function recordTeachingInputEvent(
     if (current.status !== "recording") return "stale" as const;
     if (current.expiresAt && current.expiresAt.getTime() <= Date.now()) return "expired" as const;
     const recording = parseRecording(current.recording);
+    if (deps.secrets && event.sensitive && (input.kind === "key" || input.kind === "clipboard")) {
+      // Consecutive keystrokes into a protected field are one value; a paste is its own.
+      const last = recording.events.at(-1);
+      const segment =
+        input.kind === "key" && last?.sensitive && last.kind === "key" && last.segment != null
+          ? last.segment
+          : Math.max(-1, ...recording.events.map((entry) => entry.segment ?? -1)) + 1;
+      event.segment = segment;
+      await appendHeldValue(tx, deps.secrets, {
+        skillId: skill.id,
+        spaceId: skill.spaceId,
+        userId: skill.userId,
+        segment,
+        field: event.field,
+        input:
+          input.kind === "key"
+            ? { kind: "key", key: input.key }
+            : { kind: "clipboard", text: input.text },
+      });
+    }
     recording.events.push(event);
+    if (typing) recording.focus = focus;
+    else if (input.kind !== "scroll") delete recording.focus;
     await tx.taughtSkill.update({
       where: { id: skill.id },
       data: { recording: recording as never },
@@ -621,7 +827,117 @@ export async function recordTeachingInputEvent(
     await expireTaughtSkillTeaching(deps, skill.id);
     return "stale";
   }
+  if (recorded === "recorded" && !event.sensitive && wantsWindowSample(mapped, skill.id)) {
+    await recordWindowChange(deps, actor, skill.id, botId, prepared.computer);
+  }
   return recorded;
+}
+
+/** Keys that put characters into the focused field, and pastes. Anything else may move focus. */
+function isTypingInput(input: TeachComputerInput): boolean {
+  if (input.kind === "clipboard") return true;
+  return (
+    input.kind === "key" &&
+    !input.modifiers?.length &&
+    (input.key?.length === 1 || input.key === "Backspace")
+  );
+}
+
+const LOGIN_WINDOW_TITLE = /log ?in|sign ?in|password|auth/i;
+
+/**
+ * Whether the field with focus in the sandbox holds a credential. The browser answers when it
+ * can; otherwise (another app has focus, the check fails) the window title decides, because a
+ * sign-in page's title is the only other evidence. Native desktop apps are the remaining gap
+ * (docs/computer-runtime.md).
+ */
+async function detectProtectedFocus(
+  deps: TeachingSessionDeps,
+  actor: Actor,
+  botId: string,
+  computer: { providerRef: string | null },
+): Promise<FocusState> {
+  const context = computerContext(actor, botId, "skills.focus");
+  try {
+    const result = await deps.sandbox.pageBrowser?.(
+      toComputerRef(computer as never),
+      { command: "focus" },
+      context,
+    );
+    const focus = result?.ok ? result.focus : undefined;
+    if (focus?.hasFocus && focus.tag !== "iframe") {
+      const passwordLike =
+        focus.type === "password" ||
+        /(?:current|new)-password|one-time-code/i.test(focus.autocomplete ?? "") ||
+        [focus.name, focus.id, focus.label, focus.placeholder].some(isProtectedFieldLabel);
+      return passwordLike
+        ? { protected: true, field: (focus.label || focus.name || "Password").slice(0, 120) }
+        : { protected: false };
+    }
+  } catch {
+    // Fall through to the window title.
+  }
+  try {
+    const observation = await deps.sandbox.observe(
+      toComputerRef(computer as never),
+      computerContext(actor, botId, "skills.focus"),
+    );
+    if (LOGIN_WINDOW_TITLE.test(observation.activeWindow?.title ?? "")) return { protected: true };
+  } catch {
+    // No evidence either way.
+  }
+  return { protected: false };
+}
+
+/** After a click or Enter the foreground window may have changed; the title is all we can see. */
+// ponytail: per-process throttle only limits screenshots; the recording itself is in Postgres.
+const lastWindowSample = new Map<string, number>();
+
+function wantsWindowSample(mapped: TeachComputerInput, skillId: string): boolean {
+  const triggers =
+    (mapped.kind === "pointer" && (mapped.type === "click" || mapped.type === "up")) ||
+    (mapped.kind === "key" && (mapped.key === "Enter" || mapped.key === "Tab"));
+  if (!triggers) return false;
+  const now = Date.now();
+  if (now - (lastWindowSample.get(skillId) ?? 0) < WINDOW_SAMPLE_MS) return false;
+  lastWindowSample.set(skillId, now);
+  return true;
+}
+
+async function recordWindowChange(
+  deps: TeachingSessionDeps,
+  actor: Actor,
+  skillId: string,
+  botId: string,
+  computer: { providerRef: string | null } | null,
+): Promise<void> {
+  if (!computer?.providerRef) return;
+  try {
+    const observation = await deps.sandbox.observe(
+      toComputerRef(computer as never),
+      computerContext(actor, botId, "skills.window"),
+    );
+    const title = observation.activeWindow?.title?.trim();
+    if (!title) return;
+    await mutateRecording(deps, skillId, (recording, held) => {
+      const lastWindow = recording.events.findLast((entry) => entry.kind === "window");
+      // The app name comes from the scrubbed title, so a password echoed in the title cannot leak
+      // through it.
+      const clean = scrubText(title, held);
+      const { app } = splitWindowTitle(clean);
+      const event = sanitizeTeachRecordingEvent({
+        at: new Date().toISOString(),
+        kind: "window",
+        title: clean,
+        ...(app ? { app } : {}),
+      });
+      if (lastWindow?.title === event.title) return { recording, changed: false };
+      recording.events.push(event);
+      return { recording, changed: true };
+    });
+  } catch {
+    // The title is a convenience; a failed look never stops the recording.
+  }
 }
 
 export async function captureTeachingSnapshot(
@@ -632,9 +948,10 @@ export async function captureTeachingSnapshot(
 ): Promise<TaughtSkillRow> {
   const snapshot = await observeStopSnapshot(deps, actor, bot);
   if (!snapshot) return skill;
-  return mutateRecording(deps, skill.id, (recording) => {
-    recording.snapshots.push(snapshot);
-    recording.events.push({ at: snapshot.at, kind: "snapshot", summary: snapshot.summary });
+  return mutateRecording(deps, skill.id, (recording, held) => {
+    const summary = scrubText(snapshot.summary, held);
+    recording.snapshots.push({ ...snapshot, summary });
+    recording.events.push({ at: snapshot.at, kind: "snapshot", summary });
     return { recording, changed: true };
   });
 }

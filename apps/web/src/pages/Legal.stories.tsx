@@ -52,6 +52,15 @@ export const NeedsConsent: Story = {
     }),
 };
 
+/** No model is set up, so there is nothing to allow: the header offers Add a model. */
+export const NoModel: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "legal.overview": withFiles,
+      "legal.consent": { ...consent, allowed: false, recipients: [] },
+    }),
+};
+
 /** The agent runs on the space default model: no key or model banner. */
 export const SpaceDefaultModel: Story = {
   beforeEach: () =>

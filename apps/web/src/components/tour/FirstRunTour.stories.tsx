@@ -45,6 +45,11 @@ function Sidebar({ without = [], phone = false }: { without?: string[]; phone?: 
           ))}
         </div>
       ) : null}
+      {has("routines") ? (
+        <button type="button" data-tour="routines" className="py-2 text-start text-sm">
+          Routines
+        </button>
+      ) : null}
       {has("sidebar-integrations") ? (
         <button type="button" data-tour="sidebar-integrations" className="py-2 text-start text-sm">
           Connect apps
@@ -71,7 +76,7 @@ const meta = {
 } satisfies Meta<typeof FirstRunTour>;
 export default meta;
 
-/** Nine steps, top to bottom, ending on a button that focuses the composer. */
+/** Ten steps, top to bottom, ending on a button that focuses the composer. */
 export const Open: StoryObj<typeof meta> = {};
 
 /** At phone width the card stays at the foot at every stop and the drawer rows rise above it. */
@@ -88,7 +93,7 @@ export const Phone: StoryObj<typeof meta> = {
 export const HiddenPages: StoryObj<typeof meta> = {
   render: (args) => (
     <>
-      <Sidebar without={["sidebar-legal", "sidebar-integrations"]} />
+      <Sidebar without={["sidebar-legal", "routines", "sidebar-integrations"]} />
       <FirstRunTour {...args} />
     </>
   ),

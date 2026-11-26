@@ -1,9 +1,9 @@
 import type { NotificationDto } from "@rakazo/contracts";
-import { isDevinSessionUrl } from "@rakazo/contracts";
+import { isApprovalTitle, isDevinSessionUrl } from "@rakazo/contracts";
 import type { NotificationToastInput } from "@rakazo/ui-web";
 import { enqueueNotificationToast } from "@rakazo/ui-web";
 import { enqueueApprovalToast, hasApprovalToast, retainApprovalToasts } from "./approval-toasts";
-import { requestBrowserNotificationPermission } from "./browser-notifications";
+import { desktopBridge } from "./desktop";
 import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
 
 /** Dispatched on `window` after the channel switches change, so the app root reloads them. */
@@ -11,7 +11,7 @@ export const NOTIFICATION_SETTINGS_CHANGED = "rakazo:notification-settings-chang
 
 /** Approval requests are titled "<agent> needs approval"; other needs_input kinds (questions, codes, Devin) are not. */
 export const isApprovalRequest = (n: Pick<NotificationDto, "kind" | "title">) =>
-  n.kind === "needs_input" && n.title.endsWith(" needs approval");
+  n.kind === "needs_input" && isApprovalTitle(n.title);
 
 /** The toast and OS text for a stored notification; amounts stay hidden while Hide money is on. */
 export function attentionFromDto(n: NotificationDto): AttentionNotification {
@@ -104,6 +104,10 @@ export type AttentionNotification = NotificationToastInput & {
   botId?: string | null;
   /** Runs when the person closes the approval toast with X. */
   onDismiss?: () => void;
+  /** The OS notification's title, the agent's name; the toast keeps `title`. */
+  osTitle?: string;
+  /** The OS notification's icon URL. */
+  icon?: string;
 };
 
 /** Present (visible tab with focus) -> in-app toast; otherwise -> OS notification. */
@@ -135,15 +139,46 @@ export type DeliveryDeps = {
 /** Background tabs wait this long so a focused tab can toast first. */
 export const AWAY_DELAY_MS = 1500;
 
+/** An OS notification is a glance, not an inbox: it closes itself, which also clears it from the notification centre. */
+export const OS_NOTIFICATION_MS = 6000;
+
+/**
+ * Shows an OS notification that closes after `OS_NOTIFICATION_MS` and on click. Never
+ * `requireInteraction`, and never a service worker `showNotification`, which would persist.
+ */
+export function showMomentaryNotification(
+  title: string,
+  options: NotificationOptions,
+  onClick: () => void,
+  create: (title: string, options: NotificationOptions) => Notification = (t, o) =>
+    new Notification(t, o),
+) {
+  const shown = create(title, options);
+  const timer = setTimeout(() => shown.close(), OS_NOTIFICATION_MS);
+  shown.onclick = () => {
+    clearTimeout(timer);
+    onClick();
+    shown.close();
+  };
+}
+
+const OS_BODY_MAX = 120;
+const clipBody = (body: string | undefined) =>
+  body && body.length > OS_BODY_MAX ? `${body.slice(0, OS_BODY_MAX - 1).trimEnd()}…` : body;
+
+/** Raises the window: the desktop app asks its main process (a renderer cannot raise a background window); a browser focuses the tab. */
+export function focusAppWindow() {
+  void desktopBridge()?.window.focus?.();
+  window.focus();
+}
+
 const defaultDeps = (): DeliveryDeps => ({
   toast: ({ approval, botId, onDismiss, ...toast }) =>
     approval ? enqueueApprovalToast(toast, { botId, onDismiss }) : enqueueNotificationToast(toast),
-  requestPermission: () => requestBrowserNotificationPermission(),
-  show: (title, options, onClick) => {
-    const shown = new Notification(title, options);
-    shown.onclick = onClick;
-  },
-  focus: () => window.focus(),
+  requestPermission: () =>
+    typeof Notification === "undefined" ? undefined : Promise.resolve(Notification.permission),
+  show: showMomentaryNotification,
+  focus: focusAppWindow,
   open: openNotificationLink((href) => window.location.assign(href)),
   state: () => ({ visible: document.visibilityState === "visible", focused: document.hasFocus() }),
   delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -177,7 +212,7 @@ export async function deliverNotification(
     if (shouldToast(deps.state())) return toast();
     if ((await deps.browserEnabled?.()) === false) return "skipped";
     if ((await deps.requestPermission()) !== "granted") return "skipped";
-    deps.show(n.title, { body: n.body, tag: n.id }, () => {
+    deps.show(n.osTitle ?? n.title, { body: clipBody(n.body), tag: n.id, icon: n.icon }, () => {
       deps.focus();
       if (n.href) void deps.open(n.href);
     });

@@ -1,0 +1,30 @@
+{
+  "json": {
+    "id": "meeting-1",
+    "title": "Roadmap sync",
+    "startedAt": "2026-10-29T16:00:00.000Z",
+    "endedAt": "2026-10-29T16:45:00.000Z",
+    "provider": "praci",
+    "summary": "The team agreed to ship the beta in November.",
+    "decisions": ["Ship the beta in November"],
+    "followUps": ["Share the launch checklist"],
+    "todos": [
+      {
+        "id": "todo-1",
+        "text": "Draft the launch checklist",
+        "dueOn": "2026-11-02",
+        "doneAt": null
+      },
+      {
+        "id": "todo-2",
+        "text": "Book the demo room",
+        "dueOn": null,
+        "doneAt": "2026-10-30T09:00:00.000Z"
+      }
+    ],
+    "transcript": "Alex: Let us ship in November.\nSam: Agreed.",
+    "partial": false,
+    "summarizing": false,
+    "actionItems": []
+  }
+}

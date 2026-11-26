@@ -1,0 +1,14 @@
+{
+  "json": {
+    "serverId": "server_demo_1",
+    "agentBotId": null,
+    "writesEnabled": false,
+    "activities": [{
+      "effectId": "effect_demo_1",
+      "at": "2026-11-13T14:25:00.000Z",
+      "action": "lock_card",
+      "target": "Design tools •••• 4242",
+      "status": "succeeded"
+    }]
+  }
+}

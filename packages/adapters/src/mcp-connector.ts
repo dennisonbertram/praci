@@ -1,3 +1,5 @@
+import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
+import { StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { CallToolResult, ListToolsResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type {
   AdapterContext,
@@ -12,16 +14,19 @@ import {
   FINANCE_READ_TOOLS,
   financeProviderForEndpoint,
   integrationPresetForEndpoint,
+  isBrexCardsEndpoint,
   isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isIntegrationAgentForServer,
   isIntegrationAgentSpawnKey,
   isLocalMcpHost,
   isReadTool,
+  isSpaceOwnerRole,
 } from "@rakazo/contracts";
 import type { McpServer, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { catalogToolPrefix } from "./approval-effect.js";
+import { connectBrexCardsSession } from "./brex-cards-binding.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { credentialDigest } from "./credential-digest.js";
 import { appendToolCompletionAudit } from "./executor.js";
@@ -35,8 +40,8 @@ import {
   resolveCatalogCall,
 } from "./lazy-tool-catalog.js";
 import type { McpOAuthBroker, OAuthMaterial } from "./mcp-oauth.js";
-import { oauthMaterialSecrets } from "./mcp-oauth.js";
-import { McpSession } from "./mcp-transport.js";
+import { McpReauthorizationRequiredError, oauthMaterialSecrets } from "./mcp-oauth.js";
+import { McpSession, mcpStdioRefusal } from "./mcp-transport.js";
 import { actorMayUsePrivateEndpoint } from "./private-endpoint.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
 import { secretRefMatches } from "./secret-changes.js";
@@ -56,12 +61,73 @@ type PendingSession = {
   ref?: string;
 };
 
+/**
+ * A failure the user resolves rather than a bug: `reconnect` needs new credentials or
+ * config, `unreachable` a host that is down or gone. Both are logged as warnings, so they
+ * stay out of error reporting.
+ */
+type ExpectedFailure = "reconnect" | "unreachable";
+const UNREACHABLE_CODES = new Set([
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "UND_ERR_CONNECT_TIMEOUT",
+]);
+
+function expectedFailure(error: unknown, depth = 0): ExpectedFailure | undefined {
+  if (depth > 5 || !(error instanceof Error)) return undefined;
+  // A redacted connect failure carries the classification its message loses.
+  const { expected, code } = error as { expected?: ExpectedFailure; code?: unknown };
+  if (expected) return expected;
+  if (
+    error instanceof UnauthorizedError ||
+    error instanceof McpReauthorizationRequiredError ||
+    code === 401 ||
+    code === 403
+  )
+    return "reconnect";
+  // A name that no longer resolves (an expired tunnel) needs a new address, not a retry.
+  if (code === "ENOTFOUND") return "reconnect";
+  if (typeof code === "string" && UNREACHABLE_CODES.has(code)) return "unreachable";
+  const inner = error instanceof AggregateError ? error.errors : [error.cause];
+  for (const cause of inner) {
+    const kind = expectedFailure(cause, depth + 1);
+    if (kind) return kind;
+  }
+  return undefined;
+}
+
+/**
+ * The error a server-side call throws: the sanitized message, plus `expected: "reconnect"` when
+ * the sign-in was refused or has expired, so a caller can tell that from an outage.
+ */
+export function connectorFailure(error: unknown, message: string): Error {
+  const expected =
+    error instanceof McpReauthorizationRequiredError ? "reconnect" : expectedFailure(error);
+  return Object.assign(new Error(withHttpStatus(error, message)), expected ? { expected } : {});
+}
+
 const TOOL_LIST_TTL_MS = 30_000;
 type ToolListEntry = {
   result?: ListToolsResult;
   expiresAt: number;
   pending?: Promise<ListToolsResult>;
 };
+
+/** Whether the server rejected the request because it no longer knows the session. */
+function sessionGone(error: unknown): boolean {
+  if (!(error instanceof StreamableHTTPError)) return false;
+  return (
+    error.code === 404 ||
+    (error.code === 400 &&
+      /\bBad Request: (?:Server not initialized|No valid session ID(?: provided| or initialization request)?|Mcp-Session-Id header is required)(?="|$)/i.test(
+        error.message,
+      ))
+  );
+}
 
 /** Runtime MCP connector. Authorization is re-checked against the bot assignment on every call. */
 /**
@@ -138,7 +204,12 @@ export function integrationAgentDenial(
     isServerAgent(assignment);
   if (preset?.requiresAgent && !isIntegrationAgentForServer(server, server.agentBot))
     return "belongs-to-agent";
-  if (!server.agentBotId && !server.agentExclusive && !botIsIntegrationAgent) return null;
+  if (!server.agentBotId && !server.agentExclusive && !botIsIntegrationAgent) {
+    // A released bank server (its agent was archived) must not hand payment tools to ordinary bots.
+    return financeProviderForEndpoint(server.endpoint) && !isReadTool(tool, preset)
+      ? "belongs-to-agent"
+      : null;
+  }
   if (isServerAgent(assignment)) {
     return isReadTool(tool, preset) || server.writesEnabled === true ? null : "writes-off";
   }
@@ -210,6 +281,8 @@ export class McpConnector implements ConnectorProvider {
   private readonly sessions = new Map<string, SessionEntry>();
   private readonly connecting = new Map<string, PendingSession>();
   private readonly toolLists = new WeakMap<McpSession, ToolListEntry>();
+  private readonly inFlight = new WeakMap<McpSession, number>();
+  private readonly expired = new WeakSet<McpSession>();
   // Discovery runs more than once per run: once up front, then again on every lazy
   // catalog access. Each attempt needs its own executionId.
   private discoverySeq = 0;
@@ -224,6 +297,8 @@ export class McpConnector implements ConnectorProvider {
       /** Audit sink for failed discovery. Without it the log line stays the only trace. */
       events?: Pick<ThreadEvents, "append">;
       allowPrivateEndpoint?: boolean;
+      /** Where the in-process Brex cards server reaches Brex. Replaced by the demo and tests. */
+      brexApi?: { baseUrl?: string; fetch?: typeof fetch };
     } = {},
     private readonly oauth?: McpOAuthBroker,
   ) {
@@ -293,8 +368,9 @@ export class McpConnector implements ConnectorProvider {
         const startedAt = Date.now();
         try {
           context.onConnecting?.(assignment.server.name || assignment.server.slug);
-          const session = await this.sessionFor(assignment.server, context);
-          const listed = await this.cachedTools(session, context.signal);
+          const listed = await this.withSession(assignment.server, context, (session) =>
+            this.cachedTools(session, context.signal),
+          );
           reportAllowlistDrift(assignment, listed.tools, context);
           return listed.tools
             .filter((tool) => assignmentAllowsTool(assignment, tool.name, tool.annotations))
@@ -302,6 +378,9 @@ export class McpConnector implements ConnectorProvider {
               name: `mcp__${assignment.server.slug}__${tool.name}`,
               description: tool.description ?? tool.name,
               inputSchema: tool.inputSchema as Record<string, unknown>,
+              ...(typeof tool.annotations?.readOnlyHint === "boolean"
+                ? { readOnlyHint: tool.annotations.readOnlyHint }
+                : {}),
               // Only for the server's agent: false makes the executor ask before each write.
               ...(isServerAgent(assignment)
                 ? {
@@ -331,10 +410,15 @@ export class McpConnector implements ConnectorProvider {
             }));
         } catch (error) {
           // A single unavailable server must not hide tools from other connectors.
-          getLogger().error(
-            `mcp discovery failed for server ${assignment.server.slug}:`,
-            sanitizeConnectorError(error),
-          );
+          if (expectedFailure(error))
+            getLogger().warn(`mcp discovery failed for server ${assignment.server.slug}`, {
+              reason: sanitizeConnectorError(error),
+            });
+          else
+            getLogger().error(
+              `mcp discovery failed for server ${assignment.server.slug}:`,
+              sanitizeConnectorError(error),
+            );
           // Capture material before eviction so the audited reason stays redacted, the
           // same reason execute() captures it before callTool.
           const key = this.sessionKey(assignment.server, context);
@@ -449,7 +533,7 @@ export class McpConnector implements ConnectorProvider {
     // cached read hints must never authorize a tool that has become a write since discovery.
     let annotations: ToolAnnotations;
     let listedSession: McpSession | undefined;
-    if (assignment.server.agentBotId) {
+    if (assignment.server.agentBotId || financeProviderForEndpoint(assignment.server.endpoint)) {
       const { endpoint, secretId, revision } = assignment.server;
       const listedFor = { endpoint, secretId, revision };
       try {
@@ -458,9 +542,17 @@ export class McpConnector implements ConnectorProvider {
         const preset = integrationPresetForEndpoint(assignment.server.endpoint);
         const fixedClassification =
           preset?.reads.includes(route.toolName) || preset?.forcedWrites.includes(route.toolName);
-        const listed = fixedClassification
-          ? await this.cachedTools(session, context.signal)
-          : await session.listTools({ signal: context.signal });
+        const listed = await this.withSession(
+          assignment.server,
+          context,
+          (current) => {
+            listedSession = current;
+            return fixedClassification
+              ? this.cachedTools(current, context.signal)
+              : current.listTools({ signal: context.signal });
+          },
+          session,
+        );
         annotations = listed.tools.find((tool) => tool.name === route.toolName)?.annotations;
       } catch (error) {
         yield { type: "error", message: sanitizeConnectorError(error) };
@@ -554,15 +646,30 @@ export class McpConnector implements ConnectorProvider {
         yield { type: "error", message: denied };
         return;
       }
-      const result = await session.callTool(route.toolName, call.args, {
-        signal: context.signal,
-      });
+      // A session the server expired is replaced once; the gate above already passed.
+      const result = await this.withSession(
+        opened,
+        context,
+        (current) => {
+          material = this.sessions.get(sessionKey)?.material ?? material;
+          return current.callTool(route.toolName, call.args, {
+            signal: context.signal,
+            // The executor hands this server the approved effect's id, which Brex gets as the
+            // request's idempotency key. A retry of the same effect carries the same id.
+            ...(isBrexCardsEndpoint(opened.endpoint)
+              ? { meta: { idempotencyKey: call.executionId } }
+              : {}),
+          });
+        },
+        session,
+      );
       const secrets = material ? oauthMaterialSecrets(material) : [];
       yield { type: "result", data: redactConnectorPayload(result, secrets) };
     } catch (error) {
       // A thrown call means the transport or auth broke; drop the session so the next call reconnects.
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
+      await this.recordRefusal(assignment.server, context, error);
       yield { type: "error", message: sanitizeConnectorError(error, secrets) };
     }
   }
@@ -595,15 +702,30 @@ export class McpConnector implements ConnectorProvider {
     } catch (error) {
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
-      throw new Error(withHttpStatus(error, sanitizeConnectorError(error, secrets)));
+      throw connectorFailure(error, sanitizeConnectorError(error, secrets));
     }
     await options.beforeCall?.();
     try {
-      return await session.callTool(toolName, args, { signal: context.signal });
+      const result = await this.withSession(
+        server,
+        context,
+        (current) => {
+          material = this.sessions.get(sessionKey)?.material ?? material;
+          return current.callTool(toolName, args, { signal: context.signal });
+        },
+        session,
+      );
+      // The same redaction a bot's own MCP call gets: a server that echoes its token must not
+      // put it in a stored result.
+      return redactConnectorPayload(
+        result,
+        material ? oauthMaterialSecrets(material) : [],
+      ) as CallToolResult;
     } catch (error) {
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
-      throw new Error(withHttpStatus(error, sanitizeConnectorError(error, secrets)));
+      await this.recordRefusal(server, context, error);
+      throw connectorFailure(error, sanitizeConnectorError(error, secrets));
     }
   }
 
@@ -618,13 +740,15 @@ export class McpConnector implements ConnectorProvider {
   ): Promise<Tool[]> {
     const sessionKey = this.sessionKey(server, context);
     try {
-      const session = await this.sessionFor(server, context);
-      const listed = options.fresh
-        ? await session.listTools({ signal: context.signal })
-        : await this.cachedTools(session, context.signal);
+      const listed = await this.withSession(server, context, (session) =>
+        options.fresh
+          ? session.listTools({ signal: context.signal })
+          : this.cachedTools(session, context.signal),
+      );
       return structuredClone(listed.tools);
     } catch (error) {
       await this.evict(sessionKey);
+      await this.recordRefusal(server, context, error);
       throw new Error(sanitizeConnectorError(error));
     }
   }
@@ -687,11 +811,57 @@ export class McpConnector implements ConnectorProvider {
     return result;
   }
 
+  /**
+   * Streamable HTTP servers answer 404 for a session they expired or lost on restart; many
+   * (including the SDK's own "Server not initialized") answer 400 naming the session instead.
+   * The request never ran there, so it is sent once more on a fresh session instead of failing.
+   */
+  private async withSession<T>(
+    server: McpServer,
+    context: AdapterContext,
+    use: (session: McpSession) => Promise<T>,
+    first?: McpSession,
+  ): Promise<T> {
+    for (let attempt = 0; ; attempt += 1) {
+      const session = attempt === 0 && first ? first : await this.sessionFor(server, context);
+      this.inFlight.set(session, (this.inFlight.get(session) ?? 0) + 1);
+      try {
+        return await use(session);
+      } catch (error) {
+        if (attempt !== 0 || !sessionGone(error)) throw error;
+        const sessionKey = this.sessionKey(server, context);
+        // Stop reusing the expired session immediately, but let its other requests
+        // receive their own responses before closing the shared SDK client.
+        if (this.sessions.get(sessionKey)?.session === session) this.sessions.delete(sessionKey);
+        this.expired.add(session);
+      } finally {
+        const remaining = (this.inFlight.get(session) ?? 1) - 1;
+        this.inFlight.set(session, remaining);
+        if (remaining === 0 && this.expired.has(session)) await session.close();
+      }
+    }
+  }
+
   private async sessionFor(server: McpServer, context: AdapterContext): Promise<McpSession> {
     const sessionKey = this.sessionKey(server, context);
+    if (isBrexCardsEndpoint(server.endpoint)) {
+      // The token belongs to the space owner who connected it. Once that person stops being an
+      // owner, neither a warm session nor a new one may use it, whatever the bot assignments say.
+      const member = await this.prisma.spaceMember.findUnique({
+        where: { spaceId_userId: { spaceId: server.spaceId, userId: server.userId } },
+        select: { role: true },
+      });
+      if (!isSpaceOwnerRole(member?.role)) {
+        await this.evict(sessionKey);
+        throw new Error("The person who connected Brex cards is no longer an owner of this space.");
+      }
+    }
     const existing = this.sessions.get(sessionKey);
     if (existing && existing.revision === server.revision) {
-      if (existing.ref && server.secretId) {
+      // Every credential write stores a new record without bumping the revision, so a
+      // different record means another process (an API or worker) changed the grant.
+      if ((server.secretId ?? undefined) !== existing.recordId) await this.evict(sessionKey);
+      else if (existing.ref && server.secretId) {
         try {
           const plaintext = await this.secrets.load(existing.ref, {
             recordId: existing.recordId ?? server.secretId,
@@ -756,6 +926,23 @@ export class McpConnector implements ConnectorProvider {
     }
   }
 
+  /** Remembers that the server refused this user's sign-in, so the list says it needs reconnecting. */
+  private async recordRefusal(
+    server: { id: string },
+    context: { spaceId: string; userId: string },
+    error: unknown,
+  ): Promise<void> {
+    if (expectedFailure(error) !== "reconnect") return;
+    try {
+      await this.prisma.mcpServer.updateMany({
+        where: { id: server.id, spaceId: context.spaceId, userId: context.userId },
+        data: { oauthReauthAt: new Date() },
+      });
+    } catch {
+      // Best effort: the failure itself is still reported to the caller.
+    }
+  }
+
   private async connectSession(
     server: McpServer,
     context: AdapterContext,
@@ -770,6 +957,7 @@ export class McpConnector implements ConnectorProvider {
     const session = new McpSession({ name: `rakazo-${server.slug}` });
     // Hoisted so a throw after the secret is decoded can still hand the material out.
     let material: OAuthMaterial | undefined;
+    let usedOAuth = false;
     try {
       const secret = server.secretId
         ? await this.prisma.secret.findFirst({
@@ -794,8 +982,32 @@ export class McpConnector implements ConnectorProvider {
       const loaded = { material, ...(secret ? { secretId: secret.id } : {}) };
       const args = Array.isArray(server.args) ? server.args.map(String) : [];
       const env = { ...(material.env ?? {}) };
-      if (server.transport === "stdio") {
-        if (!this.options.stdioEnabled) throw new Error("MCP stdio is disabled");
+      if (isBrexCardsEndpoint(server.endpoint)) {
+        // Runs in this process, so the session belongs to one space: never connect it to a row of
+        // another one, and take the token from this row's own secret.
+        if (server.spaceId !== context.spaceId) throw new Error("MCP server is not in this space");
+        const token = material.secret?.replace(/^Bearer /, "");
+        if (!token)
+          throw Object.assign(
+            new Error("The Brex token is missing. Ask the owner to replace it."),
+            {
+              expected: "reconnect",
+            },
+          );
+        await connectBrexCardsSession(
+          session,
+          {
+            server: { id: server.id, spaceId: server.spaceId, userId: server.userId },
+            prisma: this.prisma,
+            token,
+            ...this.options.brexApi,
+          },
+          { signal: context.signal },
+        );
+      } else if (server.transport === "stdio") {
+        // Only a deployment change or an edit to the server fixes a refusal, so wait for one.
+        const refusal = mcpStdioRefusal(String(server.command ?? ""), this.options);
+        if (refusal) throw Object.assign(new Error(refusal), { expected: "reconnect" });
         await session.connectStdio({
           command: String(server.command ?? ""),
           args,
@@ -821,6 +1033,7 @@ export class McpConnector implements ConnectorProvider {
                 onRef(ref, recordId, digest);
               })
             : undefined;
+        usedOAuth = authProvider !== undefined;
         const staticToken = material.secret
           ? material.secret.startsWith("Bearer ")
             ? material.secret
@@ -845,6 +1058,19 @@ export class McpConnector implements ConnectorProvider {
           network: this.options.network,
           signal: context.signal,
         });
+        // A server that accepts the sign-in again (it recovered, or was reconnected) is not stale.
+        if (usedOAuth)
+          await this.prisma.mcpServer
+            .updateMany({
+              where: {
+                id: server.id,
+                spaceId: context.spaceId,
+                userId: context.userId,
+                oauthReauthAt: { not: null },
+              },
+              data: { oauthReauthAt: null },
+            })
+            .catch(() => undefined);
       }
       return { session, material, ref, digest, recordId };
     } catch (error) {
@@ -854,10 +1080,11 @@ export class McpConnector implements ConnectorProvider {
       // the secrets: the session never reached `sessions`. Sanitizing per caller would
       // cover only whoever looked first.
       if (!material) throw error;
+      if (usedOAuth) await this.recordRefusal(server, context, error);
       // Keep the transport's HTTP status for withHttpStatus.
       throw Object.assign(
         new Error(sanitizeConnectorError(error, oauthMaterialSecrets(material))),
-        { code: (error as { code?: unknown } | null)?.code },
+        { code: (error as { code?: unknown } | null)?.code, expected: expectedFailure(error) },
       );
     }
   }

@@ -1,11 +1,19 @@
 // biome-ignore-all lint/a11y/noNoninteractiveTabindex: The named review card is the c/e/r shortcut target.
 
-import { t } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react";
 import { Trans } from "@lingui/react/macro";
-import type { CompanyFact, CompanyReviewCandidate, CompanyReviewItem } from "@rakazo/contracts";
+import type {
+  CompanyFact,
+  CompanyRelation,
+  CompanyReviewCandidate,
+  CompanyReviewItem,
+} from "@rakazo/contracts";
 import { Button, Input, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import { useId, useState } from "react";
 import { companyFactTitle } from "../lib/company-format";
+import { companyRelationLabel } from "../lib/company-relation-label";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -25,12 +33,44 @@ function candidateReason(reason: string) {
   return t`Resolve identity`;
 }
 
+function reviewDetailLabel(
+  label: string,
+  translate: (message: MessageDescriptor) => string,
+): string {
+  switch (label) {
+    case "Type":
+      return translate(msg`Type`);
+    case "Work email":
+      return translate(msg`Work email`);
+    case "Relation":
+      return translate(msg`Relation`);
+    case "Role":
+      return translate(msg`Role`);
+    case "From":
+      return translate(msg`From`);
+    case "To":
+      return translate(msg`To`);
+    case "Confidence":
+      return translate(msg`Confidence`);
+    case "Date":
+      return translate(msg`Date`);
+    case "Stream":
+      return translate(msg`Stream`);
+    case "Subjects":
+      return translate(msg`Subjects`);
+    default:
+      return label;
+  }
+}
+
 export function CompanyReview({
   items,
+  nameOf,
   onOpen,
   onChanged,
 }: {
   items: CompanyReviewItem[];
+  nameOf?: (id: string) => string | undefined;
   onOpen: (fact: CompanyFact, editing?: boolean) => void;
   onChanged: () => void;
 }) {
@@ -46,6 +86,7 @@ export function CompanyReview({
         <ReviewItem
           key={item.kind === "candidate" ? `${item.id}:${item.candidate.version}` : item.id}
           item={item}
+          nameOf={nameOf}
           onOpen={onOpen}
           onChanged={onChanged}
         />
@@ -56,14 +97,17 @@ export function CompanyReview({
 
 function ReviewItem({
   item,
+  nameOf,
   onOpen,
   onChanged,
 }: {
   item: CompanyReviewItem;
+  nameOf?: (id: string) => string | undefined;
   onOpen: (fact: CompanyFact, editing?: boolean) => void;
   onChanged: () => void;
 }) {
   const id = useId();
+  const { _ } = useLingui();
   useHideAmounts();
   const candidate = item.kind === "candidate" ? item.candidate : null;
   const [title, setTitle] = useState(candidate?.title ?? "");
@@ -150,7 +194,8 @@ function ReviewItem({
       </p>
       <h3 id={`${id}-title`} className="mt-1 font-medium">
         {maskCurrencyWhenHidden(
-          candidate?.title ?? (item.kind === "fact" ? companyFactTitle(item.fact) : ""),
+          candidate?.title ??
+            (item.kind === "fact" ? companyFactTitle(item.fact, nameOf, companyRelationLabel) : ""),
         )}
       </h3>
       {item.kind === "fact" && (
@@ -173,8 +218,18 @@ function ReviewItem({
               <dl className="mt-2 space-y-1">
                 {candidate.details.map((detail, index) => (
                   <div key={`${detail.label}-${index}`}>
-                    <dt className="text-muted-foreground">{detail.label}</dt>
-                    <dd>{maskCurrencyWhenHidden(detail.value)}</dd>
+                    <dt className="text-muted-foreground">
+                      {reviewDetailLabel(detail.label, (message) =>
+                        _(message.id, {}, { message: message.message }),
+                      )}
+                    </dt>
+                    <dd>
+                      {maskCurrencyWhenHidden(
+                        detail.label === "Relation"
+                          ? (companyRelationLabel(detail.value as CompanyRelation) ?? detail.value)
+                          : detail.value,
+                      )}
+                    </dd>
                   </div>
                 ))}
               </dl>

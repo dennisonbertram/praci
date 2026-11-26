@@ -1,6 +1,17 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { TaughtSkill } from "@rakazo/contracts";
-import { Button, Input } from "@rakazo/ui-web";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Input,
+} from "@rakazo/ui-web";
 import { CornerDownLeft } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -21,12 +32,14 @@ export function TeachRecordingChrome({
   botId,
   busy,
   onStop,
+  onCancel,
   variant = "panel",
 }: {
   recording: TaughtSkill;
   botId: string;
   busy?: boolean;
   onStop: () => void | Promise<void>;
+  onCancel: () => void | Promise<void>;
   variant?: "panel" | "overlay";
 }) {
   const [remaining, setRemaining] = useState(() => formatRemaining(recording.expiresAt));
@@ -78,17 +91,19 @@ export function TeachRecordingChrome({
         <Trans>Use Protected input for passwords.</Trans>
       </div>
       <div className="mt-2">{protectedInput}</div>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        disabled={busy}
-        data-testid="teach-stop-button"
-        onClick={() => void onStop()}
-      >
-        <Trans>Stop teaching</Trans>
-      </Button>
+      <div className="mt-3 flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          data-testid="teach-stop-button"
+          onClick={() => void onStop()}
+        >
+          <Trans>Stop teaching</Trans>
+        </Button>
+        <TeachCancelButton recording={recording} busy={busy} onCancel={onCancel} />
+      </div>
     </div>
   );
 }
@@ -183,5 +198,62 @@ export function TeachStopButton({
     >
       <Trans>Stop teaching</Trans>
     </Button>
+  );
+}
+
+const CONFIRM_AFTER_MS = 60_000;
+
+/** Ends the recording and keeps nothing. Asks first once the recording is older than a minute. */
+export function TeachCancelButton({
+  recording,
+  busy,
+  onCancel,
+}: {
+  recording: TaughtSkill;
+  busy?: boolean;
+  onCancel: () => void | Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={busy}
+        data-testid="teach-cancel"
+        onClick={() => {
+          const started = recording.startedAt ? new Date(recording.startedAt).getTime() : null;
+          if (started !== null && Date.now() - started > CONFIRM_AFTER_MS) setConfirming(true);
+          else void onCancel();
+        }}
+      >
+        <Trans>Cancel</Trans>
+      </Button>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              <Trans>Cancel teaching?</Trans>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <Trans>Nothing you showed will be kept.</Trans>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Trans>Keep teaching</Trans>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              data-testid="teach-cancel-confirm"
+              onClick={() => void onCancel()}
+            >
+              <Trans>Cancel teaching</Trans>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

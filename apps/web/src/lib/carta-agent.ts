@@ -1,19 +1,15 @@
 import type { McpServer } from "@rakazo/contracts";
-import { cartaAgentSpawnKey, isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
+import { findPageAgent, isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
 import { useEffect, useRef, useState } from "react";
 import { mcpStatus } from "./integrations";
 import { rpc } from "./rpc";
 import { PANEL_DOCKED_QUERY } from "./shell-layout";
 
 /** The signed-in user's own Carta agent; another member's agent in the same space does not match. */
-export function findCartaAgent<T extends { spawnKey: string | null }>(
+export const findCartaAgent = <T extends { spawnKey: string | null }>(
   bots: readonly T[],
   userId: string | null | undefined,
-): T | undefined {
-  if (!userId) return undefined;
-  const key = cartaAgentSpawnKey(userId);
-  return bots.find((bot) => bot.spawnKey === key);
-}
+): T | undefined => findPageAgent(bots, "carta", userId);
 
 const CARTA_RECENT_MS = 14 * 24 * 60 * 60 * 1000;
 

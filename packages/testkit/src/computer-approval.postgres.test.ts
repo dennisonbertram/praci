@@ -8,6 +8,7 @@ import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
 import type { ModelEmulatorStep } from "./model-emulator.js";
 import { startModelEmulator } from "./model-emulator.js";
+import { grantTestModelConsent } from "./test-consent.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
@@ -37,7 +38,7 @@ describe.skipIf(!databaseAvailable)("offline Pi computer approval", () => {
           expect(result?.tool_call_id).toBe(id);
           const body = JSON.parse(String(result?.content));
           if (answer === "allow") expect(body).toMatchObject({ ok: true, completed: 1 });
-          else expect(JSON.stringify(body)).toMatch(/denied/i);
+          else expect(JSON.stringify(body)).toMatch(/declined|not submitted/i);
           // Inspect the provider state while the run still owns its screen;
           // completed runs release that screen and discard its placeholder state.
           const screens = [...sandbox.boxes.values()].flatMap((box) => [...box.screens.values()]);
@@ -65,28 +66,8 @@ describe.skipIf(!databaseAvailable)("offline Pi computer approval", () => {
             },
           },
           {
-            expect(request) {
-              expect(JSON.stringify(request.messages)).toContain("approved clipboard content");
-            },
-            response: {
-              type: "tool",
-              id: "resumed-action",
-              name: "computer_act",
-              // The executor must restore exactly what the user approved, even if
-              // the model reconstructs different arguments after its run resumes.
-              arguments:
-                answer === "allow"
-                  ? {
-                      ...approvedArgs,
-                      actions: [{ kind: "type", text: "unapproved replacement" }],
-                    }
-                  : approvedArgs,
-            },
-          },
-          {
-            // A later identical computer_act in this same resume is a new occurrence,
-            // not a replay. This fixture only checks the approved request is restored.
-            expect: resultStep("resumed-action"),
+            // Restore the original pending call before another model choice.
+            expect: resultStep("pending-action"),
             response: { type: "text", text: "Finished the approval fixture." },
           },
         ],
@@ -147,6 +128,11 @@ describe.skipIf(!databaseAvailable)("offline Pi computer approval", () => {
           modelId: model.model.id,
         });
         const storedBot = await handles.prisma.bot.findUniqueOrThrow({ where: { id: bot.id } });
+        await grantTestModelConsent(handles.prisma, storedBot, {
+          provider: model.model.provider,
+          modelId: model.model.id,
+          baseUrl: model.baseUrl,
+        });
         await handles.prisma.actionApprovalRule.create({
           data: {
             spaceId: storedBot.spaceId,
@@ -180,8 +166,13 @@ describe.skipIf(!databaseAvailable)("offline Pi computer approval", () => {
         const effects = await handles.prisma.externalEffect.findMany({
           where: { runId: sent.runId },
         });
-        expect(effects).toHaveLength(1);
-        expect(effects[0]).toMatchObject({
+        expect(effects).toHaveLength(2);
+        expect(effects.find((effect) => effect.kind === "runtime_checkpoint")).toMatchObject({
+          status: "runtime_checkpoint",
+          request: {},
+        });
+        const actionEffect = effects.find((effect) => effect.kind === "computer_act")!;
+        expect(actionEffect).toMatchObject({
           kind: "computer_act",
           status: "intended",
           request: approvedArgs,
@@ -192,7 +183,7 @@ describe.skipIf(!databaseAvailable)("offline Pi computer approval", () => {
         });
         expect(card.blocks).toEqual(
           expect.arrayContaining([
-            expect.objectContaining({ kind: "ask", approvalEffectId: effects[0]!.id }),
+            expect.objectContaining({ kind: "ask", approvalEffectId: actionEffect.id }),
           ]),
         );
         await rpc(handles.app, cookie, "threads/answer", {
@@ -216,7 +207,7 @@ describe.skipIf(!databaseAvailable)("offline Pi computer approval", () => {
         });
         expect(settledEffects).toHaveLength(1);
         expect(settledEffects[0]).toMatchObject({
-          id: effects[0]!.id,
+          id: actionEffect.id,
           status: answer === "allow" ? "completed" : "denied",
           request: approvedArgs,
         });

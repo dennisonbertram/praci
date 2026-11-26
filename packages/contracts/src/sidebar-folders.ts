@@ -8,6 +8,7 @@ import { isInboxAgentSpawnKey } from "./inbox.js";
 import { isIntegrationAgentSpawnKey } from "./integration-agent.js";
 import { isInvestorsAgentSpawnKey } from "./investors.js";
 import { isLegalAgentSpawnKey } from "./legal.js";
+import { isScannerAgentSpawnKey } from "./scanner.js";
 
 /**
  * Sidebar folders are bot sections: a named container per user and space that holds bots and
@@ -73,6 +74,7 @@ export function autoGroupFolderName(item: {
     isFinanceAgentSpawnKey(key) ||
     isLegalAgentSpawnKey(key) ||
     isDataRoomAgentSpawnKey(key) ||
+    isScannerAgentSpawnKey(key) ||
     isCartaAgentSpawnKey(key) ||
     isCompanyAgentSpawnKey(key) ||
     isCompanyImporterSpawnKey(key) ||

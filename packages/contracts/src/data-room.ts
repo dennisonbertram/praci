@@ -1,13 +1,14 @@
 import * as z from "zod";
+import { pageAgentKindOf, pageAgentSpawnKey } from "./page-agents.js";
 
-/** The one place the Data room agent's spawn key is built. */
-export const dataRoomAgentSpawnKey = (userId: string) => `data-room-agent:${userId}`;
+export const dataRoomAgentSpawnKey = (userId: string) => pageAgentSpawnKey("data-room", userId);
 
 export const isDataRoomAgentSpawnKey = (spawnKey: string | null | undefined) =>
-  Boolean(spawnKey?.startsWith(dataRoomAgentSpawnKey("")));
+  pageAgentKindOf(spawnKey) === "data-room";
 
 /** The only built-in tools the Data room agent is offered. None of them deletes. */
 export const DATA_ROOM_AGENT_BUILTIN_TOOLS = [
+  "company_context_lookup",
   "search_data_room",
   "read_data_room_item",
   "add_to_data_room",

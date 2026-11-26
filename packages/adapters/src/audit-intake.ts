@@ -7,6 +7,7 @@ import type {
 import { auditIntakeJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { Actor, MailSignals, MessageBlock } from "@rakazo/contracts";
 import { investorsAgentSpawnKey } from "@rakazo/contracts";
+import { newRunUnattended } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   AUDIT_DRAFT_PROMPT_START,
@@ -187,6 +188,7 @@ export async function startAuditDraftRun(
         taskId: task.id,
         status: "queued",
         trigger: "routine",
+        unattended: newRunUnattended({ trigger: "routine" }),
       },
       select: { id: true },
     });

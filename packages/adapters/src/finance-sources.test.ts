@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { getLogger } from "@rakazo/logging";
+import { describe, expect, it, vi } from "vitest";
 import { createBrexFinanceSource } from "./brex-finance-source.js";
 import {
   brexExpense,
@@ -8,6 +9,7 @@ import {
   MERCURY_SAVINGS,
   mercuryAccountsResponse,
   mercuryRow,
+  mercuryTreasuryResponse,
 } from "./finance-fake-tools.js";
 import { FinanceShapeError } from "./finance-source-util.js";
 import { createMercuryFinanceSource } from "./mercury-finance-source.js";
@@ -52,7 +54,10 @@ describe("Mercury source", () => {
 
   it("reads every page without a page cursor, per account, and tags the account", async () => {
     const fake = fakeMercury({
-      txns: { [MERCURY_CHECKING]: manyMercury(650), [MERCURY_SAVINGS]: [mercuryRow("s-1")] },
+      txns: {
+        [MERCURY_CHECKING]: manyMercury(650),
+        [MERCURY_SAVINGS]: [mercuryRow("s-1")],
+      },
     });
     const txns = await createMercuryFinanceSource(fake.callTool).fetchTransactions(
       "2026-01-01T00:00:00.000Z",
@@ -91,7 +96,11 @@ describe("Mercury source", () => {
             category: "Credit & Loan Payments",
             amount: -1234.56,
           }),
-          mercuryRow("b-1", { counterpartyName: "Brex", category: null, amount: -11200 }),
+          mercuryRow("b-1", {
+            counterpartyName: "Brex",
+            category: null,
+            amount: -11200,
+          }),
           mercuryRow("t-1", {
             counterpartyName: null,
             category: null,
@@ -125,7 +134,10 @@ describe("Mercury source", () => {
   });
 
   it("halves the page size when the tool truncates a page", async () => {
-    const fake = fakeMercury({ txns: { [MERCURY_CHECKING]: manyMercury(40) }, truncateAbove: 100 });
+    const fake = fakeMercury({
+      txns: { [MERCURY_CHECKING]: manyMercury(40) },
+      truncateAbove: 100,
+    });
     const txns = await createMercuryFinanceSource(fake.callTool).fetchTransactions(
       "2026-01-01T00:00:00.000Z",
     );
@@ -138,7 +150,13 @@ describe("Mercury source", () => {
   it("rejects a response in an unknown shape and names the tool and field", async () => {
     const source = createMercuryFinanceSource(async () => ({
       accounts: [
-        { id: "x", name: "n", status: "active", kind: "checking", availableBalance: "12" },
+        {
+          id: "x",
+          name: "n",
+          status: "active",
+          kind: "checking",
+          availableBalance: "12",
+        },
       ],
     }));
     await expect(source.fetchAccounts()).rejects.toThrow(
@@ -160,6 +178,59 @@ describe("Mercury source", () => {
       },
     ]);
     expect(fake.calls.filter((c) => c.name === "getTreasury")).toHaveLength(1);
+  });
+
+  it("reads Treasury rows with signed amounts across pages, and turns a pending withdrawal into one pending row", async () => {
+    const row = (id: string, type: string, amount: number, canonicalDay: string) => ({
+      id,
+      type,
+      amount,
+      canonicalDay,
+      accountId: "trs-3333",
+      description: "Example",
+      balance: 5100.25,
+    });
+    const fake = fakeMercury({
+      txns: {},
+      treasury: {
+        accounts: [{ ...mercuryTreasuryResponse.accounts[0], currentBalance: 5100.25 }],
+      },
+      treasuryTxns: {
+        "trs-3333": [
+          row("tt-3", "mercuryFeePosted", -12.34, "2026-10-05"),
+          row("tt-2", "dividendPosted", 56.78, "2026-10-01"),
+          row("tt-1", "someFutureDepositType", 250, "2026-08-02"),
+        ],
+      },
+    });
+    const rows = (
+      await createMercuryFinanceSource(fake.callTool).fetchTransactions("2026-01-01T00:00:00Z")
+    ).filter((t) => t.accountExternalId === "trs-3333");
+    expect(
+      rows.map((t) => [t.externalId, t.amountCents, t.kind, t.status, t.postedAt.slice(0, 10)]),
+    ).toEqual([
+      ["tt-3", -1234, "treasury", "posted", "2026-10-05"],
+      ["tt-2", 5678, "treasury", "posted", "2026-10-01"],
+      ["tt-1", 25000, "treasury", "posted", "2026-08-02"],
+      // availableBalance 5000.25 is 100 below currentBalance 5100.25.
+      ["pending-trs-3333", -10000, "treasury", "pending", new Date().toISOString().slice(0, 10)],
+    ]);
+  });
+
+  it("logs and skips Treasury rows it cannot read, keeping the other transactions", async () => {
+    const warn = vi.spyOn(getLogger(), "warn").mockImplementation(() => {});
+    const fake = fakeMercury({
+      txns: {},
+      treasuryTxns: {
+        "trs-3333": [{ id: "bad", amount: "x", canonicalDay: "2026-10-01" }],
+      },
+    });
+    const rows = await createMercuryFinanceSource(fake.callTool).fetchTransactions(
+      "2026-01-01T00:00:00Z",
+    );
+    expect(rows.filter((t) => t.kind === "treasury")).toEqual([]);
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 
   it("finds a receipt link on demand, through getAttachment when the row has only an id", async () => {
@@ -253,8 +324,14 @@ describe("Brex source", () => {
           payment_status: "PROCESSING",
           posted_at: null,
         }),
-        brexExpense("unsent-bill", { type: "BILLPAY", payment_status: "SCHEDULED" }),
-        brexExpense("paid-bill", { type: "BILLPAY", payment_status: "CLEARED" }),
+        brexExpense("unsent-bill", {
+          type: "BILLPAY",
+          payment_status: "SCHEDULED",
+        }),
+        brexExpense("paid-bill", {
+          type: "BILLPAY",
+          payment_status: "CLEARED",
+        }),
         brexExpense("reimb", {
           type: "REIMBURSEMENT",
           status: "SUBMITTED",
@@ -272,7 +349,10 @@ describe("Brex source", () => {
     );
     expect(txns.map((t) => t.externalId).sort()).toEqual(["paid-bill", "processing", "reimb"]);
     const processing = txns.find((t) => t.externalId === "processing");
-    expect(processing).toMatchObject({ status: "pending", postedAt: "2026-09-10T12:00:00.000Z" });
+    expect(processing).toMatchObject({
+      status: "pending",
+      postedAt: "2026-09-10T12:00:00.000Z",
+    });
     expect(txns.find((t) => t.externalId === "reimb")).toMatchObject({
       status: "pending",
       counterparty: "Reimbursement",

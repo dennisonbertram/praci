@@ -30,6 +30,7 @@ const labels = {
   attach_file: (path: string) => `Attached ${path}`,
   open_path: (path: string) => `Opened ${path}`,
   launch_app: (app: string) => `Launched ${app}`,
+  desktop_app: (line: string) => line,
 };
 
 describe("computer terminal feed", () => {

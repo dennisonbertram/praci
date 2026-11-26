@@ -119,7 +119,7 @@ describe("mobile i18n", () => {
     const { HI_MESSAGES } = await import("./locales/hi");
     const { KO_MESSAGES } = await import("./locales/ko");
     const { TR_MESSAGES } = await import("./locales/tr");
-    const { EMPTY_PLUGIN_CATALOG_MESSAGE, SLASH_ACTIONS } = await import("@rakazo/core");
+    const { EMPTY_PLUGIN_CATALOG_MESSAGE, SLASH_ACTIONS, SLASH_INSERTS } = await import("@rakazo/core");
     const { AI_DATA_DISCLOSURES, OPENAI_COMPATIBLE_BASE_URL_HINT } = await import(
       "@rakazo/contracts"
     );
@@ -129,6 +129,7 @@ describe("mobile i18n", () => {
       EMPTY_PLUGIN_CATALOG_MESSAGE,
       OPENAI_COMPATIBLE_BASE_URL_HINT,
       ...SLASH_ACTIONS.map((action) => action.label),
+      ...SLASH_INSERTS.map((insert) => insert.label),
       "Sign-in did not return a session",
       "Sign-up did not return a session",
       "{count} model",

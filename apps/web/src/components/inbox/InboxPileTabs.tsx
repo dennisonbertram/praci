@@ -21,7 +21,10 @@ export function InboxPileTabs({
       value={value ?? null}
       onValueChange={(next) => onChange(next as InboxPile)}
     >
-      <TabsList className="max-w-full rounded-full pointer-coarse:h-auto">
+      <TabsList
+        aria-label={t`Inbox pile`}
+        className="max-w-full rounded-full pointer-coarse:h-auto"
+      >
         <TabsTrigger value="important" className="rounded-full px-3 pointer-coarse:h-11">
           {t`Important`}
         </TabsTrigger>

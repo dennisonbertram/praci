@@ -1,7 +1,7 @@
 import type { Actor, MessageBlock, SearchHit } from "@rakazo/contracts";
 import { extractLinksFromText, matchesSearchQuery, snippetAroundMatch } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { Prisma } from "@rakazo/db";
+import { likeLiteral, Prisma } from "@rakazo/db";
 
 const SEARCH_LIMIT = 25;
 /** Cap name matches so content hits (messages/files/links/routines) keep most of the budget. */
@@ -45,6 +45,8 @@ export async function querySpaceSearch(
 ): Promise<SearchHit[]> {
   const query = q.trim();
   if (!query) return [];
+  // Prisma passes `contains` to LIKE unescaped, so % and _ would act as wildcards.
+  const literal = likeLiteral(query);
 
   const conversationHits: SearchHit[] = [];
   const contentHits: SearchHit[] = [];
@@ -71,9 +73,9 @@ export async function querySpaceSearch(
       userId: actor.userId,
       archivedAt: null,
       OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { title: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
+        { name: { contains: literal, mode: "insensitive" } },
+        { title: { contains: literal, mode: "insensitive" } },
+        { description: { contains: literal, mode: "insensitive" } },
       ],
     },
     take: CONVERSATION_HIT_LIMIT,
@@ -96,7 +98,8 @@ export async function querySpaceSearch(
     where: {
       spaceId: actor.spaceId,
       userId: actor.userId,
-      name: { contains: query, mode: "insensitive" },
+      archivedAt: null,
+      name: { contains: literal, mode: "insensitive" },
     },
     take: CONVERSATION_HIT_LIMIT,
   });
@@ -122,7 +125,7 @@ export async function querySpaceSearch(
       userId: actor.userId,
       groupId: null,
       botId: { not: null },
-      name: { contains: query, mode: "insensitive" },
+      name: { contains: literal, mode: "insensitive" },
       bot: { archivedAt: null },
     },
     include: { bot: { select: { name: true } } },
@@ -161,7 +164,8 @@ export async function querySpaceSearch(
       spaceId: actor.spaceId,
       userId: actor.userId,
       groupId: { not: null },
-      name: { contains: query, mode: "insensitive" },
+      name: { contains: literal, mode: "insensitive" },
+      group: { archivedAt: null },
     },
     include: { group: { select: { name: true } } },
     take: SEARCH_LIMIT,
@@ -199,8 +203,8 @@ export async function querySpaceSearch(
       spaceId: actor.spaceId,
       userId: actor.userId,
       OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { prompt: { contains: query, mode: "insensitive" } },
+        { name: { contains: literal, mode: "insensitive" } },
+        { prompt: { contains: literal, mode: "insensitive" } },
       ],
       bot: { archivedAt: null },
     },
@@ -222,7 +226,7 @@ export async function querySpaceSearch(
     );
   }
 
-  const pattern = `%${query}%`;
+  const pattern = `%${literal}%`;
   const messageRows = await prisma.$queryRaw<
     Array<{
       id: string;
@@ -276,6 +280,7 @@ export async function querySpaceSearch(
     WHERE t."spaceId" = ${actor.spaceId}
       AND t."userId" = ${actor.userId}
       AND t."groupId" IS NOT NULL
+      AND g."archivedAt" IS NULL
       AND m.blocks::text ILIKE ${pattern}
     ORDER BY m."createdAt" DESC
     LIMIT ${SEARCH_LIMIT}

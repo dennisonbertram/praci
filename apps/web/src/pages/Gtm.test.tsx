@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
+
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { BotPage } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -42,7 +45,10 @@ vi.mock("./shell/bot-page-panel", () => ({
     useEffect(() => {
       if (mocks.pageContent === undefined || mocks.pageContent === "load-error") return;
       onPageChange({
+        id: "page_gtm",
+        kind: "blocks",
         botId: "bot_gtm",
+        title: "GTM",
         content: mocks.pageContent,
         revision: 1,
         updatedBy: "bot",
@@ -58,8 +64,9 @@ vi.mock("./shell/bot-page-panel", () => ({
 }));
 
 import { GtmPage } from "./Gtm";
-import { item, overview } from "./gtm/fixtures";
+import { emptyOverview, item, overview } from "./gtm/fixtures";
 
+i18n.loadAndActivate({ locale: "en", messages: {} });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -76,12 +83,14 @@ afterEach(() => {
   container.remove();
   vi.resetAllMocks();
 });
-const render = () =>
+const render = (initialEntries?: string[]) =>
   act(async () =>
     root.render(
-      <MemoryRouter>
-        <GtmPage botId="bot_gtm" remote={null} />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <GtmPage botId="bot_gtm" remote={null} />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
 const click = (name: string) =>
@@ -135,17 +144,32 @@ it("keeps layout C without live blocks", async () => {
   ).toBeTruthy();
 });
 
-it("Approve sends the rendered updatedAt and shows Changed, review again when it lost", async () => {
-  mocks.update.mockRejectedValue({ code: "CONFLICT" });
+it("puts Needs you before Channels", async () => {
   await render();
-  await click("Approve");
-  expect(mocks.update).toHaveBeenCalledWith({
-    itemId: item.id,
-    status: "open",
-    updatedAt: item.updatedAt,
-  });
-  expect(container.textContent).toContain("Changed, review again");
-  expect(mocks.overview).toHaveBeenCalledTimes(2);
+  const h2 = (name: string) =>
+    [...container.querySelectorAll("h2")].find((node) => node.textContent?.startsWith(name))!;
+  expect(
+    h2("Needs you").compareDocumentPosition(h2("Channels")) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("Approve sends the rendered updatedAt and shows Changed, review again when it lost", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-01T12:00:00.000Z"));
+  mocks.update.mockRejectedValue({ code: "CONFLICT" });
+  try {
+    await render();
+    await click("Approve");
+    expect(mocks.update).toHaveBeenCalledWith({
+      itemId: item.id,
+      status: "open",
+      updatedAt: item.updatedAt,
+    });
+    expect(container.textContent).toContain("Changed, review again");
+    expect(mocks.overview).toHaveBeenCalledTimes(2);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 it("keeps OAuth-only post approval disabled and offers existing configuration", async () => {
   mocks.overview.mockResolvedValue({ ...overview, postingCapability: "api_key_required" });
@@ -213,8 +237,7 @@ it("mounts post previews and the email compliance editor under Needs you", async
   expect(email.textContent).toContain("Add unsubscribe instructions");
   expect(email.textContent).toContain("Add a postal address");
   expect(
-    [...email.querySelectorAll("button")].find((button) => button.textContent === "Approve")
-      ?.disabled,
+    [...email.querySelectorAll("button")].find((button) => button.textContent === "Send")?.disabled,
   ).toBe(true);
   expect(mocks.send).not.toHaveBeenCalled();
 });
@@ -226,6 +249,85 @@ it("opens the real Calendar and exposes an incomplete provider queue", async () 
   expect(container.querySelector('[data-testid="gtm-calendar-grid"]')).not.toBeNull();
   expect(container.textContent).toContain("Zernio queue incomplete");
   expect(mocks.queue).toHaveBeenCalledTimes(1);
+});
+
+it("shows the Calendar tab before a goal exists when Zernio can post", async () => {
+  mocks.queue.mockResolvedValue({ status: "ready", complete: true, posts: [] });
+  mocks.overview.mockResolvedValue({
+    ...emptyOverview,
+    zernioLinked: true,
+    postingCapability: "ready",
+  });
+  await render(["/app/gtm?view=calendar"]);
+  expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toContain(
+    "Calendar",
+  );
+  expect(container.querySelector('[data-testid="gtm-calendar-grid"]')).not.toBeNull();
+  expect(container.textContent).toContain("No scheduled items in this view.");
+});
+
+it("keeps the other URL params when switching between Plan and Calendar", async () => {
+  mocks.queue.mockResolvedValue({ status: "ready", complete: true, posts: [] });
+  mocks.overview.mockResolvedValue({
+    ...emptyOverview,
+    zernioLinked: true,
+    postingCapability: "ready",
+  });
+  const Search = () => <output>{useLocation().search}</output>;
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/app/gtm?view=calendar&keep=1"]}>
+          <GtmPage botId="bot_gtm" remote={null} />
+          <Search />
+        </MemoryRouter>
+      </I18nProvider>,
+    ),
+  );
+  const search = () => new URLSearchParams(container.querySelector("output")?.textContent ?? "");
+  await click("Plan");
+  expect(search().get("keep")).toBe("1");
+  expect(search().has("view")).toBe(false);
+  await click("Calendar");
+  expect(search().get("keep")).toBe("1");
+  expect(search().get("view")).toBe("calendar");
+});
+
+it("returns from the Calendar to bare state when refresh removes posting readiness", async () => {
+  mocks.queue.mockResolvedValue({ status: "ready", complete: true, posts: [] });
+  mocks.overview.mockResolvedValue({
+    ...emptyOverview,
+    zernioLinked: true,
+    postingCapability: "api_key_required",
+  });
+  mocks.overview.mockResolvedValueOnce({
+    ...emptyOverview,
+    zernioLinked: true,
+    postingCapability: "ready",
+  });
+  await render(["/app/gtm?view=calendar"]);
+  expect(container.querySelector('[data-testid="gtm-calendar-grid"]')).not.toBeNull();
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(mocks.overview).toHaveBeenCalledTimes(2);
+  expect(container.querySelector('[data-testid="gtm-calendar-grid"]')).toBeNull();
+  expect(container.querySelectorAll("button").length).toBeGreaterThan(0);
+  expect(
+    [...container.querySelectorAll("button")].map((button) => button.textContent),
+  ).not.toContain("Calendar");
+});
+
+it("keeps the Plan and Calendar tabs hidden before a goal when posting is not connected", async () => {
+  mocks.overview.mockResolvedValue({
+    ...emptyOverview,
+    postingCapability: "not_connected",
+  });
+  await render();
+  expect(
+    [...container.querySelectorAll("button")].map((button) => button.textContent),
+  ).not.toContain("Plan");
+  expect(
+    [...container.querySelectorAll("button")].map((button) => button.textContent),
+  ).not.toContain("Calendar");
 });
 
 it("keeps the page section visible after an existing page is cleared, hides a never-written one", async () => {
@@ -254,4 +356,27 @@ it("shows no empty 'Written by' card before the page has loaded", async () => {
   mocks.panel.mockImplementation(() => null);
   await render();
   expect(container.querySelector("section.hidden")?.textContent).toContain("Written by GTM agent");
+});
+
+it("reloads the overview every 60 seconds and when the window regains focus", async () => {
+  vi.useFakeTimers();
+  mocks.overview.mockClear();
+  try {
+    await render();
+    expect(mocks.overview).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(mocks.overview).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(mocks.overview).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(mocks.overview).toHaveBeenCalledTimes(3);
+  } finally {
+    vi.useRealTimers();
+  }
 });

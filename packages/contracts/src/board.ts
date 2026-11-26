@@ -17,18 +17,7 @@ const DEFAULT_TICKET_PRIORITY: TicketPriority = "normal";
 
 export const TICKET_TITLE_MAX_LENGTH = 200;
 export const TICKET_DESCRIPTION_MAX_LENGTH = 20_000;
-const TICKET_PREFIX_MAX_LENGTH = 12;
 export const TICKET_COMMENT_MAX_LENGTH = 10_000;
-
-const TicketPrefixSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(TICKET_PREFIX_MAX_LENGTH)
-  .regex(
-    /^[A-Za-z][A-Za-z0-9]*$/,
-    "Prefix must start with a letter and contain only letters and digits",
-  );
 
 export function ticketRef(prefix: string, number: number): string {
   return `${prefix}-${number}`;
@@ -46,26 +35,6 @@ export function parseTicketRef(
   if (expectedPrefix !== undefined && prefix !== expectedPrefix.trim().toUpperCase()) return null;
   return { prefix, number: Number(rawNumber) };
 }
-
-export const BoardSchema = z.object({
-  id: Id,
-  spaceId: Id,
-  name: z.string(),
-  ticketPrefix: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-export type Board = z.infer<typeof BoardSchema>;
-
-export const RenameBoardInput = z
-  .object({
-    name: z.string().trim().min(1).max(80).optional(),
-    ticketPrefix: TicketPrefixSchema.optional(),
-  })
-  .refine((value) => value.name !== undefined || value.ticketPrefix !== undefined, {
-    message: "Provide a name or ticketPrefix",
-  });
-export type RenameBoardInput = z.infer<typeof RenameBoardInput>;
 
 export const TicketCommentSchema = z.object({
   id: Id,
@@ -98,29 +67,13 @@ export const TicketSchema = z.object({
 });
 export type Ticket = z.infer<typeof TicketSchema>;
 
-export const ListTicketsInput = z.object({
-  boardId: Id.optional(),
-  status: TicketStatusSchema.optional(),
-  assigneeBotId: Id.optional(),
-  q: z.string().trim().max(200).optional(),
-});
+export const ListTicketsInput = z.object({});
 export type ListTicketsInput = z.infer<typeof ListTicketsInput>;
 
 export const ListTicketsOutput = z.object({ tickets: z.array(TicketSchema) });
 export type ListTicketsOutput = z.infer<typeof ListTicketsOutput>;
 
-export const GetTicketInput = z
-  .object({
-    id: Id.optional(),
-    ref: z.string().trim().min(1).max(120).optional(),
-  })
-  .refine((value) => Boolean(value.id) !== Boolean(value.ref), {
-    message: "Provide exactly one of id or ref",
-  });
-export type GetTicketInput = z.infer<typeof GetTicketInput>;
-
 export const CreateTicketInput = z.object({
-  boardId: Id.optional(),
   title: z.string().trim().min(1).max(TICKET_TITLE_MAX_LENGTH),
   description: z.string().max(TICKET_DESCRIPTION_MAX_LENGTH).optional(),
   priority: TicketPrioritySchema.default(DEFAULT_TICKET_PRIORITY),

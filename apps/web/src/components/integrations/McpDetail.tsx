@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   financeProviderForEndpoint,
+  isBrexCardsEndpoint,
   isCartaEndpoint,
   isDevinEndpoint,
   isGranolaEndpoint,
@@ -28,6 +29,9 @@ import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
+import { BrexCardsConnectDialog } from "./BrexCardsConnectDialog";
+import { BrexCardsSection, useBrexCards } from "./BrexCardsSection";
+import { BrexControlsForm } from "./BrexControlsForm";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { GranolaMeetingsCard } from "./GranolaMeetingsCard";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
@@ -60,6 +64,14 @@ export function McpDetail({
   const [writesPending, setWritesPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [configuringKey, setConfiguringKey] = useState(false);
+  const [replacingToken, setReplacingToken] = useState(false);
+  const brexCards = isBrexCardsEndpoint(server?.endpoint);
+  const brex = useBrexCards(brexCards);
+  // Controls need a cards read that worked. Replace token also shows when the read failed past the
+  // server's owner checks (Brex down, token revoked), which is when it is needed. A member is refused
+  // (FORBIDDEN) and a failure with no server code proves nothing, so neither shows it.
+  const brexOwner = brexCards && !brex.forbidden && Boolean(brex.cards);
+  const brexCardsShown = brexCards && !brex.forbidden && Boolean(brex.cards || brex.error);
 
   const back = (
     <Link
@@ -88,7 +100,16 @@ export function McpDetail({
     );
   }
 
-  const status = reconnect.busy ? "connecting" : mcpStatus(server);
+  // A bank can be signed in yet lapsed or failing in sync; the Finance overview knows, as the tile does.
+  const financeStatus = data.financeSources.find((source) => source.serverId === server.id)?.status;
+  const status = reconnect.busy
+    ? "connecting"
+    : financeStatus === "needs_reconnect"
+      ? "reconnect"
+      : financeStatus === "error"
+        ? "failed"
+        : mcpStatus(server);
+  const showReconnect = status === "reconnect" || status === "failed";
   const assigned = (botId: string) =>
     data.mcpAssignments.some((entry) => entry.botId === botId && entry.serverId === server.id);
 
@@ -100,9 +121,22 @@ export function McpDetail({
       await data.refresh();
     } catch (err) {
       setError(errorText(err, fallback));
+      // Some grants may have landed before the failure: show what the server has.
+      try {
+        await data.refresh();
+      } catch {
+        // The error above is already shown.
+      }
     } finally {
       setBusy(false);
     }
+  }
+
+  /** Runs every call to the end, so none lands after the controls re-enable, then reports the first failure. */
+  async function settleAll(calls: Promise<unknown>[]) {
+    const results = await Promise.allSettled(calls);
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
   }
 
   const rename = () =>
@@ -112,33 +146,8 @@ export function McpDetail({
       if (name && name !== server.name) await rpc.mcp.servers.rename({ id: server.id, name });
     }, t`Could not rename`);
 
-  const assign = async (botId: string, on: boolean) => {
-    // replace() overwrites the bot's whole list, so start from what it already has.
-    const current = await rpc.mcp.assignments.list({ botId });
-    const others = current
-      .filter((entry) => entry.serverId !== server.id)
-      .map(({ serverId: id, allowAllTools, allowedTools }) => ({
-        serverId: id,
-        allowAllTools,
-        allowedTools,
-      }));
-    const kept = current.find((entry) => entry.serverId === server.id);
-    await rpc.mcp.assignments.replace({
-      botId,
-      assignments: on
-        ? [
-            ...others,
-            kept
-              ? {
-                  serverId: server.id,
-                  allowAllTools: kept.allowAllTools,
-                  allowedTools: kept.allowedTools,
-                }
-              : { serverId: server.id, allowAllTools: true, allowedTools: [] },
-          ]
-        : others,
-    });
-  };
+  const assign = (botId: string, on: boolean) =>
+    rpc.mcp.servers.setAgentAssignment({ serverId: server.id, botId, on }).then(() => undefined);
   const toggle = (botId: string, on: boolean) =>
     run(() => assign(botId, on), t`Could not update bot access`);
 
@@ -148,18 +157,16 @@ export function McpDetail({
       const exclusive = (value: boolean) =>
         rpc.integrationAgents.setExclusive({ serverId: server.id, exclusive: value });
       if (shared) {
-        // Exclusivity must be off first: the server refuses to grant an exclusive server to other agents.
+        // Other agents start off; the owner turns on the ones they want.
         await exclusive(false);
-        for (const bot of data.bots) if (!assigned(bot.id)) await assign(bot.id, true);
         return;
       }
       await exclusive(true);
       if (server.agentBotId && !assigned(server.agentBotId)) await assign(server.agentBotId, true);
-      for (const bot of data.bots)
-        if (bot.id !== server.agentBotId && assigned(bot.id)) await assign(bot.id, false);
+      // Other agents' rows stay on the server so turning sharing back on restores them.
     }, t`Could not update access`);
 
-  const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
+  const host = server.endpoint ? hostOf(server.endpoint) : (server.command ?? "");
   const carta = isCartaEndpoint(server.endpoint);
   const zernio = isZernioEndpoint(server.endpoint);
   const bank = Boolean(financeProviderForEndpoint(server.endpoint));
@@ -176,6 +183,7 @@ export function McpDetail({
     Boolean(keyRoute && keyRoute.status !== "disconnected") && server.oauthStatus === "connected";
   const hasAgent = server.agentBotId !== null;
   const signedIn = server.oauthStatus === "connected";
+  const canSignIn = server.transport !== "stdio" && server.oauthSupported !== false;
   const setWrites = (on: boolean) =>
     on
       ? setConfirmingWrites(true)
@@ -183,8 +191,18 @@ export function McpDetail({
           () => rpc.mcp.servers.setWrites({ id: server.id, enabled: false }).then(() => undefined),
           t`Could not update changes`,
         );
+  /** All: every agent gets the server. None: only the owning agent keeps it. */
+  const setAllAgents = (on: boolean) =>
+    run(async () => {
+      const targets = data.bots.filter(
+        (bot) => bot.id !== server.agentBotId && assigned(bot.id) !== on,
+      );
+      await settleAll(targets.map((bot) => assign(bot.id, on)));
+    }, t`Could not update bot access`);
   const usedBy = (
     <AgentToggleList
+      key={server.id}
+      ready={data.loaded}
       bots={[...data.bots].sort(
         (a, b) => Number(b.id === server.agentBotId) - Number(a.id === server.agentBotId),
       )}
@@ -192,6 +210,9 @@ export function McpDetail({
       disabled={busy}
       isOn={assigned}
       onToggle={(botId, on) => void toggle(botId, on)}
+      onSetAll={(on) => void setAllAgents(on)}
+      ownerBotId={server.agentBotId}
+      subject="connection"
     />
   );
   return (
@@ -230,7 +251,7 @@ export function McpDetail({
                 </span>
               ) : null}
               {/* Carta is a known service; its MCP host means nothing to a founder. */}
-              {carta ? null : (
+              {carta || brexCards ? null : (
                 <span>
                   <Trans>via MCP · {host}</Trans>
                 </span>
@@ -250,12 +271,13 @@ export function McpDetail({
             </Button>
           ) : null}
           {/* While healthy, signing in again or out is rare: it waits in a menu. */}
-          {status === "reconnect" && server.transport !== "stdio" ? (
+          {!brexCards && showReconnect && canSignIn ? (
             <Button disabled={reconnect.busy || busy} onClick={() => void reconnect.run()}>
               <Trans>Reconnect</Trans>
             </Button>
           ) : null}
-          {status !== "reconnect" && (server.transport !== "stdio" || signedIn) ? (
+          {/* Brex cards takes a pasted token, not a sign-in: its token is replaced instead. */}
+          {!brexCards && !showReconnect && (canSignIn || signedIn) ? (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={<Button variant="outline" size="icon" aria-label={t`Sign-in options`} />}
@@ -264,7 +286,7 @@ export function McpDetail({
                 <MoreHorizontal aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-max whitespace-nowrap">
-                {server.transport !== "stdio" ? (
+                {canSignIn ? (
                   <DropdownMenuItem onClick={() => void reconnect.run()}>
                     <Trans>Reconnect</Trans>
                   </DropdownMenuItem>
@@ -314,6 +336,11 @@ export function McpDetail({
               <Trans>Configure API key</Trans>
             </Button>
           ) : null}
+          {brexOwner || (brexCards && brex.ownerProven) ? (
+            <Button variant="outline" disabled={busy} onClick={() => setReplacingToken(true)}>
+              <Trans>Replace token</Trans>
+            </Button>
+          ) : null}
         </div>
 
         {granola ? (
@@ -325,6 +352,8 @@ export function McpDetail({
                 data.bots.find((bot) => bot.id === keyRoute?.agentBotId)?.name ?? t`Granola agent`
               }
               onChanged={() => void data.refresh()}
+              loadFailed={data.meetingsFailed}
+              onRetry={() => void data.refresh()}
               onOpenAiDataSharing={onOpenAiDataSharing}
             />
           </div>
@@ -341,15 +370,29 @@ export function McpDetail({
             disabled={busy || writesPending}
             onWrites={isDevinEndpoint(server.endpoint) || granola || zernio ? undefined : setWrites}
             usedBy={usedBy}
-            onShared={zernio || !hasAgent ? undefined : (shared) => void setShared(shared)}
+            onShared={
+              zernio || brexCards || !hasAgent ? undefined : (shared) => void setShared(shared)
+            }
             settingUp={writesPending}
           />
+        ) : null}
+
+        {brexCardsShown ? (
+          <>
+            <BrexCardsSection
+              cards={brex.cards}
+              error={brex.error}
+              writesEnabled={server.writesEnabled}
+              onRetry={brex.reload}
+            />
+            {brexOwner ? <BrexControlsForm /> : null}
+          </>
         ) : null}
 
         {hasAgent || bank ? null : (
           <>
             <Heading>
-              <Trans>Used by</Trans>
+              <Trans>Access</Trans>
             </Heading>
             {usedBy}
           </>
@@ -439,6 +482,16 @@ export function McpDetail({
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
+      {replacingToken ? (
+        <BrexCardsConnectDialog
+          mode="replace"
+          onConnected={() => {
+            brex.reload();
+            void data.refresh();
+          }}
+          onClose={() => setReplacingToken(false)}
+        />
+      ) : null}
       {configuringKey ? (
         <CustomConnectionDialog
           data={data}
@@ -450,4 +503,13 @@ export function McpDetail({
       ) : null}
     </div>
   );
+}
+
+function hostOf(value: string): string {
+  try {
+    return new URL(value).host;
+  } catch {
+    // Stored endpoints may predate validation; never display the raw value, which can include credentials.
+    return "";
+  }
 }

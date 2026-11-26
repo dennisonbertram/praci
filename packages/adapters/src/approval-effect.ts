@@ -1,15 +1,19 @@
 import type { AgentToolExecutionResult } from "@rakazo/adapter-kit";
+import { APPROVED_ACTION_NOT_RUN_ERROR } from "@rakazo/contracts";
 
 export type ApprovalPausedToolResult = AgentToolExecutionResult & { terminate: true };
 
 export interface ApprovedEffectReplay {
   kind: string;
   request: unknown;
+  /** The approved row's key: a replay claims that row instead of deriving a new key. */
+  idempotencyKey?: string;
 }
 
 export interface ApprovedEffectReplayQueue {
   nextToolName(): string | undefined;
   nextRequest(): unknown;
+  nextIdempotencyKey(): string | undefined;
   take(toolName: string): unknown;
   assertDrained(): void;
 }
@@ -26,6 +30,9 @@ export function createApprovedEffectReplayQueue(
     nextRequest() {
       return pending[0]?.request;
     },
+    nextIdempotencyKey() {
+      return pending[0]?.idempotencyKey;
+    },
     take(toolName) {
       const next = pending[0];
       if (!next || next.kind !== toolName) return undefined;
@@ -33,11 +40,22 @@ export function createApprovedEffectReplayQueue(
       return next.request;
     },
     assertDrained() {
-      if (pending.length > 0) {
-        throw new Error("Approved tool requests were not fully replayed");
-      }
+      // Only reachable when no saved turn could be restored and the model, asked in text,
+      // did not call the approved request again.
+      if (pending.length > 0) throw new Error(APPROVED_ACTION_NOT_RUN_ERROR);
     },
   };
+}
+
+/**
+ * The occurrence an approved row's key encodes for a call whose occurrence-0 key is
+ * `baseKey`, or undefined when the row was keyed another way.
+ */
+export function approvedEffectOccurrence(approvedKey: string, baseKey: string): number | undefined {
+  if (approvedKey === baseKey) return 0;
+  if (!approvedKey.startsWith(`${baseKey}:`)) return undefined;
+  const suffix = approvedKey.slice(baseKey.length + 1);
+  return /^[1-9]\d*$/.test(suffix) ? Number(suffix) : undefined;
 }
 
 export function approvedCatalogReplay(
@@ -332,6 +350,27 @@ export function approvalPausedToolResult(): ApprovalPausedToolResult {
   };
 }
 
+/** An unattended run asked for the owner: the tool ends the turn without a pause card. */
+export function unattendedEndedToolResult() {
+  return {
+    kind: "agent_tool_result" as const,
+    content: [
+      {
+        type: "text" as const,
+        text: "The user is not here to answer. The owner was notified. Stop now.",
+      },
+    ],
+    details: { unattended: "ended" },
+    terminate: true as const,
+  };
+}
+
+export function isUnattendedEndResult(result: unknown): boolean {
+  if (!result || typeof result !== "object") return false;
+  const record = result as { kind?: unknown; details?: { unattended?: unknown } };
+  return record.kind === "agent_tool_result" && record.details?.unattended === "ended";
+}
+
 export function isToolPauseResult(result: unknown): result is ApprovalPausedToolResult {
   if (!result || typeof result !== "object") return false;
   const record = result as ApprovalPausedToolResult;
@@ -362,7 +401,7 @@ export type ExternalEffectStore = {
 };
 
 export const DENIED_ACTION_MESSAGE =
-  'The person you are talking to denied this action. When you tell them, address them as "you" (say "you denied it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not submitted. Do not send them to another agent or page, and do not suggest asking anyone else; ask what they want instead. Try again only if the user asks again in a new message.';
+  'The user declined this action on its card. This was their own decision, not a settings rule or a block. When you tell them, address them as "you" (say "you declined it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not submitted. Do not send them to another agent or page, and do not suggest asking anyone else; ask what they want instead. Try again only if the user asks again in a new message.';
 
 /**
  * Wording for a payment the person approved here. It never claims the payment went through:
@@ -433,7 +472,11 @@ export function resolveDuplicateEffectGate(
       },
     };
   }
-  if (effect.status === "superseded" || effect.status === "expired") {
+  if (
+    effect.status === "superseded" ||
+    effect.status === "expired" ||
+    effect.status === "stopped"
+  ) {
     return { action: "return", result: { error: CLOSED_APPROVAL_MESSAGE } };
   }
   if (effect.status === "executing") {

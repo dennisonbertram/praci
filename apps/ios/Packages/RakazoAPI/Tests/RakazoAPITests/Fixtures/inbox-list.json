@@ -1,0 +1,151 @@
+{
+  "json": {
+    "accounts": [
+      {
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "label": "Founder mail",
+        "address": "mock-founder@northwind.example.test",
+        "senderRules": "unsupported"
+      },
+      {
+        "connectionId": "cmvszf0vo000hcr9k8dds7tu8",
+        "label": "Sales mail",
+        "address": "sales@northwind.example.test",
+        "senderRules": "unsupported"
+      }
+    ],
+    "agent": {
+      "botId": "cmvszf0mg000ccr9kq3l3bgfm",
+      "name": "Inbox agent"
+    },
+    "rows": [
+      {
+        "id": "a89357b8-d0d9-4afe-a8c9-0548db7aa1e5",
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "threadId": "mock-demo-thread-investor-update",
+        "from": "Priya Placeholder",
+        "subject": "[MOCK] Q3 investor update: draft for your review",
+        "snippet": "Hi Maya,\n\nHere is the draft of the Q3 update for our LPs. Can you check the runway and hiring number",
+        "receivedAt": "2026-10-29T01:26:42.611Z",
+        "unread": true,
+        "inInbox": true,
+        "needsReply": null,
+        "priority": null,
+        "reason": null,
+        "category": null,
+        "feedback": null,
+        "fromAddress": "priya@quill-capital.example.test",
+        "pile": "important"
+      },
+      {
+        "id": "73c6f557-0996-4300-bee9-debb6164f0ef",
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "threadId": "mock-demo-thread-msa-redlines",
+        "from": "Morgan Pretend",
+        "subject": "Re: [MOCK] Redlines on the Master Services Agreement",
+        "snippet": "Maya, if section 9 works for you, can we sign on Thursday?\n\nMorgan\n\n-- \nMock demo data: invented for",
+        "receivedAt": "2026-10-29T00:26:42.611Z",
+        "unread": true,
+        "inInbox": true,
+        "needsReply": null,
+        "priority": null,
+        "reason": null,
+        "category": null,
+        "feedback": null,
+        "fromAddress": "morgan@halcyon-logistics.example.test",
+        "pile": "important"
+      },
+      {
+        "id": "33fd9f55-c1cd-4518-81a6-8befe5130a3e",
+        "connectionId": "cmvszf0vo000hcr9k8dds7tu8",
+        "threadId": "mock-sales-thread-sales-lead",
+        "from": "Robin Prospect",
+        "subject": "[MOCK] Pricing for 20 units",
+        "snippet": "Hello, could you send pricing for 20 picking robots, delivered in Q1?\n\nRobin\nBeacon Retail (Mock)\n\n-",
+        "receivedAt": "2026-10-28T22:26:43.026Z",
+        "unread": true,
+        "inInbox": true,
+        "needsReply": null,
+        "priority": null,
+        "reason": null,
+        "category": null,
+        "feedback": null,
+        "fromAddress": "robin@beacon-retail.example.test",
+        "pile": null
+      },
+      {
+        "id": "239757ef-c33b-459f-991a-8fe9538537ca",
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "threadId": "mock-demo-thread-stockholder-action",
+        "from": "Sam Ortiz",
+        "subject": "Re: [MOCK] Notice of Stockholder Action",
+        "snippet": "Maya,\n\nThanks for the notice. Two things.\n\n1. For tax purposes I want to close out my position. Eith",
+        "receivedAt": "2026-10-28T22:26:42.611Z",
+        "unread": true,
+        "inInbox": true,
+        "needsReply": null,
+        "priority": null,
+        "reason": null,
+        "category": null,
+        "feedback": null,
+        "fromAddress": "sam@harborline.example.test",
+        "pile": "important"
+      },
+      {
+        "id": "aaf3bfce-ceb2-4ef3-b7a1-7e0673aefbcd",
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "threadId": "mock-demo-thread-hosting-invoice",
+        "from": "Cloudnine Hosting",
+        "subject": "[MOCK] Invoice #MOCK-1043 due Oct 30",
+        "snippet": "Your October invoice for $4,812.00 is ready. Pay by Oct 30 to avoid a late fee.\n\nCloudnine Hosting (",
+        "receivedAt": "2026-10-28T18:26:42.611Z",
+        "unread": true,
+        "inInbox": true,
+        "needsReply": null,
+        "priority": null,
+        "reason": null,
+        "category": null,
+        "feedback": null,
+        "fromAddress": "billing@cloudnine-hosting.example.test",
+        "pile": null
+      },
+      {
+        "id": "66218c46-a6b8-46b5-a790-c3f145013a3c",
+        "connectionId": "cmvszf0dr000bcr9k1apmb0jp",
+        "threadId": "mock-demo-thread-newsletter-weekly",
+        "from": "The Mock Weekly",
+        "subject": "[MOCK] This week in robotics funding",
+        "snippet": "Seed rounds for robotics startups rose this quarter. Read the full roundup on our site.\n\n-- \nMock de",
+        "receivedAt": "2026-10-28T03:26:42.611Z",
+        "unread": true,
+        "inInbox": true,
+        "needsReply": null,
+        "priority": null,
+        "reason": null,
+        "category": null,
+        "feedback": null,
+        "fromAddress": "news@mock-weekly.example.test",
+        "pile": "newsletters"
+      }
+    ],
+    "syncedAt": "2026-10-29T03:27:04.104Z",
+    "failedAccounts": [],
+    "reconnectAccounts": [],
+    "rateLimitedAccounts": [],
+    "enabled": false,
+    "triageBlocked": {
+      "reason": "needs_consent",
+      "recipient": {
+        "key": "test-recipient-key",
+        "name": "OpenRouter"
+      }
+    },
+    "triagePending": false,
+    "pileCounts": {
+      "important": 55,
+      "updates": 0,
+      "newsletters": 3,
+      "spam": 0
+    }
+  }
+}

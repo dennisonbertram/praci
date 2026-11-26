@@ -1,0 +1,37 @@
+{
+  "json": {
+    "contact": {
+      "id": "contact-placeholder",
+      "name": "Ada Lovelace",
+      "email": "ada@example.test",
+      "organization": "Analytical Engines (Mock)",
+      "kind": "advisor",
+      "notes": "Discussed a fictional product review.",
+      "addedBy": null,
+      "createdAt": "2026-11-10T12:00:00.000Z",
+      "updatedAt": "2026-11-11T12:00:00.000Z"
+    },
+    "mail": [
+      {
+        "id": "message-placeholder",
+        "subject": "Mock introduction",
+        "from": "ada@example.test",
+        "snippet": "An invented preview.",
+        "receivedAt": "2026-11-12T12:00:00.000Z"
+      }
+    ],
+    "meetings": [
+      {
+        "id": "meeting-placeholder",
+        "title": "Mock product review",
+        "startedAt": "2026-11-13T14:00:00.000Z"
+      }
+    ],
+    "documents": [
+      { "id": "document-placeholder", "name": "Mock overview.pdf" }
+    ],
+    "safes": [
+      { "id": "safe-placeholder", "amountCents": 125000, "status": "draft" }
+    ]
+  }
+}

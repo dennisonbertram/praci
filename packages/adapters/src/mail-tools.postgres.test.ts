@@ -344,6 +344,68 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
     });
   });
 
+  it("continues a query whose budget ran out before its first page listed", async () => {
+    const t = await harness({
+      a: [
+        ...[1, 2, 3, 4].map((n) =>
+          message(`a${n}`, `2026-01-0${n}T00:00:00Z`, { subject: "alpha" }),
+        ),
+        message("b1", "2026-01-05T00:00:00Z", { subject: "beta" }),
+        message("b2", "2026-01-06T00:00:00Z", { subject: "beta" }),
+      ],
+    });
+    const first = await t.call("mail_search", {
+      queries: ["subject:alpha", "subject:beta"],
+      maxMessages: 4,
+    });
+    expect(first.records).toBe(4);
+    expect(first.perQuery).toContainEqual(
+      expect.objectContaining({ q: "subject:beta", stoppedReason: "cap", hasMore: true }),
+    );
+    // The cap hit before beta's first page listed, so the entry saves neither ids nor a token.
+    const stored = await prisma.mailSearch.findUniqueOrThrow({ where: { id: first.searchId } });
+    expect(stored.resume).toEqual([
+      expect.objectContaining({
+        accountId: t.accounts[0]?.id,
+        query: "subject:beta",
+        unhydratedIds: [],
+      }),
+    ]);
+    expect((stored.resume as Record<string, unknown>[])[0]).not.toHaveProperty("pageToken");
+
+    const second = await t.call("mail_search", { continueFrom: first.searchId });
+    expect(second.coverage).toBe("complete");
+    expect(second.records).toBe(2);
+    expect(await t.everything(second.searchId)).toEqual(["b1", "b2"]);
+  });
+
+  it("still owes the first page after a list failure, and fetches it on continueFrom", async () => {
+    const t = await harness({ a: tied });
+    t.gmail.failNext(400, { urlIncludes: "/messages?" });
+    const first = await t.call("mail_search", { queries: ["jana"] });
+    expect(first.records).toBe(0);
+    expect(first.failedAccounts).toEqual(["a@example.test"]);
+    expect(first.perQuery[0]).toMatchObject({ stoppedReason: "error", hasMore: true });
+    const stored = await prisma.mailSearch.findUniqueOrThrow({ where: { id: first.searchId } });
+    expect(stored.resume).toEqual([
+      expect.objectContaining({
+        accountId: t.accounts[0]?.id,
+        query: "jana",
+        unhydratedIds: [],
+      }),
+    ]);
+    expect((stored.resume as Record<string, unknown>[])[0]).not.toHaveProperty("pageToken");
+
+    t.gmail.clearFailures();
+    const second = await t.call("mail_search", { continueFrom: first.searchId });
+    expect(second.coverage).toBe("complete");
+    expect(second.records).toBe(9);
+    expect((await t.everything(second.searchId)).sort()).toEqual(tied.map((m) => m.id).sort());
+    expect(await t.call("mail_search", { continueFrom: second.searchId })).toEqual({
+      error: "That search has nothing left to continue",
+    });
+  });
+
   it("saves nothing for an unknown account", async () => {
     const t = await harness({ a: tied });
     expect(await t.call("mail_search", { queries: ["jana"], account: "zed@example.test" })).toEqual(
@@ -385,6 +447,24 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
     expect(await t.call("mail_grep", { searchId: saved.searchId })).toMatchObject({
       totalMatches: 3,
     });
+  });
+
+  it("refuses a grep of a search whose account the agent can no longer use", async () => {
+    const t = await harness({ a: tied });
+    const saved = await t.call("mail_search", { queries: ["jana"] });
+    const noAccounts = { ...t.deps, accounts: async () => [] };
+    const ctx: AdapterContext = {
+      operationId: "op",
+      traceId: "t",
+      spaceId: t.scope.spaceId,
+      userId: t.scope.userId,
+      botId: t.scope.botId,
+      signal: new AbortController().signal,
+    };
+    expect(
+      await mailToolFromTool("mail_grep", noAccounts, ctx, { searchId: saved.searchId }),
+    ).toEqual({ error: expect.stringContaining("no longer") });
+    expect(await t.call("mail_grep", { searchId: saved.searchId })).not.toHaveProperty("error");
   });
 
   it("refuses expired results, expires them by job, and deletes one user's searches in one space", async () => {

@@ -17,6 +17,7 @@ import {
   terminalSocketUrl,
 } from "../../lib/computer-workspace";
 import { rpc } from "../../lib/rpc";
+import { createCommandBuffer } from "../../lib/terminal-command-buffer";
 import { errorText } from "../../lib/user-error";
 
 const COMMANDS_REFRESH_MS = 3_000;
@@ -38,10 +39,13 @@ export default function TerminalApp({
   botId,
   canUseShell,
   onTakeControl,
+  recordingSkillId,
 }: {
   botId: string;
   canUseShell: boolean;
   onTakeControl?: () => Promise<boolean>;
+  /** The teaching recording in progress; commands typed in the shell are added to it. */
+  recordingSkillId?: string;
 }) {
   const { t } = useLingui();
   const [view, setView] = useState<View>("activity");
@@ -97,7 +101,11 @@ export default function TerminalApp({
       ) : null}
       <ActivityTerminal botId={botId} hidden={active !== "activity"} />
       {canUseShell && shellOpened ? (
-        <ShellTerminal botId={botId} hidden={active !== "shell"} />
+        <ShellTerminal
+          botId={botId}
+          hidden={active !== "shell"}
+          recordingSkillId={recordingSkillId}
+        />
       ) : null}
     </div>
   );
@@ -125,6 +133,8 @@ function ActivityTerminal({ botId, hidden }: { botId: string; hidden: boolean })
       attach_file: (path) => t`Attached ${path}`,
       open_path: (path) => t`Opened ${path}`,
       launch_app: (app) => t`Launched ${app}`,
+      // The server writes the whole line ("Read Music"); it never carries app content.
+      desktop_app: (line) => line,
     };
     // Writes are queued, so clear in-band (ESC c) rather than with reset(), which runs
     // immediately and would let an earlier queued render land after it.
@@ -188,11 +198,22 @@ function ActivityTerminal({ botId, hidden }: { botId: string; hidden: boolean })
   return <TerminalPane host={host} error={error} hidden={hidden} testId="computer-terminal" />;
 }
 
-function ShellTerminal({ botId, hidden }: { botId: string; hidden: boolean }) {
+function ShellTerminal({
+  botId,
+  hidden,
+  recordingSkillId,
+}: {
+  botId: string;
+  hidden: boolean;
+  recordingSkillId?: string;
+}) {
   const { t } = useLingui();
   const host = useRef<HTMLDivElement>(null);
   const terminal = useXterm(host, true);
   const [error, setError] = useState<string | null>(null);
+  // Read at submit time, so starting or stopping a recording does not reconnect the shell.
+  const recording = useRef(recordingSkillId);
+  recording.current = recordingSkillId;
 
   useEffect(() => {
     if (!terminal) return;
@@ -204,8 +225,28 @@ function ShellTerminal({ botId, hidden }: { botId: string; hidden: boolean }) {
     const send = (frame: Uint8Array<ArrayBuffer>) => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(frame);
     };
+    const record = createCommandBuffer(
+      (command) => {
+        const skillId = recording.current;
+        if (!skillId) return;
+        // The server redacts secrets in the command; a failed write only loses this step.
+        void rpc.skills
+          .appendEvent({
+            skillId,
+            event: { at: new Date().toISOString(), kind: "command", command },
+          })
+          .catch(() => undefined);
+      },
+      () => {
+        const buffer = terminal.buffer?.active;
+        return buffer?.getLine(buffer.baseY + buffer.cursorY)?.translateToString(true) ?? "";
+      },
+    );
     const disposers = [
-      terminal.onData((data) => send(encodeTerminalInput(data))),
+      terminal.onData((data) => {
+        send(encodeTerminalInput(data));
+        record(data);
+      }),
       terminal.onResize(({ cols, rows }) => send(encodeTerminalResize(cols, rows))),
     ];
     const connect = () => {

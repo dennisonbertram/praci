@@ -324,6 +324,12 @@ test("group chats share every context-menu action", async ({ page }, testInfo) =
   await page.getByRole("menuitem", { name: "Archive", exact: true }).click();
   await expect(sidebar.getByRole("button", { name: /^Group menu copy/ })).toHaveCount(0);
   await expect(sidebar.getByText("Archived", { exact: true })).toBeVisible();
+  // Archiving is reversible from the status message, without opening the Archived folder.
+  const undo = page.getByRole("status");
+  await expect(undo).toContainText("Group menu copy archived");
+  await undo.getByRole("button", { name: "Undo" }).click();
+  await expect(copy).toBeVisible();
+  await expect(undo).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();
@@ -335,4 +341,20 @@ test("group chats share every context-menu action", async ({ page }, testInfo) =
   await group.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Group settings", exact: true }).click();
   await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "group-settings");
+});
+
+test("makes a bot from the command palette", async ({ page }, testInfo) => {
+  const stamp = Date.now();
+  await signup(page, `palette-new-bot-${stamp}@rakazo.test`, "password12", "Test User");
+  await completeOnboarding(page);
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/[^/]+$/);
+
+  await page.keyboard.press("ControlOrMeta+K");
+  const search = page.getByTestId("command-palette-search");
+  await search.fill("new bot");
+  await page.getByRole("option", { name: "New bot", exact: true }).click();
+  await captureScreenshot(page, testInfo, "palette-new-bot");
+  await expect(page).toHaveURL(/\/app\/[a-z0-9]{20,}$/);
+  await expect(page.getByLabel("Name")).toBeFocused();
 });

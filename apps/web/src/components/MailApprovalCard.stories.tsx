@@ -31,20 +31,50 @@ export const Pending: Story = {};
 /** Two mailboxes and no sender named: Send waits until the person picks one. */
 export const ChooseSender: Story = {
   args: {
-    mail: { ...mail, account: undefined },
-    accounts: [
-      { connectionId: "c1", label: "Work", address: "work@example.test" },
-      { connectionId: "c2", label: "Home", address: "home@example.test" },
-    ],
+    mail: {
+      ...mail,
+      account: undefined,
+      choices: [
+        { connectionId: "c1", label: "Work", address: "work@example.test" },
+        { connectionId: "c2", label: "Home", address: "home@example.test" },
+      ],
+    },
   },
+};
+/** The same email went out moments ago: the card warns, and Send is no longer the primary action. */
+export const AlreadySent: Story = {
+  args: { reason: "Already sent to this person a few minutes ago" },
 };
 export const WithCc: Story = {
   args: { mail: { ...mail, cc: ["lee@example.test"], bcc: ["pat@example.test"] } },
 };
 export const Draft: Story = { args: { mail: { ...mail, tool: "mail_draft" } } };
+/** Sending is on for this bot: Send now sends the draft instead of saving it. */
+export const DraftSendNow: Story = {
+  args: { mail: { ...mail, tool: "mail_draft" }, canSend: true },
+};
+/** A saved draft offers Send, which sends it from the person's mail account, and links to Gmail Drafts. */
+export const DraftSavedSend: Story = {
+  args: {
+    status: "answered",
+    answer: "allow",
+    mail: { ...mail, tool: "mail_draft", outcome: "saved" },
+    canSend: true,
+    onSendDraft: async () => undefined,
+  },
+};
+/** Send now failed: the card became a send, so it reads Not sent. */
+export const DraftSendNowFailed: Story = {
+  args: {
+    status: "answered",
+    answer: "deny",
+    mail: { ...mail, tool: "mail_send", connectionId: "connection_1", outcome: "failed" },
+  },
+};
 export const ReplacesSavedDraft: Story = {
   args: { mail: { ...mail, tool: "mail_draft", locked: true } },
 };
+/** A sent card links to its account's Sent folder in Gmail. */
 export const Sent: Story = {
   args: {
     status: "answered",

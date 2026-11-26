@@ -374,6 +374,7 @@ test("Company import requires consent and restores sample, progress and owner co
   await completeOnboarding(page);
   await page.goto("/app/company/import");
   await expect(page.getByRole("heading", { name: "Import company" })).toBeVisible();
+  await page.getByText("Not available (1)").click();
   await expect(page.getByRole("checkbox", { name: "Slack", exact: true })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Connect", exact: true })).toHaveAttribute(
     "href",

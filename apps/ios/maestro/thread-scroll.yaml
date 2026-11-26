@@ -1,0 +1,17 @@
+# Usage: maestro --udid <UDID> test maestro/thread-scroll.yaml -e AGENT="Agent name"
+# Needs a signed-in app and an agent whose thread has more than two screens of messages.
+# Opens the thread (anchored at the bottom), drags up, and asserts the jump button appears,
+# so a thread that fights the drag or cannot scroll fails.
+appId: ai.praci.mobile.dev
+---
+- tapOn: ${AGENT}
+- assertVisible:
+    id: threadList
+- swipe:
+    direction: DOWN
+    duration: 300
+- swipe:
+    direction: DOWN
+    duration: 300
+- assertVisible:
+    id: jumpToLatest

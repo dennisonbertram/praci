@@ -39,4 +39,15 @@ describe("archived bot lifecycle", () => {
     });
     expect(deleted).toHaveBeenCalledOnce();
   });
+  it("clears busy state after a rejected deletion without removing the row", async () => {
+    const deleted = vi.fn();
+    const onBusy = vi.fn();
+    rpc.mockRejectedValueOnce(new Error("offline"));
+    confirmDeleteBot({ id: "bot-fixture", name: "Fixture" }, deleted, onBusy);
+
+    await alert.mock.calls[0]![2][1].onPress();
+
+    expect(onBusy.mock.calls).toEqual([[true], [false]]);
+    expect(deleted).not.toHaveBeenCalled();
+  });
 });

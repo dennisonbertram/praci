@@ -122,6 +122,7 @@ export default function Models() {
   const [pending, setPending] = useState<"connect" | "default" | "disconnect" | null>(null);
   const [oauthPending, setOauthPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
   const [backupModels, setBackupModels] = useState<ModelBackupChoice[]>([]);
   const [savedBackupModels, setSavedBackupModels] = useState<ModelBackupChoice[]>([]);
   const [backupLoading, setBackupLoading] = useState(true);
@@ -312,15 +313,28 @@ export default function Models() {
     [t],
   );
 
+  const retryInitialLoad = useCallback(() => {
+    setLoading(true);
+    setInitialLoadError(null);
+    void load()
+      .then((nextMe) => loadBackupModels(nextMe))
+      .catch((err: unknown) =>
+        setInitialLoadError(errorText(err, t("Could not load model settings"))),
+      )
+      .finally(() => setLoading(false));
+  }, [load, loadBackupModels, t]);
+
   useFocusEffect(
     useCallback(() => {
+      setInitialLoadError(null);
       void load()
         .then((nextMe) => loadBackupModels(nextMe))
-        .catch((err: unknown) =>
-          publishFeedback("connection", {
-            error: errorText(err, t("Could not load model settings")),
-          }),
-        )
+        .catch((err: unknown) => {
+          const message = errorText(err, t("Could not load model settings"));
+          // With models already shown, say so inline as before; with nothing, the full retry screen.
+          publishFeedback("connection", { error: message });
+          setInitialLoadError(message);
+        })
         .finally(() => setLoading(false));
       return () => {
         backupRequestGenerationRef.current += 1;
@@ -570,19 +584,26 @@ export default function Models() {
             }
           : {}),
       });
-      await load({ provider, modelId: activeModelId });
-      publishFeedback("model", {
-        notice: isOpenAiCompatible
-          ? t("Model updated.")
-          : t("Now using {label}.", { label: selected.label }),
-      });
     } catch (err) {
       publishFeedback("model", {
         error: errorText(err, t("Could not change the default model")),
       });
+      setPending(null);
+      return;
+    }
+    try {
+      await load({ provider, modelId: activeModelId });
+    } catch {
+      publishFeedback("model", { error: t("Could not load model settings") });
+      return;
     } finally {
       setPending(null);
     }
+    publishFeedback("model", {
+      notice: isOpenAiCompatible
+        ? t("Model updated.")
+        : t("Now using {label}.", { label: selected.label }),
+    });
   }
 
   async function disconnectCredential() {
@@ -590,23 +611,43 @@ export default function Models() {
     cancelOAuth();
     clearFeedback();
     setPending("disconnect");
+    let wasDefault: boolean;
     try {
       await rpc("models/disconnect", { provider: selected.provider });
       setApiKey("");
       setThinkingLevel(null);
-      await load({ provider });
-      publishFeedback("connection", {
-        notice: t("Disconnected {provider}.", {
-          provider: selected.providerName ?? selected.provider,
-        }),
-      });
+      setCredentials((current) => current.filter((entry) => entry.provider !== selected.provider));
+      wasDefault = credential.isDefault;
     } catch (err) {
       publishFeedback("connection", {
         error: errorText(err, t("Could not disconnect this provider")),
       });
+      setPending(null);
+      return;
+    }
+    let nextMe: MobileMe;
+    try {
+      nextMe = await load({ provider });
+    } catch {
+      publishFeedback("connection", { error: t("Could not load model settings") });
+      return;
     } finally {
       setPending(null);
     }
+    const fallback =
+      catalog.find(
+        (entry) => entry.provider === nextMe.defaultProvider && entry.id === nextMe.defaultModel,
+      )?.label ?? nextMe.defaultModel;
+    const name = selected.providerName ?? selected.provider;
+    publishFeedback("connection", {
+      notice:
+        wasDefault && fallback
+          ? t("Disconnected {provider}. Bots now use {model}.", {
+              provider: name,
+              model: fallback,
+            })
+          : t("Disconnected {provider}.", { provider: name }),
+    });
   }
 
   function stageCompatibleModelId(nextModelId: string) {
@@ -681,8 +722,9 @@ export default function Models() {
     }
     if (isOpenAiCompatible && parsedMaxTokens === undefined) return;
     setPending("connect");
+    let connected: MobileModelCredential;
     try {
-      await rpc(
+      connected = await rpc<MobileModelCredential>(
         "models/connect",
         isOpenAiCompatible
           ? {
@@ -713,34 +755,55 @@ export default function Models() {
               label: selected.providerName ?? selected.provider,
             },
       );
-      setApiKey("");
-      await load({ provider, modelId });
-      publishFeedback("connection", {
-        notice:
-          isOpenAiCompatible || savingLimitOnly
-            ? t("Saved.")
-            : t("Connected and using {label}.", { label: selected.label }),
-      });
     } catch (err) {
       publishFeedback("connection", {
         error: errorText(err, t("Could not connect this provider")),
       });
+      setPending(null);
+      return;
+    }
+    setApiKey("");
+    try {
+      await load({ provider, modelId });
+    } catch {
+      publishFeedback("connection", { error: t("Could not load model settings") });
+      return;
     } finally {
       setPending(null);
     }
+    publishFeedback("connection", {
+      notice:
+        isOpenAiCompatible || savingLimitOnly
+          ? t("Saved.")
+          : connected.isDefault
+            ? t("Connected and using {label}.", { label: selected.label })
+            : t("Connected."),
+    });
   }
 
   async function finishSubscriptionSignIn(loginId: string, controller: AbortController) {
     await waitForModelOAuth(loginId, controller.signal);
     if (controller.signal.aborted) return;
-    await rpc("models/finishOAuth", { loginId }, { signal: controller.signal });
+    const connected = await rpc<MobileModelCredential>(
+      "models/finishOAuth",
+      { loginId },
+      { signal: controller.signal },
+    );
     if (controller.signal.aborted) return;
     oauthLoginIdRef.current = null;
     setOauth(null);
-    await load({ provider, modelId });
+    try {
+      await load({ provider, modelId });
+    } catch {
+      if (controller.signal.aborted) return;
+      publishFeedback("connection", { error: t("Could not load model settings") });
+      return;
+    }
     if (controller.signal.aborted) return;
     publishFeedback("connection", {
-      notice: t("Connected and using {label}.", { label: selected?.label ?? t("this model") }),
+      notice: connected.isDefault
+        ? t("Connected and using {label}.", { label: selected?.label ?? t("this model") })
+        : t("Connected."),
     });
   }
 
@@ -1512,6 +1575,17 @@ export default function Models() {
     );
   }
 
+  if (initialLoadError && catalog.length === 0) {
+    return (
+      <SafeAreaView edges={["bottom"]} style={[styles.screen, styles.centered]}>
+        <Text accessibilityRole="alert" style={styles.error}>
+          {initialLoadError}
+        </Text>
+        <NativeActionButton label={t("Try again")} onPress={retryInitialLoad} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={["bottom"]} style={styles.screen}>
       <ScrollView
@@ -1630,19 +1704,19 @@ export default function Models() {
               )}
               {ownKeyProvider === provider ? (
                 <>
-                  {catalogConnectionControls}
-                  {feedback}
                   <Text style={styles.sectionTitle}>{t("Model")}</Text>
                   {catalogModelCard}
+                  {catalogConnectionControls}
+                  {feedback}
                 </>
               ) : null}
             </>
           ) : (
             <>
-              {catalogConnectionControls}
-              {feedback}
               <Text style={styles.sectionTitle}>{t("Model")}</Text>
               {catalogModelCard}
+              {catalogConnectionControls}
+              {feedback}
             </>
           )
         ) : (

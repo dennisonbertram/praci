@@ -55,6 +55,7 @@ const base: FinanceCryptoOutput = {
       rawBalance: "1500000000000000000",
       usdPrice: "2000",
       usdValueCents: 300_000,
+      priceHistory: [1800, 1850, 1900, 1950, 1920, 2000],
       syncedAt: "2026-01-01T00:00:00.000Z",
     },
     {
@@ -67,6 +68,7 @@ const base: FinanceCryptoOutput = {
       rawBalance: "800000000000",
       usdPrice: "1",
       usdValueCents: 80_000_000,
+      priceHistory: [1, 1, 1.0001, 1, 0.9999, 1],
       syncedAt: "2026-01-01T00:00:00.000Z",
     },
     {
@@ -131,6 +133,29 @@ export default meta;
 type Story = StoryObj;
 
 export const Default: Story = { beforeEach: () => load(base) };
+
+/** Unpriced tokens, including one that copies a priced symbol with an enormous balance, sit behind one line. */
+export const UnpricedTokens: Story = {
+  beforeEach: () =>
+    load({
+      ...base,
+      holdings: [
+        ...base.holdings,
+        {
+          walletId: "w1",
+          chainId: 8453,
+          tokenAddress: addr(11),
+          symbol: "USDX",
+          name: "Look-alike",
+          decimals: 18,
+          rawBalance: `7${"0".repeat(45)}`,
+          usdPrice: null,
+          usdValueCents: null,
+          syncedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    }),
+};
 
 export const WithExchange: Story = { beforeEach: () => load(base, [exchange]) };
 

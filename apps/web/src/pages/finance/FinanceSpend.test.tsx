@@ -145,6 +145,7 @@ it("says how many non-USD transactions a category's total leaves out", async () 
     label: "Rent",
     last90Cents: 2_250_000,
     excludedNonUsdCount: 1,
+  excludedNonUsd: [],
     trend: [],
     vendors: [],
     recent: [],
@@ -208,4 +209,67 @@ it("says what the month under way has cost, since the chart and the change stop 
   );
   await act(async () => {});
   expect(container.textContent).toContain("Oct so far: $2,400");
+});
+
+it("caps a category's vendors and transactions at 3 on a phone", async () => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  const txn = (n: number) => ({
+    id: `t${n}`,
+    provider: "mercury",
+    externalId: `t${n}`,
+    accountExternalId: "a",
+    postedAt: `2026-10-${String(10 + n).padStart(2, "0")}T12:00:00.000Z`,
+    purchasedAt: null,
+    amountCents: -1_000 * n,
+    currency: "USD",
+    counterparty: `Vendor ${n}`,
+    vendorKey: `v${n}`,
+    category: null,
+    status: "posted",
+    kind: "card",
+    classification: "spend",
+    cardLastFour: null,
+    cardholder: null,
+    memo: null,
+    hasReceipt: false,
+    dashboardUrl: null,
+  });
+  const five = [1, 2, 3, 4, 5];
+  rpcMock.category.mockResolvedValue({
+    slug: "software",
+    label: "Software",
+    last90Cents: 15_000,
+    start: "2026-08-01",
+    end: "2026-11-01",
+    trend: [],
+    vendors: five.map((n) => ({ key: `v${n}`, label: `Vendor ${n}`, cents: 1_000 * n })),
+    recent: five.map(txn),
+  });
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <FinanceCategoryPage slug="software" window={{ period: "quarter" }} />
+        </MemoryRouter>,
+      ),
+    );
+    await act(async () => {});
+    expect(container.querySelectorAll('a[href^="/app/finance/vendor/"]').length).toBe(3);
+    // Vendors expand in place; the transactions link to the Spend page for the same window.
+    expect(
+      [...container.querySelectorAll("button")].filter((b) => b.textContent === "See all (5)"),
+    ).toHaveLength(1);
+    const link = [...container.querySelectorAll("a")].find((a) =>
+      a.textContent?.startsWith("See all"),
+    );
+    expect(link?.getAttribute("href")).toBe(
+      "/app/finance/spend?period=month&cat=software&from=2026-08-01&to=2026-10-31",
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

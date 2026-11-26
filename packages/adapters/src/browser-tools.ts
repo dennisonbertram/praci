@@ -20,7 +20,7 @@ export type SecretFillStep = {
 export type BrowserActInput = BrowserActStep | SecretFillStep;
 export type ResolveSecretFill = (
   step: SecretFillStep,
-) => Promise<{ text: string; origin: string } | { error: string }>;
+) => Promise<{ text: string; origin: string; markUsed?: () => Promise<void> } | { error: string }>;
 
 export async function browserNavigateFromTool(
   browser: BrowserProvider,
@@ -76,6 +76,7 @@ export async function browserActFromTool(
 ) {
   try {
     const actions: BrowserActStep[] = [];
+    const markUsed: Array<() => Promise<void>> = [];
     // Resolve every saved login before acting, so a missing one cannot leave a half-filled form.
     for (const step of parseBrowserActions(args.actions)) {
       if (step.kind !== "fill_secret") {
@@ -86,9 +87,18 @@ export async function browserActFromTool(
         ? await options.resolveSecretFill(step)
         : { error: "Saved logins are unavailable here." };
       if ("error" in resolved) return { ok: false, completed: 0, error: resolved.error };
-      actions.push({ kind: "fill", ref: step.ref, text: resolved.text, origin: resolved.origin });
+      if (resolved.markUsed) markUsed.push(resolved.markUsed);
+      actions.push({
+        kind: "fill",
+        ref: step.ref,
+        text: resolved.text,
+        origin: resolved.origin,
+        field: step.field,
+      });
     }
     const result = await browser.act(computer, { actions, signal: context.signal }, context);
+    // A login counts as used only once the page action succeeded.
+    if (result.ok) await Promise.all(markUsed.map((mark) => mark()));
     return redactConnectorPayload(formatBrowserResult(result), options.redactions?.() ?? []);
   } catch (error) {
     context.signal.throwIfAborted();

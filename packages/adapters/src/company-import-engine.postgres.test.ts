@@ -512,4 +512,71 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
     ).toBe(0);
     expect((await engine.progress(actor, created.runId)).sources[0]?.itemsRead).toBe(0);
   });
+  it("binds consent to the source scope and model, so a second draft inherits it only unchanged", async () => {
+    const jobs = { enqueue: async () => undefined } as unknown as JobPublisher;
+    const realtime = { publish: async () => undefined } as unknown as RealtimeFanout;
+    const worker: CompanyImportWorker = {
+      discover: async (): Promise<CompanyImportDiscoveryPage> => ({
+        units: [],
+        nextCursor: null,
+        done: true,
+      }),
+      read: async (): Promise<CompanyImportReadPage> => ({
+        items: [],
+        facts: [],
+        nextCursor: null,
+        done: true,
+      }),
+    };
+    const engineFor = (modelId: string) =>
+      createCompanyImportEngine({
+        prisma,
+        jobs,
+        realtime,
+        resolveModel: async () => ({ provider: "synthetic", id: modelId }),
+        worker,
+      });
+    const engine = engineFor("consent-model");
+    const draft = async (channelId: string) => {
+      const created = await engine.create(actor, {
+        tokenCap: 10,
+        sources: [
+          {
+            sourceKind: "slack",
+            connectionId: slackConnectionId,
+            scope: { channelIds: [channelId] },
+          },
+        ],
+      });
+      const source = await prisma.companyImportSource.findFirstOrThrow({
+        where: { runId: created.runId, spaceId, ownerUserId: userId },
+      });
+      return { runId: created.runId, sourceId: source.id };
+    };
+
+    const first = await draft("C1");
+    const firstConsent = await engine.consentStatus(actor, first.runId, first.sourceId);
+    await engine.grantConsent(actor, {
+      runId: first.runId,
+      sourceId: first.sourceId,
+      consentKey: firstConsent.consentKey!,
+      version: firstConsent.version,
+      sourceKind: firstConsent.sourceKind,
+      recipient: firstConsent.recipient!,
+    });
+
+    const unchanged = await draft("C1");
+    const unchangedConsent = await engine.consentStatus(actor, unchanged.runId, unchanged.sourceId);
+    expect(unchangedConsent.consentKey).toBe(firstConsent.consentKey);
+    expect(unchangedConsent.allowed).toBe(true);
+
+    const otherScope = await draft("C2");
+    expect((await engine.consentStatus(actor, otherScope.runId, otherScope.sourceId)).allowed).toBe(
+      false,
+    );
+    expect(
+      (await engineFor("consent-model-2").consentStatus(actor, unchanged.runId, unchanged.sourceId))
+        .allowed,
+    ).toBe(false);
+  });
 });

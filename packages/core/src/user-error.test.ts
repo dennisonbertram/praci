@@ -10,11 +10,15 @@ import {
   KEY_REJECTED_PATTERN,
   plainRunError,
   providerErrorMessage,
+  runErrorAction,
   threadRunError,
   userErrorMessage,
 } from "./user-error.js";
 
-const copy = { fallback: "Could not load bots", offline: "Could not reach the server" };
+const copy = {
+  fallback: "Could not load bots",
+  offline: "Could not reach the server",
+};
 const authCopy = {
   fallback: "Could not sign up",
   email: "Enter a valid email",
@@ -24,7 +28,9 @@ const authCopy = {
 describe("isServerUnreachable", () => {
   it("counts no connection, timeouts and gateway errors, through causes", () => {
     expect(isServerUnreachable(new TypeError("Network request failed"))).toBe(true);
-    const timeout = Object.assign(new Error("Request timed out"), { name: "TimeoutError" });
+    const timeout = Object.assign(new Error("Request timed out"), {
+      name: "TimeoutError",
+    });
     expect(isServerUnreachable(timeout)).toBe(true);
     for (const status of [502, 503, 504]) {
       expect(isServerUnreachable(Object.assign(new Error("Bad gateway"), { status }))).toBe(true);
@@ -59,7 +65,9 @@ describe("isNetworkFailure", () => {
   });
 
   it("follows causes and socket error codes", () => {
-    const refused = Object.assign(new Error("connect"), { code: "ECONNREFUSED" });
+    const refused = Object.assign(new Error("connect"), {
+      code: "ECONNREFUSED",
+    });
     expect(isNetworkFailure(new Error("request", { cause: refused }))).toBe(true);
   });
 
@@ -161,7 +169,10 @@ describe("authErrorMessage", () => {
   it("keeps the server's own auth copy and hides anything technical", () => {
     expect(
       authErrorMessage(
-        { code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" },
+        {
+          code: "INVALID_EMAIL_OR_PASSWORD",
+          message: "Invalid email or password",
+        },
         authCopy,
       ),
     ).toBe("Invalid email or password");
@@ -234,9 +245,56 @@ describe("isInternalRunError", () => {
 });
 
 describe("plainRunError", () => {
-  const copy = { keyRejected: "KEY", generic: "GENERIC" };
+  const copy = {
+    keyRejected: "KEY",
+    generic: "GENERIC",
+    spendLimit: (on: string | null) => (on ? `LIMIT ${on}` : "LIMIT"),
+    outOfCredits: "CREDITS",
+    rateLimited: "RATE",
+  };
+  it("shows the cut-reply message as written", () => {
+    const cut = "The model hit its output limit before finishing its reply.";
+    expect(plainRunError(cut, copy)).toBe(cut);
+  });
   it("hides a provider 401 JSON body", () => {
     expect(plainRunError('401: {"message":"User not found.","code":401}', copy)).toBe("KEY");
+  });
+  it("names a spending limit and its reset date without the raw body", () => {
+    const error =
+      '403: {"message":"Key limit exceeded (monthly limit). Manage it using https://example.test/keys/abc123 $50.20 of $50.00 used; resets 2026-11-01T00:00:00.000Z.","code":403,"metadata":{"limit_source":"openrouter_key_limit","scope":"key_limit","resets_at":"2026-11-01T00:00:00.000Z"}}';
+    expect(plainRunError(error, copy)).toMatch(/^LIMIT .*2026/);
+    expect(plainRunError('403: {"message":"Monthly usage limit exceeded","code":403}', copy)).toBe(
+      "LIMIT",
+    );
+  });
+  it("names rate limiting, and out of credits", () => {
+    expect(plainRunError('429: {"message":"Rate limit exceeded","code":429}', copy)).toBe("RATE");
+    expect(plainRunError("429 Too Many Requests", copy)).toBe("RATE");
+    expect(plainRunError('402: {"message":"Insufficient credits","code":402}', copy)).toBe(
+      "CREDITS",
+    );
+  });
+  it("names an exhausted Anthropic balance that arrives as a 400", () => {
+    const error =
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}';
+    expect(plainRunError(error, copy)).toBe("CREDITS");
+  });
+  it("names a reached Anthropic API usage limit that arrives as a 400", () => {
+    const error =
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."}}';
+    expect(plainRunError(error, copy)).toBe("LIMIT");
+  });
+  it("keeps a 400 about an input field as the provider wrote it", () => {
+    const error = '400: {"message":"Invalid parameter: billing_address"}';
+    expect(plainRunError(error, copy)).toBe(error);
+  });
+  it("keeps a 400 that only mentions credits inside an input value as written", () => {
+    const error = '400 {"error":{"message":"Invalid enum value: out of credits"}}';
+    expect(plainRunError(error, copy)).toBe(error);
+  });
+  it("passes the app's own plain messages through", () => {
+    const consent = "Legal needs your permission to read your documents before it can run.";
+    expect(plainRunError(consent, copy)).toBe(consent);
   });
   it("hides a gateway error from the model proxy", () => {
     expect(
@@ -252,10 +310,39 @@ describe("plainRunError", () => {
   });
 });
 
+describe("runErrorAction", () => {
+  it.each([
+    ['401: {"message":"User not found.","code":401}', "models"],
+    ['403: {"message":"Monthly usage limit exceeded","code":403}', "models"],
+    ['402: {"message":"Insufficient credits","code":402}', "models"],
+    [
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}',
+      "models",
+    ],
+    [
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."}}',
+      "models",
+    ],
+    ['400: {"message":"Invalid parameter: billing_address"}', undefined],
+    ['400 {"error":{"message":"Invalid enum value: out of credits"}}', undefined],
+    ['429: {"message":"Rate limit exceeded","code":429}', "retry"],
+    ["upstream connect error or disconnect/reset before headers. reset reason: timeout", "retry"],
+    ["This bot's connection is signed out or removed.", "connection"],
+    ["Allow it on the Legal page.", undefined],
+    ["", undefined],
+  ])("%s -> %s", (error, action) => {
+    expect(runErrorAction(error)).toBe(action);
+  });
+});
+
 describe("threadRunError while a delegate waits for approval", () => {
   const snap = (delegatePending?: string[]) =>
     ({
-      run: { id: "r1", status: "failed", error: "This agent could not finish. Try again." },
+      run: {
+        id: "r1",
+        status: "failed",
+        error: "This agent could not finish. Try again.",
+      },
       messages: [],
       delegatePending,
     }) as unknown as Parameters<typeof threadRunError>[0];

@@ -95,7 +95,9 @@ test("A draft update waits in Action items, opens in the editor and sends", asyn
   await captureScreenshot(page, testInfo, "investors-update");
 
   await main.getByRole("button", { name: "Send", exact: true }).click();
-  await expect.poll(() => calls.some((c) => c.name === "updates/send")).toBe(true);
+  await expect
+    .poll(() => calls.some((c) => c.name === "updates/send"), { timeout: 15_000 })
+    .toBe(true);
   // The finished send returns to Investors with a toast.
   await expect(page).toHaveURL(/\/app\/investors$/);
   await expect(page.getByRole("alert").getByText("Sent to 2")).toBeVisible();

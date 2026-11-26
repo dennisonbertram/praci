@@ -10,6 +10,8 @@ describeFast("pnpm test emulator pin", () => {
     expect(process.env.AGENT_RUNTIME).toBe("scripted");
     expect(process.env.SANDBOX_PROVIDER).toBe("fake");
     expect(process.env.WAKEUP_DRIVER).toBe("memory");
+    expect(process.env.OPENROUTER_API_KEY).toBeUndefined();
+    expect(process.env.MODEL_API_KEY).toBeUndefined();
   });
 
   it("does not keep a live Composio key in the test process", () => {

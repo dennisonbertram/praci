@@ -1,0 +1,80 @@
+{
+  "items": [
+    {
+      "id": "cmvszf55n0046cr9k9ot5p94c",
+      "name": "MOCK Board Minutes - October.pdf",
+      "mimeType": "application/pdf",
+      "size": 711,
+      "folderId": "cmvszf41y0024cr9kd53bcvl7",
+      "source": "upload",
+      "sourceUrl": null,
+      "status": "extracting",
+      "error": null,
+      "notIndexed": false,
+      "facets": {
+        "docType": null,
+        "docDate": null,
+        "parties": [],
+        "amountCents": null,
+        "currency": null,
+        "tags": [],
+        "summary": null
+      },
+      "createdAt": "2026-10-29T03:26:48.539Z",
+      "updatedAt": "2026-10-29T17:09:43.947Z",
+      "hasThumbnail": true,
+      "previewText": "Placeholder text."
+    },
+    {
+      "id": "cmvszf5580045cr9kqt3fvdnm",
+      "name": "MOCK Signed NDA - Bolt Freight.pdf",
+      "mimeType": "application/pdf",
+      "size": 95,
+      "folderId": "cmvszf41t0023cr9kd6knntui",
+      "source": "upload",
+      "sourceUrl": null,
+      "status": "failed",
+      "error": "This file isn't a readable PDF.",
+      "notIndexed": false,
+      "facets": {
+        "docType": null,
+        "docDate": null,
+        "parties": [],
+        "amountCents": null,
+        "currency": null,
+        "tags": [],
+        "summary": null
+      },
+      "createdAt": "2026-10-29T03:26:48.524Z",
+      "updatedAt": "2026-10-29T03:26:48.533Z",
+      "hasThumbnail": false,
+      "previewText": null
+    },
+    {
+      "id": "cmvszf54t0044cr9knrxfms3q",
+      "name": "MOCK Term Sheet Draft - Quill Capital.pdf",
+      "mimeType": "application/pdf",
+      "size": 742,
+      "folderId": "cmvszf41n0022cr9kjo5pgq9e",
+      "source": "upload",
+      "sourceUrl": null,
+      "status": "ready",
+      "error": null,
+      "notIndexed": false,
+      "facets": {
+        "docType": null,
+        "docDate": null,
+        "parties": [],
+        "amountCents": null,
+        "currency": null,
+        "tags": [],
+        "summary": null
+      },
+      "createdAt": "2026-10-29T03:26:48.509Z",
+      "updatedAt": "2026-10-29T17:09:43.944Z",
+      "hasThumbnail": true,
+      "previewText": "Placeholder text."
+    }
+  ],
+  "nextCursor": "WyJjcmVhdGVkQXQiLCJkZXNjIiwiMjAyNi0xMC0yOVQwMzoyNjo0OC41MDlaIiwiY212c3pmNTR0MDA0NGNyOWtucnhmbXMzcSJd"
+}

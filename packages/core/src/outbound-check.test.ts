@@ -20,7 +20,12 @@ function withMail(extra?: (f: PrivateFragments) => void) {
 
 describe("checkOutbound: what is caught", () => {
   it("passes text that repeats nothing private", () => {
-    expect(checkOutbound({ text: "We open at 9am on weekdays.", fragments: withMail() })).toEqual({
+    expect(
+      checkOutbound({
+        text: "We open at 9am on weekdays.",
+        fragments: withMail(),
+      }),
+    ).toEqual({
       allow: true,
     });
   });
@@ -32,7 +37,9 @@ describe("checkOutbound: what is caught", () => {
       "[email](mailto:Priya.Shah@Halcyon-Ventures.example)",
       "<priya.shah@halcyon-ventures.example>",
     ]) {
-      expect(checkOutbound({ text, fragments: withMail() })).toMatchObject({ allow: false });
+      expect(checkOutbound({ text, fragments: withMail() })).toMatchObject({
+        allow: false,
+      });
     }
   });
 
@@ -51,7 +58,9 @@ describe("checkOutbound: what is caught", () => {
     }
     const crm = new PrivateFragments();
     crm.addPrivate(
-      JSON.stringify({ investors: [{ name: "Halcyon Ventures", holder: "Dana Okafor" }] }),
+      JSON.stringify({
+        investors: [{ name: "Halcyon Ventures", holder: "Dana Okafor" }],
+      }),
     );
     expect(checkOutbound({ text: "dana okafor holds 3%", fragments: crm })).toMatchObject({
       allow: false,
@@ -76,7 +85,9 @@ describe("checkOutbound: what is not caught", () => {
     ["a short single-word name", "Priya says hello"],
     ["a bare year", "Founded in 2026"],
   ])("lets through %s", (_label, text) => {
-    expect(checkOutbound({ text, fragments: withMail() })).toEqual({ allow: true });
+    expect(checkOutbound({ text, fragments: withMail() })).toEqual({
+      allow: true,
+    });
   });
 });
 
@@ -86,7 +97,10 @@ describe("public text", () => {
       f.addPublic("Is Priya Shah at priya.shah@halcyon-ventures.example the right contact?"),
     );
     expect(
-      checkOutbound({ text: "Yes, priya.shah@halcyon-ventures.example, Priya Shah.", fragments }),
+      checkOutbound({
+        text: "Yes, priya.shah@halcyon-ventures.example, Priya Shah.",
+        fragments,
+      }),
     ).toEqual({ allow: true });
     // A different private fragment is still held.
     expect(checkOutbound({ text: "She wires $1,250,000.", fragments })).toMatchObject({
@@ -100,7 +114,9 @@ describe("a plain-text relay from another internal bot", () => {
     const relay = new PrivateFragments();
     relay.addPrivateRelay("Priya Shah at Halcyon Ventures committed the seed round last week.");
     for (const text of ["Priya Shah leads it", "talk to PRIYA SHAH", "Halcyon Ventures is in"]) {
-      expect(checkOutbound({ text, fragments: relay }), text).toMatchObject({ allow: false });
+      expect(checkOutbound({ text, fragments: relay }), text).toMatchObject({
+        allow: false,
+      });
     }
     expect(checkOutbound({ text: "We open at 9am.", fragments: relay })).toEqual({ allow: true });
     // Structured addPrivate alone would have missed the relayed name.
@@ -117,7 +133,12 @@ describe("names that were hidden", () => {
     const envelope = new PrivateFragments();
     envelope.addPrivate(
       JSON.stringify({
-        content: [{ type: "text", text: JSON.stringify({ investors: [{ name: "Priya Shah" }] }) }],
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ investors: [{ name: "Priya Shah" }] }),
+          },
+        ],
       }),
     );
     expect(checkOutbound({ text: "Priya Shah is in", fragments: envelope })).toMatchObject({
@@ -136,5 +157,71 @@ describe("names that were hidden", () => {
     expect(checkOutbound({ text: "Contact Priya Shah", fragments: relay })).toMatchObject({
       allow: false,
     });
+  });
+});
+
+describe("hashed and restored records", () => {
+  const hash = (value: string) =>
+    `h:${value.length}:${[...value].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 1_000_003, 7)}`;
+  const probes = [
+    "Please wire to priya.shah@halcyon-ventures.example today",
+    "The amount is 1250000 dollars",
+    "Priya Shah says hello",
+    "We will wire the money once the side letter is signed by Friday afternoon",
+    "Nothing private here at all, just a plain sentence about weather",
+    "Contact Dana Okafor about it",
+  ];
+  const build = (make: () => PrivateFragments) => {
+    const f = make();
+    f.addPrivate(mail);
+    f.addPrivateRelay("Contact Dana Okafor for the data room.");
+    f.addPublic("Priya Shah is on the public site and the weather today is plain.");
+    return f;
+  };
+
+  it("gives the same verdicts as the plain record", () => {
+    const plain = build(() => new PrivateFragments());
+    const hashed = build(() => new PrivateFragments(hash));
+    for (const text of probes) expect(hashed.matches(text)).toEqual(plain.matches(text));
+    expect(plain.matches("Contact Dana Okafor about it")).toContain("name");
+    // Priya Shah is public, so the name alone is not flagged.
+    expect(plain.matches("Priya Shah says hello")).not.toContain("name");
+  });
+
+  it("restores the same verdicts from stored deltas", () => {
+    const first = new PrivateFragments(hash);
+    first.addPrivate(mail);
+    const a = first.takeDelta()!;
+    first.addPrivateRelay("Contact Dana Okafor for the data room.");
+    first.addPublic("Priya Shah is on the public site and the weather today is plain.");
+    const b = first.takeDelta()!;
+    expect(first.takeDelta()).toBeUndefined();
+    const next = new PrivateFragments(hash);
+    next.restore([a, b]);
+    for (const text of probes) expect(next.matches(text)).toEqual(first.matches(text));
+    expect(next.takeDelta()).toBeUndefined();
+    expect(next.size).toBe(first.size);
+  });
+
+  it("keeps no readable private text in the entries", () => {
+    const f = new PrivateFragments(hash);
+    f.addPrivate(mail);
+    expect(JSON.stringify(f.takeDelta()!.entries)).not.toContain("1250000");
+  });
+});
+
+describe("long names", () => {
+  it("still holds a 33-word name whose passages are all in the public text", () => {
+    const name = Array.from({ length: 33 }, (_, i) => `Word${i.toString(36)}`).join(" ");
+    const f = new PrivateFragments();
+    f.addPrivate(JSON.stringify({ name }));
+    // Every 8-word passage of the name is public, but never the name itself in one run.
+    const list = name.split(" ");
+    f.addPublic(
+      Array.from({ length: 26 }, (_, i) => `${list.slice(i, i + 8).join(" ")} filler${i}`).join(
+        " ",
+      ),
+    );
+    expect(f.matches(`Please note ${name} today`)).toContain("name");
   });
 });

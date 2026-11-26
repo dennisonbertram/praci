@@ -10,13 +10,14 @@ import ArchivedBots from "../app/(settings)/archived-bots";
 import { ComputerMaintenanceActions } from "../components/computer-maintenance-actions";
 import type { MobileBot } from "./api";
 
-const { rpc, alert, push, closeSettingsSheet, navigation, focus } = vi.hoisted(() => ({
+const { rpc, alert, push, closeSettingsSheet, navigation, focus, listState } = vi.hoisted(() => ({
   rpc: vi.fn(),
   closeSettingsSheet: vi.fn(),
   alert: vi.fn(),
   push: vi.fn(),
   navigation: { setOptions: vi.fn() },
   focus: { current: undefined as (() => (() => void) | undefined) | undefined },
+  listState: { pending: false, onDelete: undefined as ((bot: MobileBot) => void) | undefined },
 }));
 const bot = { id: "bot-fixture", name: "Fixture" } as MobileBot;
 vi.mock("./api", () => ({ rpc }));
@@ -56,28 +57,34 @@ vi.mock("./i18n", () => {
 vi.mock("../components/archived-bot-list", () => ({
   ArchivedBotList: ({
     bots,
+    pending,
     onOpen,
     onRestore,
     onDelete,
   }: {
     bots: MobileBot[];
+    pending: boolean;
     onOpen: (bot: MobileBot) => void;
     onRestore: (bot: MobileBot) => void;
     onDelete: (bot: MobileBot) => void;
   }) =>
-    createElement(
-      "div",
-      null,
-      ...bots.map((item) =>
-        createElement(
-          "div",
-          { key: item.id },
-          createElement("button", { type: "button", onClick: () => onOpen(item) }, item.name),
-          createElement("button", { type: "button", onClick: () => onRestore(item) }, "Restore"),
-          createElement("button", { type: "button", onClick: () => onDelete(item) }, "Delete"),
+    (() => {
+      listState.pending = pending;
+      listState.onDelete = onDelete;
+      return createElement(
+        "div",
+        { "data-pending": String(pending) },
+        ...bots.map((item) =>
+          createElement(
+            "div",
+            { key: item.id },
+            createElement("button", { type: "button", onClick: () => onOpen(item) }, item.name),
+            createElement("button", { type: "button", onClick: () => onRestore(item) }, "Restore"),
+            createElement("button", { type: "button", onClick: () => onDelete(item) }, "Delete"),
+          ),
         ),
-      ),
-    ),
+      );
+    })(),
 }));
 
 describe("archived chat read failures", () => {
@@ -122,6 +129,38 @@ describe("archived chat read failures", () => {
       ]);
     },
   );
+
+  it("locks an archived row while deletion is in flight", async () => {
+    let finishDelete!: (value: unknown) => void;
+    rpc.mockImplementation((procedure) => {
+      if (procedure === "bots/listArchived") return Promise.resolve([bot]);
+      if (procedure === "bots/remove")
+        return new Promise((resolve) => {
+          finishDelete = resolve;
+        });
+      return Promise.resolve({});
+    });
+
+    await act(async () => listState.onDelete!(bot));
+    const keepMemories = alert.mock.calls[0]![2][1].onPress;
+    await act(async () => keepMemories());
+
+    expect(container.querySelector("[data-pending='true']")).not.toBeNull();
+    expect(listState.pending).toBe(true);
+    expect(rpc.mock.calls.filter(([procedure]) => procedure === "bots/remove")).toHaveLength(1);
+
+    await act(async () => listState.onDelete!(bot));
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls.filter(([procedure]) => procedure === "bots/remove")).toHaveLength(1);
+
+    await act(async () => finishDelete({ ok: true }));
+    expect(container.textContent).toBe("No archived bots");
+    await act(async () => {
+      focus.current!()?.();
+      focus.current!();
+    });
+    expect(listState.pending).toBe(false);
+  });
 
   it.each(["left", "left and came back"])(
     "does not close settings or open the chat when its read finishes after the page was %s",

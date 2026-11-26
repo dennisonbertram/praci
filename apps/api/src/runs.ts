@@ -1,14 +1,18 @@
 import type { Actor, RunActivityRow } from "@rakazo/contracts";
-import { MessageBlock } from "@rakazo/contracts";
+import { APPROVAL_TITLE_SUFFIX, MessageBlock } from "@rakazo/contracts";
 import {
   ACTIVE_RUN_STATUSES,
   BACKGROUND_RUN_TRIGGERS,
   botMessageContext,
   plainTextFromMarkdown,
+  runFailureError,
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
+import { Prisma } from "@rakazo/db";
 
 const RECENT_LIMIT = 20;
+const QUIET_LIMIT = 5;
+const RECENT_SCAN_LIMIT = 200;
 const TERMINAL_STATUSES = ["completed", "failed", "cancelled"] as const;
 
 function promptSnippet(prompt: string, max = 120): string {
@@ -77,19 +81,74 @@ export async function listSpaceRuns(
   actor: Actor,
   filter: "active" | "recent",
 ): Promise<RunActivityRow[]> {
-  const rows = await prisma.run.findMany({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      bot: { archivedAt: null },
-      // Background ticket work belongs on the board, not in the activity list.
-      trigger: { notIn: [...BACKGROUND_RUN_TRIGGERS] },
-      ...(filter === "active"
-        ? { status: { in: [...ACTIVE_RUN_STATUSES] } }
-        : { status: { in: [...TERMINAL_STATUSES] } }),
-    },
+  const where = {
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    bot: { archivedAt: null },
+    // Archiving a group cancels its runs but keeps them; an archived group cannot be opened.
+    thread: { OR: [{ groupId: null }, { group: { archivedAt: null } }] },
+    // Background ticket work belongs on the board, not in the activity list.
+    trigger: { notIn: [...BACKGROUND_RUN_TRIGGERS] },
+    ...(filter === "active"
+      ? { status: { in: [...ACTIVE_RUN_STATUSES] } }
+      : { status: { in: [...TERMINAL_STATUSES] } }),
+  };
+  const orderBy =
+    filter === "active"
+      ? [{ updatedAt: "desc" as const }, { id: "desc" as const }]
+      : [
+          { completedAt: { sort: "desc" as const, nulls: "last" as const } },
+          { updatedAt: "desc" as const },
+          { id: "desc" as const },
+        ];
+
+  // A routine run that completed without posting a message ended silently.
+  const findSpoke = async (runIds: string[]) =>
+    new Set(
+      runIds.length
+        ? (
+            await prisma.message.findMany({
+              where: {
+                runId: { in: runIds },
+                role: "bot",
+                thread: { spaceId: actor.spaceId, userId: actor.userId },
+              },
+              select: { runId: true },
+            })
+          ).map((message) => message.runId)
+        : [],
+    );
+  const isQuietCandidate = (row: { trigger: string; status: string }) =>
+    row.trigger === "routine" && row.status === "completed";
+
+  // Finished runs: quiet routine runs get their own small cap so they cannot crowd out real results.
+  // ponytail: 200-row scan; if the newest 200 finished runs are all quiet, Finished shows fewer than 20. Add server paging when that happens.
+  let ids: string[] | undefined;
+  const silentIds = new Set<string>();
+  if (filter === "recent") {
+    const scan = await prisma.run.findMany({
+      where,
+      orderBy,
+      take: RECENT_SCAN_LIMIT,
+      select: { id: true, trigger: true, status: true },
+    });
+    const spoke = await findSpoke(scan.filter(isQuietCandidate).map((row) => row.id));
+    ids = [];
+    let loud = 0;
+    for (const row of scan) {
+      const silent = isQuietCandidate(row) && !spoke.has(row.id);
+      if (silent ? silentIds.size < QUIET_LIMIT : loud < RECENT_LIMIT) {
+        ids.push(row.id);
+        if (silent) silentIds.add(row.id);
+        else loud += 1;
+      }
+    }
+  }
+  const found = await prisma.run.findMany({
+    where: ids ? { ...where, id: { in: ids } } : where,
     include: {
-      bot: { select: { name: true, archivedAt: true, notifyOnFinish: true } },
+      bot: { select: { name: true, notifyOnFinish: true } },
+      routine: { select: { name: true } },
       task: { select: { prompt: true } },
       sourceMessage: { select: { blocks: true } },
       thread: {
@@ -99,24 +158,41 @@ export async function listSpaceRuns(
         },
       },
     },
-    orderBy:
-      filter === "active"
-        ? [{ updatedAt: "desc" }, { id: "desc" }]
-        : [{ completedAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-    take: filter === "recent" ? RECENT_LIMIT : undefined,
+    orderBy,
   });
+  // A row can vanish between the two queries (deleted or archived meanwhile); skip it.
+  const rows = ids ? ids.flatMap((id) => found.filter((row) => row.id === id)) : found;
+
+  const replies = rows.length
+    ? await prisma.$queryRaw<Array<{ id: string; runId: string }>>(Prisma.sql`
+        SELECT DISTINCT ON (m."runId") m.id, m."runId"
+        FROM messages m
+        INNER JOIN runs r ON r.id = m."runId" AND r."threadId" = m."threadId"
+        INNER JOIN threads t ON t.id = m."threadId"
+        WHERE r.id IN (${Prisma.join(rows.map((row) => row.id))})
+          AND r."spaceId" = ${actor.spaceId} AND r."userId" = ${actor.userId}
+          AND t."spaceId" = ${actor.spaceId} AND t."userId" = ${actor.userId}
+          AND m.role = 'bot'
+        ORDER BY m."runId", m."createdAt" DESC, m.id DESC
+      `)
+    : [];
+  const replyByRun = new Map(replies.map((message) => [message.runId, message.id]));
 
   // A held run previews its own question or approval instead of the prompt that started it.
   const heldRunIds = rows.filter((row) => row.status === "waiting_input").map((row) => row.id);
   const askMessages = heldRunIds.length
     ? await prisma.message.findMany({
-        where: { runId: { in: heldRunIds }, thread: { spaceId: actor.spaceId } },
+        where: {
+          runId: { in: heldRunIds },
+          thread: { spaceId: actor.spaceId, userId: actor.userId },
+        },
         orderBy: { seq: "asc" },
         select: { runId: true, blocks: true },
       })
     : [];
 
   return rows.map((row) => ({
+    silent: silentIds.has(row.id) ? true : undefined,
     needsApproval:
       row.status === "waiting_input" &&
       pendingAskIsApproval(askMessages.filter((message) => message.runId === row.id)),
@@ -127,10 +203,18 @@ export async function listSpaceRuns(
     groupName: row.thread.group?.name ?? null,
     threadId: row.threadId,
     status: row.status as RunActivityRow["status"],
+    error:
+      row.status === "failed"
+        ? runFailureError({ type: `run.${row.status}`, payload: { error: row.error } })
+        : null,
+    messageId: replyByRun.get(row.id) ?? null,
     trigger: row.trigger as RunActivityRow["trigger"],
     notificationsEnabled: activityNotificationsEnabled(row.thread.groupId, row.bot.notifyOnFinish),
     promptSnippet:
       pendingAskSnippet(askMessages.filter((message) => message.runId === row.id)) ??
+      (row.trigger === "routine" && row.routine?.name.trim()
+        ? promptSnippet(row.routine.name)
+        : undefined) ??
       activityPromptSnippet({
         trigger: row.trigger,
         prompt: row.task.prompt,
@@ -144,7 +228,7 @@ export async function listSpaceRuns(
 }
 
 /**
- * The "needs approval" notifications (seen or not: viewing a card is not answering it) whose card is still waiting for an answer: the run is
+ * The "needs approval" notifications (seen or not: viewing a card is not answering it) whose card is still waiting for an answer, one per card: the run is
  * held for input, its agent exists and is not archived, and a card on it is unanswered. Reading the
  * runs rather than the notification history keeps an old approval, or one for a deleted agent,
  * from being restored or dropped by how long ago it was sent.
@@ -161,15 +245,20 @@ export async function listPendingApprovalNotifications(prisma: PrismaClient, act
   });
   if (runs.length === 0) return [];
   const messages = await prisma.message.findMany({
-    where: { runId: { in: runs.map((run) => run.id) }, thread: { spaceId: actor.spaceId } },
+    where: {
+      runId: { in: runs.map((run) => run.id) },
+      thread: { spaceId: actor.spaceId, userId: actor.userId },
+    },
     orderBy: { seq: "asc" },
     select: { runId: true, blocks: true },
   });
+  // A held run waits on one card, and it must be an approval: an older approval notification does
+  // not count while the run now waits on a plain question.
   const runIds = runs
-    .filter((run) => pendingAskSnippet(messages.filter((m) => m.runId === run.id)) !== undefined)
+    .filter((run) => pendingAskIsApproval(messages.filter((m) => m.runId === run.id)))
     .map((run) => run.id);
   if (runIds.length === 0) return [];
-  return prisma.notification.findMany({
+  const notifications = await prisma.notification.findMany({
     where: {
       spaceId: actor.spaceId,
       userId: actor.userId,
@@ -177,9 +266,18 @@ export async function listPendingApprovalNotifications(prisma: PrismaClient, act
       runId: { in: runIds },
       importance: "attention",
       kind: "needs_input",
-      title: { endsWith: " needs approval" },
+      title: { endsWith: APPROVAL_TITLE_SUFFIX },
       dismissedAt: null,
     },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
+  // Every approval the run asked leaves a notification; answering a card only marks it seen. Only
+  // the newest one belongs to the card still waiting, so keep one per run (oldest run first).
+  const newestPerRun = new Map<string, (typeof notifications)[number]>();
+  for (const notification of notifications) {
+    if (notification.runId && !newestPerRun.has(notification.runId)) {
+      newestPerRun.set(notification.runId, notification);
+    }
+  }
+  return [...newestPerRun.values()].reverse();
 }

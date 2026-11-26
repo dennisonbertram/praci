@@ -33,6 +33,10 @@ it("puts a space between a size and its unit, and spells out bytes", () => {
   ]);
 });
 
+it("shows GB once a size passes a billion bytes, decimal like iOS", () => {
+  expect([1_280_000_000, 999_000_000].map(sizeText)).toEqual(["1.3 GB", "999 MB"]);
+});
+
 it("names the classifier's short types clearly and capitalises the rest, for display only", () => {
   expect(
     [typeLabel("investor"), typeLabel("hr"), typeLabel("contract"), typeLabel("Board deck")].concat(

@@ -8,6 +8,8 @@ import { shortDay } from "../../lib/finance-format";
 import type { PortalContent } from "../../lib/portal";
 import { loadPortal, PortalDeadError, portalDocumentUrl, signOutPortal } from "../../lib/portal";
 import { PortalDead } from "./PortalDead";
+import { PortalHoldings } from "./PortalHoldings";
+import { PortalProfile } from "./PortalProfile";
 
 const day = (iso: string | null) =>
   iso ? shortDay(iso.slice(0, 10), new Date(), document.documentElement.lang || undefined) : "";
@@ -75,6 +77,7 @@ export function PortalHome({
   const [content, setContent] = useState<PortalContent | null>(initial ?? null);
   const [dead, setDead] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const load = useCallback(() => {
     setFailed(false);
@@ -109,7 +112,8 @@ export function PortalHome({
     );
 
   const [newest, ...earlier] = content.updates;
-  const nothing = !newest && content.documents.length === 0;
+  const holds = content.holdings != null && content.holdings.level !== "none";
+  const nothing = !newest && content.documents.length === 0 && !holds;
 
   return (
     <div className="min-h-svh bg-background text-foreground">
@@ -137,6 +141,8 @@ export function PortalHome({
             </ul>
           </section>
         ) : null}
+        {holds && content.holdings ? <PortalHoldings view={content.holdings} /> : null}
+        {holds ? <PortalProfile /> : null}
         {content.documents.length > 0 ? (
           <section aria-label={t`Documents`}>
             <h2 className="mb-1 text-sm font-semibold">
@@ -149,14 +155,24 @@ export function PortalHome({
             </ul>
           </section>
         ) : null}
-        <footer className="border-t border-border pt-4">
+        <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-4">
           <Button
             variant="ghost"
             className="min-h-11 md:min-h-8"
-            onClick={() => void signOutPortal().then(() => onSignedOut?.())}
+            onClick={() => {
+              setSignOutFailed(false);
+              void signOutPortal()
+                .then(() => onSignedOut?.())
+                .catch(() => setSignOutFailed(true));
+            }}
           >
             <Trans>Sign out</Trans>
           </Button>
+          {signOutFailed ? (
+            <p role="alert" className="text-sm text-destructive">
+              {t`Could not sign out. Try again.`}
+            </p>
+          ) : null}
         </footer>
       </main>
     </div>

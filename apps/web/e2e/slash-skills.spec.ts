@@ -27,7 +27,7 @@ test("composer / picker lists skills above actions", async ({ page }, testInfo) 
   await expect(skillButton).toBeVisible();
   await expect(chatSettings).toBeVisible();
   await expect(picker.getByRole("option", { name: "Open Settings" })).toBeVisible();
-  await expect(picker.getByRole("option", { name: "See usage" })).toBeVisible();
+  await expect(picker.getByRole("option", { name: "See usage" })).toHaveCount(0);
 
   const skillBox = await skillButton.boundingBox();
   const actionBox = await chatSettings.boundingBox();

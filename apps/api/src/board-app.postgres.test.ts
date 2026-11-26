@@ -50,9 +50,9 @@ describePostgres("ticket board app wiring", () => {
       expect(await bootstrap.json()).toMatchObject({
         json: { me: { ticketBoardEnabled: enabled } },
       });
-      const boards = await call("boards/list");
+      const boards = await call("tickets/list");
       expect(boards.status).toBe(enabled ? 200 : 404);
-      if (enabled) expect(await boards.json()).toMatchObject({ json: expect.any(Array) });
+      if (enabled) expect(await boards.json()).toMatchObject({ json: { tickets: [] } });
       else expect(await boards.json()).toMatchObject({ json: { code: "NOT_FOUND" } });
     } finally {
       await handles.stop();

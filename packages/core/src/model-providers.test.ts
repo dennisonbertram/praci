@@ -5,6 +5,7 @@ import {
   connectedModelChoices,
   featuredModelProviders,
   filterModelCatalog,
+  modelKeyForConnection,
   pickCatalogModelId,
   resolveSelectableModelId,
   selectedProviderOutsideSearchResults,
@@ -276,5 +277,35 @@ describe("filterModelCatalog", () => {
 
   it("returns nothing when no model matches", () => {
     expect(filterModelCatalog(models, "gemini")).toEqual([]);
+  });
+});
+
+describe("modelKeyForConnection", () => {
+  const catalog = [
+    { provider: "a", id: "a-first", label: "A First" },
+    { provider: "a", id: "a-second", label: "A Second" },
+    { provider: "b", id: "b-x", label: "B X" },
+    { provider: "deepseek", id: "deepseek-flash", label: "DeepSeek V4.1 Flash" },
+    { provider: "deepseek", id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+  ];
+
+  it("keeps the current model when the connection offers it", () => {
+    const credential = { provider: "a", label: "A", modelId: "a-second" };
+    expect(modelKeyForConnection(credential, catalog, "a::a-first")).toBe("a::a-first");
+  });
+
+  it("prefers the connection's own model over the first catalog row", () => {
+    const credential = { provider: "a", label: "A", modelId: "a-second" };
+    expect(modelKeyForConnection(credential, catalog, "b::b-x")).toBe("a::a-second");
+  });
+
+  it("resolves a label-form model id to its API id", () => {
+    const credential = { provider: "deepseek", label: "D", modelId: "DeepSeek V4 Pro" };
+    expect(modelKeyForConnection(credential, catalog, "b::b-x")).toBe("deepseek::deepseek-v4-pro");
+  });
+
+  it("falls back to the first choice when the connection has no model", () => {
+    const credential = { provider: "a", label: "A", modelId: null };
+    expect(modelKeyForConnection(credential, catalog, "b::b-x")).toBe("a::a-first");
   });
 });

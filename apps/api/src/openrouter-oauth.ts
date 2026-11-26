@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
+import { runAsSystem } from "@rakazo/db";
 
 export const OPENROUTER_OAUTH_PROVIDER = "openrouter";
 export const OPENROUTER_CALLBACK_PATH = "/models/openrouter/callback";
@@ -39,9 +40,12 @@ export async function beginOpenRouterOAuth(options: {
   const { prisma, secrets, scope } = options;
   const expected = new URL(OPENROUTER_CALLBACK_PATH, options.webOrigin).toString();
   if (new URL(options.redirectUri).toString() !== expected) throw new OpenRouterOAuthError();
-  await prisma.modelOAuthState.deleteMany({
-    where: { createdAt: { lt: new Date(Date.now() - STATE_TTL_MS) } },
-  });
+  // Row-level security would limit this to the caller's Space, stranding abandoned sign-ins elsewhere.
+  await runAsSystem("expire abandoned OpenRouter sign-ins in every Space", () =>
+    prisma.modelOAuthState.deleteMany({
+      where: { createdAt: { lt: new Date(Date.now() - STATE_TTL_MS) } },
+    }),
+  );
   const pending = await prisma.modelOAuthState.count({
     where: { ...scope, provider: OPENROUTER_OAUTH_PROVIDER },
   });

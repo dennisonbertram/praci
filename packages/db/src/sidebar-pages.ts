@@ -13,7 +13,7 @@ export class SidebarPageError extends Error {
 }
 
 type Scope = { spaceId: string; userId: string };
-type Db = Pick<PrismaClient, "sidebarPage" | "spaceMember">;
+type Db = Pick<PrismaClient, "sidebarPage" | "spaceMember" | "botPage">;
 
 const isSpaceOwner = async (prisma: Db, { spaceId, userId }: Scope) =>
   (
@@ -33,7 +33,10 @@ function addBlocker(template: SidebarPageTemplate | undefined, isOwner: boolean)
   return null;
 }
 
-/** The user's added pages (oldest first) and the template keys they may still add. */
+/** Bot pages the user may open: their own non-archived bots in this space (the rule `repos.getBot` applies). */
+const ownPage = ({ spaceId, userId }: Scope) => ({ spaceId, bot: { userId, archivedAt: null } });
+
+/** The user's added pages (oldest first), the template keys they may still add, and their other bot pages by bot. */
 export async function listSidebarPages(
   prisma: Db,
   actor: Scope,
@@ -43,16 +46,49 @@ export async function listSidebarPages(
   const rows = await prisma.sidebarPage.findMany({
     where: { spaceId, userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    include: {
+      page: {
+        select: { title: true, botId: true, bot: { select: { userId: true, archivedAt: true } } },
+      },
+    },
   });
   const owner = templates.some((t) => t.ownerOnly) && (await isSpaceOwner(prisma, actor));
-  // A saved owner-only page stays hidden while the user is not the space owner.
-  const pages = rows
-    .filter((row) => owner || !templates.find((t) => t.key === row.templateKey)?.ownerOnly)
-    .map((row) => ({ templateKey: row.templateKey }));
+  const pages: SidebarPagesState["pages"] = [];
+  for (const row of rows) {
+    if (row.pageId) {
+      // A page whose bot the user can no longer open (archived) is left out.
+      const page = row.page;
+      if (page && !page.bot.archivedAt && page.bot.userId === userId) {
+        pages.push({ pageId: row.pageId, botId: page.botId, title: page.title });
+      }
+    } else if (
+      // A saved owner-only page stays hidden while the user is not the space owner.
+      row.templateKey &&
+      (owner || !templates.find((t) => t.key === row.templateKey)?.ownerOnly)
+    ) {
+      pages.push({ templateKey: row.templateKey });
+    }
+  }
   const addable = templates
-    .filter((t) => !addBlocker(t, owner) && !pages.some((p) => p.templateKey === t.key))
+    .filter((t) => !addBlocker(t, owner) && !rows.some((row) => row.templateKey === t.key))
     .map((t) => t.key);
-  return { pages, addable };
+  const open = await prisma.botPage.findMany({
+    where: { ...ownPage(actor), sidebarPages: { none: { spaceId, userId } } },
+    orderBy: [
+      { bot: { pinned: "desc" } },
+      { bot: { position: "asc" } },
+      { bot: { createdAt: "asc" } },
+      { createdAt: "asc" },
+    ],
+    select: { id: true, title: true, botId: true },
+  });
+  const botPages: SidebarPagesState["botPages"] = [];
+  for (const { id, title, botId } of open) {
+    const group = botPages.find((entry) => entry.botId === botId);
+    if (group) group.pages.push({ id, title });
+    else botPages.push({ botId, pages: [{ id, title }] });
+  }
+  return { pages, addable, botPages };
 }
 
 /** Adds a page; adding one the user already has is a no-op. Returns the new state. */
@@ -90,5 +126,42 @@ export async function removeSidebarPage(
 ): Promise<SidebarPagesState> {
   const { spaceId, userId } = actor;
   await prisma.sidebarPage.deleteMany({ where: { spaceId, userId, templateKey } });
+  return listSidebarPages(prisma, actor, templates);
+}
+
+/** Adds one of the user's bot pages; one they cannot open, or that is not theirs, is "unknown". */
+export async function addSidebarBotPage(
+  prisma: Db,
+  actor: Scope,
+  pageId: string,
+  templates: readonly SidebarPageTemplate[] = SIDEBAR_PAGE_TEMPLATES,
+): Promise<SidebarPagesState> {
+  const { spaceId, userId } = actor;
+  const page = await prisma.botPage.findFirst({
+    where: { id: pageId, ...ownPage(actor) },
+    select: { id: true },
+  });
+  if (!page) throw new SidebarPageError("unknown", "Unknown page");
+  const last = await prisma.sidebarPage.aggregate({
+    where: { spaceId, userId },
+    _max: { position: true },
+  });
+  await prisma.sidebarPage.upsert({
+    where: { spaceId_userId_pageId: { spaceId, userId, pageId } },
+    create: { spaceId, userId, pageId, position: (last._max.position ?? -1) + 1 },
+    update: {},
+  });
+  return listSidebarPages(prisma, actor, templates);
+}
+
+/** Removes a bot page from the sidebar; one the user does not have there is a no-op. */
+export async function removeSidebarBotPage(
+  prisma: Db,
+  actor: Scope,
+  pageId: string,
+  templates: readonly SidebarPageTemplate[] = SIDEBAR_PAGE_TEMPLATES,
+): Promise<SidebarPagesState> {
+  const { spaceId, userId } = actor;
+  await prisma.sidebarPage.deleteMany({ where: { spaceId, userId, pageId } });
   return listSidebarPages(prisma, actor, templates);
 }

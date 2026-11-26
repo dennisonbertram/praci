@@ -6,6 +6,7 @@ import {
   isBackgroundInputBlock,
   isBackgroundRunTrigger,
   isPeerReceiptBlocks,
+  mcpConnectionIdFromNonce,
 } from "@rakazo/core";
 import { messageReplyPreview } from "@rakazo/core/message-quote";
 import type { Prisma, PrismaClient } from "@rakazo/db";
@@ -126,9 +127,25 @@ async function withRoutineNames<T extends Parameters<typeof toThreadMessage>[0]>
       })
     : [];
   const names = new Map(runs.flatMap((run) => (run.routine ? [[run.id, run.routine.name]] : [])));
+  // Messages an outside MCP client sent carry its connection's label.
+  const connectionIds = [
+    ...new Set(rows.flatMap((row) => mcpConnectionIdFromNonce(row.clientNonce) ?? [])),
+  ];
+  const labels = new Map(
+    connectionIds.length
+      ? (
+          await prisma.mcpConnection.findMany({
+            where: { id: { in: connectionIds } },
+            select: { id: true, label: true },
+          })
+        ).map((connection) => [connection.id, connection.label])
+      : [],
+  );
   return rows.map((row) => {
     const routineName = row.runId ? names.get(row.runId) : undefined;
-    const message = toThreadMessage(row);
+    const connectionId = mcpConnectionIdFromNonce(row.clientNonce);
+    const via = connectionId ? labels.get(connectionId) : undefined;
+    const message = { ...toThreadMessage(row), ...(via ? { via } : {}) };
     return routineName && message.role === "bot" ? { ...message, routineName } : message;
   });
 }

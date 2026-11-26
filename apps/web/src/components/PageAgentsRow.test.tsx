@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { DropdownMenuItem } from "@rakazo/ui-web";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
@@ -20,6 +21,8 @@ it("shows a dot only when a page agent needs the person, and toggles", () => {
   act(() => root.render(<PageAgentsRow open count={3} needsYou={false} onToggle={onToggle} />));
   expect(container.querySelector('[data-testid="page-agents-dot"]')).toBeNull();
   expect(container.querySelector("button")?.getAttribute("aria-expanded")).toBe("true");
+  // Open, the header sticks to the top of the list so the fold can always be closed.
+  expect(container.querySelector("button")?.parentElement?.classList.contains("sticky")).toBe(true);
   const label = (heldFor?: "answer" | "takeover") => {
     act(() =>
       root.render(<PageAgentsRow open count={3} needsYou heldFor={heldFor} onToggle={onToggle} />),
@@ -48,5 +51,38 @@ it("scrolls to its own header only when the person opens it, not when a shared o
   );
   act(() => container.querySelector("button")?.click());
   expect(scroll).toHaveBeenCalledOnce();
+  container.remove();
+});
+
+it("keeps its menu beside the toggle, not inside it, and runs the chosen action", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const onToggle = vi.fn();
+  const onMarkRead = vi.fn();
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <PageAgentsRow
+        open={false}
+        count={3}
+        needsYou={false}
+        onToggle={onToggle}
+        actions={<DropdownMenuItem onClick={onMarkRead}>Mark all read</DropdownMenuItem>}
+      />,
+    ),
+  );
+  const toggle = container.querySelector<HTMLButtonElement>("[data-roster-fold]");
+  const trigger = container.querySelector<HTMLButtonElement>('[aria-label^="Actions for"]');
+  expect(trigger).not.toBeNull();
+  expect(toggle?.contains(trigger)).toBe(false);
+  await act(async () => trigger?.click());
+  const item = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+    (entry) => entry.textContent === "Mark all read",
+  );
+  await act(async () => item?.click());
+  expect(onMarkRead).toHaveBeenCalledOnce();
+  expect(onToggle).not.toHaveBeenCalled();
+  await act(async () => root.render(<PageAgentsRow open count={3} needsYou onToggle={onToggle} />));
+  expect(container.querySelector('[aria-label^="Actions for"]')).toBeNull();
   container.remove();
 });

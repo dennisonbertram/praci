@@ -7,33 +7,33 @@ import {
   pageAgentColor,
 } from "@rakazo/contracts";
 import type { createRepos } from "@rakazo/db";
+import type { BuiltInAgent } from "./page-agent-ensure.js";
+import { ensurePageAgent } from "./page-agent-ensure.js";
 
-export async function ensureCompanyAgent(
-  deps: { repos: Pick<ReturnType<typeof createRepos>, "createBot"> },
-  actor: Actor,
-): Promise<Bot> {
-  return deps.repos.createBot(actor, {
-    spawnKey: companyAgentSpawnKey(actor.userId),
-    name: "Company agent",
-    title: "",
-    description: "Reconstructs your company history with provenance.",
-    instructions: COMPANY_AGENT_INSTRUCTIONS,
-    notifyOnFinish: true,
-    color: pageAgentColor("company"),
-  });
-}
+type Deps = {
+  repos: Pick<ReturnType<typeof createRepos>, "createBot" | "replaceBotInstructions">;
+};
 
-export async function ensureCompanyImporter(
-  deps: { repos: Pick<ReturnType<typeof createRepos>, "createBot"> },
-  actor: Actor,
-): Promise<Bot> {
-  return deps.repos.createBot(actor, {
-    spawnKey: companyImporterSpawnKey(actor.userId),
-    name: "Company importer",
-    title: "",
-    description: "Coordinates your read-only Company import.",
-    instructions: COMPANY_IMPORTER_INSTRUCTIONS,
-    notifyOnFinish: true,
-    color: pageAgentColor("company"),
-  });
-}
+export const COMPANY_AGENT: BuiltInAgent = {
+  kind: "company",
+  spawnKey: companyAgentSpawnKey,
+  name: "Company agent",
+  description: "Reconstructs your company history with provenance.",
+  instructions: COMPANY_AGENT_INSTRUCTIONS,
+  color: pageAgentColor("company"),
+};
+
+export const COMPANY_IMPORTER: BuiltInAgent = {
+  kind: "company-importer",
+  spawnKey: companyImporterSpawnKey,
+  name: "Company importer",
+  description: "Coordinates your read-only Company import.",
+  instructions: COMPANY_IMPORTER_INSTRUCTIONS,
+  color: pageAgentColor("company"),
+};
+
+export const ensureCompanyAgent = (deps: Deps, actor: Actor): Promise<Bot> =>
+  ensurePageAgent(deps, actor, COMPANY_AGENT);
+
+export const ensureCompanyImporter = (deps: Deps, actor: Actor): Promise<Bot> =>
+  ensurePageAgent(deps, actor, COMPANY_IMPORTER);

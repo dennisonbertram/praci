@@ -29,6 +29,7 @@ vi.mock("../../lib/rpc", () => ({
   },
 }));
 
+import { UNDO_SEND_MS, undoSend } from "../../lib/outbox";
 import { item } from "../../pages/gtm/fixtures";
 import { EmailItemCard } from "./EmailItemCard";
 
@@ -47,6 +48,7 @@ const accounts = [
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
+  vi.useFakeTimers();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   host = document.createElement("div");
   document.body.append(host);
@@ -61,6 +63,9 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  // The undo-send hold lives in module state; drop a still-held send so it cannot fire in the next test.
+  undoSend();
+  vi.useRealTimers();
   vi.resetAllMocks();
 });
 const render = (value = email) =>
@@ -73,6 +78,8 @@ const render = (value = email) =>
   );
 const button = (name: string) =>
   [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === name)!;
+// A send waits out the undo window before it runs.
+const undoWindow = () => act(async () => void (await vi.advanceTimersByTimeAsync(UNDO_SEND_MS)));
 const type = (input: HTMLInputElement | HTMLTextAreaElement, value: string) =>
   act(async () => {
     const prototype =
@@ -89,8 +96,8 @@ it.each(["sent", "unknown", "saved", "failed", "reconnect", "disabled"] as const
     mocks.send.mockResolvedValue({ status });
     await render();
     await act(async () => {
-      button("Approve").click();
-      button("Approve").click();
+      button("Send").click();
+      button("Send").click();
     });
     expect(mocks.send).toHaveBeenCalledTimes(1);
     expect(mocks.send).toHaveBeenCalledWith({
@@ -126,11 +133,18 @@ it.each(["sent", "unknown", "saved", "failed", "reconnect", "disabled"] as const
   },
 );
 
+it("labels a clean parked email Send, not Approve", async () => {
+  await render();
+  expect(button("Send")).toBeTruthy();
+  expect(button("Approve")).toBeUndefined();
+});
+
 it("disables approval until both checks pass, and saves edits separately from sending", async () => {
   await render({ ...email, notes: "Join our beta." });
-  expect(button("Approve").disabled).toBe(true);
+  expect(button("Send").disabled).toBe(true);
   await type(host.querySelector('[aria-label="Message"]')!, email.notes);
   await act(async () => button("Save").click());
+  await undoWindow();
   expect(mocks.update).toHaveBeenCalledWith({
     itemId: email.id,
     title: email.title,
@@ -160,7 +174,8 @@ it("saves a founder address in the body without sending", async () => {
 it("does not send when the approval version is stale", async () => {
   mocks.update.mockRejectedValue({ code: "CONFLICT" });
   await render();
-  await act(async () => button("Approve").click());
+  await act(async () => button("Send").click());
+  await undoWindow();
   expect(mocks.send).not.toHaveBeenCalled();
   expect(host.textContent).toContain("Changed, review again");
 });

@@ -3,9 +3,11 @@ import type { PrismaClient } from "./client.js";
 import {
   chooseModelCredential,
   defaultModelCredentialCandidates,
+  findBotModelCredential,
   findDefaultModelCredential,
   findModelCredential,
   newestModelCredentialOrder,
+  PinnedConnectionLostError,
   selectSpaceModelPreference,
 } from "./model-credentials.js";
 
@@ -372,6 +374,29 @@ describe("selectSpaceModelPreference", () => {
     );
   });
 
+  it("leaves every default alone when makeDefault is false", async () => {
+    const updateMany = vi.fn();
+    const upsert = vi.fn().mockResolvedValue({ id: "preference" });
+    const prisma = { spaceModelPreference: { updateMany, upsert } } as unknown as PrismaClient;
+
+    await selectSpaceModelPreference(
+      prisma,
+      { userId: "user", spaceId: "space" },
+      "credential",
+      "model",
+      null,
+      { makeDefault: false },
+    );
+
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ isDefault: false, modelId: "model" }),
+        update: { modelId: "model", thinkingLevel: null },
+      }),
+    );
+  });
+
   it.each([null, undefined, "null", "undefined", "  null  ", ""])(
     "does not persist %j as a model id",
     async (modelId) => {
@@ -394,4 +419,55 @@ describe("selectSpaceModelPreference", () => {
       );
     },
   );
+});
+
+describe("findBotModelCredential", () => {
+  const scope = { userId: "user", spaceId: "space" };
+  const row = (id: string) => ({
+    id,
+    userId: "user",
+    provider: "anthropic",
+    label: "Claude subscription",
+    secretId: `secret-${id}`,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  });
+  const build = (pinned: ReturnType<typeof row> | null) => {
+    const credentialFindFirst = vi.fn().mockResolvedValue(pinned);
+    const prisma = {
+      userModelCredential: {
+        findFirst: credentialFindFirst,
+        findMany: vi.fn().mockResolvedValue([row("default")]),
+      },
+      spaceModelPreference: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    } as unknown as PrismaClient;
+    return { prisma, credentialFindFirst };
+  };
+  const bot = { modelProvider: "anthropic", modelId: "m", modelCredentialId: "pinned" };
+
+  it("prefers the pinned connection over the space default", async () => {
+    const { prisma, credentialFindFirst } = build(row("pinned"));
+    const found = await findBotModelCredential(prisma, scope, bot);
+    expect(found?.id).toBe("pinned");
+    expect(credentialFindFirst).toHaveBeenCalledWith({
+      where: { id: "pinned", userId: "user", provider: "anthropic" },
+    });
+  });
+
+  it("fails instead of using another connection when the pin is deleted or foreign", async () => {
+    const { prisma } = build(null);
+    await expect(findBotModelCredential(prisma, scope, bot)).rejects.toBeInstanceOf(
+      PinnedConnectionLostError,
+    );
+  });
+
+  it("uses the provider lookup when nothing is pinned", async () => {
+    const { prisma, credentialFindFirst } = build(row("pinned"));
+    const found = await findBotModelCredential(prisma, scope, { ...bot, modelCredentialId: null });
+    expect(found?.id).toBe("default");
+    expect(credentialFindFirst).not.toHaveBeenCalled();
+  });
 });

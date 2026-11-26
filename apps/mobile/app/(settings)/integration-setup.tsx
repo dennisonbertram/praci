@@ -20,6 +20,7 @@ export default function IntegrationSetup() {
   const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // A sheet dismissed mid-request must not replace whatever screen is in front by then.
   const mounted = useRef(true);
@@ -29,22 +30,31 @@ export default function IntegrationSetup() {
       mounted.current = false;
     };
   }, []);
+  async function loadSetup() {
+    setLoading(true);
+    setError(null);
+    try {
+      const setup = await rpc<IntegrationSetupState>("integrationSetup/get");
+      if (!mounted.current) return;
+      if (!setup.canConfigure) {
+        router.replace("/integrations");
+        return;
+      }
+      setState(setup);
+    } catch {
+      if (mounted.current) setError(t("Could not load integrations"));
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
+  }
   useEffect(() => {
-    void rpc<IntegrationSetupState>("integrationSetup/get")
-      .then((setup) => {
-        if (!mounted.current) return;
-        if (!setup.canConfigure) {
-          router.replace("/integrations");
-          return;
-        }
-        setState(setup);
-      })
-      .catch(() => setError(t("Could not load integrations")));
+    void loadSetup();
   }, []);
   const choices = [
     { value: "direct", label: t("Direct MCP") },
     { value: "composio", label: "Composio" },
     { value: "pipedream", label: "Pipedream" },
+    { value: "google", label: "Google" },
     { value: "executor", label: "Executor" },
   ];
   const managed = choice === "composio" || choice === "pipedream";
@@ -87,13 +97,20 @@ export default function IntegrationSetup() {
   if (!state) {
     return (
       <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
-        {error ? (
+        {loading ? (
+          <ActivityIndicator />
+        ) : error ? (
           <Text accessibilityRole="alert" style={styles.text}>
             {error}
           </Text>
-        ) : (
-          <ActivityIndicator />
-        )}
+        ) : null}
+        {!loading && error ? (
+          <NativeActionButton
+            label={t("Try again")}
+            onPress={() => void loadSetup()}
+            prominence="secondary"
+          />
+        ) : null}
       </ScrollView>
     );
   }
@@ -166,6 +183,13 @@ export default function IntegrationSetup() {
             <Text style={styles.text}>{t("Ask the server owner to configure this provider.")}</Text>
           ) : null}
         </>
+      ) : choice === "google" ? (
+        <>
+          {configured ? <Text style={styles.text}>{t("Connected")}</Text> : null}
+          {button(t("Open web app"), () => {
+            void Linking.openURL(state.webUrl);
+          })}
+        </>
       ) : (
         <>
           <Text style={styles.text}>
@@ -200,8 +224,12 @@ export default function IntegrationSetup() {
         busy ||
           (managed &&
             state?.canConfigure &&
-            !configured &&
-            (!key.trim() || (choice === "pipedream" && (!clientId.trim() || !projectId.trim())))),
+            ((!configured &&
+              (!key.trim() ||
+                (choice === "pipedream" && (!clientId.trim() || !projectId.trim())))) ||
+              (choice === "pipedream" &&
+                Boolean(key.trim()) &&
+                (!clientId.trim() || !projectId.trim())))),
       )}
       {button(t("Skip"), closeSettingsSheet, busy)}
     </ScrollView>

@@ -11,7 +11,6 @@ import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { findSpaceMemoryConfig, Prisma } from "@rakazo/db";
 import { withSerializableRetry } from "./serializable-retry.js";
-import { requireSpaceOwner } from "./space-owner.js";
 
 export interface MemoryProviderConfigDeps {
   prisma: PrismaClient;
@@ -37,7 +36,9 @@ export async function persistMemoryProviderConfig(
     defaultMemoryScope: "isolated" | "shared";
   },
 ) {
-  await requireSpaceOwner(deps.prisma, actor);
+  if (await findSpaceMemoryConfig(deps.prisma, actor.spaceId)) {
+    throw new ORPCError("CONFLICT", { message: "A memory provider is already connected." });
+  }
   let prepared: Awaited<ReturnType<typeof prepareMemoryProviderConnection>>;
   try {
     // Fast-path known private endpoints before probing.
@@ -89,6 +90,9 @@ export async function persistMemoryProviderConfig(
     deps.prisma.$transaction(
       async (tx) => {
         const existing = await findSpaceMemoryConfig(tx, actor.spaceId);
+        if (existing) {
+          throw new ORPCError("CONFLICT", { message: "A memory provider is already connected." });
+        }
         const secret = await tx.secret.create({
           data: {
             id: stored.id,
@@ -98,9 +102,8 @@ export async function persistMemoryProviderConfig(
             ciphertext: stored.ciphertext,
           },
         });
-        const updated = await tx.spaceMemoryConfig.upsert({
-          where: { spaceId: actor.spaceId },
-          create: {
+        const created = await tx.spaceMemoryConfig.create({
+          data: {
             spaceId: actor.spaceId,
             userId: actor.userId,
             provider: prepared.provider,
@@ -108,18 +111,8 @@ export async function persistMemoryProviderConfig(
             secretId: secret.id,
             defaultMemoryScope: input.defaultMemoryScope,
           },
-          update: {
-            userId: actor.userId,
-            provider: prepared.provider,
-            settings: prepared.settings,
-            secretId: secret.id,
-            defaultMemoryScope: input.defaultMemoryScope,
-          },
         });
-        if (existing && existing.secretId !== secret.id) {
-          await tx.secret.deleteMany({ where: { id: existing.secretId } });
-        }
-        return updated;
+        return created;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),
@@ -132,7 +125,6 @@ export async function updateMemoryProviderDefaultScope(
   actor: Actor,
   defaultMemoryScope: "isolated" | "shared",
 ) {
-  await requireSpaceOwner(deps.prisma, actor);
   const existing = await findSpaceMemoryConfig(deps.prisma, actor.spaceId);
   if (!existing) throw new ORPCError("NOT_FOUND");
   const updated = await deps.prisma.spaceMemoryConfig.update({
@@ -157,7 +149,6 @@ export function serializeSpaceMemoryConfig(config: {
 }
 
 export async function disconnectMemoryProvider(deps: MemoryProviderConfigDeps, actor: Actor) {
-  await requireSpaceOwner(deps.prisma, actor);
   await withSerializableRetry(() =>
     deps.prisma.$transaction(
       async (tx) => {

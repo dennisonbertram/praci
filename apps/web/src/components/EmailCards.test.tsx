@@ -88,10 +88,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const headings = (container: HTMLElement) =>
-  [...container.querySelectorAll("h3")].map((h) => h.textContent);
+const rows = (container: HTMLElement) => [
+  ...container.querySelectorAll('[data-testid="email-row"]'),
+];
 
-it("groups cards by urgency in a fixed order and skips empty groups", async () => {
+it("lists every email as one table row, most urgent first, keeping input order within a group", async () => {
   const view = await render({
     kind: "emails",
     emails: [
@@ -101,35 +102,39 @@ it("groups cards by urgency in a fixed order and skips empty groups", async () =
       email("s", "within_3_days"),
     ],
   });
-  expect(headings(view.container)).toEqual(["Today", "Within 3 days", "This week", "No rush"]);
+  expect(view.container.querySelectorAll("table")).toHaveLength(1);
+  expect(rows(view.container).map((row) => row.textContent)).toEqual([
+    expect.stringContaining("Subject t"),
+    expect.stringContaining("Subject s"),
+    expect.stringContaining("Subject w"),
+    expect.stringContaining("Subject l"),
+  ]);
+  const when = (i: number) => rows(view.container)[i]?.querySelector("td")?.textContent;
+  expect([0, 1, 2, 3].map(when)).toEqual(["Today", "3 days", "This week", ""]);
   await view.cleanup();
-  const partial = await render({ kind: "emails", emails: [email("w", "this_week")] });
-  expect(headings(partial.container)).toEqual(["This week"]);
-  await partial.cleanup();
-  // Mail that is all "No rush", such as past updates the bot looked up, needs no heading.
-  const later = await render({
-    kind: "emails",
-    emails: [email("a", "later"), email("b", "later")],
-  });
-  expect(headings(later.container)).toEqual([]);
-  expect(later.container.querySelectorAll('[data-testid="email-row"]')).toHaveLength(2);
-  await later.cleanup();
 });
 
-it("shows Later as compact rows without the snippet, and urgent mail as cards with it", async () => {
+it("shows the sender, subject, note, date and attachments without the snippet", async () => {
   const view = await render({
     kind: "emails",
-    emails: [email("t", "today"), email("l", "later", { attachments: 2 })],
+    emails: [email("t", "today", { attachments: 2, note: "Rotate keys before they are revoked" })],
   });
-  const card = view.container.querySelector('[data-testid="email-card"]');
-  expect(card?.textContent).toContain("Snippet t");
-  const row = view.container.querySelector('[data-testid="email-row"]');
-  expect(row?.textContent).toContain("Sender l");
-  expect(row?.textContent).toContain("Subject l");
+  const row = rows(view.container)[0];
+  expect(row?.textContent).toContain("Sender t");
+  expect(row?.textContent).toContain("Subject t");
+  expect(row?.textContent).toContain("Rotate keys before they are revoked");
   // The same date the Inbox list shows for this mail, not "2d ago".
   expect(row?.textContent).toContain("Oct 10");
-  expect(row?.textContent).toContain("2");
-  expect(row?.textContent).not.toContain("Snippet l");
+  expect(row?.querySelector('[aria-label="Attachments: 2"]')).not.toBeNull();
+  expect(row?.textContent).not.toContain("Snippet t");
+  await view.cleanup();
+});
+
+it("opens a row with Enter on its subject", async () => {
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const subject = view.container.querySelector("[data-row-open]") as HTMLElement;
+  await act(async () => subject.click());
+  expect(document.querySelector('[data-testid="message-view"]')?.textContent).toBe("t");
   await view.cleanup();
 });
 
@@ -155,7 +160,7 @@ it("opens the clicked message by its cached row id", async () => {
     emails: [email("one", "today"), email("two", "later")],
   });
   expect(document.querySelector('[data-testid="message-view"]')).toBeNull();
-  const second = view.container.querySelector('[data-testid="email-row"]');
+  const second = rows(view.container)[1];
   await act(async () => (second as HTMLElement).click());
   expect(document.querySelector('[data-testid="message-view"]')?.textContent).toBe("two");
   expect(document.body.textContent).toContain("Subject two");
@@ -166,7 +171,7 @@ it("archives and marks read from the opened card like the Inbox does, and tells 
   const changed = vi.fn();
   window.addEventListener("rakazo:inbox-changed", changed);
   const view = await render({ kind: "emails", emails: [email("one", "today")] });
-  const card = view.container.querySelector('[data-testid="email-card"]') as HTMLElement;
+  const card = view.container.querySelector('[data-testid="email-row"]') as HTMLElement;
   const button = (name: string) =>
     [...document.querySelectorAll("button")].find((b) => b.textContent === name) as HTMLElement;
   await act(async () => card.click());
@@ -185,7 +190,7 @@ it("puts the unread state back when marking read fails", async () => {
   markRead.mockRejectedValueOnce(new Error("offline"));
   const view = await render({ kind: "emails", emails: [email("one", "today")] });
   await act(async () =>
-    (view.container.querySelector('[data-testid="email-card"]') as HTMLElement).click(),
+    (view.container.querySelector('[data-testid="email-row"]') as HTMLElement).click(),
   );
   const button = [...document.querySelectorAll("button")].find(
     (b) => b.textContent === "Mark read",
@@ -196,13 +201,13 @@ it("puts the unread state back when marking read fails", async () => {
   await view.cleanup();
 });
 
-it("masks currency on cards and rows while amounts are hidden", async () => {
+it("masks currency in rows and notes while amounts are hidden", async () => {
   const { setHideAmounts } = await import("../lib/hide-amounts-preference");
   setHideAmounts(true);
   const view = await render({
     kind: "emails",
     emails: [
-      email("t", "today", { subject: "Charge of $2,400", snippet: "Paid $58,400.00" }),
+      email("t", "today", { subject: "Charge of $2,400", note: "Pay $58,400.00" }),
       email("l", "later", { subject: "Invoice $4,812.00" }),
     ],
   });
@@ -215,10 +220,10 @@ it("says a card's email was archived and offers Undo, as the Inbox list does", a
   const view = await render({ kind: "emails", emails: [email("t", "today")] });
   const click = (el: Element | null | undefined) =>
     act(async () => (el as HTMLElement | null)?.click());
-  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click(view.container.querySelector('[data-testid="email-row"]'));
   await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
   expect(archive).toHaveBeenCalledWith({ messageId: "t" });
-  const card = view.container.querySelector('[data-testid="email-card"]');
+  const card = view.container.querySelector('[data-testid="email-row"]');
   expect(card?.textContent).toContain("Archived");
   const status = view.container.querySelector('[role="status"]');
   expect(status?.textContent).toContain('Archived "Subject t"');
@@ -238,7 +243,7 @@ it("starts Undo only after the archive it reverses has finished", async () => {
   const view = await render({ kind: "emails", emails: [email("t", "today")] });
   const click = (el: Element | null | undefined) =>
     act(async () => (el as HTMLElement | null)?.click());
-  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click(view.container.querySelector('[data-testid="email-row"]'));
   await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
   const status = view.container.querySelector('[role="status"]');
   await click(

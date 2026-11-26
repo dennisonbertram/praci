@@ -2,8 +2,8 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { MemoryRouter, useLocation } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
@@ -40,7 +40,9 @@ vi.mock("../lib/auth", () => ({
     signIn: {
       social: vi.fn(async () => ({})),
       email: vi.fn(async () => ({ error: { code: "INVALID_EMAIL_OR_PASSWORD", message: "no" } })),
+      passkey: vi.fn(async () => ({ error: { code: "AUTH_CANCELLED", message: "cancelled" } })),
     },
+    signUp: { email: vi.fn(async () => ({ data: null })) },
     requestPasswordReset: vi.fn(async () => ({})),
     resetPassword: vi.fn(async () => ({})),
   },
@@ -60,6 +62,7 @@ let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -70,10 +73,10 @@ afterEach(async () => {
   vi.restoreAllMocks();
   delete window.rakazoDesktop;
 });
-async function render(mode: "in" | "up" | "forgot" = "in") {
+async function render(mode: "in" | "up" | "forgot" = "in", entry = "/") {
   await act(async () =>
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>
         <AuthPage mode={mode} />
       </MemoryRouter>,
     ),
@@ -127,6 +130,20 @@ it.each(["in", "up"] as const)("puts quiet SSO below the primary action on %s", 
   expect(submit.getAttribute("data-variant")).toBe("default");
   expect(sso.dataset.variant).toBe("link");
   expect(sso.dataset.size).toBe("sm");
+});
+
+it.each([
+  ["in", "email"],
+  ["forgot", "email"],
+  ["up", "name"],
+] as const)("focuses the first field once the form appears on %s", async (mode, first) => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    passwordAuth: true,
+    passwordReset: true,
+  });
+  await render(mode);
+  expect(document.activeElement).toBe(host.querySelector(`#${first}`));
 });
 
 it("asks for a name at sign-up, so Chief can greet the founder by it", async () => {
@@ -196,6 +213,79 @@ it("names the address after a reset request and can send it again", async () => 
   const again = [...host.querySelectorAll("button")].find((b) => b.textContent === "Send again")!;
   await act(async () => again.click());
   expect(authClient.requestPasswordReset).toHaveBeenCalledTimes(2);
+});
+
+const passwordOnly: AuthCapabilities = {
+  ...capabilities,
+  sso: null,
+  passwordAuth: true,
+  passwordReset: true,
+  resetUrl: "https://web.test/reset-password",
+};
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname + location.search}</output>;
+}
+
+async function submitSignUp(entry: string, address: string) {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(passwordOnly);
+  vi.mocked(authClient.signUp.email).mockResolvedValue({ data: { token: null } } as never);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={[entry]}>
+        <AuthPage mode="up" />
+        <LocationProbe />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>("#name")!, "New User");
+    setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, address);
+    setValue(host.querySelector<HTMLInputElement>('input[type="password"]')!, "password123");
+  });
+  await act(async () => host.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+}
+
+it("names the address on the sign-up check-your-email screen and links back to sign-up", async () => {
+  sessionStorage.setItem("rakazo.auth.verify-email", "new.user@example.test");
+  const next = "&next=%2Fapp%2Fartifacts%3Fx%3D1";
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(passwordOnly);
+  await render("up", `/sign-up?verify=email${next}`);
+  expect(host.textContent).toContain("A verification link is on its way to new.user@example.test.");
+  expect(hrefOf("Use a different email")).toBe(`/sign-up?${next.slice(1)}`);
+  await act(async () =>
+    [...host.querySelectorAll("a")]
+      .find((a) => a.textContent === "Use a different email")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })),
+  );
+  expect(sessionStorage.getItem("rakazo.auth.verify-email")).toBeNull();
+});
+
+it("keeps next when sign-up asks for email verification", async () => {
+  await submitSignUp("/sign-up?next=%2Fapp%2Fartifacts%3Fx%3D1", "new.user@example.test");
+  const location = host.querySelector('[data-testid="location"]')!.textContent!;
+  expect(location).toContain("verify=email");
+  expect(location).toContain("next=%2Fapp%2Fartifacts%3Fx%3D1");
+  expect(location).not.toContain("new.user");
+  expect(sessionStorage.getItem("rakazo.auth.verify-email")).toBe("new.user@example.test");
+  expect(host.textContent).toContain("A verification link is on its way to new.user@example.test.");
+});
+
+it("shows only Back to sign in when the address is unknown", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(passwordOnly);
+  await render("up", "/sign-up?verify=email");
+  expect(hrefOf("Back to sign in")).toBe("/sign-in");
+  expect(host.textContent).not.toContain("verification link");
+  expect(hrefOf("Use a different email")).toBeUndefined();
+});
+
+it("reads the stored verification address once, so a later visit in this tab never shows it", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(passwordOnly);
+  sessionStorage.setItem("rakazo.auth.verify-email", "new.user@example.test");
+  await render("up", "/sign-up?verify=email");
+  expect(host.textContent).toContain("new.user@example.test");
+  expect(sessionStorage.getItem("rakazo.auth.verify-email")).toBeNull();
 });
 
 it("shows only the message and a new-link action for an invalid reset link", async () => {
@@ -335,13 +425,154 @@ it("marks each invalid sign-up field with its own message and leaves valid field
   expect(message("password")).toBe("At least 8 characters.");
 });
 
-it("keeps native required and minLength validation on the password-reset form", async () => {
+async function renderReset(entry = "/reset-password?token=t") {
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/reset-password?token=t"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <PasswordResetPage />
       </MemoryRouter>,
     ),
   );
-  expect(host.querySelector("form")?.noValidate).toBe(false);
+}
+
+const resetField = (id: string) => host.querySelector<HTMLInputElement>(`#${id}`)!;
+const submitReset = () =>
+  act(async () => {
+    host
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+
+it("shows the 8-character rule in red on the reset form, not as a native bubble", async () => {
+  await renderReset();
+  expect(host.querySelector("form")?.noValidate).toBe(true);
+  expect(resetField("new-password").minLength).toBe(-1);
+  await act(async () => {
+    setValue(resetField("new-password"), "short");
+    setValue(resetField("confirm-password"), "short");
+  });
+  await submitReset();
+  const hint = [...host.querySelectorAll("p")].find(
+    (p) => p.textContent === "At least 8 characters.",
+  );
+  expect(hint?.className).toContain("text-destructive");
+  expect(hint?.getAttribute("role")).toBe("alert");
+  expect(authClient.resetPassword).not.toHaveBeenCalled();
+});
+
+it("puts the mismatch message under the confirm field", async () => {
+  await renderReset();
+  await act(async () => {
+    setValue(resetField("new-password"), "password123");
+    setValue(resetField("confirm-password"), "password124");
+  });
+  await submitReset();
+  const confirm = resetField("confirm-password");
+  expect(confirm.getAttribute("aria-invalid")).toBe("true");
+  const message = document.getElementById(confirm.getAttribute("aria-describedby") ?? "");
+  expect(message?.textContent).toBe("Passwords do not match");
+  expect(authClient.resetPassword).not.toHaveBeenCalled();
+});
+
+it("toggles visibility on each reset password field", async () => {
+  await renderReset();
+  const toggles = [
+    ...host.querySelectorAll<HTMLButtonElement>('button[aria-label="Show password"]'),
+  ];
+  const [first, second] = toggles;
+  expect(toggles).toHaveLength(2);
+  expect(resetField("new-password").type).toBe("password");
+  await act(async () => first?.click());
+  expect(resetField("new-password").type).toBe("text");
+  expect(resetField("confirm-password").type).toBe("password");
+  await act(async () => second?.click());
+  expect(resetField("new-password").type).toBe("text");
+  expect(resetField("confirm-password").type).toBe("text");
+});
+
+describe("passkey sign-in", () => {
+  const withPasskey = { ...capabilities, sso: null, passwordAuth: true, passkey: true };
+  const button = () =>
+    [...host.querySelectorAll("button")].find((b) => b.textContent === "Sign in with passkey");
+  beforeEach(() => {
+    Object.assign(window, { PublicKeyCredential: class {} });
+  });
+  afterEach(() => {
+    Reflect.deleteProperty(window, "PublicKeyCredential");
+  });
+  it("offers the button and passkey autofill on the email field", async () => {
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue(withPasskey);
+    await render();
+    expect(button()).toBeTruthy();
+    expect(host.querySelector('input[name="email"]')?.getAttribute("autocomplete")).toBe(
+      "username webauthn",
+    );
+  });
+  it("is hidden when the server or the browser lacks passkeys", async () => {
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...withPasskey, passkey: undefined });
+    await render();
+    expect(button()).toBeUndefined();
+    Reflect.deleteProperty(window, "PublicKeyCredential");
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue(withPasskey);
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await render();
+    expect(button()).toBeUndefined();
+  });
+  it("shows nothing when the prompt is cancelled and the error style otherwise", async () => {
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue(withPasskey);
+    await render();
+    await act(async () => button()!.click());
+    expect(authClient.signIn.passkey).toHaveBeenCalledWith({ autoFill: false });
+    expect(host.querySelector('p[role="alert"]:not(:empty)')).toBeNull();
+    vi.mocked(authClient.signIn.passkey).mockResolvedValueOnce({
+      error: { code: "PASSKEY_NOT_FOUND", message: "Passkey not found" },
+    } as never);
+    await act(async () => button()!.click());
+    expect(host.querySelector('p[role="alert"]:not(:empty)')).toBeTruthy();
+  });
+});
+
+const hrefOf = (text: string) =>
+  [...host.querySelectorAll("a")].find((a) => a.textContent === text)?.getAttribute("href");
+
+it("keeps next on the links between the auth pages", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    passwordAuth: true,
+    passwordReset: true,
+  });
+  const next = "?next=%2Fapp%2Fartifacts%3Fx%3D1";
+  await render("in", `/sign-in${next}`);
+  expect(hrefOf("Sign up")).toBe(`/sign-up${next}`);
+  expect(hrefOf("Forgot password?")).toBe(`/forgot-password${next}`);
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await render("forgot", `/forgot-password${next}`);
+  expect(hrefOf("Back to sign in")).toBe(`/sign-in${next}`);
+});
+
+it("drops a next that points outside the app", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("in", "/sign-in?next=https%3A%2F%2Fevil.test");
+  expect(hrefOf("Sign up")).toBe("/sign-up");
+});
+
+it("offers a way back when password recovery is off", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, sso: null });
+  await render("forgot");
+  expect(host.textContent).toContain("Password recovery is not configured for this server");
+  expect(host.querySelector('a[href="/sign-in"]')).not.toBeNull();
+});
+
+it("sends the name without surrounding spaces", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>("#name")!, " Dana ");
+    setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, "dana@example.test");
+    setValue(host.querySelector<HTMLInputElement>('input[type="password"]')!, "password123");
+  });
+  await act(async () => host.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  expect(authClient.signUp.email).toHaveBeenCalledWith(expect.objectContaining({ name: "Dana" }));
 });

@@ -8,6 +8,8 @@ import { rpc } from "../lib/rpc";
 import { DataExportSection } from "./DataExport";
 
 vi.mock("@lingui/react/macro", () => ({
+  Plural: ({ value, one, other }: { value: number; one: string; other: string }) =>
+    (value === 1 ? one : other).replace("#", String(value)),
   useLingui: () => ({
     t: (strings: TemplateStringsArray) => strings.join(""),
     i18n: { date: (date: Date) => date.toISOString().slice(0, 10) },
@@ -58,7 +60,7 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   vi.useRealTimers();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 it("offers the button, then shows progress after it is pressed", async () => {
@@ -72,6 +74,21 @@ it("offers the button, then shows progress after it is pressed", async () => {
   expect(host.querySelector("h3")?.textContent).toBe("Export my data");
   expect(host.textContent).toBe("Export my dataPreparing… 0%");
   expect(host.querySelector("button")).toBeNull();
+});
+
+it("shows a load error after the initial lookup fails and retries the lookup", async () => {
+  latest
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValueOnce(job({ status: "running", progress: 25 }));
+  await mount();
+  expect(host.textContent).toContain("Could not load");
+  const retry = [...host.querySelectorAll("button")].find(
+    (button) => button.textContent === "Try again",
+  );
+  expect(retry).toBeTruthy();
+  await act(async () => retry?.click());
+  expect(host.textContent).toContain("Preparing… 25%");
+  expect(latest).toHaveBeenCalledTimes(2);
 });
 
 it("polls while preparing and shows the download and expiry when ready", async () => {
@@ -89,6 +106,39 @@ it("polls while preparing and shows the download and expiry when ready", async (
   const calls = latest.mock.calls.length;
   await act(async () => vi.advanceTimersByTimeAsync(6000));
   expect(latest.mock.calls.length).toBe(calls);
+});
+
+it("shows how many files are missing only when the export has missing files", async () => {
+  latest.mockResolvedValue(job({ missingFiles: 2 }));
+  await mount();
+  expect(host.textContent).toContain("2 files missing");
+  expect(host.querySelectorAll("p")[1]?.className).toContain("text-muted-foreground");
+
+  act(() => root.unmount());
+  root = createRoot(host);
+  latest.mockResolvedValue(job({ missingFiles: 0 }));
+  await mount();
+  expect(host.textContent).not.toContain("file missing");
+});
+
+it("only shows a polling error after three consecutive failures and keeps polling", async () => {
+  latest.mockResolvedValueOnce(job({ status: "running", progress: 40 }));
+  await mount();
+  latest.mockRejectedValueOnce(new Error("offline"));
+  await act(async () => vi.advanceTimersByTimeAsync(2100));
+  expect(host.textContent).toContain("Preparing… 40%");
+  expect(host.textContent).not.toContain("Could not load");
+  latest.mockRejectedValue(new Error("offline"));
+  await act(async () => vi.advanceTimersByTimeAsync(4200));
+  expect(host.textContent).toContain("Preparing… 40%");
+  expect(host.textContent).toContain("Could not load");
+  expect(
+    [...host.querySelectorAll("button")].some((button) => button.textContent === "Try again"),
+  ).toBe(true);
+  latest.mockResolvedValue(job({ status: "running", progress: 60 }));
+  await act(async () => vi.advanceTimersByTimeAsync(2100));
+  expect(host.textContent).toContain("Preparing… 60%");
+  expect(host.textContent).not.toContain("Could not load");
 });
 
 it("shows the button again after a failed export and reports a request error", async () => {

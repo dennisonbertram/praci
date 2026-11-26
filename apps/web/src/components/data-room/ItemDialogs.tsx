@@ -30,6 +30,7 @@ import {
   NativeSelect,
   NativeSelectOption,
   Skeleton,
+  Spinner,
 } from "@rakazo/ui-web";
 import type { FormEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -89,6 +90,157 @@ function FolderOptions({
           </NativeSelectOption>
         ))}
     </>
+  );
+}
+
+/** The select value before a folder is chosen for files that sit in different folders. */
+const CHOOSE_FOLDER = "__choose__";
+
+/**
+ * Moves the ticked files into one folder (optionally a new one). Files already there are skipped;
+ * `onDone` gets the ids that moved, the ones that failed and the target, and the dialog closes either way.
+ */
+const MOVE_TIMEOUT_MS = 30_000;
+
+export function MoveFilesDialog({
+  items,
+  folders,
+  onClose,
+  onDone,
+}: {
+  items: DataRoomApiItem[];
+  folders: FolderNode[];
+  onClose: () => void;
+  onDone: (result: { moved: string[]; failed: string[]; folderId: string | null }) => void;
+}) {
+  const parentField = useId();
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [total, setTotal] = useState(0);
+  const step = { done: progress, all: total };
+  const [error, setError] = useState("");
+  const first = items[0]?.folderId ?? "";
+  // Mixed folders get no default: "No folder" would silently unfile everything on one Save.
+  const same = items.every((item) => (item.folderId ?? "") === first);
+  const [target, setTarget] = useState(same ? first : CHOOSE_FOLDER);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setBusy(true);
+    setProgress(0);
+    setTotal(0);
+    setError("");
+    let folderId: string | null = target || null;
+    if (target === NEW_FOLDER) {
+      const typed = String(data.get("folderName") ?? "").trim();
+      const name = DataRoomApiName.safeParse(typed);
+      if (!name.success) {
+        setBusy(false);
+        return setError(typed ? t`Enter a folder name without slashes` : t`Enter a folder name`);
+      }
+      try {
+        const parentId = String(data.get("parent") ?? "") || null;
+        folderId = (await rpc.dataRoom.folderCreate({ name: name.data, parentId })).id;
+      } catch (cause) {
+        setBusy(false);
+        return setError(errorText(cause));
+      }
+    }
+    const changing = items.filter((item) => (item.folderId ?? null) !== folderId);
+    setTotal(changing.length);
+    const outcomes: Array<"moved" | "failed" | undefined> = Array(changing.length);
+    let next = 0;
+    const moveNext = async () => {
+      while (next < changing.length) {
+        const index = next++;
+        try {
+          // A request that never answers counts as failed, so the dialog can always finish.
+          await Promise.race([
+            rpc.dataRoom.itemMove({ id: changing[index]!.id, folderId }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("timeout")), MOVE_TIMEOUT_MS),
+            ),
+          ]);
+          outcomes[index] = "moved";
+        } catch {
+          outcomes[index] = "failed";
+        }
+        setProgress((done) => done + 1);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, changing.length) }, moveNext));
+    const moved = changing.filter((_, index) => outcomes[index] === "moved").map((item) => item.id);
+    const failed = changing
+      .filter((_, index) => outcomes[index] === "failed")
+      .map((item) => item.id);
+    onDone({ moved, failed, folderId });
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+      <DialogContent showCloseButton={false}>
+        <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle className="break-words leading-snug">
+              {t`Move ${items.length} files to`}
+            </DialogTitle>
+          </DialogHeader>
+          <NativeSelect
+            name="folder"
+            aria-label={t`Folder`}
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            className="w-full"
+          >
+            {target === CHOOSE_FOLDER ? (
+              <NativeSelectOption value={CHOOSE_FOLDER} disabled>
+                {t`Choose a folder…`}
+              </NativeSelectOption>
+            ) : null}
+            <FolderOptions folders={folders} topLabel={t`No folder`} />
+            <NativeSelectOption value={NEW_FOLDER}>{t`New folder…`}</NativeSelectOption>
+          </NativeSelect>
+          {target === NEW_FOLDER ? (
+            <>
+              <Input
+                name="folderName"
+                aria-label={t`New folder name`}
+                placeholder={t`New folder name`}
+                aria-invalid={error ? true : undefined}
+                autoFocus
+              />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={parentField}>
+                  <Trans>Inside</Trans>
+                </Label>
+                <NativeSelect
+                  id={parentField}
+                  name="parent"
+                  defaultValue={same ? first : ""}
+                  className="w-full"
+                >
+                  <FolderOptions folders={folders} topLabel={t`All items`} />
+                </NativeSelect>
+              </div>
+            </>
+          ) : null}
+          {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+              <Trans>Cancel</Trans>
+            </Button>
+            <Button type="submit" disabled={busy || target === CHOOSE_FOLDER}>
+              {busy ? <Spinner aria-hidden="true" className="size-3.5" /> : null}
+              <Trans>Save</Trans>
+              {/* Expressions, not names, so this reuses the shared "{0} of {1}" message. */}
+              {busy ? <span aria-live="polite">{t`${step.done} of ${step.all}`}</span> : null}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -357,25 +509,53 @@ export function ItemDialog({
   );
 }
 
+export type ShareFilesResult = {
+  /** The files every picked investor can now open; the rest stay ticked for a retry. */
+  shared: string[];
+  failed: string[];
+};
+
 /**
- * Share with investors: the investor contacts who already have the file show Unshare, the others a
- * checkbox. Links are emailed only when asked; ones that cannot be emailed are shown once to paste.
+ * Share with investors. One file also lists who already has it with an Unshare button; a batch shows
+ * a checkbox for each unrevoked investor instead and reports per file which went through. Links are
+ * emailed only when asked; ones that cannot be emailed are shown once to paste.
  */
-function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => void }) {
+function ShareInvestors({
+  items,
+  batch,
+  onClose,
+  onDone,
+}: {
+  items: DataRoomApiItem[];
+  batch: boolean;
+  onClose: () => void;
+  onDone?: (result: ShareFilesResult) => void;
+}) {
+  const item = items[0] as DataRoomApiItem;
   const [investors, setInvestors] = useState<Contact[] | null>(null);
   const [shared, setShared] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [emailLink, setEmailLink] = useState(false);
+  const [emailLink, setEmailLink] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [links, setLinks] = useState<PortalLink[] | null>(null);
+  const [pending, setPending] = useState<{
+    shared: string[];
+    failed: string[];
+    names: string[];
+    since: number;
+  } | null>(null);
 
   useEffect(() => {
     let live = true;
-    Promise.all([
-      rpc.contacts.list({ kind: "investor" }),
-      rpc.investors.shares({ itemId: item.id }),
-    ])
+    // A batch cannot read who has each file, so it only needs the investor list.
+    (batch
+      ? rpc.contacts.list({ kind: "investor" }).then((list) => [list, [] as string[]] as const)
+      : Promise.all([
+          rpc.contacts.list({ kind: "investor" }),
+          rpc.investors.shares({ itemId: item.id }),
+        ])
+    )
       .then(([list, ids]) => {
         if (!live) return;
         setInvestors(list);
@@ -385,9 +565,45 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
     return () => {
       live = false;
     };
-  }, [item.id]);
+  }, [batch, item.id]);
 
-  if (links) return <CopyLinkDialog links={links} onClose={onClose} />;
+  const complete = (done: {
+    shared: string[];
+    failed: string[];
+    names: string[];
+    since: number;
+  }) => {
+    onDone?.({ shared: done.shared, failed: done.failed });
+    const files = plural(done.shared.length, { one: "# file", other: "# files" });
+    const [who = ""] = done.names;
+    const count = done.names.length;
+    if (done.shared.length > 0) {
+      showNoticeToast(
+        count === 1 ? t`Shared ${files} with ${who}` : t`Shared ${files} with ${count} investors`,
+        done.since,
+      );
+    }
+    if (done.failed.length > 0) {
+      showNoticeToast(
+        plural(done.failed.length, {
+          one: "Couldn't share # file",
+          other: "Couldn't share # files",
+        }),
+        done.since,
+      );
+    }
+  };
+
+  if (links)
+    return (
+      <CopyLinkDialog
+        links={links}
+        onClose={() => {
+          if (pending) complete(pending);
+          onClose();
+        }}
+      />
+    );
 
   const unshare = async (contactId: string) => {
     setBusy(true);
@@ -407,13 +623,37 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
     setError("");
     const since = uploadScopeToken();
     try {
-      const result = await rpc.investors.share({
-        itemId: item.id,
-        contactIds: [...picked],
-        emailLink,
-      });
+      const result = batch
+        ? await rpc.investors.share({
+            itemIds: items.map((one) => one.id),
+            contactIds: [...picked],
+            emailLink,
+          })
+        : await rpc.investors.share({
+            itemId: item.id,
+            contactIds: [...picked],
+            emailLink,
+          });
       window.dispatchEvent(new Event(SHARES_CHANGED));
-      if (result.links.length > 0) setLinks(result.links);
+      if (batch) {
+        // Older servers do not report per file; without a report the batch went through whole.
+        const reported = result.items;
+        const outcome = {
+          shared: reported
+            ? reported.filter((one) => one.shared).map((one) => one.itemId)
+            : items.map((one) => one.id),
+          failed: reported ? reported.filter((one) => !one.shared).map((one) => one.itemId) : [],
+          names: (investors ?? []).filter((c) => picked.has(c.id)).map((c) => c.name),
+          since,
+        };
+        if (result.links.length > 0) {
+          setPending(outcome);
+          setLinks(result.links);
+        } else {
+          complete(outcome);
+          onClose();
+        }
+      } else if (result.links.length > 0) setLinks(result.links);
       else {
         const names = (investors ?? []).filter((c) => picked.has(c.id)).map((c) => c.name);
         const [who = ""] = names;
@@ -438,7 +678,11 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="break-words leading-snug">{t`Share ${item.name}`}</DialogTitle>
+          <DialogTitle className="break-words leading-snug">
+            {batch
+              ? plural(items.length, { one: "Share # file", other: "Share # files" })
+              : t`Share ${item.name}`}
+          </DialogTitle>
         </DialogHeader>
         <DialogBody className="flex flex-col gap-1">
           {investors === null && !error ? (
@@ -509,6 +753,23 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
       </DialogContent>
     </Dialog>
   );
+}
+
+function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => void }) {
+  return <ShareInvestors items={[item]} batch={false} onClose={onClose} />;
+}
+
+/** Share the ticked files with investors in one call; `onDone` reports the files that went through. */
+export function ShareFilesDialog({
+  items,
+  onClose,
+  onDone,
+}: {
+  items: DataRoomApiItem[];
+  onClose: () => void;
+  onDone: (result: ShareFilesResult) => void;
+}) {
+  return <ShareInvestors items={items} batch onClose={onClose} onDone={onDone} />;
 }
 
 /** Confirms a delete; for a file Legal has read, it also says what Legal loses with it. */

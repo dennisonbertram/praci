@@ -2,17 +2,23 @@
 
 import type { Bot } from "@rakazo/contracts";
 import type { ComponentProps, ReactNode } from "react";
-import { act } from "react";
+import { act, useState } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./BotAccessSection", () => ({ BotAccessSection: () => null }));
+vi.mock("../../components/PermissionLevelSelect", () => ({ PermissionLevelSelect: () => null }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     voice: { voices: vi.fn().mockResolvedValue([]) },
     models: {
       credentials: vi.fn().mockResolvedValue([]),
       list: vi.fn().mockResolvedValue([]),
+    },
+    checkIn: {
+      get: vi.fn().mockResolvedValue({ cadence: "off" }),
+      set: vi.fn(async (input: { cadence: string }) => ({ cadence: input.cadence })),
     },
     me: vi.fn().mockResolvedValue(null),
     connections: {
@@ -26,6 +32,8 @@ vi.mock("@lingui/react/macro", () => {
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
+let dismissDialog: (() => void) | undefined;
+
 vi.mock("@rakazo/ui-web", () => ({
   Button: ({
     variant: _variant,
@@ -34,18 +42,48 @@ vi.mock("@rakazo/ui-web", () => ({
   }: ComponentProps<"button"> & { variant?: string; size?: string }) => (
     <button type="button" {...props} />
   ),
+  AlertDialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }) => {
+    dismissDialog = () => onOpenChange?.(false);
+    return open ? <div role="alertdialog">{children}</div> : null;
+  },
+  AlertDialogAction: (props: ComponentProps<"button">) => <button type="button" {...props} />,
+  AlertDialogCancel: (props: ComponentProps<"button">) => (
+    <button type="button" {...props} onClick={() => dismissDialog?.()} />
+  ),
+  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
   Input: (props: ComponentProps<"input">) => <input {...props} />,
+  Skeleton: (props: ComponentProps<"div">) => <div {...props} />,
   Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
   NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
   NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
   Switch: ({
-    onCheckedChange: _onCheckedChange,
-    checked: _checked,
+    onCheckedChange,
+    checked,
     ...props
   }: ComponentProps<"button"> & {
     checked?: boolean;
     onCheckedChange?: (checked: boolean) => void;
-  }) => <button type="button" {...props} />,
+  }) => (
+    <button
+      type="button"
+      {...props}
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onCheckedChange?.(!checked)}
+    />
+  ),
   Toggle: ({
     onPressedChange: _onPressedChange,
     pressed,
@@ -71,7 +109,13 @@ vi.mock("@rakazo/ui-web", () => ({
 vi.mock("./avatar-studio-popover", () => ({ AvatarStudioPopover: () => null }));
 vi.mock("./bot-credentials", () => ({ BotCredentialsSection: () => null }));
 vi.mock("./BotSkillsSection", () => ({ BotSkillsSection: () => null }));
-vi.mock("../ScratchpadSection", () => ({ ScratchpadSection: () => null }));
+let scratchpadProbe: { focusItemId?: string } | null = null;
+vi.mock("../ScratchpadSection", () => ({
+  ScratchpadSection: (props: { focusItemId?: string }) => {
+    scratchpadProbe = props;
+    return <div data-testid="open-work-probe">{props.focusItemId}</div>;
+  },
+}));
 vi.mock("../KnowledgeSection", () => ({ KnowledgeSection: () => null }));
 
 import { rpc } from "../../lib/rpc";
@@ -113,6 +157,9 @@ function bot(description = "Billing"): Bot {
     audience: "internal",
     externalMessageTargets: [],
     externalComputerTools: false,
+    firewall: false,
+    firewallAskCapabilities: [],
+    proactivity: "medium",
     webhookConfigured: false,
     spawnKey: null,
     runPhase: null,
@@ -223,6 +270,7 @@ beforeEach(() => {
     value: vi.fn(),
   });
   onSave.mockReset().mockResolvedValue(undefined);
+  scratchpadProbe = null;
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -403,6 +451,42 @@ describe("BotSettings for a bot just created with New bot", () => {
   });
 });
 
+describe("BotSettings More settings toggles and keeps its state across a remount", () => {
+  it("opens, stays open when rebuilt, then closes when pressed again", async () => {
+    // Mirrors Shell: the parent keeps the choice and rebuilds the panel (new key) after a save.
+    function Parent({ generation }: { generation: number }) {
+      const [folded, setFolded] = useState(true);
+      return (
+        <BotSettings
+          key={generation}
+          bot={bot("")}
+          focusName={folded}
+          foldable
+          onFoldedChange={setFolded}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />
+      );
+    }
+    const toggle = () =>
+      [...container.querySelectorAll("button")].find((b) =>
+        b.textContent?.includes("More settings"),
+      );
+    await act(async () => root.render(<Parent generation={0} />));
+    expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => toggle()?.click());
+    expect(container.querySelector("textarea")).not.toBeNull();
+    await act(async () => root.render(<Parent generation={1} />));
+    expect(container.querySelector("textarea")).not.toBeNull();
+    expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => toggle()?.click());
+    expect(container.querySelector("textarea")).toBeNull();
+  });
+});
+
 describe("BotSettings audience", () => {
   const helper =
     "Talks to people outside your company. Anything private it would share waits for your approval. Private tools are turned off.";
@@ -516,6 +600,72 @@ describe("BotSettings audience", () => {
   });
 });
 
+describe("BotSettings proactive level", () => {
+  const select = () =>
+    [...container.querySelectorAll("select")].find((el) => el.id.endsWith("-proactivity"));
+  async function renderWith(overrides: Partial<Bot> = {}) {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={{ ...bot(), ...overrides }}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+  }
+
+  it("shows the stored level and saves a change", async () => {
+    await renderWith({ proactivity: "low" });
+    expect(select()?.value).toBe("low");
+    await act(async () => {
+      const el = select() as HTMLSelectElement;
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+      setter?.call(el, "high");
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ proactivity: "high" }));
+  });
+
+  it("is disabled, with a reason, for a firewalled or external agent", async () => {
+    await renderWith({ firewall: true });
+    expect(select()?.disabled).toBe(true);
+    expect(container.textContent).toContain("Not used by firewalled or external agents");
+    await renderWith({ firewall: false, audience: "external" });
+    expect(select()?.disabled).toBe(true);
+  });
+
+  it("is not shown for the voice agent", async () => {
+    await renderWith({ spawnKey: "voice-agent:user_1" });
+    expect(select()).toBeUndefined();
+  });
+});
+
+describe("BotSettings open work focus", () => {
+  it("unfolds the name-only view so a chosen open-work row mounts", async () => {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={bot()}
+          focusName
+          focusScratchpadItemId="s2"
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="open-work-probe"]')).not.toBeNull();
+    expect(scratchpadProbe?.focusItemId).toBe("s2");
+  });
+});
+
 describe("notification delivery", () => {
   it("says Off in Settings, linking to Settings, when the account delivers nowhere", async () => {
     const open = vi.fn();
@@ -546,5 +696,305 @@ describe("notification delivery", () => {
     await render();
     expect(container.textContent).toContain("Get notified when this bot finishes");
     expect(container.textContent).not.toContain("Off in Settings");
+  });
+});
+
+describe("BotSettings connection choice", () => {
+  const credential = (id: string, provider: string, modelId: string) => ({
+    id,
+    provider,
+    label: id,
+    hasKey: true,
+    isDefault: false,
+    modelId,
+  });
+  const entry = (provider: string, id: string) => ({
+    provider,
+    providerName: provider,
+    id,
+    label: id,
+    billing: "",
+  });
+
+  async function renderBot(overrides: Partial<Bot>) {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={{ ...bot(), ...overrides }}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    await flush();
+  }
+  const advanced = () =>
+    container.querySelector<HTMLDetailsElement>('[data-testid="bot-settings-advanced"]');
+
+  function stubModels() {
+    vi.mocked(rpc.models.credentials).mockResolvedValueOnce([
+      credential("cred-a", "a", "a-second"),
+      credential("cred-b", "b", "b-x"),
+    ]);
+    vi.mocked(rpc.models.list).mockResolvedValueOnce([
+      entry("a", "a-first"),
+      entry("a", "a-second"),
+      entry("b", "b-x"),
+    ]);
+  }
+
+  it("keeps the connection's own model when it is chosen", async () => {
+    stubModels();
+    await renderBot({ modelProvider: "b", modelId: "b-x" });
+    await act(async () => container.querySelector("summary")?.click());
+    const select = container.querySelector<HTMLSelectElement>('select[id$="-connection"]');
+    if (!select) throw new Error("Missing connection select");
+    await act(async () => {
+      select.value = "cred-a";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flush();
+    expect(onSave.mock.calls.at(-1)?.[0]).toMatchObject({
+      modelProvider: "a",
+      modelId: "a-second",
+      modelCredentialId: "cred-a",
+    });
+  });
+
+  it("opens Advanced without saving when the pinned connection is gone", async () => {
+    stubModels();
+    await renderBot({ modelCredentialId: "cred_gone" });
+    expect(advanced()?.open).toBe(true);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("leaves Advanced closed when the pin is intact", async () => {
+    stubModels();
+    await renderBot({ modelCredentialId: "cred-a", modelProvider: "a", modelId: "a-second" });
+    expect(advanced()?.open).toBe(false);
+  });
+});
+
+describe("BotSettings keeps fields edited elsewhere off unrelated saves", () => {
+  async function renderBot(overrides: Partial<Bot> = {}) {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={{ ...bot(), ...overrides }}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    await flush();
+  }
+
+  const nameField = () => {
+    const input = container.querySelector<HTMLInputElement>("input");
+    if (!input) throw new Error("Missing name field");
+    return input;
+  };
+  const notifySwitch = () => {
+    const el = container.querySelector<HTMLButtonElement>(
+      '[role="switch"][aria-labelledby$="-notify-finish-label"]',
+    );
+    if (!el) throw new Error("Missing Notifications switch");
+    return el;
+  };
+  const autoSpeakSwitch = () => {
+    const el = container.querySelector<HTMLButtonElement>('[role="switch"][id$="-auto-speak"]');
+    if (!el) throw new Error("Missing Read replies aloud switch");
+    return el;
+  };
+  const lastPatch = () => onSave.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+
+  async function typeName(value: string) {
+    const input = nameField();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  async function saveHappened(before: number) {
+    if (onSave.mock.calls.length === before) throw new Error("save did not run");
+  }
+
+  async function blurName() {
+    const before = onSave.mock.calls.length;
+    await act(async () => {
+      nameField().dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await saveHappened(before);
+  }
+
+  async function flipNotifications() {
+    const before = onSave.mock.calls.length;
+    await act(async () => {
+      notifySwitch().click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await saveHappened(before);
+  }
+
+  it("never sends the title a phone app may have set", async () => {
+    await renderBot();
+    await renderBot({ title: "Set on phone" });
+    await flipNotifications();
+    expect(lastPatch()).not.toHaveProperty("title");
+  });
+
+  it("follows a rename made elsewhere into the field, not onto the wire", async () => {
+    await renderBot();
+    await renderBot({ name: "Grace" });
+    expect(nameField().value).toBe("Grace");
+    await flipNotifications();
+    expect(lastPatch()).not.toHaveProperty("name");
+  });
+
+  it("follows a Read replies aloud change made elsewhere, not onto the wire", async () => {
+    await renderBot();
+    await renderBot({ autoSpeak: true });
+    await flipNotifications();
+    expect(lastPatch()).not.toHaveProperty("autoSpeak");
+  });
+
+  it("sends an edited name when the field is left", async () => {
+    await renderBot();
+    await typeName("Atlas");
+    await blurName();
+    expect(lastPatch()).toHaveProperty("name", "Atlas");
+  });
+
+  it("sends autoSpeak when Read replies aloud is switched here", async () => {
+    await renderBot();
+    const before = onSave.mock.calls.length;
+    await act(async () => {
+      autoSpeakSwitch().click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await saveHappened(before);
+    expect(lastPatch()).toHaveProperty("autoSpeak", true);
+  });
+
+  it("never sends an empty name, and shows the saved name again", async () => {
+    await renderBot();
+    await typeName("");
+    await blurName();
+    expect(lastPatch()).not.toHaveProperty("name");
+    expect(nameField().value).toBe("Ada");
+  });
+
+  it("resends a new name on the next save after the first was rejected", async () => {
+    await renderBot();
+    onSave.mockRejectedValueOnce(new Error("offline"));
+    await typeName("Atlas");
+    await blurName();
+    await flipNotifications();
+    expect(lastPatch()).toHaveProperty("name", "Atlas");
+  });
+});
+
+describe("BotSettings firewall", () => {
+  async function renderWith(overrides: Partial<Bot> = {}) {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={{ ...bot(), ...overrides }}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    await flush();
+  }
+  const firewallSwitch = () =>
+    container.querySelector<HTMLButtonElement>(
+      '[role="switch"][aria-labelledby$="-firewall-label"]',
+    );
+  const proactivity = () =>
+    [...container.querySelectorAll("select")].find((el) => el.id.endsWith("-proactivity"));
+  const dialogButton = (name: string) =>
+    [...(container.querySelector('[role="alertdialog"]')?.querySelectorAll("button") ?? [])].find(
+      (item) => item.textContent?.trim() === name,
+    );
+
+  it("turns the firewall on and saves it", async () => {
+    await renderWith();
+    expect(firewallSwitch()?.getAttribute("aria-checked")).toBe("false");
+    await act(async () => firewallSwitch()?.click());
+    await flush();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ firewall: true }));
+    expect(firewallSwitch()?.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("asks before turning it off, and Cancel leaves it on without saving", async () => {
+    await renderWith({ firewall: true });
+    await act(async () => firewallSwitch()?.click());
+    expect(dialogButton("Cancel")).toBeDefined();
+    expect(dialogButton("Turn off")).toBeDefined();
+    await act(async () => dialogButton("Cancel")?.click());
+    expect(onSave).not.toHaveBeenCalled();
+    expect(firewallSwitch()?.getAttribute("aria-checked")).toBe("true");
+    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
+  });
+
+  it("turns it off only once Turn off is chosen", async () => {
+    await renderWith({ firewall: true });
+    await act(async () => firewallSwitch()?.click());
+    await act(async () => dialogButton("Turn off")?.click());
+    await flush();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ firewall: false }));
+  });
+
+  it("never puts the firewall on a name save", async () => {
+    await renderWith({ firewall: true });
+    const name = container.querySelector<HTMLInputElement>("input");
+    await act(async () => {
+      name?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(onSave).toHaveBeenCalled();
+    expect(onSave.mock.calls.at(-1)?.[0]).not.toHaveProperty("firewall");
+  });
+
+  it("locks Proactive as soon as the switch is on", async () => {
+    await renderWith();
+    expect(proactivity()?.disabled).toBe(false);
+    await act(async () => firewallSwitch()?.click());
+    await flush();
+    expect(proactivity()?.disabled).toBe(true);
+  });
+
+  it("puts the switch back when the save fails", async () => {
+    onSave.mockRejectedValueOnce(new Error("offline"));
+    await renderWith();
+    await act(async () => firewallSwitch()?.click());
+    await flush();
+    expect(firewallSwitch()?.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("has no row for the voice agent", async () => {
+    await renderWith({ spawnKey: "voice-agent:user_1" });
+    expect(firewallSwitch()).toBeNull();
+    expect(container.textContent).not.toContain("Treat everything it reads");
   });
 });

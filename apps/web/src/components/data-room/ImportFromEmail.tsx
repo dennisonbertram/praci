@@ -397,6 +397,7 @@ export function ImportSources({
   }, []);
   // The add menu always offers the upload; the sources join it once their connections are known.
   if (apps === null && !onUpload) return null;
+  const connectPath = (page: string) => `${page}?connect=1&next=${here}`;
   const choose = (source: Source, connected: boolean, connectPage: string) => {
     if (!connected) return navigate(connectPage);
     if (!ensureFolder) return setOpen(source);
@@ -438,7 +439,7 @@ export function ImportSources({
           ) : null}
           {apps?.gmail.offered ? (
             <DropdownMenuItem
-              onClick={() => choose("email", apps?.gmail.connected ?? false, GMAIL_PAGE)}
+              onClick={() => choose("email", apps?.gmail.connected ?? false, connectPath(GMAIL_PAGE))}
             >
               <Mail aria-hidden="true" />
               <Trans>From email</Trans>
@@ -446,7 +447,7 @@ export function ImportSources({
           ) : null}
           {apps?.drive.offered ? (
             <DropdownMenuItem
-              onClick={() => choose("drive", apps?.drive.connected ?? false, DRIVE_PAGE)}
+              onClick={() => choose("drive", apps?.drive.connected ?? false, connectPath(DRIVE_PAGE))}
             >
               <HardDrive aria-hidden="true" />
               <Trans>From Google Drive</Trans>

@@ -3,17 +3,23 @@ import type { Connection, ConnectionCatalogItem, McpServer } from "@rakazo/contr
 import { ZERNIO_MCP_ENDPOINT } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  accountLabels,
+  accountLines,
+  appEntry,
   appPath,
   appStatus,
   classifyTool,
   FINANCE_PROVIDERS,
   FIRST_PARTY_MCP,
   filterCatalog,
+  filterEntries,
   groupConnections,
   groupTools,
   isSameMcpEndpoint,
   mcpStatus,
   popularApps,
+  sortEntries,
+  setOthersAccess,
   toggleAccess,
   toolLabel,
 } from "./integrations";
@@ -80,7 +86,7 @@ describe("status badges", () => {
   it("needs a reconnect when every connected account's sign-in was refused", () => {
     const lapsed = { ...row("connected"), needsReconnect: true };
     expect(appStatus([lapsed])).toBe("reconnect");
-    expect(appStatus([lapsed, row("connected")])).toBe("connected");
+    expect(appStatus([lapsed, row("connected")])).toBe("reconnect");
   });
 
   const server = (extra: Partial<McpServer>): McpServer => ({
@@ -97,6 +103,7 @@ describe("status badges", () => {
     headerKeys: [],
     hasSecret: false,
     oauthStatus: "connected",
+    oauthSupported: true,
     oauthAttempted: false,
     enabled: true,
     writesEnabled: false,
@@ -186,6 +193,36 @@ describe("toggleAccess", () => {
   });
 });
 
+describe("setOthersAccess", () => {
+  it("keeps None explicit when the kept agents are the whole roster", () => {
+    expect(setOthersAccess({ allAgents: true, botIds: [] }, ["inbox"], ["inbox"], false)).toEqual({
+      allAgents: false,
+      botIds: ["inbox"],
+    });
+  });
+
+  const all = ["inbox", "chat", "a", "b"];
+  const keep = ["inbox", "chat"];
+  it("None leaves the kept agents exactly as they were and turns the others off", () => {
+    expect(setOthersAccess({ allAgents: false, botIds: ["inbox", "a"] }, all, keep, false)).toEqual(
+      { allAgents: false, botIds: ["inbox"] },
+    );
+    expect(setOthersAccess({ allAgents: true, botIds: [] }, all, keep, false)).toEqual({
+      allAgents: false,
+      botIds: ["inbox", "chat"],
+    });
+  });
+  it("All turns the others on without turning a kept agent on", () => {
+    expect(setOthersAccess({ allAgents: false, botIds: ["inbox"] }, all, keep, true)).toEqual({
+      allAgents: false,
+      botIds: ["inbox", "a", "b"],
+    });
+    expect(
+      setOthersAccess({ allAgents: false, botIds: ["inbox", "chat"] }, all, keep, true),
+    ).toEqual({ allAgents: true, botIds: [] });
+  });
+});
+
 describe("toolLabel", () => {
   it("strips the app prefix and sentence-cases the rest", () => {
     expect(toolLabel("GMAIL_FETCH_EMAILS", "gmail")).toBe("Fetch emails");
@@ -267,5 +304,97 @@ describe("Devin tile", () => {
     const devin = FIRST_PARTY_MCP.find((entry) => entry.id === "devin");
     expect(devin).toBeDefined();
     expect(devin).not.toHaveProperty("apiKey");
+  });
+});
+
+describe("connected list: labels, filter and sort", () => {
+  const gmail = (id: string, displayName: string, extra: Partial<Connection> = {}) =>
+    row("connected", { id, provider: "gmail", displayName, ...extra });
+  const apps = groupConnections(
+    [
+      gmail("g1", "Gmail", { account: "one@example.test", createdAt: "2026-10-01T00:00:00Z" }),
+      gmail("g2", "Work", { account: "two@example.test", createdAt: "2026-10-05T00:00:00Z" }),
+      row("connected", {
+        id: "s1",
+        provider: "slack",
+        displayName: "Slack",
+        createdAt: "2026-10-03T00:00:00Z",
+      }),
+      row("connected", {
+        id: "n1",
+        provider: "notion",
+        displayName: "Notion",
+        needsReconnect: true,
+        createdAt: "2026-10-02T00:00:00Z",
+      }),
+    ],
+    [],
+  );
+  // Servers and finance tiles sit in the same list as the apps.
+  const entries = [
+    ...apps.map(appEntry),
+    { name: "Mercury", search: ["Mercury"], attention: true, created: "2026-10-04T00:00:00Z" },
+    {
+      name: "Mercury 2",
+      search: ["Mercury 2", "mcp.example.test"],
+      attention: false,
+      created: null,
+    },
+  ];
+  const names = (list: { name: string }[]) => list.map((entry) => entry.name);
+
+  it("labels each account by its own name and address, not by the app's name", () => {
+    const gm = apps.find((app) => app.provider === "gmail")!;
+    expect(accountLabels(gm)).toEqual(["one@example.test", "Work · two@example.test"]);
+    expect(accountLabels(apps.find((app) => app.provider === "slack")!)).toEqual([]);
+  });
+
+  it("searches the name, an account's label and its address, on apps and servers alike", () => {
+    const find = (query: string) => names(filterEntries(entries, { query, status: undefined }));
+    expect(find("two@")).toEqual(["Gmail"]);
+    expect(find("work")).toEqual(["Gmail"]);
+    expect(find("mercury")).toEqual(["Mercury", "Mercury 2"]);
+    expect(find("mcp.example")).toEqual(["Mercury 2"]);
+  });
+
+  it("filters by status: connected, or needs attention", () => {
+    expect(names(filterEntries(entries, { query: "", status: "attention" }))).toEqual([
+      "Notion",
+      "Mercury",
+    ]);
+    expect(names(filterEntries(entries, { query: "", status: "connected" }))).toEqual([
+      "Gmail",
+      "Slack",
+      "Mercury 2",
+    ]);
+  });
+
+  it("sorts by name, by status with problems first, and by newest connection, undated last", () => {
+    expect(names(sortEntries(entries, "name", "asc"))).toEqual([
+      "Gmail",
+      "Mercury",
+      "Mercury 2",
+      "Notion",
+      "Slack",
+    ]);
+    expect(
+      names(sortEntries(entries, "status", "asc"))
+        .slice(0, 2)
+        .sort(),
+    ).toEqual(["Mercury", "Notion"]);
+    expect(names(sortEntries(entries, "connected", "desc"))).toEqual([
+      "Gmail",
+      "Mercury",
+      "Slack",
+      "Notion",
+      "Mercury 2",
+    ]);
+  });
+});
+
+describe("accountLines", () => {
+  it("lists up to three accounts and counts the rest", () => {
+    expect(accountLines(["a", "b"], 3)).toEqual({ lines: ["a", "b"], more: 0 });
+    expect(accountLines(["a", "b", "c", "d", "e"], 3)).toEqual({ lines: ["a", "b", "c"], more: 2 });
   });
 });

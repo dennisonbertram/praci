@@ -20,6 +20,20 @@ export function GranolaPage({
 }) {
   const { t } = useLingui();
   const [signingIn, setSigningIn] = useState(false);
+  if (!data.loaded)
+    return (
+      <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
+        <div className="mx-auto max-w-[1040px]">
+          <Link
+            to="/app/integrations"
+            className="rk-tap mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <Trans>Integrations</Trans>
+          </Link>
+        </div>
+      </div>
+    );
   const server = data.servers.find((entry) => isGranolaEndpoint(entry.endpoint));
   if (server)
     return <McpDetail data={data} serverId={server.id} onOpenAiDataSharing={onOpenAiDataSharing} />;
@@ -41,10 +55,10 @@ export function GranolaPage({
           <Button
             className="ms-auto"
             variant={key && key.status !== "disconnected" ? "outline" : "default"}
-            aria-label={t`Connect ${name}`}
+            aria-label={t`Sign in to ${name}`}
             onClick={() => setSigningIn(true)}
           >
-            <Trans>Connect</Trans>
+            <Trans>Sign in</Trans>
           </Button>
         </div>
         <div className="mt-6">
@@ -55,6 +69,8 @@ export function GranolaPage({
               data.bots.find((bot) => bot.id === key?.agentBotId)?.name ?? t`Granola agent`
             }
             onChanged={() => void data.refresh()}
+            loadFailed={data.meetingsFailed}
+            onRetry={() => void data.refresh()}
             onOpenAiDataSharing={onOpenAiDataSharing}
           />
         </div>

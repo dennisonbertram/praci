@@ -1,4 +1,5 @@
 import path from "node:path";
+import { contentSecurityPolicyFor } from "@rakazo/contracts/content-security-policy";
 
 const PASSTHROUGH_PATHS = ["/api", "/rpc", "/novnc"];
 
@@ -49,6 +50,20 @@ export function contentType(file: string) {
 
 export function immutableRendererAsset(file: string) {
   return path.basename(path.dirname(file)) === "assets";
+}
+
+/** The headers the web server would send, including its CSP, since this replaces that server. */
+export function bundledRendererHeaders(file: string, requestUrl: string): Headers {
+  const headers = new Headers({
+    "cache-control": immutableRendererAsset(file)
+      ? "public, max-age=31536000, immutable"
+      : "no-cache",
+    "content-type": contentType(file),
+    "x-content-type-options": "nosniff",
+  });
+  const policy = contentSecurityPolicyFor(new URL(requestUrl).pathname);
+  if (policy) headers.set("content-security-policy", policy);
+  return headers;
 }
 
 export function isRendererAssetMiss(error: unknown) {

@@ -45,3 +45,11 @@ export const ReturningPerson: Story = {
     },
   },
 };
+export const RelationWithoutRole: Story = {
+  args: {
+    data: {
+      ...companyFixture,
+      edges: companyFixture.edges.map((edge) => ({ ...edge, role: null })),
+    },
+  },
+};

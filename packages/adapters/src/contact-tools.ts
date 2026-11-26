@@ -18,6 +18,9 @@ import {
   addContactIfNew,
   CapTableSourceError,
   ContactEmailTakenError,
+  contactMatchWhere,
+  equityLedgerHasData,
+  equityLedgerSnapshot,
   getCapTableSnapshot,
   listContacts,
   listSafes,
@@ -31,6 +34,9 @@ export const CONTACT_ONLY_TOOL_NAMES = new Set(["contacts_list", "contacts_add",
 
 /** The Carta agent's Investors page tools. */
 export const CAP_TABLE_TOOL_NAMES = new Set(["cap_table_read", "cap_table_update"]);
+
+/** Holders per cap_table_read call, so a large ledger cannot flood the model context. */
+const CAP_TABLE_PAGE = 100;
 
 export const CONTACT_TOOL_NAMES = new Set([...CONTACT_ONLY_TOOL_NAMES, ...CAP_TABLE_TOOL_NAMES]);
 
@@ -48,10 +54,8 @@ export function capTableToolsAllowed(
 }
 
 type ContactToolDeps = {
-  prisma: Pick<
-    PrismaClient,
-    "$transaction" | "contact" | "capTableSnapshot" | "fundraiseRound" | "safe"
-  >;
+  // The whole client: the ledger-derived cap table reads many equity tables.
+  prisma: PrismaClient;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
   /** The agent running the tool, from the run, never from model input. */
@@ -77,7 +81,14 @@ export async function contactToolFromTool(
     }
     if (name === "contacts_add") {
       // The pipeline stage is the founder's to change from the Fundraising page, never an agent's.
-      const { id: _id, stage: _stage, checkSizeCents: _check, nextStep: _next, ...rest } = args;
+      const {
+        id: _id,
+        stage: _stage,
+        checkSizeCents: _check,
+        nextStep: _next,
+        pipelineRecordId: _record,
+        ...rest
+      } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
       const { contact, created } = await addContactIfNew(
@@ -107,16 +118,28 @@ export async function contactToolFromTool(
           postMoneyCapUsd: s.capCents == null ? null : s.capCents / 100,
           atCapPercent: atCapPercent(s),
         }));
-      const snapshot = await getCapTableSnapshot(deps.prisma, deps.scope);
+      // Once the ledger has data it is the record; the legacy snapshot is then stale.
+      const snapshot =
+        ((await equityLedgerHasData(deps.prisma, deps.scope))
+          ? await equityLedgerSnapshot(deps.prisma, deps.scope)
+          : null) ?? (await getCapTableSnapshot(deps.prisma, deps.scope));
       // The page's own figure replaces whatever amount raised the source stored.
+      // A large ledger must not flood the model: holders come in pages of CAP_TABLE_PAGE.
+      const all = snapshot
+        ? capTableMath(snapshot)
+            .holders.filter(({ holder }) => !isSafeSecurity(holder.security))
+            .map(({ holder, percent }) => ({ ...holder, ownershipPercent: percent }))
+        : [];
+      const start = Math.max(0, Math.trunc(Number(args.after)) || 0);
+      const page = all.slice(start, start + CAP_TABLE_PAGE);
       return {
         capTable: snapshot && {
           ...snapshot,
           // The page computes percents from shares; the agent gets the same figures (null for SAFEs).
           // SAFEs are listed under `safes`, as on the page, never as table holders.
-          holders: capTableMath(snapshot)
-            .holders.filter(({ holder }) => !isSafeSecurity(holder.security))
-            .map(({ holder, percent }) => ({ ...holder, ownershipPercent: percent })),
+          holders: page,
+          holdersTotal: all.length,
+          nextAfter: start + page.length < all.length ? start + page.length : null,
           amountRaisedUsd: equityRaisedUsd(snapshot.holders, allSafes),
           amountRaisedSource: "Invested by holders in the table plus Funded SAFEs",
         },
@@ -124,6 +147,12 @@ export async function contactToolFromTool(
       };
     }
     if (name === "cap_table_update") {
+      // The ledger is the record once it has data; a save here would land in the stale legacy table.
+      if (await equityLedgerHasData(deps.prisma, deps.scope))
+        return {
+          error:
+            "The cap table is kept in the equity ledger on the Cap table page, so nothing was changed. Ask the user to make the change there.",
+        };
       // The writer comes from the agent, never from the model, so it cannot name another source.
       const writer = deps.writer ?? "carta";
       const { ledger: rawLedger, ...rest } = args;
@@ -162,26 +191,46 @@ export async function contactToolFromTool(
       return { ok: true };
     }
     if (name === "contacts_save") {
-      // The tool never updates by id and never creates: it changes the contact with this email.
+      // The tool never updates by id and never creates: it changes the contact with this email, or name and organization.
       // The pipeline stage is the founder's to change from the Fundraising page, never an agent's.
-      const { id: _id, stage: _stage, checkSizeCents: _check, nextStep: _next, ...rest } = args;
+      const {
+        id: _id,
+        stage: _stage,
+        checkSizeCents: _check,
+        nextStep: _next,
+        pipelineRecordId: _record,
+        ...rest
+      } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
-      const existing = input.data.email
-        ? await deps.prisma.contact.findFirst({
-            where: {
-              spaceId: deps.scope.spaceId,
-              userId: deps.scope.userId,
-              email: input.data.email,
-            },
-            select: { id: true },
-          })
-        : null;
+      const { email, ...fields } = input.data;
+      const name = input.data.name.trim();
+      const organization = input.data.organization?.trim() || null;
+      const owner = { spaceId: deps.scope.spaceId, userId: deps.scope.userId };
+      const find = (where: object) =>
+        deps.prisma.contact.findFirst({
+          where: { ...owner, ...where },
+          orderBy: { id: "asc" },
+          select: { id: true },
+        });
+      // By email first; a contact without one is found by name and organization, and gains the email.
+      const existing = email
+        ? ((await find({ email })) ??
+          (await find({ email: null, ...contactMatchWhere({ name, organization }) })))
+        : await find(contactMatchWhere({ name, organization }));
       if (!existing)
-        return { error: "No contact with this email. Use contacts_add for new people." };
-      return {
-        contact: await saveContact(deps.prisma, deps.scope, { ...input.data, id: existing.id }),
-      };
+        return {
+          error: email
+            ? "No contact with this email. Use contacts_add for new people."
+            : "No contact with this name and organization. Use contacts_add for new people.",
+        };
+      const contact = await saveContact(
+        deps.prisma,
+        deps.scope,
+        { ...fields, ...(email ? { email } : {}), id: existing.id },
+        deps.botId,
+      );
+      return { contact };
     }
     return { error: `Unknown contact tool ${name}` };
   } catch (error) {

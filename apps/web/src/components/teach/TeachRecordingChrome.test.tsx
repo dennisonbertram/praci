@@ -22,7 +22,22 @@ vi.mock("@rakazo/ui-web", () => ({
     ...props
   }: ComponentProps<"button"> & { variant?: string; size?: string }) => <button {...props} />,
   Input: (props: ComponentProps<"input">) => <input {...props} />,
+  AlertDialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
+    open ? <div data-testid="confirm">{children}</div> : null,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogCancel: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  AlertDialogAction: ({
+    variant: _v,
+    ...props
+  }: ComponentProps<"button"> & { variant?: string }) => <button type="button" {...props} />,
 }));
+const onCancel = vi.hoisted(() => vi.fn());
 
 import { TeachRecordingChrome } from "./TeachRecordingChrome";
 
@@ -72,6 +87,7 @@ async function renderChrome(
           recording={next}
           botId={botId}
           onStop={() => undefined}
+          onCancel={onCancel}
           variant={variant}
         />,
       );
@@ -112,6 +128,7 @@ async function typeProtected(container: HTMLElement, value: string) {
 
 beforeEach(() => {
   computerInput.mockReset();
+  onCancel.mockReset();
   computerInput.mockResolvedValue({ ok: true });
 });
 
@@ -241,4 +258,33 @@ it("drops a queued protected submit when the chrome unmounts", async () => {
     await enqueueTeachComputerInput(botId, async () => undefined);
   });
   expect(computerInput).not.toHaveBeenCalled();
+});
+
+it("cancels at once while the recording is under a minute old", async () => {
+  const view = await renderChrome(
+    { ...recording("skill-new"), startedAt: new Date().toISOString() },
+    "bot-cancel-new",
+    "panel",
+  );
+  await act(async () => {
+    view.container.querySelector<HTMLButtonElement>('[data-testid="teach-cancel"]')?.click();
+  });
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  expect(view.container.querySelector('[data-testid="confirm"]')).toBeNull();
+  await view.cleanup();
+});
+
+it("asks before cancelling a recording older than a minute", async () => {
+  const view = await renderChrome(recording("skill-old"), "bot-cancel-old", "panel");
+  await act(async () => {
+    view.container.querySelector<HTMLButtonElement>('[data-testid="teach-cancel"]')?.click();
+  });
+  expect(onCancel).not.toHaveBeenCalled();
+  await act(async () => {
+    view.container
+      .querySelector<HTMLButtonElement>('[data-testid="teach-cancel-confirm"]')
+      ?.click();
+  });
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  await view.cleanup();
 });

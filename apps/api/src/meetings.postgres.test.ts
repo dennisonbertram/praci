@@ -1,5 +1,6 @@
 import { createRouterClient } from "@orpc/server";
 import {
+  aiRecipient,
   archiveBot,
   createMeetingSourceRegistry,
   GranolaApiEmulator,
@@ -7,6 +8,7 @@ import {
 } from "@rakazo/adapters";
 import type { Actor, SourceMeeting } from "@rakazo/contracts";
 import {
+  AI_DISCLOSURE_VERSION,
   GRANOLA_API_CONNECTOR_ID,
   GRANOLA_MCP_ENDPOINT,
   granolaAgentSpawnKey,
@@ -299,6 +301,20 @@ describePostgres("meetings.* (PostgreSQL)", () => {
     expect(done?.syncedThrough).not.toBeNull();
     expect(done?.syncedCount).toBe(2);
     expect(done?.lastSyncedAt).toBeNull();
+    // Meetings from other providers are not Granola's to count.
+    await prisma.meeting.create({
+      data: {
+        spaceId: a.spaceId,
+        userId: a.userId,
+        provider: "omi",
+        externalId: "omi-status-count",
+        title: "Omi meeting",
+        startedAt: new Date(),
+        sourceUpdatedAt: new Date(),
+      },
+    });
+    expect((await client(a).meetings.status())?.syncedCount).toBe(2);
+    await prisma.meeting.deleteMany({ where: { userId: a.userId, provider: "omi" } });
   });
 
   it("reports consent off when the model's recipient is not allowed", async () => {
@@ -593,5 +609,277 @@ describePostgres("meetings.* (PostgreSQL)", () => {
     expect((await client(b).meetings.list({ cursor: "2026-01-01T00:00:00.000Z|x" })).items).toEqual(
       [],
     );
+  });
+
+  it("returns one meeting with its digest and to-dos to its owner only", async () => {
+    const meeting = await prisma.meeting.create({
+      data: {
+        spaceId,
+        userId: userA,
+        provider: "hex",
+        externalId: id("get"),
+        title: "Invented sync",
+        startedAt: new Date("2026-01-02T10:00:00Z"),
+        endedAt: new Date("2026-01-02T10:30:00Z"),
+        sourceUpdatedAt: new Date(),
+        transcript: "Ada: hello",
+        digestStatus: "done",
+        digest: {
+          decisions: ["Ship it"],
+          followUps: ["Who books?"],
+          commitments: [],
+          identity: "x",
+        },
+      },
+    });
+    await prisma.inboxTodo.create({
+      data: { spaceId, userId: userA, meetingId: meeting.id, text: "Send the deck" },
+    });
+    const got = await client(a).meetings.get({ meetingId: meeting.id });
+    expect(got).toMatchObject({
+      title: "Invented sync",
+      provider: "hex",
+      endedAt: "2026-01-02T10:30:00.000Z",
+      decisions: ["Ship it"],
+      followUps: ["Who books?"],
+      transcript: "Ada: hello",
+    });
+    expect(got.todos.map((todo) => todo.text)).toEqual(["Send the deck"]);
+    // Another user in the same space, and the same user in another space, find nothing.
+    await expect(client(b).meetings.get({ meetingId: meeting.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(client(aOtherSpace).meetings.get({ meetingId: meeting.id })).rejects.toMatchObject(
+      { code: "NOT_FOUND" },
+    );
+  });
+
+  it("tells the page whether a digest is still to come", async () => {
+    const model = { provider: "openrouter", id: "vendor/small-model" } as never;
+    const ready = createRouterClient(
+      createRouter({
+        prisma,
+        env,
+        secrets,
+        jobs,
+        sandbox: {},
+        home: {},
+        meetingSources: registry,
+        resolveModel: async () => model,
+      } as unknown as RouterDeps),
+      { context: { actor: a } as never },
+    );
+    const consent = await prisma.aiDataConsent.create({
+      data: {
+        userId: userA,
+        spaceId,
+        recipientKey: aiRecipient({
+          provider: "openrouter",
+          modelId: "vendor/small-model",
+          use: "model",
+        })!.key,
+        version: AI_DISCLOSURE_VERSION,
+      },
+    });
+    const store = (name: string, minutesAgo: number, digestStatus: string | null) =>
+      prisma.meeting.create({
+        data: {
+          spaceId,
+          userId: userA,
+          provider: "granola",
+          externalId: id(`sum-${name}`),
+          title: "Invented sum",
+          startedAt: new Date(),
+          sourceUpdatedAt: new Date(),
+          createdAt: new Date(Date.now() - minutesAgo * 60_000),
+          digestStatus,
+        },
+      });
+    const summarizing = async (meetingId: string, who = ready) =>
+      (await who.meetings.get({ meetingId })).summarizing;
+    try {
+      expect(await summarizing((await store("new", 2, null)).id)).toBe(true);
+      expect(await summarizing((await store("run", 2, "running")).id)).toBe(true);
+      expect(await summarizing((await store("done", 2, "done")).id)).toBe(false);
+      expect(await summarizing((await store("failed", 2, "failed")).id)).toBe(false);
+      expect(await summarizing((await store("old", 20, null)).id)).toBe(false);
+      // Without a model that can run, no digest is coming.
+      const fresh = await store("fresh", 2, null);
+      expect(await summarizing(fresh.id, client(a))).toBe(false);
+    } finally {
+      await prisma.aiDataConsent.delete({
+        where: {
+          userId_spaceId_recipientKey: {
+            userId: userA,
+            spaceId,
+            recipientKey: consent.recipientKey,
+          },
+        },
+      });
+    }
+  });
+
+  it("still returns the meeting when the readiness check throws or hangs", async () => {
+    const withResolver = (resolveModel: () => Promise<never>) =>
+      createRouterClient(
+        createRouter({
+          prisma,
+          env,
+          secrets,
+          jobs,
+          sandbox: {},
+          home: {},
+          meetingSources: registry,
+          resolveModel,
+        } as unknown as RouterDeps),
+        { context: { actor: a } as never },
+      );
+    const meeting = await prisma.meeting.create({
+      data: {
+        spaceId,
+        userId: userA,
+        provider: "granola",
+        externalId: id("sum-slow"),
+        title: "Invented slow",
+        startedAt: new Date(),
+        sourceUpdatedAt: new Date(),
+        transcript: "Ada: hello",
+      },
+    });
+    const throwing = await withResolver(async () => {
+      throw new Error("refresh failed");
+    }).meetings.get({ meetingId: meeting.id });
+    expect(throwing).toMatchObject({ summarizing: false, transcript: "Ada: hello" });
+    const started = Date.now();
+    const hanging = await withResolver(() => new Promise<never>(() => undefined)).meetings.get({
+      meetingId: meeting.id,
+    });
+    expect(hanging).toMatchObject({ summarizing: false, transcript: "Ada: hello" });
+    expect(Date.now() - started).toBeLessThan(4000);
+  });
+
+  it("lists other people's commitments from the digest, not the user's own", async () => {
+    await prisma.user.update({ where: { id: userA }, data: { emailVerified: true } });
+    try {
+      const meeting = await prisma.meeting.create({
+        data: {
+          spaceId,
+          userId: userA,
+          provider: "granola",
+          externalId: id("actions"),
+          title: "Invented actions",
+          startedAt: new Date("2026-01-03T10:00:00Z"),
+          sourceUpdatedAt: new Date(),
+          attendees: [
+            { name: "Me", email: `${userA}@rakazo.test` },
+            { name: "Bea", email: "bea@rakazo.test" },
+          ],
+          digestStatus: "done",
+          digest: {
+            decisions: [],
+            followUps: [],
+            commitments: [
+              { owner: "Me", text: "Send my deck", due: null },
+              { owner: "Bea", text: "Book the room", due: "2026-01-09" },
+            ],
+            identity: "x",
+          },
+        },
+      });
+      const got = await client(a).meetings.get({ meetingId: meeting.id });
+      expect(got.actionItems).toEqual([{ owner: "Bea", text: "Book the room", due: "2026-01-09" }]);
+    } finally {
+      await prisma.user.update({ where: { id: userA }, data: { emailVerified: false } });
+    }
+  });
+
+  it("filters the list by title text and source, for the owner only", async () => {
+    const f = actor(id("user-filter"));
+    await prisma.user.create({
+      data: { id: f.userId, name: "f", email: f.email, emailVerified: false },
+    });
+    await prisma.member.create({
+      data: {
+        id: id("member-filter"),
+        organizationId: orgId,
+        userId: f.userId,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
+    const mk = (userId: string, provider: string, externalId: string, title: string) => ({
+      spaceId,
+      userId,
+      provider,
+      externalId,
+      title,
+      startedAt: new Date(),
+      sourceUpdatedAt: new Date(),
+    });
+    await prisma.meeting.createMany({
+      data: [
+        mk(f.userId, "hex", "f1", "Pricing Review"),
+        mk(f.userId, "granola", "f2", "Weekly sync"),
+        mk(f.userId, "granola", "f3", "pricing follow-up"),
+        mk(f.userId, "granola", "literal-underscore", "a_c"),
+        mk(f.userId, "granola", "wildcard-underscore", "abc"),
+        mk(b.userId, "granola", "f4", "Pricing secret"),
+      ],
+    });
+    const titles = async (input: { q?: string; provider?: string }) =>
+      (await client(f).meetings.list(input)).items.map((item) => item.title).sort();
+    try {
+      expect(await titles({ q: "PRICING" })).toEqual(["Pricing Review", "pricing follow-up"]);
+      expect(await titles({ provider: "granola" })).toEqual([
+        "Weekly sync",
+        "a_c",
+        "abc",
+        "pricing follow-up",
+      ]);
+      expect(await titles({ q: "pricing", provider: "granola" })).toEqual(["pricing follow-up"]);
+      expect(await titles({ q: "a_c" })).toEqual(["a_c"]);
+    } finally {
+      await prisma.meeting.deleteMany({
+        where: { spaceId, externalId: { in: ["literal-underscore", "wildcard-underscore"] } },
+      });
+    }
+  });
+
+  it("filters the list by attendee email, for the owner only", async () => {
+    const f = actor(id("user-attendee"));
+    await prisma.user.create({
+      data: { id: f.userId, name: "f", email: f.email, emailVerified: false },
+    });
+    await prisma.member.create({
+      data: {
+        id: id("member-attendee"),
+        organizationId: orgId,
+        userId: f.userId,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
+    const mk = (userId: string, externalId: string, title: string, attendees: object[]) => ({
+      spaceId,
+      userId,
+      provider: "granola",
+      externalId,
+      title,
+      attendees,
+      startedAt: new Date(),
+      sourceUpdatedAt: new Date(),
+    });
+    await prisma.meeting.createMany({
+      data: [
+        mk(f.userId, "att-1", "With Ada", [{ name: "Ada", email: "ada@rakazo.test" }]),
+        mk(f.userId, "att-2", "With Bea", [{ name: "Bea", email: "bea@rakazo.test" }]),
+        mk(b.userId, "att-3", "Ada's other meeting", [{ name: "Ada", email: "ada@rakazo.test" }]),
+      ],
+    });
+    const titles = async (input: { attendee?: string }) =>
+      (await client(f).meetings.list(input)).items.map((item) => item.title);
+    expect(await titles({ attendee: "ADA@rakazo.test" })).toEqual(["With Ada"]);
+    expect(await titles({ attendee: "bea@rakazo.test" })).toEqual(["With Bea"]);
+    expect(await titles({})).toHaveLength(2);
   });
 });

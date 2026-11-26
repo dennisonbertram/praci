@@ -386,6 +386,12 @@ describeWithDatabase("Composio catalog reconciliation", () => {
   it("installs Treg, Executor, and custom MCP sources and routes their calls", async () => {
     const cookie = await signup(app, `mcp-connectors-${stamp}@rakazo.test`, "MCP Connectors");
     const actor = await rpc<Actor>(app, cookie, "me");
+    const consumer = await rpc<{ id: string }>(
+      app,
+      cookie,
+      "bots/create",
+      botInput("MCP Consumer"),
+    );
     const tregCredential = "fake-treg-credential-value";
     const treg = await rpc<{ id: string; secretConfigured: boolean }>(
       app,
@@ -429,6 +435,16 @@ describeWithDatabase("Composio catalog reconciliation", () => {
     expect(JSON.stringify(treg)).not.toContain(tregCredential);
     expect(JSON.stringify(executor)).not.toContain(executorCredential);
 
+    for (const install of [treg, executor, custom]) {
+      await rpc(app, cookie, "capabilities/setWrites", { id: install.id, enabled: true });
+      await rpc(app, cookie, "capabilities/setAgentAccess", {
+        id: install.id,
+        botId: consumer.id,
+        on: true,
+        canWrite: true,
+      });
+    }
+
     const provider = new InstalledConnectorProvider(
       handles.prisma,
       new EncryptedSecretStore(TEST_ENCRYPTION_KEY),
@@ -439,6 +455,7 @@ describeWithDatabase("Composio catalog reconciliation", () => {
       traceId: "mcp-product-test",
       spaceId: actor.spaceId,
       userId: actor.userId,
+      botId: consumer.id,
       signal: new AbortController().signal,
     };
     const tools = await provider.discoverTools(context);
@@ -486,6 +503,12 @@ describeWithDatabase("Composio catalog reconciliation", () => {
   it("imports an OpenAPI connector, keeps its credential encrypted, and routes calls", async () => {
     const cookie = await signup(app, `api-connector-${stamp}@rakazo.test`, "API Connector");
     const actor = await rpc<Actor>(app, cookie, "me");
+    const consumer = await rpc<{ id: string }>(
+      app,
+      cookie,
+      "bots/create",
+      botInput("API Consumer"),
+    );
     const credential = "test-connector-secret-value";
     const install = await rpc<{
       id: string;
@@ -497,6 +520,11 @@ describeWithDatabase("Composio catalog reconciliation", () => {
       source: "https://api.example.test/openapi.json",
       credential,
       config: { openApi: true, auth: { type: "bearer" } },
+    });
+    await rpc(app, cookie, "capabilities/setAgentAccess", {
+      id: install.id,
+      botId: consumer.id,
+      on: true,
     });
     expect(install.secretConfigured).toBe(true);
     expect(JSON.stringify(install)).not.toContain(credential);
@@ -519,6 +547,7 @@ describeWithDatabase("Composio catalog reconciliation", () => {
       traceId: "api-connector-test",
       spaceId: actor.spaceId,
       userId: actor.userId,
+      botId: consumer.id,
       signal: new AbortController().signal,
     };
     const tools = await provider.discoverTools(adapterContext);
@@ -559,6 +588,12 @@ describeWithDatabase("Composio catalog reconciliation", () => {
   it("imports a GraphQL connector, introspects operations, and routes calls", async () => {
     const cookie = await signup(app, `graphql-connector-${stamp}@rakazo.test`, "GraphQL Connector");
     const actor = await rpc<Actor>(app, cookie, "me");
+    const consumer = await rpc<{ id: string }>(
+      app,
+      cookie,
+      "bots/create",
+      botInput("GraphQL Consumer"),
+    );
     const install = await rpc<{
       id: string;
       config: Record<string, unknown>;
@@ -568,6 +603,11 @@ describeWithDatabase("Composio catalog reconciliation", () => {
       name: "Star Wars API",
       source: "https://graphql.example.test/graphql",
       config: { auth: { type: "none" } },
+    });
+    await rpc(app, cookie, "capabilities/setAgentAccess", {
+      id: install.id,
+      botId: consumer.id,
+      on: true,
     });
     expect(install.secretConfigured).toBe(false);
     expect(Array.isArray((install.config as { operations?: unknown[] }).operations)).toBe(true);
@@ -583,6 +623,7 @@ describeWithDatabase("Composio catalog reconciliation", () => {
       traceId: "graphql-connector-test",
       spaceId: actor.spaceId,
       userId: actor.userId,
+      botId: consumer.id,
       signal: new AbortController().signal,
     };
     const tools = await provider.discoverTools(adapterContext);
@@ -648,6 +689,16 @@ async function connectRemote(composio: ComposioEmulator, actor: Actor, provider:
       signal: new AbortController().signal,
     },
   );
+}
+
+function botInput(name: string) {
+  return {
+    name,
+    title: "",
+    description: "",
+    instructions: "",
+    notifyOnFinish: false,
+  };
 }
 
 async function signup(app: App, email: string, name: string) {

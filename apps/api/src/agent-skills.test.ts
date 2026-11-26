@@ -271,4 +271,52 @@ describe("agent skill drafts", () => {
     const { service } = setup([draftRow() as never]);
     expect((await service.list(actor)).map((skill) => skill.name)).not.toContain("Agent draft");
   });
+
+  describe("approving a proposed revision", () => {
+    const revisionRow = (pendingName: string) => ({
+      ...savedSkill("Weekly recap"),
+      pendingContent: buildSkillMd({ name: pendingName, description: "New", body: "Body" }),
+      pendingTool: null,
+    });
+    const approve = (pendingName: string, updateMany = vi.fn(async () => ({ count: 1 }))) => {
+      const row = revisionRow(pendingName);
+      // Only the owner's row exists, so the clash lookup (it carries a NOT) finds nothing.
+      const findFirst = vi.fn(async ({ where }: { where: { NOT?: unknown } }) =>
+        where.NOT ? null : row,
+      );
+      const agentSkill = { findFirst, updateMany };
+      const service = createAgentSkillsService({ agentSkill } as unknown as PrismaClient);
+      return { agentSkill, approve: () => service.approveDraft(actor, "saved-1") };
+    };
+
+    it("refuses a built-in name", async () => {
+      const { approve: run, agentSkill } = approve("Interrogate");
+      await expect(run()).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(agentSkill.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("answers a name taken in the meantime with a conflict", async () => {
+      const { approve: run } = approve(
+        "Brand new",
+        vi.fn(async () => {
+          throw Object.assign(new Error("unique"), { code: "P2002" });
+        }),
+      );
+      await expect(run()).rejects.toMatchObject({
+        code: "CONFLICT",
+        message: "A skill with that name already exists.",
+      });
+    });
+
+    it("does not report success when nothing was applied", async () => {
+      const { approve: run } = approve(
+        "Brand new",
+        vi.fn(async () => ({ count: 0 })),
+      );
+      await expect(run()).rejects.toMatchObject({
+        code: "CONFLICT",
+        message: "The skill changed. Review it again.",
+      });
+    });
+  });
 });

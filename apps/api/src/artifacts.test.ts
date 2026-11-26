@@ -302,6 +302,38 @@ describe("deleteArtifactFamily", () => {
     ]);
   });
 
+  it("reads the family once for all its versions", async () => {
+    const root = { id: "root", storageKey: "blob-root", botId: "bot-1" };
+    const client = familyClient([
+      [
+        root,
+        { id: "v2", storageKey: "blob-v2", botId: "bot-1" },
+        { id: "v3", storageKey: "blob-v3", botId: "bot-1" },
+      ],
+      [root],
+      [],
+    ]);
+    const remove = vi.fn(async (id: string) => {
+      client.calls.push(`remove:${id}`);
+    });
+
+    await deleteArtifactFamily(
+      { prisma: client.prisma, artifacts: { remove } as unknown as ArtifactStore },
+      actor,
+      { familyId: "root" },
+    );
+
+    expect(client.calls).toEqual([
+      "remove:blob-v2",
+      "delete:v2",
+      "remove:blob-v3",
+      "delete:v3",
+      "remove:blob-root",
+      "delete:root",
+    ]);
+    expect(client.prisma.artifact.findMany).toHaveBeenCalledTimes(2);
+  });
+
   it("leaves the row in place when blob removal fails", async () => {
     const client = familyClient([[{ id: "root", storageKey: "blob-root", botId: "bot-1" }]]);
     const remove = vi.fn(async () => {

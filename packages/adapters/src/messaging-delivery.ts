@@ -6,10 +6,18 @@ import type {
 } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
-import { botMessageHopExhausted, nextBotMessageHop } from "@rakazo/core";
+import { botMessageHopExhausted, nextBotMessageHop, uiBlockText } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
-import { appendEventInTransaction, createThreadMessageInTransaction } from "@rakazo/db";
+import {
+  appendEventInTransaction,
+  CrossSpaceCommunicationBlockedError,
+  createThreadMessageInTransaction,
+  crossSpaceCommunicationAllowed,
+  runAsSystem,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { MessagingSendError } from "./chat-sdk-surface.js";
+import { splitOutboundBody } from "./messaging-platforms.js";
 
 /**
  * Margin under vendor consecutive-outbound caps (sendblue enforces one hard):
@@ -21,6 +29,17 @@ export const MESSAGING_DM_OUTBOUND_CAP = 140;
 /** Providers whose lines are iMessage and share the consecutive-outbound cap. */
 const IMESSAGE_PROVIDERS = new Set(["sendblue", "bluebubbles", "photon"]);
 
+/** True while this line's DMs wait behind the consecutive-outbound cap for the owner's reply. */
+export function messagingDmHeld(identity: {
+  provider: string;
+  outboundSinceInbound: number;
+}): boolean {
+  return (
+    IMESSAGE_PROVIDERS.has(identity.provider) &&
+    identity.outboundSinceInbound >= MESSAGING_DM_OUTBOUND_CAP
+  );
+}
+
 /**
  * Photon's terms (3.6) require telling people they are talking to an AI. It
  * goes out once, ahead of the first message in a conversation.
@@ -30,6 +49,7 @@ const DISCLOSURE_PROVIDERS = new Set(["photon"]);
 
 /** Provider-send attempts before a mirrored row is declared lost. */
 export const MESSAGING_OUTBOUND_MAX_ATTEMPTS = 5;
+export const MESSAGING_SENDING_STALE_MS = 10 * 60_000;
 
 export interface MessagingDeliveryDeps {
   prisma: PrismaClient;
@@ -106,21 +126,28 @@ async function mirrorRun(deps: MessagingDeliveryDeps, runId: string): Promise<vo
   if (!identity) return;
 
   // bot_message runs can carry the bot's user-facing reply after a delegate wake.
-  // extractText only keeps kind:"text", so inter-bot chatter blocks never leak out.
+  // extractText only keeps text and ui blocks, so inter-bot chatter blocks never leak out.
 
   const messages = await deps.prisma.message.findMany({
     where: { runId: run.id, role: "bot" },
     orderBy: { seq: "asc" },
   });
+  // One row per platform-sized part, so a retry re-sends only the parts that
+  // failed. Explicit createdAt keeps the parts in order for the drain.
+  const createdAt = Date.now();
   const rows = messages
-    .map((message) => ({
-      idempotencyKey: `msg:${message.id}`,
-      kind: "dm",
-      identityId: identity.id,
-      body: extractText(message.blocks),
-      sourceMessageId: message.id,
-    }))
-    .filter((row) => row.body);
+    .flatMap((message) => {
+      const body = extractText(message.blocks);
+      if (!body) return [];
+      return splitOutboundBody(identity.provider, body).map((part, index) => ({
+        idempotencyKey: index === 0 ? `msg:${message.id}` : `msg:${message.id}:${index + 1}`,
+        kind: "dm",
+        identityId: identity.id,
+        body: part,
+        sourceMessageId: message.id,
+      }));
+    })
+    .map((row, index) => ({ ...row, createdAt: new Date(createdAt + index) }));
   if (rows.length === 0) return;
   // Atomic dedupe: a concurrent messaging.deliver for the same run loses on
   // the idempotencyKey unique key instead of throwing P2002.
@@ -192,12 +219,40 @@ async function mirrorChannelRun(
       NOT: { identityId: identity.id },
     },
   });
+  // Peer bots belong to other members, usually in other Spaces.
+  await runAsSystem("fan a group post out to peer bots in other Spaces", () =>
+    fanOutToPeers(deps, { identity, channel, channelBlock, fromLabel, hop, peers, messages }),
+  );
+}
+
+async function fanOutToPeers(
+  deps: MessagingDeliveryDeps,
+  {
+    identity,
+    channel,
+    channelBlock,
+    fromLabel,
+    hop,
+    peers,
+    messages,
+  }: {
+    identity: { provider: string; address: string; botId: string };
+    channel: { id: string; name: string | null };
+    channelBlock: Extract<MessageBlock, { kind: "channel_message" }>;
+    fromLabel: string;
+    hop: number;
+    peers: Array<{ identityId: string | null }>;
+    messages: Array<{ message: { id: string }; text: string }>;
+  },
+): Promise<void> {
   for (const { message, text } of messages) {
     for (const peer of peers) {
       const peerIdentity = await deps.prisma.messagingIdentity.findUnique({
         where: { id: peer.identityId! },
       });
       if (!peerIdentity) continue;
+      if (!(await crossSpaceCommunicationAllowed(deps.prisma, identity.botId, peerIdentity.botId)))
+        continue;
       const peerThread = await deps.prisma.thread.findFirst({
         where: { botId: peerIdentity.botId },
       });
@@ -221,17 +276,23 @@ async function mirrorChannelRun(
         ? new RegExp(`@${escapeRegExp(peerBot.name)}\\b`, "i").test(text)
         : false;
       if (mentioned && !botMessageHopExhausted(hop)) {
-        const sent = await deps.events.sendUserMessage({
-          spaceId: peerIdentity.spaceId,
-          threadId: peerThread.id,
-          botId: peerIdentity.botId,
-          userId: peerIdentity.userId,
-          blocks: [block],
-          prompt: `[Group "${channel.name ?? "group"}" — ${fromLabel}]: ${text}`,
-          trigger: "messaging",
-          clientNonce,
-        });
-        if (sent.runId) {
+        const sent = await deps.events
+          .sendUserMessage({
+            spaceId: peerIdentity.spaceId,
+            threadId: peerThread.id,
+            botId: peerIdentity.botId,
+            userId: peerIdentity.userId,
+            blocks: [block],
+            prompt: `[Group "${channel.name ?? "group"}" — ${fromLabel}]: ${text}`,
+            trigger: "messaging",
+            clientNonce,
+            crossSpaceSenderBotId: identity.botId,
+          })
+          .catch((error: unknown) => {
+            if (error instanceof CrossSpaceCommunicationBlockedError) return null;
+            throw error;
+          });
+        if (sent?.runId) {
           await deps.jobs.enqueue(runContinueJob(sent.runId)).catch((error) => {
             getLogger().error("messaging peer wake enqueue error", error);
           });
@@ -243,22 +304,29 @@ async function mirrorChannelRun(
         where: { threadId_clientNonce: { threadId: peerThread.id, clientNonce } },
       });
       if (existing) continue;
-      const event = await deps.prisma.$transaction(async (tx) => {
-        const created = await createThreadMessageInTransaction(tx, {
-          threadId: peerThread.id,
-          role: "user",
-          blocks: [block],
-          clientNonce,
+      const event = await deps.prisma
+        .$transaction(async (tx) => {
+          const created = await createThreadMessageInTransaction(tx, {
+            threadId: peerThread.id,
+            role: "user",
+            blocks: [block],
+            clientNonce,
+          });
+          if (!(await crossSpaceCommunicationAllowed(tx, identity.botId, peerIdentity.botId)))
+            throw new CrossSpaceCommunicationBlockedError();
+          return appendEventInTransaction(tx, {
+            spaceId: peerIdentity.spaceId,
+            threadId: peerThread.id,
+            botId: peerIdentity.botId,
+            type: "thread.message.created",
+            payload: { messageId: created.id, role: "user", blocks: [block] },
+          });
+        })
+        .catch((error: unknown) => {
+          if (error instanceof CrossSpaceCommunicationBlockedError) return null;
+          throw error;
         });
-        return appendEventInTransaction(tx, {
-          spaceId: peerIdentity.spaceId,
-          threadId: peerThread.id,
-          botId: peerIdentity.botId,
-          type: "thread.message.created",
-          payload: { messageId: created.id, role: "user", blocks: [block] },
-        });
-      });
-      await deps.events.notify(peerThread.id, event.seq).catch(() => undefined);
+      if (event) await deps.events.notify(peerThread.id, event.seq).catch(() => undefined);
     }
   }
 }
@@ -297,13 +365,18 @@ async function sendConnectInvite(
   try {
     return await deps.prisma.$transaction(
       async (tx) => {
+        const communicationAllowed = await crossSpaceCommunicationAllowed(
+          tx,
+          pair.requesterBotId,
+          pair.targetBotId,
+        );
         const locked = await tx.$queryRaw<Array<{ status: string }>>`
           SELECT status FROM agent_connections
           WHERE "requesterBotId" = ${pair.requesterBotId}
             AND "targetBotId" = ${pair.targetBotId}
           FOR UPDATE
         `;
-        if (locked[0]?.status !== "pending") {
+        if (locked[0]?.status !== "pending" || !communicationAllowed) {
           await tx.messagingOutbound.updateMany({
             where: { id: row.id },
             data: { status: "failed" },
@@ -319,7 +392,7 @@ async function sendConnectInvite(
           const sent = await deps.messaging.sendToThread({ threadId, body: row.body }, context);
           await tx.messagingOutbound.updateMany({
             where: { id: row.id },
-            data: { providerHandle: sent.handle },
+            data: { status: "sent", providerHandle: sent.handle },
           });
           return "delivered";
         } catch {
@@ -337,22 +410,56 @@ async function sendConnectInvite(
 }
 
 async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Promise<void> {
-  const now = new Date();
+  const now = Date.now();
+  const staleBefore = new Date(now - MESSAGING_SENDING_STALE_MS);
+  const staleSending = await deps.prisma.messagingOutbound.findMany({
+    where: { status: "sending", updatedAt: { lt: staleBefore } },
+    select: { id: true, attempts: true },
+  });
+  let recovered = 0;
+  for (const row of staleSending) {
+    const attempts = (row.attempts ?? 0) + 1;
+    const result = await deps.prisma.messagingOutbound.updateMany({
+      where: { id: row.id, status: "sending", updatedAt: { lt: staleBefore } },
+      data: {
+        status: attempts >= MESSAGING_OUTBOUND_MAX_ATTEMPTS ? "failed" : "pending",
+        attempts: { increment: 1 },
+        nextAttemptAt: null,
+      },
+    });
+    recovered += result.count;
+  }
+  if (recovered > 0) {
+    getLogger().warn("recovered stale messaging outbound rows", { count: recovered });
+  }
   const pending = await deps.prisma.messagingOutbound.findMany({
-    where: {
-      status: "pending",
-      OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
-    },
+    where: { status: "pending" },
     orderBy: { createdAt: "asc" },
   });
+  // Keep each conversation in order: a row waiting out a backoff, held at
+  // the cap, or failing now holds back the later rows to the same place.
+  const held = new Set<string>();
   for (const row of pending) {
-    // Claim before sending: concurrent drains (job keys are per runId) and
-    // crash retries must never deliver the same message twice.
+    const destination = row.identityId ?? row.threadId ?? row.id;
+    if (held.has(destination)) continue;
+    if (row.nextAttemptAt && row.nextAttemptAt.getTime() > now) {
+      held.add(destination);
+      continue;
+    }
+    // A later part of a split reply waits until the earlier parts are out;
+    // another drain may hold one of them in flight.
+    if (await hasUndeliveredEarlierPart(deps, row)) {
+      held.add(destination);
+      continue;
+    }
+    // Claim before sending so concurrent drains cannot send the same row.
+    // Stale claims are retried after ten minutes.
     const claim = await deps.prisma.messagingOutbound.updateMany({
       where: { id: row.id, status: "pending" },
-      data: { status: "sent", nextAttemptAt: null },
+      data: { status: "sending", nextAttemptAt: null },
     });
     if (claim.count === 0) continue;
+    let accepted = false;
     try {
       if (row.kind === "group" || row.kind === "intro") {
         if (!row.threadId) {
@@ -363,12 +470,13 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
           continue;
         }
         const sent = await deps.messaging.sendToThread(
-          { threadId: row.threadId, body: row.body },
+          { threadId: row.threadId, body: row.body, idempotencyKey: row.id },
           context,
         );
-        await deps.prisma.messagingOutbound.update({
+        accepted = true;
+        await deps.prisma.messagingOutbound.updateMany({
           where: { id: row.id },
-          data: { providerHandle: sent.handle },
+          data: { status: "sent", providerHandle: sent.handle },
         });
         continue;
       }
@@ -385,15 +493,13 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
       // Consecutive-outbound cap for the iMessage lines (a vendor limit on
       // Sendblue, a runaway guard on BlueBubbles); other providers have no
       // equivalent limit, so do not hold Slack/WhatsApp/Telegram DMs.
-      if (
-        IMESSAGE_PROVIDERS.has(identity.provider) &&
-        identity.outboundSinceInbound >= MESSAGING_DM_OUTBOUND_CAP
-      ) {
+      if (messagingDmHeld(identity)) {
         // Cap holds are not failures: release the claim back to pending.
         await deps.prisma.messagingOutbound.update({
           where: { id: row.id },
           data: { status: "pending" },
         });
+        held.add(destination);
         continue;
       }
       const threadId = await resolveDirectThread(deps, identity, context);
@@ -408,10 +514,18 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
           context,
         );
         if (result === "delivered") {
+          accepted = true;
           await blankSentBody(deps.prisma, row.id, identity.provider);
           await deps.prisma.messagingIdentity.update({
             where: { id: identity.id },
             data: { outboundSinceInbound: { increment: 1 } },
+          });
+        } else if (result === "held") {
+          // An ambiguous connect invite is deliberately never retried.
+          accepted = true;
+          await deps.prisma.messagingOutbound.updateMany({
+            where: { id: row.id },
+            data: { status: "sent" },
           });
         }
         continue;
@@ -420,22 +534,38 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
         { threadId, body: row.body, idempotencyKey: row.id },
         context,
       );
+      accepted = true;
       await deps.prisma.messagingOutbound.updateMany({
         where: { id: row.id },
-        data: { providerHandle: sent.handle, ...blankedBody(identity.provider) },
+        data: { status: "sent", providerHandle: sent.handle, ...blankedBody(identity.provider) },
       });
       await deps.prisma.messagingIdentity.update({
         where: { id: identity.id },
         data: { outboundSinceInbound: { increment: 1 } },
       });
-    } catch {
+    } catch (error) {
+      if (accepted) {
+        // Provider acceptance wins over bookkeeping failures; never resend it.
+        getLogger().error("messaging outbound bookkeeping error", error);
+        try {
+          await deps.prisma.messagingOutbound.updateMany({
+            where: { id: row.id },
+            data: { status: "sent" },
+          });
+        } catch {
+          // Best effort only: the provider may already have accepted the message.
+        }
+        continue;
+      }
       // Transient provider errors go back to pending with a backed-off
-      // retry; only an exhausted budget is terminal.
+      // retry (no sooner than the provider's retry-after); a permanent error
+      // or an exhausted budget is terminal.
+      held.add(destination);
+      const failure = error instanceof MessagingSendError ? error : null;
       const attempts = (row.attempts ?? 0) + 1;
-      const exhausted = attempts >= MESSAGING_OUTBOUND_MAX_ATTEMPTS;
-      const retryAt = exhausted
-        ? null
-        : new Date(Date.now() + messagingOutboundRetryDelayMs(attempts));
+      const exhausted = failure?.permanent || attempts >= MESSAGING_OUTBOUND_MAX_ATTEMPTS;
+      const delayMs = Math.max(messagingOutboundRetryDelayMs(attempts), failure?.retryAfterMs ?? 0);
+      const retryAt = exhausted ? null : new Date(Date.now() + delayMs);
       await deps.prisma.messagingOutbound.updateMany({
         where: { id: row.id },
         data: {
@@ -494,6 +624,22 @@ async function discloseOnce(
   }
 }
 
+async function hasUndeliveredEarlierPart(
+  deps: MessagingDeliveryDeps,
+  row: { idempotencyKey: string; sourceMessageId: string | null; createdAt: Date },
+): Promise<boolean> {
+  if (!row.sourceMessageId || row.idempotencyKey === `msg:${row.sourceMessageId}`) return false;
+  const earlier = await deps.prisma.messagingOutbound.findFirst({
+    where: {
+      sourceMessageId: row.sourceMessageId,
+      createdAt: { lt: row.createdAt },
+      OR: [{ status: "pending" }, { status: "sending" }],
+    },
+    select: { id: true },
+  });
+  return earlier !== null;
+}
+
 /**
  * DM rows address the identity, not a thread: the conversation id is learned
  * from inbound webhooks and cached, with a provider lookup as fallback for
@@ -527,12 +673,11 @@ export async function applyMessagingOutboundStatus(
   prisma: PrismaClient,
   event: MessagingOutboundStatus,
 ): Promise<void> {
-  const status =
-    event.status === "ERROR" || event.status === "DECLINED"
-      ? "failed"
-      : event.status === "SENT" || event.status === "DELIVERED"
-        ? "sent"
-        : null;
+  const status = ["ERROR", "DECLINED", "FAILED"].includes(event.status)
+    ? "failed"
+    : ["SENT", "DELIVERED", "READ"].includes(event.status)
+      ? "sent"
+      : null;
   if (!status) return;
   await prisma.messagingOutbound.updateMany({
     where: { providerHandle: event.handle },
@@ -542,15 +687,13 @@ export async function applyMessagingOutboundStatus(
 
 function extractText(blocks: unknown): string {
   if (!Array.isArray(blocks)) return "";
-  return blocks
-    .filter(
-      (block): block is { kind: string; text: string } =>
-        typeof block === "object" &&
-        block !== null &&
-        (block as { kind?: string }).kind === "text" &&
-        typeof (block as { text?: string }).text === "string",
-    )
-    .map((block) => block.text)
+  return (blocks as MessageBlock[])
+    .flatMap((block) => {
+      if (typeof block !== "object" || block === null) return [];
+      if (block.kind === "text" && typeof block.text === "string") return [block.text];
+      if (block.kind === "ui" && block.block) return [uiBlockText(block.block)];
+      return [];
+    })
     .join("\n")
     .trim();
 }

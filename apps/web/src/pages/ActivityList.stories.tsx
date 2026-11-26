@@ -39,7 +39,13 @@ const active = [
 ];
 const recent = [
   row({ runId: "run_4", status: "completed", promptSnippet: "Draft the sample memo" }),
-  row({ runId: "run_5", botName: "Ben", status: "failed", promptSnippet: "Fetch the sample feed" }),
+  row({
+    runId: "run_5",
+    botName: "Ben",
+    status: "failed",
+    promptSnippet: "Fetch the sample feed",
+    error: "The sample feed request timed out.",
+  }),
   row({ runId: "run_6", botName: "Cy", status: "cancelled", promptSnippet: "" }),
 ];
 
@@ -53,11 +59,13 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: "Also shows: ActivityError, ActivityFilters, FilterChip, ActivityRow",
+        component:
+          "Also shows: ActivityError, ActivityFilters, FilterChip, WaitingRow, ActivityRow",
       },
     },
   },
-  args: { onOpenRun: () => {} },
+  args: { onOpenRun: () => {}, onOpenWaitingItem: () => {} },
+  beforeEach: () => mockRpc({ "scratchpad.waitingOnYou": [] }),
   decorators: [
     (Story) => (
       <div className="w-80">
@@ -70,6 +78,57 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = { beforeEach: () => mockRpc({ "runs.list": byFilter }) };
+
+/** Open items that wait on the person, or are past due, sit right after Needs you. */
+export const WaitingOnYou: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "runs.list": byFilter,
+      "scratchpad.waitingOnYou": [
+        {
+          id: "item_1",
+          botId: "bot_ada",
+          botName: "Ada",
+          title: "Sign the sample vendor form",
+          waitingOn: "you",
+          dueAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+        },
+        {
+          id: "item_2",
+          botId: "bot_ben",
+          botName: "Ben",
+          title: "Review the sample budget",
+          waitingOn: null,
+          dueAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+        },
+      ],
+    }),
+};
+
+/** A quiet check-in that said nothing: dimmed, not counted under Finished. */
+export const WithQuietRun: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "runs.list": (input: unknown) =>
+        (input as { filter: string }).filter === "active"
+          ? { runs: [] }
+          : {
+              runs: [
+                ...recent,
+                row({
+                  runId: "run_quiet",
+                  status: "completed",
+                  trigger: "routine",
+                  silent: true,
+                  promptSnippet: "Check in for the user.",
+                }),
+              ],
+            },
+    }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByTestId("activity-show-finished"));
+  },
+};
 
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "runs.list": () => new Promise(() => {}) }),
@@ -86,40 +145,29 @@ export const ErrorOnly: Story = {
     }),
 };
 
-/** Opens the filter popover and its "More filters" fields. */
+/** Opens the filter popover. */
 async function openFilters(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-  await userEvent.click(await canvas.findByTestId("activity-show-filters"));
-  await userEvent.click(await within(document.body).findByText("More filters"));
+  await userEvent.click(await within(canvasElement).findByTestId("activity-show-filters"));
 }
 
 export const FilterOpen: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
-  play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByTestId("activity-show-filters"));
-  },
+  play: async ({ canvasElement }) => openFilters(canvasElement),
 };
 
 export const FilteredToNothing: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
   play: async ({ canvasElement }) => {
     await openFilters(canvasElement);
-    const search = await within(document.body).findByTestId("activity-search");
-    await userEvent.type(search, "zzz-no-match");
+    await userEvent.type(await within(document.body).findByRole("searchbox"), "zzz-no-match");
   },
 };
 
-export const WithFilterChips: Story = {
+/** A search, a status and the sort bot name, all set in the URL. */
+export const WithFilters: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
-  play: async ({ canvasElement }) => {
-    await openFilters(canvasElement);
-    const search = await within(document.body).findByTestId("activity-search");
-    await userEvent.type(search, "sample");
-    await userEvent.selectOptions(
-      within(document.body).getByTestId("activity-status-filter"),
-      "failed",
-    );
-  },
+  parameters: { initialEntries: ["/?activity-q=sample&activity-status=failed&activity-sort=bot"] },
+  play: async ({ canvasElement }) => openFilters(canvasElement),
 };
 
 /** Inside the sidebar's scrolling column the section keeps its height next to a tall sibling. */
@@ -182,6 +230,18 @@ export const FourApprovals: Story = {
   decorators: [
     (Story) => (
       <div className="flex h-[393px] w-72 flex-col overflow-y-auto border border-border">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/** In the phone drawer the whole column scrolls, so Working and the finished-runs button stay reachable. */
+export const PhoneDrawer: Story = {
+  beforeEach: () => mockRpc({ "runs.list": byFilter }),
+  decorators: [
+    (Story) => (
+      <div className="flex w-full flex-col">
         <Story />
       </div>
     ),

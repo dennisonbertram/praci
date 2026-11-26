@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { ORPCError } from "@orpc/client";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -27,12 +28,15 @@ vi.mock("../../components/ComposeEmail", () => ({
     seed,
     draft,
     restore,
+    onSent,
   }: {
     seed: { kind: string };
     draft?: string;
     restore?: { fields: object; replyToId?: string };
+    onSent?: () => void;
   }) => (
     <div data-testid="compose">
+      <button type="button" aria-label="mock send" onClick={onSent} />
       {seed.kind}
       {draft ? `:${draft}` : ""}
       {restore ? `|${JSON.stringify(restore.fields)}|reply-to:${restore.replyToId}` : ""}
@@ -76,6 +80,20 @@ vi.mock("./EmailAgentPanel", () => ({
     </aside>
   ),
 }));
+vi.mock("./ContextPanel", () => ({
+  ContextPanel: ({ people }: { people: Array<{ email: string }> }) => (
+    <div data-testid="context-people">{people.map((p) => p.email).join(",")}</div>
+  ),
+}));
+vi.mock("react-router-dom", () => ({
+  Link: ({ to, render: _render, ...props }: { to: string; render?: unknown }) => (
+    <a href={to} {...props} />
+  ),
+}));
+vi.mock("../../lib/mail-context-panel", async () => {
+  const { useState } = await import("react");
+  return { useContextPanelOpen: () => useState(true) };
+});
 const get = vi.fn();
 vi.mock("../../lib/rpc", () => ({
   rpc: { inbox: { get: (input: unknown) => get(input) } },
@@ -190,6 +208,36 @@ it("ignores keys typed in inputs", async () => {
   document.body.appendChild(input);
   await press("j", input);
   expect(onNavigate).not.toHaveBeenCalled();
+});
+
+it("u marks the message unread and closes it", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onRead = vi.fn();
+  const onClose = vi.fn();
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="m2"
+        unread={false}
+        onRead={onRead}
+        onNavigate={vi.fn()}
+        onClose={onClose}
+      />,
+    ),
+  );
+  await flush();
+  await press("u");
+  expect(onRead).toHaveBeenCalledWith(false);
+  expect(onClose).toHaveBeenCalledTimes(1);
+  // A held key must not close again, which would step back through the history.
+  await press("u", document.body, { repeat: true });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it("is wide on large screens", async () => {
+  await open();
+  const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
+  expect(popup).toContain("md:w-[min(1200px,94vw)]");
 });
 
 it("r opens a reply", async () => {
@@ -353,8 +401,8 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
       [...document.querySelectorAll("button")].find((b) => b.textContent === name)?.click(),
     );
   expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
-  // Beside Reply in the toolbar, not behind More.
-  expect(await menuItem("Ask agent")).toBeUndefined();
+  // Beside Reply in the toolbar; behind More only on a phone, where the toolbar has no room.
+  expect((await menuItem("Ask agent"))?.className).toContain("md:hidden");
   await clickAsk();
   expect(onAskAgentPanel).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
@@ -363,19 +411,82 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   // From 1280px the dialog grows right (left edge fixed) and the panel sits beside the email; below
   // that the panel overlays and the email column reserves its width.
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
-  expect(popup).toContain("min-[1280px]:w-[min(1152px,calc(50vw+376px))]!");
+  expect(popup).toContain("min-[1280px]:w-[min(1440px,calc(50vw+376px))]!");
   // Stays centred (equal side gutters): no left override.
   expect(popup).not.toContain("min-[1280px]:left-");
   expect(document.querySelector("[data-slot=dialog-content] > div")?.className).toContain(
     "md:pe-96",
   );
-  expect(document.querySelector('[data-testid="agent-panel"]')?.parentElement?.className).toContain(
-    "absolute",
-  );
+  expect(
+    document.querySelector('[data-testid="email-side-panel"]')?.parentElement?.className,
+  ).toContain("absolute");
   await click("panel draft");
   expect(document.querySelector('[data-testid="compose"]')?.textContent).toBe("reply:Hi Sam");
   await click("panel close");
   expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
+});
+
+const tab = (name: string) =>
+  [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((el) =>
+    el.textContent?.includes(name),
+  );
+
+it("opens on Context with the sender, and the Context button hides and shows the panel", async () => {
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    from: "Ann Lee <ann@example.com>",
+  }));
+  act(() => root.render(<InboxMessageDialog messageId="m4" onClose={() => {}} />));
+  await flush();
+  const people = () => document.querySelector('[data-testid="context-people"]')?.textContent;
+  expect(people()).toBe("ann@example.com");
+  // Without an agent to switch to, there are no tabs.
+  expect(tab("Agent")).toBeUndefined();
+  const toggle = () =>
+    document.querySelector<HTMLElement>('button[aria-label="Context"][aria-pressed]');
+  await act(async () => toggle()?.click());
+  expect(people()).toBeUndefined();
+  await act(async () => toggle()?.click());
+  expect(people()).toBe("ann@example.com");
+});
+
+it("names the recipients of a message the user wrote", async () => {
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    fromSelf: true,
+    to: "Kevin Zhao <kevin@acme.example.test>, kevin@acme.example.test",
+    cc: "kim@example.com",
+  }));
+  act(() => root.render(<InboxMessageDialog messageId="m5" onClose={() => {}} />));
+  await flush();
+  expect(document.querySelector('[data-testid="context-people"]')?.textContent).toBe(
+    "kevin@acme.example.test,kim@example.com",
+  );
+});
+
+it("creates the email's agent when its tab is first opened, and keeps its chat between tabs", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onAskAgentPanel = vi.fn().mockResolvedValue({ id: "bot-1", name: "Thread agent" });
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="m6" onAskAgentPanel={onAskAgentPanel} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
+  await act(async () => tab("Agent")?.click());
+  await flush();
+  expect(onAskAgentPanel).toHaveBeenCalledTimes(1);
+  expect(tab("Agent")?.getAttribute("aria-selected")).toBe("true");
+  const agent = document.querySelector('[data-testid="agent-panel"]');
+  expect(agent?.textContent).toContain("Thread agent");
+  await act(async () => tab("Context")?.click());
+  expect(tab("Context")?.getAttribute("aria-selected")).toBe("true");
+  // Still mounted, only hidden.
+  expect(document.querySelector('[data-testid="agent-panel"]')).toBe(agent);
+  expect(agent?.parentElement?.className).toContain("hidden");
+  await act(async () => tab("Agent")?.click());
+  expect(onAskAgentPanel).toHaveBeenCalledTimes(1);
 });
 
 it("reopens a failed send with its own recipients and subject", async () => {
@@ -550,6 +661,20 @@ it("says the email has an unsent reply and continues it in the mode it was writt
   }
 });
 
+it("closes the preview when the reply composer sends, leaving Undo to the outbox", async () => {
+  get.mockImplementation(async () => message("m1"));
+  const onClose = vi.fn();
+  act(() => root.render(<InboxMessageDialog messageId="m1" onClose={onClose} />));
+  await flush();
+  const reply = [...document.querySelectorAll("button")].find((b) => b.textContent === "Reply");
+  await act(async () => reply?.click());
+  expect(onClose).not.toHaveBeenCalled();
+  await act(async () =>
+    (document.querySelector('[aria-label="mock send"]') as HTMLElement).click(),
+  );
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 it("takes the read state from the message and hides Archive once it left the Inbox", async () => {
   const onRead = vi.fn();
   get.mockImplementation(async () => ({ ...message("card"), unread: true, inInbox: false }));
@@ -633,6 +758,42 @@ it("shows a reply sent from the dialog without reopening it", async () => {
   });
   await flush();
   expect(document.body.textContent).toContain("2 earlier messages");
+});
+
+it("removes message actions when a refresh finds that the message was deleted", async () => {
+  get.mockResolvedValueOnce(message("m1"));
+  act(() =>
+    root.render(<InboxMessageDialog messageId="m1" onArchive={() => {}} onClose={() => {}} />),
+  );
+  await flush();
+  get.mockRejectedValueOnce(new ORPCError("NOT_FOUND", { message: "Message not found" }));
+  await act(async () => window.dispatchEvent(new Event(MAIL_SENT_EVENT)));
+  await flush();
+  expect(document.body.textContent).toContain("Email not found");
+  expect([...document.querySelectorAll("button")].map((entry) => entry.textContent)).not.toContain(
+    "Reply",
+  );
+  expect([...document.querySelectorAll("button")].map((entry) => entry.textContent)).not.toContain(
+    "Archive",
+  );
+});
+
+it("keeps message actions after a transient refresh failure", async () => {
+  get.mockResolvedValueOnce(message("m1"));
+  act(() =>
+    root.render(<InboxMessageDialog messageId="m1" onArchive={() => {}} onClose={() => {}} />),
+  );
+  await flush();
+  get.mockRejectedValueOnce(new Error("offline"));
+  await act(async () => window.dispatchEvent(new Event(MAIL_SENT_EVENT)));
+  await flush();
+  expect(document.body.textContent).toContain("Subject m1");
+  expect([...document.querySelectorAll("button")].map((entry) => entry.textContent)).toContain(
+    "Reply",
+  );
+  expect([...document.querySelectorAll("button")].map((entry) => entry.textContent)).toContain(
+    "Archive",
+  );
 });
 
 it("explains a stale link and offers a way back instead of Try again", async () => {
@@ -808,4 +969,228 @@ it("shows Reply and Archive while the body loads, and a retry line after 5 secon
     [...document.querySelectorAll("button")].find((b) => b.textContent === "Try again")?.click();
   });
   expect(get).toHaveBeenCalledTimes(2);
+});
+
+it("offers Track in More and shows a Tracked mark while it is on", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onTrack = vi.fn();
+  const render = (tracked: boolean) =>
+    act(() =>
+      root.render(
+        <InboxMessageDialog
+          messageId="m2"
+          tracked={tracked}
+          onTrack={onTrack}
+          onClose={() => {}}
+        />,
+      ),
+    );
+  await render(false);
+  await flush();
+  expect(document.body.textContent).not.toContain("Tracked");
+  await act(async () => (await menuItem("Track"))?.click());
+  expect(onTrack).toHaveBeenLastCalledWith(true);
+  await render(true);
+  expect(document.body.textContent).toContain("Tracked");
+  await act(async () => (await menuItem("Stop tracking"))?.click());
+  expect(onTrack).toHaveBeenLastCalledWith(false);
+});
+
+it("keeps the notice in a live region that is already there, so a screen reader announces it", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const props = { messageId: "m2", onClose: () => {} };
+  act(() => root.render(<InboxMessageDialog {...props} />));
+  await flush();
+  const region = document.querySelector('[role="status"]');
+  expect(region).not.toBeNull();
+  expect(region?.textContent).toBe("");
+  act(() =>
+    root.render(
+      <InboxMessageDialog {...props} notice={<span>Stopped Needs reply for Sam</span>} />,
+    ),
+  );
+  await flush();
+  expect(document.querySelector('[role="status"]')).toBe(region);
+  expect(region?.textContent).toBe("Stopped Needs reply for Sam");
+});
+
+const ada = { from: "Ada <ada@lists.example.test>" };
+const alertContent = () => document.querySelector('[data-slot="alert-dialog-content"]');
+const alertButton = (name: string) =>
+  [...document.querySelectorAll<HTMLElement>('[data-slot="alert-dialog-content"] button')].find(
+    (b) => b.textContent === name,
+  );
+const menuItems = () =>
+  [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].map((el) => el.textContent);
+
+it("lists the page's moves in More and calls onMove, but only when the page passes them", async () => {
+  get.mockImplementation(async ({ messageId }) => ({ ...message(messageId), ...ada }));
+  const onMove = vi.fn();
+  const render = (props: Record<string, unknown>) =>
+    act(() => root.render(<InboxMessageDialog messageId="mv1" onClose={() => {}} {...props} />));
+  await render({ moves: ["spam", "trash"], onMove });
+  await flush();
+  const trash = await menuItem("Trash");
+  expect(trash).toBeDefined();
+  expect(menuItems()).toContain("Spam");
+  await act(async () => trash?.click());
+  expect(onMove).toHaveBeenCalledTimes(1);
+  expect(onMove).toHaveBeenLastCalledWith("trash");
+  // A chat card passes neither: the items stay out of More.
+  await render({});
+  await flush();
+  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  expect(menuItems()).not.toContain("Spam");
+  expect(menuItems()).not.toContain("Trash");
+});
+
+it("asks before unsubscribing, sends on Unsubscribe and hides the item", async () => {
+  get.mockImplementation(async ({ messageId }) => ({ ...message(messageId), ...ada }));
+  const onUnsubscribe = vi.fn().mockResolvedValue({ status: "done", method: "one_click" });
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="u1" onUnsubscribe={onUnsubscribe} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  expect(alertContent()?.textContent).toContain("Unsubscribe from Ada?");
+  expect(alertContent()?.textContent).toContain("This can't be undone.");
+  await act(async () => alertButton("Cancel")?.click());
+  expect(onUnsubscribe).not.toHaveBeenCalled();
+  expect(alertContent()).toBeNull();
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  await act(async () => alertButton("Unsubscribe")?.click());
+  await flush();
+  expect(onUnsubscribe).toHaveBeenCalledTimes(1);
+  expect(onUnsubscribe).toHaveBeenLastCalledWith(false);
+  expect(alertContent()).toBeNull();
+  expect(document.body.textContent).toContain("Unsubscribed from Ada");
+  expect(await menuItem("Unsubscribe")).toBeUndefined();
+});
+
+it("asks again before sending an unsubscribe email, and sends on Send", async () => {
+  get.mockImplementation(async ({ messageId }) => ({ ...message(messageId), ...ada }));
+  const onUnsubscribe = vi
+    .fn()
+    .mockResolvedValueOnce({
+      status: "needs_confirmation",
+      method: "mailto",
+      mailTo: "unsub@lists.example.test",
+    })
+    .mockResolvedValueOnce({ status: "sent", method: "mailto" });
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="u2" onUnsubscribe={onUnsubscribe} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  await act(async () => alertButton("Unsubscribe")?.click());
+  await flush();
+  expect(alertContent()?.textContent).toContain(
+    "Send an unsubscribe email to unsub@lists.example.test?",
+  );
+  await act(async () => alertButton("Send")?.click());
+  await flush();
+  expect(onUnsubscribe).toHaveBeenCalledTimes(2);
+  expect(onUnsubscribe).toHaveBeenLastCalledWith(true);
+});
+
+it("turns the action into an Open link anchor when the answer is a link", async () => {
+  get.mockImplementation(async ({ messageId }) => ({ ...message(messageId), ...ada }));
+  const onUnsubscribe = vi.fn().mockResolvedValue({
+    status: "opened",
+    method: "link",
+    openUrl: "https://lists.example.test/leave",
+  });
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="u3" onUnsubscribe={onUnsubscribe} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  await act(async () => alertButton("Unsubscribe")?.click());
+  await flush();
+  const link = alertContent()?.querySelector("a");
+  expect(link?.getAttribute("href")).toBe("https://lists.example.test/leave");
+  expect(link?.getAttribute("target")).toBe("_blank");
+  expect(link?.textContent).toBe("Open link");
+  expect(document.body.textContent).not.toContain("Unsubscribed from");
+  // The user's own click opens the tab and closes the question.
+  await act(async () => (link as HTMLElement).click());
+  expect(alertContent()).toBeNull();
+});
+
+it("reports a sender without an unsubscribe target, and a rejected call", async () => {
+  get.mockImplementation(async ({ messageId }) => ({ ...message(messageId), ...ada }));
+  const onUnsubscribe = vi
+    .fn()
+    .mockResolvedValueOnce({ status: "unavailable", method: null })
+    .mockRejectedValueOnce(new Error("Mail is unavailable"));
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="u4" onUnsubscribe={onUnsubscribe} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  await act(async () => alertButton("Unsubscribe")?.click());
+  await flush();
+  expect(alertContent()).toBeNull();
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+    "Couldn't unsubscribe from Ada",
+  );
+  // The item stays so the user can try again; a rejection shows the error text.
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  await act(async () => alertButton("Unsubscribe")?.click());
+  await flush();
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain("Mail is unavailable");
+});
+
+it("ignores the message keys while the unsubscribe question is open", async () => {
+  get.mockImplementation(async ({ messageId }) => ({ ...message(messageId), ...ada }));
+  const onArchive = vi.fn();
+  const onNavigate = vi.fn();
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="u5"
+        nextId="n1"
+        onNavigate={onNavigate}
+        onArchive={onArchive}
+        onUnsubscribe={vi.fn().mockResolvedValue({ status: "done", method: "one_click" })}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Unsubscribe"))?.click());
+  expect(alertContent()).not.toBeNull();
+  await press("e");
+  await press("j");
+  await press("r");
+  expect(onArchive).not.toHaveBeenCalled();
+  expect(onNavigate).not.toHaveBeenCalled();
+  expect(document.querySelector('[data-testid="compose"]')).toBeNull();
+});
+
+it("offers no Unsubscribe on the user's own mail", async () => {
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    from: "me@example.com",
+    fromSelf: true,
+  }));
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="u6"
+        onUnsubscribe={vi.fn().mockResolvedValue({ status: "done", method: "one_click" })}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  expect(await menuItem("Unsubscribe")).toBeUndefined();
 });

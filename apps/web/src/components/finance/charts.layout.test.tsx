@@ -112,8 +112,33 @@ it("draws a flat balance line mid-chart, not on the x axis", async () => {
     ?.split(" ")
     .map((p) => Number(p.split(",")[1]));
   done();
-  // The plot runs from y=10 to y=170; mid-chart is 90.
-  expect(ys?.every((y) => Math.abs(y - 90) < 1)).toBe(true);
+  // The plot runs from y=10 to y=170; round gridlines put the line near the middle, never on an edge.
+  expect(ys?.every((y) => y > 50 && y < 130)).toBe(true);
+});
+
+it.each([
+  [[125_387_500, 125_387_500, 125_387_500], 375],
+  [[125_387_500, 130_000_000, 99_900_000_000], 320],
+  [[2_538_750, 2_538_750], 600],
+])("keeps every y axis label inside the chart (%j, %i px)", async (values, width) => {
+  const { el, done } = await mount(
+    width,
+    <LineChart
+      values={values}
+      labels={values.map((_, i) => String(i))}
+      height={200}
+      label="Balance"
+    />,
+  );
+  const first = Number(el.querySelector("polyline")?.getAttribute("points")?.split(",")[0]);
+  for (const t of el.querySelectorAll("text[text-anchor=end]")) {
+    if (!t.textContent?.startsWith("$")) continue;
+    const x = Number(t.getAttribute("x"));
+    // 12 px text is about 7 px a character; the label must start at or right of x=0.
+    expect(x - (t.textContent ?? "").length * 7).toBeGreaterThanOrEqual(0);
+    expect(x).toBeLessThanOrEqual(first);
+  }
+  done();
 });
 
 const month = (m: number, outCents: number, revenueCents: number, partial = false) => ({
@@ -186,7 +211,7 @@ it("labels a flat balance's gridlines evenly, with the balance on the middle one
     .map((t) => t.textContent ?? "")
     .filter((t) => t.startsWith("$"));
   done();
-  expect(labels).toEqual(["$950k", "$1.15M", "$1.35M"]);
+  expect(labels).toEqual(["$1M", "$1.2M", "$1.4M"]);
 });
 
 it("shows revenue when trimming leaves one month, or one full month plus the current one", async () => {
@@ -331,7 +356,9 @@ it("never puts two markers within 8 px of each other", async () => {
 
 it.each([300, 375])("keeps all 12 months reachable and 44 px wide at %i px on touch", async (w) => {
   const saved = window.matchMedia;
-  window.matchMedia = ((q: string) => ({ matches: q.includes("coarse") })) as typeof matchMedia;
+  window.matchMedia = ((q: string) => ({
+    matches: q.includes("coarse"),
+  })) as typeof matchMedia;
   const series = Array.from({ length: 12 }, (_, i) => mk(i + 1, 300_000 + i));
   const { el, done } = await mount(w, <BurnLines label="Burn" series={series} onOpen={() => {}} />);
   const links = [...el.querySelectorAll("g[role=link] rect")];
@@ -488,7 +515,10 @@ it("keeps the y axis labels at the left edge of a chart scrolled sideways", asyn
 });
 
 it("abbreviates bar amounts that would touch at phone width", async () => {
-  const items = Array.from({ length: 7 }, (_, i) => ({ label: `M${i}`, cents: 750_000 }));
+  const items = Array.from({ length: 7 }, (_, i) => ({
+    label: `M${i}`,
+    cents: 750_000,
+  }));
   const narrow = await mount(327, <MonthBars items={items} label="x" />);
   expect(narrow.el.textContent).toContain("$7.5k");
   expect(narrow.el.textContent).not.toContain("$7,500");

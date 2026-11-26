@@ -1,0 +1,33 @@
+{
+  "json": {
+    "items": [
+      {
+        "id": "artifact-placeholder",
+        "botId": "bot-placeholder",
+        "groupId": null,
+        "runId": null,
+        "name": "MOCK All-hands Notes - October.md",
+        "description": "Decisions and owners from the October all-hands",
+        "mimeType": "text/markdown",
+        "size": 229,
+        "version": 1,
+        "createdAt": "2026-10-29T03:26:49.001Z",
+        "versionCount": 1
+      },
+      {
+        "id": "artifact-placeholder",
+        "botId": "bot-placeholder",
+        "groupId": null,
+        "runId": null,
+        "name": "MOCK Seed Fundraising Plan.md",
+        "description": "Target round, investor list and timeline",
+        "mimeType": "text/markdown",
+        "size": 326,
+        "version": 1,
+        "createdAt": "2026-10-29T03:26:48.991Z",
+        "versionCount": 1
+      }
+    ],
+    "nextCursor": "v1.eyJjcmVhdGVkQXQiOiIyMDI2LTEwLTI5VDAzOjI2OjQ4Ljk5MVoiLCJpZCI6ImNtdnN6ZjVpNzAwNGtjcjlrODlzZDdtdHIiLCJib3RJZCI6ImNtdnN6ZjA2OTAwMDVjcjlrMWY4bjE1dWUiLCJhc09mIjoiMjAyNi0xMC0yOVQxNzoxMTowOC40ODFaIn0"
+  }
+}

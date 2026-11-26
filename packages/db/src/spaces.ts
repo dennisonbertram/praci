@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NEW_SPACE_APPROVAL_CATEGORIES } from "./bootstrap-user.js";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { runAsSystemInTransaction } from "./row-security.js";
 import { IsolationError } from "./scope.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
@@ -50,6 +51,14 @@ export class SpaceNotEmptyError extends Error {
   }
 }
 
+/** Another member's cap table lives in the space. Row-level security hides it from the deleter. */
+export class SpaceHasCapTableError extends Error {
+  constructor() {
+    super("This space contains a cap table and cannot be deleted");
+    this.name = "SpaceHasCapTableError";
+  }
+}
+
 export class CannotDeleteSpaceAsNonOwnerError extends Error {
   constructor() {
     super("Only the space owner can delete it");
@@ -78,6 +87,7 @@ type SpaceClient = Pick<
   | "space"
   | "spaceMember"
   | "spaceModelPreference"
+  | "spaceBackupModel"
   | "spaceVoicePreference"
   | "memoryDocument"
   | "notificationPreference"
@@ -151,8 +161,11 @@ async function copyProviderPreferences(
   prisma: SpaceClient,
   input: { sourceSpaceId: string; targetSpaceId: string; userId: string; createdAt: Date },
 ): Promise<void> {
-  const [modelPreferences, voicePreferences] = await Promise.all([
+  const [modelPreferences, backupModels, voicePreferences] = await Promise.all([
     prisma.spaceModelPreference.findMany({
+      where: { spaceId: input.sourceSpaceId, userId: input.userId },
+    }),
+    prisma.spaceBackupModel.findMany({
       where: { spaceId: input.sourceSpaceId, userId: input.userId },
     }),
     prisma.spaceVoicePreference.findMany({
@@ -167,9 +180,22 @@ async function copyProviderPreferences(
             userId: input.userId,
             credentialId: preference.credentialId,
             modelId: preference.modelId,
+            thinkingLevel: preference.thinkingLevel,
+            embeddingModel: preference.embeddingModel,
             isDefault: preference.isDefault,
             createdAt: input.createdAt,
             updatedAt: input.createdAt,
+          })),
+        })
+      : Promise.resolve(),
+    backupModels.length
+      ? prisma.spaceBackupModel.createMany({
+          data: backupModels.map((backup) => ({
+            spaceId: input.targetSpaceId,
+            userId: input.userId,
+            provider: backup.provider,
+            modelId: backup.modelId,
+            position: backup.position,
           })),
         })
       : Promise.resolve(),
@@ -291,8 +317,6 @@ async function lockSpaceDeletion(tx: Prisma.TransactionClient, spaceId: string):
 
 type ClaimedSpaceDeleteInput = SpaceMemberTargetInput & { claimId: string };
 
-type SpaceDeleteDb = Pick<PrismaClient, "spaceMember" | "bot" | "chatGroup" | "computer">;
-
 async function loadActorSpace(
   db: Pick<PrismaClient, "spaceMember">,
   input: SpaceMemberTargetInput,
@@ -332,7 +356,7 @@ async function loadActorSpace(
 }
 
 async function assertEmptySpaceDeletable(
-  db: SpaceDeleteDb,
+  db: Prisma.TransactionClient,
   input: SpaceMemberTargetInput,
 ): Promise<{
   organizationId: string;
@@ -368,6 +392,15 @@ async function assertEmptySpaceDeletable(
     }),
   ]);
   if (botCount > 0 || groupCount > 0) throw new SpaceNotEmptyError();
+  // Your own ledger goes with the space; a co-member's must not be erased by someone who cannot
+  // see it (row-level security hides it), so count it past RLS and refuse.
+  const othersLedgers = await runAsSystemInTransaction(
+    db,
+    "space deletion: refuse while another member has a cap table here",
+    () =>
+      db.equityLedger.count({ where: { spaceId: input.spaceId, userId: { not: input.userId } } }),
+  );
+  if (othersLedgers > 0) throw new SpaceHasCapTableError();
   return {
     organizationId: owned.organizationId,
     memberships,
@@ -458,6 +491,12 @@ export async function releaseSpaceDeletionClaim(
   });
 }
 
+export type DeletedSpaceHome = {
+  homeKey: string;
+  homeSnapshotId: string | null;
+  homePreviousSnapshotId: string | null;
+};
+
 /** Delete an empty, non-default privacy boundary.
  *
  * Only the SpaceMember owner may delete, and only empty spaces: bots
@@ -474,7 +513,7 @@ export async function releaseSpaceDeletionClaim(
 export async function deleteEmptySpaceForMember(
   prisma: PrismaClient,
   input: ClaimedSpaceDeleteInput,
-): Promise<{ id: string; dataRoomStorageKeys: string[] }> {
+): Promise<{ id: string; dataRoomStorageKeys: string[]; homes: DeletedSpaceHome[] }> {
   return withTransactionRetry(() =>
     prisma.$transaction(
       async (tx) => {
@@ -495,16 +534,39 @@ export async function deleteEmptySpaceForMember(
             select: { storageKey: true, thumbnailKey: true },
           })
         ).flatMap((item) => [item.storageKey, item.thumbnailKey].filter((key) => key !== null));
+        // Contact photo blobs go through the same cleanup job.
+        const photos = await tx.contactPhoto.findMany({
+          where: { spaceId: input.spaceId },
+          select: { storageKey: true },
+        });
+        dataRoomStorageKeys.push(...photos.map((photo) => photo.storageKey));
+        // Audio of recordings still waiting to be transcribed.
+        const captureAudio = await tx.meetingCaptureChunk.findMany({
+          where: { spaceId: input.spaceId, blobKey: { not: null } },
+          select: { blobKey: true },
+        });
+        for (const { blobKey } of captureAudio) if (blobKey) dataRoomStorageKeys.push(blobKey);
+        // Raw audio of uploads not yet assembled into recordings.
+        const uploads = await tx.omiUpload.findMany({
+          where: { spaceId: input.spaceId, assembledAt: null },
+          select: { storageKey: true },
+        });
+        dataRoomStorageKeys.push(...uploads.map((upload) => upload.storageKey));
+        // Every computer's home, including those with no provider handle left.
+        const homes = await tx.computer.findMany({
+          where: { spaceId: input.spaceId },
+          select: { homeKey: true, homeSnapshotId: true, homePreviousSnapshotId: true },
+        });
         await tx.space.delete({ where: { id: input.spaceId } });
         if (input.spaceId !== input.currentSpaceId) {
-          return { id: input.currentSpaceId, dataRoomStorageKeys };
+          return { id: input.currentSpaceId, dataRoomStorageKeys, homes };
         }
         const remaining = planned.memberships.filter(
           (membership) => membership.spaceId !== input.spaceId,
         );
         const fallback = remaining.find((membership) => membership.space.isDefault) ?? remaining[0];
         if (!fallback) throw new CannotDeleteLastSpaceError();
-        return { id: fallback.spaceId, dataRoomStorageKeys };
+        return { id: fallback.spaceId, dataRoomStorageKeys, homes };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),

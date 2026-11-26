@@ -12,6 +12,7 @@ import {
   mailSyncJob,
   messagingDeliverJob,
   parseBackgroundJob,
+  routineRetryJob,
 } from "./background-jobs.js";
 import type { BackgroundJobHandlers } from "./types.js";
 
@@ -19,11 +20,13 @@ function handlers(): BackgroundJobHandlers {
   return {
     "run.continue": vi.fn(async () => undefined),
     "routine.wakeup": vi.fn(async () => undefined),
+    "routine.retry": vi.fn(async () => undefined),
     "computer.update": vi.fn(async () => undefined),
     "computer.sleep": vi.fn(async () => undefined),
     "computer.control-expire": vi.fn(async () => undefined),
     "skill.teaching-expire": vi.fn(async () => undefined),
     "history.compact": vi.fn(async () => undefined),
+    "goal.check": vi.fn(async () => undefined),
     "messaging.deliver": vi.fn(async () => undefined),
     "notifications.deliver": vi.fn(async () => undefined),
     "notifications.retention": vi.fn(async () => undefined),
@@ -32,15 +35,28 @@ function handlers(): BackgroundJobHandlers {
     "account.export.cleanup": vi.fn(async () => undefined),
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
+    "mail.reply.batch": vi.fn(async () => undefined),
+    "pipeline.import": vi.fn(async () => undefined),
+    "pipeline.auto_status": vi.fn(async () => undefined),
+    "pipeline.auto_status.sweep": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
     "mail.sync": vi.fn(async () => undefined),
     "mail.attachments": vi.fn(async () => undefined),
+    "contacts.photos": vi.fn(async () => undefined),
     "audit.intake": vi.fn(async () => undefined),
     "mail.watch.renew": vi.fn(async () => undefined),
+    "mail.sync.sweep": vi.fn(async () => undefined),
     "devin.refresh": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
+    "omi.assemble": vi.fn(async () => undefined),
+    "omi.transcribe": vi.fn(async () => undefined),
+    "omi.sort": vi.fn(async () => undefined),
+    "meetings.capture_transcribe": vi.fn(async () => undefined),
+    "meetings.capture_finalize": vi.fn(async () => undefined),
+    "meetings.capture_sweep": vi.fn(async () => undefined),
     "meetings.sync": vi.fn(async () => undefined),
     "meetings.digest": vi.fn(async () => undefined),
+    "meetings.followup": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
     "dataroom.ingest": vi.fn(async () => undefined),
     "dataroom.classify": vi.fn(async () => undefined),
@@ -55,6 +71,9 @@ function handlers(): BackgroundJobHandlers {
     "company.import.unit": vi.fn(async () => undefined),
     "company.import.recover": vi.fn(async () => undefined),
     "company.refresh.tick": vi.fn(async () => undefined),
+    "watch.probe": vi.fn(async () => undefined),
+    "pages.refresh.tick": vi.fn(async () => undefined),
+    "pages.snapshots.retention": vi.fn(async () => undefined),
   };
 }
 
@@ -80,11 +99,13 @@ describe("background job contracts", () => {
       name: "messaging.deliver",
       payload: { runId: "run-1" },
       replaceKey: "messaging.deliver:run-1",
+      priority: -1,
     });
     expect(messagingDeliverJob()).toEqual({
       name: "messaging.deliver",
       payload: {},
       replaceKey: "messaging.deliver:drain",
+      priority: -1,
     });
   });
 
@@ -135,6 +156,9 @@ describe("background job contracts", () => {
     };
     const target = handlers();
     await dispatchBackgroundJob(target, "dataroom.zip.unpack", payload);
+    expect(
+      parseBackgroundJob("dataroom.zip.unpack", { ...payload, source: "scan" }).payload,
+    ).toMatchObject({ source: "scan" });
     expect(target["dataroom.zip.unpack"]).toHaveBeenCalledWith(payload);
     expect(dataRoomZipUnpackJob(payload)).toEqual({
       name: "dataroom.zip.unpack",
@@ -237,6 +261,20 @@ describe("background job contracts", () => {
     expect(target["routine.wakeup"]).toHaveBeenCalledWith({
       routineId: "routine-1",
       scheduledFor: "2026-08-15T12:00:00.000Z",
+    });
+  });
+
+  it("validates and dispatches a routine retry keyed to the failed run", async () => {
+    const target = handlers();
+    await dispatchBackgroundJob(target, "routine.retry", { runId: "run-1" });
+    expect(target["routine.retry"]).toHaveBeenCalledWith({ runId: "run-1" });
+    expect(() => parseBackgroundJob("routine.retry", { runId: "" })).toThrow();
+    const availableAt = new Date("2026-08-15T12:12:00.000Z");
+    expect(routineRetryJob("run-1", availableAt)).toEqual({
+      name: "routine.retry",
+      payload: { runId: "run-1" },
+      availableAt,
+      replaceKey: "routine.retry:run-1",
     });
   });
 

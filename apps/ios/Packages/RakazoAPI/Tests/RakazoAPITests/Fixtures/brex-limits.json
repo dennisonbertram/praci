@@ -1,0 +1,22 @@
+{
+  "json": {
+    "serverId": "server_demo_1",
+    "agentBotId": null,
+    "writesEnabled": false,
+    "partial": false,
+    "limits": [{
+      "spendLimitId": "limit_demo_1",
+      "name": "Marketing",
+      "status": "ACTIVE",
+      "period": "MONTHLY",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-30",
+      "limitCents": 50000,
+      "currency": "USD",
+      "usedCents": 18200,
+      "percent": 36.4,
+      "memberUserIds": ["user_demo_1"],
+      "members": [{ "userId": "user_demo_1", "name": "Alex Example" }]
+    }]
+  }
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { DataRoomApiItem } from "@rakazo/contracts";
+import type { Contact, DataRoomApiItem } from "@rakazo/contracts";
 import { Dialog, DialogContent } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -8,7 +8,11 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
+vi.mock("@lingui/core/macro", () => ({
+  t: (parts: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: parts }, ...values),
+  plural: (n: number, o: { one: string; other: string }) =>
+    (n === 1 ? o.one : o.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
@@ -23,6 +27,7 @@ vi.mock("../../lib/data-room", async (original) => ({
 }));
 
 const shares = vi.hoisted(() => vi.fn());
+const contactsList = vi.hoisted(() => vi.fn());
 const consent = vi.hoisted(() => vi.fn());
 const consentGrant = vi.hoisted(() => vi.fn());
 const itemDelete = vi.hoisted(() => vi.fn());
@@ -34,6 +39,7 @@ vi.mock("./upload-toasts", async (original) => ({
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     investors: { shares },
+    contacts: { list: contactsList },
     dataRoom: { consent, consentGrant, itemDelete },
     files: { spreadsheetPreview: () => Promise.reject(new Error("offline")) },
   },
@@ -75,6 +81,8 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   imageUrl.mockResolvedValue("blob:receipt");
   shares.mockResolvedValue([]);
+  // Default to the count fallback; tests that name investors set their own contacts.
+  contactsList.mockRejectedValue(new Error("offline"));
   consent.mockResolvedValue({
     allowed: true,
     recipients: [{ name: "Model", detail: "" }],
@@ -230,6 +238,21 @@ it("says why an untagged file has no type when no model is set up", async () => 
     );
   });
   expect(container.textContent).toContain("Not tagged. No model is set up to read documents.");
+});
+
+it("shows an Omi recording without the not-searchable note, and names the source Omi", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, mimeType: "audio/ogg", source: "omi", notIndexed: true }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("Too large to search inside");
+  expect(container.textContent).toContain("Omi");
 });
 
 it("says a file too large to read is not searchable inside, instead of not tagged yet", async () => {
@@ -449,6 +472,95 @@ it("does not show the previous file's sharing count while the next file loads", 
     );
   });
   expect(container.textContent).not.toContain("Shared");
+});
+
+const investor = (id: string, name: string, extra: Record<string, unknown> = {}) =>
+  ({
+    id,
+    name,
+    email: `${id}@example.test`,
+    organization: null,
+    kind: "investor",
+    notes: null,
+    addedBy: null,
+    portalBlockedAt: null,
+    createdAt: "2026-10-15T00:00:00.000Z",
+    updatedAt: "2026-10-15T00:00:00.000Z",
+    ...extra,
+  }) as Contact;
+
+it("names the investors who have the file, not the contacts without it", async () => {
+  shares.mockResolvedValue(["c1", "c2"]);
+  contactsList.mockResolvedValue([
+    investor("c1", "Ada Example"),
+    investor("c2", "Ren Placeholder"),
+    investor("c3", "Cy Fictional"),
+  ]);
+  await render();
+  expect(container.textContent).toContain("Ada Example, Ren Placeholder");
+  expect(container.textContent).not.toContain("Cy Fictional");
+});
+
+it("names at most three investors and counts the rest, with all names on hover", async () => {
+  const names = ["Ada Example", "Ren Placeholder", "Cy Fictional", "Dee Sample", "Eli Invented"];
+  shares.mockResolvedValue(names.map((_, index) => `c${index + 1}`));
+  contactsList.mockResolvedValue(names.map((name, index) => investor(`c${index + 1}`, name)));
+  await render();
+  expect(container.textContent).toContain("Ada Example, Ren Placeholder, Cy Fictional");
+  expect(container.textContent).toContain("+2 more");
+  expect(container.textContent).not.toContain("Dee Sample");
+  expect(
+    [...container.querySelectorAll("button")].find((b) => b.title === names.join(", ")),
+  ).toBeDefined();
+});
+
+it("does not name a revoked investor, and hides Shared when every shared one is revoked", async () => {
+  shares.mockResolvedValue(["c1", "c2"]);
+  contactsList.mockResolvedValue([
+    investor("c1", "Ada Example"),
+    investor("c2", "Ren Placeholder", { portalBlockedAt: "2026-10-20T00:00:00.000Z" }),
+  ]);
+  await render();
+  expect(container.textContent).toContain("Ada Example");
+  expect(container.textContent).not.toContain("Ren Placeholder");
+
+  contactsList.mockResolvedValue([
+    investor("c1", "Ada Example", { portalBlockedAt: "2026-10-20T00:00:00.000Z" }),
+    investor("c2", "Ren Placeholder", { portalBlockedAt: "2026-10-20T00:00:00.000Z" }),
+  ]);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render();
+  expect(container.textContent).not.toContain("Shared");
+});
+
+it("falls back to the investor count when the contacts cannot be read", async () => {
+  shares.mockResolvedValue(["c1", "c2"]);
+  await render();
+  expect(container.textContent).toContain("With 2 investors");
+});
+
+it("never asks for contacts while nothing is shared", async () => {
+  shares.mockResolvedValue([]);
+  await render();
+  expect(contactsList).not.toHaveBeenCalled();
+});
+
+it("opens the Share dialog from the investor names", async () => {
+  const onAction = vi.fn();
+  shares.mockResolvedValue(["c1"]);
+  contactsList.mockResolvedValue([investor("c1", "Ada Example")]);
+  await act(async () => {
+    root.render(
+      <Preview item={receipt} folderPath="" onAction={onAction} onClose={() => undefined} />,
+    );
+  });
+  const names = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Ada Example",
+  );
+  expect(names).toBeDefined();
+  await act(async () => names?.click());
+  expect(onAction).toHaveBeenCalledWith("share", receipt);
 });
 
 it("makes the From email link a 44 px target on touch screens", async () => {

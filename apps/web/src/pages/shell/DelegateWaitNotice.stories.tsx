@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { withVisibleRoot } from "../../stories/decorators";
 import { DelegateWaitNotice } from "./DelegateWaitNotice";
 
 const sentMinutesAgo = (minutes: number) => [
@@ -26,7 +27,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Quiet for a minute, no notice yet. */
-export const FirstMinute: Story = { args: { messages: sentMinutesAgo(0.2) } };
+export const FirstMinute: Story = {
+  args: { messages: sentMinutesAgo(0.2) },
+  decorators: [withVisibleRoot("No wait notice yet")],
+};
 
 export const Waiting: Story = {};
 

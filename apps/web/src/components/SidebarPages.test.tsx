@@ -35,7 +35,7 @@ const rpcMock = vi.hoisted(() => ({
 vi.mock("../lib/user-error", () => ({ errorText: () => "Could not add the page" }));
 vi.mock("../lib/rpc", () => ({ rpc: { sidebarPages: rpcMock } }));
 
-import { SidebarPages } from "./SidebarPages";
+import { SIDEBAR_PAGES_CHANGED_EVENT, SidebarPages } from "./SidebarPages";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -57,20 +57,27 @@ function Path() {
   return null;
 }
 
+const bots = [{ id: "bot1", name: "Finance agent", color: "#336699", status: "idle" as const }];
 async function render(templates: SidebarPageTemplate[], at = "/app") {
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={[at]}>
         <Path />
-        <SidebarPages templates={templates} />
+        <SidebarPages templates={templates} bots={bots} />
       </MemoryRouter>,
     );
   });
 }
-const state = (pages: string[], addable: string[]) => ({
-  pages: pages.map((templateKey) => ({ templateKey })),
+const state = (
+  pages: unknown[],
+  addable: string[],
+  botPages: { botId: string; pages: { id: string; title: string }[] }[] = [],
+) => ({
+  pages: pages.map((page) => (typeof page === "string" ? { templateKey: page } : page)),
   addable,
+  botPages,
 });
+const cash = { pageId: "pg1", botId: "bot1", title: "Cash" };
 const byText = (value: string) =>
   [...document.body.querySelectorAll<HTMLElement>("[role=menuitem], button")].find((el) =>
     el.textContent?.includes(value),
@@ -83,8 +90,12 @@ const click = async (el: Element | null | undefined) => {
     (el as HTMLElement | null | undefined)?.click();
   });
 };
-
 beforeEach(() => {
+  window.matchMedia ??= (() => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  })) as never;
   rpcMock.list.mockReset().mockResolvedValue(state([], ["team-health"]));
   rpcMock.add.mockReset().mockResolvedValue(state(["team-health"], []));
   rpcMock.remove.mockReset().mockResolvedValue(state([], ["team-health"]));
@@ -101,10 +112,10 @@ afterEach(() => {
 const addRow = () => container.querySelector("[data-testid=sidebar-add-page]");
 const pageRow = () => container.querySelector("[data-testid=sidebar-page-team-health]");
 
-it("hides the add row when no template is available", async () => {
+it("hides the add row when nothing can be added", async () => {
+  rpcMock.list.mockResolvedValue(state([], []));
   await render([template({ available: false })]);
   expect(addRow()).toBeNull();
-  expect(rpcMock.list).not.toHaveBeenCalled();
 });
 
 it("shows the add row only after the list has loaded", async () => {
@@ -191,14 +202,22 @@ it("applies only the latest mutation when responses arrive out of order", async 
   const beta = template({ key: "beta", route: "/app/beta" });
   rpcMock.list.mockResolvedValue(state([], ["alpha", "beta"]));
   const slowAdd = deferred();
-  rpcMock.add
-    .mockReturnValueOnce(slowAdd.promise)
-    .mockResolvedValueOnce(state(["beta"], ["alpha"]));
+  const fastAdd = deferred();
+  rpcMock.add.mockReturnValueOnce(slowAdd.promise).mockReturnValueOnce(fastAdd.promise);
   await render([alpha, beta]);
   await click(addRow());
   await click(byText("alpha"));
-  await click(addRow());
+  for (
+    let attempt = 0;
+    attempt < 3 && addRow()?.getAttribute("aria-expanded") !== "true";
+    attempt++
+  ) {
+    await act(async () => (addRow() as HTMLElement).click());
+  }
+  expect(addRow()?.getAttribute("aria-expanded")).toBe("true");
   await click(byText("beta"));
+  expect(rpcMock.add).toHaveBeenNthCalledWith(2, { templateKey: "beta" });
+  await act(async () => fastAdd.resolve(state(["beta"], ["alpha"])));
   await act(async () => slowAdd.resolve(state(["alpha"], ["beta"])));
   expect(container.querySelector("[data-testid=sidebar-page-beta]")).not.toBeNull();
   expect(container.querySelector("[data-testid=sidebar-page-alpha]")).toBeNull();
@@ -222,4 +241,52 @@ it("does not render saved pages whose template is not available", async () => {
   rpcMock.list.mockResolvedValue(state(["team-health"], []));
   await render([template({ available: false }), template({ key: "other", available: true })]);
   expect(pageRow()).toBeNull();
+});
+
+const menuTexts = () =>
+  [...document.body.querySelectorAll("[role=menuitem], [role=presentation]")].map(
+    (el) => el.textContent,
+  );
+
+it("lists bot pages under their bot, adds one, and opens its full-width route", async () => {
+  rpcMock.list.mockResolvedValue(
+    state([], [], [{ botId: "bot1", pages: [{ id: "pg1", title: "Cash" }] }]),
+  );
+  rpcMock.add.mockResolvedValue(state([cash], []));
+  await render([template({ available: false })]);
+  await click(addRow());
+  expect(document.body.textContent).toContain("Finance agent");
+  await click(byText("Cash"));
+  expect(rpcMock.add).toHaveBeenCalledWith({ pageId: "pg1" });
+  expect(path).toBe("/app/pages/bot1/pg1");
+  expect(container.querySelector("[data-testid='sidebar-page-page:pg1']")?.textContent).toBe(
+    "Cash",
+  );
+  expect(addRow()).toBeNull();
+});
+
+it("opens an added bot page and removes it by page id", async () => {
+  rpcMock.list.mockResolvedValue(state([cash], []));
+  rpcMock.remove.mockResolvedValue(state([], []));
+  await render([template({ available: false })], "/app/pages/bot1/pg1");
+  await click(container.querySelector("[data-testid='sidebar-page-page:pg1']"));
+  expect(path).toBe("/app/pages/bot1/pg1");
+  await click(container.querySelector("[aria-label='Page options']"));
+  await click(byText("Remove from sidebar"));
+  expect(rpcMock.remove).toHaveBeenCalledWith({ pageId: "pg1" });
+  expect(path).toBe("/app");
+  expect(menuTexts()).not.toContain("Cash");
+});
+
+it("re-lists when the sidebar pages change event fires", async () => {
+  rpcMock.list
+    .mockResolvedValueOnce(state([{ ...cash, title: "Board prep" }], []))
+    .mockResolvedValueOnce(state([{ ...cash, title: "Board notes" }], []));
+  await render([]);
+  expect(container.textContent).toContain("Board prep");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent(SIDEBAR_PAGES_CHANGED_EVENT));
+  });
+  expect(container.textContent).toContain("Board notes");
+  expect(rpcMock.list).toHaveBeenCalledTimes(2);
 });

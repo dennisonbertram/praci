@@ -1,0 +1,1 @@
+{"key":"data-room:key-placeholder","version":"2026-10-22","allowed":false,"disclosure":"The full text of your documents and, for images, the page images are sent to the providers below to read, file and search them.","recipients":[{"name":"OpenRouter","detail":"openai/gpt-6-luna, forwarded to its provider"}],"spaceId":"space-placeholder"}

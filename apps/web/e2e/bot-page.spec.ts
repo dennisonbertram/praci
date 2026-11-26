@@ -67,4 +67,13 @@ test("a bot's page opens from the Page control, renders, and saves edits", async
   const after = await rpc<Page>(page, "pages/get", { botId });
   expect(after.revision).toBe(2);
   expect(after.content).toContain("```chart");
+
+  // A second named page shows tabs; each page keeps its own content.
+  const burn = await rpc<{ id: string }>(page, "pages/create", { botId, title: "Burn" });
+  await page.reload();
+  await page.getByRole("button", { name: "Page", exact: true }).click();
+  await page.getByRole("tab", { name: "Burn" }).click();
+  await expect(page.getByRole("heading", { name: "Weekly summary" })).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "bot-page-tabs");
+  expect((await rpc<Page>(page, "pages/get", { botId, pageId: burn.id })).revision).toBe(1);
 });

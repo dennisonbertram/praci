@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NO_SANDBOX_MESSAGE } from "./none-sandbox.js";
 import { createSandboxProvider } from "./sandbox-factory.js";
 
@@ -48,6 +48,18 @@ describe("createSandboxProvider", () => {
       createSandboxProvider("createos", { createosApiKey: "test-createos-key" }).describe().id,
     ).toBe("createos");
     expect(createSandboxProvider("box", { boxApiKey: "test-box-key" }).describe().id).toBe("box");
+  });
+
+  it("refuses the desktop provider in a production server process", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      expect(() => createSandboxProvider("desktop", {})).toThrow(
+        "SANDBOX_PROVIDER=desktop runs bot commands directly on this host",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect(createSandboxProvider("desktop", {}).describe().id).toBe("desktop");
   });
 
   it("throws on unknown provider", () => {

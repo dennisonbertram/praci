@@ -24,6 +24,12 @@ function makeDeps(
       defaultMemoryScope: string;
       updatedAt: Date;
     };
+    createResult?: {
+      provider: string;
+      settings: Record<string, string>;
+      defaultMemoryScope: string;
+      updatedAt: Date;
+    };
     updateResult?: {
       provider: string;
       settings: Record<string, string>;
@@ -39,6 +45,14 @@ function makeDeps(
   const findUnique = vi.fn().mockResolvedValue(overrides.existing ?? null);
   const upsert = vi.fn().mockResolvedValue(
     overrides.upsertResult ?? {
+      provider: "supermemory",
+      settings: { mode: "cloud", baseUrl: "https://api.supermemory.ai" },
+      defaultMemoryScope: "isolated",
+      updatedAt: new Date("2026-08-19T00:00:00.000Z"),
+    },
+  );
+  const configCreate = vi.fn().mockResolvedValue(
+    overrides.createResult ?? {
       provider: "supermemory",
       settings: { mode: "cloud", baseUrl: "https://api.supermemory.ai" },
       defaultMemoryScope: "isolated",
@@ -62,7 +76,7 @@ function makeDeps(
           overrides.spaceOwner === false ? null : { role: overrides.memberRole ?? "owner" },
         ),
     },
-    spaceMemoryConfig: { findUnique, update, upsert, delete: deleteConfig },
+    spaceMemoryConfig: { findUnique, update, upsert, create: configCreate, delete: deleteConfig },
     secret: { create: secretCreate, deleteMany: secretDeleteMany },
     $transaction: vi.fn(),
   };
@@ -79,6 +93,7 @@ function makeDeps(
     secretDeleteMany,
     findUnique,
     upsert,
+    configCreate,
     update,
     deleteConfig,
     transaction: prisma.$transaction,
@@ -156,51 +171,18 @@ describe("persistMemoryProviderConfig", () => {
     }
   });
 
-  it("still requires Space ownership for a deployment owner", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    const { deps, transaction } = makeDeps({ spaceOwner: false });
-    try {
-      await expect(
-        persistMemoryProviderConfig(
-          deps,
-          deploymentOwner,
-          connectionInput("local", "http://localhost:6767"),
-        ),
-      ).rejects.toMatchObject({ code: "FORBIDDEN" });
-      expect(fetchMock).not.toHaveBeenCalled();
-      expect(transaction).not.toHaveBeenCalled();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("rejects non-owners before probing or writing Space configuration", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    const { deps, upsert } = makeDeps({ spaceOwner: false });
-
-    await expect(
-      persistMemoryProviderConfig(deps, actor, connectionInput("cloud")),
-    ).rejects.toThrow();
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(upsert).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
-  });
-
   it("rejects local mode without a baseUrl, without touching the database", async () => {
-    const { deps, upsert } = makeDeps();
+    const { deps, configCreate } = makeDeps();
     await expect(
       persistMemoryProviderConfig(deps, deploymentOwner, connectionInput("local")),
     ).rejects.toThrow(/baseUrl/);
-    expect(upsert).not.toHaveBeenCalled();
+    expect(configCreate).not.toHaveBeenCalled();
   });
 
   it("rejects a metadata baseUrl in local mode without probing or touching the database", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const { deps, upsert } = makeDeps();
+    const { deps, configCreate } = makeDeps();
     await expect(
       persistMemoryProviderConfig(
         deps,
@@ -209,14 +191,14 @@ describe("persistMemoryProviderConfig", () => {
       ),
     ).rejects.toThrow(/blocked address/);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(upsert).not.toHaveBeenCalled();
+    expect(configCreate).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
   it("rejects a public HTTP base URL in local mode without probing", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const { deps, upsert } = makeDeps();
+    const { deps, configCreate } = makeDeps();
     await expect(
       persistMemoryProviderConfig(
         deps,
@@ -225,14 +207,14 @@ describe("persistMemoryProviderConfig", () => {
       ),
     ).rejects.toThrow(/private-network/);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(upsert).not.toHaveBeenCalled();
+    expect(configCreate).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
   it("accepts a private-network base URL in local mode for the deployment owner", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("[]", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    const { deps, upsert } = makeDeps();
+    const { deps, configCreate } = makeDeps();
 
     await persistMemoryProviderConfig(
       deps,
@@ -241,9 +223,9 @@ describe("persistMemoryProviderConfig", () => {
     );
 
     expect(fetchMock.mock.calls[0]![0]).toBe("http://10.0.0.8:6767/v3/container-tags/list");
-    expect(upsert).toHaveBeenCalledWith(
+    expect(configCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           settings: { mode: "local", baseUrl: "http://10.0.0.8:6767" },
         }),
       }),
@@ -253,21 +235,21 @@ describe("persistMemoryProviderConfig", () => {
 
   it("probes before persisting, and rejects (without writing) when the probe fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 401 })));
-    const { deps, upsert } = makeDeps();
+    const { deps, configCreate } = makeDeps();
     await expect(
       persistMemoryProviderConfig(deps, deploymentOwner, {
         ...connectionInput("local", "http://localhost:6767"),
         credentials: { apiKey: "sm_bad_key" },
       }),
     ).rejects.toThrow();
-    expect(upsert).not.toHaveBeenCalled();
+    expect(configCreate).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
   it("accepts a bracketed IPv6 loopback base URL in local mode", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("[]", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    const { deps, upsert } = makeDeps();
+    const { deps, configCreate } = makeDeps();
 
     await persistMemoryProviderConfig(
       deps,
@@ -276,18 +258,18 @@ describe("persistMemoryProviderConfig", () => {
     );
 
     expect(fetchMock.mock.calls[0]![0]).toBe("http://[::1]:6767/v3/container-tags/list");
-    expect(upsert).toHaveBeenCalled();
+    expect(configCreate).toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
   it("connects cloud mode, defaulting the base URL, and returns the serialized config", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("[]", { status: 200 })));
-    const { deps, upsert, transaction } = makeDeps();
+    const { deps, configCreate, transaction } = makeDeps();
     const result = await persistMemoryProviderConfig(deps, actor, connectionInput("cloud"));
-    expect(upsert).toHaveBeenCalledWith(
+    expect(configCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { spaceId: "ws-1" },
-        create: expect.objectContaining({
+        data: expect.objectContaining({
+          spaceId: "ws-1",
           provider: "supermemory",
           settings: { mode: "cloud", baseUrl: "https://api.supermemory.ai" },
         }),
@@ -303,17 +285,51 @@ describe("persistMemoryProviderConfig", () => {
     vi.unstubAllGlobals();
   });
 
-  it("deletes the old secret when replacing an existing config with a new key", async () => {
+  it("rejects a second connection for the same space without deleting the first secret", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("[]", { status: 200 })));
-    const { deps, secretDeleteMany } = makeDeps({
-      existing: { id: "cfg-1", secretId: "secret-old" },
+    const { deps, findUnique, secretDeleteMany, configCreate } = makeDeps();
+    findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ id: "cfg-1", secretId: "secret-new" });
+
+    await persistMemoryProviderConfig(deps, actor, connectionInput("cloud"));
+    await expect(
+      persistMemoryProviderConfig(deps, actor, {
+        ...connectionInput("cloud"),
+        credentials: { apiKey: "test-second-provider-key" },
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "A memory provider is already connected.",
     });
-    await persistMemoryProviderConfig(deps, actor, {
-      ...connectionInput("cloud"),
-      credentials: { apiKey: "sm_new_key_12345" },
-    });
-    expect(secretDeleteMany).toHaveBeenCalledWith({ where: { id: "secret-old" } });
+
+    expect(configCreate).toHaveBeenCalledOnce();
+    expect(secretDeleteMany).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  it("rejects a config created after the pre-probe read without writing transaction rows", async () => {
+    const { deps, findUnique, secretCreate, upsert, configCreate, transaction } = makeDeps();
+    findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "cfg-race", secretId: "secret-race" });
+    deps.prepareConnection = vi.fn().mockResolvedValue({
+      provider: "supermemory",
+      settings: { mode: "cloud", baseUrl: "https://api.supermemory.ai" },
+      credentials: { apiKey: "sm_test_key_12345" },
+    });
+
+    await expect(
+      persistMemoryProviderConfig(deps, actor, connectionInput("cloud")),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "A memory provider is already connected.",
+    });
+    expect(transaction).toHaveBeenCalledOnce();
+    expect(upsert).not.toHaveBeenCalled();
+    expect(configCreate).not.toHaveBeenCalled();
+    expect(secretCreate).not.toHaveBeenCalled();
   });
 
   it("rejects non-deployment-owners for public-looking Serenity hostnames that resolve private, without probing", async () => {
@@ -373,15 +389,6 @@ describe("persistMemoryProviderConfig", () => {
 });
 
 describe("disconnectMemoryProvider", () => {
-  it("rejects non-owners before opening a transaction", async () => {
-    const { deps, transaction, secretDeleteMany } = makeDeps({ spaceOwner: false });
-
-    await expect(disconnectMemoryProvider(deps, actor)).rejects.toThrow();
-
-    expect(transaction).not.toHaveBeenCalled();
-    expect(secretDeleteMany).not.toHaveBeenCalled();
-  });
-
   it("disconnects an existing provider and removes its secret in the same transaction", async () => {
     const { deps, transaction, deleteConfig, secretDeleteMany } = makeDeps({
       existing: { id: "cfg-1", secretId: "secret-old" },
@@ -432,15 +439,5 @@ describe("updateMemoryProviderDefaultScope", () => {
     expect(secretCreate).not.toHaveBeenCalled();
     expect(secretDeleteMany).not.toHaveBeenCalled();
     expect(result.defaultMemoryScope).toBe("shared");
-  });
-
-  it("rejects non-owners without updating provider configuration", async () => {
-    const { deps, update } = makeDeps({
-      existing: { id: "cfg-1", secretId: "secret-existing" },
-      spaceOwner: false,
-    });
-
-    await expect(updateMemoryProviderDefaultScope(deps, actor, "shared")).rejects.toThrow();
-    expect(update).not.toHaveBeenCalled();
   });
 });

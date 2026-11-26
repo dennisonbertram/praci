@@ -7,6 +7,7 @@ import type {
   FinanceCryptoOutput,
   FinanceExchange,
   FinanceProvider,
+  FinanceWallet,
 } from "@rakazo/contracts";
 import {
   Badge,
@@ -21,6 +22,7 @@ import {
 } from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { SeeAll, useCappedRows } from "../../components/CappedList";
 import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
 import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
@@ -59,47 +61,53 @@ const yieldText = (pct: number | null) => (pct === null ? null : percentFigure(p
 function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
   useHideAmounts();
   const rowProps = useRowNavigate();
+  const list = useCappedRows(rows);
   return (
-    <Table compact>
-      <TableBody>
-        {rows.map((account) => {
-          const pct = yieldText(account.annualYieldPct);
-          return (
-            <TableRow
-              key={account.id}
-              className="group/row cursor-pointer"
-              {...rowProps(financePath.account(account.id))}
-            >
-              <TableCell className="font-semibold">
-                <HereLink
-                  to={financePath.account(account.id)}
-                  className="rk-tap outline-none hover:underline focus-visible:underline"
-                >
-                  {accountParts(account.name, account.lastFour).name}
-                </HereLink>
-                {account.lastFour ? (
-                  <span className="ms-1.5 font-normal text-muted-foreground">
-                    {accountParts(account.name, account.lastFour).ending}
-                  </span>
-                ) : null}
-                {pct ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-xs font-normal text-muted-foreground">
-                    {t`${pct} yield`}
-                  </span>
-                ) : null}
-              </TableCell>
-              <TableCell
-                className="text-end tabular-nums"
-                aria-label={owed ? t`Balance owed` : undefined}
+    <>
+      <Table compact>
+        <TableBody>
+          {list.rows.map((account) => {
+            const pct = yieldText(account.annualYieldPct);
+            return (
+              <TableRow
+                key={account.id}
+                className="group/row cursor-pointer"
+                {...rowProps(financePath.account(account.id))}
               >
-                {money(account.balanceCents)}
-              </TableCell>
-              <Chevron />
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+                <TableCell className="font-semibold">
+                  <HereLink
+                    to={financePath.account(account.id)}
+                    className="rk-tap outline-none hover:underline focus-visible:underline"
+                  >
+                    {accountParts(account.name, account.lastFour).name}
+                  </HereLink>
+                  {account.lastFour ? (
+                    <span className="ms-1.5 font-normal text-muted-foreground">
+                      {accountParts(account.name, account.lastFour).ending}
+                    </span>
+                  ) : null}
+                  {pct ? (
+                    <span className="ms-1.5 rounded-full border border-border px-1.5 text-xs font-normal text-muted-foreground">
+                      {t`${pct} yield`}
+                    </span>
+                  ) : null}
+                </TableCell>
+                <TableCell
+                  className="text-end tabular-nums"
+                  aria-label={owed ? t`Balance owed` : undefined}
+                >
+                  {money(account.balanceCents)}
+                </TableCell>
+                <Chevron />
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      <div className="mt-1 flex justify-end">
+        <SeeAll list={list} />
+      </div>
+    </>
   );
 }
 
@@ -115,11 +123,15 @@ function CryptoGroup({
   const typeNames = useTypeNames();
   const rowProps = useRowNavigate();
   const cents = new Map(crypto.summary.byWallet.map((row) => [row.walletId, row.cents]));
+  // The Crypto page lists them all; here a phone sees the first 3, wallets before exchanges.
+  const list = useCappedRows([...crypto.wallets, ...exchanges]);
+  const wallets = list.rows.filter((row): row is FinanceWallet => "address" in row);
+  const shownExchanges = list.rows.filter((row): row is FinanceExchange => !("address" in row));
   return (
     <Section title={<Trans>Crypto</Trans>}>
       <Table compact>
         <TableBody>
-          {crypto.wallets.map((wallet) => (
+          {wallets.map((wallet) => (
             <TableRow
               key={wallet.id}
               className="group/row cursor-pointer"
@@ -142,7 +154,7 @@ function CryptoGroup({
               <Chevron />
             </TableRow>
           ))}
-          {exchanges.map((exchange) => (
+          {shownExchanges.map((exchange) => (
             <TableRow
               key={exchange.id}
               className="group/row cursor-pointer"
@@ -165,6 +177,9 @@ function CryptoGroup({
           ))}
         </TableBody>
       </Table>
+      <div className="mt-1 flex justify-end">
+        <SeeAll list={list} to={financePath.crypto()} />
+      </div>
     </Section>
   );
 }
@@ -357,7 +372,7 @@ export function FinanceAccountsPage({
             )}
           </Section>
           {fromSource(data.cards).length > 0 ? (
-            <Section title={<Trans>Card balance owed</Trans>}>
+            <Section title={<Trans>Cards</Trans>}>
               <AccountTable rows={fromSource(data.cards)} owed />
             </Section>
           ) : null}
@@ -491,6 +506,12 @@ export function FinanceAccountPage({ id }: { id: string }) {
             rows={data.transactions}
             empty={<Trans>No transactions on this account yet</Trans>}
           />
+          {/* The API caps account transactions at LIST_LIMIT (500). */}
+          {data.transactions.length >= 500 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              <Trans>Showing the latest 500</Trans>
+            </p>
+          ) : null}
         </>
       ) : null}
     </DetailPage>

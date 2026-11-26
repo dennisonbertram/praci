@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 ENV OPENUI_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
 WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./

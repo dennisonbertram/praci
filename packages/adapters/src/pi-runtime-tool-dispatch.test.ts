@@ -33,6 +33,7 @@ const fakeAgentState = vi.hoisted(() => ({
   abortCount: 0,
   tools: [] as Array<{
     name: string;
+    executionMode?: string;
     prepareArguments?: (args: unknown) => Record<string, unknown>;
     execute: (toolCallId: string, params: Record<string, unknown>) => Promise<unknown>;
   }>,
@@ -454,6 +455,34 @@ const shellTool = {
   inputSchema: { type: "object", properties: { command: { type: "string" } } },
 };
 
+const scheduleCreateTool: ConnectorTool = {
+  name: "schedule_create",
+  description: "Create a reminder or recurring job for this bot.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      prompt: { type: "string" },
+      delayMinutes: { type: "number" },
+    },
+  },
+};
+
+const scheduleListTool: ConnectorTool = {
+  name: "schedule_list",
+  description: "List this bot's active and inactive schedules (routines).",
+  inputSchema: { type: "object", properties: {} },
+};
+
+const scheduleCancelTool: ConnectorTool = {
+  name: "schedule_cancel",
+  description: "Cancel a schedule by routineId or exact name.",
+  inputSchema: {
+    type: "object",
+    properties: { routineId: { type: "string" }, name: { type: "string" } },
+  },
+};
+
 const previousMaxToolCalls = process.env.MAX_TOOL_CALLS_PER_TURN;
 
 describe("Pi connector tool dispatch", () => {
@@ -602,6 +631,48 @@ describe("Pi connector tool dispatch", () => {
     }
     expect(fakeAgentState.createdToolSets[1]).toEqual(["mail_send"]);
     expect(fakeAgentState.createdToolSets[1]).not.toContain("company_search");
+  });
+
+  it("does not start a helper when the executor denies run_subagent", async () => {
+    fakeAgentState.mode = "subagent-inspect";
+    const runtime = new PiAgentRuntime();
+    const request = {
+      botId: "ordinary-agent",
+      threadId: "thread-1",
+      runId: "denied-run",
+      prompt: "Delegate a bounded task.",
+      instructions: "Use a helper.",
+      history: [],
+      tools: [
+        {
+          name: "run_subagent",
+          description: "Delegate bounded work",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "mail_send",
+          description: "Send mail",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
+      model: { provider: "test", id: "dispatch-test-model" },
+      executeTool: vi.fn(async () => ({ untrusted: true })),
+      subagentToolNames: new Set(["mail_send"]),
+      subagentDenial: vi.fn(async () => "Helpers are not available in this run."),
+    };
+    const events: unknown[] = [];
+    for await (const event of runtime.run(request, {
+      operationId: "denied-run",
+      traceId: "denied-run",
+      spaceId: "space-1",
+      userId: "owner-1",
+      signal: new AbortController().signal,
+    })) {
+      events.push(event);
+    }
+    expect(request.subagentDenial).toHaveBeenCalled();
+    expect(fakeAgentState.createdToolSets).toHaveLength(1);
+    expect(events).not.toContainEqual(expect.objectContaining({ type: "subagent" }));
   });
 
   it("injects durable steering at Pi's next safe turn boundary", async () => {
@@ -907,6 +978,44 @@ describe("Pi connector tool dispatch", () => {
       { connectorId: "destination", toolName: "destination.write" },
       { onProgress: expect.any(Function), onShellStillRunning: expect.any(Function) },
     );
+  });
+
+  it("runs schedule tools sequentially so a list in the same turn sees a create", async () => {
+    const executeTool = vi.fn(async () => ({ ok: true }));
+    const runtime = new PiAgentRuntime();
+
+    for await (const _event of runtime.run(
+      {
+        botId: "b",
+        threadId: "t",
+        runId: "r",
+        prompt: "remind me in ten minutes",
+        instructions: "Use schedule_create then schedule_list.",
+        history: [],
+        tools: [scheduleCreateTool, scheduleListTool, scheduleCancelTool, destinationTool],
+        model: { provider: "test", id: "dispatch-test-model" },
+        executeTool,
+      },
+      {
+        operationId: "1",
+        traceId: "1",
+        spaceId: "w",
+        userId: "u",
+        signal: new AbortController().signal,
+      },
+    )) {
+      // Exhaust the runtime event stream so tool dispatch completes.
+    }
+
+    const modes = new Map(
+      fakeAgentState.tools.map((tool) => [tool.name, tool.executionMode ?? "default"]),
+    );
+    // A concurrent batch can read the routine list before schedule_create writes
+    // the row, so the bot reports "no schedules" for a reminder it just made.
+    expect(modes.get("schedule_create")).toBe("sequential");
+    expect(modes.get("schedule_list")).toBe("sequential");
+    expect(modes.get("schedule_cancel")).toBe("sequential");
+    expect(modes.get("destination_write")).toBe("default");
   });
 
   it("does not claim a tool-only turn finished work the model never described", async () => {
@@ -1292,6 +1401,26 @@ describe("Pi connector tool dispatch", () => {
         errorMessage: "upstream unavailable",
       }),
     ).toBe("upstream unavailable");
+  });
+
+  it("fails a reply cut off at the output limit but keeps a cut tool call on the tool path", () => {
+    expect(
+      providerFailureText({
+        role: "assistant",
+        content: [{ type: "text", text: "Half an answ" }],
+        stopReason: "length",
+      }),
+    ).toBe("The model hit its output limit before finishing its reply.");
+    expect(
+      providerFailureText({
+        role: "assistant",
+        content: [
+          { type: "text", text: "Checking." },
+          { type: "toolCall", id: "t1", name: "x", arguments: {} },
+        ],
+        stopReason: "length",
+      }),
+    ).toBeUndefined();
   });
 
   it("fails when tools succeeded and the final assistant content is an empty provider error", async () => {

@@ -1,0 +1,4 @@
+{"json":{"accounts":[{"connectionId":"conn-1","label":"Founder mail","address":"founder@example.test","senderRules":"ready"}],"senders":[
+{"connectionId":"conn-1","address":"news@example-weekly.test","name":"Example Weekly","messageCount":48,"readCount":2,"lastReceivedAt":"2026-10-19T15:02:00.000Z","inboxThreads":40,"preselected":true,"spamLike":false,"unsubscribe":"one_click","skipInbox":false,"unsubscribeStatus":null,"rule":"active","learnedPile":"newsletters"},
+{"connectionId":"conn-1","address":"deals@deals-daily.test","name":"Deals Daily","messageCount":31,"readCount":0,"lastReceivedAt":null,"inboxThreads":31,"preselected":false,"spamLike":true,"unsubscribe":"none","skipInbox":true,"unsubscribeStatus":"failed"}
+],"syncedAt":"2026-10-29T04:17:54.721Z"}}

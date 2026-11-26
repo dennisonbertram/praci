@@ -1,10 +1,14 @@
 import {
   GRANOLA_API_CONNECTOR_ID,
+  HEX_CONNECTOR_ID,
   isGranolaEndpoint,
   isIntegrationAgentForServer,
   isIntegrationAgentSpawnKey,
+  isWisprFlowEndpoint,
   MEETING_TRANSCRIPT_TOOL_MAX_BYTES,
   MEETING_TRUNCATION_MARKER,
+  OMI_CLOUD_CONNECTOR_ID,
+  OMI_CONNECTOR_ID,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { getMeeting, listMeetings } from "@rakazo/db";
@@ -16,16 +20,39 @@ export const MEETING_TOOL_NAMES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The tools a meeting-source agent may call only after the owner approves each call, on a card
+ * that cannot become a saved rule. They stay here so the Wispr Flow agent keeps the routines and
+ * routines it had before it became a meeting-source agent. The executor forces the approval.
+ */
+export const MEETING_AGENT_APPROVAL_TOOLS: ReadonlySet<string> = new Set([
+  "schedule_create",
+  "schedule_list",
+  // The one handoff exception: it sends a reference to one of the owner's meetings, never text.
+  "share_meeting",
+]);
+
+/**
  * The only built-ins a meeting-source agent has on any run. Meeting text is untrusted, so the
  * agent can read it and nothing else: no memory writes, files, shell, browser, web, messaging,
- * delegation, mail or other connectors. There are no exceptions; a new built-in is not added here
- * unless it only reads the user's own stored data.
+ * delegation, mail or other connectors. The one exception is MEETING_AGENT_APPROVAL_TOOLS, which
+ * always asks. A new built-in is not added here unless it only reads the user's own stored data.
  */
 export const MEETING_AGENT_BUILTIN_TOOLS = [
   "meetings_list",
   "meetings_search",
   "meetings_get",
   "recall_memory",
+  ...MEETING_AGENT_APPROVAL_TOOLS,
+] as const;
+
+/**
+ * The Omi agent's built-ins: the meeting reads plus Data room reads (limited to its own Omi
+ * connection by the tool, see data-room-tools). Nothing else, and no exceptions.
+ */
+export const OMI_AGENT_BUILTIN_TOOLS = [
+  ...MEETING_AGENT_BUILTIN_TOOLS,
+  "search_data_room",
+  "read_data_room_item",
 ] as const;
 
 export const MEETING_CONSENT_OFF = "AI data sharing off";
@@ -58,6 +85,8 @@ export type MeetingToolDeps = {
   scope: Scope;
   /** Read on every call, so revoking AI data sharing applies at once. */
   consentAllowed: () => Promise<boolean>;
+  /** Called with the id of a meeting the agent just read in full (an owner-attended run only). */
+  onOpened?: (meetingId: string) => Promise<void>;
 };
 
 function capBytes(text: string, maxBytes: number): { text: string; truncated: boolean } {
@@ -131,6 +160,7 @@ export async function meetingToolFromTool(
     if (!meeting) {
       return { error: states.some((s) => !s.syncedThrough) ? STILL_SYNCING : "no such meeting" };
     }
+    await deps.onOpened?.(meeting.id);
     const lines = [
       `Title: ${meeting.title}`,
       `Attendees: ${attendeeLine(meeting) || "none listed"}`,
@@ -217,6 +247,18 @@ const granolaMcpAgent: MeetingAgentCheck = async (bot, deps) => {
   );
 };
 
+/** The agent of an MCP server whose endpoint is Wispr Flow's. */
+const wisprFlowAgent: MeetingAgentCheck = async (bot, deps) => {
+  if (!isIntegrationAgentSpawnKey(bot.spawnKey)) return false;
+  const servers = await deps.prisma.mcpServer.findMany({
+    where: { spaceId: bot.spaceId, userId: bot.userId, agentBotId: bot.id },
+    select: { id: true, spaceId: true, userId: true, endpoint: true, agentBotId: true },
+  });
+  return servers.some(
+    (server) => isWisprFlowEndpoint(server.endpoint) && isIntegrationAgentForServer(server, bot),
+  );
+};
+
 /**
  * The agent of a Granola API-key connection, found by the connection that names it. The row may be
  * disconnected: the agent still answers from stored meetings.
@@ -236,12 +278,69 @@ const granolaApiAgent: MeetingAgentCheck = async (bot, deps) => {
   return Boolean(row) && bot.archivedAt === null;
 };
 
-/**
- * The provider registry: each source that stores meetings declares which agent reads them. Wispr
- * Flow is absent until its MeetingSource is registered; the Granola API-key connection adds its
- * check here.
- */
-const meetingAgentChecks: MeetingAgentCheck[] = [granolaMcpAgent, granolaApiAgent];
+/** The agent of an Omi pendant connection, found by the connection that names it. */
+export const omiAgent: MeetingAgentCheck = async (bot, deps) => {
+  if (!isIntegrationAgentSpawnKey(bot.spawnKey)) return false;
+  return Boolean(await omiConnectionOf(bot, deps)) && bot.archivedAt === null;
+};
+
+/** The agent of an Omi Developer key connection (a user with a pendant shares the pendant's agent). */
+const omiCloudAgent: MeetingAgentCheck = async (bot, deps) => {
+  if (!isIntegrationAgentSpawnKey(bot.spawnKey)) return false;
+  const row = await deps.prisma.connection.findFirst({
+    where: {
+      spaceId: bot.spaceId,
+      userId: bot.userId,
+      connectorId: OMI_CLOUD_CONNECTOR_ID,
+      agentBotId: bot.id,
+      status: { not: "revoked" },
+    },
+    select: { id: true },
+  });
+  return Boolean(row) && bot.archivedAt === null;
+};
+
+/** The agent of a Hex connection, found by the connection that names it. */
+export const hexAgent: MeetingAgentCheck = async (bot, deps) => {
+  if (!isIntegrationAgentSpawnKey(bot.spawnKey)) return false;
+  const row = await deps.prisma.connection.findFirst({
+    where: {
+      spaceId: bot.spaceId,
+      userId: bot.userId,
+      connectorId: HEX_CONNECTOR_ID,
+      agentBotId: bot.id,
+      status: { not: "revoked" },
+    },
+    select: { id: true },
+  });
+  return Boolean(row) && bot.archivedAt === null;
+};
+
+/** The live Omi connection this exact bot is the agent of, if any. */
+export const omiConnectionOf = async (
+  bot: AgentBot,
+  deps: { prisma: Pick<PrismaClient, "connection"> },
+): Promise<{ id: string } | null> =>
+  deps.prisma.connection.findFirst({
+    where: {
+      spaceId: bot.spaceId,
+      userId: bot.userId,
+      connectorId: OMI_CONNECTOR_ID,
+      agentBotId: bot.id,
+      status: { not: "revoked" },
+    },
+    select: { id: true },
+  });
+
+/** The provider registry: each source that stores meetings declares which agent reads them. */
+const meetingAgentChecks: MeetingAgentCheck[] = [
+  granolaMcpAgent,
+  wisprFlowAgent,
+  granolaApiAgent,
+  omiAgent,
+  omiCloudAgent,
+  hexAgent,
+];
 export function registerMeetingSourceAgentCheck(check: MeetingAgentCheck) {
   meetingAgentChecks.push(check);
 }
@@ -292,3 +391,7 @@ export async function markMeetingTaintOnDelivery(
     });
   }
 }
+
+/** Added to a meeting-source agent's run and to the meeting-notes skill; never stored on the agent. */
+export const MEETING_AGENT_GUIDANCE =
+  "Meetings are filed for you in Data room → Recordings; point the user there. Never save meeting text as a file. When a meeting clearly belongs to another agent (an investor call → the Investors agent) and you were not told it already went there, use share_meeting.";

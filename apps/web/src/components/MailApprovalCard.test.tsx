@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
 import type { MailApproval } from "@rakazo/contracts";
+import { MAIL_ALREADY_SENT_REASON } from "@rakazo/contracts";
 import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { closeRestored, UNDO_SEND_MS, undoSend } from "../lib/outbox";
 import { MailApprovalCard } from "./MailApprovalCard";
 
 vi.mock("@lingui/core/macro", () => ({
@@ -18,11 +20,11 @@ vi.mock("@rakazo/ui-web", () => {
   const Plain = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
   return {
     Button: ({
-      variant: _variant,
+      variant,
       size: _size,
       ...props
     }: ComponentProps<"button"> & { variant?: string; size?: string }) => (
-      <button type="button" {...props} />
+      <button type="button" data-variant={variant} {...props} />
     ),
     cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
     DropdownMenu: Plain,
@@ -73,6 +75,7 @@ let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  vi.useFakeTimers();
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -80,8 +83,13 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  closeRestored();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+// A send waits out the outbox's undo window before the server is called.
+const sent = () => act(async () => void (await vi.advanceTimersByTimeAsync(UNDO_SEND_MS)));
 
 type Props = Partial<ComponentProps<typeof MailApprovalCard>>;
 const render = async (props: Props = {}) => {
@@ -135,6 +143,13 @@ it("starts expanded while pending, with the status and first recipient in the he
   expect(toggle()).toBeNull();
 });
 
+it("shows why a background run asked, above Send and Discard", async () => {
+  await render({ reason: "Asked because this ran in the background." });
+  expect(host.textContent).toContain("Asked because this ran in the background.");
+  await render();
+  expect(host.textContent).not.toContain("Asked because");
+});
+
 const accounts = [
   { connectionId: "c1", label: "Work", address: "work@example.test" },
   { connectionId: "c2", label: "Home", address: "home@example.test" },
@@ -148,29 +163,30 @@ const choose = (el: HTMLSelectElement, value: string) =>
 
 it("holds Send until a sender is chosen when no account was named and several are connected", async () => {
   const { account: _account, ...unnamed } = mail;
-  const { onAnswer } = await render({ mail: unnamed, accounts });
+  const { onAnswer } = await render({ mail: { ...unnamed, choices: accounts } });
   expect(button("Send")?.disabled).toBe(true);
   await choose(select()!, "c2");
   expect(button("Send")?.disabled).toBe(false);
   await click(button("Send"));
+  await sent();
   expect(onAnswer).toHaveBeenCalledWith("allow", undefined, { account: "c2" });
 });
 
-it("holds Send while accounts load or failed, and offers a retry on failure", async () => {
+it("lists only the accounts the server offered for this agent", async () => {
   const { account: _account, ...unnamed } = mail;
-  await render({ mail: unnamed, accountsStatus: "loading" });
-  expect(button("Send")?.disabled).toBe(true);
-  const onRetryAccounts = vi.fn();
-  await render({ mail: unnamed, accountsStatus: "error", onRetryAccounts });
-  expect(button("Send")?.disabled).toBe(true);
-  await click(button("Retry"));
-  expect(onRetryAccounts).toHaveBeenCalled();
+  await render({ mail: { ...unnamed, choices: accounts } });
+  expect([...select()!.options].map((option) => option.textContent)).toEqual([
+    "Choose an account",
+    "work@example.test",
+    "home@example.test",
+  ]);
 });
 
 it("shows a plain From line with a single account and sends the agent's call unchanged", async () => {
-  const { onAnswer } = await render({ accounts: accounts.slice(0, 1) });
+  const { onAnswer } = await render();
   expect(select()).toBeNull();
   await click(button("Send"));
+  await sent();
   expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
 });
 
@@ -235,6 +251,7 @@ it("edits in place with a distinct style and sends only the changed fields", asy
   await type(host.querySelector("input[aria-label=Subject]") as HTMLInputElement, "Monday");
   await type(host.querySelector("textarea") as HTMLTextAreaElement, "New text");
   await click(button("Send"));
+  await sent();
   expect(onAnswer).toHaveBeenCalledWith("allow", undefined, {
     cc: "lee@example.test",
     subject: "Monday",
@@ -245,6 +262,7 @@ it("edits in place with a distinct style and sends only the changed fields", asy
 it("approves unchanged mail without edits and discards with a deny", async () => {
   const first = await render();
   await click(button("Send"));
+  await sent();
   expect(first.onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
   const second = await render();
   await click(button("Discard"));
@@ -256,9 +274,11 @@ it("blocks an invalid address or a send with no recipient before calling the ser
   await click(button("Edit"));
   await type(host.querySelector("input[aria-label=To]") as HTMLInputElement, "nope");
   await click(button("Send"));
+  await sent();
   expect(host.textContent).toContain("nope isn't a valid email address");
   await type(host.querySelector("input[aria-label=To]") as HTMLInputElement, "");
   await click(button("Send"));
+  await sent();
   expect(host.textContent).toContain("Add a recipient.");
   expect(onAnswer).not.toHaveBeenCalled();
 });
@@ -298,17 +318,112 @@ it("hides the menu when the person cannot change the bot's tools", async () => {
   expect(host.querySelector("[aria-label='menu trigger']")).toBeNull();
 });
 
-it("disables the actions while an answer is in flight", async () => {
+it("holds Send for the undo window, then disables the actions while the answer is in flight", async () => {
   let finish!: () => void;
   const onAnswer = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
   await render({ onAnswer });
   await click(button("Send"));
-  await click(button("Sending…"));
+  // No in-card "Sending…": the bottom toast says it, and nothing reached the server yet.
+  expect(host.textContent).not.toContain("Sending…");
+  expect(onAnswer).not.toHaveBeenCalled();
+  expect(button("Send")?.disabled).toBe(true);
+  await sent();
+  await click(button("Send"));
   expect(onAnswer).toHaveBeenCalledTimes(1);
-  expect(button("Sending…")?.disabled).toBe(true);
   expect(button("Discard")?.disabled).toBe(true);
   expect(button("Edit")?.disabled).toBe(true);
   await act(async () => finish());
+  expect(button("Discard")?.disabled).toBe(false);
+});
+
+it("Undo before the hold ends sends nothing and leaves the card pending", async () => {
+  const { onAnswer } = await render();
+  await click(button("Send now") ?? button("Send"));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+    undoSend();
+  });
+  await sent();
+  expect(onAnswer).not.toHaveBeenCalled();
+  expect(button("Send")?.disabled).toBe(false);
+  expect(button("Discard")?.disabled).toBe(false);
+});
+
+it("Send now holds, then answers with send: true; Undo leaves the draft pending", async () => {
+  const { onAnswer } = await render({ mail: draftMail, canSend: true });
+  await click(button("Send now"));
+  await act(async () => undoSend());
+  await sent();
+  expect(onAnswer).not.toHaveBeenCalled();
+  expect(button("Send now")?.disabled).toBe(false);
+  await click(button("Send now"));
+  expect(onAnswer).not.toHaveBeenCalled();
+  await sent();
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, { send: true });
+});
+
+it("Send on a saved draft calls the server only after the hold, and Undo keeps Draft saved", async () => {
+  const onSendDraft = vi.fn(async () => undefined);
+  await render({
+    mail: { ...draftMail, outcome: "saved" },
+    status: "answered",
+    answer: "allow",
+    canSend: true,
+    onSendDraft,
+  });
+  await click(button("Send"));
+  expect(onSendDraft).not.toHaveBeenCalled();
+  await act(async () => undoSend());
+  await sent();
+  expect(onSendDraft).not.toHaveBeenCalled();
+  expect(button("Send")?.disabled).toBe(false);
+  expect(header()).toContain("Draft saved");
+});
+
+it("keeps the send after the card leaves the page during the hold", async () => {
+  const { onAnswer } = await render();
+  await click(button("Send"));
+  await act(async () => root.unmount());
+  await sent();
+  expect(onAnswer).toHaveBeenCalledTimes(1);
+  root = createRoot(host);
+});
+
+it("Save draft and Discard stay immediate", async () => {
+  const { onAnswer } = await render({ mail: draftMail, canSend: true });
+  await click(button("Save draft"));
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
+});
+
+const openLink = () =>
+  host.querySelector('a[aria-label="Open in Gmail"]') as HTMLAnchorElement | null;
+
+it("links a sent mail to the account's Gmail Sent folder in a new tab", async () => {
+  await render({ mail: { ...mail, outcome: "sent" }, status: "answered", answer: "allow" });
+  const link = openLink();
+  expect(link?.href).toBe("https://mail.google.com/mail/u/me%40example.test/#sent");
+  expect(link?.target).toBe("_blank");
+  expect(link?.rel).toBe("noopener noreferrer");
+});
+
+it("links a saved draft to Gmail Drafts", async () => {
+  await render({ mail: { ...draftMail, outcome: "saved" }, status: "answered", answer: "allow" });
+  expect(openLink()?.href).toBe("https://mail.google.com/mail/u/me%40example.test/#drafts");
+});
+
+it("links a sent mail to its conversation, or its message when there is no thread id", async () => {
+  const done = { status: "answered", answer: "allow" } as const;
+  await render({ mail: { ...mail, outcome: "sent", threadId: "18abc", messageId: "m1" }, ...done });
+  expect(openLink()?.href).toBe("https://mail.google.com/mail/u/me%40example.test/#all/18abc");
+  await render({ mail: { ...mail, outcome: "sent", messageId: "m1" }, ...done });
+  expect(openLink()?.href).toBe("https://mail.google.com/mail/u/me%40example.test/#all/m1");
+});
+
+it("has no Gmail link on a pending or unsent card", async () => {
+  await render();
+  expect(openLink()).toBeNull();
+  await render({ mail: { ...mail, outcome: "failed" }, status: "answered", answer: "allow" });
+  expect(openLink()).toBeNull();
 });
 
 it("folds a finished card to its header and opens it with the chevron", async () => {
@@ -466,6 +581,7 @@ it("shows a locked card for sending a saved draft, with no recipient required", 
   expect(button("Edit")).toBeUndefined();
   expect(host.textContent).not.toContain("To");
   await click(button("Send saved draft"));
+  await sent();
   expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
 });
 
@@ -484,7 +600,7 @@ it("gives a failed send with no error text a reason and the next step", async ()
 
 it("says why Send is disabled until a sender is chosen", async () => {
   const { account: _account, ...unnamed } = mail;
-  await render({ mail: unnamed, accounts });
+  await render({ mail: { ...unnamed, choices: accounts } });
   expect(host.querySelector("[id$=-hint]")?.textContent).toBe("Choose an account to send from.");
   await choose(select()!, "c2");
   expect(host.querySelector("[id$=-hint]")).toBeNull();
@@ -513,11 +629,107 @@ it("keeps the More button on the Send and Discard line when the account hint sho
     { connectionId: "c1", label: "a", address: "a@example.test" },
     { connectionId: "c2", label: "b", address: "b@example.test" },
   ];
-  await render({ mail: { ...mail, account: undefined }, accounts, accountsStatus: "ready" });
+  await render({ mail: { ...mail, account: undefined, choices: accounts } });
   const hint = [...host.querySelectorAll("p")].find((p) =>
     p.textContent?.includes("Choose an account to send from."),
   );
   const row = button("Send")?.parentElement?.parentElement as HTMLElement;
   expect(row.contains(hint as Node)).toBe(false);
   expect(row.contains(host.querySelector("[aria-label=More]"))).toBe(true);
+});
+
+const draftMail: MailApproval = { ...mail, tool: "mail_draft" };
+
+it("offers Send now beside Save draft on a pending draft, and sends the edits with send: true", async () => {
+  const { onAnswer } = await render({ mail: draftMail, canSend: true });
+  expect(button("Send now")).toBeDefined();
+  expect(button("Save draft")).toBeDefined();
+  await click(button("Edit"));
+  await type(host.querySelector('input[aria-label="Subject"]') as HTMLInputElement, "Monday");
+  await click(button("Send now"));
+  await sent();
+  expect(onAnswer).toHaveBeenCalledTimes(1);
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, { subject: "Monday", send: true });
+});
+
+it("Save draft still saves without send", async () => {
+  const { onAnswer } = await render({ mail: draftMail, canSend: true });
+  await click(button("Save draft"));
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
+});
+
+it("hides Send now and Send when sending is off, and on a send card", async () => {
+  await render({ mail: draftMail, canSend: false });
+  expect(button("Send now")).toBeUndefined();
+  await render({ canSend: true });
+  expect(button("Send now")).toBeUndefined();
+  await render({
+    mail: { ...draftMail, outcome: "saved" },
+    status: "answered",
+    answer: "allow",
+    canSend: false,
+    onSendDraft: vi.fn(async () => undefined),
+  });
+  expect(button("Send")).toBeUndefined();
+});
+
+it("offers Send on a saved draft and asks the server to send it", async () => {
+  const onSendDraft = vi.fn(async () => undefined);
+  const { onAnswer } = await render({
+    mail: { ...draftMail, outcome: "saved" },
+    status: "answered",
+    answer: "allow",
+    canSend: true,
+    onSendDraft,
+  });
+  await click(button("Send"));
+  await sent();
+  expect(onSendDraft).toHaveBeenCalledTimes(1);
+  expect(onAnswer).not.toHaveBeenCalled();
+});
+
+it("shows an error when sending a saved draft fails", async () => {
+  await render({
+    mail: { ...draftMail, outcome: "saved" },
+    status: "answered",
+    answer: "allow",
+    canSend: true,
+    onSendDraft: async () => {
+      throw new Error("Could not submit this answer");
+    },
+  });
+  await click(button("Send"));
+  await sent();
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("Could not submit");
+});
+
+it("reads Not sent, not Draft not saved, when Send now failed", async () => {
+  // The server flips the card to a send when it claims Send now.
+  await render({
+    mail: { ...mail, outcome: "failed", connectionId: "c1" },
+    status: "answered",
+    answer: "deny",
+  });
+  expect(header()).toContain("Not sent");
+  expect(host.textContent).not.toContain("Draft not saved");
+});
+
+it("embedded in a batch row it shows the fields without its header or buttons", async () => {
+  await render({ embedded: { editing: false } });
+  expect(button("Send")).toBeUndefined();
+  expect(button("Discard")).toBeUndefined();
+  expect(button("Edit")).toBeUndefined();
+  expect(host.textContent).toContain(mail.body);
+  await render({ embedded: { editing: true } });
+  expect(host.querySelector("textarea")?.value).toBe(mail.body);
+});
+
+it("warns on a repeat of an email that just went out, and Send is still there to press", async () => {
+  const { onAnswer } = await render({ reason: MAIL_ALREADY_SENT_REASON });
+  expect(host.textContent).toContain("Already sent to this person a few minutes ago");
+  const send = [...host.querySelectorAll("button")].find((b) => b.textContent === "Send")!;
+  expect(send.getAttribute("data-variant")).toBe("secondary");
+  await act(async () => send.click());
+  await sent();
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
 });

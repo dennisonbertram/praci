@@ -29,11 +29,13 @@ export default function DataRoomItemScreen() {
   const [preview, setPreview] = useState<{ uri: string; source?: string } | null>(null);
   const [error, setError] = useState("");
   const [previewError, setPreviewError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [tooLarge, setTooLarge] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const file = useRef<DataRoomFile | null>(null);
   const request = useRef<AbortController | null>(null);
-  const sharing = useRef(false);
+  const sharingInProgress = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,16 +53,36 @@ export default function DataRoomItemScreen() {
       setPreview(null);
       setError("");
       setPreviewError("");
-      setBusy(false);
-      sharing.current = false;
+      setTooLarge(false);
+      setLoading(false);
+      setSharing(false);
+      sharingInProgress.current = false;
       void getDataRoomItem(itemId)
         .then(async (next) => {
           if (!current()) return;
           setItem(next);
           const kind = dataRoomPreviewKind(next);
-          if (kind === "sheet" || kind === "other" || (kind === "pdf" && Platform.OS === "android"))
+          const kindAtPreviewLimit =
+            next.size > PREVIEW_MAX_BYTES
+              ? dataRoomPreviewKind({ ...next, size: PREVIEW_MAX_BYTES })
+              : kind;
+          if (
+            kind === "sheet" ||
+            kindAtPreviewLimit === "sheet" ||
+            (kindAtPreviewLimit === "pdf" && Platform.OS === "android")
+          )
             return;
-          setBusy(true);
+          if (
+            next.size > PREVIEW_MAX_BYTES &&
+            (kindAtPreviewLimit === "image" ||
+              kindAtPreviewLimit === "pdf" ||
+              kindAtPreviewLimit === "ui")
+          ) {
+            setTooLarge(true);
+            return;
+          }
+          if (kind === "other") return;
+          setLoading(true);
           try {
             const downloaded = await downloadDataRoomFile(next, controller.signal);
             if (!current()) {
@@ -68,15 +90,17 @@ export default function DataRoomItemScreen() {
               return;
             }
             file.current = downloaded;
-            if (downloaded.file.size > PREVIEW_MAX_BYTES)
-              throw new Error(t("This file is too large to preview."));
+            if (downloaded.file.size > PREVIEW_MAX_BYTES) {
+              setTooLarge(true);
+              return;
+            }
             const source = kind === "ui" ? await downloaded.file.text() : undefined;
             downloaded.assertCurrent();
             if (current()) setPreview({ uri: downloaded.file.uri, source });
           } catch (cause) {
             if (current()) setPreviewError(errorText(cause, t("Could not preview this file.")));
           } finally {
-            if (current()) setBusy(false);
+            if (current()) setLoading(false);
           }
         })
         .catch((cause: unknown) => {
@@ -98,6 +122,10 @@ export default function DataRoomItemScreen() {
         file.current = null;
         setItem(null);
         setPreview(null);
+        setTooLarge(false);
+        setLoading(false);
+        setSharing(false);
+        sharingInProgress.current = false;
         setError(t("The session changed. Open the file again."));
       }),
     [t],
@@ -105,9 +133,10 @@ export default function DataRoomItemScreen() {
 
   const share = useCallback(async () => {
     const controller = request.current;
-    if (!item || !controller || controller.signal.aborted || sharing.current || busy) return;
-    sharing.current = true;
-    setBusy(true);
+    if (!item || !controller || controller.signal.aborted || sharingInProgress.current || loading)
+      return;
+    sharingInProgress.current = true;
+    setSharing(true);
     try {
       const downloaded = file.current ?? (await downloadDataRoomFile(item, controller.signal));
       downloaded.assertCurrent();
@@ -117,11 +146,11 @@ export default function DataRoomItemScreen() {
       if (!controller.signal.aborted) Alert.alert(t("Could not share this file"), errorText(cause));
     } finally {
       if (!controller.signal.aborted) {
-        sharing.current = false;
-        setBusy(false);
+        sharingInProgress.current = false;
+        setSharing(false);
       }
     }
-  }, [item, busy, t]);
+  }, [item, loading, t]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -131,12 +160,12 @@ export default function DataRoomItemScreen() {
           label={t("Share")}
           prominence="plain"
           size="compact"
-          disabled={!item || busy}
+          disabled={!item || loading || sharing}
           onPress={() => void share()}
         />
       ),
     });
-  }, [navigation, item, busy, share, t]);
+  }, [navigation, item, loading, sharing, share, t]);
 
   if (error)
     return (
@@ -155,7 +184,10 @@ export default function DataRoomItemScreen() {
         <ActivityIndicator />
       </View>
     );
-  const kind = dataRoomPreviewKind(item);
+  const kind =
+    tooLarge && item.size > PREVIEW_MAX_BYTES
+      ? dataRoomPreviewKind({ ...item, size: PREVIEW_MAX_BYTES })
+      : dataRoomPreviewKind(item);
   return (
     <View style={[styles.screen, { paddingTop: headerInset }]}>
       <View style={styles.details}>
@@ -175,7 +207,16 @@ export default function DataRoomItemScreen() {
         </View>
       ) : kind === "sheet" ? (
         <SheetArtifactPreview key={item.id} source={{ dataRoomItemId: item.id }} />
-      ) : busy ? (
+      ) : tooLarge ? (
+        <View style={styles.centered}>
+          <Text style={styles.status}>{t("This file is too large to preview.")}</Text>
+          <NativeActionButton
+            label={t("Share")}
+            prominence="secondary"
+            onPress={() => void share()}
+          />
+        </View>
+      ) : loading ? (
         <View style={styles.centered}>
           <ActivityIndicator />
         </View>

@@ -127,6 +127,7 @@ export function useDataRoomList(q: ListQuery) {
     error: "",
   });
   const [attempt, setAttempt] = useState(0);
+  const [extended, setExtended] = useState(false);
   const generation = useRef(0);
   /** The cursor of the next page of the rows on screen. */
   const cursorRef = useRef<string | null>(null);
@@ -139,6 +140,7 @@ export function useDataRoomList(q: ListQuery) {
   // `key` stands for `q`; `attempt` is the manual reload.
   useEffect(() => {
     const id = ++generation.current;
+    setExtended(false);
     const sameQuery = loadedKey.current === key;
     loadedKey.current = key;
     // A new query keeps the old rows until its first page arrives, so they never flash to a skeleton.
@@ -172,6 +174,8 @@ export function useDataRoomList(q: ListQuery) {
     const id = generation.current;
     const cursor = cursorRef.current;
     if (!cursor || state.loadingMore || state.loading) return;
+    // Marked at the start, so a background refresh never cancels a page on its way.
+    setExtended(true);
     setState((s) => ({ ...s, loadingMore: true }));
     try {
       const page = await fetchPage(latest.current, cursor);
@@ -201,6 +205,7 @@ export function useDataRoomList(q: ListQuery) {
     let rows = stateRows.current;
     let cursor = cursorRef.current;
     const id = generation.current;
+    if (cursor) setExtended(true);
     while (cursor) {
       const page = await fetchPage(latest.current, cursor);
       if (id !== generation.current) return null;
@@ -259,5 +264,5 @@ export function useDataRoomList(q: ListQuery) {
     return () => clearTimeout(timer);
   }, [waiting, state.rows, state.loading, q.query]);
 
-  return { ...state, loadMore, loadAll, reload, patchItem };
+  return { ...state, extended, loadMore, loadAll, reload, patchItem };
 }

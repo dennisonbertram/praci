@@ -16,8 +16,9 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { RowsSkeleton } from "../components/RowsSkeleton";
 import { providerLabel } from "../lib/messaging";
 import { rpc } from "../lib/rpc";
 import { ExternalConversationSettings } from "./ExternalConversationSettings";
@@ -33,20 +34,33 @@ export function MessagingSettingsOverlay({ onClose }: { onClose: () => void }) {
   const [linkBotId, setLinkBotId] = useState("");
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // The ref guards async overlap synchronously; state rerenders controls as busy.
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const actionFocusRef = useRef<HTMLElement | null>(null);
 
   async function refresh() {
-    const [nextStatus, nextChannels, nextConnections, nextBots, navigation] = await Promise.all([
-      rpc.messaging.status(),
-      rpc.messaging.channels.list(),
-      rpc.messaging.connections.list(),
-      rpc.bots.list(),
-      rpc.spaces.list(),
-    ]);
-    setStatus(nextStatus);
-    setChannels(nextChannels);
-    setConnections(nextConnections);
-    setBots(nextBots);
-    setExternalConversations(navigation.current.externalConversations);
+    if (!hasLoaded) setLoading(true);
+    try {
+      const [nextStatus, nextChannels, nextConnections, nextBots, navigation] = await Promise.all([
+        rpc.messaging.status(),
+        rpc.messaging.channels.list(),
+        rpc.messaging.connections.list(),
+        rpc.bots.list(),
+        rpc.spaces.list(),
+      ]);
+      setStatus(nextStatus);
+      setChannels(nextChannels);
+      setConnections(nextConnections);
+      setBots(nextBots);
+      setExternalConversations(navigation.current.externalConversations);
+      setHasLoaded(true);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -54,17 +68,45 @@ export function MessagingSettingsOverlay({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function act(action: () => Promise<unknown>) {
-    setError(null);
+  useEffect(() => {
+    const target = actionFocusRef.current;
+    if (!busy && target?.isConnected && document.activeElement === document.body) {
+      target.focus();
+    }
+  }, [busy]);
+
+  async function act(
+    action: () => Promise<unknown>,
+    { fromForm = false }: { fromForm?: boolean } = {},
+  ) {
+    if (inFlightRef.current) {
+      if (!fromForm) return;
+      // Another save's failure belongs to that save, not this one.
+      while (inFlightRef.current) await inFlightRef.current.catch(() => undefined);
+    }
+    if (!fromForm) {
+      actionFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    setBusy(true);
+    if (!fromForm) setError(null);
     // A displayed code must always match the current selection and link
     // state; the link action re-sets it after issuing.
-    setLinkCode(null);
-    try {
-      await action();
-      await refresh();
-    } catch {
-      setError(t`Couldn't update messaging settings`);
-    }
+    if (!fromForm) setLinkCode(null);
+    const inFlight = (async () => {
+      try {
+        await action();
+        await refresh();
+      } catch (cause) {
+        if (fromForm) throw cause;
+        setError(t`Couldn't update messaging settings`);
+      } finally {
+        inFlightRef.current = null;
+        setBusy(false);
+      }
+    })();
+    inFlightRef.current = inFlight;
+    await inFlight;
   }
 
   const agentByIdentity = new Map(status?.identities.map((i) => [i.id, i.botName]) ?? []);
@@ -105,283 +147,324 @@ export function MessagingSettingsOverlay({ onClose }: { onClose: () => void }) {
           </DialogClose>
         </div>
 
-        {error ? <p className="mt-4 text-[13px] text-destructive">{error}</p> : null}
-
-        <section className="mt-8 rounded-xl border border-border px-4 py-4">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Chat apps</Trans>
-          </h3>
-          {status ? (
-            <p className="mt-3 text-[13px] text-muted-foreground/70">
-              {status.providers.map(providerLabel).join(" · ")}
-            </p>
-          ) : null}
-          {status?.identities.length ? (
-            <ul className="mt-3 space-y-3">
-              {status.identities.map((identity) => (
-                <li
-                  key={identity.id}
-                  className="flex items-center justify-between gap-3 text-[14px] text-foreground/75"
-                >
-                  <span>
-                    {providerLabel(identity.provider)} · {identity.address}{" "}
-                    <span className="text-[12px] text-muted-foreground/70">
-                      → {identity.botName}
-                    </span>
-                  </span>
-                  <Button
-                    variant="secondary"
-                    className="rounded-full"
-                    onClick={() =>
-                      void act(() => rpc.messaging.identities.unlink({ identityId: identity.id }))
-                    }
-                  >
-                    <Trans>Unlink</Trans>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-[14px] text-foreground/75">
-              <Trans>No chat apps linked yet.</Trans>
-            </p>
-          )}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <NativeSelect
-              aria-label={t`Bot to link`}
-              value={linkBotId}
-              onChange={(event) => {
-                setLinkBotId(event.target.value);
-                setLinkCode(null);
-              }}
-            >
-              <NativeSelectOption value="">{t`Choose a bot…`}</NativeSelectOption>
-              {bots.map((bot) => (
-                <NativeSelectOption key={bot.id} value={bot.id}>
-                  {bot.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <Button
-              className="rounded-full"
-              disabled={!linkBotId}
-              onClick={() =>
-                void act(async () => {
-                  const issued = await rpc.messaging.link.start({ botId: linkBotId });
-                  setLinkCode(issued.code);
-                })
-              }
-            >
-              <Trans>Link a chat app</Trans>
-            </Button>
+        {error ? (
+          <div className="mt-4 flex items-center gap-3">
+            <p className="text-[13px] text-destructive">{error}</p>
+            {loading || hasLoaded ? null : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void refresh().catch(() => setError(t`Couldn't load messaging settings`))
+                }
+              >
+                <Trans>Try again</Trans>
+              </Button>
+            )}
           </div>
-          {linkCode ? (
-            <p className="mt-3 text-[14px] text-foreground/75" data-testid="messaging-link-code">
-              <Trans>
-                Send <span className="font-mono text-foreground">{linkCode}</span> to the line from
-                your chat app within 10 minutes. You'll get a confirmation reply once linked.
-              </Trans>
-            </p>
-          ) : null}
-        </section>
+        ) : null}
 
-        <section className="mt-5 rounded-xl border border-border px-4 py-4">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Channels</Trans>
-          </h3>
-          {channels.length === 0 ? (
-            <p className="mt-3 text-[13px] text-muted-foreground/70">
-              <Trans>No group chats yet.</Trans>
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {channels.map((channel) => (
-                <li
-                  key={channel.id}
-                  className="flex items-center justify-between gap-3 text-[14px] text-foreground/75"
-                >
-                  <span>
-                    {channel.name ?? t`Group`}{" "}
-                    <span className="text-[12px] text-muted-foreground/70">
-                      {channelMeta(channel)}
-                    </span>
-                  </span>
-                  <span className="flex gap-2">
-                    {channel.status === "invited" ? (
-                      <>
-                        <Button
-                          className="rounded-full"
-                          onClick={() =>
-                            void act(() =>
-                              rpc.messaging.channels.respond({
-                                membershipId: channel.id,
-                                accept: true,
-                              }),
-                            )
-                          }
-                        >
-                          <Trans>Approve</Trans>
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          className="rounded-full"
-                          onClick={() =>
-                            void act(() =>
-                              rpc.messaging.channels.respond({
-                                membershipId: channel.id,
-                                accept: false,
-                              }),
-                            )
-                          }
-                        >
-                          <Trans>Decline</Trans>
-                        </Button>
-                      </>
-                    ) : null}
-                    {channel.status === "approved" ? (
-                      <Button
-                        variant="secondary"
-                        className="rounded-full"
-                        onClick={() =>
-                          void act(() => rpc.messaging.channels.leave({ membershipId: channel.id }))
-                        }
-                      >
-                        <Trans>Leave</Trans>
-                      </Button>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="mt-5 rounded-xl border border-border px-4 py-4">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Agent connections</Trans>
-          </h3>
-          {connections.length === 0 ? (
-            <p className="mt-3 text-[13px] text-muted-foreground/70">
-              <Trans>No agent connections yet.</Trans>
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {connections.map((connection) => (
-                <li
-                  key={connection.id}
-                  className="flex items-center justify-between gap-3 text-[14px] text-foreground/75"
-                >
-                  <span>
-                    {connection.peerOwnerLabel}
-                    {"'s "}
-                    {connection.peerBotName}{" "}
-                    <span className="text-[12px] text-muted-foreground/70">
-                      {connection.status}
-                    </span>
-                  </span>
-                  <span className="flex gap-2">
-                    {connection.status === "pending" && connection.incoming ? (
-                      <>
-                        <Button
-                          className="rounded-full"
-                          onClick={() =>
-                            void act(() =>
-                              rpc.messaging.connections.respond({
-                                connectionId: connection.id,
-                                accept: true,
-                              }),
-                            )
-                          }
-                        >
-                          <Trans>Approve</Trans>
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          className="rounded-full"
-                          onClick={() =>
-                            void act(() =>
-                              rpc.messaging.connections.respond({
-                                connectionId: connection.id,
-                                accept: false,
-                              }),
-                            )
-                          }
-                        >
-                          <Trans>Decline</Trans>
-                        </Button>
-                      </>
-                    ) : null}
-                    {connection.status === "approved" ? (
-                      <Button
-                        variant="secondary"
-                        className="rounded-full"
-                        onClick={() =>
-                          void act(() =>
-                            rpc.messaging.connections.revoke({ connectionId: connection.id }),
-                          )
-                        }
-                      >
-                        <Trans>Revoke</Trans>
-                      </Button>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="mt-5 rounded-xl border border-border px-4 py-4">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Team conversations</Trans>
-          </h3>
-          {externalConversations.length === 0 ? (
-            <p className="mt-3 text-[13px] text-muted-foreground/70">
-              <Trans>No team conversations yet.</Trans>
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {externalConversations.map((conversation) => {
-                const bot = bots.find((candidate) => candidate.id === conversation.botId);
-                const open = settingsConversationId === conversation.id;
-                return (
-                  <li key={conversation.id} className="text-[14px] text-foreground/75">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="min-w-0 truncate">
-                        {conversation.displayName || t`External conversation`}
-                        <span className="ml-2 text-[12px] text-muted-foreground/70">
-                          {providerLabel(conversation.provider)}
+        {/* Nothing loaded yet: a skeleton, or after a failure nothing, never empty lists. */}
+        {loading ? (
+          <RowsSkeleton rows={4} className="mt-8" />
+        ) : !hasLoaded ? null : (
+          <>
+            <section className="mt-8 rounded-xl border border-border px-4 py-4">
+              <h3 className="text-[15px] font-medium text-foreground">
+                <Trans>Chat apps</Trans>
+              </h3>
+              {status ? (
+                <p className="mt-3 text-[13px] text-muted-foreground/70">
+                  {status.providers.map(providerLabel).join(" · ")}
+                </p>
+              ) : null}
+              {status?.identities.length ? (
+                <ul className="mt-3 space-y-3">
+                  {status.identities.map((identity) => (
+                    <li
+                      key={identity.id}
+                      className="flex items-center justify-between gap-3 text-[14px] text-foreground/75"
+                    >
+                      <span>
+                        {providerLabel(identity.provider)} · {identity.address}{" "}
+                        <span className="text-[12px] text-muted-foreground/70">
+                          → {identity.botName}
                         </span>
                       </span>
                       <Button
                         variant="secondary"
                         className="rounded-full"
-                        onClick={() => setSettingsConversationId(open ? null : conversation.id)}
+                        disabled={busy}
+                        onClick={() =>
+                          void act(() =>
+                            rpc.messaging.identities.unlink({ identityId: identity.id }),
+                          )
+                        }
                       >
-                        {open ? <Trans>Close</Trans> : <Trans>Settings</Trans>}
+                        <Trans>Unlink</Trans>
                       </Button>
-                    </div>
-                    {open && bot ? (
-                      <div className="mt-4 rounded-lg border border-border px-3 py-3">
-                        <ExternalConversationSettings
-                          conversation={conversation}
-                          bot={bot}
-                          onSave={async (policy) => {
-                            await rpc.externalConversations.updatePolicy({
-                              externalConversationId: conversation.id,
-                              ...policy,
-                            });
-                            await refresh();
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-[14px] text-foreground/75">
+                  <Trans>No chat apps linked yet.</Trans>
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <NativeSelect
+                  aria-label={t`Bot to link`}
+                  value={linkBotId}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setLinkBotId(event.target.value);
+                    setLinkCode(null);
+                  }}
+                >
+                  <NativeSelectOption value="">{t`Choose a bot…`}</NativeSelectOption>
+                  {bots.map((bot) => (
+                    <NativeSelectOption key={bot.id} value={bot.id}>
+                      {bot.name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+                <Button
+                  className="rounded-full"
+                  disabled={busy || !linkBotId}
+                  onClick={() =>
+                    void act(async () => {
+                      const issued = await rpc.messaging.link.start({ botId: linkBotId });
+                      setLinkCode(issued.code);
+                    })
+                  }
+                >
+                  <Trans>Link a chat app</Trans>
+                </Button>
+              </div>
+              {linkCode ? (
+                <p
+                  className="mt-3 text-[14px] text-foreground/75"
+                  data-testid="messaging-link-code"
+                >
+                  <Trans>
+                    Send <span className="font-mono text-foreground">{linkCode}</span> to the line
+                    from your chat app within 10 minutes. You'll get a confirmation reply once
+                    linked.
+                  </Trans>
+                </p>
+              ) : null}
+            </section>
+
+            <section className="mt-5 rounded-xl border border-border px-4 py-4">
+              <h3 className="text-[15px] font-medium text-foreground">
+                <Trans>Channels</Trans>
+              </h3>
+              {channels.length === 0 ? (
+                <p className="mt-3 text-[13px] text-muted-foreground/70">
+                  <Trans>No group chats yet.</Trans>
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {channels.map((channel) => (
+                    <li
+                      key={channel.id}
+                      className="flex items-center justify-between gap-3 text-[14px] text-foreground/75"
+                    >
+                      <span>
+                        {channel.name ?? t`Group`}{" "}
+                        <span className="text-[12px] text-muted-foreground/70">
+                          {channelMeta(channel)}
+                        </span>
+                      </span>
+                      <span className="flex gap-2">
+                        {channel.status === "invited" ? (
+                          <>
+                            <Button
+                              className="rounded-full"
+                              disabled={busy}
+                              onClick={() =>
+                                void act(() =>
+                                  rpc.messaging.channels.respond({
+                                    membershipId: channel.id,
+                                    accept: true,
+                                  }),
+                                )
+                              }
+                            >
+                              <Trans>Approve</Trans>
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              className="rounded-full"
+                              disabled={busy}
+                              onClick={() =>
+                                void act(() =>
+                                  rpc.messaging.channels.respond({
+                                    membershipId: channel.id,
+                                    accept: false,
+                                  }),
+                                )
+                              }
+                            >
+                              <Trans>Decline</Trans>
+                            </Button>
+                          </>
+                        ) : null}
+                        {channel.status === "approved" ? (
+                          <Button
+                            variant="secondary"
+                            className="rounded-full"
+                            disabled={busy}
+                            onClick={() =>
+                              void act(() =>
+                                rpc.messaging.channels.leave({ membershipId: channel.id }),
+                              )
+                            }
+                          >
+                            <Trans>Leave</Trans>
+                          </Button>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="mt-5 rounded-xl border border-border px-4 py-4">
+              <h3 className="text-[15px] font-medium text-foreground">
+                <Trans>Agent connections</Trans>
+              </h3>
+              {connections.length === 0 ? (
+                <p className="mt-3 text-[13px] text-muted-foreground/70">
+                  <Trans>No agent connections yet.</Trans>
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {connections.map((connection) => (
+                    <li
+                      key={connection.id}
+                      className="flex items-center justify-between gap-3 text-[14px] text-foreground/75"
+                    >
+                      <span>
+                        {connection.peerOwnerLabel}
+                        {"'s "}
+                        {connection.peerBotName}{" "}
+                        <span className="text-[12px] text-muted-foreground/70">
+                          {connection.status}
+                        </span>
+                      </span>
+                      <span className="flex gap-2">
+                        {connection.status === "pending" && connection.incoming ? (
+                          <>
+                            <Button
+                              className="rounded-full"
+                              disabled={busy}
+                              onClick={() =>
+                                void act(() =>
+                                  rpc.messaging.connections.respond({
+                                    connectionId: connection.id,
+                                    accept: true,
+                                  }),
+                                )
+                              }
+                            >
+                              <Trans>Approve</Trans>
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              className="rounded-full"
+                              disabled={busy}
+                              onClick={() =>
+                                void act(() =>
+                                  rpc.messaging.connections.respond({
+                                    connectionId: connection.id,
+                                    accept: false,
+                                  }),
+                                )
+                              }
+                            >
+                              <Trans>Decline</Trans>
+                            </Button>
+                          </>
+                        ) : null}
+                        {connection.status === "approved" ? (
+                          <Button
+                            variant="secondary"
+                            className="rounded-full"
+                            disabled={busy}
+                            onClick={() =>
+                              void act(() =>
+                                rpc.messaging.connections.revoke({ connectionId: connection.id }),
+                              )
+                            }
+                          >
+                            <Trans>Revoke</Trans>
+                          </Button>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="mt-5 rounded-xl border border-border px-4 py-4">
+              <h3 className="text-[15px] font-medium text-foreground">
+                <Trans>Team conversations</Trans>
+              </h3>
+              {externalConversations.length === 0 ? (
+                <p className="mt-3 text-[13px] text-muted-foreground/70">
+                  <Trans>No team conversations yet.</Trans>
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {externalConversations.map((conversation) => {
+                    const bot = bots.find((candidate) => candidate.id === conversation.botId);
+                    const open = settingsConversationId === conversation.id;
+                    return (
+                      <li key={conversation.id} className="text-[14px] text-foreground/75">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="min-w-0 truncate">
+                            {conversation.displayName || t`External conversation`}
+                            <span className="ml-2 text-[12px] text-muted-foreground/70">
+                              {providerLabel(conversation.provider)}
+                            </span>
+                          </span>
+                          <Button
+                            variant="secondary"
+                            className="rounded-full"
+                            onClick={() => setSettingsConversationId(open ? null : conversation.id)}
+                          >
+                            {open ? <Trans>Close</Trans> : <Trans>Settings</Trans>}
+                          </Button>
+                        </div>
+                        {open && bot ? (
+                          <div className="mt-4 rounded-lg border border-border px-3 py-3">
+                            <ExternalConversationSettings
+                              conversation={conversation}
+                              bot={bot}
+                              onSave={(policy) =>
+                                act(
+                                  () =>
+                                    rpc.externalConversations.updatePolicy({
+                                      externalConversationId: conversation.id,
+                                      ...policy,
+                                    }),
+                                  { fromForm: true },
+                                )
+                              }
+                            />
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,13 +1,20 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
 import { MessageBlock } from "@rakazo/contracts";
 import type { PrivateFragments } from "@rakazo/core";
-import { botMessageHopExhausted, nextBotMessageHop, renderGroupMembersContext } from "@rakazo/core";
+import {
+  botMessageHopExhausted,
+  chainedRunMode,
+  nextBotMessageHop,
+  renderGroupMembersContext,
+  resolveBotAddress,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   appendEventInTransaction,
   createThreadMessageInTransaction,
   IsolationError,
   lockOwnedGroup,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
   touchGroupUpdatedAt,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -32,6 +39,8 @@ export async function handoffToGroupBot(
     outbound?: () => Promise<PrivateFragments | undefined>;
   },
 ) {
+  const message = input.message.trim();
+  if (!message) return { error: "message is required" } as const;
   const deliveryKey = `group-handoff:${run.id}`;
   const committed = await deps.prisma.$transaction(async (tx) => {
     try {
@@ -48,7 +57,7 @@ export async function handoffToGroupBot(
           members: {
             where: { bot: { archivedAt: null } },
             include: { bot: { select: { id: true, name: true, audience: true } } },
-            orderBy: { createdAt: "asc" },
+            orderBy: [{ createdAt: "asc" }, { botId: "asc" }],
           },
         },
       }),
@@ -92,8 +101,15 @@ export async function handoffToGroupBot(
 
     let targetId = input.bot_id?.trim();
     if (!targetId && input.confirm_name?.trim()) {
-      const name = input.confirm_name.trim().toLowerCase();
-      targetId = group.members.find((member) => member.bot.name.toLowerCase() === name)?.bot.id;
+      const bots = group.members.map((member) => member.bot);
+      const name = input.confirm_name.trim();
+      targetId = resolveBotAddress(bots, { name })?.id;
+      if (!targetId) {
+        const lower = name.toLowerCase();
+        return bots.filter((bot) => bot.name.toLowerCase() === lower).length > 1
+          ? ({ error: "several bots have that name; use bot_id" } as const)
+          : ({ error: "handoff target is not a group member" } as const);
+      }
     }
     if (!targetId) return { error: "handoff target bot is required" } as const;
     if (targetId === run.botId) return { error: "cannot hand off to yourself" } as const;
@@ -106,7 +122,7 @@ export async function handoffToGroupBot(
     const targetMember = group.members.find((member) => member.bot.id === targetId);
     if (
       targetMember?.bot.audience === "external" &&
-      !(await mayReachExternalBot(input.message, input.outbound))
+      !(await mayReachExternalBot(message, input.outbound))
     ) {
       return { error: EXTERNAL_HAND_OFF_REFUSED } as const;
     }
@@ -140,10 +156,10 @@ export async function handoffToGroupBot(
       kind: "handoff",
       fromBotId: run.botId,
       toBotId: targetId,
-      text: input.message,
+      text: message,
       hop,
     };
-    const message = await createThreadMessageInTransaction(tx, {
+    const handoffMessage = await createThreadMessageInTransaction(tx, {
       threadId: run.threadId,
       role: "bot",
       blocks: [handoffBlock],
@@ -157,10 +173,18 @@ export async function handoffToGroupBot(
         botId: targetId,
         threadId: run.threadId,
         userId: run.userId,
-        prompt: input.message,
+        prompt: message,
         status: "queued",
       },
     });
+    // A handoff is not a user action: the next stage keeps the source run's mode.
+    const mode = chainedRunMode(
+      "follow_up",
+      await tx.run.findUnique({
+        where: { id: run.id },
+        select: { unattended: true, externalTaint: true, readOutsideContent: true },
+      }),
+    );
     const nextRun = await tx.run.create({
       data: {
         spaceId: run.spaceId,
@@ -170,7 +194,10 @@ export async function handoffToGroupBot(
         userId: run.userId,
         status: "queued",
         trigger: "follow_up",
-        sourceMessageId: message.id,
+        unattended: mode.unattended,
+        externalTaint: mode.externalTaint,
+        readOutsideContent: mode.readOutsideContent,
+        sourceMessageId: handoffMessage.id,
       },
     });
     const event = await appendEventInTransaction(tx, {
@@ -180,15 +207,15 @@ export async function handoffToGroupBot(
       type: "group.handoff",
       runId: run.id,
       payload: {
-        messageId: message.id,
+        messageId: handoffMessage.id,
         fromBotId: run.botId,
         toBotId: targetId,
-        text: input.message,
+        text: message,
       },
     });
     await touchGroupUpdatedAt(tx, groupId);
     return { ok: true, botId: targetId, runId: nextRun.id, eventSeq: event.seq } as const;
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if ("error" in committed) return committed;
   await deps.events.notify(run.threadId, committed.eventSeq).catch((error) => {
     getLogger().error("group handoff realtime notification", error);

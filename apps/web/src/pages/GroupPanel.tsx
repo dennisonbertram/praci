@@ -69,6 +69,16 @@ function MemberPicker({
             <span className="flex-1 text-[15px] text-foreground" dir="auto">
               {bot.name}
             </span>
+            {bot.firewall ? (
+              <span className="text-xs text-muted-foreground">
+                <Trans>Firewall</Trans>
+              </span>
+            ) : null}
+            {selected[0] === bot.id ? (
+              <span className="text-xs text-muted-foreground">
+                <Trans>Answers first</Trans>
+              </span>
+            ) : null}
             {checked ? <Check size={14} className="text-muted-foreground" aria-hidden /> : null}
           </button>
         );
@@ -115,6 +125,7 @@ export function CreateGroupForm({
         <Button
           variant="ghost"
           size="icon-sm"
+          type="button"
           aria-label={t`Cancel new group`}
           onClick={onCancel}
           className="text-muted-foreground"
@@ -122,39 +133,47 @@ export function CreateGroupForm({
           <X />
         </Button>
       </div>
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-destructive">
-          {error}
-        </p>
-      ) : null}
-      <label htmlFor={nameId} className="block text-sm text-muted-foreground">
-        <Trans>Name</Trans>
-        <Input
-          id={nameId}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t`Name this group`}
-          className="mt-2"
-        />
-      </label>
-      <div className="mt-5 text-sm text-muted-foreground">
-        <Trans>
-          Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
-        </Trans>
-      </div>
-      <MemberPicker
-        bots={bots}
-        selected={selected}
-        onChange={setSelected}
-        maxHeight="max-h-[280px]"
-      />
-      <Button
-        className="mt-5 w-full"
-        disabled={submitting || !validSelection(name, selected)}
-        onClick={() => void create()}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void create();
+        }}
       >
-        {submitting ? <Trans>Creating…</Trans> : <Trans>Create group</Trans>}
-      </Button>
+        {error ? (
+          <p role="alert" className="mb-3 text-[13px] text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <label htmlFor={nameId} className="block text-sm text-muted-foreground">
+          <Trans>Name</Trans>
+          <Input
+            id={nameId}
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t`Name this group`}
+            className="mt-2"
+          />
+        </label>
+        <div className="mt-5 text-sm text-muted-foreground">
+          <Trans>
+            Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
+          </Trans>
+        </div>
+        <MemberPicker
+          bots={bots}
+          selected={selected}
+          onChange={setSelected}
+          maxHeight="max-h-[280px]"
+        />
+        <Button
+          className="mt-5 w-full"
+          type="submit"
+          disabled={submitting || !validSelection(name, selected)}
+        >
+          {submitting ? <Trans>Creating…</Trans> : <Trans>Create group</Trans>}
+        </Button>
+      </form>
     </div>
   );
 }
@@ -183,6 +202,20 @@ export function GroupSettings({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(false);
+  const original = group.members.map((member) => member.botId);
+
+  // Members still selected keep their place; new ones follow in pick order. The first member
+  // answers by default, so editing must not reshuffle them, and the label must match what saves.
+  function orderedMembers(members: readonly string[]) {
+    return [
+      ...original.filter((id) => members.includes(id)),
+      ...members.filter((id) => !original.includes(id)),
+    ];
+  }
+
+  function changeMembers(members: string[]) {
+    setSelected(orderedMembers(members));
+  }
 
   useEffect(() => {
     mounted.current = true;
@@ -207,18 +240,14 @@ export function GroupSettings({
   }, [saving, confirmingDelete, covered, onClose]);
 
   async function save() {
-    if (saving) return;
+    if (saving || !validSelection(name, selected)) return;
+    const ordered = orderedMembers(selected);
     setSaving(true);
     setError(null);
     try {
       await onSave({
         name: name.trim() !== group.name ? name.trim() : undefined,
-        botIds: sameMembers(
-          selected,
-          group.members.map((member) => member.botId),
-        )
-          ? undefined
-          : selected,
+        botIds: sameMembers(ordered, original) ? undefined : ordered,
       });
     } catch (cause) {
       setError(errorText(cause, t`Could not save group`));
@@ -240,6 +269,7 @@ export function GroupSettings({
         <Button
           variant="ghost"
           size="icon-sm"
+          type="button"
           aria-label={t`Close panel`}
           disabled={saving}
           onClick={onClose}
@@ -247,33 +277,40 @@ export function GroupSettings({
           <X size={16} strokeWidth={1.8} />
         </Button>
       </div>
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-destructive">
-          {error}
-        </p>
-      ) : null}
-      <label htmlFor={nameId} className="block text-sm text-muted-foreground">
-        <Trans>Name</Trans>
-        <Input
-          id={nameId}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-2"
-        />
-      </label>
-      <div className="mt-5 text-sm text-muted-foreground">
-        <Trans>
-          Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
-        </Trans>
-      </div>
-      <MemberPicker bots={bots} selected={selected} onChange={setSelected} />
-      <Button
-        className="mt-5 w-full"
-        disabled={saving || !validSelection(name, selected)}
-        onClick={() => void save()}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
       >
-        {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
-      </Button>
+        {error ? (
+          <p role="alert" className="mb-3 text-[13px] text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <label htmlFor={nameId} className="block text-sm text-muted-foreground">
+          <Trans>Name</Trans>
+          <Input
+            id={nameId}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-2"
+          />
+        </label>
+        <div className="mt-5 text-sm text-muted-foreground">
+          <Trans>
+            Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
+          </Trans>
+        </div>
+        <MemberPicker bots={bots} selected={selected} onChange={changeMembers} />
+        <Button
+          className="mt-5 w-full"
+          type="submit"
+          disabled={saving || !validSelection(name, selected)}
+        >
+          {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+        </Button>
+      </form>
       {/* Apart from Save, so a destructive action is never one slip away. */}
       <div className="mt-8 border-t border-border pt-4">
         <Button
@@ -289,6 +326,9 @@ export function GroupSettings({
         <DeleteItemDialog
           item={group}
           noun="group"
+          description={
+            <Trans>This deletes the group and its conversation. It cannot be undone.</Trans>
+          }
           onCancel={() => setConfirmingDelete(false)}
           onConfirm={onRemove}
         />

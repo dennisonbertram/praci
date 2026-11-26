@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { MailProvider } from "@rakazo/adapter-kit";
 import { aiRecipient } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
@@ -177,6 +178,7 @@ describePostgres("Ask agent on an email thread (PostgreSQL)", () => {
     });
     expect(row.spawnKey).toBe(mailThreadAgentSpawnKey(ownerConnection, "t1"));
     expect(row.userId).toBe(owner.userId);
+    expect(row.firewall).toBe(true);
     const messages = row.thread?.messages ?? [];
     expect(messages).toHaveLength(1);
     expect(messages[0]?.role).toBe("system");
@@ -194,6 +196,55 @@ describePostgres("Ask agent on an email thread (PostgreSQL)", () => {
     expect(block.messages[0]?.attachments).toEqual(["invoice-q3.pdf"]);
     // Nothing was queued to run: the agent has no runs yet.
     expect(await prisma.run.count({ where: { botId: bot.id } })).toBe(0);
+  });
+
+  it("backfills Firewall on existing email thread agents and leaves other agents alone", async () => {
+    const base = {
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: false,
+    };
+    const legacy = await repos.createBot(owner, {
+      ...base,
+      name: "Legacy thread",
+      spawnKey: mailThreadAgentSpawnKey(ownerConnection, "legacy"),
+    });
+    const ordinary = await repos.createBot(owner, { ...base, name: "Ordinary" });
+    expect(legacy.firewall).toBe(false);
+    // An archived thread agent that a newer one replaced has lost its spawn key; it is found by
+    // its first message, and stays firewalled when restored.
+    const retiredKey = mailThreadAgentSpawnKey(ownerConnection, "retired");
+    const retired = await repos.createBot(owner, {
+      ...base,
+      name: "Retired thread",
+      spawnKey: retiredKey,
+      initialMessage: {
+        role: "system",
+        blocks: [{ kind: "mail_thread", subject: "Old", messages: [] }],
+      },
+    });
+    await prisma.bot.update({ where: { id: retired.id }, data: { archivedAt: new Date() } });
+    await repos.createBot(owner, { ...base, name: "Replacement", spawnKey: retiredKey });
+    expect((await prisma.bot.findUniqueOrThrow({ where: { id: retired.id } })).spawnKey).toBeNull();
+    const sql = readFileSync(
+      new URL(
+        "../../../packages/db/prisma/migrations/20261231000047_firewall_mail_thread_agents/migration.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+      .split("\n")
+      .filter((line) => !line.startsWith("--"))
+      .join("\n");
+    await prisma.$executeRawUnsafe(sql);
+    const flag = async (id: string) =>
+      (await prisma.bot.findUniqueOrThrow({ where: { id }, select: { firewall: true } })).firewall;
+    expect(await flag(legacy.id)).toBe(true);
+    expect(await flag(ordinary.id)).toBe(false);
+    expect(await flag(retired.id)).toBe(true);
+    await prisma.bot.update({ where: { id: retired.id }, data: { archivedAt: null } });
+    expect(await flag(retired.id)).toBe(true);
   });
 
   it("returns the same agent when asked again, without reading the mail again", async () => {

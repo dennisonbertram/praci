@@ -23,6 +23,7 @@ const meta = {
     onDuplicate: noop,
     onClear: noop,
     onArchive: noop,
+    onHide: noop,
     onDelete: noop,
   },
   decorators: [

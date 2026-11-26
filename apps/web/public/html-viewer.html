@@ -1,0 +1,39 @@
+<!DOCTYPE html><meta http-equiv="x-dns-prefetch-control" content="off"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: 'self'; frame-src about:; child-src 'none'; form-action 'none'; base-uri 'none'"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" title="Preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe><script>
+// Loaded from the network (not srcdoc) so the app's CSP is not inherited. frame-src about: allows
+// the nested srcdoc and rejects navigations the sandbox and inner CSP do not block. img-src 'self'
+// lets an email preview load the app's image proxy; each preview's own csp attribute decides.
+const preview = document.getElementById("preview");
+// Only an email frame reports its height; a page's forged height messages go nowhere.
+let emailMode = false;
+// Tells the app a document finished loading in the frame, so it can send the page's data again.
+// A fixed message with nothing from the page in it.
+preview.addEventListener("load", () => {
+  if (parent !== window) parent.postMessage({ type: "praci-viewer-ready" }, "*");
+});
+addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || parent === window) return;
+  // Height reports from the message frame go on to the app, only in the expected shape.
+  if (event.source === preview.contentWindow) {
+    if (emailMode && data.type === "rakazo-email-height" && typeof data.height === "number")
+      parent.postMessage({ type: "rakazo-email-height", height: data.height }, "*");
+    return;
+  }
+  // The app's data for an HTML page goes into the frame as a plain object, nothing else from the message.
+  if (event.source === parent && data.type === "praci-data") {
+    preview.contentWindow?.postMessage({ type: "praci-data", sources: data.sources }, "*");
+    return;
+  }
+  if (
+    event.source !== parent ||
+    typeof data.srcdoc !== "string" ||
+    typeof data.sandbox !== "string" ||
+    typeof data.csp !== "string"
+  )
+    return;
+  emailMode = data.sandbox.includes("allow-popups");
+  preview.setAttribute("sandbox", data.sandbox);
+  preview.setAttribute("csp", data.csp);
+  preview.srcdoc = data.srcdoc;
+});
+</script>

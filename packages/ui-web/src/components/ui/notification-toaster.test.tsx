@@ -5,7 +5,11 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import type { NotificationToastData } from "./notification-toaster.js";
-import { enqueueNotificationToast, NotificationToaster } from "./notification-toaster.js";
+import {
+  enqueueNotificationToast,
+  NotificationToaster,
+  OPEN_DIALOG_SELECTOR,
+} from "./notification-toaster.js";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -37,6 +41,15 @@ it("shows three toasts and collapses the rest into +N", async () => {
   expect(document.querySelector('[data-slot="notification-toast-overflow"]')?.textContent).toBe(
     "+2",
   );
+});
+
+it("a toast is an alertdialog that the open-dialog selector skips", async () => {
+  await mount();
+  await add(1);
+  const card = cards()[0];
+  expect(card?.getAttribute("role")).toBe("alertdialog");
+  expect(card?.matches(OPEN_DIALOG_SELECTOR)).toBe(false);
+  expect(document.querySelector(OPEN_DIALOG_SELECTOR)).toBeNull();
 });
 
 it("shows one toast on a phone", async () => {
@@ -435,3 +448,85 @@ it("pads the page by the toast height when no composer is under it, and marks a 
   // On touch the 44px Dismiss target covers the corner; the chevron must sit left of it.
   expect(chevron?.getAttribute("class")).toContain("pointer-coarse:right-14");
 });
+
+it("on a phone, pads an open side panel by the toast height when a composer lifts the toast", async () => {
+  vi.stubGlobal("matchMedia", (q: string) => ({
+    matches: true,
+    media: q,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  try {
+    await mount();
+    const panel = document.createElement("aside");
+    panel.setAttribute("data-toast-panel", "");
+    panel.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 768, left: 0, right: 384, height: 768, width: 384 }) as DOMRect;
+    const composer = document.createElement("div");
+    composer.setAttribute("data-toast-avoid", "");
+    composer.getBoundingClientRect = () =>
+      ({ top: 600, bottom: 760, left: 0, right: 1024, height: 160, width: 1024 }) as DOMRect;
+    document.body.append(panel, composer);
+    viewport()!.getBoundingClientRect = () =>
+      ({ top: 500, bottom: 600, left: 0, right: 400, height: 100, width: 400 }) as DOMRect;
+    await add(1);
+    // innerHeight 768 - 500, plus the 8px the toast floats above the edge.
+    expect(document.documentElement.style.getPropertyValue("--toast-panel-reserve")).toBe("276px");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+const openDialog = () =>
+  act(async () => {
+    const d = document.createElement("div");
+    d.setAttribute("role", "dialog");
+    d.setAttribute("data-open", "");
+    d.id = "covering-dialog";
+    document.body.append(d);
+  });
+const closeDialog = () => act(async () => document.getElementById("covering-dialog")?.remove());
+
+it("keeps a toast's full time while a dialog covers it", () =>
+  withFakeTimers(async () => {
+    const onSeen = vi.fn();
+    await mount();
+    await add(1, { onSeen });
+    await openDialog();
+    await advance(10_000);
+    expect(cards()).toHaveLength(1);
+    await closeDialog();
+    await advance(500);
+    expect(cards()).toHaveLength(1);
+    await advance(5_000);
+    expect(cards()).toHaveLength(1);
+    await advance(1_500);
+    expect(cards()).toHaveLength(0);
+    expect(onSeen).not.toHaveBeenCalled();
+  }));
+
+it("keeps a toast raised while a dialog is open until the dialog closes", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await openDialog();
+    await add(1);
+    await advance(10_000);
+    expect(cards()).toHaveLength(1);
+    await closeDialog();
+    await advance(500);
+    await advance(5_000);
+    expect(cards()).toHaveLength(1);
+    await advance(1_500);
+    expect(cards()).toHaveLength(0);
+  }));
+
+it("leaves a toast with timeout 0 in place after a dialog opens and closes", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await add(1, { timeout: 0 });
+    await openDialog();
+    await advance(10_000);
+    await closeDialog();
+    await advance(20_000);
+    expect(cards()).toHaveLength(1);
+  }));

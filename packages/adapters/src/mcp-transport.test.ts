@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { StoredMcpOAuthProvider } from "./mcp-oauth.js";
 import {
   McpSession,
+  mcpStdioRefusal,
   secureFetch,
   validateUrl,
   withEndpointOriginFallback,
@@ -71,11 +72,129 @@ describe("MCP transport seam", () => {
     await session.close();
   });
 
+  it("restarts a tool call's timeout on progress and keeps the session after a timeout", async () => {
+    // A minimal stdio server: "slow" reports progress past the timeout before answering,
+    // "silent" never answers, "echo" answers at once.
+    const server = `
+      const send = (message) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...message }) + "\\n");
+      let buffer = "";
+      process.stdin.on("data", (chunk) => {
+        buffer += chunk;
+        let end;
+        while ((end = buffer.indexOf("\\n")) >= 0) {
+          const message = JSON.parse(buffer.slice(0, end));
+          buffer = buffer.slice(end + 1);
+          if (message.method === "initialize")
+            send({ id: message.id, result: { protocolVersion: message.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "test", version: "1" } } });
+          if (message.method !== "tools/call") continue;
+          const answer = () => send({ id: message.id, result: { content: [{ type: "text", text: message.params.name }] } });
+          if (message.params.name === "echo") answer();
+          if (message.params.name !== "slow") continue;
+          const progressToken = message.params._meta?.progressToken;
+          let step = 0;
+          const timer = setInterval(() => {
+            step += 1;
+            if (progressToken !== undefined)
+              send({ method: "notifications/progress", params: { progressToken, progress: step } });
+            if (step === 15) { clearInterval(timer); answer(); }
+          }, 100);
+        }
+      });
+    `;
+    const session = new McpSession();
+    await session.connectStdio({
+      command: process.execPath,
+      args: ["-e", server],
+      allowedCommands: [process.execPath],
+    });
+    try {
+      // Answers after 1.5 s, past the 1 s timeout, with progress every 100 ms keeping it alive.
+      await expect(session.callTool("slow", {}, { timeoutMs: 1_000 })).resolves.toMatchObject({
+        content: [{ type: "text", text: "slow" }],
+      });
+      await expect(session.callTool("silent", {}, { timeoutMs: 200 })).rejects.toMatchObject({
+        code: -32001,
+      });
+      await expect(session.callTool("echo")).resolves.toMatchObject({
+        content: [{ type: "text", text: "echo" }],
+      });
+    } finally {
+      await session.close();
+    }
+  });
+
   it("requires a connected session for operations", async () => {
     const session = new McpSession();
     await expect(session.listTools()).rejects.toThrow("not connected");
     await expect(session.callTool("echo")).rejects.toThrow("not connected");
   });
+
+  it.each([
+    [
+      "follows every cursor",
+      3,
+      2,
+      ["page0-tool0", "page0-tool1", "page1-tool0", "page1-tool1", "page2-tool0", "page2-tool1"],
+      3,
+    ],
+    ["stops at the tool cap", 3, 100, 250, 3],
+    ["stops at the page cap of a server that never ends", Number.POSITIVE_INFINITY, 1, 20, 20],
+  ] as const)(
+    "lists paginated tools: %s",
+    async (_name, pages, perPage, expected, requestedPages) => {
+      const cursors: Array<string | undefined> = [];
+      const session = new McpSession();
+      try {
+        await session.connectRemote({
+          url: "https://mcp.example.test/mcp",
+          network: {
+            ...TEST_NETWORK,
+            fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+              const request = new Request(input, init);
+              if (request.method !== "POST") return new Response(null, { status: 405 });
+              const message = await request.json();
+              if (message.method === "initialize") {
+                return Response.json({
+                  jsonrpc: "2.0",
+                  id: message.id,
+                  result: {
+                    protocolVersion: "2025-11-25",
+                    capabilities: { tools: {} },
+                    serverInfo: { name: "paginated", version: "1" },
+                  },
+                });
+              }
+              if (message.method !== "tools/list") return new Response(null, { status: 202 });
+              const cursor: string | undefined = message.params?.cursor;
+              cursors.push(cursor);
+              const page = cursor ? Number(cursor.replace("page-", "")) : 0;
+              return Response.json({
+                jsonrpc: "2.0",
+                id: message.id,
+                result: {
+                  tools: Array.from({ length: perPage }, (_, index) => ({
+                    name: `page${page}-tool${index}`,
+                    inputSchema: { type: "object" },
+                  })),
+                  ...(page + 1 < pages ? { nextCursor: `page-${page + 1}` } : {}),
+                },
+              });
+            }),
+          },
+        });
+
+        const names = (await session.listTools()).tools.map((tool) => tool.name);
+
+        if (typeof expected === "number") expect(names).toHaveLength(expected);
+        else expect(names).toEqual(expected);
+        expect(cursors).toHaveLength(requestedPages);
+        expect(cursors[0]).toBeUndefined();
+        expect(cursors[1]).toBe("page-1");
+      } finally {
+        await session.close();
+      }
+    },
+  );
 
   it("preserves SDK session and protocol headers after stateful initialization", async () => {
     const requests: Request[] = [];
@@ -511,63 +630,69 @@ describe("MCP transport seam", () => {
     await expect(direct.json()).resolves.toEqual({ authorization: "Bearer secret" });
   });
 
-  it("strips configured credentials from localhost HTTP requests", async () => {
-    let seen: Record<string, string> = {};
-    const safeFetch = secureFetch(
-      new URL("http://localhost:8123/mcp"),
-      { allowHttpLocalhost: true, allowPrivateEndpoint: true },
-      {
-        allowedHeaders: ["authorization", "x-api-key"],
-        headers: { Authorization: "Bearer stored", "X-Api-Key": "stored-key" },
-      },
-      {
-        fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-          const request = input instanceof Request ? input : new Request(input, init);
-          seen = Object.fromEntries(request.headers.entries());
-          return Response.json({ ok: true });
-        }),
-      },
-    );
+  it.each(["X-Api-Key", "X_API_KEY"])(
+    "strips configured %s from localhost HTTP requests",
+    async (headerName) => {
+      let seen: Record<string, string> = {};
+      const safeFetch = secureFetch(
+        new URL("http://localhost:8123/mcp"),
+        { allowHttpLocalhost: true, allowPrivateEndpoint: true },
+        {
+          allowedHeaders: ["authorization", headerName],
+          headers: { Authorization: "Bearer stored", [headerName]: "stored-key" },
+        },
+        {
+          fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+            const request = input instanceof Request ? input : new Request(input, init);
+            seen = Object.fromEntries(request.headers.entries());
+            return Response.json({ ok: true });
+          }),
+        },
+      );
 
-    await safeFetch("http://localhost:8123/mcp", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer sdk",
-        "X-Api-Key": "sdk-key",
-        "Content-Type": "application/json",
-      },
-      body: "{}",
-    });
+      await safeFetch("http://localhost:8123/mcp", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer sdk",
+          [headerName]: "sdk-key",
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      });
 
-    expect(seen.authorization).toBeUndefined();
-    expect(seen["x-api-key"]).toBeUndefined();
-    expect(seen["content-type"]).toBe("application/json");
-  });
+      expect(seen.authorization).toBeUndefined();
+      expect(seen[headerName.toLowerCase()]).toBeUndefined();
+      expect(seen["content-type"]).toBe("application/json");
+    },
+  );
 
-  it("keeps configured credentials for HTTPS requests", async () => {
-    let seen: Record<string, string> = {};
-    const safeFetch = secureFetch(
-      new URL("https://mcp.example.test/mcp"),
-      {},
-      {
-        allowedHeaders: ["authorization", "x-api-key"],
-        headers: { Authorization: "Bearer stored", "X-Api-Key": "stored-key" },
-      },
-      {
-        resolveHostname: TEST_NETWORK.resolveHostname,
-        fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-          const request = input instanceof Request ? input : new Request(input, init);
-          seen = Object.fromEntries(request.headers.entries());
-          return Response.json({ ok: true });
-        }),
-      },
-    );
+  it.each(["X-Api-Key", "X_API_KEY"])(
+    "keeps configured %s for HTTPS requests",
+    async (headerName) => {
+      let seen: Record<string, string> = {};
+      const safeFetch = secureFetch(
+        new URL("https://mcp.example.test/mcp"),
+        {},
+        {
+          allowedHeaders: ["authorization", headerName],
+          headers: { Authorization: "Bearer stored", [headerName]: "stored-key" },
+        },
+        {
+          resolveHostname: TEST_NETWORK.resolveHostname,
+          fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+            const request = input instanceof Request ? input : new Request(input, init);
+            seen = Object.fromEntries(request.headers.entries());
+            return Response.json({ ok: true });
+          }),
+        },
+      );
 
-    await safeFetch("https://mcp.example.test/mcp", { method: "POST", body: "{}" });
+      await safeFetch("https://mcp.example.test/mcp", { method: "POST", body: "{}" });
 
-    expect(seen.authorization).toBe("Bearer stored");
-    expect(seen["x-api-key"]).toBe("stored-key");
-  });
+      expect(seen.authorization).toBe("Bearer stored");
+      expect(seen[headerName.toLowerCase()]).toBe("stored-key");
+    },
+  );
 
   it("drops request headers outside the configured allowlist", async () => {
     let seen: Record<string, string> = {};
@@ -619,29 +744,32 @@ describe("MCP transport seam", () => {
     expect(seen["content-type"]).toBeUndefined();
   });
 
-  it("does not forward configured resource credentials to another origin", async () => {
-    let seen: Record<string, string> = {};
-    const safeFetch = secureFetch(
-      new URL("https://mcp.example.test/mcp"),
-      {},
-      { headers: { Authorization: "Bearer stored", "X-Api-Key": "stored-key" } },
-      {
-        resolveHostname: TEST_NETWORK.resolveHostname,
-        fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-          const request = input instanceof Request ? input : new Request(input, init);
-          seen = Object.fromEntries(request.headers.entries());
-          return Response.json({ ok: true });
-        }),
-      },
-    );
+  it.each(["X-Api-Key", "X_API_KEY"])(
+    "does not forward configured %s to another origin",
+    async (headerName) => {
+      let seen: Record<string, string> = {};
+      const safeFetch = secureFetch(
+        new URL("https://mcp.example.test/mcp"),
+        {},
+        { headers: { Authorization: "Bearer stored", [headerName]: "stored-key" } },
+        {
+          resolveHostname: TEST_NETWORK.resolveHostname,
+          fetch: vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+            const request = input instanceof Request ? input : new Request(input, init);
+            seen = Object.fromEntries(request.headers.entries());
+            return Response.json({ ok: true });
+          }),
+        },
+      );
 
-    await safeFetch("https://auth.example.test/token", {
-      headers: { Authorization: "Bearer stored", "X-Api-Key": "stored-key" },
-    });
+      await safeFetch("https://auth.example.test/token", {
+        headers: { Authorization: "Bearer stored", [headerName]: "stored-key" },
+      });
 
-    expect(seen.authorization).toBeUndefined();
-    expect(seen["x-api-key"]).toBeUndefined();
-  });
+      expect(seen.authorization).toBeUndefined();
+      expect(seen[headerName.toLowerCase()]).toBeUndefined();
+    },
+  );
 
   it("does not forward configured credential values under another header name", async () => {
     let seen: Record<string, string> = {};
@@ -682,5 +810,30 @@ describe("MCP transport seam", () => {
       }),
     ).rejects.toThrow("fetch failed");
     expect(inner).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("stdio policy", () => {
+  it.each([
+    [{}, "npx", "Stdio MCP servers aren't available here"],
+    [{ stdioEnabled: true, allowedCommands: [] }, "npx", "Stdio MCP servers aren't available here"],
+    [
+      { stdioEnabled: false, allowedCommands: ["npx"] },
+      "npx",
+      "Stdio MCP servers aren't available here",
+    ],
+    [
+      { stdioEnabled: true, allowedCommands: ["uvx"] },
+      "npx",
+      "This stdio command isn't allowed here",
+    ],
+    [
+      { stdioEnabled: true, allowedCommands: ["npx"] },
+      " ",
+      "This stdio command isn't allowed here",
+    ],
+    [{ stdioEnabled: true, allowedCommands: ["npx"] }, "npx", undefined],
+  ])("refuses %o running %j with %j", (policy, command, expected) => {
+    expect(mcpStdioRefusal(command, policy)).toBe(expected);
   });
 });

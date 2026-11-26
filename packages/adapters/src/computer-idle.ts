@@ -156,7 +156,8 @@ export const BACKGROUND_WORK_PROBE = [
   "  command -v lsof >/dev/null 2>&1 || exit 2",
   `  for marker in "\${markers[@]}"; do`,
   '    [ -e "$marker" ] || continue',
-  '    lsof -t -- "$marker" >/dev/null 2>&1 && exit 0',
+  // Only the launcher's fd 9 (and children that inherit it) mean work; editors and indexers also open /tmp files.
+  '    [ -n "$(lsof -t -a -d 9 -- "$marker" 2>/dev/null)" ] && exit 0',
   '    rm -f -- "$marker"',
   "  done",
   "  idle",

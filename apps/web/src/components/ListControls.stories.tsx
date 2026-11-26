@@ -56,3 +56,6 @@ export const Default: Story = { render: () => <Controls /> };
 export const WithFilterSet: Story = { render: () => <Controls pick="SAFE" /> };
 /** A filter whose menu starts with its unfiltered choice, selected by default. */
 export const WithAnyChoice: Story = { render: () => <Controls anyLabel="Any security" /> };
+
+/** Under 640 px wide (open this story in a phone-sized window): search and one Filters button; the sheet holds every filter and the sort. */
+export const Phone: Story = { render: () => <Controls pick="SAFE" /> };

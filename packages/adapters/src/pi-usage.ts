@@ -15,6 +15,7 @@ import type {
   ModelCallObserver,
   UsageOperationKind,
 } from "@rakazo/adapter-kit";
+import { withChatCompletionsCompatibility } from "./chat-completions-compat.js";
 import type { ContextBudget } from "./context-selection.js";
 import { estimateModelContextTokens } from "./model-context.js";
 import { requestedPiCacheWriteRetention, resolvePiCacheRetention } from "./pi-cache-retention.js";
@@ -270,11 +271,11 @@ export function observedPiStream(
       const collectRawUsage =
         /^(openai-|anthropic-)/.test(model.api) && !model.provider.startsWith("google");
       // Each guarded reservation covers one HTTP attempt, not hidden SDK retries.
-      const streamOptions = {
+      const streamOptions = withChatCompletionsCompatibility(model, {
         ...options,
         ...(cacheRetention ? { cacheRetention } : {}),
         ...(observer ? { maxRetries: 0 } : {}),
-      };
+      });
       let upstream: ReturnType<Models["streamSimple"]>;
       try {
         upstream = models.streamSimple(

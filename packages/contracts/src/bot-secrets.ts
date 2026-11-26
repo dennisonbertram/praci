@@ -313,6 +313,9 @@ export const BotSecretMetadata = z.object({
   auth: BotSecretAuth.nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  lastUsedAt: z.string().nullable(),
+  // Set when the saved site rejected the credential (401/403); cleared on success or replace.
+  needsAttentionAt: z.string().nullable(),
 });
 export type BotSecretMetadata = z.infer<typeof BotSecretMetadata>;
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   SLASH_ACTIONS,
+  SLASH_INSERTS,
   serializeComposerPrompt,
   truncateSlashDescription,
 } from "./composer-slash.js";
@@ -26,6 +27,12 @@ describe("serializeComposerPrompt", () => {
   it("prefixes mentions without a skill", () => {
     expect(serializeComposerPrompt("go", null, [{ name: "everyone" }])).toBe("@everyone go");
   });
+
+  it("leaves a mention already written inline where it is", () => {
+    expect(
+      serializeComposerPrompt("share with @Investors and", null, [{ name: "Investors" }]),
+    ).toBe("share with @Investors and");
+  });
 });
 
 describe("truncateSlashDescription", () => {
@@ -41,10 +48,12 @@ describe("truncateSlashDescription", () => {
 
 describe("SLASH_ACTIONS", () => {
   it("exposes chat and account destinations", () => {
-    expect(SLASH_ACTIONS.map((action) => action.id)).toEqual([
-      "chat-settings",
-      "settings-general",
-      "settings-usage",
-    ]);
+    expect(SLASH_ACTIONS.map((action) => action.id)).toEqual(["chat-settings", "settings-general"]);
+  });
+});
+
+describe("SLASH_INSERTS", () => {
+  it("offers /goal as text for the draft", () => {
+    expect(SLASH_INSERTS).toEqual([{ id: "goal", label: "Goal", text: "/goal " }]);
   });
 });

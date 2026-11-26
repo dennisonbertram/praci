@@ -1,7 +1,22 @@
+import { ComputerStatusSchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { executionBlocksUserTakeover, toComputerStatus } from "./computer-status.js";
 
 describe("toComputerStatus", () => {
+  it("normalizes an invalid stored kind to docker and keeps null as fake", () => {
+    const row = {
+      state: "running",
+      scope: "team",
+      controlHolder: "none",
+      homeRevision: "revision-1",
+    };
+    for (const kind of ["none", ""]) {
+      const status = ComputerStatusSchema.parse(toComputerStatus("b", { ...row, kind }));
+      expect(status.kind).toBe("docker");
+    }
+    expect(toComputerStatus("b", null).kind).toBe("fake");
+  });
+
   it("only marks control that is bound to a waiting run as a requested takeover", () => {
     const computer = {
       kind: "fake",

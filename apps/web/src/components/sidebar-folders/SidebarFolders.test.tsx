@@ -36,7 +36,10 @@ beforeEach(async () => {
   // jsdom has no layout: stack the rows so the keyboard sensor can tell up from down.
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
     const all = [...document.querySelectorAll("[data-sidebar-folder], [data-roster-bot-id]")];
-    const index = Math.max(0, all.indexOf(this));
+    const index = Math.max(
+      0,
+      all.findIndex((node) => node === this || this.contains(node)),
+    );
     return {
       x: 0,
       y: index * 40,
@@ -130,6 +133,7 @@ describe("sidebar folders", () => {
     );
 
     await menu("Money", "Delete folder");
+    expect(document.querySelector("[role=alertdialog]")).toBeNull();
     expect(container.querySelector("[data-sidebar-folder=workspace]")).toBeNull();
     expect(rowIds()).toContain("ledger");
     expect(rowIds()).toContain("counsel");
@@ -148,5 +152,23 @@ describe("sidebar folders", () => {
     expect(moved[0]).toHaveProperty("folderId", expect.any(String));
     const ids = rowIds();
     expect(ids.indexOf("chief")).toBeLessThan(ids.indexOf("apps"));
+  });
+  const liveRegion = () => document.querySelector("[id^=DndLiveRegion]")?.textContent;
+
+  it("announces the folder a chat lands in, and a no-op drop as just dropped", async () => {
+    const chief = container.querySelector<HTMLElement>("[data-roster-bot-id=chief]")!;
+    chief.focus();
+    await key(chief, "Space");
+    await key(document, "ArrowUp");
+    await key(document, "Space");
+    expect(liveRegion()).toBe("Chief moved to Workspace.");
+
+    const ledger = container.querySelector<HTMLElement>("[data-roster-bot-id=ledger]")!;
+    ledger.focus();
+    await key(ledger, "Space");
+    await key(document, "ArrowUp");
+    await key(document, "Space");
+    // Dropping a chat on its own folder changes nothing.
+    expect(liveRegion()).toBe("Ledger agent dropped.");
   });
 });

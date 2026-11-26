@@ -3,6 +3,11 @@ import type { BillingStatus } from "@rakazo/contracts";
 
 type Price = NonNullable<BillingStatus["price"]>;
 
+/** A subscription charges at least one unit and otherwise one unit per seat. */
+export function billingTotal(price: Price, seats: number): Price {
+  return { ...price, amount: price.amount * Math.max(1, seats) };
+}
+
 /** "$12 / month" from a provider price in minor units. */
 export function formatBillingPrice(price: Price, locale: string): string {
   const currency = price.currency.toUpperCase();

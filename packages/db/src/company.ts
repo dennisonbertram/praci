@@ -53,6 +53,7 @@ import {
 } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { likeLiteral } from "./like-literal.js";
 import { IsolationError } from "./scope.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
@@ -348,11 +349,27 @@ async function evidenceFor(
   return rows.map(toEvidence);
 }
 
-async function mapEdgeRecord(
+async function evidenceForMany(
   db: CompanyDb,
   scope: Scope,
+  factKind: string,
+  factIds: string[],
+): Promise<Map<string, CompanyEvidenceRecord[]>> {
+  const ids = [...new Set(factIds)];
+  const grouped = new Map<string, CompanyEvidenceRecord[]>(ids.map((id) => [id, []]));
+  if (ids.length === 0) return grouped;
+  const rows = await db.companyEvidence.findMany({
+    where: { ...scope, factKind, factId: { in: ids } },
+    orderBy: [{ extractedAt: "asc" }, { id: "asc" }],
+  });
+  for (const row of rows) grouped.get(row.factId)?.push(toEvidence(row));
+  return grouped;
+}
+
+function mapEdgeRow(
   row: Prisma.CompanyEdgeGetPayload<object>,
-): Promise<CompanyEdgeRecord> {
+  evidence: CompanyEvidenceRecord[],
+): CompanyEdgeRecord {
   return {
     id: row.id,
     fromId: row.fromId,
@@ -367,8 +384,49 @@ async function mapEdgeRecord(
     lockedFields: row.lockedFields,
     confirmedByUserId: row.confirmedByUserId,
     confirmedAt: row.confirmedAt?.toISOString() ?? null,
-    evidence: await evidenceFor(db, scope, "edge", row.id),
+    evidence,
   };
+}
+
+async function mapEdgeRecord(
+  db: CompanyDb,
+  scope: Scope,
+  row: Prisma.CompanyEdgeGetPayload<object>,
+): Promise<CompanyEdgeRecord> {
+  return mapEdgeRow(row, await evidenceFor(db, scope, "edge", row.id));
+}
+
+// Merged entities are single hop (mergeEntities refuses chained merges), so one
+// lookup covers every endpoint; the loop mirrors mapEntity's resolver anyway.
+async function survivorIds(
+  db: CompanyDb,
+  scope: Scope,
+  entityIds: string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(entityIds)];
+  if (ids.length === 0) return new Map();
+  const merges = await db.companyMerge.findMany({
+    where: { ...scope, sourceEntityId: { in: ids } },
+    select: { sourceEntityId: true, survivorEntityId: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const next = new Map<string, string>();
+  for (const merge of merges) {
+    if (!next.has(merge.sourceEntityId)) next.set(merge.sourceEntityId, merge.survivorEntityId);
+  }
+  const resolved = new Map<string, string>();
+  for (const id of ids) {
+    let current = id;
+    const seen = new Set([current]);
+    for (;;) {
+      const survivor = next.get(current);
+      if (!survivor || seen.has(survivor)) break;
+      seen.add(survivor);
+      current = survivor;
+    }
+    resolved.set(id, current);
+  }
+  return resolved;
 }
 
 async function mapEventRecord(
@@ -4293,8 +4351,10 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
           ...(filter.text
             ? {
                 OR: [
-                  { displayName: { contains: filter.text, mode: "insensitive" } },
-                  { normalizedName: { contains: normalizeCompanyName(filter.text) } },
+                  { displayName: { contains: likeLiteral(filter.text), mode: "insensitive" } },
+                  {
+                    normalizedName: { contains: likeLiteral(normalizeCompanyName(filter.text)) },
+                  },
                 ],
               }
             : {}),
@@ -4447,19 +4507,29 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
           })
         ).map((row) => row.id),
       );
-      return Promise.all(
-        rows
-          .filter(
-            (row) =>
-              filter.includeRejected ||
-              (!rejectedEntities.has(row.fromId) && !rejectedEntities.has(row.toId)),
-          )
-          .map(async (row) => ({
-            ...(await mapEdgeRecord(prisma, scope, row)),
-            fromId: await resolveSurvivorId(prisma, scope, row.fromId),
-            toId: await resolveSurvivorId(prisma, scope, row.toId),
-          })),
+      const visible = rows.filter(
+        (row) =>
+          filter.includeRejected ||
+          (!rejectedEntities.has(row.fromId) && !rejectedEntities.has(row.toId)),
       );
+      const [evidenceByEdge, survivors] = await Promise.all([
+        evidenceForMany(
+          prisma,
+          scope,
+          "edge",
+          visible.map((row) => row.id),
+        ),
+        survivorIds(
+          prisma,
+          scope,
+          visible.flatMap((row) => [row.fromId, row.toId]),
+        ),
+      ]);
+      return visible.map((row) => ({
+        ...mapEdgeRow(row, evidenceByEdge.get(row.id) ?? []),
+        fromId: survivors.get(row.fromId) ?? row.fromId,
+        toId: survivors.get(row.toId) ?? row.toId,
+      }));
     },
     countEdges: async (
       filter: { entityId?: string; relation?: string; includeRejected?: boolean } = {},

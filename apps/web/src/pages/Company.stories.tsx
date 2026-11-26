@@ -2,7 +2,7 @@ import type { CompanyReviewItem } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { CompanyPage } from "./Company";
-import { companyFixture } from "./company-fixtures";
+import { companyFixture, companyOrganisationsPage } from "./company-fixtures";
 
 const meta = { title: "Company/Page", component: CompanyPage } satisfies Meta<typeof CompanyPage>;
 export default meta;
@@ -15,6 +15,40 @@ const responses = {
 export const Full: Story = {
   args: { onAskAgent: () => {} },
   beforeEach: () => mockRpc({ ...responses, "company.page": companyFixture }),
+};
+/** People with a search that matches no one: the toolbar, No matches and Clear filters. */
+export const NoMatches: Story = {
+  parameters: { initialEntries: ["/app/company?view=people&q=zzz"] },
+  beforeEach: () => mockRpc({ ...responses, "company.page": companyFixture }),
+};
+export const People: Story = {
+  parameters: { initialEntries: ["/app/company?view=people&sort=role"] },
+  beforeEach: () => mockRpc({ ...responses, "company.page": companyFixture }),
+};
+/** No people recorded yet: one line, no bare column headers. */
+export const PeopleEmpty: Story = {
+  parameters: { initialEntries: ["/app/company?view=people"] },
+  beforeEach: () =>
+    mockRpc({
+      ...responses,
+      "company.page": {
+        ...companyFixture,
+        entities: companyFixture.entities.filter((e) => e.kind !== "person"),
+      },
+    }),
+};
+/** Organisations as a table of their relationships with the company, with an ended one under Past relationships. */
+export const Organisations: Story = {
+  parameters: { initialEntries: ["/app/company?view=organisations"] },
+  beforeEach: () => mockRpc({ ...responses, "company.page": companyOrganisationsPage }),
+};
+export const OrganisationsPast: Story = {
+  parameters: { initialEntries: ["/app/company?view=organisations"] },
+  beforeEach: () => mockRpc({ ...responses, "company.page": companyOrganisationsPage }),
+};
+export const OrganisationsByType: Story = {
+  parameters: { initialEntries: ["/app/company?view=organisations&type=vendor"] },
+  beforeEach: () => mockRpc({ ...responses, "company.page": companyOrganisationsPage }),
 };
 export const Review: Story = {
   parameters: { initialEntries: ["/app/company?view=review"] },
@@ -97,6 +131,18 @@ export const Running: Story = {
       "company.page": { ...companyFixture, latestRun: { id: "run", status: "running" } },
     }),
 };
+export const RunningEmpty: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...responses,
+      "company.page": {
+        entities: [],
+        edges: [],
+        events: [],
+        latestRun: { id: "run", status: "running" },
+      },
+    }),
+};
 export const EventsOnly: Story = {
   beforeEach: () =>
     mockRpc({
@@ -115,7 +161,7 @@ export const Partial: Story = {
       ...responses,
       "company.page": {
         ...companyFixture,
-        latestRun: { id: "run", status: "completed_with_failures" },
+        latestRun: { id: "run", status: "partial" },
       },
     }),
 };
