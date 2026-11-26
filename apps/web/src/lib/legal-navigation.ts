@@ -2,6 +2,8 @@ const LEGAL_PATH = "/app/legal";
 
 export type LegalUiState = {
   selectedNode?: string;
+  expandedGroups?: string[];
+  /** Previous history entries stored only the most recently expanded group. */
   expandedGroup?: string;
 };
 
@@ -14,9 +16,21 @@ export function legalUiStateFromHistory(state: unknown): LegalUiState | undefine
   if (typeof candidate !== "object" || candidate === null || Array.isArray(candidate))
     return undefined;
   const value = candidate as LegalUiState;
+  const expandedGroups = Array.isArray(value.expandedGroups)
+    ? value.expandedGroups.filter(
+        (group): group is string => typeof group === "string" && group.length > 0,
+      )
+    : [];
+  if (
+    typeof value.expandedGroup === "string" &&
+    value.expandedGroup.length > 0 &&
+    !expandedGroups.includes(value.expandedGroup)
+  ) {
+    expandedGroups.push(value.expandedGroup);
+  }
   const result: LegalUiState = {
     ...(typeof value.selectedNode === "string" ? { selectedNode: value.selectedNode } : {}),
-    ...(typeof value.expandedGroup === "string" ? { expandedGroup: value.expandedGroup } : {}),
+    ...(expandedGroups.length ? { expandedGroups: [...new Set(expandedGroups)] } : {}),
   };
   return Object.keys(result).length ? result : undefined;
 }

@@ -54,6 +54,24 @@ async function mockLegal(
                   title: "Master Services Agreement (Example Labs LLC)",
                   dataRoomItemId: id(101),
                 },
+                {
+                  ...contracts[1]!,
+                  id: id(5),
+                  title: "Office lease",
+                  dataRoomItemId: id(102),
+                },
+                {
+                  ...contracts[1]!,
+                  id: id(6),
+                  title: "Office lease (Sample Properties)",
+                  dataRoomItemId: id(102),
+                },
+                {
+                  ...contracts[1]!,
+                  id: id(7),
+                  title: "Office lease (Renewal)",
+                  dataRoomItemId: id(102),
+                },
               ],
             }
           : options.contractTitle
@@ -282,19 +300,25 @@ test("Legal returns from a contract source to the same filtered view", async ({ 
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to Legal" }).click();
   await expect(page).toHaveURL(/\/app\/legal\?view=deadlines$/);
+});
 
+test("Legal restores every expanded contract group after opening a source", async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 900 });
-  await page.goto("/app/legal?view=contracts&group=on");
-  // Re-route this page's legal data with three matching contracts so a real expandable group exists.
-  await page.unroute("**/rpc/legal/**");
+  await mockLegalDataRoom(page);
   await mockLegal(page, { similarContracts: true });
-  await page.reload();
-  const groupButton = page.getByRole("button", { name: "+3 more" });
-  await expect(groupButton).toBeVisible();
-  await groupButton.click();
-  await expect(groupButton).toHaveAttribute("aria-expanded", "true");
+  await signup(page, `legal-groups-${Date.now()}@rakazo.test`, "password12", "Legal User");
+  await completeOnboarding(page);
+
+  await page.goto("/app/legal?view=contracts&group=on");
+  const groupButtons = page.getByRole("button", { name: "+3 more" });
+  await expect(groupButtons).toHaveCount(2);
+  await groupButtons.nth(0).click();
+  await groupButtons.nth(1).click();
+  await expect(groupButtons.nth(0)).toHaveAttribute("aria-expanded", "true");
+  await expect(groupButtons.nth(1)).toHaveAttribute("aria-expanded", "true");
+
   await page.getByRole("link", { name: "Master Services Agreement" }).first().click();
-  preview = page.getByTestId("data-room-preview");
+  const preview = page.getByTestId("data-room-preview");
   await expect(
     preview.getByRole("heading", { name: "Master Services Agreement source.txt" }),
   ).toBeVisible();
@@ -302,10 +326,11 @@ test("Legal returns from a contract source to the same filtered view", async ({ 
     preview.getByText(/Fixture document body: Customer shall pay the monthly fee/),
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to Legal" }).click();
-  await expect(page.getByRole("button", { name: "+3 more" })).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
+  await expect(page).toHaveURL(/\/app\/legal\?view=contracts&group=on$/);
+  const restoredGroups = page.getByRole("button", { name: "+3 more" });
+  await expect(restoredGroups).toHaveCount(2);
+  await expect(restoredGroups.nth(0)).toHaveAttribute("aria-expanded", "true");
+  await expect(restoredGroups.nth(1)).toHaveAttribute("aria-expanded", "true");
 });
 
 test("Legal explains the empty page before asking for document consent", async ({

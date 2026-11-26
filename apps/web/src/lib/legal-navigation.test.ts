@@ -41,15 +41,48 @@ describe("Legal return navigation", () => {
         search: "?view=graph",
         hash: "",
       },
-      { selectedNode: "contract-1", expandedGroup: "group-2" },
+      { selectedNode: "contract-1", expandedGroups: ["group-2", "group-3"] },
     );
     expect(state).toEqual({
       from: "legal",
       returnTo: "/app/legal/?view=graph",
-      legalUiState: { selectedNode: "contract-1", expandedGroup: "group-2" },
+      legalUiState: {
+        selectedNode: "contract-1",
+        expandedGroups: ["group-2", "group-3"],
+      },
     });
     expect(legalUiStateForReturn(state)).toEqual({
-      legalUiState: { selectedNode: "contract-1", expandedGroup: "group-2" },
+      legalUiState: {
+        selectedNode: "contract-1",
+        expandedGroups: ["group-2", "group-3"],
+      },
     });
+  });
+
+  it("converts previous single-group history state and ignores malformed group values", () => {
+    expect(
+      legalDataRoomState(
+        { pathname: "/app/legal", search: "", hash: "" },
+        { expandedGroups: ["new-group"] },
+      ).legalUiState,
+    ).toEqual({ expandedGroups: ["new-group"] });
+    expect(legalUiStateForReturn({ legalUiState: { expandedGroup: "legacy-group" } })).toEqual({
+      legalUiState: { expandedGroups: ["legacy-group"] },
+    });
+    expect(
+      legalUiStateForReturn({
+        legalUiState: {
+          selectedNode: "contract-1",
+          expandedGroup: "legacy-group",
+          expandedGroups: ["newer-group", 42, "legacy-group"],
+        },
+      }),
+    ).toEqual({
+      legalUiState: {
+        selectedNode: "contract-1",
+        expandedGroups: ["newer-group", "legacy-group"],
+      },
+    });
+    expect(legalUiStateForReturn({ legalUiState: { expandedGroups: [null, 42] } })).toBeUndefined();
   });
 });

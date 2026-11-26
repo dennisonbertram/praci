@@ -80,17 +80,17 @@ function NextDeadline({ contract }: { contract: LegalContract }) {
 function Title({
   contract,
   wrap = false,
-  expandedGroup,
+  expandedGroups,
 }: {
   contract: LegalContract;
   wrap?: boolean;
-  expandedGroup?: string;
+  expandedGroups?: string[];
 }) {
   const location = useLocation();
   return (
     <Link
       to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-      state={legalDataRoomState(location, { expandedGroup })}
+      state={legalDataRoomState(location, expandedGroups ? { expandedGroups } : undefined)}
       className="rk-tap min-w-0 font-medium hover:underline"
     >
       {/* .rk-tap is inline-flex on phones and the link is inline elsewhere, so neither can clip: the text truncates as a block inside it. */}
@@ -270,45 +270,36 @@ export function LegalContracts({
     </div>
   );
   const location = useLocation();
-  const savedExpandedGroup = legalUiStateFromHistory(location.state)?.expandedGroup;
-  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(
-    () => new Set(savedExpandedGroup ? [savedExpandedGroup] : []),
-  );
+  const savedExpandedGroups = legalUiStateFromHistory(location.state)?.expandedGroups ?? [];
+  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set(savedExpandedGroups));
   const toggle = (key: string) =>
     setOpenKeys((keys) => {
       const next = new Set(keys);
       if (!next.delete(key)) next.add(key);
       return next;
     });
-  const currentExpandedGroup = openKeys.values().next().value;
+  const currentExpandedGroups = [...openKeys];
   const hidden = useHideAmounts();
   const navigate = useNavigate();
   // Any click on a row opens the contract; the title link stays the keyboard and screen-reader target.
-  const open = (contract: LegalContract, expandedGroup?: string) => (event: MouseEvent) => {
+  const open = (contract: LegalContract) => (event: MouseEvent) => {
     if ((event.target as HTMLElement).closest("a, button")) return;
     navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, {
-      state: legalDataRoomState(
-        location,
-        expandedGroup
-          ? { expandedGroup }
-          : currentExpandedGroup
-            ? { expandedGroup: currentExpandedGroup }
-            : undefined,
-      ),
+      state: legalDataRoomState(location, { expandedGroups: currentExpandedGroups }),
     });
   };
-  const card = (contract: LegalContract, nested = false, expandedGroup?: string) => {
+  const card = (contract: LegalContract, nested = false) => {
     const names = contract.counterparties.join(", ");
     const showValue = !hidden && contract.valueCents !== null;
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: a mouse shortcut; the title link is the keyboard way in.
       <li
         key={contract.id}
-        onClick={open(contract, expandedGroup)}
+        onClick={open(contract)}
         className={cn("cursor-pointer border-t border-border py-2 text-sm", nested && "ps-4")}
       >
         <div className="flex items-center justify-between gap-3">
-          <Title contract={contract} wrap expandedGroup={expandedGroup ?? currentExpandedGroup} />
+          <Title contract={contract} wrap expandedGroups={currentExpandedGroups} />
           <Status status={contractStatus(contract, todayIso())} />
         </div>
         {/* Only what the agent found: no labels, since the values say what they are. */}
@@ -327,15 +318,15 @@ export function LegalContracts({
       </li>
     );
   };
-  const tableRow = (contract: LegalContract, nested = false, expandedGroup?: string) => (
+  const tableRow = (contract: LegalContract, nested = false) => (
     <TableRow
       key={contract.id}
-      onClick={open(contract, expandedGroup)}
+      onClick={open(contract)}
       className="cursor-pointer group-data-[compact]/table:h-10"
     >
       <TableCell title={`${contract.title} (${contract.contractType})`}>
         <div className={cn("flex max-w-72 items-center gap-2", nested && "ps-4")}>
-          <Title contract={contract} expandedGroup={expandedGroup} />
+          <Title contract={contract} expandedGroups={currentExpandedGroups} />
           <Status status={contractStatus(contract, todayIso())} />
         </div>
       </TableCell>
@@ -382,7 +373,7 @@ export function LegalContracts({
       {toolbar}
       <ul aria-label={t`Contracts`} className="flex flex-col @6xl:hidden">
         {rows.flatMap((row) => {
-          if (row.kind === "single") return [card(row.contract, false, currentExpandedGroup)];
+          if (row.kind === "single") return [card(row.contract)];
           const isOpen = openKeys.has(row.key);
           const sum = groupSummary(row.contracts);
           return [
@@ -400,7 +391,7 @@ export function LegalContracts({
                 {[sum.term, sum.renewal].filter((text) => text !== dash).join(" · ")}
               </p>
             </li>,
-            ...(isOpen ? row.contracts.map((contract) => card(contract, true, row.key)) : []),
+            ...(isOpen ? row.contracts.map((contract) => card(contract, true)) : []),
           ];
         })}
       </ul>
@@ -434,7 +425,7 @@ export function LegalContracts({
         <TableBody>
           {rows.flatMap((row) => {
             if (row.kind === "single") {
-              return [tableRow(row.contract, false, currentExpandedGroup)];
+              return [tableRow(row.contract)];
             }
             const isOpen = openKeys.has(row.key);
             const sum = groupSummary(row.contracts);
@@ -470,7 +461,7 @@ export function LegalContracts({
                   {sum.nextDeadline ? fullDay(sum.nextDeadline) : dash}
                 </TableCell>
               </TableRow>,
-              ...(isOpen ? row.contracts.map((contract) => tableRow(contract, true, row.key)) : []),
+              ...(isOpen ? row.contracts.map((contract) => tableRow(contract, true)) : []),
             ];
           })}
         </TableBody>

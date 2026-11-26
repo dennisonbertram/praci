@@ -4,6 +4,13 @@ import { maskCurrencyText } from "./mask-currency";
 it.each([
   ["You spent $73,781.83 in Sep", "You spent $••• in Sep"],
   ["raised $1.2M and $450k", "raised $••• and $•••"],
+  ["check size $250K–500K", "check size $•••–•••"],
+  ["check size $250K - 500K", "check size $••• - •••"],
+  ["check size €250.000,00–500.000,00", "check size €•••–•••"],
+  ["check size $2K–3,500.50", "check size $•••–•••"],
+  ["check size $250K to 500K", "check size $••• to •••"],
+  ["check size $250K–50%", "check size $•••–50%"],
+  ["check size $250K—$500K", "check size $•••—$•••"],
   ["down -$300 or $-1,234.56", "down -$••• or $•••"],
   ["€2,000 £5 ¥900 ₹73,781.83", "€••• £••• ¥••• ₹•••"],
   ["€1.234,56 and €1 234,56", "€••• and €•••"],
@@ -25,6 +32,8 @@ it.each([
   "see https://example.com/a/1234567",
   "invoiceUSD1234.pdf",
   "100 usdt",
+  "12–24 months of runway",
+  "250K–500K options",
 ])("leaves %s alone", (input) => expect(maskCurrencyText(input)).toBe(input));
 
 // Hide amounts covers money only: runway, run-out dates and ownership percentages stay readable.

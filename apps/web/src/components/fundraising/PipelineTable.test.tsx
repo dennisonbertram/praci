@@ -202,7 +202,7 @@ it("shows an imported row's Wave, Fund details and Referred by", async () => {
       details: [
         {
           label: "Stage and check",
-          value: "Seed lead, $250K-$500K",
+          value: "Seed lead, $250K–500K",
           source: "list",
           at: "2026-11-05T00:00:00.000Z",
         },
@@ -215,7 +215,7 @@ it("shows an imported row's Wave, Fund details and Referred by", async () => {
   expect(names()).toEqual(["Peak Fund"]);
   const row = el.querySelector("[data-testid=pipeline-table] tbody tr");
   expect(row?.textContent).toContain("Sam Example");
-  expect(row?.textContent).toContain("Stage and check: Seed lead, $250K-$500K");
+  expect(row?.textContent).toContain("Stage and check: Seed lead, $250K–500K");
   localStorage.removeItem("rakazo:crm-pipeline-columns");
 });
 
@@ -227,7 +227,7 @@ it("masks fund-detail check sizes in both the cell and tooltip when amounts are 
       details: [
         {
           label: "Stage and check",
-          value: "Seed lead, $250K-$500K",
+          value: "Seed lead, $250K–500K",
           source: "list",
           at: "2026-11-05T00:00:00.000Z",
         },
@@ -235,8 +235,8 @@ it("masks fund-detail check sizes in both the cell and tooltip when amounts are 
     });
     await render([imported]);
     const details = el.querySelector("[data-testid=row-i1] td:nth-last-child(2) div");
-    expect(details?.textContent).toBe("Stage and check: Seed lead, $•••-$•••");
-    expect(details?.getAttribute("title")).toBe("Stage and check: Seed lead, $•••-$•••");
+    expect(details?.textContent).toBe("Stage and check: Seed lead, $•••–•••");
+    expect(details?.getAttribute("title")).toBe("Stage and check: Seed lead, $•••–•••");
     expect(details?.textContent).not.toContain("250K");
     expect(details?.getAttribute("title")).not.toContain("500K");
   } finally {
