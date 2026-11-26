@@ -16,19 +16,22 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 
 const locale = () => i18n.locale || "en";
 
 /** A cent amount as dollars with two decimals, built from BigInt so no float rounds it. */
-const money = (cents: bigint) => {
+const money = (cents: bigint, hidden: boolean) => {
+  if (hidden) return "$•••";
   const whole = new Intl.NumberFormat(locale()).format(cents / 100n);
   return `$${whole}.${(cents % 100n).toString().padStart(2, "0")}`;
 };
 
 /** The ISO 100K report: each holder's ISO value first exercisable per year and its excess. */
 export function Iso100kDialog({ onClose }: { onClose: () => void }) {
+  const hidden = useHideAmounts();
   const [rows, setRows] = useState<ReturnType<typeof iso100k> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,12 +95,12 @@ export function Iso100kDialog({ onClose }: { onClose: () => void }) {
                       <TableCell
                         className={`text-right tabular-nums${over ? " text-destructive" : ""}`}
                       >
-                        {money(row.valueCents)}
+                        {money(row.valueCents, hidden)}
                       </TableCell>
                       <TableCell
                         className={`text-right tabular-nums${over ? " text-destructive" : ""}`}
                       >
-                        {over ? money(row.overLimitCents) : "—"}
+                        {over ? money(row.overLimitCents, hidden) : "—"}
                       </TableCell>
                     </TableRow>
                   );

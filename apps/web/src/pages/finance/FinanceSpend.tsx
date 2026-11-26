@@ -36,6 +36,7 @@ import {
   dayRange,
   lastDayOf,
   money,
+  moneyInList,
   monthAxisLabels,
   monthLabel,
   monthShort,
@@ -112,7 +113,9 @@ export function FinanceSpendPage({
                 value={range ? null : period}
                 onChange={(next) => navigate(financePath.spend(next, category, null, source))}
               />
-              <span className="text-lg font-semibold tabular-nums">{money(data.totalCents)}</span>
+              <span className="text-lg font-semibold tabular-nums">
+                {moneyInList(data.totalCents)}
+              </span>
               {range ? (
                 <Badge
                   variant="outline"
@@ -435,7 +438,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                       </HereLink>
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {money(charge.amountCents)}
+                      {moneyInList(charge.amountCents)}
                     </TableCell>
                     {hasReceipts ? (
                       <TableCell className="text-end text-muted-foreground">

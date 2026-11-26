@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { formatDay } from "../options/format";
@@ -50,15 +51,15 @@ const statusText = (value: string) => {
 };
 
 /** Each column's format decides how its cell reads on screen; the CSV keeps exact values. */
-const display = (value: string | null, format: EquityReportFormat) => {
+const display = (value: string | null, format: EquityReportFormat, hideAmounts = false) => {
   if (value == null || value === "") return "—";
   switch (format) {
     case "shares":
       return /^\d+$/.test(value) ? new Intl.NumberFormat("en").format(BigInt(value)) : value;
     case "cents":
-      return /^\d+$/.test(value) ? centsText(value) : value;
+      return /^\d+$/.test(value) ? (hideAmounts ? "$•••" : centsText(value)) : value;
     case "price":
-      return /^\d+(\.\d+)?$/.test(value) ? formatPrice(value) : value;
+      return /^\d+(\.\d+)?$/.test(value) ? formatPrice(value, hideAmounts) : value;
     case "percent":
       return /^\d+(\.\d+)?$/.test(value) ? formatPercent(value) : value;
     case "decimal":
@@ -87,6 +88,7 @@ export function ReportViewer({
   /** Options to open with, e.g. a report reopened from the history. */
   initial?: ReportOptions;
 }) {
+  const hideAmounts = useHideAmounts();
   const [asOf, setAsOf] = useState(initial.asOf ?? "");
   const [groupBy, setGroupBy] = useState<"share_class" | "stakeholder">(
     initial.groupBy ?? "share_class",
@@ -215,7 +217,7 @@ export function ReportViewer({
                       key={column.key}
                       className={column.numeric ? "text-end tabular-nums" : undefined}
                     >
-                      {display(row[column.key] ?? null, column.format)}
+                      {display(row[column.key] ?? null, column.format, hideAmounts)}
                     </TableCell>
                   ))}
                 </TableRow>

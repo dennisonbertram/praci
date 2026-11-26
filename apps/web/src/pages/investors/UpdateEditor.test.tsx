@@ -93,8 +93,13 @@ const button = (label: string) =>
 const click = (el: HTMLElement | undefined) => act(async () => el?.click());
 const advance = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
 
-async function show(initial: InvestorUpdate, accounts: unknown[] = gmail, lookupOk = true) {
-  rpcMock.get.mockResolvedValue(initial);
+async function show(
+  initial: InvestorUpdate,
+  accounts: unknown[] = gmail,
+  lookupOk = true,
+  draftLookupOk = true,
+) {
+  if (draftLookupOk) rpcMock.get.mockResolvedValue(initial);
   if (lookupOk) rpcMock.accounts.mockResolvedValue(accounts);
   await act(async () =>
     root.render(
@@ -212,11 +217,118 @@ it("shows why Send is unavailable when the contacts fail to load, and recovers w
   expect((button("Send") as HTMLButtonElement).disabled).toBe(false);
 });
 
-it("shows an alert and disables Send when the Gmail accounts fail to load", async () => {
-  rpcMock.accounts.mockRejectedValue(new Error("down"));
+it("retries the initial update and recipient load after the draft lookup fails", async () => {
+  rpcMock.get.mockRejectedValueOnce(new Error("draft unavailable")).mockResolvedValueOnce(update());
+  await show(update(), gmail, true, false);
+  expect(document.querySelector("[role=alert]")?.textContent).toContain("draft unavailable");
+
+  await click(button("Try again"));
+  await flush();
+  await flush();
+
+  expect(rpcMock.get).toHaveBeenCalledTimes(2);
+  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "investor" });
+  expect(document.querySelector('fieldset[aria-busy="true"]')).toBeNull();
+  expect((document.getElementById("to-c1") as HTMLInputElement).checked).toBe(true);
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("keeps the recipient list loading until contacts arrive instead of showing the empty state", async () => {
+  let resolveContacts!: (contacts: Contact[]) => void;
+  rpcMock.contacts.mockReturnValueOnce(
+    new Promise<Contact[]>((resolve) => {
+      resolveContacts = resolve;
+    }),
+  );
+  await show(update());
+  expect(document.querySelector('fieldset[aria-busy="true"]')).not.toBeNull();
+  expect(document.body.textContent).not.toContain("No investors yet");
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(true);
+
+  await act(async () => {
+    resolveContacts([
+      contact("c1", "Ada", "ada@example.test"),
+      contact("c2", "Bo", "bo@example.test"),
+    ]);
+  });
+  await flush();
+  expect(document.querySelector('fieldset[aria-busy="true"]')).toBeNull();
+  expect(document.getElementById("to-c1")).not.toBeNull();
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("loads contacts for the accepted agent refresh without duplicating accounts or applying a stale draft", async () => {
+  let resolveInitial!: (value: InvestorUpdate) => void;
+  let resolveRefresh!: (value: InvestorUpdate) => void;
+  let resolveContacts!: (value: Contact[]) => void;
+  let resolveAccounts!: (value: typeof gmail) => void;
+  rpcMock.get
+    .mockReturnValueOnce(new Promise<InvestorUpdate>((resolve) => (resolveInitial = resolve)))
+    .mockReturnValueOnce(new Promise<InvestorUpdate>((resolve) => (resolveRefresh = resolve)));
+  rpcMock.contacts.mockReturnValueOnce(
+    new Promise<Contact[]>((resolve) => (resolveContacts = resolve)),
+  );
+  rpcMock.accounts.mockReturnValueOnce(
+    new Promise<typeof gmail>((resolve) => (resolveAccounts = resolve)),
+  );
+
+  await showBusy(true);
+  expect(rpcMock.get).toHaveBeenCalledTimes(1);
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(1);
+
+  await showBusy(false);
+  expect(rpcMock.get).toHaveBeenCalledTimes(2);
+  const accepted = update({
+    audience: "board",
+    subject: "Agent draft accepted",
+    recipientContactIds: ["b1"],
+  });
+  await act(async () => resolveRefresh(accepted));
+  await flush();
+
+  expect((document.getElementById("update-subject") as HTMLInputElement).value).toBe(
+    "Agent draft accepted",
+  );
+  expect(rpcMock.contacts).toHaveBeenCalledTimes(1);
+  expect(rpcMock.contacts).toHaveBeenCalledWith({ kind: "board" });
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(1);
+  expect(document.querySelector('fieldset[aria-busy="true"]')).not.toBeNull();
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(true);
+
+  await act(async () =>
+    resolveContacts([{ ...contact("b1", "Board member", "board@example.test"), kind: "board" }]),
+  );
+  await flush();
+  expect(document.querySelector('fieldset[aria-busy="true"]')).toBeNull();
+  expect(document.getElementById("to-b1")).not.toBeNull();
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(true);
+
+  await act(async () => resolveAccounts(gmail));
+  await flush();
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(false);
+
+  await act(async () => resolveInitial(update({ subject: "Stale initial draft" })));
+  await flush();
+  expect((document.getElementById("update-subject") as HTMLInputElement).value).toBe(
+    "Agent draft accepted",
+  );
+  expect(rpcMock.contacts).toHaveBeenCalledTimes(1);
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(1);
+});
+
+it("shows an alert and retries Gmail account loading when it fails", async () => {
+  rpcMock.accounts.mockRejectedValueOnce(new Error("down")).mockResolvedValue(gmail);
   await show(update(), undefined, false);
   expect(button("Try again")).toBeDefined();
   expect((button("Send") as HTMLButtonElement).disabled).toBe(true);
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(1);
+
+  await click(button("Try again"));
+  await flush();
+  await flush();
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
+  expect(document.querySelector("[role=alert]")).toBeNull();
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(false);
 });
 
 it("clears a sending update when its refresh says it was deleted", async () => {
@@ -276,6 +388,13 @@ it("greys a recipient without an email and leaves it unticked", async () => {
   expect((document.getElementById("to-c1") as HTMLInputElement).checked).toBe(true);
 });
 
+it("does not enable email Send when the only saved recipient has no email", async () => {
+  await show(update({ recipientContactIds: ["c3"] }));
+  expect((document.getElementById("to-c3") as HTMLInputElement).checked).toBe(false);
+  expect((document.getElementById("to-c3") as HTMLInputElement).disabled).toBe(true);
+  expect((button("Send") as HTMLButtonElement).disabled).toBe(true);
+});
+
 it("without Gmail an investor update is posted to the portal, with Connect Gmail as the other action", async () => {
   await show(update(), []);
   expect(document.body.textContent).not.toContain("To");
@@ -305,6 +424,19 @@ it("Post to portal posts the draft and says how many were notified", async () =>
   await click(button("Post to portal"));
   expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" });
   expect(document.body.textContent).toContain("Posted · 2 notified");
+});
+
+it("keeps portal posting available for a portal-linked recipient without email", async () => {
+  rpcMock.contacts.mockResolvedValue([
+    { ...contact("c3", "Cy", null), portalLinkSentAt: "2026-09-01T00:00:00.000Z" },
+  ]);
+  rpcMock.post.mockResolvedValue({ update: update({ status: "posted" }), notified: 1 });
+  await show(update({ recipientContactIds: ["c3"] }), []);
+
+  expect(button("Post to portal")).toBeDefined();
+  expect((button("Post to portal") as HTMLButtonElement).disabled).toBe(false);
+  await click(button("Post to portal"));
+  expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" });
 });
 
 it("asks once about leftover TBD before posting, like Send", async () => {

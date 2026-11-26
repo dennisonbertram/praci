@@ -3,6 +3,7 @@ import type { EquitySafeFunding } from "@rakazo/contracts";
 import { Button, Input, Label, Popover, PopoverContent, PopoverTrigger } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { dollarsToCents } from "../views/money";
@@ -10,6 +11,7 @@ import { formatCents } from "./format";
 
 /** Board-approved SAFE funding against what SAFEs raised, with the approval and a modeling link. */
 export function SafeFunding({ reloadKey = 0 }: { reloadKey?: number }) {
+  const hidden = useHideAmounts();
   const [funding, setFunding] = useState<EquitySafeFunding | null>(null);
   const [amount, setAmount] = useState("");
   const [open, setOpen] = useState(false);
@@ -51,13 +53,13 @@ export function SafeFunding({ reloadKey = 0 }: { reloadKey?: number }) {
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       {funding.approvedCents ? (
         <span className="tabular-nums">
-          {t`Board approved ${formatCents(funding.approvedCents)}`}
+          {t`Board approved ${formatCents(funding.approvedCents, hidden)}`}
         </span>
       ) : null}
-      <span className="tabular-nums">{t`Raised ${formatCents(funding.raisedCents)}`}</span>
+      <span className="tabular-nums">{t`Raised ${formatCents(funding.raisedCents, hidden)}`}</span>
       {funding.remainingCents ? (
         <span className="tabular-nums text-muted-foreground">
-          {t`Remaining ${formatCents(funding.remainingCents)}`}
+          {t`Remaining ${formatCents(funding.remainingCents, hidden)}`}
         </span>
       ) : null}
       <Popover open={open} onOpenChange={setOpen}>

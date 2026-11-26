@@ -14,8 +14,10 @@ import {
   Switch,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
+import { ConcealedAmountInput } from "../ConcealedAmountInput";
 import { formatDollars, formatShares } from "./format";
 
 /** Whether holders see an estimated value, and the price per share used to value holdings. */
@@ -113,12 +115,17 @@ export function EstimatedValueSettings() {
       </Label>
       <div className="grid max-w-md grid-cols-2 gap-3">
         <Field>
-          <FieldLabel htmlFor="estimated-value-price">{t`Price per share`}</FieldLabel>
-          <Input
+          <FieldLabel id="estimated-value-price-label" htmlFor="estimated-value-price">
+            {t`Price per share`}
+          </FieldLabel>
+          <ConcealedAmountInput
             id="estimated-value-price"
+            scopeKey="estimated-value-price"
+            stored={settings.pricePerShare != null}
+            fieldLabel={t`Price per share`}
             inputMode="decimal"
             value={price}
-            onChange={(event) => setPrice(event.target.value)}
+            onChange={setPrice}
           />
         </Field>
         <Field>
@@ -163,6 +170,7 @@ function HolderPreview({
   pricePerShare: string;
   visible: boolean;
 }) {
+  const hidden = useHideAmounts();
   const holder = holders.find((row) => row.stakeholderId === previewId);
   const price = parseFixed(pricePerShare);
   const valued = (holder?.securities ?? []).filter((row) => row.kind !== "convertible");
@@ -194,13 +202,15 @@ function HolderPreview({
                   {formatShares(row.quantity)}
                 </dd>
                 <dd className="text-end tabular-nums">
-                  {formatDollars(sharesTimesPrice(BigInt(row.quantity), price).toString())}
+                  {formatDollars(sharesTimesPrice(BigInt(row.quantity), price).toString(), hidden)}
                 </dd>
               </div>
             ))}
             <dt className="font-medium">{t`Estimated value`}</dt>
             <dd />
-            <dd className="text-end font-medium tabular-nums">{formatDollars(total.toString())}</dd>
+            <dd className="text-end font-medium tabular-nums">
+              {formatDollars(total.toString(), hidden)}
+            </dd>
           </dl>
         ) : (
           <p className="text-sm text-muted-foreground">{t`Not visible to ${holder.name}`}</p>

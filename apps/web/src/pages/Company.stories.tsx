@@ -16,6 +16,11 @@ export const Full: Story = {
   args: { onAskAgent: () => {} },
   beforeEach: () => mockRpc({ ...responses, "company.page": companyFixture }),
 };
+/** A load failure names the affected information and leaves one clear retry action. */
+export const LoadError: Story = {
+  args: { onAskAgent: () => {} },
+  beforeEach: () => mockRpc({ ...responses, "company.page": () => Promise.reject(new Error()) }),
+};
 /** People with a search that matches no one: the toolbar, No matches and Clear filters. */
 export const NoMatches: Story = {
   parameters: { initialEntries: ["/app/company?view=people&q=zzz"] },
@@ -41,6 +46,40 @@ export const PeopleEmpty: Story = {
 export const Organisations: Story = {
   parameters: { initialEntries: ["/app/company?view=organisations"] },
   beforeEach: () => mockRpc({ ...responses, "company.page": companyOrganisationsPage }),
+};
+/** A subsidiary appears as an organisation related to the company. */
+export const Subsidiary: Story = {
+  parameters: { initialEntries: ["/app/company?view=organisations"] },
+  beforeEach: () => {
+    const organisation = companyFixture.entities.find((entity) => entity.kind === "organisation")!;
+    mockRpc({
+      ...responses,
+      "company.page": {
+        ...companyFixture,
+        entities: [
+          ...companyFixture.entities,
+          {
+            ...organisation,
+            id: "subsidiary",
+            displayName: "Northwind Robotics Europe",
+            normalizedName: "northwind robotics europe",
+            attrs: { type: "other" },
+          },
+        ],
+        edges: [
+          ...companyFixture.edges,
+          {
+            ...companyFixture.edges[0]!,
+            id: "subsidiary-relationship",
+            fromId: "subsidiary",
+            toId: "company",
+            relation: "part_of",
+            role: null,
+          },
+        ],
+      },
+    });
+  },
 };
 export const OrganisationsPast: Story = {
   parameters: { initialEntries: ["/app/company?view=organisations"] },

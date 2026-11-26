@@ -112,6 +112,28 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+it("shows where to scan when the empty Scanner page is open outside the desktop app", async () => {
+  await render(<ScannerPage />);
+
+  expect(container.textContent).toContain("No scans yet");
+  expect(container.textContent).toContain("Use the desktop app to scan a document.");
+  expect(
+    [...container.querySelectorAll("button")].some((button) => button.textContent === "Scan"),
+  ).toBe(false);
+});
+
+it("keeps the physical Scan action available when a desktop scanner is ready", async () => {
+  bridge("ready", "darwin", { device: "ScanSnap iX1600" });
+  await render(<ScannerPage />);
+
+  const scan = [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Scan",
+  );
+  expect(scan).toBeDefined();
+  expect(scan?.disabled).toBe(false);
+  expect(container.textContent).not.toContain("Use the desktop app to scan a document.");
+});
+
 describe("scanner status line", () => {
   it("names the scanner and says it scans when paper is loaded", async () => {
     bridge("ready", "darwin", { device: "ScanSnap iX1600" });

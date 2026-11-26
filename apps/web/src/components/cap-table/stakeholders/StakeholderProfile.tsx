@@ -32,17 +32,17 @@ import {
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { listAllPages } from "../../../lib/list-all";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { SectionCard } from "../../SectionCard";
 import { formatDay } from "../options/format";
 import { CapTableEmptyState } from "../shell/CapTableEmptyState";
+import { formatDollars } from "../views/format";
 
 const DASH = "—";
 const shares = (value: string) => new Intl.NumberFormat(i18n.locale || "en").format(BigInt(value));
-const dollars = (cents: string) =>
-  `$${new Intl.NumberFormat(i18n.locale || "en").format(BigInt(cents) / 100n)}`;
 
 export const relationshipLabel = (value: string | null) =>
   value ? (EQUITY_RELATIONSHIP_LABELS[value as EquityRelationship] ?? value) : DASH;
@@ -128,6 +128,7 @@ type Holdings = {
 };
 
 export function HoldingsTab({ stakeholderId }: { stakeholderId: string }) {
+  const hideAmounts = useHideAmounts();
   const [holdings, setHoldings] = useState<Holdings | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -216,7 +217,7 @@ export function HoldingsTab({ stakeholderId }: { stakeholderId: string }) {
                   </TableCell>
                   <TableCell>{row.kind}</TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {dollars(row.principalCents)}
+                    {formatDollars(row.principalCents, hideAmounts)}
                   </TableCell>
                   <TableCell>{formatDay(row.issueDate)}</TableCell>
                   <TableCell className="capitalize">{row.status}</TableCell>

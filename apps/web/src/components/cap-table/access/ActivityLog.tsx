@@ -16,8 +16,10 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { Fragment, useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { useListParams } from "../../../lib/list-params";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -37,8 +39,9 @@ const kindLabel = (kind: string) => {
 };
 const shares = (value: string | null) =>
   value == null ? "—" : new Intl.NumberFormat(locale()).format(BigInt(value));
-const dollars = (cents: string | null) => {
+const dollars = (cents: string | null, hideAmounts = false) => {
   if (cents == null) return "—";
+  if (hideAmounts) return "$•••";
   const value = BigInt(cents);
   const sign = value < 0n ? "-" : "";
   const abs = value < 0n ? -value : value;
@@ -69,9 +72,21 @@ const fieldLabel = (key: string) => {
   );
 };
 
-const show = (key: string, value: unknown) => {
+const MONEY_FIELDS = new Set([
+  "pricePerShare",
+  "pricePaidPerShare",
+  "exercisePrice",
+  "conversionPrice",
+  "originalIssuePrice",
+]);
+
+const show = (key: string, value: unknown, hideAmounts = false) => {
   if (value == null || value === "") return "—";
-  if (key.endsWith("Cents") && /^-?\d+$/.test(String(value))) return dollars(String(value));
+  if (key.endsWith("Cents")) {
+    if (hideAmounts) return "$•••";
+    if (/^-?\d+$/.test(String(value))) return dollars(String(value));
+  }
+  if (hideAmounts && MONEY_FIELDS.has(key)) return "$•••";
   if (typeof value === "string") return value.replaceAll("_", " ");
   return String(value);
 };
@@ -80,7 +95,7 @@ const show = (key: string, value: unknown) => {
  * The fields a change touched, readable: "Field: before → after", or "Field: value" when the
  * change created the record. Ids, timestamps and unchanged or empty fields are left out.
  */
-export function changedFields(before: unknown, after: unknown): string[] {
+export function changedFields(before: unknown, after: unknown, hideAmounts = false): string[] {
   const a = before && typeof before === "object" ? (before as Record<string, unknown>) : null;
   const b = after && typeof after === "object" ? (after as Record<string, unknown>) : {};
   const keys = [...new Set([...Object.keys(a ?? {}), ...Object.keys(b)])];
@@ -92,13 +107,14 @@ export function changedFields(before: unknown, after: unknown): string[] {
     .filter((key) => a != null || (b[key] != null && b[key] !== ""))
     .map((key) =>
       a == null
-        ? `${fieldLabel(key)}: ${show(key, b[key])}`
-        : `${fieldLabel(key)}: ${show(key, a[key])} → ${show(key, b[key])}`,
+        ? `${fieldLabel(key)}: ${show(key, b[key], hideAmounts)}`
+        : `${fieldLabel(key)}: ${show(key, a[key], hideAmounts)} → ${show(key, b[key], hideAmounts)}`,
     );
 }
 
 /** The activity tab: every change to the ledger, newest first, with filters and CSV. */
 export function ActivityLog() {
+  const hideAmounts = useHideAmounts();
   const list = useListParams(SORTS, { field: "createdAt", dir: "desc" });
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<Kind | "">("");
@@ -242,57 +258,90 @@ export function ActivityLog() {
         <CapTableEmptyState message={filtered ? t`No matching activity` : t`No activity yet`} />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableHeadRow>
-                <TableHead className="w-44" {...head("createdAt")}>{t`Recorded`}</TableHead>
-                <TableHead className="w-28" {...head("effectiveDate")}>{t`Effective`}</TableHead>
-                <TableHead {...head("kind")}>{t`Change`}</TableHead>
-                <TableHead>{t`Security`}</TableHead>
-                <TableHead className="text-end">{t`Quantity`}</TableHead>
-                <TableHead className="text-end">{t`Value`}</TableHead>
-                <TableHead>{t`By`}</TableHead>
-                <TableHead>{t`Note`}</TableHead>
-              </TableHeadRow>
-            </TableHeader>
-            <TableBody aria-label={t`Activity`}>
-              {rows.map((row) => (
-                <Fragment key={row.id}>
-                  <TableRow
-                    {...(changedFields(row.before, row.after).length > 0
-                      ? {
-                          className: "cursor-pointer",
-                          "aria-expanded": open === row.id,
-                          onClick: () => setOpen(open === row.id ? null : row.id),
-                        }
-                      : {})}
-                  >
-                    <TableCell className="whitespace-nowrap">{recorded(row.createdAt)}</TableCell>
-                    <TableCell className="tabular-nums">{formatDay(row.effectiveDate)}</TableCell>
-                    <TableCell>{kindLabel(row.kind)}</TableCell>
-                    <TableCell>{row.securityLabel ?? "—"}</TableCell>
-                    <TableCell className="text-end tabular-nums">{shares(row.quantity)}</TableCell>
-                    <TableCell className="text-end tabular-nums">
-                      {dollars(row.valueCents)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{row.actorName ?? "—"}</TableCell>
-                    <TableCell className="max-w-64 truncate">{row.note ?? ""}</TableCell>
-                  </TableRow>
-                  {open === row.id ? (
-                    <TableRow>
-                      <TableCell colSpan={8}>
-                        <ul className="grid grid-cols-1 gap-x-8 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
-                          {changedFields(row.before, row.after).map((line) => (
-                            <li key={line}>{line}</li>
-                          ))}
-                        </ul>
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </Fragment>
-              ))}
-            </TableBody>
-          </Table>
+          <TableScrollRegion aria-label={t`Cap table activity`}>
+            <Table className="min-w-[960px]">
+              <TableHeader>
+                <TableHeadRow>
+                  <TableHead className="w-44" {...head("createdAt")}>{t`Recorded`}</TableHead>
+                  <TableHead className="w-28" {...head("effectiveDate")}>{t`Effective`}</TableHead>
+                  <TableHead {...head("kind")}>{t`Change`}</TableHead>
+                  <TableHead>{t`Security`}</TableHead>
+                  <TableHead className="text-end">{t`Quantity`}</TableHead>
+                  <TableHead className="text-end">{t`Value`}</TableHead>
+                  <TableHead>{t`By`}</TableHead>
+                  <TableHead>{t`Note`}</TableHead>
+                </TableHeadRow>
+              </TableHeader>
+              <TableBody aria-label={t`Activity`}>
+                {rows.map((row) => {
+                  const changes = changedFields(row.before, row.after, hideAmounts);
+                  const expanded = open === row.id;
+                  return (
+                    <Fragment key={row.id}>
+                      <TableRow
+                        {...(changes.length > 0
+                          ? {
+                              "aria-expanded": expanded,
+                              onOpen: () => setOpen(expanded ? null : row.id),
+                            }
+                          : {})}
+                      >
+                        <TableCell className="whitespace-nowrap">
+                          {recorded(row.createdAt)}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDay(row.effectiveDate)}
+                        </TableCell>
+                        <TableCell>
+                          {changes.length > 0 ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto justify-start p-0 font-normal"
+                              data-row-open
+                              aria-label={
+                                expanded
+                                  ? t`Hide details for ${kindLabel(row.kind)}`
+                                  : t`Show details for ${kindLabel(row.kind)}`
+                              }
+                              aria-expanded={expanded}
+                            >
+                              {kindLabel(row.kind)}
+                            </Button>
+                          ) : (
+                            kindLabel(row.kind)
+                          )}
+                        </TableCell>
+                        <TableCell>{row.securityLabel ?? "—"}</TableCell>
+                        <TableCell className="text-end tabular-nums">
+                          {shares(row.quantity)}
+                        </TableCell>
+                        <TableCell className="text-end tabular-nums">
+                          {dollars(row.valueCents, hideAmounts)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{row.actorName ?? "—"}</TableCell>
+                        <TableCell className="max-w-64 truncate">{row.note ?? ""}</TableCell>
+                      </TableRow>
+                      {expanded ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="min-w-0 whitespace-normal">
+                            <ul className="grid min-w-0 grid-cols-1 gap-x-8 gap-y-1 whitespace-normal text-xs text-muted-foreground [overflow-wrap:anywhere] sm:grid-cols-2 lg:grid-cols-3">
+                              {changes.map((line) => (
+                                <li key={line} className="min-w-0 [overflow-wrap:anywhere]">
+                                  {line}
+                                </li>
+                              ))}
+                            </ul>
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableScrollRegion>
           <Pager page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
         </>
       )}

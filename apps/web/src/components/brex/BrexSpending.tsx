@@ -20,7 +20,7 @@ import {
 } from "@rakazo/ui-web";
 import { CircleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { money, monthLabel, shareText, shortDay } from "../../lib/finance-format";
+import { money, moneyInList, monthLabel, shareText, shortDay } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { sortBy, useListParams } from "../../lib/list-params";
 import { rpc } from "../../lib/rpc";
@@ -399,7 +399,7 @@ export function BrexSpending() {
                     </TableCell>
                     <TableCell>{spendBucketLabel(row.bucket)}</TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {money(row.amountCents, undefined, row.currency ?? undefined)}
+                      {moneyInList(row.amountCents, undefined, row.currency ?? undefined)}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -8,6 +8,7 @@ import {
   listAmount,
   money,
   moneyExact,
+  moneyInList,
   monthAxisLabels,
   monthFull,
   monthLabel,
@@ -24,6 +25,8 @@ import { setHideAmounts } from "./hide-amounts-preference";
 
 const en = "en-US";
 const now = new Date("2026-10-14T12:00:00Z");
+
+afterEach(() => setHideAmounts(false));
 
 describe("finance formatting", () => {
   it("formats cents as dollars without a sign", () => {
@@ -49,10 +52,42 @@ describe("finance formatting", () => {
     expect(axisMoney(99_995_000)).toBe("$1M");
   });
 
-  it("shows list amounts in whole dollars, signed like transactions", () => {
-    expect(listAmount(150_050, en)).toBe("+$1,501");
-    expect(listAmount(-8_750, en)).toBe("$88");
-    expect(listAmount(-8_750, en, "EUR")).toBe("€88");
+  it("keeps fractional dollars exact in itemized lists and whole dollars compact", () => {
+    expect(listAmount(1_500_50, en)).toBe("+$1,500.50");
+    expect(listAmount(15_000, en)).toBe("+$150");
+    expect(listAmount(-8_750, en)).toBe("$87.50");
+    expect(listAmount(-15_000, en)).toBe("$150");
+    expect(listAmount(-8_750, en, "EUR")).toBe("€87.50");
+    expect(moneyInList(8_750, en)).toBe("$87.50");
+    expect(moneyInList(-15_000, en)).toBe("$150");
+  });
+
+  it("preserves exact cents beyond Number precision across currency formatting", () => {
+    const cents = BigInt(Number.MAX_SAFE_INTEGER);
+    const usd = "$90,071,992,547,409.91";
+
+    expect(moneyExact(Number.MAX_SAFE_INTEGER, en)).toBe(usd);
+    expect(moneyExact(cents, en)).toBe(usd);
+    expect(moneyInList(cents, en)).toBe(usd);
+    expect(transactionAmount(cents, en)).toBe(`+${usd}`);
+    expect(listAmount(-cents, en)).toBe(usd);
+    expect(moneyExact(cents, "de-DE", "EUR")).toBe("90.071.992.547.409,91 €");
+    expect(moneyExact(cents, "ar-EG")).toContain("٩١");
+    expect(moneyExact(cents, "ar-EG")).not.toContain("91");
+
+    setHideAmounts(true);
+    expect(moneyExact(cents, en)).toBe("$•••");
+    expect(transactionAmount(cents, en)).toBe("+$•••");
+    expect(listAmount(-cents, en)).toBe("$•••");
+  });
+
+  it("keeps Intl handling for fractional and non-finite numeric cents", () => {
+    const cents = 10.12 * 100;
+    expect(Number.isInteger(cents)).toBe(false);
+    expect(moneyExact(cents, en)).toBe("$10.12");
+    expect(moneyInList(cents, en)).toBe("$10.12");
+    expect(transactionAmount(cents, en)).toBe("+$10.12");
+    expect(moneyExact(Number.NaN, en)).toBe("$NaN");
   });
 
   it("reads the date part of a day or ISO datetime, adding the year only when it differs", () => {
@@ -160,8 +195,6 @@ describe("shareText", () => {
 });
 
 describe("figures the Finance pages derive from amounts", () => {
-  afterEach(() => setHideAmounts(false));
-
   it("masks shares, changes and axis labels while amounts are hidden", () => {
     setHideAmounts(true);
     expect(shareText(50, 100)).toBe("");

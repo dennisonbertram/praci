@@ -23,6 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { formatDay } from "../options/format";
@@ -77,10 +78,12 @@ function byYear(securities: EquityCashRaised["securities"]) {
     .map(([year, cents]) => ({ id: `year-${year}`, label: year, cents: cents.toString() }));
 }
 
-const money = (cents: string | null) => (cents ? formatDollars(cents) : "—");
+const money = (cents: string | null, hidden: boolean) =>
+  cents ? formatDollars(cents, hidden) : "—";
 
 /** Financing history: the chart of cash raised and the funding rounds, with create and edit. */
 export function RoundsTab() {
+  const hidden = useHideAmounts();
   const [rounds, setRounds] = useState<EquityFundingRound[] | null>(null);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<EquityFundingRound | "new" | null>(null);
@@ -210,19 +213,21 @@ export function RoundsTab() {
                     <TableCell>{formatDay(round.startDate)}</TableCell>
                     <TableCell>{round.closingDate ? formatDay(round.closingDate) : "—"}</TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {round.originalIssuePrice ? formatPrice(round.originalIssuePrice) : "—"}
+                      {round.originalIssuePrice
+                        ? formatPrice(round.originalIssuePrice, hidden)
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {money(round.preMoneyValuationCents)}
+                      {money(round.preMoneyValuationCents, hidden)}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {formatDollars(round.cashRaisedCents)}
+                      {formatDollars(round.cashRaisedCents, hidden)}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
                       {formatShares(round.sharesIssued)}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">
-                      {money(postMoneyCents(round))}
+                      {money(postMoneyCents(round), hidden)}
                     </TableCell>
                     <TableCell className="text-end tabular-nums">{round.securityCount}</TableCell>
                     <TableCell>

@@ -1,6 +1,8 @@
 import type { EquityOverview } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useEffect } from "react";
 import { mockRpc } from "../../../lib/__mocks__/rpc";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 import { byStakeholderFixture } from "../views/fixtures";
 import { CapTableOverview } from "./CapTableOverview";
 import { demoOverview } from "./demo-overview";
@@ -114,8 +116,27 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function HiddenAmountsOverview() {
+  useEffect(() => {
+    setHideAmounts(true);
+    return () => setHideAmounts(false);
+  }, []);
+  return <CapTableOverview />;
+}
+
 /** A ledger with common, preferred, a plan and a convertible. */
 export const WithData: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "equity.overview": overview,
+      "equity.views.capTableByStakeholder": byStakeholderFixture,
+      "equity.savedViews.list": noViews,
+    }),
+};
+
+/** Currency values are masked while share and ownership figures stay visible. */
+export const AmountsHidden: Story = {
+  render: () => <HiddenAmountsOverview />,
   beforeEach: () =>
     mockRpc({
       "equity.overview": overview,

@@ -13,6 +13,7 @@ import {
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { formatDollars, formatPercent, formatShares } from "./format";
 import { recordHref } from "./links";
 
@@ -27,6 +28,7 @@ export function StakeholderCapTable({
   table: EquityCapTableByStakeholder;
   fullyDiluted: boolean;
 }) {
+  const hidden = useHideAmounts();
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const toggle = (id: string) =>
     setOpen((current) => {
@@ -107,7 +109,7 @@ export function StakeholderCapTable({
                   <TableCell className="text-end tabular-nums">
                     {row.convertiblePrincipalCents === "0"
                       ? "—"
-                      : formatDollars(row.convertiblePrincipalCents)}
+                      : formatDollars(row.convertiblePrincipalCents, hidden)}
                   </TableCell>
                   {breakdownCells(row)}
                 </TableRow>
@@ -135,7 +137,7 @@ export function StakeholderCapTable({
                         <TableCell />
                         <TableCell className="text-end tabular-nums">
                           {security.kind === "convertible"
-                            ? formatDollars(security.principalCents)
+                            ? formatDollars(security.principalCents, hidden)
                             : null}
                         </TableCell>
                         {breakdown > 0 ? <TableCell colSpan={breakdown} /> : null}
@@ -167,7 +169,7 @@ export function StakeholderCapTable({
             </TableCell>
             <TableCell className="text-end tabular-nums">{formatPercent("100")}</TableCell>
             <TableCell className="text-end tabular-nums">
-              {formatDollars(table.totals.convertiblePrincipalCents)}
+              {formatDollars(table.totals.convertiblePrincipalCents, hidden)}
             </TableCell>
             {breakdownCells({
               options: table.totals.options,

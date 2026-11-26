@@ -12,7 +12,8 @@ test("creates an integration agent, opens its chat, and persists its permissions
   });
   await signup(page, `integration-agent-${Date.now()}@rakazo.test`, "password12", "Agent Test");
   await completeOnboarding(page);
-  await expect(page.getByTestId("sidebar-integrations")).toHaveText("Connect apps");
+  const integrations = page.getByRole("button", { name: "Integrations", exact: true });
+  await expect(integrations).toBeVisible();
   expect(catalogRequests).toHaveLength(0);
   await captureScreenshot(page, testInfo, "featured-connect-apps");
   const mentionCatalogResponse = page.waitForResponse("**/rpc/connections/catalog");
@@ -22,7 +23,7 @@ test("creates an integration agent, opens its chat, and persists its permissions
   await expect(page.getByRole("option", { name: "@Notion", exact: true })).toBeVisible();
   await composer.fill("");
   const catalogResponse = page.waitForResponse("**/rpc/connections/catalog");
-  await page.getByTestId("sidebar-integrations").click();
+  await integrations.click();
   expect((await catalogResponse).ok()).toBe(true);
   expect(catalogRequests.length).toBeGreaterThan(0);
   const { server, firstBotId } = await page.evaluate(async () => {
@@ -48,7 +49,7 @@ test("creates an integration agent, opens its chat, and persists its permissions
     const bots = await call("bots/list");
     return { server, firstBotId: bots[0].id as string };
   });
-  // Creating the server also created its agent, exclusive, with changes on (no integration preset).
+  // A generic MCP server gets an exclusive agent, but new agents start read-only.
   expect(server.agentBotId).toBeTruthy();
   expect(server.agentBotId).not.toBe(firstBotId);
   const agentBotId = server.agentBotId as string;
@@ -67,13 +68,11 @@ test("creates an integration agent, opens its chat, and persists its permissions
   );
   const writes = section.getByRole("switch", { name: "Allow changes in Demo Bank" });
   const share = section.getByRole("switch", { name: /Let other agents use/ });
-  await expect(writes).toBeChecked();
+  await expect(writes).not.toBeChecked();
   await expect(share).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Create agent" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "integration-agent-section");
 
-  await writes.click();
-  await expect(writes).not.toBeChecked();
   await writes.click();
   const confirmation = page.getByRole("alertdialog");
   await expect(confirmation).toContainText("Allow changes in Demo Bank?");

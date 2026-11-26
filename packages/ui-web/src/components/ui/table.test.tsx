@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { Table, TableBody, TableCell, TableHead, TableRow } from "./table.js";
+import { Table, TableBody, TableCell, TableHead, TableRow, TableScrollRegion } from "./table.js";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -105,4 +105,28 @@ it("sortable header: aria-sort on the th, button calls onSort; plain header has 
   expect(plain?.querySelector("button")).toBeNull();
   await act(async () => term?.querySelector("button")?.click());
   expect(onSort).toHaveBeenCalledTimes(1);
+});
+
+it("adds a keyboard stop only while a labelled table region overflows", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <TableScrollRegion aria-label="Example table">
+        <div />
+      </TableScrollRegion>,
+    ),
+  );
+  const region = container.querySelector('[role="region"]') as HTMLDivElement;
+  expect(region.getAttribute("aria-label")).toBe("Example table");
+  let scrollWidth = 400;
+  Object.defineProperty(region, "clientWidth", { configurable: true, get: () => 200 });
+  Object.defineProperty(region, "scrollWidth", { configurable: true, get: () => scrollWidth });
+  await act(async () => window.dispatchEvent(new Event("resize")));
+  expect(region.getAttribute("tabindex")).toBe("0");
+  scrollWidth = 200;
+  await act(async () => window.dispatchEvent(new Event("resize")));
+  expect(region.hasAttribute("tabindex")).toBe(false);
+  await act(async () => root.unmount());
 });

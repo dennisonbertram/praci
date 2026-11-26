@@ -23,14 +23,14 @@ import { requestPortalAccess } from "../../lib/portal";
 
 const locale = () => i18n.locale || "en";
 const shares = (value: string) => new Intl.NumberFormat(locale()).format(BigInt(value));
-const amount = (row: EquityAccessHolding) =>
+const amount = (row: EquityAccessHolding, hideAmounts: boolean) =>
   row.quantity != null
     ? shares(row.quantity)
     : row.principalCents != null
-      ? formatCents(row.principalCents)
+      ? formatCents(row.principalCents, hideAmounts)
       : "—";
 
-function HoldingRows({ rows }: { rows: EquityAccessHolding[] }) {
+function HoldingRows({ rows, hideAmounts }: { rows: EquityAccessHolding[]; hideAmounts: boolean }) {
   return (
     <Table>
       <TableHeader>
@@ -46,7 +46,7 @@ function HoldingRows({ rows }: { rows: EquityAccessHolding[] }) {
           <TableRow key={`${row.kind}-${row.label}-${index}`}>
             <TableCell className="font-medium">{row.label}</TableCell>
             <TableCell>{row.shareClassName ?? "—"}</TableCell>
-            <TableCell className="text-end tabular-nums">{amount(row)}</TableCell>
+            <TableCell className="text-end tabular-nums">{amount(row, hideAmounts)}</TableCell>
             <TableCell className="tabular-nums">
               {row.issueDate ? formatDay(row.issueDate) : "—"}
             </TableCell>
@@ -65,10 +65,13 @@ const higher = (level: EquityAccessLevel) =>
 export function PortalHoldings({
   view,
   preview = false,
+  hideAmounts = false,
 }: {
   view: EquityAccessView;
   /** The admin's preview: the same sections, without the holder's request control. */
   preview?: boolean;
+  /** A founder's display preference, passed only by the founder preview. */
+  hideAmounts?: boolean;
 }) {
   const options = preview ? [] : higher(view.level);
   const [ask, setAsk] = useState<EquityAccessLevel | "">("");
@@ -125,16 +128,16 @@ export function PortalHoldings({
       <section aria-label={t`Your holdings`} className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">{t`Your holdings`}</h2>
         {view.personal.holdings.length > 0 ? (
-          <HoldingRows rows={view.personal.holdings} />
+          <HoldingRows rows={view.personal.holdings} hideAmounts={hideAmounts} />
         ) : (
           <p className="text-sm text-muted-foreground">{t`No holdings`}</p>
         )}
         {view.estimatedValue ? (
           <p className="text-sm">
-            {t`Estimated value ${formatCents(view.estimatedValue.valueCents)}`}
+            {t`Estimated value ${formatCents(view.estimatedValue.valueCents, hideAmounts)}`}
             <span className="text-muted-foreground">
               {" "}
-              {t`at ${formatPrice(view.estimatedValue.pricePerShare)} per share, ${formatDay(view.estimatedValue.effectiveDate)}`}
+              {t`at ${formatPrice(view.estimatedValue.pricePerShare, hideAmounts)} per share, ${formatDay(view.estimatedValue.effectiveDate)}`}
             </span>
           </p>
         ) : null}
@@ -187,7 +190,9 @@ export function PortalHoldings({
                 <TableRow key={row.prefix}>
                   <TableCell className="font-medium">{row.name}</TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {row.originalIssuePrice ? formatPrice(row.originalIssuePrice) : "—"}
+                    {row.originalIssuePrice
+                      ? formatPrice(row.originalIssuePrice, hideAmounts)
+                      : "—"}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">{`${row.liquidationMultiple}×`}</TableCell>
                   <TableCell className="text-end tabular-nums">{row.seniority}</TableCell>
@@ -231,7 +236,9 @@ export function PortalHoldings({
                     <TableCell className="font-medium">{index === 0 ? holder.name : ""}</TableCell>
                     <TableCell>{row.label}</TableCell>
                     <TableCell>{row.shareClassName ?? "—"}</TableCell>
-                    <TableCell className="text-end tabular-nums">{amount(row)}</TableCell>
+                    <TableCell className="text-end tabular-nums">
+                      {amount(row, hideAmounts)}
+                    </TableCell>
                   </TableRow>
                 )),
               )}

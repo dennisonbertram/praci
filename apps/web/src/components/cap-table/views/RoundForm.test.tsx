@@ -5,6 +5,7 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { resetHideAmountsMemory, setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -29,12 +30,14 @@ let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   vi.clearAllMocks();
+  resetHideAmountsMemory();
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
 });
 afterEach(() => {
   act(() => root.unmount());
+  resetHideAmountsMemory();
   host.remove();
 });
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -60,7 +63,7 @@ it("creates a round in cents after review, with adjusted totals", async () => {
     host.querySelector("form")!.requestSubmit();
     await settle();
   });
-  expect(host.textContent).toContain("$1,250,000");
+  expect(host.textContent).toContain("$1,250,001");
   await act(async () => {
     button("Create round").click();
     await settle();
@@ -104,6 +107,74 @@ it("edits a round by id", async () => {
   expect(rpcMock.fundingRounds.update).toHaveBeenCalledWith(
     expect.objectContaining({ id: "round-seed", preMoneyValuationCents: "800000000" }),
   );
+});
+
+it("conceals stored round prices and review amounts without changing the saved payload", async () => {
+  const round = {
+    ...roundsFixture[1]!,
+    originalIssuePrice: "8.1234567",
+    overrides: { cashRaisedCents: "30000000", postMoneyValuationCents: "900000000" },
+  };
+  rpcMock.fundingRounds.update.mockResolvedValue(round);
+  setHideAmounts(true);
+  act(() => root.render(<RoundForm round={round} onSaved={vi.fn()} onCancel={vi.fn()} />));
+
+  for (const id of [
+    "round-originalIssuePrice",
+    "round-preMoney",
+    "round-cashRaised",
+    "round-postMoney",
+  ]) {
+    const field = host.querySelector<HTMLInputElement>(`#${id}`)!;
+    expect(field.type).toBe("password");
+    expect(field.value).toBe("••••••");
+  }
+  expect(host.querySelector<HTMLInputElement>("#round-originalIssuePrice")?.value).not.toContain(
+    "0.80",
+  );
+
+  await act(async () => {
+    host.querySelector("form")!.requestSubmit();
+    await settle();
+  });
+  const reviewRows = new Map(
+    [...host.querySelectorAll("dt")].map((dt) => [
+      dt.textContent,
+      dt.nextElementSibling?.textContent,
+    ]),
+  );
+  expect(reviewRows.get("Original issue price")).toBe("$•••");
+  expect(reviewRows.get("Pre-money")).toBe("$•••");
+  expect(reviewRows.get("Cash raised")).toBe("$•••");
+  expect(reviewRows.get("Post-money")).toBe("$•••");
+
+  await act(async () => button("Back").click());
+  act(() => setHideAmounts(false));
+  const issuePrice = host.querySelector<HTMLInputElement>("#round-originalIssuePrice")!;
+  expect(issuePrice.type).toBe("text");
+  expect(issuePrice.value).toBe("8.1234567");
+  await act(async () => {
+    host.querySelector("form")!.requestSubmit();
+    await settle();
+  });
+  const visibleIssuePrice = [...host.querySelectorAll("dt")].find(
+    (dt) => dt.textContent === "Original issue price",
+  )?.nextElementSibling?.textContent;
+  expect(visibleIssuePrice).toBe("$8.1234567");
+
+  await act(async () => {
+    button("Save round").click();
+    await settle();
+  });
+  expect(rpcMock.fundingRounds.update).toHaveBeenCalledWith({
+    id: round.id,
+    name: round.name,
+    startDate: round.startDate,
+    closingDate: round.closingDate,
+    originalIssuePrice: "8.1234567",
+    preMoneyValuationCents: "800000000",
+    overrides: { cashRaisedCents: "30000000", postMoneyValuationCents: "900000000" },
+  });
 });
 
 it("lists rounds newest first with post-money and the chart", async () => {

@@ -2,9 +2,12 @@ import { t } from "@lingui/core/macro";
 import type { EquityFundingRound } from "@rakazo/contracts";
 import { Button, Field, FieldLabel, Input } from "@rakazo/ui-web";
 import { useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
+import { ConcealedAmountInput } from "../ConcealedAmountInput";
+import { formatPrice as formatSecurityPrice } from "../securities/format";
 import { formatDollars } from "./format";
 import { centsToDollars, dollarsToCents } from "./money";
 
@@ -30,6 +33,7 @@ export function RoundForm({
   onSaved: (saved: EquityFundingRound) => void;
   onCancel: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [draft, setDraft] = useState<Draft>({
     name: round?.name ?? "",
     startDate: round?.startDate ?? today,
@@ -91,17 +95,27 @@ export function RoundForm({
       [t`Round`, values.name],
       [t`Start date`, values.startDate],
       [t`Closing date`, values.closingDate ?? "—"],
-      [t`Original issue price`, values.originalIssuePrice ?? "—"],
+      [
+        t`Original issue price`,
+        values.originalIssuePrice
+          ? formatSecurityPrice(values.originalIssuePrice, undefined, hidden)
+          : "—",
+      ],
       [
         t`Pre-money`,
-        values.preMoneyValuationCents ? formatDollars(values.preMoneyValuationCents) : "—",
+        values.preMoneyValuationCents ? formatDollars(values.preMoneyValuationCents, hidden) : "—",
       ],
       ...(values.overrides.cashRaisedCents
-        ? [[t`Cash raised`, formatDollars(values.overrides.cashRaisedCents)] as [string, string]]
+        ? [
+            [t`Cash raised`, formatDollars(values.overrides.cashRaisedCents, hidden)] as [
+              string,
+              string,
+            ],
+          ]
         : []),
       ...(values.overrides.postMoneyValuationCents
         ? [
-            [t`Post-money`, formatDollars(values.overrides.postMoneyValuationCents)] as [
+            [t`Post-money`, formatDollars(values.overrides.postMoneyValuationCents, hidden)] as [
               string,
               string,
             ],
@@ -130,19 +144,47 @@ export function RoundForm({
     );
   }
 
-  const input = (key: keyof Draft, label: string, type = "text", required = false) => (
-    <Field>
-      <FieldLabel htmlFor={`round-${key}`}>{label}</FieldLabel>
-      <Input
-        id={`round-${key}`}
-        type={type}
-        required={required}
-        inputMode={type === "text" && key !== "name" ? "decimal" : undefined}
-        value={draft[key]}
-        onChange={set(key)}
-      />
-    </Field>
-  );
+  const input = (key: keyof Draft, label: string, type = "text", required = false) => {
+    const id = `round-${key}`;
+    const stored =
+      key === "originalIssuePrice"
+        ? round?.originalIssuePrice != null
+        : key === "preMoney"
+          ? round?.preMoneyValuationCents != null
+          : key === "cashRaised"
+            ? round?.overrides.cashRaisedCents != null
+            : key === "postMoney"
+              ? round?.overrides.postMoneyValuationCents != null
+              : false;
+    return (
+      <Field>
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+        {key === "originalIssuePrice" ||
+        key === "preMoney" ||
+        key === "cashRaised" ||
+        key === "postMoney" ? (
+          <ConcealedAmountInput
+            id={id}
+            scopeKey={`${round?.id ?? "new"}:${key}`}
+            stored={stored}
+            fieldLabel={label}
+            inputMode="decimal"
+            value={draft[key]}
+            onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
+          />
+        ) : (
+          <Input
+            id={id}
+            type={type}
+            required={required}
+            inputMode={type === "text" && key !== "name" ? "decimal" : undefined}
+            value={draft[key]}
+            onChange={set(key)}
+          />
+        )}
+      </Field>
+    );
+  };
   return (
     <form
       className="flex flex-col gap-3"

@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { FinancingChart } from "./FinancingChart";
@@ -52,7 +53,8 @@ function visible(
   });
 }
 
-const money = (cents: string) => (cents === "0" ? "—" : formatDollars(cents));
+const money = (cents: string, hidden: boolean) =>
+  cents === "0" ? "—" : formatDollars(cents, hidden);
 
 /** Cash raised by class and per security; selected securities can be put in a round. */
 export function CashRaisedView({
@@ -62,6 +64,7 @@ export function CashRaisedView({
   rounds: EquityFundingRound[];
   onChanged: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [cash, setCash] = useState<EquityCashRaised | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -215,15 +218,17 @@ export function CashRaisedView({
                 <TableCell>{row.stakeholderName}</TableCell>
                 <TableCell>{row.issueDate}</TableCell>
                 <TableCell>{row.roundId ? (roundName.get(row.roundId) ?? "—") : "—"}</TableCell>
-                <TableCell className="text-end tabular-nums">{money(row.cashPaidCents)}</TableCell>
                 <TableCell className="text-end tabular-nums">
-                  {money(row.debtCanceledCents)}
+                  {money(row.cashPaidCents, hidden)}
                 </TableCell>
                 <TableCell className="text-end tabular-nums">
-                  {money(row.ipTransferredCents)}
+                  {money(row.debtCanceledCents, hidden)}
                 </TableCell>
                 <TableCell className="text-end tabular-nums">
-                  {money(row.otherConsiderationCents)}
+                  {money(row.ipTransferredCents, hidden)}
+                </TableCell>
+                <TableCell className="text-end tabular-nums">
+                  {money(row.otherConsiderationCents, hidden)}
                 </TableCell>
                 <TableCell className="text-end tabular-nums">
                   {row.shares === "0" ? "—" : formatShares(row.shares)}

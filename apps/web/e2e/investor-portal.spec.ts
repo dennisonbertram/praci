@@ -1,6 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, rpc, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, finishConnectDialog, rpc, signup } from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";
 
@@ -61,8 +61,8 @@ test("an emailed update opens in the portal with only that update, and Revoke ki
   await founder(page, "portal-send");
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Connect", exact: true }).click();
-  // The emulated Gmail account is connected once the sign-in window has run; the Send button needs it.
+  await finishConnectDialog(page, "Gmail");
+  // The emulated Gmail account is connected once the sign-in dialog completes; Send needs it.
   await expect
     .poll(async () => (await rpc<unknown[]>(page, "investors/updates/accounts", {})).length)
     .toBeGreaterThan(0);
@@ -74,7 +74,7 @@ test("an emailed update opens in the portal with only that update, and Revoke ki
   await expect(main.getByLabel("Subject")).toHaveValue(subject);
   await main.getByRole("button", { name: "Send", exact: true }).click();
   // Send is held for the undo window first.
-  await expect(page).toHaveURL(/\/app\/investors$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/app\/investors\?tab=updates$/, { timeout: 30_000 });
 
   // The Gmail emulator holds the message, and the link is in it.
   const { userId } = await rpc<{ userId: string }>(page, "me", {});
@@ -108,7 +108,7 @@ test("an emailed update opens in the portal with only that update, and Revoke ki
   expect(investor.urls.filter((url) => url.includes(token))).toEqual([]);
 
   // The founder sees the link was opened, then revokes it.
-  await page.goto("/app/investors");
+  await page.goto("/app/investors?tab=contacts");
   const row = page.locator("[data-contact-id]", { hasText: "Ada Example" });
   await expect(row.locator("[data-portal-state]")).toContainText("Opened");
   await row.getByRole("button", { name: "Actions for Ada Example" }).click();
@@ -142,7 +142,7 @@ test("without Gmail, Post to portal lists the update and emails a portal notice"
   const main = page.getByRole("main");
   await expect(main.getByLabel("Subject")).toHaveValue(subject);
   await main.getByRole("button", { name: "Post to portal" }).click();
-  await expect(page).toHaveURL(/\/app\/investors$/);
+  await expect(page).toHaveURL(/\/app\/investors\?tab=updates$/);
   await expect(page.getByRole("alert").getByText("Posted · 1 notified")).toBeVisible();
   await expect(
     main.getByRole("region", { name: "Updates" }).getByText("Posted", { exact: true }),

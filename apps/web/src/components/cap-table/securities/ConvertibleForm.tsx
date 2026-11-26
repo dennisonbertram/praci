@@ -23,9 +23,11 @@ import {
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
+import { ConcealedAmountInput } from "../ConcealedAmountInput";
 import { centsToDollars, dollarsToCents } from "../views/money";
 import { formatCents, formatDay } from "./format";
 
@@ -132,7 +134,9 @@ function changedFields(
 function Field({ label, id, children }: { label: string; id: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label id={`${id}-label`} htmlFor={id}>
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -157,6 +161,7 @@ export function ConvertibleForm({
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {
+  const hidden = useHideAmounts();
   const editing = convertible !== null;
   const [form, setForm] = useState<ConvertibleFormValues>(() => initialForm(convertible));
   // One key per dialog open for each create, so a retry after a failure or a lost response
@@ -246,12 +251,12 @@ export function ConvertibleForm({
                       : t`None`
                 }
               />
-              <ReviewRow label={t`Amount`} value={formatCents(input.principalCents)} />
+              <ReviewRow label={t`Amount`} value={formatCents(input.principalCents, hidden)} />
               <ReviewRow label={t`Issue date`} value={formatDay(form.issueDate)} />
               {input.valuationCapCents ? (
                 <ReviewRow
                   label={t`Valuation cap`}
-                  value={`${formatCents(input.valuationCapCents)} (${
+                  value={`${formatCents(input.valuationCapCents, hidden)} (${
                     form.valuationCapType === "pre_money" ? t`pre-money` : t`post-money`
                   })`}
                 />
@@ -340,11 +345,14 @@ export function ConvertibleForm({
               ) : null}
               <div className="grid grid-cols-2 gap-3">
                 <Field label={t`Amount ($)`} id="convertible-amount">
-                  <Input
+                  <ConcealedAmountInput
                     id="convertible-amount"
+                    scopeKey={`${convertible?.id ?? "new"}:principal`}
+                    stored={convertible != null}
+                    fieldLabel={t`Amount ($)`}
                     inputMode="decimal"
                     value={form.amount}
-                    onChange={(event) => set({ amount: event.target.value })}
+                    onChange={(amount) => set({ amount })}
                   />
                 </Field>
                 <Field label={t`Issue date`} id="convertible-issue-date">
@@ -358,11 +366,14 @@ export function ConvertibleForm({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label={t`Valuation cap ($) — optional`} id="convertible-cap">
-                  <Input
+                  <ConcealedAmountInput
                     id="convertible-cap"
+                    scopeKey={`${convertible?.id ?? "new"}:valuation-cap`}
+                    stored={Boolean(convertible?.valuationCapCents)}
+                    fieldLabel={t`Valuation cap ($) — optional`}
                     inputMode="decimal"
                     value={form.valuationCap}
-                    onChange={(event) => set({ valuationCap: event.target.value })}
+                    onChange={(valuationCap) => set({ valuationCap })}
                   />
                 </Field>
                 <Field label={t`Cap type`} id="convertible-cap-type">

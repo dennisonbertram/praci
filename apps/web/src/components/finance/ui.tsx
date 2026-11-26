@@ -34,7 +34,7 @@ import {
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { LinkProps } from "react-router-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { listAmount, money, shortDay, txnDay } from "../../lib/finance-format";
@@ -755,7 +755,7 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
           {group.mixed ? t`Mixed` : categoryLabel(group.rows[0] as FinanceTransaction)}
         </TableCell>
         <TableCell className="whitespace-nowrap ps-3 text-end tabular-nums">
-          {listAmount(Number(group.totalCents), undefined, group.currency)}
+          {listAmount(group.totalCents, undefined, group.currency)}
         </TableCell>
         <TableCell className="hidden w-24 @2xl:table-cell" />
         <TableCell />

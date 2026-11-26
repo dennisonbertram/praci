@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
+import type { EquityConvertible } from "@rakazo/contracts";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { resetHideAmountsMemory, setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -38,6 +40,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => root.unmount());
+  resetHideAmountsMemory();
   host.remove();
 });
 
@@ -62,9 +65,11 @@ it("retries new terms and the convertible with the keys of the first attempt", a
     .mockRejectedValueOnce(new Error("timeout"))
     .mockResolvedValueOnce({ id: "c1" });
   const onSaved = vi.fn();
+  setHideAmounts(true);
   await act(async () =>
     root.render(<ConvertibleForm convertible={null} onOpenChange={vi.fn()} onSaved={onSaved} />),
   );
+  expect(document.querySelector<HTMLInputElement>("#convertible-amount")?.type).toBe("text");
   await fill("convertible-stakeholder", "sh-1");
   await fill("convertible-block", "__new");
   await fill("convertible-block-name", "Seed");
@@ -85,4 +90,59 @@ it("retries new terms and the convertible with the keys of the first attempt", a
   expect(secondCreate.requestKey).toBe(firstCreate.requestKey);
   expect(firstCreate.requestKey).not.toBe(first.requestKey);
   expect(secondCreate.blockId).toBe("cb-new");
+});
+
+it("conceals saved principal and valuation cap until revealed, then remasks on preference change", async () => {
+  const convertible = {
+    id: "cv-1",
+    label: "SAFE-1",
+    stakeholderId: "sh-1",
+    kind: "safe",
+    status: "outstanding",
+    blockId: null,
+    principalCents: "250000",
+    issueDate: "2026-01-15",
+    valuationCapCents: "1000000",
+    valuationCapType: "post_money",
+  } as EquityConvertible;
+  setHideAmounts(true);
+  await act(async () =>
+    root.render(
+      <ConvertibleForm convertible={convertible} onOpenChange={vi.fn()} onSaved={vi.fn()} />,
+    ),
+  );
+
+  const principal = document.querySelector<HTMLInputElement>("#convertible-amount")!;
+  const cap = document.querySelector<HTMLInputElement>("#convertible-cap")!;
+  expect(principal.type).toBe("password");
+  expect(cap.type).toBe("password");
+  expect(principal.value).toBe("••••••");
+  expect(cap.value).toBe("••••••");
+
+  const revealButtons = [
+    ...document.querySelectorAll<HTMLButtonElement>('button[aria-label^="Show amount:"]'),
+  ];
+  await act(async () => revealButtons[0]!.click());
+  expect(principal.type).toBe("text");
+  expect(principal.value).toBe("2500");
+  expect(cap.type).toBe("password");
+  expect(document.activeElement).toBe(principal);
+
+  act(() => setHideAmounts(false));
+  act(() => setHideAmounts(true));
+  expect(principal.type).toBe("password");
+  expect(principal.value).toBe("••••••");
+  expect(cap.type).toBe("password");
+  expect(cap.value).toBe("••••••");
+  expect(rpcMock.equity.convertibles.create).not.toHaveBeenCalled();
+
+  await act(async () => revealButtons[0]!.click());
+  const nextConvertible = { ...convertible, id: "cv-2", label: "SAFE-2" };
+  await act(async () =>
+    root.render(
+      <ConvertibleForm convertible={nextConvertible} onOpenChange={vi.fn()} onSaved={vi.fn()} />,
+    ),
+  );
+  expect(principal.type).toBe("password");
+  expect(principal.value).toBe("••••••");
 });

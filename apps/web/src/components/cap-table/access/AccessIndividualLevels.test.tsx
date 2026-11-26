@@ -63,6 +63,27 @@ it("shows the group level, or the override with a badge", async () => {
   expect(rows[3]).toContain("Basic");
 });
 
+it("keeps individual access columns in a labelled, keyboard-scrollable region", async () => {
+  await act(async () => root.render(<AccessIndividualLevels />));
+  const region = host.querySelector('[role="region"][aria-label="Individual access levels"]');
+  expect(region?.className).toContain("overflow-x-auto");
+  expect(region?.querySelector("table")?.className).toContain("min-w-[760px]");
+  expect(region?.querySelectorAll("th")).toHaveLength(7);
+});
+
+it("truncates long stakeholder names while keeping the full value accessible", async () => {
+  const name = "The International Long Name Foundation for Example Holdings";
+  equity.stakeholders.list.mockResolvedValue(
+    page([...demoStakeholders, { ...demoStakeholders[0], id: "long-name", name }]),
+  );
+  await act(async () => root.render(<AccessIndividualLevels />));
+  const nameCell = host.querySelector("tr:last-child td[aria-label]");
+  expect(nameCell?.textContent).toBe(name);
+  expect(nameCell?.getAttribute("aria-label")).toBe(name);
+  expect(nameCell?.getAttribute("title")).toBe(name);
+  expect(nameCell?.querySelector("span")?.className).toContain("truncate");
+});
+
 it("sends null for Use group level", async () => {
   await act(async () => root.render(<AccessIndividualLevels />));
   const edits = [...host.querySelectorAll("tbody button")].filter((b) => b.textContent === "Edit");

@@ -17,6 +17,7 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { SearchField } from "../../ListControls";
@@ -31,6 +32,7 @@ const day = (value: string | null) => (value ? formatDay(value) : DASH);
 
 /** The Warrants tab: every warrant, searchable, with issue and cancel. */
 export function WarrantsTable() {
+  const hidden = useHideAmounts();
   const [search, setSearch] = useState("");
   const [warrants, setWarrants] = useState<EquityWarrant[] | null>(null);
   const [error, setError] = useState("");
@@ -135,7 +137,7 @@ export function WarrantsTable() {
                   {shares(warrant.quantity)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {price(warrant.exercisePrice)}
+                  {price(warrant.exercisePrice, hidden)}
                 </TableCell>
                 <TableCell className="tabular-nums">{day(warrant.issueDate)}</TableCell>
                 <TableCell className="tabular-nums">{day(warrant.expirationDate)}</TableCell>

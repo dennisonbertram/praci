@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
+import { i18n } from "@lingui/core";
 import type { EquityTransaction } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -48,6 +50,9 @@ const row: EquityTransaction = {
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
+  i18n.load("en", {});
+  i18n.activate("en");
+  setHideAmounts(false);
   list.mockReset();
   list.mockResolvedValue({ items: [row], total: 1, page: 1, pageSize: 25 });
   host = document.createElement("div");
@@ -56,6 +61,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => root.unmount());
+  setHideAmounts(false);
   host.remove();
 });
 
@@ -96,6 +102,14 @@ it("lists changes newest first", async () => {
   expect(host.textContent).not.toContain("2026-04-10");
 });
 
+it("keeps activity columns in a labelled horizontal scroll region", async () => {
+  await render();
+  const region = host.querySelector('[role="region"][aria-label="Cap table activity"]');
+  expect(region?.className).toContain("overflow-x-auto");
+  expect(region?.querySelector("table")?.className).toContain("min-w-[960px]");
+  expect(region?.querySelectorAll("th")).toHaveLength(8);
+});
+
 it("sends the kind and date filters", async () => {
   await render();
   await change("Change", "cancel");
@@ -108,10 +122,81 @@ it("sends the kind and date filters", async () => {
 
 it("opens a row to show before and after", async () => {
   await render();
-  const tr = host.querySelector('[aria-expanded="false"]') as HTMLElement;
-  await act(async () => tr.click());
+  const detailAction = host.querySelector('button[data-row-open][aria-expanded="false"]');
+  expect(detailAction?.getAttribute("aria-label")).toBe("Show details for Transfer");
+  await act(async () => (detailAction as HTMLButtonElement).click());
+  expect(detailAction?.getAttribute("aria-expanded")).toBe("true");
+  expect(detailAction?.getAttribute("aria-label")).toBe("Hide details for Transfer");
   expect(host.textContent).toContain("Holder: Avery Sample → Blue Example Fund");
   expect(host.textContent).not.toContain("Quantity: 20000");
+});
+
+it("wraps long expanded changes inside the horizontally scrolling table", async () => {
+  const legend = `CERTIFICATE-${"A".repeat(180)}`;
+  list.mockResolvedValue({
+    items: [
+      {
+        ...row,
+        before: { certificateLegend: "Original" },
+        after: { certificateLegend: legend },
+      },
+    ],
+    total: 1,
+    page: 1,
+    pageSize: 25,
+  });
+  await render();
+
+  const region = host.querySelector('[role="region"][aria-label="Cap table activity"]');
+  const table = region?.querySelector("table");
+  const detailAction = host.querySelector('button[data-row-open][aria-expanded="false"]');
+  await act(async () => (detailAction as HTMLButtonElement).click());
+
+  const detailList = host.querySelector("ul");
+  const detailItem = detailList?.querySelector("li");
+  expect(region?.className).toContain("overflow-x-auto");
+  expect(table?.className).toContain("min-w-[960px]");
+  expect(table?.className).not.toContain("whitespace-nowrap");
+  expect(detailList?.className).toContain("min-w-0");
+  expect(detailItem?.className).toContain("[overflow-wrap:anywhere]");
+  expect(detailItem?.textContent).toContain(legend);
+});
+
+it("masks row values and expanded monetary changes while preserving quantities and dates", async () => {
+  const moneyRow = {
+    ...row,
+    before: {
+      holder: "Avery Sample",
+      quantity: "20000",
+      cashPaidCents: "2000000",
+      pricePerShare: "1.25",
+    },
+    after: {
+      holder: "Blue Example Fund",
+      quantity: "20000",
+      cashPaidCents: "2500000",
+      pricePerShare: "2.5",
+    },
+  } satisfies EquityTransaction;
+  list.mockResolvedValue({ items: [moneyRow], total: 1, page: 1, pageSize: 25 });
+  setHideAmounts(true);
+  await render();
+
+  expect(host.textContent).toContain("$•••");
+  expect(host.textContent).not.toContain("$20,000.00");
+  expect(host.textContent).toContain("20,000");
+  expect(host.textContent).toContain("Apr 10, 2026");
+  const detailAction = host.querySelector('button[data-row-open][aria-expanded="false"]');
+  await act(async () => (detailAction as HTMLButtonElement).click());
+  expect(host.textContent).toContain("Cash paid: $••• → $•••");
+  expect(host.textContent).toContain("Price per share: $••• → $•••");
+  expect(host.textContent).not.toContain("1.25");
+  expect(host.textContent).not.toContain("2.5");
+
+  await act(async () => setHideAmounts(false));
+  expect(host.textContent).toContain("$20,000.00");
+  expect(host.textContent).toContain("Cash paid: $20,000.00 → $25,000.00");
+  expect(host.textContent).toContain("Price per share: 1.25 → 2.5");
 });
 
 it("lists only the fields that changed", () => {

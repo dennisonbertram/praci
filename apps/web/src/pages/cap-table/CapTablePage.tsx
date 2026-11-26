@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
-import { Navigate, useMatch, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { PAGE_GUTTER_X, PageHeader } from "../../components/PageHeader";
 import { CAP_TABLE_TAB_IDS, CAP_TABLE_TABS, capTableTab } from "./tabs";
 
@@ -11,8 +11,18 @@ import { CAP_TABLE_TAB_IDS, CAP_TABLE_TABS, capTableTab } from "./tabs";
 export function CapTablePage() {
   const nested = useMatch("/app/cap-table/:tab/*");
   const single = useMatch("/app/cap-table/:tab");
+  const location = useLocation();
   const navigate = useNavigate();
   const asked = nested?.params.tab ?? single?.params.tab;
+
+  // The old cap table combined Carta holding and contact filters. Auditors still
+  // have an exact filter on Contacts; the retired Carta filters fall back to the
+  // current Investors overview instead of pretending the selection was applied.
+  const legacyKind = new URLSearchParams(location.search).get("kind");
+  if (asked == null && legacyKind === "auditor")
+    return <Navigate to={`/app/contacts${location.search}`} replace />;
+  if (asked == null && ["shareholder", "options"].includes(legacyKind ?? ""))
+    return <Navigate to="/app/investors" replace />;
 
   // /app/cap-table and an unknown first segment both land on Overview.
   if (asked == null || !(CAP_TABLE_TAB_IDS as string[]).includes(asked))

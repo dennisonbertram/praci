@@ -940,7 +940,10 @@ export const ES_MESSAGES: Record<string, string> = {
   "Next month": "Mes siguiente",
   "No company facts yet": "Aún no hay datos de la empresa",
   "No dates this month": "No hay fechas este mes",
+  "No scans yet": "Aún no hay escaneos",
   "No files": "Sin archivos",
+  "Use the desktop app to scan a document.":
+    "Escanea un documento con la aplicación de escritorio.",
   "No matching files": "Ningún archivo coincide",
   "Not confirmed": "No confirmado",
   "Not searchable": "No se puede buscar",

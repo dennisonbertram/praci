@@ -158,6 +158,7 @@ export function TourPopover({
   // never covers the page title, chat or composer; on a phone it spans the screen.
   const sidebar = element?.closest("aside") ?? null;
   const card = !wide || sidebar !== null;
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Nothing to point at: close without recording, so the tour can still run once the page has loaded.
   const empty = present?.length === 0;
@@ -170,6 +171,14 @@ export function TourPopover({
     // Capture phase: the tour ends first, so the sidebar drawer behind it stays open for one more press.
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      const target = event.target;
+      if (target instanceof Element) {
+        const foregroundLayer = target.closest<HTMLElement>(
+          '[role="alertdialog"], [role="dialog"], [role="menu"], [role="listbox"], [data-slot="popover-content"], dialog[open]',
+        );
+        if (foregroundLayer && foregroundLayer !== cardRef.current) return;
+        if (target.closest('[aria-haspopup][aria-expanded="true"]')) return;
+      }
       event.stopPropagation();
       saveStep(userId, null);
       onFinish("skip", true);
@@ -180,7 +189,6 @@ export function TourPopover({
   }, [card, onFinish, userId]);
   // Phone: the card sits at the foot at every stop. The drawer gets room for it, so the footer rows
   // (Integrations, Account) rise above the card, and the pointed-at row is scrolled into view.
-  const cardRef = useRef<HTMLDivElement>(null);
   const onPhone = card && !wide;
   useLayoutEffect(() => {
     const drawer = element?.closest("aside");

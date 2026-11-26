@@ -18,6 +18,7 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { CapTableEmptyState } from "../shell/CapTableEmptyState";
@@ -30,6 +31,7 @@ type DialogState = { mode: "issue" } | { mode: "cancel"; certificate: EquityCert
 
 /** Restricted stock awards: certificates issued under a plan, excluding option exercise certificates. */
 export function RsaTable({ refreshKey = 0 }: { refreshKey?: number }) {
+  const hidden = useHideAmounts();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +115,7 @@ export function RsaTable({ refreshKey = 0 }: { refreshKey?: number }) {
                 <TableCell>{EQUITY_CERTIFICATE_STATUS_LABELS[row.status]}</TableCell>
                 <TableCell className="text-right tabular-nums">{figure(row.quantity)}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {row.pricePerShare ? formatPrice(row.pricePerShare) : "—"}
+                  {row.pricePerShare ? formatPrice(row.pricePerShare, hidden) : "—"}
                 </TableCell>
                 <TableCell className="tabular-nums">{formatDay(row.issueDate)}</TableCell>
                 <TableCell>

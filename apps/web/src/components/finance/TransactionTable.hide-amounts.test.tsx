@@ -51,7 +51,7 @@ it("masks a grouped vendor total and its expanded rows while amounts are hidden,
       </MemoryRouter>,
     ),
   );
-  expect(el.textContent).toContain("$9,012");
+  expect(el.textContent).toContain("$9,011.56");
   await act(async () => setHideAmounts(true));
   await act(async () => el.querySelector("button")?.click());
   for (const real of ["9,011", "1,234", "7,777"]) expect(el.textContent).not.toContain(real);
@@ -81,11 +81,17 @@ it("gives every column but Counterparty a fixed width, the same in List and By v
   expect(names(grouped)).toEqual(names(list));
 });
 
-it("shows list amounts in whole dollars, like the vendor and category totals", async () => {
+it("shows fractional cents in transaction rows and keeps whole dollars compact", async () => {
   const el = await render(<TransactionTable rows={[txn("1", -8_750), txn("2", 150_050)]} />);
-  expect(el.textContent).toContain("$88");
-  expect(el.textContent).toContain("+$1,501");
-  expect(el.textContent).not.toContain("87.50");
+  expect(el.textContent).toContain("$87.50");
+  expect(el.textContent).toContain("+$1,500.50");
+  expect(el.textContent).not.toContain("$150.00");
+});
+
+it("formats grouped BigInt totals without losing cents beyond Number precision", async () => {
+  const cents = Number.MAX_SAFE_INTEGER;
+  const el = await render(<TransactionTable rows={[txn("1", -cents), txn("2", -cents)]} grouped />);
+  expect(el.textContent).toContain("$180,143,985,094,819.82");
 });
 
 it("remembers List or By vendor per page, so another page still opens as a list", async () => {

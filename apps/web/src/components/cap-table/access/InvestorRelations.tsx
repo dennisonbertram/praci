@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -192,96 +193,106 @@ export function InvestorRelations() {
         <CapTableEmptyState message={filtered ? t`No matching holders` : t`No holders yet`} />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableHeadRow>
-                <TableHead className="w-8">
-                  <Checkbox
-                    aria-label={t`Select all`}
-                    checked={allSelected}
-                    onCheckedChange={(checked) =>
-                      setSelected(
-                        checked ? new Set(holders.map((row) => row.stakeholderId)) : new Set(),
-                      )
-                    }
-                  />
-                </TableHead>
-                <TableHead {...head("name")}>{t`Investor`}</TableHead>
-                <TableHead {...head("ownership")} className="text-end">
-                  {t`Ownership`}
-                </TableHead>
-                <TableHead>{t`Series`}</TableHead>
-                <TableHead>{t`Major investor`}</TableHead>
-                <TableHead>{t`Contact`}</TableHead>
-                <TableHead {...head("effectiveLevel")}>{t`Access level`}</TableHead>
-                <TableHead {...head("lastSeenAt")}>{t`Last seen`}</TableHead>
-              </TableHeadRow>
-            </TableHeader>
-            <TableBody aria-label={t`Investor relations`}>
-              {holders.map((row) => (
-                <TableRow key={row.stakeholderId} className="group">
-                  <TableCell>
+          <TableScrollRegion aria-label={t`Investor relations`}>
+            <Table className="min-w-[960px] whitespace-nowrap">
+              <TableHeader>
+                <TableHeadRow>
+                  <TableHead className="w-8">
                     <Checkbox
-                      aria-label={t`Select ${row.name}`}
-                      checked={selected.has(row.stakeholderId)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selected);
-                        if (checked) next.add(row.stakeholderId);
-                        else next.delete(row.stakeholderId);
-                        setSelected(next);
-                      }}
+                      aria-label={t`Select all`}
+                      checked={allSelected}
+                      onCheckedChange={(checked) =>
+                        setSelected(
+                          checked ? new Set(holders.map((row) => row.stakeholderId)) : new Set(),
+                        )
+                      }
                     />
-                  </TableCell>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell className="text-end tabular-nums">
-                    {percent(row.ownershipPercent)}
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex flex-wrap items-center gap-1">
-                      {[...new Set(row.classCodes)].map((code) => (
-                        <Badge key={code} variant="outline">
-                          {code}
-                        </Badge>
-                      ))}
-                    </span>
-                  </TableCell>
-                  <TableCell>{row.majorInvestor ? t`Yes` : ""}</TableCell>
-                  <TableCell className="relative">
-                    <span className="flex items-center gap-1">
-                      {row.email ? (
-                        <a
-                          className="block max-w-56 truncate underline-offset-4 hover:underline"
-                          title={row.email}
-                          href={`mailto:${row.email}`}
+                  </TableHead>
+                  <TableHead {...head("name")}>{t`Investor`}</TableHead>
+                  <TableHead {...head("ownership")} className="text-end">
+                    {t`Ownership`}
+                  </TableHead>
+                  <TableHead>{t`Series`}</TableHead>
+                  <TableHead>{t`Major investor`}</TableHead>
+                  <TableHead>{t`Contact`}</TableHead>
+                  <TableHead {...head("effectiveLevel")}>{t`Access level`}</TableHead>
+                  <TableHead {...head("lastSeenAt")}>{t`Last seen`}</TableHead>
+                </TableHeadRow>
+              </TableHeader>
+              <TableBody aria-label={t`Investor relations`}>
+                {holders.map((row) => (
+                  <TableRow key={row.stakeholderId} className="group">
+                    <TableCell>
+                      <Checkbox
+                        aria-label={t`Select ${row.name}`}
+                        checked={selected.has(row.stakeholderId)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selected);
+                          if (checked) next.add(row.stakeholderId);
+                          else next.delete(row.stakeholderId);
+                          setSelected(next);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell
+                      className="max-w-48 font-medium"
+                      title={row.name}
+                      aria-label={row.name}
+                    >
+                      <span className="block truncate">{row.name}</span>
+                    </TableCell>
+                    <TableCell className="text-end tabular-nums">
+                      {percent(row.ownershipPercent)}
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex flex-wrap items-center gap-1">
+                        {[...new Set(row.classCodes)].map((code) => (
+                          <Badge key={code} variant="outline">
+                            {code}
+                          </Badge>
+                        ))}
+                      </span>
+                    </TableCell>
+                    <TableCell>{row.majorInvestor ? t`Yes` : ""}</TableCell>
+                    <TableCell className="relative">
+                      <span className="flex items-center gap-1">
+                        {row.email ? (
+                          <a
+                            className="block max-w-56 truncate underline-offset-4 hover:underline"
+                            title={row.email}
+                            href={`mailto:${row.email}`}
+                          >
+                            {row.email}
+                          </a>
+                        ) : null}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute end-1 bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          aria-label={t`Investor contact for ${row.name}`}
+                          onClick={() => setLinking(row)}
                         >
-                          {row.email}
-                        </a>
-                      ) : null}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute end-1 bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                        aria-label={t`Investor contact for ${row.name}`}
-                        onClick={() => setLinking(row)}
-                      >
-                        {row.contactId ? t`Change` : t`Link`}
-                      </Button>
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-2 whitespace-nowrap">
-                      {levelLabel(row.effectiveLevel)}
-                      {row.overrideLevel ? <Badge variant="outline">{t`Override`}</Badge> : null}
-                      {row.requestedLevel ? <Badge variant="outline">{t`Requested`}</Badge> : null}
-                    </span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">
-                    {day(row.lastSeenAt)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                          {row.contactId ? t`Change` : t`Link`}
+                        </Button>
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2 whitespace-nowrap">
+                        {levelLabel(row.effectiveLevel)}
+                        {row.overrideLevel ? <Badge variant="outline">{t`Override`}</Badge> : null}
+                        {row.requestedLevel ? (
+                          <Badge variant="outline">{t`Requested`}</Badge>
+                        ) : null}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums">
+                      {day(row.lastSeenAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableScrollRegion>
           <Pager page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
         </>
       )}

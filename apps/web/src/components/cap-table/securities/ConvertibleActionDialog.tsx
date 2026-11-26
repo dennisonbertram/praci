@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -46,6 +47,7 @@ export function ConvertibleActionDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [date, setDate] = useState(today());
   const [reason, setReason] = useState("");
   const [classId, setClassId] = useState("");
@@ -149,7 +151,7 @@ export function ConvertibleActionDialog({
             <div className="flex flex-col gap-3 text-sm">
               <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
                 <dt className="text-muted-foreground">{t`Round price`}</dt>
-                <dd className="tabular-nums">{formatPrice(preview.pricePerShare, 4)}</dd>
+                <dd className="tabular-nums">{formatPrice(preview.pricePerShare, 4, hidden)}</dd>
                 <dt className="text-muted-foreground">{t`Pre-round fully diluted`}</dt>
                 <dd className="tabular-nums">{formatShares(preview.preRoundFullyDilutedShares)}</dd>
                 <dt className="text-muted-foreground">{t`New money shares`}</dt>
@@ -176,11 +178,11 @@ export function ConvertibleActionDialog({
                       <TableCell>{row.label}</TableCell>
                       <TableCell>{row.stakeholderName}</TableCell>
                       <TableCell className="text-end tabular-nums">
-                        {formatCents(row.amountConvertedCents)}
+                        {formatCents(row.amountConvertedCents, hidden)}
                       </TableCell>
                       <TableCell>{methodLabel(row.method)}</TableCell>
                       <TableCell className="text-end tabular-nums">
-                        {formatPrice(row.conversionPrice, 4)}
+                        {formatPrice(row.conversionPrice, 4, hidden)}
                       </TableCell>
                       <TableCell className="text-end tabular-nums">
                         {formatShares(row.shares)}

@@ -23,6 +23,7 @@ import {
   Textarea,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import type { CertificateTransaction } from "./CertificateTransactionDialog";
@@ -94,6 +95,7 @@ const relationship = (value: string | null | undefined) =>
 function certificateSections(
   row: EquityCertificate,
   holder: EquityStakeholder | null,
+  hidden: boolean,
 ): { title: string; fields: Field[] }[] {
   // The details recorded at issue; without them, the holder as the Stakeholders tab has them now.
   const person =
@@ -111,13 +113,13 @@ function certificateSections(
       fields: [
         [t`Share class`, row.shareClassName],
         [t`Shares`, formatShares(row.quantity)],
-        [t`Price per share`, formatPrice(row.pricePerShare)],
-        [t`Price paid per share`, formatPrice(row.pricePaidPerShare)],
-        [t`Cash paid`, formatCents(row.cashPaidCents)],
-        [t`Debt canceled`, formatCents(row.debtCanceledCents)],
-        [t`IP transferred`, formatCents(row.ipTransferredCents)],
-        [t`Other consideration`, formatCents(row.otherConsiderationCents)],
-        [t`Transaction value`, formatCents(row.transactionValueCents)],
+        [t`Price per share`, formatPrice(row.pricePerShare, undefined, hidden)],
+        [t`Price paid per share`, formatPrice(row.pricePaidPerShare, undefined, hidden)],
+        [t`Cash paid`, formatCents(row.cashPaidCents, hidden)],
+        [t`Debt canceled`, formatCents(row.debtCanceledCents, hidden)],
+        [t`IP transferred`, formatCents(row.ipTransferredCents, hidden)],
+        [t`Other consideration`, formatCents(row.otherConsiderationCents, hidden)],
+        [t`Transaction value`, formatCents(row.transactionValueCents, hidden)],
         [t`Issue date`, formatDay(row.issueDate)],
         [t`Board approval`, formatDay(row.boardApprovedOn)],
         [t`Issued by`, row.issuedBy],
@@ -145,14 +147,17 @@ function certificateSections(
   ];
 }
 
-function convertibleSections(row: EquityConvertible): { title: string; fields: Field[] }[] {
+function convertibleSections(
+  row: EquityConvertible,
+  hidden: boolean,
+): { title: string; fields: Field[] }[] {
   const note = row.kind === "note";
   return [
     {
       title: t`Terms`,
       fields: [
-        [t`Principal`, formatCents(row.principalCents)],
-        [t`Valuation cap`, formatCents(row.valuationCapCents)],
+        [t`Principal`, formatCents(row.principalCents, hidden)],
+        [t`Valuation cap`, formatCents(row.valuationCapCents, hidden)],
         [
           t`Cap type`,
           row.valuationCapType === "post_money"
@@ -168,8 +173,8 @@ function convertibleSections(row: EquityConvertible): { title: string; fields: F
               [t`Interest`, row.interestType === "compound" ? t`Compound` : t`Simple`],
               [t`Interest start`, formatDay(row.interestStartDate)],
               [t`Maturity date`, formatDay(row.maturityDate)],
-              [t`Interest accrued`, formatCents(row.interestAccruedCents)],
-              [t`Total`, formatCents(row.totalCents)],
+              [t`Interest accrued`, formatCents(row.interestAccruedCents, hidden)],
+              [t`Total`, formatCents(row.totalCents, hidden)],
             ] as Field[])
           : []),
         [t`MFN`, yes(row.mfn)],
@@ -224,6 +229,7 @@ export function SecurityRecord({
   onOpenChange: (open: boolean) => void;
   onCertificateAction?: (action: CertificateTransaction, certificate: EquityCertificate) => void;
 }) {
+  const hidden = useHideAmounts();
   const [record, setRecord] = useState<EquityCertificate | EquityConvertible | null>(null);
   const [history, setHistory] = useState<EquityTransaction[]>([]);
   const [holder, setHolder] = useState<EquityStakeholder | null>(null);
@@ -315,8 +321,8 @@ export function SecurityRecord({
                 {status}
               </p>
               {(certificate
-                ? certificateSections(certificate, holder)
-                : convertibleSections(convertible!)
+                ? certificateSections(certificate, holder, hidden)
+                : convertibleSections(convertible!, hidden)
               ).map((section) => (
                 <Section key={section.title} title={section.title} fields={section.fields} />
               ))}

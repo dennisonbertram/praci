@@ -154,10 +154,21 @@ export async function openIntegrations(page: Page) {
 /** Runs the connect dialog for a managed app through sign-in, agent choice and the done step. */
 export async function finishConnectDialog(page: Page, appName: string) {
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Continue", exact: true }).click();
+  const connect = dialog.getByRole("button", { name: "Connect", exact: true });
+  const continueButton = dialog.getByRole("button", { name: "Continue", exact: true });
+  const done = dialog.getByRole("button", { name: "Done", exact: true });
+
+  // Some routes have already begun sign-in when they open this dialog. An Inbox
+  // connection can also arrive at Done directly when Gmail already has its own
+  // agent; other connections stop at the bot-access step and need Continue.
+  await expect(connect.or(continueButton).or(done)).toBeVisible();
+  if (await connect.isVisible().catch(() => false)) await connect.click();
+  await expect(continueButton.or(done)).toBeVisible();
+  if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+
   await expect(dialog.getByText(`${appName} connected`, { exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(dialog).toHaveCount(0);
+  await done.click();
+  await expect(done).toBeHidden();
 }
 
 /**
@@ -166,7 +177,6 @@ export async function finishConnectDialog(page: Page, appName: string) {
  */
 export async function connectMailFromInbox(page: Page, secondName = "Work") {
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Connect", exact: true }).click();
   await finishConnectDialog(page, "Gmail");
   await expect(page).toHaveURL(/\/app\/inbox$/);
   await page.getByTestId("sidebar-integrations").click();

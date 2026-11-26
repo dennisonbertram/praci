@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -105,77 +106,79 @@ export function PlansTable({
       ) : pools?.length === 0 ? (
         <CapTableEmptyState message={t`No plans yet`} />
       ) : pools ? (
-        <Table>
-          <TableHeader>
-            <TableHeadRow>
-              <TableHead className="w-1/4">{t`Plan name`}</TableHead>
-              <TableHead>{t`Status`}</TableHead>
-              <TableHead className="text-right">{t`Reserved`}</TableHead>
-              <TableHead className="text-right">{t`Granted`}</TableHead>
-              <TableHead className="text-right">{t`Exercised`}</TableHead>
-              <TableHead className="text-right">{t`Returned`}</TableHead>
-              <TableHead className="text-right">{t`Available`}</TableHead>
-              <TableHead className="w-10">
-                <span className="sr-only">{t`Actions`}</span>
-              </TableHead>
-            </TableHeadRow>
-          </TableHeader>
-          <TableBody>
-            {pools.map((pool) => (
-              <TableRow key={pool.planId}>
-                <TableCell className="truncate font-medium" title={pool.name}>
-                  {pool.name}
-                </TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center gap-2">
-                    <span
-                      aria-hidden
-                      className={`size-2 rounded-full ${pool.status === "active" ? "bg-success" : "bg-muted-foreground"}`}
-                    />
-                    {pool.status === "active" ? t`Active` : t`Inactive`}
-                  </span>
-                </TableCell>
-                {[
-                  pool.reservedShares,
-                  pool.grantedShares,
-                  pool.exercisedShares,
-                  pool.returnedShares,
-                  pool.availableShares,
-                ].map((value, index) => (
-                  <TableCell key={index} className="text-right tabular-nums">
-                    {figure(value)}
+        <TableScrollRegion aria-label={t`Equity plans`}>
+          <Table className="min-w-[760px] whitespace-nowrap">
+            <TableHeader>
+              <TableHeadRow>
+                <TableHead className="w-1/4">{t`Plan name`}</TableHead>
+                <TableHead>{t`Status`}</TableHead>
+                <TableHead className="text-right">{t`Reserved`}</TableHead>
+                <TableHead className="text-right">{t`Granted`}</TableHead>
+                <TableHead className="text-right">{t`Exercised`}</TableHead>
+                <TableHead className="text-right">{t`Returned`}</TableHead>
+                <TableHead className="text-right">{t`Available`}</TableHead>
+                <TableHead className="w-10">
+                  <span className="sr-only">{t`Actions`}</span>
+                </TableHead>
+              </TableHeadRow>
+            </TableHeader>
+            <TableBody>
+              {pools.map((pool) => (
+                <TableRow key={pool.planId}>
+                  <TableCell className="truncate font-medium" title={pool.name}>
+                    {pool.name}
                   </TableCell>
-                ))}
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={t`Actions for ${pool.name}`}
-                        />
-                      }
-                    >
-                      <MoreHorizontal />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => void edit(pool.planId)}>
-                        {t`Edit plan`}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onIncrease(pool, pools)}>
-                        {t`Increase pool`}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setHistory(pool)}>
-                        {t`Pool history`}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className={`size-2 rounded-full ${pool.status === "active" ? "bg-success" : "bg-muted-foreground"}`}
+                      />
+                      {pool.status === "active" ? t`Active` : t`Inactive`}
+                    </span>
+                  </TableCell>
+                  {[
+                    pool.reservedShares,
+                    pool.grantedShares,
+                    pool.exercisedShares,
+                    pool.returnedShares,
+                    pool.availableShares,
+                  ].map((value, index) => (
+                    <TableCell key={index} className="text-right tabular-nums">
+                      {figure(value)}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={t`Actions for ${pool.name}`}
+                          />
+                        }
+                      >
+                        <MoreHorizontal />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => void edit(pool.planId)}>
+                          {t`Edit plan`}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onIncrease(pool, pools)}>
+                          {t`Increase pool`}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setHistory(pool)}>
+                          {t`Pool history`}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableScrollRegion>
       ) : null}
       {editing && (
         <PlanFormDialog

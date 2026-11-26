@@ -16,6 +16,7 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -40,6 +41,7 @@ export function RsaDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [holders, setHolders] = useState<Option[]>([]);
   const [stakeholderId, setStakeholderId] = useState("");
   const [planId, setPlanId] = useState(plans[0]?.id ?? "");
@@ -114,7 +116,7 @@ export function RsaDialog({
         [t`Holder`, nameOf(holders, stakeholderId)],
         [t`Plan`, nameOf(plans, planId)],
         [t`Quantity`, quantityValid ? formatShares(quantity) : quantity],
-        [t`Price per share`, priceValid ? formatPrice(price) : price],
+        [t`Price per share`, priceValid ? formatPrice(price, hidden) : price],
         [t`Issue date`, day(date)],
       ]
     : [

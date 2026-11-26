@@ -101,6 +101,9 @@ export function ScannerPage({
       <DataRoomPage
         source="scan"
         spaceName={spaceName}
+        emptyDescription={
+          scanner ? undefined : <Trans>Use the desktop app to scan a document.</Trans>
+        }
         onAskAgent={onAskAgent}
         headerMeta={scanner ? <span role="status">{status}</span> : undefined}
         headerActions={

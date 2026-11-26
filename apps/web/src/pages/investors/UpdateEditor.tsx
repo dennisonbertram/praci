@@ -67,6 +67,7 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
   const navigate = useNavigate();
   const [update, setUpdate] = useState<InvestorUpdate | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsLoaded, setContactsLoaded] = useState(false);
   const [accounts, setAccounts] = useState<MailAccountSummary[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [subject, setSubject] = useState("");
@@ -83,6 +84,8 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
   const [partError, setPartError] = useState("");
   const [contactsFailed, setContactsFailed] = useState(false);
   const [reloads, setReloads] = useState(0);
+  const contactRequest = useRef(0);
+  const contactLookup = useRef<{ key: string } | null>(null);
   // Send is held for UNDO_SEND_MS so the founder can take it back.
   const [holding, setHolding] = useState(false);
   const held = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
@@ -161,6 +164,12 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
     );
     return ticked.filter((id) => !revoked.has(id));
   }, [contacts, ticked, update?.audience]);
+  const emailRecipients = useMemo(() => {
+    const emailable = new Set(
+      contacts.filter((contact) => Boolean(contact.email)).map((contact) => contact.id),
+    );
+    return recipients.filter((id) => emailable.has(id));
+  }, [contacts, recipients]);
 
   const draft = update?.status === "draft";
   // Until the lookup answers (or if it fails) assume Gmail, so Post to portal is never offered by mistake.
@@ -176,21 +185,50 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
     },
   });
 
-  const load = useCallback(async () => {
-    const request = ++latestLoad.current;
-    try {
-      const next = await rpc.investors.updates.get({ id: updateId });
-      if (request !== latestLoad.current) return null;
-      setUpdate(next);
-      setLoadError("");
-      return next;
-    } catch (cause) {
-      if (request !== latestLoad.current) return null;
-      if ((cause as { code?: string } | null)?.code === "NOT_FOUND") setUpdate(null);
-      setLoadError(errorText(cause, t`Could not load this update`));
-      return null;
-    }
-  }, [updateId]);
+  const loadContacts = useCallback((next: InvestorUpdate, retry = false) => {
+    const kind = next.audience === "board" ? "board" : "investor";
+    const key = `${next.id}:${kind}`;
+    if (!retry && contactLookup.current?.key === key) return;
+
+    const request = ++contactRequest.current;
+    contactLookup.current = { key };
+    setContacts([]);
+    setContactsLoaded(false);
+    setContactsFailed(false);
+    void rpc.contacts
+      .list({ kind })
+      .then((list) => {
+        if (contactRequest.current !== request || contactLookup.current?.key !== key) return;
+        setContacts(list);
+        setContactsLoaded(true);
+      })
+      .catch((cause) => {
+        if (contactRequest.current !== request || contactLookup.current?.key !== key) return;
+        setContactsFailed(true);
+        setContactsLoaded(true);
+        setPartError(errorText(cause, t`Could not load recipients`));
+      });
+  }, []);
+
+  const load = useCallback(
+    async (retryContacts = false) => {
+      const request = ++latestLoad.current;
+      try {
+        const next = await rpc.investors.updates.get({ id: updateId });
+        if (request !== latestLoad.current) return null;
+        setUpdate(next);
+        setLoadError("");
+        loadContacts(next, retryContacts);
+        return next;
+      } catch (cause) {
+        if (request !== latestLoad.current) return null;
+        if ((cause as { code?: string } | null)?.code === "NOT_FOUND") setUpdate(null);
+        setLoadError(errorText(cause, t`Could not load this update`));
+        return null;
+      }
+    },
+    [loadContacts, updateId],
+  );
 
   // First load: the update, the audience's contacts and the Gmail accounts.
   useEffect(() => {
@@ -199,24 +237,20 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
       current && setPartError(errorText(cause, t`Could not load recipients`));
     setPartError("");
     setContactsFailed(false);
-    void load().then((next) => {
-      if (!current || !next) return;
-      void rpc.contacts
-        .list({ kind: next.audience === "board" ? "board" : "investor" })
-        .then((list) => {
-          if (current) setContacts(list);
-        })
-        .catch((cause) => {
-          if (current) setContactsFailed(true);
-          failed(cause);
-        });
-    });
+    setContacts([]);
+    setContactsLoaded(false);
+    setAccounts(null);
+    contactRequest.current += 1;
+    contactLookup.current = null;
+    void load(true);
     void rpc.investors.updates
       .accounts()
       .then((list) => current && setAccounts(list))
       .catch(failed);
     return () => {
       current = false;
+      latestLoad.current += 1;
+      contactRequest.current += 1;
     };
   }, [load, reloads]);
 
@@ -472,7 +506,7 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
       <div className={`${PAGE_GUTTER_X} pt-5`}>
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">{loadError}</span>
-          <Button variant="outline" size="sm" onClick={() => void load()}>
+          <Button variant="outline" size="sm" onClick={() => setReloads((n) => n + 1)}>
             <Trans>Try again</Trans>
           </Button>
         </div>
@@ -563,11 +597,28 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
           ) : null}
 
           {draft && gmail && !contactsFailed ? (
-            <fieldset className="flex min-w-0 flex-col gap-1.5">
+            <fieldset aria-busy={!contactsLoaded} className="flex min-w-0 flex-col gap-1.5">
               <legend className="mb-1.5 text-sm font-medium">
                 <Trans>To</Trans>
               </legend>
-              {contacts.length === 0 ? (
+              {!contactsLoaded ? (
+                <>
+                  <p className="sr-only" role="status">
+                    {update.audience === "board" ? (
+                      <Trans>Loading board members…</Trans>
+                    ) : (
+                      <Trans>Loading investors…</Trans>
+                    )}
+                  </p>
+                  {[0, 1].map((row) => (
+                    <div key={row} aria-hidden="true" className="flex min-h-9 items-center gap-2">
+                      <Skeleton className="size-4 rounded-sm" />
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                  ))}
+                </>
+              ) : contacts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {update.audience === "board" ? (
                     <Trans>No board members yet</Trans>
@@ -801,8 +852,9 @@ export function UpdateEditor({ updateId, agentBusy }: { updateId: string; agentB
                 busy ||
                 drafting ||
                 accounts === null ||
+                !contactsLoaded ||
                 Boolean(partError) ||
-                recipients.length === 0 ||
+                emailRecipients.length === 0 ||
                 bodyEmpty
               }
               onClick={trySend}

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -26,6 +27,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = null;
   document.body.innerHTML = "";
+  setHideAmounts(false);
 });
 
 it("lists every vesting event of a 1 year cliff, monthly schedule", async () => {
@@ -53,4 +55,20 @@ it("lists every vesting event of a 1 year cliff, monthly schedule", async () => 
   expect(rows[0]?.textContent).toContain("Jan 1, 2025");
   expect(rows[0]?.textContent).toContain("12,000");
   expect(rows.at(-1)?.textContent).toContain("48,000");
+});
+
+it("masks and restores the exercise price while the grant record is open", async () => {
+  setHideAmounts(false);
+  const grant = demoOptionGrant();
+  const container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root?.render(<OptionGrantRecord grant={grant} onClose={vi.fn()} />));
+  expect(document.body.textContent).toContain("$0.10");
+  await act(async () => setHideAmounts(true));
+  expect(document.body.textContent).toContain("$•••");
+  expect(document.body.textContent).not.toContain("$0.10");
+  expect(document.body.textContent).toContain("48,000");
+  await act(async () => setHideAmounts(false));
+  expect(document.body.textContent).toContain("$0.10");
 });

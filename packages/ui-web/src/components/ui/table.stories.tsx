@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableHeadRow,
   TableRow,
+  TableScrollRegion,
 } from "./table";
 
 const meta = { title: "UI/Table", component: Table } satisfies Meta<typeof Table>;
@@ -140,6 +141,19 @@ export const Compact: Story = {
         ))}
       </TableBody>
     </Table>
+  ),
+};
+
+export const Scrollable: Story = {
+  render: () => (
+    <div className="w-[320px]">
+      <TableScrollRegion aria-label="Share classes">
+        <Table className="min-w-[760px] whitespace-nowrap">
+          <Header />
+          <Rows />
+        </Table>
+      </TableScrollRegion>
+    </div>
   ),
 };
 

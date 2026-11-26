@@ -7,6 +7,14 @@ Sources: `docs/ux-paths/{inbox,finance,legal,captable,dataroom,app}/catalog.md`.
 Persona: a naive first-time founder (Maya, "Northwind Robotics") who has never seen the product and wants to run her company. Each story gives the steps she tries, the outcome she would assume, and where she would hesitate.
 Evidence: every story was written by reading code. No story was walked in a browser. Items the code alone cannot settle are marked UNVERIFIED in the stories.
 
+### Navigation note (2026-11-26)
+
+The **457-story count and story text below are the historical 2026-10-20 catalog**. They are not a current route inventory and do not mean the stories were browser-tested or passed. For newer area coverage, use [Calendar](calendar/catalog.md), [Meetings and voice](meetings-voice/catalog.md), [Contacts](contacts/catalog.md), [Fundraising](../fundraising/ux-paths/catalog.md) and [Cap table](captable/catalog.md). The Fundraising catalog is explicitly plan/mockup-based; it is a story source, not evidence of current implementation.
+
+The route list in [discovery.md](discovery.md) predates these current paths: `/app/calendar`, `/app/meetings` and `/app/meetings/:id`, `/app/fundraising`, `/app/investors`, and `/app/contacts/:id`. It lists `/app/cap-table/*` but does not enumerate the current overview and stakeholder paths. Verify routes in the current application when a story depends on navigation.
+
+References to phone or narrow layouts in web stories mean the web app at a resized viewport. They do not cover Expo mobile (`apps/mobile`) or the separate Swift app (`apps/ios`); those need native-specific verification.
+
 The 2026-10-14 Inbox email audit (STORY-001..062) stays in `catalog-inbox-email-audit-2026-10-14.md`. "Prior STORY-nnn" references point to it, not to this file.
 
 ## Changes in this refresh (2026-10-20)

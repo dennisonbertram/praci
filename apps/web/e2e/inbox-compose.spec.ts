@@ -47,6 +47,12 @@ const htmlOf = (raw: string) => partOf(raw, "html");
 
 async function connectGmail(page: Page) {
   await page.getByTestId("sidebar-inbox").click();
+  const skipTour = page.getByRole("button", { name: "Skip tour", exact: true });
+  await skipTour.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
+  if (await skipTour.isVisible().catch(() => false)) {
+    await skipTour.click();
+    await expect(skipTour).toBeHidden();
+  }
   await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 }
@@ -186,6 +192,17 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
   await captureScreenshot(page, testInfo, "compose-new");
   await page.keyboard.press("ControlOrMeta+Enter");
   await expect(composer).toBeHidden();
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(composer).toBeVisible();
+  await expect(composer.getByRole("textbox", { name: "Message" })).toContainText("Line one");
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-second", "sent"))
+    .toBe(count(before, "e2e-second", "sent"));
+
+  await page.keyboard.press("ControlOrMeta+Enter");
+  await expect(composer).toBeHidden();
+  await expect(page.getByText("Sent", { exact: true })).toBeVisible({ timeout: 30_000 });
 
   await expect
     .poll(async () => count(await gmail(page), "e2e-second", "sent"))
@@ -241,6 +258,7 @@ test("several recipients, rich text, a link and an attachment arrive as one mult
   await page.keyboard.type("team");
   await page.keyboard.press("ControlOrMeta+b");
   await page.keyboard.type(" see https://example.test/plan ");
+  await composer.getByRole("button", { name: "Formatting options" }).click();
   await composer.getByRole("button", { name: "Bulleted list" }).click();
   await page.keyboard.type("first");
   await composer.locator("input[type=file]").setInputFiles({
@@ -286,7 +304,8 @@ test("forwarding keeps the original's attachments, and a removed one stays behin
     .getByRole("main")
     .getByRole("button", { name: /Q3 report/ })
     .click();
-  await page.getByRole("button", { name: "Forward", exact: true }).click();
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Forward", exact: true }).click();
   const composer = page.getByRole("dialog", { name: "Forward" });
   const files = composer.getByRole("list", { name: "Attachments" });
   await expect(files).toContainText("q3-report.pdf");

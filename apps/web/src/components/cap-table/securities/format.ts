@@ -7,16 +7,22 @@ export const formatShares = (value: string) =>
   new Intl.NumberFormat(locale()).format(BigInt(value));
 
 /** Whole cents as dollars and cents, through BigInt so no amount passes through a float. */
-export function formatCents(value: string | null | undefined): string {
+export function formatCents(value: string | null | undefined, hidden = false): string {
   if (value == null) return "—";
+  if (hidden) return "$•••";
   const cents = BigInt(value);
   const whole = new Intl.NumberFormat(locale()).format(cents / 100n);
   return `$${whole}.${(cents % 100n).toString().padStart(2, "0")}`;
 }
 
 /** A decimal price string as dollars, two places at least, more when the price has them. */
-export function formatPrice(value: string | null | undefined, places?: number): string {
+export function formatPrice(
+  value: string | null | undefined,
+  places?: number,
+  hidden = false,
+): string {
   if (value == null) return "—";
+  if (hidden) return "$•••";
   const [whole = "0", fraction = ""] = value.split(".");
   if (places === undefined) {
     const kept = fraction.replace(/0+$/, "").padEnd(2, "0");

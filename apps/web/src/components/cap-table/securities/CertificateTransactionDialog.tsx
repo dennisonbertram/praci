@@ -23,6 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { todayIso as today } from "../../../lib/legal-format";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
@@ -118,6 +119,7 @@ export function CertificateTransactionDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const hidden = useHideAmounts();
   const [form, setForm] = useState<Form>(() => transactionForm(action, certificate));
   const [step, setStep] = useState<"form" | "review">("form");
   const [stakeholders, setStakeholders] = useState<EquityStakeholder[]>([]);
@@ -247,7 +249,9 @@ export function CertificateTransactionDialog({
     ...(form.reason
       ? ([[t`Reason`, EQUITY_REASON_LABELS[form.reason] ?? form.reason]] as [string, string][])
       : []),
-    ...(price ? ([[t`Price per share`, formatPrice(price)]] as [string, string][]) : []),
+    ...(price
+      ? ([[t`Price per share`, formatPrice(price, undefined, hidden)]] as [string, string][])
+      : []),
   ];
 
   return (

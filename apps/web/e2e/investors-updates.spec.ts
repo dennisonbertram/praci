@@ -81,6 +81,7 @@ test("A draft update waits in Action items, opens in the editor and sends", asyn
 
   await page.getByTestId("sidebar-investors").click();
   const main = page.getByRole("main");
+  await main.getByRole("tab", { name: "Updates" }).click();
   const items = main.getByRole("region", { name: "Action items" });
   await expect(items.getByText("Example Co · 2026-09 update")).toBeVisible();
   await expect(
@@ -99,6 +100,6 @@ test("A draft update waits in Action items, opens in the editor and sends", asyn
     .poll(() => calls.some((c) => c.name === "updates/send"), { timeout: 15_000 })
     .toBe(true);
   // The finished send returns to Investors with a toast.
-  await expect(page).toHaveURL(/\/app\/investors$/);
+  await expect(page).toHaveURL(/\/app\/investors(?:\?.*)?$/);
   await expect(page.getByRole("alert").getByText("Sent to 2")).toBeVisible();
 });

@@ -4,6 +4,7 @@ import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { resetHideAmountsMemory, setHideAmounts } from "../../../lib/hide-amounts-preference";
 
 const text = vi.hoisted(
   () =>
@@ -25,12 +26,14 @@ let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   vi.clearAllMocks();
+  resetHideAmountsMemory();
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
 });
 afterEach(() => {
   act(() => root.unmount());
+  resetHideAmountsMemory();
   host.remove();
 });
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -47,11 +50,13 @@ it("loads the settings and saves a price with its date", async () => {
   rpcMock.views.estimatedValue.set.mockRejectedValue(
     new Error("A price per share needs an effective date"),
   );
+  setHideAmounts(true);
   await act(async () => {
     root.render(<EstimatedValueSettings />);
     await settle();
   });
   const input = host.querySelector<HTMLInputElement>("#estimated-value-price")!;
+  expect(input.type).toBe("text");
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "2.5");
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -92,6 +97,40 @@ it("previews what a holder sees at the saved price", async () => {
   });
   // 5,000,000 shares at $1.25.
   expect(host.textContent).toContain("$6,250,000");
+});
+
+it("keeps a saved price concealed until revealed and remasks when Hide amounts returns", async () => {
+  rpcMock.views.estimatedValue.get.mockResolvedValue({
+    visibility: "hidden",
+    pricePerShare: "1.25",
+    effectiveDate: "2026-06-30",
+    updatedAt: "2026-07-01T00:00:00.000Z",
+  });
+  rpcMock.views.capTableByStakeholder.mockResolvedValue(byStakeholderFixture);
+  setHideAmounts(true);
+  await act(async () => {
+    root.render(<EstimatedValueSettings />);
+    await settle();
+  });
+
+  const input = host.querySelector<HTMLInputElement>("#estimated-value-price")!;
+  expect(input.type).toBe("password");
+  expect(input.value).toBe("••••••");
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label^="Show amount:"]')!.click(),
+  );
+  expect(input.type).toBe("text");
+  expect(input.value).toBe("1.25");
+  expect(document.activeElement).toBe(input);
+  expect(rpcMock.views.estimatedValue.set).not.toHaveBeenCalled();
+
+  act(() => setHideAmounts(false));
+  expect(input.type).toBe("text");
+  expect(input.value).toBe("1.25");
+  act(() => setHideAmounts(true));
+  expect(input.type).toBe("password");
+  expect(input.value).toBe("••••••");
+  expect(rpcMock.views.estimatedValue.set).not.toHaveBeenCalled();
 });
 
 it("shows only the error, with no Save form, when the settings fail to load", async () => {

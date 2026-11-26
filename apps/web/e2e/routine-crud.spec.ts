@@ -5,7 +5,8 @@ import { activeBotId, captureScreenshot, completeOnboarding, rpc, signup } from 
 
 async function addScheduleTrigger(page: Page, freq: string) {
   await page.getByRole("button", { name: "Choose when it runs" }).click();
-  await page.getByRole("menuitem", { name: "On a schedule" }).hover();
+  // “On a schedule” is a menu label, not a submenu trigger. The schedule
+  // choices are already exposed as menu items in the opened menu.
   await page.getByRole("menuitem", { name: freq, exact: true }).click();
 }
 
@@ -15,7 +16,7 @@ async function saveAndReturn(page: Page, procedure: "routines/create" | "routine
   );
   await page.getByRole("button", { name: "Save", exact: true }).click();
   const response = await saved;
-  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Back" }).click();
   return response.request().postDataJSON().json;
 }
@@ -28,37 +29,49 @@ test("routine active switch keeps its thumb inside the track", async ({ page }, 
   await page.getByRole("button", { name: "Create a routine" }).click();
 
   const toggle = page.getByRole("switch", { name: "Active" });
-  const thumb = toggle.locator("span");
-  async function expectThumbInsets(left: number, right: number) {
+  const thumb = toggle.locator('[data-slot="switch-thumb"]');
+  async function expectThumbAtEdge(edge: "start" | "end") {
     await thumb.evaluate((element) =>
       Promise.all(element.getAnimations().map(({ finished }) => finished)),
     );
     const [trackBox, thumbBox] = await Promise.all([toggle.boundingBox(), thumb.boundingBox()]);
     expect(trackBox).not.toBeNull();
     expect(thumbBox).not.toBeNull();
-    expect(thumbBox!.x - trackBox!.x).toBeCloseTo(left, 1);
-    expect(trackBox!.x + trackBox!.width - thumbBox!.x - thumbBox!.width).toBeCloseTo(right, 1);
+    const leftInset = thumbBox!.x - trackBox!.x;
+    const rightInset = trackBox!.x + trackBox!.width - thumbBox!.x - thumbBox!.width;
+    const availableTravel = trackBox!.width - thumbBox!.width;
+
+    // Check containment and end positions without tying the test to fixed switch dimensions.
+    expect(leftInset).toBeGreaterThanOrEqual(-1);
+    expect(rightInset).toBeGreaterThanOrEqual(-1);
+    expect(leftInset).toBeLessThanOrEqual(availableTravel + 1);
+    expect(rightInset).toBeLessThanOrEqual(availableTravel + 1);
+    if (edge === "start") expect(leftInset).toBeLessThanOrEqual(1);
+    else expect(rightInset).toBeLessThanOrEqual(1);
   }
 
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await expectThumbInsets(20, 2);
+  await expectThumbAtEdge("end");
   await captureScreenshot(page, testInfo, "routine-toggle-desktop-active");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
-  await expectThumbInsets(2, 20);
+  await expectThumbAtEdge("start");
   await captureScreenshot(page, testInfo, "routine-toggle-desktop-inactive");
 
   await toggle.focus();
   await page.keyboard.press("Space");
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  expect(await toggle.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
-    "none",
-  );
+  expect(
+    await toggle.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.outlineStyle !== "none" || style.boxShadow !== "none";
+    }),
+  ).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expectThumbInsets(20, 2);
+  await expectThumbAtEdge("end");
   await captureScreenshot(page, testInfo, "routine-toggle-mobile-active");
   await toggle.click();
-  await expectThumbInsets(2, 20);
+  await expectThumbAtEdge("start");
   await captureScreenshot(page, testInfo, "routine-toggle-mobile-inactive");
 });
 
@@ -200,7 +213,7 @@ test("invalid advanced cron is rejected without creating a routine", async ({ pa
   await page.getByRole("button", { name: "Create a routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Broken schedule");
   await page.locator("label:has-text('Instruction') textarea").fill("This should never run");
-  await addScheduleTrigger(page, "Advanced...");
+  await addScheduleTrigger(page, "Advanced…");
   await page.getByLabel("Cron expression").fill("61 25 * * *");
   await page.getByRole("button", { name: "Save", exact: true }).click();
 
@@ -316,11 +329,11 @@ test("switching bots while a routine save is pending does not reopen stale state
     .getByRole("button", { name: /^Second/ })
     .click();
   await page.waitForURL(new RegExp(`/app/${secondBot.id}$`));
-  await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "closed");
+  await expect(page.getByTestId("side-panel")).toHaveCount(0);
 
   releaseUpdate();
   await updateResponse;
-  await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "closed");
+  await expect(page.getByTestId("side-panel")).toHaveCount(0);
   await expect(page.getByRole("alert")).toHaveCount(0);
 
   await page.getByTitle(/^(Computer and )?routines$/i).click();

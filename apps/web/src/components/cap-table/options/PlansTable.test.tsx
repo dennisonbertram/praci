@@ -68,6 +68,15 @@ it("shows each plan's pool and disables pour over with one plan", async () => {
   expect(button("Pour over")?.disabled).toBe(true);
 });
 
+it("keeps plan columns in a labelled, keyboard-scrollable region", async () => {
+  rpcMock.planPools.list.mockResolvedValue([demoPlanPool()]);
+  const container = await mount(<PlansTable onIncrease={vi.fn()} onPourOver={vi.fn()} />);
+  const region = container.querySelector('[role="region"][aria-label="Equity plans"]');
+  expect(region?.className).toContain("overflow-x-auto");
+  expect(region?.querySelector("table")?.className).toContain("min-w-[760px]");
+  expect(region?.querySelectorAll("th")).toHaveLength(8);
+});
+
 it("opens the pool history from the row menu", async () => {
   rpcMock.planPools.list.mockResolvedValue([
     demoPlanPool({

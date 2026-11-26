@@ -12,6 +12,7 @@ import {
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { rpc } from "../../../lib/rpc";
 import { errorText } from "../../../lib/user-error";
 import { formatCents, formatDay, formatPercent } from "./format";
@@ -21,6 +22,7 @@ import { formatCents, formatDay, formatPercent } from "./format";
  * when there are some.
  */
 export function AppSafes({ reloadKey = 0, onAdded }: { reloadKey?: number; onAdded: () => void }) {
+  const hidden = useHideAmounts();
   const [rows, setRows] = useState<EquityAppSafe[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -59,7 +61,7 @@ export function AppSafes({ reloadKey = 0, onAdded }: { reloadKey?: number; onAdd
       <div className="flex items-center gap-3">
         <h2 className="text-sm font-medium">{t`From Fundraising`}</h2>
         <span className="text-sm text-muted-foreground tabular-nums">
-          {t`${formatCents(rows.reduce((sum, row) => sum + BigInt(row.principalCents), 0n).toString())} not yet in the ledger`}
+          {t`${formatCents(rows.reduce((sum, row) => sum + BigInt(row.principalCents), 0n).toString(), hidden)} not yet in the ledger`}
         </span>
         <Link
           to="/app/fundraising"
@@ -91,10 +93,10 @@ export function AppSafes({ reloadKey = 0, onAdded }: { reloadKey?: number; onAdd
             <TableRow key={row.id}>
               <TableCell>{row.investorName}</TableCell>
               <TableCell className="text-end tabular-nums">
-                {formatCents(row.principalCents)}
+                {formatCents(row.principalCents, hidden)}
               </TableCell>
               <TableCell className="text-end tabular-nums">
-                {formatCents(row.valuationCapCents)}
+                {formatCents(row.valuationCapCents, hidden)}
               </TableCell>
               <TableCell className="text-end tabular-nums">
                 {formatPercent(row.discountPercent)}

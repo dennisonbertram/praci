@@ -14,6 +14,7 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
+import { useHideAmounts } from "../../../lib/hide-amounts-preference";
 import { formatDay, formatPrice, formatShares } from "./format";
 import { VestingChart } from "./VestingChart";
 
@@ -27,6 +28,7 @@ export function OptionGrantRecord({
   grant: EquityOptionGrant;
   onClose: () => void;
 }) {
+  const hidden = useHideAmounts();
   const schedule = grant.vestingSchedule;
   const events = schedule ? vestingEvents(vestingRuleOf(schedule), BigInt(grant.quantity)) : [];
   const terms: [string, string][] = [
@@ -34,7 +36,7 @@ export function OptionGrantRecord({
     [t`Plan`, grant.planName],
     [t`Type`, grant.optionType.toUpperCase()],
     [t`Grant date`, formatDay(grant.grantDate)],
-    [t`Exercise price`, formatPrice(grant.exercisePrice)],
+    [t`Exercise price`, formatPrice(grant.exercisePrice, hidden)],
     [t`Expiration`, grant.expirationDate ? formatDay(grant.expirationDate) : "—"],
     [t`Original quantity`, figure(grant.quantity)],
     [t`Vested`, figure(grant.vestedQuantity)],

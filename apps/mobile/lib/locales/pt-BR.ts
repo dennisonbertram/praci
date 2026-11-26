@@ -940,7 +940,10 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   "Next month": "Próximo mês",
   "No company facts yet": "Nenhum fato da empresa ainda",
   "No dates this month": "Nenhuma data neste mês",
+  "No scans yet": "Nenhum scan ainda",
   "No files": "Nenhum arquivo",
+  "Use the desktop app to scan a document.":
+    "Digitalize um documento com o aplicativo para desktop.",
   "No matching files": "Nenhum arquivo correspondente",
   "Not confirmed": "Não confirmado",
   "Not searchable": "Não pesquisável",
